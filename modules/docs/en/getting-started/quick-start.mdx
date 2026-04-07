@@ -28,13 +28,13 @@ pnpm docker:up
 ```
 
 <Frame caption="Success message and container startup logs after running docker:up">
-  <video 
-    autoPlay 
-    muted 
-    loop 
-    playsInline 
-    controls 
-    className="w-full rounded-xl" 
+  <video
+    autoPlay
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
     src="/images/quickstart1.mp4"
   ></video>
 </Frame>
@@ -42,8 +42,8 @@ pnpm docker:up
 This command uses Docker Compose to run the PostgreSQL database in the background.
 
 <Tip>
-  To verify the database is running correctly, you can check the container status
-  with the `docker ps` command.
+  To verify the database is running correctly, you can check the container status with the `docker
+  ps` command.
 </Tip>
 
 <Frame caption="docker ps execution result (PostgreSQL container in Up state)">
@@ -61,13 +61,13 @@ pnpm dev
 ```
 
 <Frame caption="Server startup logs after running pnpm dev">
-  <video 
-    autoPlay 
-    muted 
-    loop 
-    playsInline 
-    controls 
-    className="w-full rounded-xl" 
+  <video
+    autoPlay
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
     src="/images/quickstart3.mp4"
   ></video>
 </Frame>
@@ -79,6 +79,7 @@ When the server starts successfully, you'll see the following message:
 ```
 
 This single command runs everything:
+
 - **Web App**: http://localhost:34900
 - **API Endpoints**: http://localhost:34900/api
 - **Sonamu UI**: http://localhost:34900/sonamu-ui
@@ -86,12 +87,12 @@ This single command runs everything:
 The API server supports Hot Module Replacement (HMR), so it automatically restarts when code changes.
 
 <Note>
-In the local development environment, the API server integrates and serves the Web app. It connects the Web directory's Vite Dev Server as middleware to the API server, allowing everything to run on a single port.
+  In the local development environment, the API server integrates and serves the Web app. It
+  connects the Web directory's Vite Dev Server as middleware to the API server, allowing everything
+  to run on a single port.
 </Note>
 
-<Warning>
-  Keep this terminal window open. It maintains the running API server.
-</Warning>
+<Warning>Keep this terminal window open. It maintains the running API server.</Warning>
 
 </Step>
 
@@ -105,13 +106,13 @@ pnpm dev
 ```
 
 <Frame caption="Vite startup logs after running pnpm dev in web directory">
-  <video 
-    autoPlay 
-    muted 
-    loop 
-    playsInline 
-    controls 
-    className="w-full rounded-xl" 
+  <video
+    autoPlay
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
     src="/images/quickstart4.mp4"
   ></video>
 </Frame>
@@ -133,6 +134,7 @@ If you run the Web server separately, you can access the frontend at http://loca
 - **Separated mode**: Run API + Web separately → API at `localhost:34900`, Web at `localhost:5173`
 
 The integrated mode is sufficient for most cases. Use separated mode only when focusing on Web development.
+
 </Info>
 
 </Step>
@@ -144,23 +146,21 @@ The integrated mode is sufficient for most cases. Use separated mode only when f
 
 You can access the following URLs in your browser:
 
-| Service   | URL                              | Description                  |
-| --------- | -------------------------------- | ---------------------------- |
-| Web App   | http://localhost:34900            | Frontend application         |
-| API Server| http://localhost:34900/api        | REST API endpoints           |
-| Sonamu UI | http://localhost:34900/sonamu-ui  | Entity management interface  |
+| Service    | URL                              | Description                 |
+| ---------- | -------------------------------- | --------------------------- |
+| Web App    | http://localhost:34900           | Frontend application        |
+| API Server | http://localhost:34900/api       | REST API endpoints          |
+| Sonamu UI  | http://localhost:34900/sonamu-ui | Entity management interface |
 
 ### Separated Mode (Both API + Web servers running)
 
-| Service   | URL                              | Description                  |
-| --------- | -------------------------------- | ---------------------------- |
-| Web App   | http://localhost:5173            | Frontend application         |
-| API Server| http://localhost:34900/api        | REST API endpoints           |
-| Sonamu UI | http://localhost:34900/sonamu-ui  | Entity management interface  |
+| Service    | URL                              | Description                 |
+| ---------- | -------------------------------- | --------------------------- |
+| Web App    | http://localhost:5173            | Frontend application        |
+| API Server | http://localhost:34900/api       | REST API endpoints          |
+| Sonamu UI  | http://localhost:34900/sonamu-ui | Entity management interface |
 
-<Check>
-  Access the Web app to verify the Sonamu application is running correctly.
-</Check>
+<Check>Access the Web app to verify the Sonamu application is running correctly.</Check>
 
 ### Sonamu UI Features
 
@@ -171,7 +171,9 @@ When you access http://localhost:34900/sonamu-ui in your browser, you can perfor
 - View API endpoints
 - Visualize database schema
 
-<Frame caption="Sonamu UI Main Screen"><img src="/images/sonamuUI1.png" alt="Sonamu UI" /></Frame>
+<Frame caption="Sonamu UI Main Screen">
+  <img src="/images/sonamuUI1.png" alt="Sonamu UI" />
+</Frame>
 
 ## Stopping Servers
 
@@ -186,9 +188,8 @@ pnpm docker:down
 ```
 
 <Warning>
-  The `docker:down` command only stops the container; data is preserved.
-  To completely reset the database, refer to the [Database Management](/en/database/management)
-  documentation.
+  The `docker:down` command only stops the container; data is preserved. To completely reset the
+  database, refer to the [Database Management](/en/database/management) documentation.
 </Warning>
 
 ## Next Steps
@@ -196,11 +197,7 @@ pnpm docker:down
 Your development environment is ready! Now learn Sonamu's core features through the following guides:
 
 <CardGroup cols={2}>
-  <Card
-    title="Creating Your First Entity"
-    icon="database"
-    href="/en/getting-started/first-entity"
-  >
+  <Card title="Creating Your First Entity" icon="database" href="/en/getting-started/first-entity">
     Use Sonamu UI to create your first entity and define the database schema.
   </Card>
   <Card title="API Development" icon="code" href="/en/api-development/creating-apis">
@@ -213,11 +210,7 @@ Your development environment is ready! Now learn Sonamu's core features through 
   >
     Use the auto-generated service layer to call APIs from the frontend.
   </Card>
-  <Card
-    title="Project Structure"
-    icon="folder"
-    href="/en/getting-started/project-structure"
-  >
+  <Card title="Project Structure" icon="folder" href="/en/getting-started/project-structure">
     Understand the directory structure and key files of a Sonamu project.
   </Card>
 </CardGroup>

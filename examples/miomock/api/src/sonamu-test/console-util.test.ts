@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+
 import { centerText } from "../../../../../modules/sonamu/dist/utils/console-util";
 
 describe("console-util", () => {

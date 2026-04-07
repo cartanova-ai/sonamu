@@ -35,6 +35,7 @@ description: Sonamu project creation and initialization. Check whether a project
    - Confirm `.claude/skills/project/` directory was auto-created
 
 2. **Write requirements**
+
    ```bash
    # Write to .claude/skills/project/requirements.md
    ```
@@ -96,14 +97,17 @@ A system for managing research project calls, applications, and evaluations
 ### Important Notes
 
 **Always document when:**
+
 - The user provides requirements or a feature specification together with project creation
 - There are business rules or special constraints
 
 **When to document:**
+
 - Immediately after project creation
 - Before starting entity design
 
 **How the document is used:**
+
 - Reference during entity design
 - Reference during API business logic implementation
 - Reference when writing test cases
@@ -116,6 +120,7 @@ A system for managing research project calls, applications, and evaluations
 **Must confirm before creating a project:**
 
 Developers often separate working directories by project type:
+
 - Company/framework projects: `~/Development/`
 - Personal projects: `~/dev/programming/`
 - Client work: `~/Projects/clients/`
@@ -123,11 +128,13 @@ Developers often separate working directories by project type:
 ### Confirmation Process
 
 1. **Determine the current working directory**
+
    ```bash
    pwd  # check current directory
    ```
 
 2. **Ask the user to confirm**
+
    ```
    "You are currently in {current_directory}. Should I create the project here?
    If you work in a different location, please tell me the directory to create the project in.
@@ -185,11 +192,13 @@ Is a Sonamu project already set up there?"
 ### A. For Sonamu Developers (Local Link)
 
 > **Why use a local link:**
+>
 > - Sync directly from the Skills source
 > - Local Sonamu changes take effect immediately
 > - Required for framework development
 
 #### 1. Create the Project
+
 ```bash
 pnpm create sonamu [project-name] --yes
 ```
@@ -206,6 +215,7 @@ overrides:
 ```
 
 > **Path example:**
+>
 > - If Sonamu is at `~/Development/sonamu`
 > - And the project is at `~/Development/my_project`
 > - → `link:../../sonamu/modules/sonamu`
@@ -213,6 +223,7 @@ overrides:
 #### 3. Install Dependencies and Build
 
 From the project root:
+
 ```bash
 pnpm install
 pnpm -r build
@@ -221,6 +232,7 @@ pnpm -r build
 > **If build fails:** may be a resource initialization failure. Start Docker first (step 4), then start the dev server (step 5) and retry.
 
 #### 4. Start the DB
+
 ```bash
 cd packages/api
 pnpm docker:up
@@ -229,6 +241,7 @@ pnpm docker:up
 > If a port conflict error occurs → see `database.md`
 
 #### 5. Start the Dev Server
+
 ```bash
 pnpm dev
 ```
@@ -251,6 +264,7 @@ pnpm sonamu auth generate
 #### 7. Check Subsets
 
 In the Sonamu UI (`http://localhost:34900/sonamu-ui`) Entity menu:
+
 - Check subsets for User, Account, Session, Verification entities
 
 #### 8. DB Migration
@@ -282,11 +296,13 @@ pnpm sonamu skills sync
 ### B. For Sonamu Users (npm Version)
 
 > **When using the npm version:**
+>
 > - Skills are included in the npm package
 > - No local link needed
 > - For general users
 
 #### 1-3. Create and Configure the Project
+
 ```bash
 pnpm create sonamu [project-name] --yes
 cd [project-name]
@@ -355,6 +371,7 @@ Claude: "Before designing the survey system entities, let me confirm a few thing
 ```
 
 **Why this is wrong:**
+
 - Asking multiple questions at once (should ask one at a time)
 - The question order is not clear
 
@@ -371,6 +388,7 @@ Claude: "The packages/api/.env file has been created. Would you like to review t
 ```
 
 Default generated .env:
+
 ```env
 DB_HOST=0.0.0.0
 DB_PORT=5432
@@ -393,15 +411,17 @@ grep -r 'SonamuProject' packages/api/src/
 ```
 
 **`packages/api/src/sonamu.config.ts`:**
+
 ```typescript
 // DO NOT - template default left as-is
-projectName: process.env.PROJECT_NAME ?? "SonamuProject"
+projectName: process.env.PROJECT_NAME ?? "SonamuProject";
 
 // DO - replace with real project name
-projectName: process.env.PROJECT_NAME ?? "NIFOS"
+projectName: process.env.PROJECT_NAME ?? "NIFOS";
 ```
 
 **Replacement checklist:**
+
 - [ ] `projectName` default in `sonamu.config.ts`
 - [ ] `name` field in `package.json` (root)
 - [ ] `PROJECT_NAME`, `DATABASE_NAME` in `.env`
@@ -448,10 +468,10 @@ After receiving the path, you can confirm by checking whether `packages/api/src/
 
 When the user asks a configuration-related question, refer to `config.md` for the answer:
 
-| Question | Reference |
-|----------|-----------|
-| "How do I configure .env?" | config.md - .env file |
-| "How do I connect S3?" | config.md - server.storage |
+| Question                                | Reference                          |
+| --------------------------------------- | ---------------------------------- |
+| "How do I configure .env?"              | config.md - .env file              |
+| "How do I connect S3?"                  | config.md - server.storage         |
 | "How do I change the session settings?" | config.md - server.plugins.session |
-| "How do I change the port?" | config.md - server.listen |
-| "Cache settings?" | config.md - server.cache |
+| "How do I change the port?"             | config.md - server.listen          |
+| "Cache settings?"                       | config.md - server.cache           |

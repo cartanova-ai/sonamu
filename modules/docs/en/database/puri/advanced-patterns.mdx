@@ -9,24 +9,16 @@ You can perform complex database operations using Puri's advanced features.
 
 <CardGroup cols={2}>
   <Card title="Transaction" icon="arrows-rotate">
-    Ensure data consistency with transactions
-    
-    ACID properties
+    Ensure data consistency with transactions ACID properties
   </Card>
   <Card title="Subqueries" icon="layer-group">
-    Express complex conditions with nested queries
-    
-    FROM, WHERE, SELECT
+    Express complex conditions with nested queries FROM, WHERE, SELECT
   </Card>
   <Card title="Upsert" icon="code-merge">
-    INSERT OR UPDATE at once
-    
-    ON CONFLICT
+    INSERT OR UPDATE at once ON CONFLICT
   </Card>
   <Card title="Vector Search" icon="magnifying-glass-chart">
-    AI embedding similarity search
-    
-    pgvector
+    AI embedding similarity search pgvector
   </Card>
 </CardGroup>
 
@@ -68,11 +60,9 @@ await db.transaction(async (trx) => {
 ```
 
 <Info>
-**ACID properties of transactions**:
-- **Atomicity**: All succeed or all fail
-- **Consistency**: Maintain data consistency
-- **Isolation**: Isolate concurrent executions
-- **Durability**: Permanent storage
+  **ACID properties of transactions**: - **Atomicity**: All succeed or all fail - **Consistency**:
+  Maintain data consistency - **Isolation**: Isolate concurrent executions - **Durability**:
+  Permanent storage
 </Info>
 
 ### Explicit Rollback
@@ -88,10 +78,7 @@ await db.transaction(async (trx) => {
   });
 
   // Rollback based on condition
-  const existingUser = await trx
-    .table("users")
-    .where("email", "test@test.com")
-    .first();
+  const existingUser = await trx.table("users").where("email", "test@test.com").first();
 
   if (existingUser) {
     // Manual rollback
@@ -132,14 +119,11 @@ Use subqueries to write complex queries.
 
 ```typescript
 // Define subquery
-const activeUsers = db
-  .table("users")
-  .where("is_active", true)
-  .select({
-    id: "id",
-    username: "username",
-    email: "email",
-  });
+const activeUsers = db.table("users").where("is_active", true).select({
+  id: "id",
+  username: "username",
+  email: "email",
+});
 
 // Use subquery as a table
 const results = await db
@@ -157,14 +141,11 @@ const results = await db
 
 ```typescript
 // Employees with salary above average
-const results = await db
-  .table("employees")
-  .select({
-    id: "id",
-    name: "username",
-    salary: "salary",
-  })
-  .whereRaw(`
+const results = await db.table("employees").select({
+  id: "id",
+  name: "username",
+  salary: "salary",
+}).whereRaw(`
     salary > (SELECT AVG(salary) FROM employees)
   `);
 ```
@@ -172,18 +153,16 @@ const results = await db
 ### SELECT Clause Subquery
 
 ```typescript
-const results = await db
-  .table("users")
-  .select({
-    id: "id",
-    username: "username",
-    postCount: Puri.rawNumber(`
+const results = await db.table("users").select({
+  id: "id",
+  username: "username",
+  postCount: Puri.rawNumber(`
       (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id)
     `),
-    commentCount: Puri.rawNumber(`
+  commentCount: Puri.rawNumber(`
       (SELECT COUNT(*) FROM comments WHERE comments.user_id = users.id)
     `),
-  });
+});
 ```
 
 ## WHERE Groups - Complex Conditions
@@ -194,11 +173,7 @@ const results = await db
 const results = await db
   .table("users")
   .select({ id: "id", name: "username" })
-  .whereGroup((g) =>
-    g
-      .where("role", "admin")
-      .orWhere("role", "moderator")
-  )
+  .whereGroup((g) => g.where("role", "admin").orWhere("role", "moderator"))
   .where("is_active", true);
 
 // SQL: WHERE (role = 'admin' OR role = 'moderator') AND is_active = true
@@ -212,16 +187,8 @@ const results = await db
   .select({ id: "id", name: "username" })
   .whereGroup((g) =>
     g
-      .whereGroup((g2) =>
-        g2
-          .where("department_id", 1)
-          .where("salary", ">", 50000)
-      )
-      .orWhereGroup((g2) =>
-        g2
-          .where("department_id", 2)
-          .where("salary", ">", 60000)
-      )
+      .whereGroup((g2) => g2.where("department_id", 1).where("salary", ">", 50000))
+      .orWhereGroup((g2) => g2.where("department_id", 2).where("salary", ">", 60000)),
   );
 
 // SQL: WHERE (
@@ -401,10 +368,8 @@ await db.transaction(async (trx) => {
 ```
 
 <Info>
-**Benefits of UBRef**:
-- Define relationships without worrying about foreign keys
-- Automatically resolves dependency order
-- Auto-assigns IDs within transaction
+  **Benefits of UBRef**: - Define relationships without worrying about foreign keys - Automatically
+  resolves dependency order - Auto-assigns IDs within transaction
 </Info>
 
 ### Many-to-Many Relationships
@@ -538,10 +503,8 @@ const results = await db
 ```
 
 <Tip>
-**Vector Search method selection**:
-- **cosine**: General embedding search (OpenAI, Cohere, etc.)
-- **l2**: Distance-based search
-- **inner_product**: Suitable for normalized vectors
+  **Vector Search method selection**: - **cosine**: General embedding search (OpenAI, Cohere, etc.)
+  - **l2**: Distance-based search - **inner_product**: Suitable for normalized vectors
 </Tip>
 
 ## Full-text Search
@@ -628,10 +591,7 @@ await db.table("users").insert(users);
 ```typescript
 await db.transaction(async (trx) => {
   for (const userId of userIds) {
-    await trx
-      .table("users")
-      .where("id", userId)
-      .update({ is_active: true });
+    await trx.table("users").where("id", userId).update({ is_active: true });
   }
 });
 ```
@@ -640,16 +600,10 @@ await db.transaction(async (trx) => {
 
 ```typescript
 // Using IN
-await db
-  .table("users")
-  .whereIn("id", [1, 2, 3, 4, 5])
-  .delete();
+await db.table("users").whereIn("id", [1, 2, 3, 4, 5]).delete();
 
 // With condition
-await db
-  .table("users")
-  .where("last_login", "<", "2023-01-01")
-  .delete();
+await db.table("users").where("last_login", "<", "2023-01-01").delete();
 ```
 
 ## Performance Optimization
@@ -665,11 +619,11 @@ CREATE INDEX idx_posts_user_id ON posts(user_id);
 CREATE INDEX idx_users_role_active ON users(role, is_active);
 
 -- Vector index (HNSW)
-CREATE INDEX idx_documents_embedding ON documents 
+CREATE INDEX idx_documents_embedding ON documents
 USING hnsw (embedding vector_cosine_ops);
 
 -- Full-text index
-CREATE INDEX idx_posts_content_pgroonga ON posts 
+CREATE INDEX idx_posts_content_pgroonga ON posts
 USING pgroonga (content);
 ```
 
@@ -680,12 +634,10 @@ USING pgroonga (content);
 await db.table("users").selectAll();
 
 // ✅ Good: Only needed columns
-await db
-  .table("users")
-  .select({
-    id: "id",
-    name: "username",
-  });
+await db.table("users").select({
+  id: "id",
+  name: "username",
+});
 ```
 
 ### JOIN Optimization

@@ -12,21 +12,25 @@ Learn how to configure `SonamuProvider`, the starting point for Sonamu frontend 
     Connect UserService.useMe
 
     Login/logout flow
+
   </Card>
   <Card title="File Upload" icon="upload">
     FileService integration
 
     Auto-connect to useTypeForm
+
   </Card>
   <Card title="Internationalization" icon="language">
     SD function provider
 
     Type-safe translations
+
   </Card>
   <Card title="Global State" icon="globe">
     Context API based
 
     Access from all components
+
   </Card>
 </CardGroup>
 
@@ -147,6 +151,7 @@ function SonamuProviderWrapper({ children }: { children: React.ReactNode }) {
 
 `createSonamuConfig` uses React hooks (`useQueryClient`, `useNavigate`, etc.), so it must be called inside a component.
 Therefore, it's separated into a component and placed under `QueryClientProvider`.
+
 </Info>
 
 ## Auth Configuration
@@ -183,6 +188,7 @@ const auth_config: SonamuAuth<UserSubsetSS, UserLoginParams> = {
 
 Short for Session Summary, it includes only the minimal user information needed for session management.
 It's lighter and faster than loading the complete user information (Subset "A").
+
 </Info>
 
 ### Login Flow
@@ -212,6 +218,7 @@ login: (loginParams: UserLoginParams) => {
 ```
 
 **Key Steps**:
+
 1. `loginMutation.mutate`: Call backend login API
 2. `invalidateQueries`: Invalidate existing user info cache
 3. `refetchQueries`: Fetch new user info
@@ -297,6 +304,7 @@ const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
 ```
 
 **How it works**:
+
 1. Upload files to backend with `mutateAsync`
 2. Return uploaded file info (`SonamuFile[]`)
 3. `useTypeForm` automatically uses this uploader
@@ -341,6 +349,7 @@ export function UserForm() {
 
 The `submit` function internally calls `traverseAndUploadFiles` to find and upload all `File` objects.
 Files in nested objects or arrays are automatically handled.
+
 </Info>
 
 ### Custom Upload Logic
@@ -363,7 +372,7 @@ const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
         Key: key,
         Body: file,
         ContentType: file.type,
-      })
+      }),
     );
 
     return {
@@ -409,6 +418,7 @@ export function WelcomeMessage() {
 **Why provide SD through Context?**
 
 While you can import and use it directly, using Context makes it easy to add runtime locale switching or dynamic dictionary loading in the future.
+
 </Info>
 
 ## Type Safety
@@ -449,7 +459,9 @@ You can omit `uploader` if file uploads are not needed.
 
 ```typescript
 export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
-  const auth_config = { /* ... */ };
+  const auth_config = {
+    /* ... */
+  };
   const sd_config = SD;
 
   return { auth: auth_config, SD: sd_config };
@@ -458,8 +470,8 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
 ```
 
 <Warning>
-Omitting `uploader` will cause errors when using `FileInput`.
-Always configure it if file upload functionality is needed.
+  Omitting `uploader` will cause errors when using `FileInput`. Always configure it if file upload
+  functionality is needed.
 </Warning>
 
 ### Using Without Auth

@@ -1,6 +1,6 @@
 ---
-title: 'Vitest 디버그'
-description: '테스트 디버깅하기'
+title: "Vitest 디버그"
+description: "테스트 디버깅하기"
 ---
 
 Vitest로 작성된 테스트를 효과적으로 디버깅하는 방법을 다룹니다.
@@ -24,28 +24,18 @@ Sonamu는 Vitest를 테스트 프레임워크로 사용합니다. 다양한 디�
       "request": "launch",
       "name": "Debug Current Test File",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "vitest",
-        "run",
-        "${file}"
-      ],
+      "runtimeArgs": ["vitest", "run", "${file}"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "sourceMaps": true,
-      "resolveSourceMapLocations": [
-        "${workspaceFolder}/**",
-        "!**/node_modules/**"
-      ]
+      "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"]
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Debug All Tests",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "vitest",
-        "run"
-      ],
+      "runtimeArgs": ["vitest", "run"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "sourceMaps": true
@@ -78,12 +68,12 @@ Sonamu는 Vitest를 테스트 프레임워크로 사용합니다. 다양한 디�
 ```typescript
 test("사용자 생성", async () => {
   const email = "test@example.com";
-  
+
   console.log("테스트 시작:", email);
-  
+
   const user = await UserModel.create({ email });
   console.log("생성된 사용자:", user);
-  
+
   expect(user.email).toBe(email);
 });
 ```
@@ -92,14 +82,14 @@ test("사용자 생성", async () => {
 
 ```typescript
 test("복잡한 객체 로깅", async () => {
-  const data = { 
+  const data = {
     user: { id: 1, email: "test@example.com" },
-    items: [1, 2, 3]
+    items: [1, 2, 3],
   };
-  
+
   // 예쁘게 출력
   console.log(JSON.stringify(data, null, 2));
-  
+
   // 또는
   console.dir(data, { depth: null });
 });
@@ -130,7 +120,7 @@ describe.only("User API", () => {
   test("사용자 생성", async () => {
     // ...
   });
-  
+
   test("사용자 조회", async () => {
     // ...
   });
@@ -174,6 +164,7 @@ pnpm test --watch
 ### Watch 모드 단축키
 
 테스트 실행 중:
+
 - `a`: 모든 테스트 재실행
 - `f`: 실패한 테스트만 재실행
 - `t`: 특정 테스트 필터
@@ -190,6 +181,7 @@ pnpm vitest --ui
 브라우저에서 `http://localhost:51204/__vitest__/` 열림
 
 **기능:**
+
 - 테스트 계층 구조 시각화
 - 실패한 테스트 필터링
 - 개별 테스트 재실행
@@ -203,10 +195,10 @@ pnpm vitest --ui
 ```typescript
 test("에러 메시지 개선", async () => {
   const userId = 999;
-  
+
   // ❌ 기본 에러
   expect(await UserModel.findById(userId)).toBeDefined();
-  
+
   // ✅ 상세한 에러 메시지
   const user = await UserModel.findById(userId);
   expect(user, `사용자 ID ${userId}를 찾을 수 없음`).toBeDefined();
@@ -225,7 +217,7 @@ test("에러 상세 분석", async () => {
     console.log("에러 타입:", error.constructor.name);
     console.log("에러 메시지:", error.message);
     console.log("스택 트레이스:", error.stack);
-    
+
     expect(error).toBeInstanceOf(BadRequestException);
   }
 });
@@ -238,16 +230,16 @@ test("에러 상세 분석", async () => {
 ```typescript
 test("비동기 작업 디버깅", async () => {
   console.log("1. 시작");
-  
+
   const promise1 = fetchUser(1);
   console.log("2. fetchUser 호출");
-  
+
   const promise2 = fetchOrders(1);
   console.log("3. fetchOrders 호출");
-  
+
   const [user, orders] = await Promise.all([promise1, promise2]);
   console.log("4. 모두 완료:", { user, orders });
-  
+
   expect(user).toBeDefined();
 });
 ```
@@ -259,7 +251,7 @@ test("느린 작업", async () => {
   // 기본 5초에서 30초로 증가
   const result = await slowOperation();
   expect(result).toBeDefined();
-}, 30000);  // 30초 타임아웃
+}, 30000); // 30초 타임아웃
 ```
 
 ## 모킹 디버깅
@@ -271,15 +263,15 @@ import { vi } from "vitest";
 
 test("Mock 호출 디버깅", async () => {
   const mockFn = vi.fn().mockResolvedValue({ id: 1 });
-  
+
   await mockFn("test");
   await mockFn("test2");
-  
+
   // Mock 호출 확인
   console.log("호출 횟수:", mockFn.mock.calls.length);
   console.log("첫 번째 호출:", mockFn.mock.calls[0]);
   console.log("모든 호출:", mockFn.mock.calls);
-  
+
   expect(mockFn).toHaveBeenCalledTimes(2);
   expect(mockFn).toHaveBeenCalledWith("test");
 });
@@ -295,12 +287,12 @@ beforeEach(() => {
 
 test("Mock 상태 확인", () => {
   const mockFn = vi.fn();
-  
+
   // 호출 전
   console.log("호출 전:", mockFn.mock.calls.length); // 0
-  
+
   mockFn("test");
-  
+
   // 호출 후
   console.log("호출 후:", mockFn.mock.calls.length); // 1
 });
@@ -316,9 +308,9 @@ test("DB 쿼리 확인", async () => {
   const result = await UserModel.getPuri()
     .select("*")
     .where({ email: "test@example.com" })
-    .debug()  // 쿼리 출력
+    .debug() // 쿼리 출력
     .getOne();
-  
+
   console.log("결과:", result);
 });
 ```
@@ -328,19 +320,17 @@ test("DB 쿼리 확인", async () => {
 ```typescript
 test("데이터 생성 확인", async () => {
   const email = "test@example.com";
-  
+
   await UserModel.create({ email });
-  
+
   // DB에서 직접 확인
-  const users = await UserModel.getPuri()
-    .select("*")
-    .getMany();
-  
+  const users = await UserModel.getPuri().select("*").getMany();
+
   console.log("전체 사용자:", users);
-  
-  const created = users.find(u => u.email === email);
+
+  const created = users.find((u) => u.email === email);
   console.log("생성된 사용자:", created);
-  
+
   expect(created).toBeDefined();
 });
 ```
@@ -367,16 +357,14 @@ class UserModelClass extends BaseModelClass {
       // ❌ 이 분기가 테스트되지 않음
       throw new Error("Email required");
     }
-    
+
     return this.save({ email });
   }
 }
 
 // 테스트 추가 필요
 test("이메일 없이 생성 시 에러", async () => {
-  await expect(
-    UserModel.createUser("")
-  ).rejects.toThrow("Email required");
+  await expect(UserModel.createUser("")).rejects.toThrow("Email required");
 });
 ```
 
@@ -393,16 +381,16 @@ export default defineConfig({
   test: {
     globals: true,
     include: ["src/**/*.test.ts"],
-    
+
     // 디버깅 옵션
-    bail: 1,  // 첫 실패 시 중단
-    reporters: ["verbose"],  // 상세 출력
-    logHeapUsage: true,  // 메모리 사용량 출력
-    
+    bail: 1, // 첫 실패 시 중단
+    reporters: ["verbose"], // 상세 출력
+    logHeapUsage: true, // 메모리 사용량 출력
+
     // 타임아웃 증가
     testTimeout: 10000,
-    hookTimeout: 10000
-  }
+    hookTimeout: 10000,
+  },
 });
 ```
 
@@ -427,9 +415,9 @@ test("환경 변수 디버깅", () => {
 export default defineConfig({
   test: {
     pool: "forks",
-    maxWorkers: 1,  // 단일 워커
-    isolate: false  // 격리 비활성화
-  }
+    maxWorkers: 1, // 단일 워커
+    isolate: false, // 격리 비활성화
+  },
 });
 ```
 
@@ -459,16 +447,16 @@ test("스냅샷 디버깅", () => {
   const data = {
     id: 1,
     name: "Test",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
-  
+
   // ❌ timestamp가 계속 변경됨
   expect(data).toMatchSnapshot();
-  
+
   // ✅ 동적 값 제외
   expect({
     ...data,
-    timestamp: expect.any(String)
+    timestamp: expect.any(String),
   }).toMatchSnapshot();
 });
 ```
@@ -493,7 +481,7 @@ import { expectTypeOf } from "vitest";
 
 test("타입 안전성 확인", () => {
   const user = { id: 1, email: "test@example.com" };
-  
+
   expectTypeOf(user.id).toEqualTypeOf<number>();
   expectTypeOf(user.email).toEqualTypeOf<string>();
 });
@@ -506,15 +494,15 @@ test("타입 안전성 확인", () => {
 ```typescript
 describe("User Tests", () => {
   let testUser: User;
-  
+
   beforeEach(async () => {
     console.log("Setup 시작");
-    testUser = await UserModel.create({ 
-      email: "test@example.com" 
+    testUser = await UserModel.create({
+      email: "test@example.com",
     });
     console.log("Setup 완료:", testUser.id);
   });
-  
+
   afterEach(async () => {
     console.log("Cleanup 시작");
     if (testUser) {
@@ -522,7 +510,7 @@ describe("User Tests", () => {
     }
     console.log("Cleanup 완료");
   });
-  
+
   test("테스트 1", async () => {
     expect(testUser).toBeDefined();
   });
@@ -537,8 +525,8 @@ describe("User Tests", () => {
 // vitest.config.ts
 export default defineConfig({
   test: {
-    logHeapUsage: true  // 메모리 사용량 출력
-  }
+    logHeapUsage: true, // 메모리 사용량 출력
+  },
 });
 ```
 
@@ -547,11 +535,11 @@ export default defineConfig({
 ```typescript
 test("리소스 정리 확인", async () => {
   const db = createConnection();
-  
+
   try {
     await db.query("SELECT 1");
   } finally {
-    await db.destroy();  // 반드시 정리
+    await db.destroy(); // 반드시 정리
     console.log("DB 연결 정리 완료");
   }
 });
@@ -568,23 +556,21 @@ test("전체 사용자 플로우", async () => {
 });
 
 // ✅ 작은 단위로 분리
-test("사용자 생성", async () => { });
-test("사용자 조회", async () => { });
-test("사용자 수정", async () => { });
-test("사용자 삭제", async () => { });
+test("사용자 생성", async () => {});
+test("사용자 조회", async () => {});
+test("사용자 수정", async () => {});
+test("사용자 삭제", async () => {});
 ```
 
 ### 2. 의미 있는 테스트 이름
 
 ```typescript
 // ❌ 불명확한 이름
-test("test1", async () => { });
+test("test1", async () => {});
 
 // ✅ 명확한 이름
 test("이메일 없이 사용자 생성 시 BadRequestException 발생", async () => {
-  await expect(
-    UserModel.create({ email: "" })
-  ).rejects.toThrow(BadRequestException);
+  await expect(UserModel.create({ email: "" })).rejects.toThrow(BadRequestException);
 });
 ```
 
@@ -595,10 +581,10 @@ test("사용자 생성", async () => {
   // Arrange (준비)
   const email = "test@example.com";
   const name = "Test User";
-  
+
   // Act (실행)
   const user = await UserModel.create({ email, name });
-  
+
   // Assert (검증)
   expect(user.email).toBe(email);
   expect(user.name).toBe(name);
@@ -610,12 +596,11 @@ test("사용자 생성", async () => {
 ```typescript
 test("복잡한 조건 검증", async () => {
   const result = await complexCalculation();
-  
+
   // ✅ 실패 시 무엇이 잘못되었는지 명확히
-  expect(
-    result.total,
-    `total이 ${result.expected}여야 하는데 ${result.total}임`
-  ).toBe(result.expected);
+  expect(result.total, `total이 ${result.expected}여야 하는데 ${result.total}임`).toBe(
+    result.expected,
+  );
 });
 ```
 

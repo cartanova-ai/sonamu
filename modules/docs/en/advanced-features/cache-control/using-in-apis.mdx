@@ -14,8 +14,8 @@ import { BaseModelClass, api, CachePresets } from "sonamu";
 
 class ProductModelClass extends BaseModelClass {
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.shortLived,  // 1 minute cache
+    httpMethod: "GET",
+    cacheControl: CachePresets.shortLived, // 1 minute cache
   })
   async findAll() {
     return this.findMany({});
@@ -24,6 +24,7 @@ class ProductModelClass extends BaseModelClass {
 ```
 
 **Result**:
+
 ```http
 HTTP/1.1 200 OK
 Cache-Control: public, max-age=60
@@ -55,6 +56,7 @@ Content-Type: application/json
     - `mediumLived`: 5 minutes
     - `longLived`: 1 hour
     - `private`: Personalized data
+
   </Tab>
 
   <Tab title="Custom Configuration" icon="screwdriver-wrench">
@@ -73,6 +75,7 @@ Content-Type: application/json
       return this.findMany({});
     }
     ```
+
   </Tab>
 
   <Tab title="Global Handler" icon="globe">
@@ -98,6 +101,7 @@ Content-Type: application/json
       }
     };
     ```
+
   </Tab>
 </Tabs>
 
@@ -228,6 +232,7 @@ async delete(id: number) {
 })
 async create(data: ProductSave) { ... }
 ```
+
 </Warning>
 
 ## Strategies by Data Characteristics
@@ -240,11 +245,11 @@ Same response for all users.
 class ProductModelClass extends BaseModelClass {
   // Product list
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: {
-      visibility: 'public',  // CDN cacheable
+      visibility: "public", // CDN cacheable
       maxAge: 60,
-    }
+    },
   })
   async findAll() {
     return this.findMany({});
@@ -253,6 +258,7 @@ class ProductModelClass extends BaseModelClass {
 ```
 
 **Characteristics**:
+
 - Cached by browser + CDN
 - Minimizes network traffic
 - Reduces server load
@@ -265,18 +271,19 @@ Different response for each user.
 class OrderModelClass extends BaseModelClass {
   // My order history
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.private,  // Browser only caching
+    httpMethod: "GET",
+    cacheControl: CachePresets.private, // Browser only caching
   })
   async getMyOrders(ctx: Context) {
     return this.findMany({
-      where: [['user_id', ctx.user.id]]
+      where: [["user_id", ctx.user.id]],
     });
   }
 }
 ```
 
 **Characteristics**:
+
 - Cached only in browser (not CDN)
 - Prevents exposure to other users
 
@@ -288,11 +295,11 @@ Data that should not be cached.
 class PaymentModelClass extends BaseModelClass {
   // Payment information
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.noStore,  // No caching
+    httpMethod: "GET",
+    cacheControl: CachePresets.noStore, // No caching
   })
   async getPaymentInfo(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 }
 ```
@@ -305,8 +312,8 @@ class PaymentModelClass extends BaseModelClass {
 class ProductModelClass extends BaseModelClass {
   // Product list (frequently changed, public)
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.shortLived,  // 1 minute
+    httpMethod: "GET",
+    cacheControl: CachePresets.shortLived, // 1 minute
   })
   async findAll(page: number) {
     return this.findMany({ page, num: 20 });
@@ -314,17 +321,17 @@ class ProductModelClass extends BaseModelClass {
 
   // Product detail (occasionally changed, public)
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.mediumLived,  // 5 minutes
+    httpMethod: "GET",
+    cacheControl: CachePresets.mediumLived, // 5 minutes
   })
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 
   // Categories (rarely changed, public)
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.longLived,  // 1 hour
+    httpMethod: "GET",
+    cacheControl: CachePresets.longLived, // 1 hour
   })
   async getCategories() {
     return this.categories;
@@ -332,8 +339,8 @@ class ProductModelClass extends BaseModelClass {
 
   // Stock (real-time, no-cache)
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.noCache,  // Revalidate every time
+    httpMethod: "GET",
+    cacheControl: CachePresets.noCache, // Revalidate every time
   })
   async getStock(productId: number) {
     return this.checkStock(productId);
@@ -341,8 +348,8 @@ class ProductModelClass extends BaseModelClass {
 
   // Shopping cart (personal, private)
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.private,  // Browser only
+    httpMethod: "GET",
+    cacheControl: CachePresets.private, // Browser only
   })
   async getMyCart(ctx: Context) {
     return this.getCart(ctx.user.id);
@@ -350,8 +357,8 @@ class ProductModelClass extends BaseModelClass {
 
   // Order creation (Mutation, no-store)
   @api({
-    httpMethod: 'POST',
-    cacheControl: CachePresets.noStore,  // No caching
+    httpMethod: "POST",
+    cacheControl: CachePresets.noStore, // No caching
   })
   async createOrder(data: OrderSave) {
     return this.saveOne(data);
@@ -365,7 +372,7 @@ class ProductModelClass extends BaseModelClass {
 class PostModelClass extends BaseModelClass {
   // Post list (frequently added, 5 minutes)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.mediumLived,
   })
   async findAll(page: number) {
@@ -374,20 +381,20 @@ class PostModelClass extends BaseModelClass {
 
   // Post detail (occasionally modified, 10 minutes)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: {
-      visibility: 'public',
-      maxAge: 600,  // 10 minutes
-      staleWhileRevalidate: 1800,  // Use stale for 30 minutes
-    }
+      visibility: "public",
+      maxAge: 600, // 10 minutes
+      staleWhileRevalidate: 1800, // Use stale for 30 minutes
+    },
   })
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 
   // Popular posts (1 hour)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.longLived,
   })
   async getPopular() {
@@ -402,29 +409,29 @@ class PostModelClass extends BaseModelClass {
 class UserModelClass extends BaseModelClass {
   // Public profile (public, 5 minutes)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.mediumLived,
   })
   async getPublicProfile(username: string) {
-    return this.findOne(['username', username]);
+    return this.findOne(["username", username]);
   }
 
   // My profile (private, revalidate)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.private,
   })
   async getMyProfile(ctx: Context) {
-    return this.findOne(['id', ctx.user.id]);
+    return this.findOne(["id", ctx.user.id]);
   }
 
   // Profile update (no-store)
   @api({
-    httpMethod: 'PUT',
+    httpMethod: "PUT",
     cacheControl: CachePresets.noStore,
   })
   async updateProfile(ctx: Context, data: Partial<UserSave>) {
-    return this.updateOne(['id', ctx.user.id], data);
+    return this.updateOne(["id", ctx.user.id], data);
   }
 }
 ```
@@ -450,6 +457,7 @@ async getData() {
 ```
 
 **Effect**:
+
 - Browser: Requests CDN every minute
 - CDN: Requests server every 5 minutes
 - Minimizes server load
@@ -494,6 +502,7 @@ async getProducts(ctx: Context) {
 ```
 
 **Result**:
+
 ```
 GET /api/products (Accept-Language: ko) → Korean response cached
 GET /api/products (Accept-Language: en) → English response cached
@@ -512,29 +521,29 @@ export const config: SonamuConfig = {
     apiConfig: {
       cacheControlHandler: (req) => {
         // Only handle API requests
-        if (req.type !== 'api') {
+        if (req.type !== "api") {
           return undefined;
         }
 
         // Handle by HTTP method
-        if (req.method !== 'GET') {
-          return CachePresets.noStore;  // Mutations use no-store
+        if (req.method !== "GET") {
+          return CachePresets.noStore; // Mutations use no-store
         }
 
         // Handle by API path
-        if (req.path.includes('/admin/')) {
-          return CachePresets.noStore;  // Admin APIs use no-store
+        if (req.path.includes("/admin/")) {
+          return CachePresets.noStore; // Admin APIs use no-store
         }
 
-        if (req.path.includes('/private/')) {
-          return CachePresets.private;  // Private APIs use private
+        if (req.path.includes("/private/")) {
+          return CachePresets.private; // Private APIs use private
         }
 
         // Default: 1 minute cache
         return CachePresets.shortLived;
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -542,25 +551,25 @@ export const config: SonamuConfig = {
 
 ```typescript
 cacheControlHandler: (req) => {
-  if (req.type !== 'api') return undefined;
+  if (req.type !== "api") return undefined;
 
   // Use ExtendedApi information
   if (req.api) {
     const { modelName, methodName } = req.api;
 
     // Long cache for specific Model only
-    if (modelName === 'ConfigModel') {
+    if (modelName === "ConfigModel") {
       return CachePresets.longLived;
     }
 
     // No caching for specific methods
-    if (methodName.startsWith('create') || methodName.startsWith('update')) {
+    if (methodName.startsWith("create") || methodName.startsWith("update")) {
       return CachePresets.noStore;
     }
   }
 
   return CachePresets.shortLived;
-}
+};
 ```
 
 ## Using with BentoCache
@@ -579,6 +588,7 @@ async getProducts() {
 ```
 
 **Effect**:
+
 1. **0-60 seconds**: Browser cache (no server request)
 2. **60 seconds - 10 minutes**: Server request but uses BentoCache (no DB query)
 3. **After 10 minutes**: DB query → cache again
@@ -597,6 +607,7 @@ graph LR
 **Precautions when using API Cache-Control**:
 
 1. **Only cache GET**: POST, PUT, DELETE must use `noStore`
+
    ```typescript
    // ❌ Dangerous
    @api({ httpMethod: 'POST', cacheControl: { maxAge: 60 } })
@@ -606,6 +617,7 @@ graph LR
    ```
 
 2. **Private data must be private**: Prevent CDN caching
+
    ```typescript
    // ❌ Dangerous: Personal data cached on CDN
    @api({ cacheControl: { visibility: 'public', maxAge: 60 } })
@@ -617,6 +629,7 @@ graph LR
    ```
 
 3. **Short TTL for frequently changing data**: Prevent stale data
+
    ```typescript
    // ❌ Stock is real-time but cached for 1 hour
    @api({ cacheControl: CachePresets.longLived })
@@ -638,12 +651,16 @@ graph LR
    })
    async getMyData(ctx: Context) { ... }
    ```
-</Warning>
+   </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="What is Cache-Control?" icon="circle-question" href="/en/advanced-features/cache-control/what-is-cache-control">
+  <Card
+    title="What is Cache-Control?"
+    icon="circle-question"
+    href="/en/advanced-features/cache-control/what-is-cache-control"
+  >
     HTTP caching fundamentals
   </Card>
   <Card title="Cache Presets" icon="list" href="/en/advanced-features/cache-control/cache-presets">

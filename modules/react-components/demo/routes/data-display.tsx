@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import CalendarIcon from "~icons/lucide/calendar";
+import ChevronDownIcon from "~icons/lucide/chevron-down";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { DateInput } from "@/components/ui/date-input";
@@ -17,8 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useTypeForm } from "@/lib/form-helpers";
-import CalendarIcon from "~icons/lucide/calendar";
-import ChevronDownIcon from "~icons/lucide/chevron-down";
+
 import { FormDebugPanel } from "../components/FormDebugPanel";
 import { DataDisplayDemoSchema } from "../schemas/data-display-demo.schema";
 

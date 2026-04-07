@@ -16,16 +16,17 @@
 
     /* Linting */
     "strict": true,
+    "types": ["node"],
+    "noUncheckedSideEffectImports": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
     /* Path mapping */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "demo"],
+  "include": ["src", "demo", "vite-env.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

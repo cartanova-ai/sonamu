@@ -1,7 +1,9 @@
-import type { FastifyRequest } from "fastify";
 import fs from "fs";
 import path from "path";
-import type { AbsolutePath } from "./path-utils";
+
+import { type FastifyRequest } from "fastify";
+
+import { type AbsolutePath } from "./path-utils";
 
 export function findAppRootPath(): AbsolutePath {
   const apiRootPath = findApiRootPath();
@@ -17,6 +19,11 @@ export function findApiRootPath(): AbsolutePath {
   }
 
   if (nonNullable(process.env.PNPM_PACKAGE_NAME)) {
+    return process.cwd().split(path.sep).join(path.sep) as AbsolutePath;
+  }
+
+  const cwdPackagePath = path.join(process.cwd(), "package.json");
+  if (fs.existsSync(cwdPackagePath)) {
     return process.cwd().split(path.sep).join(path.sep) as AbsolutePath;
   }
 

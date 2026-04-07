@@ -1,5 +1,6 @@
 import { getSonamuTestConfig, NaiteVitestReporter } from "sonamu/test";
 import { defineConfig } from "vitest/config";
+
 import { PrioritySequencer } from "./custom-sequencer";
 
 export default defineConfig(async () => ({

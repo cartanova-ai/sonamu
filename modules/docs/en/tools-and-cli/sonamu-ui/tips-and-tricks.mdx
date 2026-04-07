@@ -1,6 +1,6 @@
 ---
-title: 'Tips and Tricks'
-description: 'How to use Sonamu UI efficiently'
+title: "Tips and Tricks"
+description: "How to use Sonamu UI efficiently"
 ---
 
 Here are **practical tips and best practices** for using Sonamu UI more efficiently.
@@ -9,17 +9,15 @@ Here are **practical tips and best practices** for using Sonamu UI more efficien
 
 Essential shortcuts for quick work:
 
-| Shortcut | Function | Description |
-|----------|----------|-------------|
-| `⌘K` / `Ctrl+K` | Search | Open global search modal |
-| `Esc` | Close | Close open modal |
-| `⌘S` / `Ctrl+S` | Save | Save current edit |
-| `Tab` | Next field | Move to next field in forms |
-| `Enter` | Confirm | Submit form or complete edit |
+| Shortcut        | Function   | Description                  |
+| --------------- | ---------- | ---------------------------- |
+| `⌘K` / `Ctrl+K` | Search     | Open global search modal     |
+| `Esc`           | Close      | Close open modal             |
+| `⌘S` / `Ctrl+S` | Save       | Save current edit            |
+| `Tab`           | Next field | Move to next field in forms  |
+| `Enter`         | Confirm    | Submit form or complete edit |
 
-<Tip>
-**Use search**: Open search with `⌘K` to quickly find Entity names, field names, etc.
-</Tip>
+<Tip>**Use search**: Open search with `⌘K` to quickly find Entity names, field names, etc.</Tip>
 
 ## Entity Management Tips
 
@@ -35,18 +33,19 @@ Order (parent)
 ```
 
 **Benefits**:
+
 - Displayed hierarchically in sidebar
 - Easy to find related Entities
 - Logical grouping
 
 ### 2. Consistent Naming Conventions
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Entity ID | PascalCase | `User`, `OrderItem` |
-| Field name | snake_case | `created_at`, `user_id` |
-| Enum | PascalCase | `UserRole`, `OrderStatus` |
-| Subset ID | Uppercase | `A`, `B`, `C` |
+| Type       | Convention | Example                   |
+| ---------- | ---------- | ------------------------- |
+| Entity ID  | PascalCase | `User`, `OrderItem`       |
+| Field name | snake_case | `created_at`, `user_id`   |
+| Enum       | PascalCase | `UserRole`, `OrderStatus` |
+| Subset ID  | Uppercase  | `A`, `B`, `C`             |
 
 ### 3. Leverage AI Chat
 
@@ -64,6 +63,7 @@ created date, last login"
 ```
 
 **Be specific**:
+
 - Specify field types and constraints
 - Describe relationship settings
 - Mention index requirements
@@ -117,6 +117,7 @@ Arrange fields in meaningful order:
 Always check Preview before execution:
 
 **Check items**:
+
 - ✅ Are the columns being added correct?
 - ⚠️ Are any columns being deleted?
 - 🔄 Are type changes intentional?
@@ -139,6 +140,7 @@ Always check Preview before execution:
 ### 1. Batch Generation Strategy
 
 **Project initial**:
+
 ```
 1. Define all Entities
 2. [Select All] → Batch generate Model + Test
@@ -146,6 +148,7 @@ Always check Preview before execution:
 ```
 
 **During development**:
+
 ```
 1. Add only one new Entity
 2. Select and generate only that Entity
@@ -203,6 +206,7 @@ Subset C: With relations
 ### 2. Performance Optimization
 
 **Include only needed fields**:
+
 ```typescript
 // ❌ Excessive fields
 {
@@ -225,12 +229,12 @@ Subset C: With relations
 
 ### 3. Subset Selection by API
 
-| API | Recommended Subset | Reason |
-|-----|-------------------|--------|
-| List query | A | Fast response |
-| Detail query | B or C | Full info |
-| Autocomplete | A (minimized) | Ultra-fast response |
-| Admin page | C | All info |
+| API          | Recommended Subset | Reason              |
+| ------------ | ------------------ | ------------------- |
+| List query   | A                  | Fast response       |
+| Detail query | B or C             | Full info           |
+| Autocomplete | A (minimized)      | Ultra-fast response |
+| Admin page   | C                  | All info            |
 
 ## Using Search
 
@@ -244,6 +248,7 @@ Search (`⌘K`) can find:
 - **Subset**: `User.Subset A`
 
 **Search tips**:
+
 ```
 user email       → User Entity's email field
 post migration   → Post-related migrations
@@ -304,6 +309,7 @@ subset A         → All Subset A's
 ### Network Tab
 
 Check API calls for debugging:
+
 ```
 F12 → Network tab
 
@@ -315,6 +321,7 @@ F12 → Network tab
 ### Console Tab
 
 Check error messages:
+
 ```
 F12 → Console tab
 
@@ -329,6 +336,7 @@ F12 → Console tab
 
 **Cause**: Too many Entities or large data
 **Solution**:
+
 - Clear browser cache
 - Close unnecessary browser tabs
 - Restart Sonamu UI
@@ -336,6 +344,7 @@ F12 → Console tab
 ### When Changes Aren't Reflected
 
 **Solution**:
+
 1. Browser refresh (`F5`)
 2. Hard reload (`⌘⇧R` / `Ctrl+Shift+R`)
 3. Restart API server
@@ -344,6 +353,7 @@ F12 → Console tab
 ### Entity Save Failed
 
 **Check**:
+
 - Is API server running?
 - Do you have file write permission?
 - Is field name valid? (reserved word check)

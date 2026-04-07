@@ -1,7 +1,8 @@
 import classNames from "classnames";
 import AlertTriangleIcon from "~icons/lucide/alert-triangle";
 import ScaleIcon from "~icons/lucide/scale";
-import type { CddRuleSummary } from "../types";
+
+import { type CddRuleSummary } from "../types";
 
 export function CddRulesList({
   rules,

@@ -1,19 +1,21 @@
 import assert from "assert";
 import { join } from "path";
-import type { EntityJson, EntityProp, TemplateKey, TemplateOptions } from "sonamu";
+
+import { type EntityJson, type EntityProp, type TemplateKey, type TemplateOptions } from "sonamu";
 import { getEnumDefValues, Naite, Sonamu, Template } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, beforeEach, describe, expect, vi } from "vitest";
+
 import { SD } from "../../../../../modules/sonamu/dist/dict/sd";
-import type { EntityNamesRecord } from "../../../../../modules/sonamu/dist/entity/entity-manager";
+import { type EntityNamesRecord } from "../../../../../modules/sonamu/dist/entity/entity-manager";
 import {
   AlreadyProcessedException,
   BadRequestException,
 } from "../../../../../modules/sonamu/dist/exceptions/so-exceptions";
 import * as SyncerActions from "../../../../../modules/sonamu/dist/syncer/syncer-actions";
-import type { RenderedTemplate } from "../../../../../modules/sonamu/dist/template/template";
+import { type RenderedTemplate } from "../../../../../modules/sonamu/dist/template/template";
 import { TemplateManager } from "../../../../../modules/sonamu/dist/template/template-manager";
-import type { AbsolutePath } from "../../../../../modules/sonamu/dist/utils/path-utils";
+import { type AbsolutePath } from "../../../../../modules/sonamu/dist/utils/path-utils";
 import { mockTemplateManagerGet } from "../testing/test-helpers";
 
 interface WriteFileRecord {
@@ -143,7 +145,7 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const webRootPath = join(apiRootPath, "../web");
-      expect(writeFiles.map((f) => f.path).sort()).toStrictEqual([
+      expect(writeFiles.map((f) => f.path).toSorted()).toStrictEqual([
         join(apiRootPath, "src/application/queries.generated.ts"),
         join(apiRootPath, "src/application/sonamu.generated.http"),
         join(apiRootPath, "src/application/sonamu.generated.sso.ts"),
@@ -1145,7 +1147,7 @@ describe("Syncer", () => {
         .result()
         .find((f: WriteFileRecord) => f.path.includes("sonamu.generated.ts"));
 
-      await assert(writeFile);
+      assert(writeFile);
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/generated.ts.snap",
       );
@@ -1167,7 +1169,7 @@ describe("Syncer", () => {
         .result()
         .find((f: WriteFileRecord) => f.path.includes("snapshot-test.entity.json"));
 
-      await assert(writeFile);
+      assert(writeFile);
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/entity.json.snap",
       );
@@ -1181,7 +1183,7 @@ describe("Syncer", () => {
         .result()
         .find((f: WriteFileRecord) => f.path.includes("sync-fixture.types.ts"));
 
-      await assert(writeFile);
+      assert(writeFile);
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/init_types.ts.snap",
       );
@@ -1199,7 +1201,7 @@ describe("Syncer", () => {
         .result()
         .find((f: WriteFileRecord) => f.path.includes("sonamu.generated.http"));
 
-      await assert(writeFile);
+      assert(writeFile);
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/generated.http.snap",
       );
@@ -1213,7 +1215,7 @@ describe("Syncer", () => {
         .result()
         .find((f: WriteFileRecord) => f.path.includes("sonamu.generated.sso.ts"));
 
-      await assert(writeFile);
+      assert(writeFile);
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/generated_sso.ts.snap",
       );
@@ -1235,7 +1237,7 @@ describe("Syncer", () => {
         .find((f: WriteFileRecord) => f.path.includes("/web/") && f.path.includes(".types.ts"));
 
       // 파일이 존재하는지 확인 후 스냅샷과 비교
-      await assert(writeFile);
+      assert(writeFile);
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/copied-types.ts.snap",
       );

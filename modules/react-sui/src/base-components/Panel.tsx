@@ -1,6 +1,7 @@
 import classnames from "classnames";
-import type { ReactNode } from "react";
-import { Header, type HeaderProps, Segment, type SegmentProps } from "semantic-ui-react";
+import { type ReactNode } from "react";
+import { Header, Segment } from "semantic-ui-react";
+import { type HeaderProps, type SegmentProps } from "semantic-ui-react";
 
 type PanelProps = {
   title?: string;

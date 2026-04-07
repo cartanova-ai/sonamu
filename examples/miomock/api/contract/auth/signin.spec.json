@@ -26,13 +26,8 @@
   ],
   "lastModified": "2026-03-09",
   "status": "done",
-  "sources": [
-    "src/application/session/session.types.ts",
-    "sonamu.config.ts"
-  ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "sources": ["src/application/session/session.types.ts", "sonamu.config.ts"],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "Session": "세션 관리 엔티티. 토큰, 만료일, 접속 정보(IP, User-Agent)를 관리한다",
     "Auth Config": "Better-Auth emailAndPassword 설정"
@@ -47,8 +42,5 @@
   "errorHandling": {
     "AuthenticationFailure": "Better-Auth 프레임워크가 인증 실패, 잘못된 자격증명을 처리"
   },
-  "constraints": [
-    "세션 TTL: 1년 (60 * 60 * 24 * 365초)",
-    "Session 토큰 유니크 인덱스"
-  ]
+  "constraints": ["세션 TTL: 1년 (60 * 60 * 24 * 365초)", "Session 토큰 유니크 인덱스"]
 }

@@ -42,6 +42,7 @@ flowchart TD
 ```
 
 **Key points**:
+
 1. Convert query to embedding
 2. Calculate distance/similarity with all document vectors in DB
 3. Sort by proximity
@@ -55,17 +56,18 @@ import { BaseModelClass, api } from "sonamu";
 import { Embedding } from "sonamu/vector";
 
 class DocumentModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async search(query: string, limit: number = 10) {
     // 1. Convert query to embedding
     const embedding = await Embedding.embedOne(
       query,
-      'voyage',
-      'query'  // for search
+      "voyage",
+      "query", // for search
     );
 
     // 2. Write vector search SQL with Puri
-    const results = await this.getPuri().raw(`
+    const results = await this.getPuri().raw(
+      `
       SELECT
         id,
         title,
@@ -75,11 +77,9 @@ class DocumentModelClass extends BaseModelClass {
       WHERE embedding IS NOT NULL
       ORDER BY embedding <=> ?
       LIMIT ?
-    `, [
-      JSON.stringify(embedding.embedding),
-      JSON.stringify(embedding.embedding),
-      limit,
-    ]);
+    `,
+      [JSON.stringify(embedding.embedding), JSON.stringify(embedding.embedding), limit],
+    );
 
     return results.rows;
   }
@@ -87,6 +87,7 @@ class DocumentModelClass extends BaseModelClass {
 ```
 
 **Flow**:
+
 1. `POST /api/documents/search` -> Sonamu API
 2. Generate query embedding (Voyage AI)
 3. Calculate similarity in PostgreSQL (pgvector)
@@ -99,7 +100,9 @@ Knex doesn't directly support pgvector's special operators (`<=>`):
 ```typescript
 // Hard with Knex
 await this.findMany({
-  wq: [/* how to use pgvector operators? */]
+  wq: [
+    /* how to use pgvector operators? */
+  ],
 });
 
 // Write SQL directly with Puri.raw()
@@ -132,6 +135,7 @@ ORDER BY embedding <=> ?;
 **Similarity conversion**: `1 - distance`
 
 **Advantages**:
+
 - Not affected by vector magnitude (compares direction only)
 - Optimal for most embedding models
 - **Recommended for Sonamu**
@@ -174,7 +178,8 @@ ORDER BY embedding <#> ?;
 
 ```typescript
 // Recommended: Cosine similarity
-const results = await this.getPuri().raw(`
+const results = await this.getPuri().raw(
+  `
   SELECT
     id, title, content,
     1 - (embedding <=> ?) AS similarity
@@ -182,11 +187,9 @@ const results = await this.getPuri().raw(`
   WHERE embedding IS NOT NULL
   ORDER BY embedding <=> ?
   LIMIT ?
-`, [
-  JSON.stringify(embedding.embedding),
-  JSON.stringify(embedding.embedding),
-  limit,
-]);
+`,
+  [JSON.stringify(embedding.embedding), JSON.stringify(embedding.embedding), limit],
+);
 ```
 
 ## Threshold Filtering
@@ -225,6 +228,7 @@ async searchWithThreshold(
 ```
 
 **Threshold criteria**:
+
 - `0.8~1.0`: Very similar (almost identical)
 - `0.6~0.8`: Similar
 - `0.4~0.6`: Related
@@ -236,20 +240,15 @@ async searchWithThreshold(
 
 ```typescript
 class KnowledgeBaseModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
-  async searchKnowledge(
-    query: string,
-    category?: string,
-    limit: number = 5
-  ) {
-    const embedding = await Embedding.embedOne(query, 'voyage', 'query');
+  @api({ httpMethod: "POST" })
+  async searchKnowledge(query: string, category?: string, limit: number = 5) {
+    const embedding = await Embedding.embedOne(query, "voyage", "query");
 
     // Category filter (optional)
-    const categoryFilter = category
-      ? `AND category = '${category}'`
-      : '';
+    const categoryFilter = category ? `AND category = '${category}'` : "";
 
-    const results = await this.getPuri().raw(`
+    const results = await this.getPuri().raw(
+      `
       SELECT
         id, title, content, category,
         1 - (embedding <=> ?) AS similarity,
@@ -260,13 +259,11 @@ class KnowledgeBaseModelClass extends BaseModelClass {
         ${categoryFilter}
       ORDER BY embedding <=> ?
       LIMIT ?
-    `, [
-      JSON.stringify(embedding.embedding),
-      JSON.stringify(embedding.embedding),
-      limit,
-    ]);
+    `,
+      [JSON.stringify(embedding.embedding), JSON.stringify(embedding.embedding), limit],
+    );
 
-    return results.rows.map(row => ({
+    return results.rows.map((row) => ({
       id: row.id,
       title: row.title,
       content: row.content,
@@ -279,6 +276,7 @@ class KnowledgeBaseModelClass extends BaseModelClass {
 ```
 
 **Usage**:
+
 ```typescript
 // Full search
 await KnowledgeBaseModel.searchKnowledge("refund method");
@@ -293,20 +291,18 @@ Implementing "Products similar to this":
 
 ```typescript
 class ProductModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
-  async recommendSimilarProducts(
-    productId: number,
-    limit: number = 10
-  ) {
+  @api({ httpMethod: "POST" })
+  async recommendSimilarProducts(productId: number, limit: number = 10) {
     // Get base product
     const baseProduct = await this.findById(productId);
 
     if (!baseProduct.embedding) {
-      throw new Error('Product embedding does not exist');
+      throw new Error("Product embedding does not exist");
     }
 
     // Search similar products (exclude self)
-    const results = await this.getPuri().raw(`
+    const results = await this.getPuri().raw(
+      `
       SELECT
         id, name, description, price,
         1 - (embedding <=> ?) AS similarity
@@ -316,12 +312,14 @@ class ProductModelClass extends BaseModelClass {
         AND id != ?
       ORDER BY embedding <=> ?
       LIMIT ?
-    `, [
-      JSON.stringify(baseProduct.embedding),
-      productId,
-      JSON.stringify(baseProduct.embedding),
-      limit,
-    ]);
+    `,
+      [
+        JSON.stringify(baseProduct.embedding),
+        productId,
+        JSON.stringify(baseProduct.embedding),
+        limit,
+      ],
+    );
 
     return results.rows;
   }
@@ -329,6 +327,7 @@ class ProductModelClass extends BaseModelClass {
 ```
 
 **API response**:
+
 ```json
 [
   {
@@ -477,6 +476,7 @@ WHERE tablename = 'documents'
 ```
 
 Create one if missing (after 100+ data entries):
+
 ```sql
 CREATE INDEX idx_docs_embedding
 ON documents
@@ -486,22 +486,23 @@ USING hnsw (embedding vector_cosine_ops);
 ### Verify with EXPLAIN ANALYZE
 
 ```typescript
-const explain = await this.getPuri().raw(`
+const explain = await this.getPuri().raw(
+  `
   EXPLAIN ANALYZE
   SELECT id, title, 1 - (embedding <=> ?) AS similarity
   FROM documents
   WHERE embedding IS NOT NULL
   ORDER BY embedding <=> ?
   LIMIT 10
-`, [
-  JSON.stringify(embedding.embedding),
-  JSON.stringify(embedding.embedding),
-]);
+`,
+  [JSON.stringify(embedding.embedding), JSON.stringify(embedding.embedding)],
+);
 
 console.log(explain.rows);
 ```
 
 **What to check**:
+
 - `Index Scan using hnsw_...` -> Good
 - `Seq Scan` -> Bad (no index)
 
@@ -518,8 +519,9 @@ SET LOCAL hnsw.ef_search = 100;  -- default: 40
 ```
 
 In Sonamu:
+
 ```typescript
-await this.getPuri().raw('SET LOCAL hnsw.ef_search = 100');
+await this.getPuri().raw("SET LOCAL hnsw.ef_search = 100");
 const results = await this.getPuri().raw(`SELECT ...`);
 ```
 
@@ -528,11 +530,11 @@ const results = await this.getPuri().raw(`SELECT ...`);
 ### Index Effect
 
 | Documents | Sequential Scan | HNSW Index | Speed Improvement |
-|-----------|-----------------|------------|-------------------|
-| 1K | 50ms | 2ms | 25x |
-| 10K | 500ms | 5ms | 100x |
-| 100K | 5s | 8ms | 625x |
-| 1M | 50s | 12ms | 4166x |
+| --------- | --------------- | ---------- | ----------------- |
+| 1K        | 50ms            | 2ms        | 25x               |
+| 10K       | 500ms           | 5ms        | 100x              |
+| 100K      | 5s              | 8ms        | 625x              |
+| 1M        | 50s             | 12ms       | 4166x             |
 
 **Conclusion**: Index is essential!
 
@@ -542,11 +544,13 @@ const results = await this.getPuri().raw(`SELECT ...`);
 **Cautions for vector search in Sonamu**:
 
 1. **NULL check required**: Exclude documents without embeddings
+
    ```sql
    WHERE embedding IS NOT NULL
    ```
 
 2. **Dimension match**: Query and DB vector dimensions must match
+
    ```typescript
    // Dimension mismatch
    // DB: vector(1024) - Voyage
@@ -558,22 +562,26 @@ const results = await this.getPuri().raw(`SELECT ...`);
    ```
 
 3. **JSON.stringify required**: Convert array to JSON string
+
    ```typescript
-   JSON.stringify(embedding.embedding)
+   JSON.stringify(embedding.embedding);
    ```
 
 4. **Operator used twice**: In WHERE and ORDER BY
+
    ```sql
    WHERE 1 - (embedding <=> ?) > 0.5
    ORDER BY embedding <=> ?
    ```
 
 5. **Use Puri.raw()**: Cannot use Knex's wq
+
    ```typescript
    await this.getPuri().raw(`SELECT ...`);
    ```
 
 6. **Index creation timing**: After data
+
    ```sql
    -- 1. Data first
    INSERT INTO docs ...
@@ -587,14 +595,18 @@ const results = await this.getPuri().raw(`SELECT ...`);
    LIMIT 10  -- OK
    -- LIMIT 1000  -- Slow
    ```
-</Warning>
+   </Warning>
 
 ## Next Steps
 
 You've implemented vector search in Sonamu Model. For more accurate search, you can add hybrid search (vector + keyword).
 
 <CardGroup cols={2}>
-  <Card title="Hybrid Search" icon="layer-group" href="/en/advanced-features/vector-search/hybrid-search">
+  <Card
+    title="Hybrid Search"
+    icon="layer-group"
+    href="/en/advanced-features/vector-search/hybrid-search"
+  >
     Combining vector + FTS for improved accuracy
   </Card>
   <Card title="Chunking" icon="scissors" href="/en/advanced-features/vector-search/chunking">

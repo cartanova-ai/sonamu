@@ -3,11 +3,11 @@
  * 직접 수정하지 마세요.
  */
 
-import { dehydrate, QueryClient } from "@tanstack/react-query";
-import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
+import { QueryClient, dehydrate } from '@tanstack/react-query';
+import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router';
+import { renderToString } from 'react-dom/server';
+import { routeTree } from './routeTree.gen';
 import { Suspense } from "react";
-import { renderToString } from "react-dom/server";
-import { routeTree } from "./routeTree.gen";
 
 export type PreloadedData = {
   queryKey: any[];
@@ -43,18 +43,14 @@ export async function render(url: string, preloadedData: PreloadedData[] = []) {
     routeTree,
     context: { queryClient },
     history: memoryHistory,
-    defaultPreload: "intent",
+    defaultPreload: 'intent',
   });
 
   // 라우터 초기화: SSR에서 반드시 await router.load() 호출 필요
   await router.load();
 
   // RouterProvider만 렌더링 (Suspense로 래핑 - hydration mismatch 방지)
-  const appHtml = renderToString(
-    <Suspense fallback={null}>
-      <RouterProvider router={router} />
-    </Suspense>,
-  );
+  const appHtml = renderToString(<Suspense fallback={null}><RouterProvider router={router} /></Suspense>);
 
   return {
     html: appHtml,

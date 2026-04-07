@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: Puri의 타입은 개별 모델에서 확정되므로 BaseModel에서는 any를 허용함 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Puri의 타입은 개별 모델에서 확정되므로 BaseModel에서는 any를 허용함
 
 /**
  * BaseModel 타입 시스템
@@ -7,10 +7,10 @@
  * Enhancer, SubsetQuery 교집합 등 Model 계층에서 필요한 타입 정의.
  */
 
-import type { DatabaseSchemaExtend } from "../types/types";
-import type { Puri } from "./puri";
-import type { ExtractTTables } from "./puri.types";
-import type { PuriSubsetFn } from "./puri-subset.types";
+import { type DatabaseSchemaExtend } from "../types/types";
+import { type Puri } from "./puri";
+import { type PuriSubsetFn } from "./puri-subset.types";
+import { type ExtractTTables } from "./puri.types";
 
 // ============================================================================
 // Subset 교집합 계산 (onSubset 메서드용)
@@ -81,12 +81,13 @@ type IsEnhancerOptional<
   TSubsetMapping extends Record<TSubsetKey, any>,
   TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
   K extends TSubsetKey,
-> = TComputedResults[K] extends OmitVirtualQueryFromMapping<
-  TSubsetMapping[K],
-  ExtractVirtualQueryKeys<TSubsetQueries>
->
-  ? true
-  : false;
+> =
+  TComputedResults[K] extends OmitVirtualQueryFromMapping<
+    TSubsetMapping[K],
+    ExtractVirtualQueryKeys<TSubsetQueries>
+  >
+    ? true
+    : false;
 
 /**
  * 단일 Enhancer 함수 타입

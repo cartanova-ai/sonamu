@@ -3,7 +3,7 @@ import { useChat } from "@ai-sdk/react";
 import { Button, Textarea } from "@sonamu-kit/react-components";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useState } from "react";
-import type { FixtureRecord } from "sonamu";
+import { type FixtureRecord } from "sonamu";
 import AlertCircleIcon from "~icons/lucide/alert-circle";
 import CheckIcon from "~icons/lucide/check";
 import Loader2Icon from "~icons/lucide/loader-2";
@@ -17,7 +17,7 @@ type ChatComponentProps = {
 
 export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: ChatComponentProps) {
   const [input, setInput] = useState("");
-  const [processedToolCallIds, setProcessedToolCallIds] = useState<Set<string>>(new Set());
+  const [processedToolCallIds, setProcessedToolCallIds] = useState(new Set());
   const [toolState, setToolState] = useState<ToolState>("idle");
   const [toolName, setToolName] = useState<string | null>(null);
   const [summaryMessage, setSummaryMessage] = useState<string | null>(null);

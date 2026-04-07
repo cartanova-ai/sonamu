@@ -1,9 +1,11 @@
 import assert from "assert";
+
 import z from "zod";
+
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
-import type { EntityPropNode, RenderingNode } from "../types/types";
+import { type EntityPropNode, type RenderingNode } from "../types/types";
 import { propToZodType, zodTypeToRenderingNode } from "./zod-converter";
 
 /**
@@ -23,7 +25,7 @@ export async function getColumnsNode(entityId: string, subsetKey: string): Promi
     children: propNodes,
   };
 
-  // biome-ignore lint/suspicious/noExplicitAny: zod 스키마를 로드할 때 사용하는 타입
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- zod 스키마를 로드할 때 사용하는 타입
   const columnsZodType = (await propNodeToZodType(rootPropNode)) as z.ZodObject<any>;
 
   const columnsNode = zodTypeToRenderingNode(columnsZodType);

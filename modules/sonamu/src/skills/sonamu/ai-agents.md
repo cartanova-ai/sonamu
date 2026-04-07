@@ -13,9 +13,9 @@ Sonamu provides a framework that wraps Vercel AI SDK's `ToolLoopAgent` to build 
 
 ## Structure
 
-| File | Role |
-|------|------|
-| `agent.ts` | `BaseAgentClass`, `tools` decorator |
+| File       | Role                                                                    |
+| ---------- | ----------------------------------------------------------------------- |
+| `agent.ts` | `BaseAgentClass`, `tools` decorator                                     |
 | `types.ts` | `AgentConfig`, `ToolDecoratorOptions`, `RegisteredToolDefinition`, etc. |
 
 ---
@@ -30,7 +30,7 @@ import { z } from "zod/v4";
 
 class MyAgentClass extends BaseAgentClass<{ count: number }> {
   constructor() {
-    super("MyAgent");  // agentName (used as logger category)
+    super("MyAgent"); // agentName (used as logger category)
   }
 
   @tools({
@@ -50,12 +50,12 @@ export const MyAgent = new MyAgentClass();
 
 ### Key Features
 
-| Feature | Description |
-|------|------|
-| `this.logger` | LogTape logger (agent category) |
-| `this.store` | AsyncLocalStorage-based state access |
-| `this.tools` | Registered toolset (ToolSet) |
-| `this.use()` | Run the Agent (ALS context + ToolLoopAgent) |
+| Feature       | Description                                 |
+| ------------- | ------------------------------------------- |
+| `this.logger` | LogTape logger (agent category)             |
+| `this.store`  | AsyncLocalStorage-based state access        |
+| `this.tools`  | Registered toolset (ToolSet)                |
+| `this.use()`  | Run the Agent (ALS context + ToolLoopAgent) |
 
 ---
 
@@ -105,7 +105,7 @@ const result = await MyAgent.use(
   {
     model: anthropic("claude-sonnet-4-5-20250514"),
     instructions: "You are a math assistant.",
-    toolChoice: "auto",     // "auto" | "none" | "required"
+    toolChoice: "auto", // "auto" | "none" | "required"
     maxOutputTokens: 1000,
     temperature: 0.7,
   },
@@ -122,21 +122,21 @@ const result = await MyAgent.use(
 
 ### AgentConfig Options
 
-| Option | Type | Description |
-|------|------|------|
-| `model` | `LanguageModel` | AI SDK model (required) |
-| `instructions` | `string` | System prompt |
-| `toolChoice` | `"auto" \| "none" \| "required"` | Tool selection strategy |
-| `stopWhen` | `StopCondition` | Stop condition |
-| `activeTools` | `string[]` | List of tool names to activate |
-| `maxOutputTokens` | `number` | Maximum output tokens |
-| `temperature` | `number` | Temperature |
-| `topP` / `topK` | `number` | Sampling parameters |
-| `presencePenalty` / `frequencyPenalty` | `number` | Penalties |
-| `seed` | `number` | Seed for reproducibility |
-| `stopSequences` | `string[]` | Generation stop sequences |
-| `providerOptions` | `ProviderOptions` | Additional provider-specific options |
-| `headers` | `Record<string, string>` | Custom HTTP headers |
+| Option                                 | Type                             | Description                          |
+| -------------------------------------- | -------------------------------- | ------------------------------------ |
+| `model`                                | `LanguageModel`                  | AI SDK model (required)              |
+| `instructions`                         | `string`                         | System prompt                        |
+| `toolChoice`                           | `"auto" \| "none" \| "required"` | Tool selection strategy              |
+| `stopWhen`                             | `StopCondition`                  | Stop condition                       |
+| `activeTools`                          | `string[]`                       | List of tool names to activate       |
+| `maxOutputTokens`                      | `number`                         | Maximum output tokens                |
+| `temperature`                          | `number`                         | Temperature                          |
+| `topP` / `topK`                        | `number`                         | Sampling parameters                  |
+| `presencePenalty` / `frequencyPenalty` | `number`                         | Penalties                            |
+| `seed`                                 | `number`                         | Seed for reproducibility             |
+| `stopSequences`                        | `string[]`                       | Generation stop sequences            |
+| `providerOptions`                      | `ProviderOptions`                | Additional provider-specific options |
+| `headers`                              | `Record<string, string>`         | Custom HTTP headers                  |
 
 ---
 
@@ -182,6 +182,7 @@ class AgentB extends BaseAgentClass<void> {
 `this.logger` uses LogTape. The category is generated with `convertDomainToCategory(agentName, "agent")`.
 
 Debug logs are automatically recorded on tool execution:
+
 ```
 tools: {model}.{method} with args: {args}
 ```

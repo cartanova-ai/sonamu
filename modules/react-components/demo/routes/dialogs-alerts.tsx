@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import AlertTriangleIcon from "~icons/lucide/alert-triangle";
+import InfoIcon from "~icons/lucide/info";
+
 import { Select } from "@/components";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -61,8 +64,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useTypeForm } from "@/lib/form-helpers";
-import AlertTriangleIcon from "~icons/lucide/alert-triangle";
-import InfoIcon from "~icons/lucide/info";
+
 import { FormDebugPanel } from "../components/FormDebugPanel";
 import {
   DialogFormSchema,

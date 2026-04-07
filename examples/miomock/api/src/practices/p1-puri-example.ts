@@ -1,5 +1,7 @@
 import assert from "assert";
+
 import { Puri, Sonamu } from "sonamu";
+
 import { UserModel } from "../application/user/user.model";
 
 // 사용 예제

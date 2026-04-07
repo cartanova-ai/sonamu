@@ -1,12 +1,8 @@
-import {
-  Entity,
-  EntityManager,
-  getMigrationSetFromEntity,
-  type PgColumn,
-  PostgreSQLSchemaReader,
-} from "sonamu";
+import { Entity, EntityManager, getMigrationSetFromEntity, PostgreSQLSchemaReader } from "sonamu";
+import { type PgColumn } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeEach, describe, expect, vi } from "vitest";
+
 import { mockEntityManagerGetMultiple } from "../testing/test-helpers";
 
 bootstrap(vi);

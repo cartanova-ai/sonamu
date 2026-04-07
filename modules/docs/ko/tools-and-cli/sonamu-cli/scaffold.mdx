@@ -44,6 +44,7 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 </FileTree>
 
 **생성된 코드**:
+
 ```typescript title="src/models/User.model.ts"
 import { BaseModelClass } from "sonamu";
 import type { InferSelectModel } from "sonamu";
@@ -62,7 +63,7 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   // TODO: Model 메서드 추가
 }
 
@@ -86,6 +87,7 @@ pnpm scaffold model_test
 </FileTree>
 
 **생성된 코드**:
+
 ```typescript title="src/models/User.model.test.ts"
 import { beforeAll, describe, test } from "bun:test";
 import { expect } from "@jest/globals";
@@ -127,6 +129,7 @@ pnpm sonamu ui
 
 # Scaffolding 탭에서 View 생성
 ```
+
 </Info>
 
 ## 생성된 코드 구조
@@ -145,26 +148,26 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   // Entity 타입
   entity = UserEntity;
-  
+
   // 메서드 추가 위치
   async findByEmail(email: string): Promise<User | null> {
-    return this.getPuri("r")
-      .where("email", email)
-      .first();
+    return this.getPuri("r").where("email", email).first();
   }
 }
 ```
 
 **자동 생성되는 기능**:
+
 - ✅ TypeScript 타입
 - ✅ Entity 연결
 - ✅ BaseModel 상속
 - ✅ 기본 CRUD 메서드
 
 **직접 추가해야 하는 것**:
+
 - 비즈니스 로직 메서드
 - 복잡한 쿼리
 - 데이터 검증
@@ -177,7 +180,7 @@ class UserModelClass extends BaseModelClass<
 ```typescript
 describe("User Model", () => {
   beforeAll(async () => {
-    await FixtureManager.sync();  // Fixture 로드
+    await FixtureManager.sync(); // Fixture 로드
   });
 
   test("findById", async () => {
@@ -191,6 +194,7 @@ describe("User Model", () => {
 ```
 
 **확장 가능**:
+
 - 비즈니스 로직 테스트 추가
 - Edge case 테스트
 - 성능 테스트
@@ -209,9 +213,7 @@ export const ProductEntity = {
     { name: "category_id", type: "int" },
     { name: "created_at", type: "datetime" },
   ],
-  belongsTo: [
-    { entityId: "Category", as: "category" },
-  ],
+  belongsTo: [{ entityId: "Category", as: "category" }],
 } satisfies EntityType;
 ```
 
@@ -243,18 +245,15 @@ class ProductModelClass extends BaseModelClass<
   constructor() {
     super("Product", productSubsetQueries, productLoaderQueries);
   }
-  
+
   // 카테고리별 상품 조회
   async findByCategory(categoryId: number) {
-    return this.getPuri("r")
-      .where("category_id", categoryId)
-      .where("deleted_at", null);
+    return this.getPuri("r").where("category_id", categoryId).where("deleted_at", null);
   }
-  
+
   // 가격대별 상품 조회
   async findByPriceRange(min: number, max: number) {
-    return this.getPuri("r")
-      .whereBetween("price", [min, max]);
+    return this.getPuri("r").whereBetween("price", [min, max]);
   }
 }
 ```
@@ -284,7 +283,7 @@ describe("Product Model", () => {
 
   test("findByPriceRange", async () => {
     const products = await ProductModel.findByPriceRange(10000, 50000);
-    products.forEach(product => {
+    products.forEach((product) => {
       expect(product.price).toBeGreaterThanOrEqual(10000);
       expect(product.price).toBeLessThanOrEqual(50000);
     });
@@ -300,7 +299,7 @@ class ProductModelClass extends BaseModelClass {
   async findByCategory(categoryId: number) {
     const { qb } = this.getSubsetQueries("A");
     qb.where("category_id", categoryId);
-    
+
     return this.executeSubsetQuery({
       subset: "A",
       qb,
@@ -329,18 +328,14 @@ class UserModelClass extends BaseModelClass<
 
   // 이메일로 사용자 찾기
   async findByEmail(email: string): Promise<User | null> {
-    return this.getPuri("r")
-      .where("email", email)
-      .first();
+    return this.getPuri("r").where("email", email).first();
   }
-  
+
   // 활성 사용자만 조회
   async findActiveUsers() {
-    return this.getPuri("r")
-      .where("is_active", true)
-      .where("deleted_at", null);
+    return this.getPuri("r").where("is_active", true).where("deleted_at", null);
   }
-  
+
   // 사용자 통계
   async getUserStats(userId: number) {
     const [stats] = await this.getPuri("r")
@@ -352,7 +347,7 @@ class UserModelClass extends BaseModelClass<
       .leftJoin("comments", "comments.user_id", "users.id")
       .where("users.id", userId)
       .groupBy("users.id");
-    
+
     return stats;
   }
 }
@@ -376,7 +371,7 @@ describe("User Model - Extended", () => {
 
   test("findActiveUsers", async () => {
     const users = await UserModel.findActiveUsers();
-    users.forEach(user => {
+    users.forEach((user) => {
       expect(user.is_active).toBe(true);
       expect(user.deleted_at).toBeNull();
     });
@@ -475,6 +470,7 @@ git commit -m "Add User model and tests"
 **문제**: Model을 다시 생성하고 싶음
 
 **해결**:
+
 ```bash
 # 기존 파일 백업
 cp src/models/User.model.ts src/models/User.model.ts.bak
@@ -490,6 +486,7 @@ pnpm scaffold model
 **문제**: Entity 변경 후 Model 업데이트
 
 **해결**:
+
 ```bash
 # 1. 마이그레이션 적용
 pnpm migrate run

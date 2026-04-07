@@ -1,6 +1,6 @@
 ---
-title: 'Custom Exceptions'
-description: 'Creating custom exception classes for your project'
+title: "Custom Exceptions"
+description: "Creating custom exception classes for your project"
 ---
 
 Beyond Sonamu's built-in exception classes, you can create project-specific exceptions. Inherit from `SoException` to create exceptions with custom HTTP status codes and messages.
@@ -15,7 +15,7 @@ import { SoException } from "sonamu";
 
 export class PaymentFailedException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(402, message, payload);  // 402 Payment Required
+    super(402, message, payload); // 402 Payment Required
   }
 }
 ```
@@ -102,7 +102,7 @@ import { SoException } from "sonamu";
 
 export class OutOfStockException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(550, message, payload);  // Custom status code
+    super(550, message, payload); // Custom status code
   }
 }
 
@@ -217,7 +217,7 @@ import { SoException } from "sonamu";
 
 export class RateLimitExceededException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(429, message, payload);  // 429 Too Many Requests
+    super(429, message, payload); // 429 Too Many Requests
   }
 }
 
@@ -289,13 +289,13 @@ import { SoException } from "sonamu";
 
 export class ExternalServiceException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(502, message, payload);  // 502 Bad Gateway
+    super(502, message, payload); // 502 Bad Gateway
   }
 }
 
 export class ExternalServiceTimeoutException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(504, message, payload);  // 504 Gateway Timeout
+    super(504, message, payload); // 504 Gateway Timeout
   }
 }
 ```
@@ -349,24 +349,26 @@ import { SoException } from "sonamu";
 
 export class ValidationException extends SoException {
   static fieldRequired(fieldName: string) {
-    return new ValidationException(
-      `${fieldName} is required`,
-      { field: fieldName, code: "REQUIRED" }
-    );
+    return new ValidationException(`${fieldName} is required`, {
+      field: fieldName,
+      code: "REQUIRED",
+    });
   }
 
   static fieldInvalid(fieldName: string, reason: string) {
-    return new ValidationException(
-      `${fieldName} is invalid: ${reason}`,
-      { field: fieldName, code: "INVALID", reason }
-    );
+    return new ValidationException(`${fieldName} is invalid: ${reason}`, {
+      field: fieldName,
+      code: "INVALID",
+      reason,
+    });
   }
 
   static fieldTooShort(fieldName: string, minLength: number) {
-    return new ValidationException(
-      `${fieldName} must be at least ${minLength} characters`,
-      { field: fieldName, code: "TOO_SHORT", minLength }
-    );
+    return new ValidationException(`${fieldName} must be at least ${minLength} characters`, {
+      field: fieldName,
+      code: "TOO_SHORT",
+      minLength,
+    });
   }
 
   constructor(message: LocalizedString, payload?: unknown) {
@@ -407,11 +409,7 @@ import { SoException } from "sonamu";
 
 // Base payment exception
 export class PaymentException extends SoException {
-  constructor(
-    statusCode: number,
-    message: LocalizedString,
-    payload?: unknown
-  ) {
+  constructor(statusCode: number, message: LocalizedString, payload?: unknown) {
     super(statusCode, message, payload);
   }
 }
@@ -419,31 +417,19 @@ export class PaymentException extends SoException {
 // Specific payment exceptions
 export class CardDeclinedException extends PaymentException {
   constructor(message?: string, payload?: unknown) {
-    super(
-      402,
-      message || "Card declined",
-      payload
-    );
+    super(402, message || "Card declined", payload);
   }
 }
 
 export class InsufficientFundsException extends PaymentException {
   constructor(message?: string, payload?: unknown) {
-    super(
-      402,
-      message || "Insufficient funds",
-      payload
-    );
+    super(402, message || "Insufficient funds", payload);
   }
 }
 
 export class InvalidCardException extends PaymentException {
   constructor(message?: string, payload?: unknown) {
-    super(
-      402,
-      message || "Invalid card",
-      payload
-    );
+    super(402, message || "Invalid card", payload);
   }
 }
 ```
@@ -517,13 +503,13 @@ export class PasswordMismatchException extends SoException {
 // src/exceptions/resource-exceptions.ts
 export class ResourceLockedException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(423, message, payload);  // 423 Locked
+    super(423, message, payload); // 423 Locked
   }
 }
 
 export class ResourceConflictException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(409, message, payload);  // 409 Conflict
+    super(409, message, payload); // 409 Conflict
   }
 }
 ```
@@ -544,10 +530,11 @@ Use standard HTTP status codes first, and use custom codes in the 5xx range when
 throw new CustomException("Error");
 
 // ✅ Good
-throw new CustomException(
-  "Cannot process order: insufficient stock",
-  { productId: 123, available: 5, requested: 10 }
-);
+throw new CustomException("Cannot process order: insufficient stock", {
+  productId: 123,
+  available: 5,
+  requested: 10,
+});
 ```
 
 ### Structured Payload
@@ -557,14 +544,16 @@ throw new CustomException(
 throw new CustomException("Error message", {
   code: "ERROR_CODE",
   field: "fieldName",
-  details: { /* additional info */ },
-  suggestions: ["Solution 1", "Solution 2"]
+  details: {
+    /* additional info */
+  },
+  suggestions: ["Solution 1", "Solution 2"],
 });
 ```
 
 ### Exception Documentation
 
-```typescript
+````typescript
 /**
  * Exception thrown when stock is insufficient
  *
@@ -579,7 +568,7 @@ throw new CustomException("Error message", {
 export class InsufficientStockException extends SoException {
   // ...
 }
-```
+````
 
 ## Related Documentation
 

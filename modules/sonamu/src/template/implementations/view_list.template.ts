@@ -1,14 +1,16 @@
 import inflection from "inflection";
 import { flat } from "radashi";
 import { z } from "zod";
-import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
-import type { RenderingNode, TemplateOptions } from "../../types/types";
+
+import { EntityManager } from "../../entity/entity-manager";
+import { type EntityNamesRecord } from "../../entity/entity-manager";
+import { type RenderingNode, type TemplateOptions } from "../../types/types";
 import {
   getEnumInfoFromColName,
   getRelationNameFromColumnName,
   getRelationPropFromColName,
 } from "../helpers";
-import type { RenderedTemplate } from "../template";
+import { type RenderedTemplate } from "../template";
 import { Template } from "../template";
 
 export class Template__view_list extends Template {
@@ -266,7 +268,7 @@ export class Template__view_list extends Template {
     // 실제 리스트 컬럼
     const columns = (columnsNode.children as RenderingNode[])
 
-      .sort((a, b) => (a.name === "id" ? -1 : b.name === "id" ? 1 : 0))
+      .toSorted((a, b) => (a.name === "id" ? -1 : b.name === "id" ? 1 : 0))
       .map((col) => {
         const rendered = this.renderColumn(entityId, col, names);
 
@@ -305,7 +307,7 @@ export class Template__view_list extends Template {
           ["enums", "number-id", "number-fk_id", "string-fk_id"].includes(col.renderType),
       )
       // orderBy가 가장 뒤로 오게 순서 조정
-      .sort((a) => {
+      .toSorted((a) => {
         return a.name === "orderBy" ? 1 : -1;
       });
 

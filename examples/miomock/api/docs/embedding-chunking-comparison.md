@@ -24,15 +24,15 @@ Anthropic은 **Voyage AI**를 공식 파트너로 추천합니다.
 
 ### 1.1 주요 Embedding 모델 개요
 
-| Provider | 모델명 | 차원 | Context 길이 | 특징 |
-|----------|-------|-----|-------------|------|
-| **OpenAI** | text-embedding-3-large | 3,072 | 8,192 | 가장 널리 사용됨 |
-| **OpenAI** | text-embedding-3-small | 1,536 | 8,192 | 비용 효율적 |
-| **Voyage AI** | voyage-3-large | 1,024~2,048 | 32,000 | SOTA 성능 |
-| **Voyage AI** | voyage-3 | 1,024 | 32,000 | 균형 잡힌 성능 |
-| **Voyage AI** | voyage-3-lite | 512 | 32,000 | 저비용/저지연 |
-| **Nomic** | nomic-embed-text-v1.5 | 768 | 8,192 | 오픈소스 |
-| **Google** | gemini-embedding-001 | 768 | - | 무료 |
+| Provider      | 모델명                 | 차원        | Context 길이 | 특징             |
+| ------------- | ---------------------- | ----------- | ------------ | ---------------- |
+| **OpenAI**    | text-embedding-3-large | 3,072       | 8,192        | 가장 널리 사용됨 |
+| **OpenAI**    | text-embedding-3-small | 1,536       | 8,192        | 비용 효율적      |
+| **Voyage AI** | voyage-3-large         | 1,024~2,048 | 32,000       | SOTA 성능        |
+| **Voyage AI** | voyage-3               | 1,024       | 32,000       | 균형 잡힌 성능   |
+| **Voyage AI** | voyage-3-lite          | 512         | 32,000       | 저비용/저지연    |
+| **Nomic**     | nomic-embed-text-v1.5  | 768         | 8,192        | 오픈소스         |
+| **Google**    | gemini-embedding-001   | 768         | -            | 무료             |
 
 ---
 
@@ -40,14 +40,14 @@ Anthropic은 **Voyage AI**를 공식 파트너로 추천합니다.
 
 #### MTEB/NDCG@10 기준 (높을수록 좋음)
 
-| 모델 | 평균 성능 | OpenAI v3-large 대비 |
-|-----|---------|---------------------|
-| **voyage-3-large** | 🥇 최고 | +10.58% |
-| **voyage-3** | 🥈 | +7.55% |
-| **voyage-3-lite** | 🥉 | +3.82% |
-| **text-embedding-3-large** | 기준선 | 0% |
-| **text-embedding-3-small** | - | -7.58% (voyage-3-lite 대비) |
-| **nomic-embed-text-v1** | - | ada-002, 3-small 능가 |
+| 모델                       | 평균 성능 | OpenAI v3-large 대비        |
+| -------------------------- | --------- | --------------------------- |
+| **voyage-3-large**         | 🥇 최고   | +10.58%                     |
+| **voyage-3**               | 🥈        | +7.55%                      |
+| **voyage-3-lite**          | 🥉        | +3.82%                      |
+| **text-embedding-3-large** | 기준선    | 0%                          |
+| **text-embedding-3-small** | -         | -7.58% (voyage-3-lite 대비) |
+| **nomic-embed-text-v1**    | -         | ada-002, 3-small 능가       |
 
 #### 도메인별 성능 (Voyage AI 우위 영역)
 
@@ -62,6 +62,7 @@ Anthropic은 **Voyage AI**를 공식 파트너로 추천합니다.
 ```
 
 **핵심 인사이트:**
+
 - **Voyage AI**가 대부분의 벤치마크에서 OpenAI를 능가
 - **도메인 특화 모델**(법률, 금융, 코드)이 범용 모델보다 해당 도메인에서 훨씬 우수
 - **nomic-embed**는 오픈소스 중 최고 성능
@@ -70,19 +71,21 @@ Anthropic은 **Voyage AI**를 공식 파트너로 추천합니다.
 
 ### 1.3 속도/지연시간 비교 (성능)
 
-| 모델 | Latency (ms) | 상대 속도 |
-|-----|-------------|----------|
-| **voyage-3-large** | ~89ms | 🥇 가장 빠름 (3.5x faster than OpenAI) |
-| **voyage-3** | ~62.5ms | 🥇 매우 빠름 |
-| **gemini-embedding-001** | ~196ms | 중간 |
-| **text-embedding-3-large** | ~312ms | 느림 |
-| **nomic-embed-text** | ~100ms+ | 중간 (로컬 실행 시 변동) |
+| 모델                       | Latency (ms) | 상대 속도                              |
+| -------------------------- | ------------ | -------------------------------------- |
+| **voyage-3-large**         | ~89ms        | 🥇 가장 빠름 (3.5x faster than OpenAI) |
+| **voyage-3**               | ~62.5ms      | 🥇 매우 빠름                           |
+| **gemini-embedding-001**   | ~196ms       | 중간                                   |
+| **text-embedding-3-large** | ~312ms       | 느림                                   |
+| **nomic-embed-text**       | ~100ms+      | 중간 (로컬 실행 시 변동)               |
 
 **처리량 (Throughput):**
+
 - voyage-3: 40M tokens/hour
 - voyage-2: 36M tokens/hour
 
 **지연시간에 영향을 미치는 요소:**
+
 1. **차원 수**: 낮을수록 빠름 (voyage: 1024 vs OpenAI: 3072)
 2. **네트워크**: API 호출 위치
 3. **배치 크기**: 대량 처리 시 최적화 가능
@@ -91,23 +94,23 @@ Anthropic은 **Voyage AI**를 공식 파트너로 추천합니다.
 
 ### 1.4 비용 비교 ($/1M tokens)
 
-| 모델 | 가격 | 상대 비용 | 무료 티어 |
-|-----|-----|---------|----------|
-| **voyage-3-lite** | $0.02 | 🥇 최저가 (API) | 200M tokens |
-| **text-embedding-3-small** | $0.02 | 🥇 최저가 (API) | - |
-| **voyage-3** | $0.06 | 저렴 | 200M tokens |
-| **voyage-3-large** | $0.18 | 중간 | 200M tokens |
-| **text-embedding-3-large** | $0.13 | 중간 | - |
-| **nomic-embed-text** | **무료** | 🏆 오픈소스 | 무제한 (셀프호스팅) |
-| **gemini-embedding-001** | **무료** | 🏆 | 관대한 한도 |
+| 모델                       | 가격     | 상대 비용       | 무료 티어           |
+| -------------------------- | -------- | --------------- | ------------------- |
+| **voyage-3-lite**          | $0.02    | 🥇 최저가 (API) | 200M tokens         |
+| **text-embedding-3-small** | $0.02    | 🥇 최저가 (API) | -                   |
+| **voyage-3**               | $0.06    | 저렴            | 200M tokens         |
+| **voyage-3-large**         | $0.18    | 중간            | 200M tokens         |
+| **text-embedding-3-large** | $0.13    | 중간            | -                   |
+| **nomic-embed-text**       | **무료** | 🏆 오픈소스     | 무제한 (셀프호스팅) |
+| **gemini-embedding-001**   | **무료** | 🏆              | 관대한 한도         |
 
 **VectorDB 스토리지 비용까지 고려하면:**
 
-| 모델 | 차원 | 상대 스토리지 비용 |
-|-----|-----|-----------------|
-| voyage-3-lite | 512 | 1x (기준) |
-| voyage-3 | 1,024 | 2x |
-| text-embedding-3-large | 3,072 | 6x |
+| 모델                   | 차원  | 상대 스토리지 비용 |
+| ---------------------- | ----- | ------------------ |
+| voyage-3-lite          | 512   | 1x (기준)          |
+| voyage-3               | 1,024 | 2x                 |
+| text-embedding-3-large | 3,072 | 6x                 |
 
 > 💡 **Voyage AI**는 차원이 작아서 VectorDB 비용도 3~6배 절감
 
@@ -115,20 +118,21 @@ Anthropic은 **Voyage AI**를 공식 파트너로 추천합니다.
 
 ### 1.5 종합 비교 매트릭스
 
-| 기준 | OpenAI 3-large | Voyage 3-large | Voyage 3-lite | Nomic v1.5 | Gemini |
-|-----|---------------|----------------|---------------|------------|--------|
-| **정확성** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **속도** | ⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
-| **비용** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Context 길이** | ⭐⭐⭐ (8K) | ⭐⭐⭐⭐⭐ (32K) | ⭐⭐⭐⭐⭐ (32K) | ⭐⭐⭐ (8K) | ⭐⭐⭐ |
-| **다국어** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **오픈소스** | ❌ | ❌ | ❌ | ✅ | ❌ |
+| 기준             | OpenAI 3-large | Voyage 3-large   | Voyage 3-lite    | Nomic v1.5  | Gemini     |
+| ---------------- | -------------- | ---------------- | ---------------- | ----------- | ---------- |
+| **정확성**       | ⭐⭐⭐⭐       | ⭐⭐⭐⭐⭐       | ⭐⭐⭐⭐         | ⭐⭐⭐⭐    | ⭐⭐⭐⭐   |
+| **속도**         | ⭐⭐           | ⭐⭐⭐⭐⭐       | ⭐⭐⭐⭐⭐       | ⭐⭐⭐      | ⭐⭐⭐     |
+| **비용**         | ⭐⭐⭐         | ⭐⭐⭐           | ⭐⭐⭐⭐⭐       | ⭐⭐⭐⭐⭐  | ⭐⭐⭐⭐⭐ |
+| **Context 길이** | ⭐⭐⭐ (8K)    | ⭐⭐⭐⭐⭐ (32K) | ⭐⭐⭐⭐⭐ (32K) | ⭐⭐⭐ (8K) | ⭐⭐⭐     |
+| **다국어**       | ⭐⭐⭐⭐       | ⭐⭐⭐⭐⭐       | ⭐⭐⭐⭐         | ⭐⭐⭐      | ⭐⭐⭐⭐   |
+| **오픈소스**     | ❌             | ❌               | ❌               | ✅          | ❌         |
 
 ---
 
 ### 1.6 추천 사용 케이스
 
 #### 🎯 정확성이 최우선일 때
+
 ```
 추천: voyage-3-large
 이유: SOTA 성능, 모든 벤치마크 1위
@@ -136,6 +140,7 @@ Anthropic은 **Voyage AI**를 공식 파트너로 추천합니다.
 ```
 
 #### 💰 비용 효율성이 중요할 때
+
 ```
 추천: voyage-3-lite 또는 text-embedding-3-small
 이유: 동일 가격($0.02)에서 voyage-3-lite가 7.58% 더 정확
@@ -143,24 +148,28 @@ Anthropic은 **Voyage AI**를 공식 파트너로 추천합니다.
 ```
 
 #### ⚡ 속도가 중요할 때
+
 ```
 추천: voyage-3-lite (512 dims) 또는 voyage-3
 이유: 가장 낮은 지연시간, 높은 처리량
 ```
 
 #### 📚 긴 문서를 다룰 때
+
 ```
 추천: Voyage AI 모델 (32K context)
 이유: OpenAI(8K)의 4배 긴 컨텍스트
 ```
 
 #### 🔒 프라이버시/오프라인이 필요할 때
+
 ```
 추천: nomic-embed-text (Ollama로 로컬 실행)
 이유: 완전 오픈소스, 로컬 실행 가능, 무료
 ```
 
 #### 🏛️ 특정 도메인에 특화
+
 ```
 법률: voyage-law-2
 금융: voyage-finance-2
@@ -202,11 +211,7 @@ Anthropic은 **Voyage AI**를 공식 파트너로 추천합니다.
  * 고정 크기 청킹
  * 가장 단순한 방식 - 문자 수 기준으로 분할
  */
-function fixedSizeChunk(
-  text: string,
-  chunkSize: number = 500,
-  overlap: number = 50
-): string[] {
+function fixedSizeChunk(text: string, chunkSize: number = 500, overlap: number = 50): string[] {
   const chunks: string[] = [];
   const step = chunkSize - overlap;
 
@@ -222,24 +227,27 @@ const text = "긴 문서 내용...";
 const chunks = fixedSizeChunk(text, 500, 50);
 ```
 
-| 항목 | 평가 |
-|-----|-----|
-| **정확성** | ⭐⭐ (문맥 무시, 단어 중간에서 잘릴 수 있음) |
-| **속도** | ⭐⭐⭐⭐⭐ (가장 빠름) |
-| **비용** | ⭐⭐⭐⭐⭐ (추가 비용 없음) |
-| **구현 난이도** | ⭐ (가장 쉬움) |
+| 항목            | 평가                                         |
+| --------------- | -------------------------------------------- |
+| **정확성**      | ⭐⭐ (문맥 무시, 단어 중간에서 잘릴 수 있음) |
+| **속도**        | ⭐⭐⭐⭐⭐ (가장 빠름)                       |
+| **비용**        | ⭐⭐⭐⭐⭐ (추가 비용 없음)                  |
+| **구현 난이도** | ⭐ (가장 쉬움)                               |
 
 **장점:**
+
 - 구현이 매우 간단
 - 예측 가능한 청크 크기
 - 빠른 프로토타이핑에 적합
 
 **단점:**
+
 - 의미 단위 무시
 - 문장 중간에서 잘림
 - 검색 정확도 낮음
 
 **사용 시기:**
+
 - 빠른 프로토타이핑
 - 균일한 형식의 문서 (뉴스, 블로그)
 
@@ -264,7 +272,7 @@ function recursiveCharacterChunk(
     chunkSize: 500,
     chunkOverlap: 50,
     separators: ["\n\n", "\n", ". ", " ", ""],
-  }
+  },
 ): string[] {
   const { chunkSize, chunkOverlap, separators } = options;
 
@@ -291,9 +299,7 @@ function recursiveCharacterChunk(
     let currentChunk = "";
 
     for (const split of splits) {
-      const potentialChunk = currentChunk
-        ? currentChunk + separator + split
-        : split;
+      const potentialChunk = currentChunk ? currentChunk + separator + split : split;
 
       if (potentialChunk.length <= chunkSize) {
         currentChunk = potentialChunk;
@@ -336,27 +342,31 @@ const chunks = recursiveCharacterChunk(document, {
 });
 ```
 
-| 항목 | 평가 |
-|-----|-----|
-| **정확성** | ⭐⭐⭐⭐ (85-90% recall @ 400 tokens) |
-| **속도** | ⭐⭐⭐⭐ (빠름) |
-| **비용** | ⭐⭐⭐⭐⭐ (추가 비용 없음) |
-| **구현 난이도** | ⭐⭐ (쉬움) |
+| 항목            | 평가                                  |
+| --------------- | ------------------------------------- |
+| **정확성**      | ⭐⭐⭐⭐ (85-90% recall @ 400 tokens) |
+| **속도**        | ⭐⭐⭐⭐ (빠름)                       |
+| **비용**        | ⭐⭐⭐⭐⭐ (추가 비용 없음)           |
+| **구현 난이도** | ⭐⭐ (쉬움)                           |
 
 **NVIDIA 2024 벤치마크 결과:**
+
 - 400 tokens에서 88.1-89.5% recall 달성
 - 대부분의 케이스에서 권장 기본값
 
 **장점:**
+
 - 자연스러운 경계(문단, 문장) 존중
 - Fixed-Size보다 의미 보존 우수
 - 추가 ML 모델 불필요
 
 **단점:**
+
 - 여전히 의미 기반은 아님
 - 복잡한 문서에서 한계
 
 **사용 시기:**
+
 - ✅ **대부분의 RAG 프로젝트에서 기본값으로 추천**
 - 일반적인 문서 (보고서, 기사, 매뉴얼)
 
@@ -389,7 +399,7 @@ function sentenceBasedChunk(
   options: SentenceChunkOptions = {
     sentencesPerChunk: 5,
     overlap: 1,
-  }
+  },
 ): string[] {
   const { sentencesPerChunk, overlap } = options;
   const sentences = splitIntoSentences(text);
@@ -419,23 +429,26 @@ const chunks = sentenceBasedChunk(article, {
 });
 ```
 
-| 항목 | 평가 |
-|-----|-----|
-| **정확성** | ⭐⭐⭐⭐ |
-| **속도** | ⭐⭐⭐⭐ |
-| **비용** | ⭐⭐⭐⭐⭐ (토크나이저만 필요) |
-| **구현 난이도** | ⭐⭐ |
+| 항목            | 평가                           |
+| --------------- | ------------------------------ |
+| **정확성**      | ⭐⭐⭐⭐                       |
+| **속도**        | ⭐⭐⭐⭐                       |
+| **비용**        | ⭐⭐⭐⭐⭐ (토크나이저만 필요) |
+| **구현 난이도** | ⭐⭐                           |
 
 **장점:**
+
 - 완전한 문장 보장
 - 가독성 유지
 - 번역, 감성분석에 적합
 
 **단점:**
+
 - 문장 길이 불균일 → 청크 크기 변동
 - 깊은 의미 관계는 포착 못함
 
 **사용 시기:**
+
 - 번역 시스템
 - 감성 분석
 - Q&A 시스템
@@ -470,10 +483,7 @@ interface SemanticChunkOptions {
   embedFn: (text: string) => Promise<number[]>; // 임베딩 함수
 }
 
-async function semanticChunk(
-  text: string,
-  options: SemanticChunkOptions
-): Promise<string[]> {
+async function semanticChunk(text: string, options: SemanticChunkOptions): Promise<string[]> {
   const { threshold, embedFn } = options;
 
   // 문장 단위로 분리
@@ -542,14 +552,15 @@ const semanticChunks = await semanticChunk(document, {
 });
 ```
 
-| 항목 | 평가 |
-|-----|-----|
-| **정확성** | ⭐⭐⭐⭐⭐ (최대 9% recall 향상) |
-| **속도** | ⭐⭐ (느림 - 임베딩 생성 필요) |
-| **비용** | ⭐⭐ (임베딩 API 비용 발생) |
-| **구현 난이도** | ⭐⭐⭐⭐ (복잡) |
+| 항목            | 평가                             |
+| --------------- | -------------------------------- |
+| **정확성**      | ⭐⭐⭐⭐⭐ (최대 9% recall 향상) |
+| **속도**        | ⭐⭐ (느림 - 임베딩 생성 필요)   |
+| **비용**        | ⭐⭐ (임베딩 API 비용 발생)      |
+| **구현 난이도** | ⭐⭐⭐⭐ (복잡)                  |
 
 **Chroma Research 결과:**
+
 - LLMSemanticChunker: 91.9% recall
 - ClusterSemanticChunker: 91.3% recall
 
@@ -561,16 +572,19 @@ const semanticChunks = await semanticChunk(document, {
 | Interquartile | IQR 기반 분할 |
 
 **장점:**
+
 - 의미적으로 coherent한 청크 생성
 - 주제 변화를 정확히 감지
 - 검색 정확도 최고
 
 **단점:**
+
 - 임베딩 생성 비용
 - 처리 시간 증가
 - 구현 복잡
 
 **사용 시기:**
+
 - 고정확도가 필요한 RAG
 - 법률, 의료, 연구 문서
 - 예산 여유가 있는 프로젝트
@@ -604,7 +618,7 @@ function pageLevelChunk(
   options: PageChunkOptions = {
     maxPagesPerChunk: 1,
     overlap: 0,
-  }
+  },
 ): PageChunk[] {
   const { maxPagesPerChunk, overlap } = options;
   const chunks: PageChunk[] = [];
@@ -643,27 +657,31 @@ async function chunkPDF(filePath: string): Promise<PageChunk[]> {
 }
 ```
 
-| 항목 | 평가 |
-|-----|-----|
-| **정확성** | ⭐⭐⭐⭐⭐ (NVIDIA 벤치마크 1위: 0.648 accuracy) |
-| **속도** | ⭐⭐⭐⭐⭐ (매우 빠름) |
-| **비용** | ⭐⭐⭐⭐⭐ |
-| **구현 난이도** | ⭐⭐ |
+| 항목            | 평가                                             |
+| --------------- | ------------------------------------------------ |
+| **정확성**      | ⭐⭐⭐⭐⭐ (NVIDIA 벤치마크 1위: 0.648 accuracy) |
+| **속도**        | ⭐⭐⭐⭐⭐ (매우 빠름)                           |
+| **비용**        | ⭐⭐⭐⭐⭐                                       |
+| **구현 난이도** | ⭐⭐                                             |
 
 **NVIDIA 2024 벤치마크 결과:**
+
 - 0.648 accuracy, 0.107 표준편차 (가장 안정적)
 - 특히 구조화된 문서(재무보고서, 법률문서)에서 우수
 
 **장점:**
+
 - 문서의 원래 구조 존중
 - 일관된 성능
 - 메타데이터(페이지 번호) 보존 용이
 
 **단점:**
+
 - PDF에서 임의로 페이지가 나뉜 경우 비효율적
 - 페이지 개념이 없는 문서에는 부적합
 
 **사용 시기:**
+
 - PDF 문서 (보고서, 매뉴얼, 논문)
 - 페이지 단위로 구조화된 문서
 
@@ -685,7 +703,7 @@ interface AgenticChunkOptions {
 
 async function agenticChunk(
   document: string,
-  options: AgenticChunkOptions = {}
+  options: AgenticChunkOptions = {},
 ): Promise<string[]> {
   const { model = "claude-3-haiku-20240307", maxChunks = 10 } = options;
 
@@ -743,24 +761,27 @@ const chunks = await agenticChunk(complexDocument, {
 });
 ```
 
-| 항목 | 평가 |
-|-----|-----|
-| **정확성** | ⭐⭐⭐⭐⭐ (최고) |
-| **속도** | ⭐ (가장 느림) |
-| **비용** | ⭐ (LLM API 비용 발생) |
+| 항목            | 평가                   |
+| --------------- | ---------------------- |
+| **정확성**      | ⭐⭐⭐⭐⭐ (최고)      |
+| **속도**        | ⭐ (가장 느림)         |
+| **비용**        | ⭐ (LLM API 비용 발생) |
 | **구현 난이도** | ⭐⭐⭐⭐⭐ (가장 복잡) |
 
 **장점:**
+
 - 문서 유형에 따라 동적으로 전략 선택
 - 가장 정확한 의미 단위 분할
 - 복잡한 문서에도 대응 가능
 
 **단점:**
+
 - 매우 높은 비용
 - 긴 처리 시간
 - 결과 재현성 이슈
 
 **사용 시기:**
+
 - 극도로 중요한 문서
 - 복잡하고 비정형적인 콘텐츠
 - 비용이 문제되지 않는 경우
@@ -771,21 +792,21 @@ const chunks = await agenticChunk(complexDocument, {
 
 #### Recall 성능 비교 (Chroma Research 2024)
 
-| 전략 | Recall | 비고 |
-|-----|--------|-----|
-| LLM Semantic Chunker | 91.9% | 최고 정확도, 높은 비용 |
-| Cluster Semantic Chunker | 91.3% | |
-| Recursive (400 tokens) | 88.1-89.5% | ✅ **권장 기본값** |
-| Recursive (512 tokens) | 85.4-87.2% | |
-| Fixed-Size | ~80% | 빠르지만 정확도 낮음 |
+| 전략                     | Recall     | 비고                   |
+| ------------------------ | ---------- | ---------------------- |
+| LLM Semantic Chunker     | 91.9%      | 최고 정확도, 높은 비용 |
+| Cluster Semantic Chunker | 91.3%      |                        |
+| Recursive (400 tokens)   | 88.1-89.5% | ✅ **권장 기본값**     |
+| Recursive (512 tokens)   | 85.4-87.2% |                        |
+| Fixed-Size               | ~80%       | 빠르지만 정확도 낮음   |
 
 #### 쿼리 유형별 최적 청크 크기 (NVIDIA 2024)
 
-| 쿼리 유형 | 최적 청크 크기 | 설명 |
-|----------|--------------|------|
-| **Factoid (사실 기반)** | 256-512 tokens | "서울의 인구는?" |
-| **Analytical (분석적)** | 1024+ tokens | "기후변화의 원인을 설명해줘" |
-| **Multi-concept** | 가변적 | 여러 개념을 연결하는 질문 |
+| 쿼리 유형               | 최적 청크 크기 | 설명                         |
+| ----------------------- | -------------- | ---------------------------- |
+| **Factoid (사실 기반)** | 256-512 tokens | "서울의 인구는?"             |
+| **Analytical (분석적)** | 1024+ tokens   | "기후변화의 원인을 설명해줘" |
+| **Multi-concept**       | 가변적         | 여러 개념을 연결하는 질문    |
 
 ---
 
@@ -841,8 +862,8 @@ const chunks = await agenticChunk(complexDocument, {
 ```typescript
 // ✅ 권장 기본 설정
 const defaultChunkOptions: RecursiveChunkOptions = {
-  chunkSize: 400,           // 400-512 tokens 권장
-  chunkOverlap: 50,         // 10-20% overlap
+  chunkSize: 400, // 400-512 tokens 권장
+  chunkOverlap: 50, // 10-20% overlap
   separators: ["\n\n", "\n", ". ", " ", ""],
 };
 
@@ -869,11 +890,11 @@ const chunks = chunkingService.chunk(documentContent);
 
 #### Overlap 설정 가이드
 
-| Overlap | 사용 시기 |
-|---------|----------|
-| 0% | 스토리지 비용 절약 필요 시 |
-| 10-20% | ✅ 일반적 권장값 |
-| 20-30% | 문맥 손실이 치명적인 경우 |
+| Overlap | 사용 시기                  |
+| ------- | -------------------------- |
+| 0%      | 스토리지 비용 절약 필요 시 |
+| 10-20%  | ✅ 일반적 권장값           |
+| 20-30%  | 문맥 손실이 치명적인 경우  |
 
 ---
 
@@ -883,43 +904,43 @@ const chunks = chunkingService.chunk(documentContent);
 
 #### 🚀 빠른 프로토타이핑
 
-| 구성요소 | 선택 | 이유 |
-|---------|-----|-----|
+| 구성요소      | 선택                                       | 이유             |
+| ------------- | ------------------------------------------ | ---------------- |
 | **Embedding** | nomic-embed-text (로컬) 또는 voyage-3-lite | 무료 또는 최저가 |
-| **Chunking** | Recursive (500 tokens, 10% overlap) | 빠르고 안정적 |
-| **예상 비용** | $0 ~ $0.02/1M tokens | |
+| **Chunking**  | Recursive (500 tokens, 10% overlap)        | 빠르고 안정적    |
+| **예상 비용** | $0 ~ $0.02/1M tokens                       |                  |
 
 #### 💼 프로덕션 RAG (일반)
 
-| 구성요소 | 선택 | 이유 |
-|---------|-----|-----|
-| **Embedding** | voyage-3 | 성능/비용 균형 |
-| **Chunking** | Recursive (400 tokens, 15% overlap) | 검증된 성능 |
-| **예상 비용** | $0.06/1M tokens | |
+| 구성요소      | 선택                                | 이유           |
+| ------------- | ----------------------------------- | -------------- |
+| **Embedding** | voyage-3                            | 성능/비용 균형 |
+| **Chunking**  | Recursive (400 tokens, 15% overlap) | 검증된 성능    |
+| **예상 비용** | $0.06/1M tokens                     |                |
 
 #### 🏆 최고 정확도 RAG
 
-| 구성요소 | 선택 | 이유 |
-|---------|-----|-----|
-| **Embedding** | voyage-3-large | SOTA 성능 |
-| **Chunking** | Semantic Chunking | 91.9% recall |
+| 구성요소      | 선택                  | 이유               |
+| ------------- | --------------------- | ------------------ |
+| **Embedding** | voyage-3-large        | SOTA 성능          |
+| **Chunking**  | Semantic Chunking     | 91.9% recall       |
 | **추가 옵션** | Reranker (rerank-2.5) | 추가 67% 오류 감소 |
-| **예상 비용** | $0.18+/1M tokens | |
+| **예상 비용** | $0.18+/1M tokens      |                    |
 
 #### 🏛️ 도메인 특화 (법률/금융/코드)
 
-| 도메인 | Embedding | Chunking |
-|-------|-----------|----------|
-| **법률** | voyage-law-2 | Page-level + Semantic |
-| **금융** | voyage-finance-2 | Page-level (보고서) |
-| **코드** | voyage-code-3 | Language-specific |
+| 도메인   | Embedding        | Chunking              |
+| -------- | ---------------- | --------------------- |
+| **법률** | voyage-law-2     | Page-level + Semantic |
+| **금융** | voyage-finance-2 | Page-level (보고서)   |
+| **코드** | voyage-code-3    | Language-specific     |
 
 #### 🌍 다국어 지원
 
-| 구성요소 | 선택 | 이유 |
-|---------|-----|-----|
-| **Embedding** | voyage-multilingual-2 또는 voyage-3 | 26개+ 언어 지원 |
-| **Chunking** | Sentence-based | 언어별 문장 구조 존중 |
+| 구성요소      | 선택                                | 이유                  |
+| ------------- | ----------------------------------- | --------------------- |
+| **Embedding** | voyage-multilingual-2 또는 voyage-3 | 26개+ 언어 지원       |
+| **Chunking**  | Sentence-based                      | 언어별 문장 구조 존중 |
 
 ---
 
@@ -933,10 +954,12 @@ Contextual RAG:  chunk → add context → embed → search
 ```
 
 **방법:**
+
 1. 각 청크에 문서 전체 맥락 정보를 추가
 2. Claude의 Prompt Caching으로 비용 효율적 구현
 
 **결과:**
+
 - 검색 실패율 49% 감소
 - Reranker와 결합 시 67% 감소
 
@@ -966,6 +989,7 @@ Contextual RAG:  chunk → add context → embed → search
 ## 📚 참고 자료
 
 ### Embedding 모델
+
 - [Voyage AI Blog: voyage-3-large](https://blog.voyageai.com/2025/01/07/voyage-3-large/)
 - [Voyage AI Pricing](https://docs.voyageai.com/docs/pricing)
 - [OpenAI Embedding Models](https://platform.openai.com/docs/guides/embeddings)
@@ -973,15 +997,18 @@ Contextual RAG:  chunk → add context → embed → search
 - [Claude Embeddings Docs](https://docs.anthropic.com/claude/docs/embeddings)
 
 ### Chunking 전략
+
 - [NVIDIA Chunking Benchmark 2024](https://developer.nvidia.com)
 - [Chroma Research: Chunking Evaluation](https://www.trychroma.com)
 - [Anthropic: Contextual Retrieval](https://www.anthropic.com/engineering/contextual-retrieval)
 
 ### 벤치마크
+
 - [MTEB Leaderboard](https://huggingface.co/spaces/mteb/leaderboard)
 - [AIMultiple Embedding Comparison](https://research.aimultiple.com/embedding-models/)
 
 ### TypeScript/Node.js 라이브러리
+
 - [voyageai - npm](https://www.npmjs.com/package/voyageai)
 - [openai - npm](https://www.npmjs.com/package/openai)
 - [@anthropic-ai/sdk - npm](https://www.npmjs.com/package/@anthropic-ai/sdk)

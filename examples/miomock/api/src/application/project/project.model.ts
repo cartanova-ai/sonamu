@@ -4,23 +4,21 @@ import {
   asArray,
   BaseModelClass,
   exhaustive,
-  type ListResult,
   Naite,
   NotFoundException,
   Puri,
   Sonamu,
   stream,
 } from "sonamu";
+import { type ListResult } from "sonamu";
+
 import { SD } from "../../i18n/sd.generated";
 import { AuditLogModel } from "../audit-log/audit-log.model";
-import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
+import { type ProjectSubsetKey, type ProjectSubsetMapping } from "../sonamu.generated";
 import { projectLoaderQueries, projectSubsetQueries } from "../sonamu.generated.sso";
 import { ProjectAgent } from "./project.agent";
-import {
-  ProjectAskStreamEvents,
-  type ProjectListParams,
-  type ProjectSaveParams,
-} from "./project.types";
+import { ProjectAskStreamEvents } from "./project.types";
+import { type ProjectListParams, type ProjectSaveParams } from "./project.types";
 
 /*
   Project Model
@@ -256,7 +254,7 @@ class ProjectModelClass extends BaseModelClass<
           const final = await result.text;
           Naite.t("project.ask.final", final);
           finalOutput = final ?? fullText;
-        } catch (_error: unknown) {
+        } catch {
           finalOutput = fullText;
         }
 

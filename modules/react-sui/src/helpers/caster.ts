@@ -1,6 +1,6 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함. */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 캐스팅에는 any가 필요함.
 import { z } from "zod";
-import type { $ZodType } from "zod/v4/core";
+import { type $ZodType } from "zod/v4/core";
 
 function isNumberType(zodType: $ZodType): zodType is z.ZodNumber {
   return zodType instanceof z.ZodNumber;

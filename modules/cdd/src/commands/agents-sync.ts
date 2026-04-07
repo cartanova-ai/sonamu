@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
+
 import chalk from "chalk";
+
 import { findWorkspaceRoot } from "../utils/workspace.js";
 
 // cdd 패키지가 단독으로 소유하는 서브디렉토리만 sync 대상으로 한다.

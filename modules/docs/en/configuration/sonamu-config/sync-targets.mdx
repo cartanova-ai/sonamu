@@ -1,6 +1,6 @@
 ---
-title: 'Sync Targets'
-description: 'Frontend type/service synchronization settings'
+title: "Sync Targets"
+description: "Frontend type/service synchronization settings"
 ---
 
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
@@ -14,7 +14,7 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   sync: {
-    targets: ["web"],  // Sync to web folder
+    targets: ["web"], // Sync to web folder
   },
   // ...
 });
@@ -29,7 +29,7 @@ Specifies the list of frontend projects to synchronize.
 ```typescript
 export default defineConfig({
   sync: {
-    targets: ["web", "app"],  // Sync to 2 projects
+    targets: ["web", "app"], // Sync to 2 projects
   },
 });
 ```
@@ -50,36 +50,36 @@ When Entities or APIs change, Sonamu automatically generates and synchronizes th
 ### Directory Structure
 
 <Card>
-<FileTree>
-  <FileItem name="project-root/">
-    <FileItem name="api/" description="Backend">
-      <FileItem name="src/">
-        <FileItem name="application/">
-          <FileItem name="user/">
-            <FileItem name="user.entity.json" />
-            <FileItem name="user.model.ts" />
+  <FileTree>
+    <FileItem name="project-root/">
+      <FileItem name="api/" description="Backend">
+        <FileItem name="src/">
+          <FileItem name="application/">
+            <FileItem name="user/">
+              <FileItem name="user.entity.json" />
+              <FileItem name="user.model.ts" />
+            </FileItem>
+          </FileItem>
+        </FileItem>
+      </FileItem>
+      <FileItem name="web/" description="First target">
+        <FileItem name="src/">
+          <FileItem name="services/">
+            <FileItem name="user.types.ts" description="Auto-generated" />
+            <FileItem name="user.service.ts" description="Auto-generated" />
+          </FileItem>
+        </FileItem>
+      </FileItem>
+      <FileItem name="app/" description="Second target">
+        <FileItem name="src/">
+          <FileItem name="services/">
+            <FileItem name="user.types.ts" description="Auto-generated" />
+            <FileItem name="user.service.ts" description="Auto-generated" />
           </FileItem>
         </FileItem>
       </FileItem>
     </FileItem>
-    <FileItem name="web/" description="First target">
-      <FileItem name="src/">
-        <FileItem name="services/">
-          <FileItem name="user.types.ts" description="Auto-generated" />
-          <FileItem name="user.service.ts" description="Auto-generated" />
-        </FileItem>
-      </FileItem>
-    </FileItem>
-    <FileItem name="app/" description="Second target">
-      <FileItem name="src/">
-        <FileItem name="services/">
-          <FileItem name="user.types.ts" description="Auto-generated" />
-          <FileItem name="user.service.ts" description="Auto-generated" />
-        </FileItem>
-      </FileItem>
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 ## Single Frontend
@@ -98,12 +98,12 @@ export default defineConfig({
 **Project structure**:
 
 <Card>
-<FileTree>
-  <FileItem name="my-project/">
-    <FileItem name="api/" description="Sonamu backend" />
-    <FileItem name="web/" description="React/Vue frontend" />
-  </FileItem>
-</FileTree>
+  <FileTree>
+    <FileItem name="my-project/">
+      <FileItem name="api/" description="Sonamu backend" />
+      <FileItem name="web/" description="React/Vue frontend" />
+    </FileItem>
+  </FileTree>
 </Card>
 
 **Sync location**: `web/src/services/`
@@ -124,21 +124,23 @@ export default defineConfig({
 **Project structure**:
 
 <Card>
-<FileTree>
-  <FileItem name="my-project/">
-    <FileItem name="api/" description="Sonamu backend" />
-    <FileItem name="web/" description="Web frontend" />
-    <FileItem name="app/" description="Mobile app" />
-  </FileItem>
-</FileTree>
+  <FileTree>
+    <FileItem name="my-project/">
+      <FileItem name="api/" description="Sonamu backend" />
+      <FileItem name="web/" description="Web frontend" />
+      <FileItem name="app/" description="Mobile app" />
+    </FileItem>
+  </FileTree>
 </Card>
 
 **Sync locations**:
+
 - `web/src/services/`
 - `app/src/services/`
 
 <Tip>
-Each frontend shares the same types and Services, so all clients are automatically updated when APIs change.
+  Each frontend shares the same types and Services, so all clients are automatically updated when
+  APIs change.
 </Tip>
 
 ## target Directory Location
@@ -146,13 +148,13 @@ Each frontend shares the same types and Services, so all clients are automatical
 By default, Sonamu looks for directories with the same name as the target in the project root.
 
 <Card>
-<FileTree>
-  <FileItem name="project-root/">
-    <FileItem name="api/" description="Where Sonamu runs" />
-    <FileItem name="web/" description='targets: ["web"]' />
-    <FileItem name="mobile-app/" description='targets: ["mobile-app"]' />
-  </FileItem>
-</FileTree>
+  <FileTree>
+    <FileItem name="project-root/">
+      <FileItem name="api/" description="Where Sonamu runs" />
+      <FileItem name="web/" description='targets: ["web"]' />
+      <FileItem name="mobile-app/" description='targets: ["mobile-app"]' />
+    </FileItem>
+  </FileTree>
 </Card>
 
 ### Custom Paths
@@ -170,19 +172,19 @@ export default defineConfig({
 **Project structure**:
 
 <Card>
-<FileTree>
-  <FileItem name="workspace/">
-    <FileItem name="backend/">
-      <FileItem name="api/" description="Sonamu run location" />
+  <FileTree>
+    <FileItem name="workspace/">
+      <FileItem name="backend/">
+        <FileItem name="api/" description="Sonamu run location" />
+      </FileItem>
+      <FileItem name="frontend/">
+        <FileItem name="web/" description="../frontend/web" />
+      </FileItem>
+      <FileItem name="mobile/">
+        <FileItem name="app/" description="../mobile/app" />
+      </FileItem>
     </FileItem>
-    <FileItem name="frontend/">
-      <FileItem name="web/" description="../frontend/web" />
-    </FileItem>
-    <FileItem name="mobile/">
-      <FileItem name="app/" description="../mobile/app" />
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 ## Verifying Sync
@@ -252,15 +254,13 @@ If there's no frontend or sync is not needed, specify an empty array:
 ```typescript
 export default defineConfig({
   sync: {
-    targets: [],  // No sync
+    targets: [], // No sync
   },
   // ...
 });
 ```
 
-<Note>
-Sync can be disabled for API-only projects (e.g., microservices).
-</Note>
+<Note>Sync can be disabled for API-only projects (e.g., microservices).</Note>
 
 ## Practical Examples
 
@@ -283,31 +283,31 @@ export default defineConfig({
 **Project structure**:
 
 <Card>
-<FileTree>
-  <FileItem name="my-app/">
-    <FileItem name="api/">
-      <FileItem name="src/">
-        <FileItem name="application/">
-          <FileItem name="user/" />
-          <FileItem name="post/" />
-          <FileItem name="comment/" />
+  <FileTree>
+    <FileItem name="my-app/">
+      <FileItem name="api/">
+        <FileItem name="src/">
+          <FileItem name="application/">
+            <FileItem name="user/" />
+            <FileItem name="post/" />
+            <FileItem name="comment/" />
+          </FileItem>
+        </FileItem>
+      </FileItem>
+      <FileItem name="web/">
+        <FileItem name="src/">
+          <FileItem name="services/" description="Sync location">
+            <FileItem name="user.types.ts" />
+            <FileItem name="user.service.ts" />
+            <FileItem name="post.types.ts" />
+            <FileItem name="post.service.ts" />
+            <FileItem name="comment.types.ts" />
+            <FileItem name="comment.service.ts" />
+          </FileItem>
         </FileItem>
       </FileItem>
     </FileItem>
-    <FileItem name="web/">
-      <FileItem name="src/">
-        <FileItem name="services/" description="Sync location">
-          <FileItem name="user.types.ts" />
-          <FileItem name="user.service.ts" />
-          <FileItem name="post.types.ts" />
-          <FileItem name="post.service.ts" />
-          <FileItem name="comment.types.ts" />
-          <FileItem name="comment.service.ts" />
-        </FileItem>
-      </FileItem>
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 ### Web + Mobile App
@@ -329,31 +329,31 @@ export default defineConfig({
 **Project structure**:
 
 <Card>
-<FileTree>
-  <FileItem name="ecommerce/">
-    <FileItem name="api/" description="Sonamu backend">
-      <FileItem name="src/application/">
-        <FileItem name="product/" />
-        <FileItem name="order/" />
-        <FileItem name="user/" />
+  <FileTree>
+    <FileItem name="ecommerce/">
+      <FileItem name="api/" description="Sonamu backend">
+        <FileItem name="src/application/">
+          <FileItem name="product/" />
+          <FileItem name="order/" />
+          <FileItem name="user/" />
+        </FileItem>
+      </FileItem>
+      <FileItem name="web/" description="React web app">
+        <FileItem name="src/services/">
+          <FileItem name="product.types.ts" />
+          <FileItem name="product.service.ts" />
+          <FileItem name="..." />
+        </FileItem>
+      </FileItem>
+      <FileItem name="mobile/" description="React Native app">
+        <FileItem name="src/services/">
+          <FileItem name="product.types.ts" />
+          <FileItem name="product.service.ts" />
+          <FileItem name="..." />
+        </FileItem>
       </FileItem>
     </FileItem>
-    <FileItem name="web/" description="React web app">
-      <FileItem name="src/services/">
-        <FileItem name="product.types.ts" />
-        <FileItem name="product.service.ts" />
-        <FileItem name="..." />
-      </FileItem>
-    </FileItem>
-    <FileItem name="mobile/" description="React Native app">
-      <FileItem name="src/services/">
-        <FileItem name="product.types.ts" />
-        <FileItem name="product.service.ts" />
-        <FileItem name="..." />
-      </FileItem>
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 ### Monorepo Structure
@@ -365,11 +365,7 @@ export default defineConfig({
   projectName: "MonorepoApp",
 
   sync: {
-    targets: [
-      "../packages/web-client",
-      "../packages/admin-panel",
-      "../packages/mobile-app",
-    ],
+    targets: ["../packages/web-client", "../packages/admin-panel", "../packages/mobile-app"],
   },
 
   // ...
@@ -379,26 +375,26 @@ export default defineConfig({
 **Project structure**:
 
 <Card>
-<FileTree>
-  <FileItem name="monorepo/">
-    <FileItem name="apps/">
-      <FileItem name="api/" description="Sonamu run location">
-        <FileItem name="sonamu.config.ts" />
+  <FileTree>
+    <FileItem name="monorepo/">
+      <FileItem name="apps/">
+        <FileItem name="api/" description="Sonamu run location">
+          <FileItem name="sonamu.config.ts" />
+        </FileItem>
+      </FileItem>
+      <FileItem name="packages/">
+        <FileItem name="web-client/" description="Customer web">
+          <FileItem name="src/services/" />
+        </FileItem>
+        <FileItem name="admin-panel/" description="Admin panel">
+          <FileItem name="src/services/" />
+        </FileItem>
+        <FileItem name="mobile-app/" description="Mobile app">
+          <FileItem name="src/services/" />
+        </FileItem>
       </FileItem>
     </FileItem>
-    <FileItem name="packages/">
-      <FileItem name="web-client/" description="Customer web">
-        <FileItem name="src/services/" />
-      </FileItem>
-      <FileItem name="admin-panel/" description="Admin panel">
-        <FileItem name="src/services/" />
-      </FileItem>
-      <FileItem name="mobile-app/" description="Mobile app">
-        <FileItem name="src/services/" />
-      </FileItem>
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 ## Sync Cautions
@@ -429,7 +425,7 @@ import { UserService } from "./user.service";
 export class UserServiceWrapper {
   static async listActiveUsers() {
     const users = await UserService.list();
-    return users.filter(u => u.status === "active");
+    return users.filter((u) => u.status === "active");
   }
 }
 ```
@@ -446,6 +442,7 @@ Commit synced files to Git.
 ```
 
 **Reasons**:
+
 - Team members can develop frontend without running backend
 - CI/CD can build frontend without Sonamu
 

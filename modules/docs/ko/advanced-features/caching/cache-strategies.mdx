@@ -134,7 +134,7 @@ async getData() {
 Grace는 TTL 만료 후에도 **오래된 캐시(Stale)를 반환**하면서 백그라운드에서 갱신하는 전략입니다.
 
 ```typescript
-@cache({ 
+@cache({
   ttl: "5m",     // 5분 후 만료
   grace: "1h"    // 만료 후 1시간 동안 Stale 값 사용
 })
@@ -215,10 +215,10 @@ sequenceDiagram
 ```typescript
 class AnalyticsModelClass extends BaseModelClass {
   // 대시보드 통계 (무거운 집계)
-  @cache({ 
-    ttl: "5m",      // 5분마다 갱신
-    grace: "2h",    // 2시간 동안 Stale 허용
-    tags: ["analytics"]
+  @cache({
+    ttl: "5m", // 5분마다 갱신
+    grace: "2h", // 2시간 동안 Stale 허용
+    tags: ["analytics"],
   })
   @api()
   async getDashboardStats() {
@@ -227,15 +227,15 @@ class AnalyticsModelClass extends BaseModelClass {
       this.countOrders(),
       this.calculateRevenue(),
     ]);
-    
+
     return { userCount, orderCount, revenue };
   }
-  
+
   // 실시간 순위 (매우 무거움)
-  @cache({ 
-    ttl: "1m",      // 1분마다 갱신
-    grace: "10m",   // 10분 동안 Stale 허용
-    tags: ["ranking"]
+  @cache({
+    ttl: "1m", // 1분마다 갱신
+    grace: "10m", // 10분 동안 Stale 허용
+    tags: ["ranking"],
   })
   @api()
   async getRealTimeRanking() {
@@ -248,17 +248,21 @@ class AnalyticsModelClass extends BaseModelClass {
 ### Grace vs 긴 TTL
 
 **Grace 전략**:
+
 ```typescript
 @cache({ ttl: "5m", grace: "1h" })
 ```
+
 - 대부분 신선한 데이터 (5분 이내)
 - 만료 시 Stale 즉시 반환 (빠름)
 - 백그라운드 갱신
 
 **긴 TTL**:
+
 ```typescript
 @cache({ ttl: "1h" })
 ```
+
 - 최대 1시간 오래된 데이터
 - 만료 시 새로 계산 (느림)
 
@@ -278,8 +282,8 @@ const adminCache = Sonamu.cache.namespace("admin");
 await userCache.set({ key: "data", value: "user data" });
 await adminCache.set({ key: "data", value: "admin data" });
 
-await userCache.get({ key: "data" });   // "user data"
-await adminCache.get({ key: "data" });  // "admin data"
+await userCache.get({ key: "data" }); // "user data"
+await adminCache.get({ key: "data" }); // "admin data"
 ```
 
 ### 사용자별 격리
@@ -289,34 +293,35 @@ class UserDataModelClass extends BaseModelClass {
   @api()
   async getMyData(ctx: Context) {
     const userId = ctx.user.id;
-    
+
     // 사용자별 namespace
     const userCache = Sonamu.cache.namespace(`user:${userId}`);
-    
+
     return userCache.getOrSet({
       key: "preferences",
       ttl: "1h",
       factory: async () => {
         return this.getUserPreferences(userId);
-      }
+      },
     });
   }
-  
+
   @api()
   async updateMyData(ctx: Context, data: any) {
     const userId = ctx.user.id;
     const result = await this.saveUserData(userId, data);
-    
+
     // 해당 사용자의 캐시만 삭제
     const userCache = Sonamu.cache.namespace(`user:${userId}`);
     await userCache.clear();
-    
+
     return result;
   }
 }
 ```
 
 **장점**:
+
 - 사용자 A의 변경이 사용자 B에 영향 없음
 - 선택적 무효화 가능
 
@@ -328,23 +333,23 @@ class TenantServiceModelClass extends BaseModelClass {
   async getData(tenantId: number) {
     // 테넌트별 namespace
     const tenantCache = Sonamu.cache.namespace(`tenant:${tenantId}`);
-    
+
     return tenantCache.getOrSet({
       key: "service-data",
       ttl: "1h",
       tags: ["service"],
       factory: async () => {
-        return this.findMany({ 
-          where: [['tenant_id', tenantId]] 
+        return this.findMany({
+          where: [["tenant_id", tenantId]],
         });
-      }
+      },
     });
   }
-  
+
   @api()
   async clearTenantCache(tenantId: number) {
     const tenantCache = Sonamu.cache.namespace(`tenant:${tenantId}`);
-    
+
     // 특정 테넌트 캐시만 삭제
     await tenantCache.clear();
   }
@@ -378,17 +383,17 @@ async getData(id: number) {
   // 1. 캐시 확인
   const cached = await Sonamu.cache.get({ key: `data:${id}` });
   if (cached) return cached;
-  
+
   // 2. DB 조회
   const data = await this.findOne(['id', id]);
-  
+
   // 3. 캐싱
-  await Sonamu.cache.set({ 
-    key: `data:${id}`, 
-    value: data, 
-    ttl: "10m" 
+  await Sonamu.cache.set({
+    key: `data:${id}`,
+    value: data,
+    ttl: "10m"
   });
-  
+
   return data;
 }
 ```
@@ -404,15 +409,15 @@ async getData(id: number) {
 async update(id: number, data: Partial<DataSave>) {
   // 1. DB 업데이트
   const result = await this.updateOne(['id', id], data);
-  
+
   // 2. 캐시 갱신
-  await Sonamu.cache.set({ 
-    key: `data:${id}`, 
-    value: result, 
+  await Sonamu.cache.set({
+    key: `data:${id}`,
+    value: result,
     ttl: "10m",
     tags: ["data"]
   });
-  
+
   return result;
 }
 ```
@@ -428,15 +433,15 @@ async update(id: number, data: Partial<DataSave>) {
 @api()
 async updateCounter(id: number) {
   const key = `counter:${id}`;
-  
+
   // 1. 캐시 증가
   let count = await Sonamu.cache.get({ key });
   count = (count ?? 0) + 1;
   await Sonamu.cache.set({ key, value: count, ttl: "10m" });
-  
+
   // 2. 비동기 DB 저장 (큐에 넣기)
   await this.queueCounterUpdate(id, count);
-  
+
   return count;
 }
 ```
@@ -449,7 +454,7 @@ async updateCounter(id: number) {
 **만료 전 미리 갱신**: TTL이 거의 끝날 때 미리 새 데이터 준비
 
 ```typescript
-@cache({ 
+@cache({
   ttl: "10m",
   grace: "1h"  // Grace가 Refresh-Ahead와 유사
 })
@@ -468,14 +473,14 @@ async getData() {
 class ProductModelClass extends BaseModelClass {
   // L1 (메모리): 짧은 TTL
   // L2 (Redis): 긴 TTL
-  @cache({ 
-    ttl: "5m",      // L1은 5분
+  @cache({
+    ttl: "5m", // L1은 5분
     // L2는 자동으로 더 길게 유지됨
-    tags: ["product"] 
+    tags: ["product"],
   })
   @api()
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 }
 ```
@@ -545,17 +550,17 @@ class DynamicCacheModelClass extends BaseModelClass {
   @api()
   async getData() {
     const hour = new Date().getHours();
-    
+
     // 피크 시간 (오전 9시~오후 6시): 짧은 TTL
-    const ttl = (hour >= 9 && hour <= 18) ? "5m" : "30m";
-    
+    const ttl = hour >= 9 && hour <= 18 ? "5m" : "30m";
+
     return Sonamu.cache.getOrSet({
       key: "dynamic-data",
       ttl,
       tags: ["data"],
       factory: async () => {
         return this.expensiveQuery();
-      }
+      },
     });
   }
 }
@@ -571,22 +576,22 @@ class DynamicCacheModelClass extends BaseModelClass {
 class CacheWarmerModelClass extends BaseModelClass {
   async warmupCache() {
     console.log("Warming up cache...");
-    
+
     // 자주 사용되는 데이터 미리 캐싱
     await Promise.all([
-      this.getCategoryTree(),  // @cache 적용됨
+      this.getCategoryTree(), // @cache 적용됨
       this.getPopularProducts(),
       this.getConfig(),
     ]);
-    
+
     console.log("Cache warmed up!");
   }
-  
+
   @cache({ ttl: "1d", tags: ["category"] })
   async getCategoryTree() {
     return this.buildTree();
   }
-  
+
   @cache({ ttl: "1h", tags: ["popular"] })
   async getPopularProducts() {
     return this.findPopular();
@@ -605,33 +610,31 @@ await cacheWarmerModel.warmupCache();
 class BatchCacheModelClass extends BaseModelClass {
   async batchCache(ids: number[]) {
     // 1. 캐시되지 않은 ID 찾기
-    const cacheKeys = ids.map(id => `item:${id}`);
-    const cached = await Promise.all(
-      cacheKeys.map(key => Sonamu.cache.get({ key }))
-    );
-    
+    const cacheKeys = ids.map((id) => `item:${id}`);
+    const cached = await Promise.all(cacheKeys.map((key) => Sonamu.cache.get({ key })));
+
     const uncachedIds = ids.filter((_, i) => !cached[i]);
-    
+
     if (uncachedIds.length === 0) {
       return cached.filter(Boolean);
     }
-    
+
     // 2. DB에서 조회
-    const items = await this.findMany({ 
-      where: [['id', 'in', uncachedIds]] 
+    const items = await this.findMany({
+      where: [["id", "in", uncachedIds]],
     });
-    
+
     // 3. 배치 캐싱
     await Promise.all(
-      items.rows.map(item =>
-        Sonamu.cache.set({ 
-          key: `item:${item.id}`, 
-          value: item, 
-          ttl: "10m" 
-        })
-      )
+      items.rows.map((item) =>
+        Sonamu.cache.set({
+          key: `item:${item.id}`,
+          value: item,
+          ttl: "10m",
+        }),
+      ),
     );
-    
+
     // 4. 결과 반환
     return [...cached.filter(Boolean), ...items.rows];
   }
@@ -647,18 +650,18 @@ class ConditionalCacheModelClass extends BaseModelClass {
   @api()
   async getData(id: number, useCache: boolean = true) {
     const cacheKey = `data:${id}`;
-    
+
     // 캐시 사용 여부 선택
     if (!useCache) {
-      return this.findOne(['id', id]);
+      return this.findOne(["id", id]);
     }
-    
+
     return Sonamu.cache.getOrSet({
       key: cacheKey,
       ttl: "10m",
       factory: async () => {
-        return this.findOne(['id', id]);
-      }
+        return this.findOne(["id", id]);
+      },
     });
   }
 }
@@ -670,60 +673,65 @@ class ConditionalCacheModelClass extends BaseModelClass {
 **캐시 전략 선택 시 주의사항**:
 
 1. **TTL이 너무 길면**: 오래된 데이터 제공
+
    ```typescript
    // ❌ 자주 변경되는데 TTL이 너무 김
-   @cache({ ttl: "1d" })  
+   @cache({ ttl: "1d" })
    async getLiveStock() { ... }
-   
+
    // ✅ 적절한 TTL
    @cache({ ttl: "1m" })
    async getLiveStock() { ... }
    ```
 
 2. **TTL이 너무 짧으면**: 캐시 효과 감소
+
    ```typescript
    // ❌ 거의 변경 안 되는데 TTL이 너무 짧음
    @cache({ ttl: "10s" })
    async getConfig() { ... }
-   
+
    // ✅ 적절한 TTL
    @cache({ ttl: "1d", tags: ["config"] })
    async getConfig() { ... }
    ```
 
 3. **Grace 오남용**: 빠른 쿼리에 Grace 불필요
+
    ```typescript
    // ❌ 불필요한 Grace
    @cache({ ttl: "5m", grace: "1h" })
    async getUser(id: number) {
      return this.findOne(['id', id]);  // 빠른 조회
    }
-   
+
    // ✅ Grace 없이 충분
    @cache({ ttl: "5m" })
    async getUser(id: number) { ... }
    ```
 
 4. **Namespace 남용**: 너무 많은 namespace는 관리 어려움
+
    ```typescript
    // ❌ 과도한 namespace
    const cache1 = Sonamu.cache.namespace("a:b:c:d:e");
-   
+
    // ✅ 적절한 namespace
    const userCache = Sonamu.cache.namespace(`user:${userId}`);
    ```
-</Warning>
+
+   </Warning>
 
 ## 전략 요약표
 
-| 데이터 유형 | TTL | Grace | Tags | 무효화 |
-|------------|-----|-------|------|--------|
-| 정적 설정 | `forever` | ❌ | `["config"]` | 수동 |
-| 사용자 프로필 | `1h` | ❌ | `["user"]` | 변경 시 |
-| 상품 정보 | `30m` | `1h` | `["product"]` | 변경 시 |
-| 게시글 목록 | `5m` | `30m` | `["post", "list"]` | 생성/수정 시 |
-| 실시간 통계 | `1m` | `10m` | `["stats"]` | TTL 의존 |
-| 집계 대시보드 | `10m` | `2h` | `["dashboard"]` | TTL 의존 |
+| 데이터 유형   | TTL       | Grace | Tags               | 무효화       |
+| ------------- | --------- | ----- | ------------------ | ------------ |
+| 정적 설정     | `forever` | ❌    | `["config"]`       | 수동         |
+| 사용자 프로필 | `1h`      | ❌    | `["user"]`         | 변경 시      |
+| 상품 정보     | `30m`     | `1h`  | `["product"]`      | 변경 시      |
+| 게시글 목록   | `5m`      | `30m` | `["post", "list"]` | 생성/수정 시 |
+| 실시간 통계   | `1m`      | `10m` | `["stats"]`        | TTL 의존     |
+| 집계 대시보드 | `10m`     | `2h`  | `["dashboard"]`    | TTL 의존     |
 
 ## 다음 단계
 

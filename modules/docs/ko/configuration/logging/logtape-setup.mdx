@@ -1,6 +1,6 @@
 ---
-title: 'LogTape 설정'
-description: 'sonamu.config.ts의 logging 옵션'
+title: "LogTape 설정"
+description: "sonamu.config.ts의 logging 옵션"
 ---
 
 Sonamu는 [LogTape](https://github.com/dahlia/logtape)를 사용하여 구조화된 로깅을 제공합니다. `sonamu.config.ts`의 `logging` 옵션으로 로깅 동작을 설정할 수 있습니다.
@@ -12,12 +12,14 @@ LogTape는 TypeScript를 위한 구조화된 로깅 라이브러리입니다. �
 ### 일반 로깅 vs 구조화된 로깅
 
 **일반 로깅 (문자열):**
+
 ```typescript
 console.log("User login failed: email=user@example.com, reason=invalid_password");
 // → 분석하려면 문자열 파싱 필요
 ```
 
 **구조화된 로깅 (LogTape):**
+
 ```typescript
 logger.error("User login failed", {
   email: "user@example.com",
@@ -48,6 +50,7 @@ logger.error("User login failed", {
 ```
 
 **한 로그를 여러 Sink에 동시에 기록할 수 있습니다:**
+
 - 콘솔: 실시간 모니터링
 - 파일: 영구 보관
 - Sentry: 에러 알림
@@ -87,7 +90,7 @@ flowchart TD
     B -->|"❌ 매칭 안 됨"| E["🚫 무시"]
     C -->|"✅ 충족"| D["💾 Sink<br/>최종 출력<br/>(콘솔/파일/Sentry)"]
     C -->|"❌ 충족 안 됨"| E
-    
+
     style A fill:#e1f5ff
     style B fill:#fff3e0
     style C fill:#fff3e0
@@ -96,6 +99,7 @@ flowchart TD
 ```
 
 **예시:**
+
 ```typescript
 // 1. Fastify가 로그 발생
 logger.info("Request completed", { url: "/api/user" });
@@ -112,52 +116,62 @@ logger.info("Request completed", { url: "/api/user" });
 ### 각 레벨의 의미와 사용 시기
 
 **1. debug**
+
 - **의미**: 상세한 디버깅 정보
 - **사용 시기**: 개발 중 문제 추적
 - **예시**: 함수 호출 순서, 변수 값
+
 ```typescript
 logger.debug("Processing order", { orderId, items });
 ```
 
 **2. info (기본값)**
+
 - **의미**: 일반적인 운영 정보
 - **사용 시기**: 정상 동작 확인
 - **예시**: HTTP 요청/응답, 작업 완료
+
 ```typescript
 logger.info("User logged in", { userId });
 ```
 
 **3. warning**
+
 - **의미**: 문제 가능성 경고
 - **사용 시기**: 에러는 아니지만 주의 필요
 - **예시**: 느린 응답, 재시도 발생
+
 ```typescript
 logger.warn("Slow query detected", { duration: 5000 });
 ```
 
 **4. error**
+
 - **의미**: 처리 가능한 에러
 - **사용 시기**: 예외 처리, 복구 가능한 실패
 - **예시**: 유효성 검증 실패, API 호출 실패
+
 ```typescript
 logger.error("Payment failed", { error: "card_declined" });
 ```
 
 **5. fatal**
+
 - **의미**: 치명적 오류 (서버 중단 수준)
 - **사용 시기**: 복구 불가능한 심각한 문제
 - **예시**: DB 연결 실패, 메모리 부족
+
 ```typescript
 logger.fatal("Database connection lost", { error });
 ```
 
 ### 환경별 레벨 권장사항
 
-| 환경 | 최소 레벨 | 이유 |
-|------|----------|------|
-| 개발 | `debug` | 모든 정보 필요 |
-| 스테이징 | `info` | 운영 정보 확인 |
-| 프로덕션 | `warning` | 성능 고려 |
+| 환경     | 최소 레벨 | 이유           |
+| -------- | --------- | -------------- |
+| 개발     | `debug`   | 모든 정보 필요 |
+| 스테이징 | `info`    | 운영 정보 확인 |
+| 프로덕션 | `warning` | 성능 고려      |
 
 **레벨 계층 구조:**
 
@@ -167,7 +181,7 @@ graph LR
     B --> C["⚠️ warning<br/>주의 필요"]
     C --> D["❌ error<br/>에러 발생"]
     D --> E["💀 fatal<br/>치명적"]
-    
+
     style A fill:#e3f2fd
     style B fill:#e8f5e9
     style C fill:#fff3e0
@@ -176,7 +190,8 @@ graph LR
 ```
 
 <Info>
-낮은 레벨을 설정하면 그보다 높은 모든 레벨의 로그가 출력됩니다. 예: `lowestLevel: "warning"`으로 설정하면 warning, error, fatal이 모두 출력됩니다.
+  낮은 레벨을 설정하면 그보다 높은 모든 레벨의 로그가 출력됩니다. 예: `lowestLevel: "warning"`으로
+  설정하면 warning, error, fatal이 모두 출력됩니다.
 </Info>
 
 ## 왜 이렇게 설계되었나?
@@ -184,6 +199,7 @@ graph LR
 ### 1. 기본값이 안전함
 
 Sonamu의 기본 설정:
+
 ```typescript
 {
   category: ["fastify"],
@@ -194,6 +210,7 @@ Sonamu의 기본 설정:
 ```
 
 **이유:**
+
 - ✅ `/api` 경로만 로깅 → 불필요한 정적 파일 요청 제외
 - ✅ `info` 레벨 → 너무 많지도 적지도 않게
 - ✅ healthcheck 제외 → 모니터링 시스템이 생성하는 반복 요청 제외
@@ -247,6 +264,7 @@ export default defineConfig({
 ```
 
 **기본 동작:**
+
 - Fastify 요청/응답을 콘솔에 로깅
 - `/api/*` 경로만 로깅 (healthcheck 제외)
 - 예쁜 형식으로 출력 (타임스탬프, 카테고리, 레벨)
@@ -266,8 +284,8 @@ type SonamuLoggingOptions<TSinkId extends string, TFilterId extends string> = {
 
 ```typescript
 export default defineConfig({
-  logging: false,  // 모든 로깅 비활성화
-  
+  logging: false, // 모든 로깅 비활성화
+
   server: {
     // ...
   },
@@ -285,9 +303,9 @@ Fastify HTTP 로깅에 사용할 카테고리를 지정합니다.
 ```typescript
 export default defineConfig({
   logging: {
-    fastifyCategory: ["myapp", "http"],  // 커스텀 카테고리
+    fastifyCategory: ["myapp", "http"], // 커스텀 카테고리
   },
-  
+
   server: {
     // ...
   },
@@ -297,6 +315,7 @@ export default defineConfig({
 **카테고리 형식**: `["a", "b", "c"]` 배열로 계층 구조 표현
 
 **로그 출력 예시:**
+
 ```
 [2025-01-09 12:34:56] [myapp.http] INFO: [GET:200] /api/user/list - Request completed
 ```
@@ -318,7 +337,7 @@ export default defineConfig({
       file: getFileSink("logs/app.log"),
     },
   },
-  
+
   server: {
     // ...
   },
@@ -326,7 +345,8 @@ export default defineConfig({
 ```
 
 <Warning>
-`"fastify-console"` 이름은 Sonamu가 자동으로 생성하는 기본 sink입니다. 이 이름으로 추가하면 기본 sink를 덮어씁니다.
+  `"fastify-console"` 이름은 Sonamu가 자동으로 생성하는 기본 sink입니다. 이 이름으로 추가하면 기본
+  sink를 덮어씁니다.
 </Warning>
 
 ## filters
@@ -345,7 +365,7 @@ export default defineConfig({
       "errors-only": (record: LogRecord) => record.level >= "error",
     },
   },
-  
+
   server: {
     // ...
   },
@@ -353,7 +373,8 @@ export default defineConfig({
 ```
 
 <Warning>
-`"fastify-console"` 이름은 Sonamu가 자동으로 생성하는 기본 filter입니다. 이 이름으로 추가하면 기본 filter를 덮어씁니다.
+  `"fastify-console"` 이름은 Sonamu가 자동으로 생성하는 기본 filter입니다. 이 이름으로 추가하면 기본
+  filter를 덮어씁니다.
 </Warning>
 
 ## loggers
@@ -371,7 +392,7 @@ export default defineConfig({
     sinks: {
       console: getConsoleSink(),
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -380,7 +401,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -388,7 +409,8 @@ export default defineConfig({
 ```
 
 <Note>
-`fastifyCategory`에 설정된 카테고리의 logger 설정이 있으면, Sonamu는 기본 logger를 추가하지 않습니다.
+  `fastifyCategory`에 설정된 카테고리의 logger 설정이 있으면, Sonamu는 기본 logger를 추가하지
+  않습니다.
 </Note>
 
 ## 기본 예시
@@ -412,7 +434,7 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   logging: false,
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -428,7 +450,7 @@ export default defineConfig({
   logging: {
     fastifyCategory: ["app", "server", "http"],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -454,6 +476,7 @@ Sonamu는 다음과 같이 자동으로 로깅을 설정합니다:
 ```
 
 **특징:**
+
 - HTTP 메서드와 응답 코드 표시: `[GET:200]`
 - 요청 URL 표시: `/api/user/list`
 - 색상으로 레벨 구분
@@ -464,9 +487,8 @@ Sonamu는 다음과 같이 자동으로 로깅을 설정합니다:
 // 자동 생성되는 "fastify-console" filter
 (record) => {
   // /api로 시작하는 경로만, healthcheck 제외
-  return request.url.startsWith("/api") && 
-         request.url !== "/api/healthcheck";
-}
+  return request.url.startsWith("/api") && request.url !== "/api/healthcheck";
+};
 ```
 
 ### 3. Logger 자동 생성
@@ -520,7 +542,7 @@ LogTape의 로그 레벨 (낮은 순서):
           },
         ],
       },
-      
+
       server: {
         listen: { port: 34900 },
       },
@@ -531,6 +553,7 @@ LogTape의 로그 레벨 (낮은 순서):
     - `debug` 레벨로 모든 상세 정보 확인
     - 콘솔 출력으로 실시간 확인
     - 빠른 피드백 루프
+
   </Tab>
 
   <Tab title="스테이징" icon="flask">
@@ -544,7 +567,7 @@ LogTape의 로그 레벨 (낮은 순서):
           console: getConsoleSink(),
           file: getFileSink("logs/app.log"),
         },
-        
+
         loggers: [
           {
             category: ["fastify"],
@@ -553,7 +576,7 @@ LogTape의 로그 레벨 (낮은 순서):
           },
         ],
       },
-      
+
       server: {
         listen: { port: 34900 },
       },
@@ -564,6 +587,7 @@ LogTape의 로그 레벨 (낮은 순서):
     - `info` 레벨로 운영 정보 수집
     - 콘솔 + 파일로 이중 기록
     - 프로덕션 환경 테스트
+
   </Tab>
 
   <Tab title="프로덕션" icon="server">
@@ -577,11 +601,11 @@ LogTape의 로그 레벨 (낮은 순서):
           console: getConsoleSink(),
           errorLog: getFileSink("logs/errors.log"),
         },
-        
+
         filters: {
           "errors": (record) => record.level >= "error",
         },
-        
+
         loggers: [
           // 콘솔: warning 이상만
           {
@@ -598,7 +622,7 @@ LogTape의 로그 레벨 (낮은 순서):
           },
         ],
       },
-      
+
       server: {
         listen: { port: 34900 },
       },
@@ -609,6 +633,7 @@ LogTape의 로그 레벨 (낮은 순서):
     - `warning` 레벨로 문제만 확인
     - 에러는 별도 파일 저장
     - 성능 영향 최소화
+
   </Tab>
 </Tabs>
 
@@ -625,11 +650,11 @@ export default defineConfig({
       file: getFileSink("logs/app.log"),
       errorFile: getFileSink("logs/errors.log"),
     },
-    
+
     filters: {
       "errors-only": (record) => record.level >= "error",
     },
-    
+
     loggers: [
       // 콘솔: 모든 로그
       {
@@ -652,7 +677,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -671,11 +696,11 @@ export default defineConfig({
       console: getConsoleSink(),
       errorLog: getFileSink("logs/errors.log"),
     },
-    
+
     filters: {
-      "errors": (record) => record.level >= "error",
+      errors: (record) => record.level >= "error",
     },
-    
+
     loggers: [
       // 콘솔: warning 이상만
       {
@@ -692,7 +717,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -715,6 +740,7 @@ const server = fastify({
 ```
 
 **자동으로 로깅되는 정보:**
+
 - HTTP 요청 (method, URL)
 - 응답 코드
 - 응답 시간
@@ -764,44 +790,28 @@ server: {
 
 ```typescript
 // ✅ 좋은 예: 일관된 카테고리
-fastifyCategory: ["app", "http"]
+fastifyCategory: ["app", "http"];
 
 // ❌ 나쁜 예: 의미 없는 카테고리
-fastifyCategory: ["a", "b", "c"]
+fastifyCategory: ["a", "b", "c"];
 ```
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="Sinks & Filters" 
-    icon="filter" 
-    href="/ko/configuration/logging/sinks-and-filters"
-  >
+  <Card title="Sinks & Filters" icon="filter" href="/ko/configuration/logging/sinks-and-filters">
     커스텀 Sink와 Filter로 로그 출력을 세밀하게 제어하세요
   </Card>
-  
-  <Card 
-    title="카테고리 로깅" 
-    icon="folder-tree" 
-    href="/ko/configuration/logging/category-logging"
-  >
-    카테고리 시스템으로 로그를 체계적으로 관리하세요
-  </Card>
-  
-  <Card 
-    title="Fastify 로깅" 
-    icon="bolt" 
-    href="/ko/configuration/logging/fastify-logging"
-  >
-    HTTP 요청/응답 로깅을 커스터마이징하세요
-  </Card>
-  
-  <Card 
-    title="LogTape 문서" 
-    icon="book-open" 
-    href="https://github.com/dahlia/logtape"
-  >
+
+<Card title="카테고리 로깅" icon="folder-tree" href="/ko/configuration/logging/category-logging">
+  카테고리 시스템으로 로그를 체계적으로 관리하세요
+</Card>
+
+<Card title="Fastify 로깅" icon="bolt" href="/ko/configuration/logging/fastify-logging">
+  HTTP 요청/응답 로깅을 커스터마이징하세요
+</Card>
+
+  <Card title="LogTape 문서" icon="book-open" href="https://github.com/dahlia/logtape">
     LogTape 공식 문서에서 고급 기능을 알아보세요
   </Card>
 </CardGroup>

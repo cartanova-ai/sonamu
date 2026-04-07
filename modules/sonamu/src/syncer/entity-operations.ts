@@ -1,10 +1,12 @@
-import chalk from "chalk";
 import { rm } from "fs/promises";
+
+import chalk from "chalk";
+
 import { Sonamu } from "../api/sonamu";
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { BadRequestException } from "../exceptions/so-exceptions";
-import type { TemplateOptions } from "../types/types";
+import { type TemplateOptions } from "../types/types";
 import { isTest } from "../utils/controller";
 import { exists } from "../utils/fs-utils";
 import { generateTemplate } from "./code-generator";
@@ -50,7 +52,7 @@ export async function delEntity(entityId: string): Promise<{ delPaths: string[] 
     }
   })(); // iife
 
-  for await (const delPath of delPaths) {
+  for (const delPath of delPaths) {
     if (await exists(delPath)) {
       !isTest() && console.log(chalk.red(`DELETE ${delPath}`));
       await rm(delPath, { recursive: true, force: true });

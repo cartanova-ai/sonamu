@@ -1,7 +1,9 @@
 import path from "node:path";
+
 import chalk from "chalk";
-import type { CddProject } from "../core/types.js";
-import type { OutputResult } from "../utils/output.js";
+
+import { type CddProject } from "../core/types.js";
+import { type OutputResult } from "../utils/output.js";
 
 interface RulesFileResult {
   path: string;

@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: caster 함수에는 any가 필요함 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // caster 함수에는 any가 필요함
 import { z } from "zod";
 
 // optional, nullable 무관하게 ZodNumber 체크

@@ -2,8 +2,7 @@
  * @generated
  * 직접 수정하지 마세요.
  */
-/** biome-ignore-all lint: generated는 무시 */
-/** biome-ignore-all assist: generated는 무시 */
+/* oxlint-disable */
 
 import type { SSRQuery } from "sonamu/ssr";
 
@@ -27,17 +26,17 @@ import { FileListParams } from "./file/file.types";
 import { MilestoneListParams } from "./milestone/milestone.types";
 import { ProjectListParams } from "./project/project.types";
 import {
-  AuditLogSubsetKey,
-  CompanySubsetKey,
-  DepartmentSubsetKey,
-  DocumentSubsetKey,
-  EmployeeSubsetKey,
-  FileSubsetKey,
-  MilestoneSubsetKey,
-  ProjectSubsetKey,
-  SyncFixtureSubsetKey,
-  TagSubsetKey,
   UserSubsetKey,
+  TagSubsetKey,
+  SyncFixtureSubsetKey,
+  ProjectSubsetKey,
+  MilestoneSubsetKey,
+  FileSubsetKey,
+  EmployeeSubsetKey,
+  DocumentSubsetKey,
+  DepartmentSubsetKey,
+  CompanySubsetKey,
+  AuditLogSubsetKey,
 } from "./sonamu.generated";
 import { SyncFixtureListParams } from "./sync-fixture/sync-fixture.types";
 import { TagListParams } from "./tag/tag.types";

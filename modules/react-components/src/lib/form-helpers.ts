@@ -1,11 +1,13 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 파싱 결과이므로 any 허용
 
 import { get, set } from "radashi";
 import { useState } from "react";
 import { z } from "zod";
-import type { SonamuFile } from "@/contexts";
+
+import { type SonamuFile } from "@/contexts";
 import { useSonamuBaseContext } from "@/contexts";
-import type { ErrorObj } from "./types";
+
+import { type ErrorObj } from "./types";
 
 /**
  * FormRegisterReturn
@@ -43,7 +45,7 @@ async function traverseAndUploadFiles(
   if (Array.isArray(value)) {
     // 2-1. 배열의 모든 요소가 File이면 일괄 업로드 (성능 최적화)
     if (value.length > 0 && value.every((item) => item instanceof File)) {
-      return await uploader(value as File[]);
+      return await uploader(value);
     }
     // 2-2. 배열에 File이 아닌 요소가 섞여 있으면 각 요소를 재귀적으로 처리
     return await Promise.all(value.map((item) => traverseAndUploadFiles(item, uploader)));
@@ -72,7 +74,7 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
   defaultValue: U,
 ) {
   const [form, setForm] = useState<z.infer<T>>(defaultValue);
-  const [errorObjs, setErrorObjs] = useState<Map<string, ErrorObj>>(new Map());
+  const [errorObjs, setErrorObjs] = useState(new Map());
   const { uploader } = useSonamuBaseContext();
 
   function getEmptyStringTo(zType: T, objPath: string): "normal" | "nullable" | "optional" {

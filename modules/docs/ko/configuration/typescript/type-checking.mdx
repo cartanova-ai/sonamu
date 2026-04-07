@@ -1,6 +1,6 @@
 ---
-title: '타입 체크'
-description: '컴파일러 옵션 설정하기'
+title: "타입 체크"
+description: "컴파일러 옵션 설정하기"
 ---
 
 TypeScript의 타입 체크 옵션은 코드의 안정성을 결정합니다. Sonamu는 **strict 모드를 기본으로 활성화**하여 최대한의 타입 안정성을 제공합니다.
@@ -12,21 +12,19 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
 ```json
 {
   "compilerOptions": {
-    "strict": true,                          // 모든 strict 옵션 활성화
-    "noImplicitAny": true,                   // any 타입 명시 필요
-    "strictNullChecks": true,                // null/undefined 엄격 체크
-    "strictFunctionTypes": true,             // 함수 타입 엄격 체크
-    "strictBindCallApply": true,             // bind/call/apply 엄격 체크
-    "strictPropertyInitialization": true,    // 클래스 프로퍼티 초기화 필요
-    "noImplicitThis": true,                  // this 타입 명시 필요
-    "alwaysStrict": true                     // 'use strict' 자동 추가
+    "strict": true, // 모든 strict 옵션 활성화
+    "noImplicitAny": true, // any 타입 명시 필요
+    "strictNullChecks": true, // null/undefined 엄격 체크
+    "strictFunctionTypes": true, // 함수 타입 엄격 체크
+    "strictBindCallApply": true, // bind/call/apply 엄격 체크
+    "strictPropertyInitialization": true, // 클래스 프로퍼티 초기화 필요
+    "noImplicitThis": true, // this 타입 명시 필요
+    "alwaysStrict": true // 'use strict' 자동 추가
   }
 }
 ```
 
-<Info>
-`strict: true`는 위의 모든 옵션을 한 번에 활성화하는 단축 설정입니다.
-</Info>
+<Info>`strict: true`는 위의 모든 옵션을 한 번에 활성화하는 단축 설정입니다.</Info>
 
 ## Strict 옵션 상세
 
@@ -60,6 +58,7 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
     <Tip>
     타입을 명시하기 어려운 경우 `unknown`을 사용하세요. `any`보다 안전합니다.
     </Tip>
+
   </Tab>
 
   <Tab title="strictNullChecks" icon="ban">
@@ -121,16 +120,17 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
       ): Promise<UserSubsetMapping[typeof subset] | null> {
         const rdb = this.getPuri("r");
         const user = await rdb.table("users").where("id", id).first();
-        
+
         // strictNullChecks가 null 체크를 강제함
         if (!user) {
           return null;
         }
-        
+
         return user;
       }
     }
     ```
+
   </Tab>
 
   <Tab title="strictFunctionTypes" icon="function">
@@ -165,6 +165,7 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
     <Info>
     이 옵션은 함수의 타입 안정성을 크게 향상시키지만, 일부 라이브러리와 호환성 문제가 있을 수 있습니다.
     </Info>
+
   </Tab>
 
   <Tab title="strictBindCallApply" icon="link">
@@ -194,6 +195,7 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
     // ✅ 올바른 인자 수
     greet.apply(null, ["Alice", 30]);
     ```
+
   </Tab>
 
   <Tab title="strictPropertyInitialization" icon="check-circle">
@@ -246,7 +248,7 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
     class UserModelClass extends BaseModelClass {
       // 생성자에서 초기화되므로 !
       private readonly tableName!: string;
-      
+
       constructor() {
         super();
         this.tableName = "users";
@@ -260,6 +262,7 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
       }
     }
     ```
+
   </Tab>
 
   <Tab title="noImplicitThis" icon="cursor-arrow-rays">
@@ -296,6 +299,7 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -352,6 +356,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     <Tip>
     사용하지 않는 파라미터는 `_`로 시작하면 경고가 발생하지 않습니다.
     </Tip>
+
   </Tab>
 
   <Tab title="Return 체크" icon="arrow-uturn-left">
@@ -396,6 +401,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
       throw new Error(`Unknown status code: ${code}`);
     }
     ```
+
   </Tab>
 
   <Tab title="Switch 체크" icon="list-bullet">
@@ -440,6 +446,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Catch 변수" icon="exclamation-triangle">
@@ -477,6 +484,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     <Tip>
     `any` 대신 `unknown`을 사용하면 타입 체크를 강제할 수 있습니다.
     </Tip>
+
   </Tab>
 
   <Tab title="인덱스 접근" icon="hashtag">
@@ -523,6 +531,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     <Warning>
     이 옵션은 모든 배열/객체 접근을 `T | undefined`로 만듭니다. 많은 코드 수정이 필요할 수 있습니다.
     </Warning>
+
   </Tab>
 </Tabs>
 
@@ -543,50 +552,54 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
 <Accordion title="noPropertyAccessFromIndexSignature" icon="key">
   **인덱스 시그니처는 대괄호로만 접근**
 
-  ```typescript
-  interface Options {
-    [key: string]: string;
-  }
+```typescript
+interface Options {
+  [key: string]: string;
+}
 
-  const options: Options = { color: "red" };
+const options: Options = { color: "red" };
 
-  // ❌ 에러 발생
-  const color = options.color;
+// ❌ 에러 발생
+const color = options.color;
 
-  // ✅ 대괄호 사용
-  const color = options["color"];
-  ```
+// ✅ 대괄호 사용
+const color = options["color"];
+```
 
-  **언제 사용:**
-  - 동적 프로퍼티 접근을 명시적으로 만들고 싶을 때
-</Accordion>
+**언제 사용:**
+
+- 동적 프로퍼티 접근을 명시적으로 만들고 싶을 때
+  </Accordion>
 
 <Accordion title="exactOptionalPropertyTypes" icon="question-circle">
   **Optional 프로퍼티는 undefined만 허용**
 
-  ```typescript
-  interface User {
-    name?: string;
-  }
+```typescript
+interface User {
+  name?: string;
+}
 
-  // ❌ 에러 발생
-  const user: User = { name: undefined };
+// ❌ 에러 발생
+const user: User = { name: undefined };
 
-  // ✅ 프로퍼티 생략
-  const user: User = {};
+// ✅ 프로퍼티 생략
+const user: User = {};
 
-  // ✅ 명시적 undefined 허용하려면
-  interface User {
-    name: string | undefined;
-  }
-  ```
+// ✅ 명시적 undefined 허용하려면
+interface User {
+  name: string | undefined;
+}
+```
 
-  **언제 사용:**
-  - Optional과 `| undefined`를 엄격히 구분하고 싶을 때
+**언제 사용:**
 
-  <Warning>
+- Optional과 `| undefined`를 엄격히 구분하고 싶을 때
+
+      <Warning>
+
   많은 라이브러리와 호환성 문제가 있을 수 있습니다.
-  </Warning>
+
+    </Warning>
 </Accordion>
 
 ## 타입 체크 비활성화
@@ -602,6 +615,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     const value = "hello";
     value = 123;  // 에러 발생 안 함
     ```
+
   </Tab>
 
   <Tab title="한 줄" icon="minus">
@@ -617,6 +631,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     <Tip>
     `@ts-ignore` 대신 `@ts-expect-error`를 사용하면 에러가 실제로 발생하지 않을 때 경고를 받을 수 있습니다.
     </Tip>
+
   </Tab>
 
   <Tab title="타입 단언" icon="exclamation">
@@ -634,6 +649,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     <Danger>
     타입 단언은 타입 안정성을 깨뜨립니다. 정말 확실한 경우에만 사용하세요.
     </Danger>
+
   </Tab>
 </Tabs>
 
@@ -657,6 +673,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     ```
 
     신규 프로젝트는 **모든 옵션을 활성화**하세요.
+
   </Tab>
 
   <Tab title="기존 프로젝트" icon="arrow-path">
@@ -678,6 +695,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     2. `noUnusedLocals`, `noUnusedParameters`
     3. `noImplicitReturns`
     4. `noUncheckedIndexedAccess` (많은 수정 필요)
+
   </Tab>
 
   <Tab title="라이브러리" icon="cube">
@@ -694,6 +712,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     ```
 
     라이브러리는 **타입 정의 생성**도 필수입니다.
+
   </Tab>
 </Tabs>
 
@@ -712,48 +731,34 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
   }
   ```
 
-  **skipLibCheck**
-  - `node_modules`의 `.d.ts` 파일을 체크하지 않음
-  - 컴파일 시간 크게 단축
-  - Sonamu 기본 활성화
+**skipLibCheck**
 
-  **incremental**
-  - 변경된 파일만 재컴파일
-  - `.tsbuildinfo` 파일에 캐시 저장
-</Accordion>
+- `node_modules`의 `.d.ts` 파일을 체크하지 않음
+- 컴파일 시간 크게 단축
+- Sonamu 기본 활성화
+
+**incremental**
+
+- 변경된 파일만 재컴파일
+- `.tsbuildinfo` 파일에 캐시 저장
+  </Accordion>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="tsconfig.json" 
-    icon="file-code" 
-    href="/ko/configuration/typescript/tsconfig"
-  >
+  <Card title="tsconfig.json" icon="file-code" href="/ko/configuration/typescript/tsconfig">
     전체 TypeScript 설정을 확인하세요
   </Card>
-  
-  <Card 
-    title="Path Mapping" 
-    icon="route" 
-    href="/ko/configuration/typescript/path-mappings"
-  >
-    절대 경로 import를 설정하세요
-  </Card>
-  
-  <Card 
-    title="Entity 정의" 
-    icon="database" 
-    href="/ko/core-concepts/entity/defining-entities"
-  >
-    타입 안전한 Entity를 작성하세요
-  </Card>
-  
-  <Card 
-    title="테스트 작성" 
-    icon="flask" 
-    href="/ko/testing/writing-tests/basic-testing"
-  >
+
+<Card title="Path Mapping" icon="route" href="/ko/configuration/typescript/path-mappings">
+  절대 경로 import를 설정하세요
+</Card>
+
+<Card title="Entity 정의" icon="database" href="/ko/core-concepts/entity/defining-entities">
+  타입 안전한 Entity를 작성하세요
+</Card>
+
+  <Card title="테스트 작성" icon="flask" href="/ko/testing/writing-tests/basic-testing">
     타입 안전한 테스트를 작성하세요
   </Card>
 </CardGroup>

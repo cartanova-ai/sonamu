@@ -1,6 +1,6 @@
 ---
-title: '@upload'
-description: '파일 업로드 API 생성 데코레이터'
+title: "@upload"
+description: "파일 업로드 API 생성 데코레이터"
 ---
 
 `@upload` 데코레이터는 파일 업로드를 처리하는 API를 생성합니다. Multipart form-data 요청을 자동으로 파싱하고, 파일 객체를 제공합니다. `@api` 데코레이터 없이도 독립적으로 사용할 수 있으며, 자동으로 `POST` 메서드와 multipart 클라이언트(`axios-multipart`, `tanstack-mutation-multipart`)를 설정합니다.
@@ -9,10 +9,10 @@ description: '파일 업로드 API 생성 데코레이터'
 
 Sonamu는 두 가지 파일 업로드 모드를 제공합니다:
 
-| 모드 | 옵션 | Context 속성 | 파일 타입 | 특징 |
-|------|------|--------------|----------|------|
+| 모드              | 옵션                          | Context 속성    | 파일 타입        | 특징                                                    |
+| ----------------- | ----------------------------- | --------------- | ---------------- | ------------------------------------------------------- |
 | **Buffer** (기본) | `consume: "buffer"` 또는 생략 | `bufferedFiles` | `BufferedFile[]` | 메모리에 로드, MD5 계산/이미지 처리 등 유연한 작업 가능 |
-| **Stream** | `consume: "stream"` | `uploadedFiles` | `UploadedFile[]` | 즉시 저장소로 스트리밍, 대용량 파일에 적합 |
+| **Stream**        | `consume: "stream"`           | `uploadedFiles` | `UploadedFile[]` | 즉시 저장소로 스트리밍, 대용량 파일에 적합              |
 
 ## Buffer 모드 (기본)
 
@@ -22,7 +22,7 @@ Buffer 모드는 파일을 메모리에 로드한 후 처리합니다. MD5 해�
 import { BaseModelClass, upload, Sonamu } from "sonamu";
 
 class FileModelClass extends BaseModelClass {
-  @upload()  // 기본값: consume: "buffer"
+  @upload() // 기본값: consume: "buffer"
   async uploadAvatar() {
     const { bufferedFiles } = Sonamu.getContext();
     const file = bufferedFiles?.[0];
@@ -77,9 +77,7 @@ class BufferedFile {
 }
 ```
 
-<Warning>
-`saveToDisk`의 파라미터 순서는 `(diskName, key)` 입니다.
-</Warning>
+<Warning>`saveToDisk`의 파라미터 순서는 `(diskName, key)` 입니다.</Warning>
 
 ## Stream 모드
 
@@ -179,25 +177,25 @@ async uploadAvatar() {
 ```typescript
 type UploadDecoratorOptions = {
   // 공통 옵션
-  guards?: GuardKey[];    // 적용할 가드 (예: ["user", "admin"])
-  description?: string;   // API 설명
+  guards?: GuardKey[]; // 적용할 가드 (예: ["user", "admin"])
+  description?: string; // API 설명
   limits?: {
-    fileSize?: number;    // 최대 파일 크기 (bytes)
-    files?: number;       // 최대 파일 개수
-    fields?: number;      // 최대 필드 개수
-    fieldSize?: number;   // 최대 필드 크기
-    parts?: number;       // 최대 파트 개수
+    fileSize?: number; // 최대 파일 크기 (bytes)
+    files?: number; // 최대 파일 개수
+    fields?: number; // 최대 필드 개수
+    fieldSize?: number; // 최대 필드 크기
+    parts?: number; // 최대 파트 개수
   };
-} & (
+} &
   // Buffer 모드
-  | { consume?: "buffer" }
-  // Stream 모드
-  | {
-      consume: "stream";
-      destination: DriverKey;
-      keyGenerator?: (file: { filename: string; mimetype: string }) => string;
-    }
-);
+  (| { consume?: "buffer" }
+    // Stream 모드
+    | {
+        consume: "stream";
+        destination: DriverKey;
+        keyGenerator?: (file: { filename: string; mimetype: string }) => string;
+      }
+  );
 ```
 
 ```typescript
@@ -233,6 +231,7 @@ async uploadWithLimits() {
       };
     }
     ```
+
   </Tab>
 
   <Tab title="다중 파일 (Buffer)" icon="files">
@@ -259,6 +258,7 @@ async uploadWithLimits() {
       return results;
     }
     ```
+
   </Tab>
 
   <Tab title="Stream 모드" icon="cloud-arrow-up">
@@ -284,6 +284,7 @@ async uploadWithLimits() {
       }));
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -406,7 +407,8 @@ async uploadToS3() {
 ```
 
 <Info>
-스토리지 드라이버는 `sonamu.config.ts`에서 설정합니다. 첫 번째 파라미터로 디스크 이름을 전달합니다.
+  스토리지 드라이버는 `sonamu.config.ts`에서 설정합니다. 첫 번째 파라미터로 디스크 이름을
+  전달합니다.
 </Info>
 
 ## 다른 데코레이터와 함께 사용
@@ -461,7 +463,7 @@ const result = await FileService.uploadAvatar(formData);
 
 ```typescript
 const formData = new FormData();
-files.forEach(file => {
+files.forEach((file) => {
   formData.append("files", file);
 });
 
@@ -739,6 +741,7 @@ async uploadFile() {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="여러 파일 업로드" icon="images">
@@ -791,6 +794,7 @@ async uploadFile() {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="CSV 파일 처리" icon="file-csv">
@@ -854,6 +858,7 @@ async uploadFile() {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="MD5 해시 기반 저장" icon="hashtag">
@@ -889,6 +894,7 @@ async uploadFile() {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Stream 모드 대용량" icon="cloud-arrow-up">
@@ -920,6 +926,7 @@ async uploadFile() {
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -930,6 +937,7 @@ async uploadFile() {
 `@upload` 데코레이터는 내부적으로 자동으로 API 엔드포인트를 생성합니다. 따라서 `@api` 데코레이터를 별도로 사용할 필요가 없습니다.
 
 **자동 설정되는 값:**
+
 - `httpMethod`: `"POST"` (고정)
 - `clients`: `["axios-multipart", "tanstack-mutation-multipart"]` (multipart 전용 클라이언트)
 - `guards`: `@upload` 옵션의 `guards` 값이 API에 전달됨
@@ -951,7 +959,8 @@ async uploadFile() {
 ```
 
 <Info>
-`@upload`는 파일 업로드에 최적화된 설정을 자동으로 적용하므로, `@api` 데코레이터를 추가로 사용할 필요가 없습니다.
+  `@upload`는 파일 업로드에 최적화된 설정을 자동으로 적용하므로, `@api` 데코레이터를 추가로 사용할
+  필요가 없습니다.
 </Info>
 
 ## 다음 단계
@@ -965,21 +974,13 @@ async uploadFile() {
     API 엔드포인트 만들기
   </Card>
 
-  <Card
-    title="@transactional"
-    icon="arrows-rotate"
-    href="/ko/api-reference/decorators/transactional"
-  >
-    트랜잭션으로 안전하게 저장하기
-  </Card>
+<Card title="@transactional" icon="arrows-rotate" href="/ko/api-reference/decorators/transactional">
+  트랜잭션으로 안전하게 저장하기
+</Card>
 
-  <Card
-    title="Storage 드라이버"
-    icon="hard-drive"
-    href="/ko/core-concepts/storage/drivers"
-  >
-    S3, Local 등 스토리지 사용하기
-  </Card>
+<Card title="Storage 드라이버" icon="hard-drive" href="/ko/core-concepts/storage/drivers">
+  S3, Local 등 스토리지 사용하기
+</Card>
 
   <Card
     title="파일 처리"

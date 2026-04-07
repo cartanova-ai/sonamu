@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
+
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import type { Backend } from "..//backend";
-import type { SerializableRetryPolicy } from "../core/retry";
-import type { StepAttempt } from "../core/step";
-import type { WorkflowRun } from "../core/workflow";
+
+import { type Backend } from "..//backend";
+import { type SerializableRetryPolicy } from "../core/retry";
+import { type StepAttempt } from "../core/step";
+import { type WorkflowRun } from "../core/workflow";
 
 /**
  * Options for the Backend test suite.
@@ -138,7 +140,7 @@ export function testBackend(options: TestBackendOptions): void {
         // p2
         const page2 = await backend.listWorkflowRuns({
           limit: 2,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           after: page1.pagination.next!,
         });
         expect(page2.data).toHaveLength(2);
@@ -150,7 +152,7 @@ export function testBackend(options: TestBackendOptions): void {
         // p3
         const page3 = await backend.listWorkflowRuns({
           limit: 2,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           after: page2.pagination.next!,
         });
         expect(page3.data).toHaveLength(1);
@@ -161,7 +163,7 @@ export function testBackend(options: TestBackendOptions): void {
         // p2 again
         const page2Back = await backend.listWorkflowRuns({
           limit: 2,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           before: page3.pagination.prev!,
         });
         expect(page2Back.data).toHaveLength(2);
@@ -203,7 +205,7 @@ export function testBackend(options: TestBackendOptions): void {
 
         const page2 = await backend.listWorkflowRuns({
           limit: 2,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           after: page1.pagination.next!,
         });
         expect(page2.data).toHaveLength(2);
@@ -213,7 +215,7 @@ export function testBackend(options: TestBackendOptions): void {
 
         const page3 = await backend.listWorkflowRuns({
           limit: 2,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           after: page2.pagination.next!,
         });
         expect(page3.data).toHaveLength(1);
@@ -222,7 +224,7 @@ export function testBackend(options: TestBackendOptions): void {
 
         const page2Back = await backend.listWorkflowRuns({
           limit: 2,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           before: page3.pagination.prev!,
         });
         expect(page2Back.data).toHaveLength(2);
@@ -678,7 +680,7 @@ export function testBackend(options: TestBackendOptions): void {
 
         const created = await backend.createStepAttempt({
           workflowRunId: expected.workflowRunId,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: workflowRun.workerId!,
           stepName: expected.stepName,
           kind: expected.kind,
@@ -704,7 +706,7 @@ export function testBackend(options: TestBackendOptions): void {
 
         const created = await backend.createStepAttempt({
           workflowRunId: claimed.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           stepName: randomUUID(),
           kind: "function",
@@ -733,7 +735,7 @@ export function testBackend(options: TestBackendOptions): void {
 
         const first = await backend.createStepAttempt({
           workflowRunId: claimed.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           stepName: randomUUID(),
           kind: "function",
@@ -743,7 +745,7 @@ export function testBackend(options: TestBackendOptions): void {
         await backend.completeStepAttempt({
           workflowRunId: claimed.id,
           stepAttemptId: first.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           output: { ok: true },
         });
@@ -752,7 +754,7 @@ export function testBackend(options: TestBackendOptions): void {
 
         const second = await backend.createStepAttempt({
           workflowRunId: claimed.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           stepName: randomUUID(),
           kind: "function",
@@ -773,7 +775,7 @@ export function testBackend(options: TestBackendOptions): void {
         for (let i = 0; i < 5; i++) {
           await backend.createStepAttempt({
             workflowRunId: claimed.id,
-            // biome-ignore lint/style/noNonNullAssertion: for test
+            // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
             workerId: claimed.workerId!,
             stepName: `step-${String(i)}`,
             kind: "function",
@@ -799,7 +801,7 @@ export function testBackend(options: TestBackendOptions): void {
         const page2 = await backend.listStepAttempts({
           workflowRunId: claimed.id,
           limit: 2,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           after: page1.pagination.next!,
         });
         expect(page2.data).toHaveLength(2);
@@ -812,7 +814,7 @@ export function testBackend(options: TestBackendOptions): void {
         const page3 = await backend.listStepAttempts({
           workflowRunId: claimed.id,
           limit: 2,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           after: page2.pagination.next!,
         });
         expect(page3.data).toHaveLength(1);
@@ -824,7 +826,7 @@ export function testBackend(options: TestBackendOptions): void {
         const page2Back = await backend.listStepAttempts({
           workflowRunId: claimed.id,
           limit: 2,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           before: page3.pagination.prev!,
         });
         expect(page2Back.data).toHaveLength(2);
@@ -848,7 +850,7 @@ export function testBackend(options: TestBackendOptions): void {
         const claimed = await createClaimedWorkflowRun(backend);
         await backend.createStepAttempt({
           workflowRunId: claimed.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           stepName: "step-1",
           kind: "function",
@@ -880,7 +882,7 @@ export function testBackend(options: TestBackendOptions): void {
 
         const created = await backend.createStepAttempt({
           workflowRunId: claimed.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           stepName: randomUUID(),
           kind: "function",
@@ -892,7 +894,7 @@ export function testBackend(options: TestBackendOptions): void {
         const completed = await backend.completeStepAttempt({
           workflowRunId: claimed.id,
           stepAttemptId: created.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           output,
         });
@@ -925,7 +927,7 @@ export function testBackend(options: TestBackendOptions): void {
 
         const stepAttempt = await backend.createStepAttempt({
           workflowRunId: claimed.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           stepName: randomUUID(),
           kind: "function",
@@ -936,7 +938,7 @@ export function testBackend(options: TestBackendOptions): void {
         // complete the workflow so it's no longer running
         await backend.completeWorkflowRun({
           workflowRunId: claimed.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           output: null,
         });
@@ -946,7 +948,7 @@ export function testBackend(options: TestBackendOptions): void {
           backend.completeStepAttempt({
             workflowRunId: claimed.id,
             stepAttemptId: stepAttempt.id,
-            // biome-ignore lint/style/noNonNullAssertion: for test
+            // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
             workerId: claimed.workerId!,
             output: { foo: "bar" },
           }),
@@ -963,7 +965,7 @@ export function testBackend(options: TestBackendOptions): void {
           backend.completeStepAttempt({
             workflowRunId: claimed.id,
             stepAttemptId: randomUUID(),
-            // biome-ignore lint/style/noNonNullAssertion: for test
+            // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
             workerId: claimed.workerId!,
             output: { foo: "bar" },
           }),
@@ -987,7 +989,7 @@ export function testBackend(options: TestBackendOptions): void {
 
         const created = await backend.createStepAttempt({
           workflowRunId: claimed.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           stepName: randomUUID(),
           kind: "function",
@@ -999,7 +1001,7 @@ export function testBackend(options: TestBackendOptions): void {
         const failed = await backend.failStepAttempt({
           workflowRunId: claimed.id,
           stepAttemptId: created.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           error,
         });
@@ -1032,7 +1034,7 @@ export function testBackend(options: TestBackendOptions): void {
 
         const stepAttempt = await backend.createStepAttempt({
           workflowRunId: claimed.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           stepName: randomUUID(),
           kind: "function",
@@ -1043,7 +1045,7 @@ export function testBackend(options: TestBackendOptions): void {
         // complete the workflow so it's no longer running
         await backend.completeWorkflowRun({
           workflowRunId: claimed.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
+          // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
           workerId: claimed.workerId!,
           output: null,
         });
@@ -1053,7 +1055,7 @@ export function testBackend(options: TestBackendOptions): void {
           backend.failStepAttempt({
             workflowRunId: claimed.id,
             stepAttemptId: stepAttempt.id,
-            // biome-ignore lint/style/noNonNullAssertion: for test
+            // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
             workerId: claimed.workerId!,
             error: { message: "nope" },
           }),
@@ -1070,7 +1072,7 @@ export function testBackend(options: TestBackendOptions): void {
           backend.failStepAttempt({
             workflowRunId: claimed.id,
             stepAttemptId: randomUUID(),
-            // biome-ignore lint/style/noNonNullAssertion: for test
+            // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- for test
             workerId: claimed.workerId!,
             error: { message: "nope" },
           }),

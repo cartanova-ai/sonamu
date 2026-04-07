@@ -19,7 +19,7 @@ import { passkeyEntityDef } from "./passkey";
 import { phoneNumberEntityDef } from "./phone-number";
 import { ssoEntityDef } from "./sso";
 import { twoFactorEntityDef } from "./two-factor";
-import type { BetterAuthEntityDef, BetterAuthPluginId } from "./types";
+import { type BetterAuthEntityDef, type BetterAuthPluginId } from "./types";
 import { usernameEntityDef } from "./username";
 
 /**

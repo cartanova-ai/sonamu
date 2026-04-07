@@ -1,9 +1,10 @@
-import type { Backend } from "./backend";
-import type { DurationString } from "./core/duration";
+import { type Backend } from "./backend";
+import { type DurationString } from "./core/duration";
 import { serializeError } from "./core/error";
-import type { JsonValue } from "./core/json";
-import { isDynamicRetryPolicy, type RetryPolicy } from "./core/retry";
-import type { StepAttempt, StepAttemptCache } from "./core/step";
+import { type JsonValue } from "./core/json";
+import { isDynamicRetryPolicy } from "./core/retry";
+import { type RetryPolicy } from "./core/retry";
+import { type StepAttempt, type StepAttemptCache } from "./core/step";
 import {
   addToStepAttemptCache,
   calculateSleepResumeAt,
@@ -12,7 +13,7 @@ import {
   getCachedStepAttempt,
   normalizeStepOutput,
 } from "./core/step";
-import type { WorkflowRun } from "./core/workflow";
+import { type WorkflowRun } from "./core/workflow";
 
 /**
  * Config for an individual step defined with `step.run()`.

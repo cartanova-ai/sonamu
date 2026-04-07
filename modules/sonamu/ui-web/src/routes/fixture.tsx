@@ -10,7 +10,7 @@ import {
 } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import type { FixtureImportResult, FixtureRecord } from "sonamu";
+import { type FixtureImportResult, type FixtureRecord } from "sonamu";
 import { z } from "zod";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
@@ -20,11 +20,13 @@ import PlusIcon from "~icons/lucide/plus";
 import SearchIcon from "~icons/lucide/search";
 import TableIcon from "~icons/lucide/table";
 import TrashIcon from "~icons/lucide/trash";
+
 import ChatComponent from "../components/ChatComponent";
 import FixtureGraph from "../components/fixture/ErdGraph";
 import { useSonamuContext } from "../contexts/sonamu-provider";
+import { SonamuUIService } from "../services/sonamu-ui.service";
+import { type ExtendedEntity } from "../services/sonamu-ui.service";
 import { defaultCatch } from "../services/sonamu.shared";
-import { type ExtendedEntity, SonamuUIService } from "../services/sonamu-ui.service";
 import FixtureCodeViewer from "./fixture/_fixture_code_viewer";
 import FixtureRecordViewer from "./fixture/_fixture_record_viewer";
 
@@ -59,7 +61,7 @@ function FixtureIndex() {
   const [duplicateCheckColumns, setDuplicateCheckColumns] = useState<DuplicateCheckColumns>({});
 
   // 중복 확인 설정용 임시 상태
-  const [dupCheckEntityId, setDupCheckEntityId] = useState<string>("");
+  const [dupCheckEntityId, setDupCheckEntityId] = useState("");
   const [dupCheckSelectedColumns, setDupCheckSelectedColumns] = useState<string[]>([]);
 
   // 저장 대상 상세 보기

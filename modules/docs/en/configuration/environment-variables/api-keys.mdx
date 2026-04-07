@@ -1,12 +1,13 @@
 ---
-title: 'API Key Management'
-description: 'Safely configuring external service API keys'
+title: "API Key Management"
+description: "Safely configuring external service API keys"
 ---
 
 When using external services (AWS S3, OpenAI, etc.) in Sonamu projects, API keys are managed as environment variables. This guide explains how to securely store them without hardcoding in your code.
 
 <Danger>
-API keys should **never be committed to Git!** If leaked, immediately invalidate and reissue the keys.
+  API keys should **never be committed to Git!** If leaked, immediately invalidate and reissue the
+  keys.
 </Danger>
 
 ## Common API Keys
@@ -80,7 +81,8 @@ const completion = await openai.chat.completions.create({
 Sonamu can integrate with various external services. Below are environment variable examples for commonly used services.
 
 <Info>
-These services are not part of Sonamu's default configuration. Add them only when needed for your project.
+  These services are not part of Sonamu's default configuration. Add them only when needed for your
+  project.
 </Info>
 
 <Tabs>
@@ -93,22 +95,15 @@ These services are not part of Sonamu's default configuration. Add them only whe
     ```
   </Tab>
 
-  <Tab title="SendGrid" icon="envelope">
-    ```bash
-    # SendGrid Email
-    SENDGRID_API_KEY=your-sendgrid-api-key
-    SENDGRID_FROM_EMAIL=noreply@example.com
-    ```
-  </Tab>
+<Tab title="SendGrid" icon="envelope">
+  ```bash # SendGrid Email SENDGRID_API_KEY=your-sendgrid-api-key
+  SENDGRID_FROM_EMAIL=noreply@example.com ```
+</Tab>
 
-  <Tab title="Twilio" icon="phone">
-    ```bash
-    # Twilio SMS
-    TWILIO_ACCOUNT_SID=your-twilio-account-sid
-    TWILIO_AUTH_TOKEN=your-twilio-auth-token
-    TWILIO_PHONE_NUMBER=+1234567890
-    ```
-  </Tab>
+<Tab title="Twilio" icon="phone">
+  ```bash # Twilio SMS TWILIO_ACCOUNT_SID=your-twilio-account-sid
+  TWILIO_AUTH_TOKEN=your-twilio-auth-token TWILIO_PHONE_NUMBER=+1234567890 ```
+</Tab>
 
   <Tab title="Firebase" icon="fire">
     ```bash
@@ -123,7 +118,7 @@ These services are not part of Sonamu's default configuration. Add them only whe
 ## Environment-Specific Key Management
 
 <Warning>
-**Never use production keys in development environments!** Use separate keys for each environment.
+  **Never use production keys in development environments!** Use separate keys for each environment.
 </Warning>
 
 <Tabs>
@@ -143,6 +138,7 @@ These services are not part of Sonamu's default configuration. Add them only whe
     - Uses test mode keys
     - No or minimal charges
     - Limited permissions
+
   </Tab>
 
   <Tab title="Staging" icon="flask">
@@ -161,6 +157,7 @@ These services are not part of Sonamu's default configuration. Add them only whe
     - Separate resources from production
     - May incur actual charges
     - Same permissions as production
+
   </Tab>
 
   <Tab title="Production" icon="server">
@@ -179,6 +176,7 @@ These services are not part of Sonamu's default configuration. Add them only whe
     - Highest level of security
     - Apply principle of least privilege
     - Periodic rotation
+
   </Tab>
 </Tabs>
 
@@ -189,11 +187,9 @@ These services are not part of Sonamu's default configuration. Add them only whe
     Go to [AWS IAM Console](https://console.aws.amazon.com/iam/)
   </Step>
 
-  <Step title="Create User" icon="user-plus">
-    1. Users → Add users
-    2. User name: `sonamu-s3-user`
-    3. Access type: Select **Programmatic access**
-  </Step>
+<Step title="Create User" icon="user-plus">
+  1. Users → Add users 2. User name: `sonamu-s3-user` 3. Access type: Select **Programmatic access**
+</Step>
 
   <Step title="Set Permissions" icon="shield">
     **Option 1: Attach Existing Policy**
@@ -228,6 +224,7 @@ These services are not part of Sonamu's default configuration. Add them only whe
     <Tip>
     Enhance security by allowing only specific buckets and actions.
     </Tip>
+
   </Step>
 
   <Step title="Issue Access Keys" icon="key">
@@ -238,6 +235,7 @@ These services are not part of Sonamu's default configuration. Add them only whe
     <Danger>
     The secret access key is displayed only once! Save it to a secure location immediately.
     </Danger>
+
   </Step>
 
   <Step title="Add to .env File" icon="file-code">
@@ -255,11 +253,10 @@ These services are not part of Sonamu's default configuration. Add them only whe
     Log in to [OpenAI API Platform](https://platform.openai.com/)
   </Step>
 
-  <Step title="Create API Key" icon="key">
-    1. API keys → Create new secret key
-    2. Name: `sonamu-production`
-    3. Permissions: **All** or **Restricted** (recommended)
-  </Step>
+<Step title="Create API Key" icon="key">
+  1. API keys → Create new secret key 2. Name: `sonamu-production` 3. Permissions: **All** or
+  **Restricted** (recommended)
+</Step>
 
   <Step title="Set Usage Limits" icon="gauge-high">
     Settings → Billing → Set Usage limits
@@ -272,6 +269,7 @@ These services are not part of Sonamu's default configuration. Add them only whe
     <Warning>
     Unexpected charges may occur if you don't set usage limits!
     </Warning>
+
   </Step>
 
   <Step title="Save Key" icon="save">
@@ -280,6 +278,7 @@ These services are not part of Sonamu's default configuration. Add them only whe
     ```
 
     Save to a secure location immediately after issuance (cannot be viewed again)
+
   </Step>
 </Steps>
 
@@ -288,12 +287,13 @@ These services are not part of Sonamu's default configuration. Add them only whe
 <Accordion title="Key Rotation" icon="rotate">
   ### Regular Key Replacement
 
-  **Recommended Frequency:**
-  - Production: Every 3 months
-  - Staging: Every 6 months
-  - Development: Yearly or as needed
+**Recommended Frequency:**
 
-  ### Rotation Procedure
+- Production: Every 3 months
+- Staging: Every 6 months
+- Development: Yearly or as needed
+
+### Rotation Procedure
 
   <Steps>
     <Step title="Create New Key">
@@ -305,7 +305,7 @@ These services are not part of Sonamu's default configuration. Add them only whe
       # Add new key to environment variables
       AWS_ACCESS_KEY_ID=your-new-aws-key-id
       AWS_SECRET_ACCESS_KEY=your-new-aws-secret-key
-      
+
       # Restart application
       ```
     </Step>
@@ -317,6 +317,7 @@ These services are not part of Sonamu's default configuration. Add them only whe
     <Step title="Delete Old Key">
       Deactivate/delete the old key if no issues
     </Step>
+
   </Steps>
 
   <Info>
@@ -327,36 +328,37 @@ These services are not part of Sonamu's default configuration. Add them only whe
 <Accordion title="Principle of Least Privilege" icon="user-shield">
   ### Minimize IAM Policies
 
-  ```json
-  // ❌ Bad example: All permissions
-  {
-    "Effect": "Allow",
-    "Action": "s3:*",
-    "Resource": "*"
-  }
+```json
+// ❌ Bad example: All permissions
+{
+  "Effect": "Allow",
+  "Action": "s3:*",
+  "Resource": "*"
+}
 
-  // ✅ Good example: Only necessary permissions
-  {
-    "Effect": "Allow",
-    "Action": [
-      "s3:PutObject",
-      "s3:GetObject"
-    ],
-    "Resource": "arn:aws:s3:::my-bucket/uploads/*"
-  }
-  ```
+// ✅ Good example: Only necessary permissions
+{
+  "Effect": "Allow",
+  "Action": [
+    "s3:PutObject",
+    "s3:GetObject"
+  ],
+  "Resource": "arn:aws:s3:::my-bucket/uploads/*"
+}
+```
 
-  ### Separate Read-Only Keys
+### Separate Read-Only Keys
 
-  ```bash
-  # Write permissions (application)
-  AWS_WRITE_ACCESS_KEY_ID=your-write-key-id
-  AWS_WRITE_SECRET_ACCESS_KEY=your-write-secret-key
+```bash
+# Write permissions (application)
+AWS_WRITE_ACCESS_KEY_ID=your-write-key-id
+AWS_WRITE_SECRET_ACCESS_KEY=your-write-secret-key
 
-  # Read permissions (analytics/backup)
-  AWS_READ_ACCESS_KEY_ID=your-read-key-id
-  AWS_READ_SECRET_ACCESS_KEY=your-read-secret-key
-  ```
+# Read permissions (analytics/backup)
+AWS_READ_ACCESS_KEY_ID=your-read-key-id
+AWS_READ_SECRET_ACCESS_KEY=your-read-secret-key
+```
+
 </Accordion>
 
 <Accordion title="Key Leak Response" icon="triangle-exclamation">
@@ -392,7 +394,7 @@ These services are not part of Sonamu's default configuration. Add them only whe
       git filter-branch --force --index-filter \
         "git rm --cached --ignore-unmatch .env" \
         --prune-empty --tag-name-filter cat -- --all
-      
+
       # Force push
       git push origin --force --all
       ```
@@ -401,72 +403,75 @@ These services are not part of Sonamu's default configuration. Add them only whe
       Cleaning Git history affects collaborating team members. Coordinate with your team before proceeding.
       </Danger>
     </Step>
+
   </Steps>
 
-  ### Leak Detection Tools
+### Leak Detection Tools
 
-  ```bash
-  # Install git-secrets
-  brew install git-secrets
+```bash
+# Install git-secrets
+brew install git-secrets
 
-  # Apply to project
-  git secrets --install
-  git secrets --register-aws
+# Apply to project
+git secrets --install
+git secrets --register-aws
 
-  # Scan
-  git secrets --scan
-  ```
+# Scan
+git secrets --scan
+```
+
 </Accordion>
 
 <Accordion title="Environment Variable Encryption" icon="lock">
   ### Development Environment
 
-  ```bash
-  # Using dotenv-vault
-  npm install -g dotenv-vault
+```bash
+# Using dotenv-vault
+npm install -g dotenv-vault
 
-  # Encrypt
-  npx dotenv-vault encrypt
+# Encrypt
+npx dotenv-vault encrypt
 
-  # Decrypt (team members)
-  DOTENV_KEY=your-dotenv-vault-key npx dotenv-vault decrypt
-  ```
+# Decrypt (team members)
+DOTENV_KEY=your-dotenv-vault-key npx dotenv-vault decrypt
+```
 
-  ### Production Environment
+### Production Environment
 
-  **AWS Systems Manager Parameter Store:**
+**AWS Systems Manager Parameter Store:**
 
-  ```typescript
-  import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+```typescript
+import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 
-  const client = new SSMClient({ region: "ap-northeast-2" });
-  
-  async function getSecret(name: string) {
-    const command = new GetParameterCommand({
-      Name: name,
-      WithDecryption: true,
-    });
-    const response = await client.send(command);
-    return response.Parameter?.Value;
-  }
+const client = new SSMClient({ region: "ap-northeast-2" });
 
-  // Usage
-  const apiKey = await getSecret("/myproject/prod/openai-api-key");
-  ```
-
-  **HashiCorp Vault:**
-
-  ```typescript
-  import vault from "node-vault";
-
-  const client = vault({
-    endpoint: "https://vault.example.com:8200",
-    token: process.env.VAULT_TOKEN,
+async function getSecret(name: string) {
+  const command = new GetParameterCommand({
+    Name: name,
+    WithDecryption: true,
   });
+  const response = await client.send(command);
+  return response.Parameter?.Value;
+}
 
-  const { data } = await client.read("secret/data/myproject/prod");
-  const apiKey = data.data.OPENAI_API_KEY;
-  ```
+// Usage
+const apiKey = await getSecret("/myproject/prod/openai-api-key");
+```
+
+**HashiCorp Vault:**
+
+```typescript
+import vault from "node-vault";
+
+const client = vault({
+  endpoint: "https://vault.example.com:8200",
+  token: process.env.VAULT_TOKEN,
+});
+
+const { data } = await client.read("secret/data/myproject/prod");
+const apiKey = data.data.OPENAI_API_KEY;
+```
+
 </Accordion>
 
 ## Key Usage Monitoring
@@ -483,15 +488,17 @@ const stats = await client.send(
   new GetMetricStatisticsCommand({
     Namespace: "AWS/S3",
     MetricName: "NumberOfObjects",
-    Dimensions: [{
-      Name: "BucketName",
-      Value: "my-project-uploads",
-    }],
+    Dimensions: [
+      {
+        Name: "BucketName",
+        Value: "my-project-uploads",
+      },
+    ],
     StartTime: new Date(Date.now() - 86400000), // 24 hours ago
     EndTime: new Date(),
     Period: 3600, // 1 hour
     Statistics: ["Average"],
-  })
+  }),
 );
 ```
 
@@ -509,7 +516,7 @@ async function checkUsage() {
     headers: {
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
     },
-  }).then(r => r.json());
+  }).then((r) => r.json());
 
   const totalCost = usage.total_usage * 0.0001; // Example rate
 
@@ -549,10 +556,11 @@ process.env.OPENAI_API_KEY = "test-mock-key";
 process.env.AWS_ACCESS_KEY_ID = "test-key-id";
 process.env.AWS_SECRET_ACCESS_KEY = "test-secret-key";
 ```
+
 </CodeGroup>
 
 <Tip>
-Use mocks in tests to avoid calling actual APIs. This reduces test costs and improves speed.
+  Use mocks in tests to avoid calling actual APIs. This reduces test costs and improves speed.
 </Tip>
 
 ## Troubleshooting
@@ -563,22 +571,25 @@ Use mocks in tests to avoid calling actual APIs. This reduces test costs and imp
   Error: The AWS Access Key Id you provided does not exist in our records
   ```
 
-  **Causes:**
-  1. Incorrect Access Key ID
-  2. Key has been deleted or deactivated
-  3. Typos (spaces, line breaks)
+**Causes:**
 
-  **Solution:**
-  ```bash
-  # Verify key
-  echo $AWS_ACCESS_KEY_ID
-  
-  # Check .env file
-  cat .env | grep AWS
-  
-  # Check key status in IAM console
-  # Verify it's in Active status
-  ```
+1. Incorrect Access Key ID
+2. Key has been deleted or deactivated
+3. Typos (spaces, line breaks)
+
+**Solution:**
+
+```bash
+# Verify key
+echo $AWS_ACCESS_KEY_ID
+
+# Check .env file
+cat .env | grep AWS
+
+# Check key status in IAM console
+# Verify it's in Active status
+```
+
 </Accordion>
 
 <Accordion title="OpenAI Rate Limit" icon="gauge-high">
@@ -587,38 +598,40 @@ Use mocks in tests to avoid calling actual APIs. This reduces test costs and imp
   RateLimitError: Rate limit reached for gpt-4
   ```
 
-  **Causes:**
-  - API request limit exceeded (RPM, TPM)
+**Causes:**
 
-  **Solution:**
+- API request limit exceeded (RPM, TPM)
 
-  ```typescript
-  // Implement retry logic
-  import { RateLimiter } from "limiter";
+**Solution:**
 
-  const limiter = new RateLimiter({
-    tokensPerInterval: 10,
-    interval: "minute",
-  });
+```typescript
+// Implement retry logic
+import { RateLimiter } from "limiter";
 
-  async function callOpenAI(prompt: string) {
-    await limiter.removeTokens(1);
-    
-    try {
-      return await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{ role: "user", content: prompt }],
-      });
-    } catch (error) {
-      if (error.status === 429) {
-        // Retry after 1 minute
-        await new Promise(resolve => setTimeout(resolve, 60000));
-        return callOpenAI(prompt);
-      }
-      throw error;
+const limiter = new RateLimiter({
+  tokensPerInterval: 10,
+  interval: "minute",
+});
+
+async function callOpenAI(prompt: string) {
+  await limiter.removeTokens(1);
+
+  try {
+    return await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: prompt }],
+    });
+  } catch (error) {
+    if (error.status === 429) {
+      // Retry after 1 minute
+      await new Promise((resolve) => setTimeout(resolve, 60000));
+      return callOpenAI(prompt);
     }
+    throw error;
   }
-  ```
+}
+```
+
 </Accordion>
 
 <Accordion title="S3 403 Forbidden" icon="lock">
@@ -627,63 +640,53 @@ Use mocks in tests to avoid calling actual APIs. This reduces test costs and imp
   Access Denied: You do not have permission to perform this action
   ```
 
-  **Causes:**
-  - IAM policy missing required permissions
-  - Blocked by bucket policy
+**Causes:**
 
-  **Solution:**
+- IAM policy missing required permissions
+- Blocked by bucket policy
 
-  ```json
-  // Add permissions to IAM policy
-  {
-    "Effect": "Allow",
-    "Action": [
-      "s3:PutObject",
-      "s3:GetObject",
-      "s3:DeleteObject"
-    ],
-    "Resource": "arn:aws:s3:::my-bucket/*"
-  }
-  ```
+**Solution:**
 
-  ```bash
-  # Test permissions
-  aws s3 ls s3://my-bucket --profile myproject
-  ```
+```json
+// Add permissions to IAM policy
+{
+  "Effect": "Allow",
+  "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+  "Resource": "arn:aws:s3:::my-bucket/*"
+}
+```
+
+```bash
+# Test permissions
+aws s3 ls s3://my-bucket --profile myproject
+```
+
 </Accordion>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title=".env Setup" 
-    icon="file-code" 
+  <Card
+    title=".env Setup"
+    icon="file-code"
     href="/en/configuration/environment-variables/env-setup"
   >
     Learn environment variable basics
   </Card>
-  
-  <Card 
-    title="Database Credentials" 
-    icon="database" 
-    href="/en/configuration/environment-variables/database-credentials"
-  >
-    Safely manage DB connection information
-  </Card>
-  
-  <Card 
-    title="Storage Configuration" 
-    icon="cloud" 
-    href="/en/configuration/sonamu-config/storage"
-  >
-    Configure S3 storage
-  </Card>
-  
-  <Card 
-    title="Session Settings" 
-    icon="shield" 
-    href="/en/configuration/sonamu-config/server"
-  >
+
+<Card
+  title="Database Credentials"
+  icon="database"
+  href="/en/configuration/environment-variables/database-credentials"
+>
+  Safely manage DB connection information
+</Card>
+
+<Card title="Storage Configuration" icon="cloud" href="/en/configuration/sonamu-config/storage">
+  Configure S3 storage
+</Card>
+
+  <Card title="Session Settings" icon="shield" href="/en/configuration/sonamu-config/server">
     Check session and security settings
   </Card>
 </CardGroup>

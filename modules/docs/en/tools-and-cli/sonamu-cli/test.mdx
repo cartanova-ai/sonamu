@@ -20,7 +20,7 @@ export default defineConfig({
   test: {
     devRunner: {
       enabled: true,
-      routePrefix: "/__test__",            // optional, default
+      routePrefix: "/__test__", // optional, default
       vitestConfigPath: "vitest.config.ts", // optional, relative to api-root
     },
   },
@@ -29,11 +29,11 @@ export default defineConfig({
 
 ### Configuration Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | `boolean` | `false` | Whether to enable DevRunner |
-| `routePrefix` | `string` | `"/__test__"` | Path prefix for test endpoints |
-| `vitestConfigPath` | `string` | - | Path to vitest.config.ts (relative to api-root) |
+| Option             | Type      | Default       | Description                                     |
+| ------------------ | --------- | ------------- | ----------------------------------------------- |
+| `enabled`          | `boolean` | `false`       | Whether to enable DevRunner                     |
+| `routePrefix`      | `string`  | `"/__test__"` | Path prefix for test endpoints                  |
+| `vitestConfigPath` | `string`  | -             | Path to vitest.config.ts (relative to api-root) |
 
 ## Basic Usage
 
@@ -59,17 +59,15 @@ pnpm sonamu test --status
 
 ### Options
 
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--pattern <name>` | `-p <name>` | Filter tests by name pattern |
-| `--traces` | `-t` | Show trace information collected during tests |
-| `--status` | `-s` | Check DevRunner status and exit |
+| Option             | Short       | Description                                   |
+| ------------------ | ----------- | --------------------------------------------- |
+| `--pattern <name>` | `-p <name>` | Filter tests by name pattern                  |
+| `--traces`         | `-t`        | Show trace information collected during tests |
+| `--status`         | `-s`        | Check DevRunner status and exit               |
 
 <Tip>
-You can specify multiple file paths:
-```bash
-pnpm sonamu test src/application/user/user.test.ts src/application/post/post.test.ts
-```
+  You can specify multiple file paths: ```bash pnpm sonamu test src/application/user/user.test.ts
+  src/application/post/post.test.ts ```
 </Tip>
 
 ## Trace Output
@@ -131,19 +129,19 @@ sequenceDiagram
 
 ## Comparison with `pnpm test`
 
-| | `pnpm test` | `pnpm sonamu test` |
-|---|---|---|
-| Server required | No | `pnpm dev` must be running |
-| Execution speed | Re-initializes each time | Reuses Vitest instance (fast) |
-| HMR integration | None | Code changes reflected immediately |
-| Use case | CI, full test suite | Quick feedback during development |
+|                 | `pnpm test`              | `pnpm sonamu test`                 |
+| --------------- | ------------------------ | ---------------------------------- |
+| Server required | No                       | `pnpm dev` must be running         |
+| Execution speed | Re-initializes each time | Reuses Vitest instance (fast)      |
+| HMR integration | None                     | Code changes reflected immediately |
+| Use case        | CI, full test suite      | Quick feedback during development  |
 
 <Info>
 **When to use which?**
 
 - **During development**: Use `pnpm sonamu test` for quick feedback. You can modify code and immediately run tests.
 - **CI/CD**: Use `pnpm test`. It runs the full test suite in an isolated environment.
-</Info>
+  </Info>
 
 ## Status Check
 
@@ -166,11 +164,11 @@ curl http://localhost:3000/__test__/status
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `ready` | Whether the Vitest instance is ready |
-| `running` | Whether tests are currently running |
-| `lastRunAt` | Timestamp of the last test run |
+| Field          | Description                                                       |
+| -------------- | ----------------------------------------------------------------- |
+| `ready`        | Whether the Vitest instance is ready                              |
+| `running`      | Whether tests are currently running                               |
+| `lastRunAt`    | Timestamp of the last test run                                    |
 | `sseAvailable` | Whether SSE (Server-Sent Events) real-time streaming is available |
 
 ## Troubleshooting

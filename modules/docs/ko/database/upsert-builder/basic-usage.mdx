@@ -9,24 +9,16 @@ UpsertBuilder는 복잡한 관계 데이터를 트랜잭션 내에서 효율적�
 
 <CardGroup cols={2}>
   <Card title="트랜잭션 필수" icon="arrows-rotate">
-    항상 트랜잭션 내에서 사용
-    
-    데이터 일관성 보장
+    항상 트랜잭션 내에서 사용 데이터 일관성 보장
   </Card>
   <Card title="UBRef 참조" icon="link">
-    외래 키 자동 해결
-    
-    ID 없이 관계 정의
+    외래 키 자동 해결 ID 없이 관계 정의
   </Card>
   <Card title="순차 저장" icon="list-ol">
-    의존 순서대로 저장
-    
-    외래 키 제약 충족
+    의존 순서대로 저장 외래 키 제약 충족
   </Card>
   <Card title="타입 안전성" icon="shield">
-    컴파일 타임 검증
-    
-    테이블 스키마 확인
+    컴파일 타임 검증 테이블 스키마 확인
   </Card>
 </CardGroup>
 
@@ -38,11 +30,8 @@ UpsertBuilder는 복잡한 관계 데이터를 트랜잭션 내에서 효율적�
 // ❌ 문제: 외래 키를 미리 알 수 없음
 await db.transaction(async (trx) => {
   // 1. Company 생성
-  const [companyId] = await trx
-    .table("companies")
-    .insert({ name: "Tech Corp" })
-    .returning("id");
-  
+  const [companyId] = await trx.table("companies").insert({ name: "Tech Corp" }).returning("id");
+
   // 2. Department 생성 (company_id 필요)
   const [deptId] = await trx
     .table("departments")
@@ -51,7 +40,7 @@ await db.transaction(async (trx) => {
       company_id: companyId, // ← 위에서 받은 ID 사용
     })
     .returning("id");
-  
+
   // 3. User 생성
   const [userId] = await trx
     .table("users")
@@ -62,7 +51,7 @@ await db.transaction(async (trx) => {
       role: "normal",
     })
     .returning("id");
-  
+
   // 4. Employee 생성 (user_id, department_id 필요)
   await trx.table("employees").insert({
     user_id: userId, // ← 위에서 받은 ID
@@ -84,25 +73,25 @@ await db.transaction(async (trx) => {
   const companyRef = trx.ubRegister("companies", {
     name: "Tech Corp",
   });
-  
+
   const deptRef = trx.ubRegister("departments", {
     name: "Engineering",
     company_id: companyRef, // ← UBRef 사용
   });
-  
+
   const userRef = trx.ubRegister("users", {
     email: "john@test.com",
     username: "john",
     password: "pass",
     role: "normal",
   });
-  
+
   trx.ubRegister("employees", {
     user_id: userRef, // ← UBRef 사용
     department_id: deptRef, // ← UBRef 사용
     employee_number: "E001",
   });
-  
+
   // 2. 순서대로 저장
   await trx.ubUpsert("companies");
   await trx.ubUpsert("departments");
@@ -139,7 +128,7 @@ await db.transaction(async (trx) => {
     password: "hashed_password",
     role: "normal",
   });
-  
+
   // userRef는 UBRef 타입
   // 실제 ID가 아니라 참조 객체
 });
@@ -183,10 +172,10 @@ await db.transaction(async (trx) => {
     password: "pass",
     role: "normal",
   });
-  
+
   // DB에 저장하고 생성된 ID 배열 반환
   const userIds = await trx.ubUpsert("users");
-  
+
   console.log(userIds); // [1]
 });
 ```
@@ -217,7 +206,7 @@ await db.transaction(async (trx) => {
     user_id: userRef,
     department_id: deptRef,
   });
-  
+
   // 저장 (의존성 순서 필수)
   await trx.ubUpsert("companies");   // 1. 의존성 없음
   await trx.ubUpsert("departments"); // 2. company_id 필요
@@ -231,6 +220,7 @@ await db.transaction(async (trx) => {
 
 외래 키가 참조하는 테이블을 먼저 저장해야 합니다.
 잘못된 순서는 외래 키 제약 위반 에러를 발생시킵니다.
+
 </Warning>
 
 ## 실전 예제
@@ -252,10 +242,10 @@ async createUser(data: {
       role: "normal",
       is_verified: false,
     });
-    
+
     // 저장
     const [userId] = await trx.ubUpsert("users");
-    
+
     return userId;
   });
 }
@@ -273,17 +263,17 @@ async createCompanyWithDepartment(data: {
     const companyRef = trx.ubRegister("companies", {
       name: data.companyName,
     });
-    
+
     // 2. Department 등록 (Company 참조)
     trx.ubRegister("departments", {
       name: data.departmentName,
       company_id: companyRef,
     });
-    
+
     // 3. 순서대로 저장
     const [companyId] = await trx.ubUpsert("companies");
     const [departmentId] = await trx.ubUpsert("departments");
-    
+
     return { companyId, departmentId };
   });
 }
@@ -308,7 +298,7 @@ async createEmployee(data: {
       password: data.password,
       role: "normal",
     });
-    
+
     // 2. Employee 등록
     trx.ubRegister("employees", {
       user_id: userRef,
@@ -316,11 +306,11 @@ async createEmployee(data: {
       employee_number: data.employeeNumber,
       salary: data.salary,
     });
-    
+
     // 3. 저장
     const [userId] = await trx.ubUpsert("users");
     const [employeeId] = await trx.ubUpsert("employees");
-    
+
     return { userId, employeeId };
   });
 }
@@ -364,9 +354,9 @@ try {
   await db.transaction(async (trx) => {
     trx.ubRegister("users", { ... });
     trx.ubRegister("employees", { ... });
-    
+
     await trx.ubUpsert("users");
-    
+
     // 에러 발생 시 자동 롤백
     throw new Error("Something went wrong");
   });
@@ -385,9 +375,9 @@ await db.transaction(async (trx) => {
     user_id: userRef,
     department_id: 999, // 존재하지 않는 ID
   });
-  
+
   await trx.ubUpsert("users");
-  
+
   // ❌ 외래 키 제약 위반 에러
   await trx.ubUpsert("employees");
   // Error: FOREIGN KEY constraint failed
@@ -403,7 +393,11 @@ await db.transaction(async (trx) => {
   <Card title="배치 작업" icon="layer-group" href="/ko/database/upsert-builder/batch-operations">
     대량 데이터 등록
   </Card>
-  <Card title="고급 패턴" icon="wand-magic-sparkles" href="/ko/database/upsert-builder/advanced-patterns">
+  <Card
+    title="고급 패턴"
+    icon="wand-magic-sparkles"
+    href="/ko/database/upsert-builder/advanced-patterns"
+  >
     복잡한 데이터 구조
   </Card>
   <Card title="트랜잭션" icon="arrows-rotate" href="/ko/database/transactions">

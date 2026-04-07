@@ -2,8 +2,10 @@
 
 import { format } from "date-fns";
 import * as React from "react";
-import type { DateRange } from "react-day-picker";
+import { type DateRange } from "react-day-picker";
+
 import { useSonamuBaseContext } from "@/contexts";
+
 import { Button } from "./button";
 import { Calendar } from "./calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
@@ -54,7 +56,7 @@ export function DateSelectorMultiple({
   const [tempIsRangeMode, setTempIsRangeMode] = React.useState(defaultRangeMode);
   const [tempSingleDate, setTempSingleDate] = React.useState<Date | undefined>();
   const [tempDateRange, setTempDateRange] = React.useState<DateRange | undefined>();
-  const [currentMonth, setCurrentMonth] = React.useState<Date>(new Date());
+  const [currentMonth, setCurrentMonth] = React.useState(new Date());
 
   // Initialize temp states when popover opens
   React.useEffect(() => {

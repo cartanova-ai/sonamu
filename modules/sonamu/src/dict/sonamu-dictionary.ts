@@ -1,21 +1,23 @@
-import { Workbook } from "@sheetkit/node";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
+
+import { Workbook } from "@sheetkit/node";
 import ts from "typescript";
+
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import { BadRequestException } from "../exceptions/so-exceptions";
 import { formatCode } from "../utils/formatter";
 import { SD } from "./sd";
-import type {
-  DictEntry,
-  DictionaryResult,
-  DictionaryRow,
-  EntityKeyInfo,
-  I18nConfig,
-  ImportResult,
-  UsageResult,
+import {
+  type DictEntry,
+  type DictionaryResult,
+  type DictionaryRow,
+  type EntityKeyInfo,
+  type I18nConfig,
+  type ImportResult,
+  type UsageResult,
 } from "./types";
 
 /**
@@ -294,7 +296,7 @@ export class SonamuDictionary {
 
     // 파일 재생성
     const content = this.generateProjectDict(locale, existingEntries, isDefaultLocale);
-    const formatted = formatCode(content, "typescript", filePath);
+    const formatted = await formatCode(content, "typescript", filePath);
     fs.writeFileSync(filePath, formatted, "utf-8");
   }
 
@@ -328,7 +330,7 @@ export class SonamuDictionary {
    */
   generateProjectDict(locale: string, entries: DictEntry[], isDefaultLocale: boolean): string {
     // key 알파벳 순 정렬
-    const sorted = [...entries].sort((a, b) => a.key.localeCompare(b.key));
+    const sorted = [...entries].toSorted((a, b) => a.key.localeCompare(b.key));
 
     const lines: string[] = [];
 
@@ -408,11 +410,15 @@ export class SonamuDictionary {
   /**
    * dict 파일을 저장합니다.
    */
-  private saveDictFile(locale: string, entries: DictEntry[], isDefaultLocale: boolean): void {
+  private async saveDictFile(
+    locale: string,
+    entries: DictEntry[],
+    isDefaultLocale: boolean,
+  ): Promise<void> {
     const i18nDir = this.ensureI18nDir();
     const dictPath = path.join(i18nDir, `${locale}.ts`);
     const content = this.generateProjectDict(locale, entries, isDefaultLocale);
-    const formatted = formatCode(content, "typescript", dictPath);
+    const formatted = await formatCode(content, "typescript", dictPath);
     fs.writeFileSync(dictPath, formatted, "utf-8");
   }
 
@@ -834,7 +840,7 @@ export class SonamuDictionary {
     for (const locale of locales) {
       const entries = projectDictEntries[locale];
       if (entries.length > 0) {
-        this.saveDictFile(locale, entries, locale === defaultLocale);
+        await this.saveDictFile(locale, entries, locale === defaultLocale);
         updatedLocales++;
       }
     }
@@ -902,7 +908,7 @@ export class SonamuDictionary {
       }
 
       // dict 파일 저장
-      this.saveDictFile(locale, entries, locale === defaultLocale);
+      await this.saveDictFile(locale, entries, locale === defaultLocale);
     }
   }
 
@@ -939,7 +945,7 @@ export class SonamuDictionary {
         isFunction: this.isExpressionFunction(cellValue),
       });
 
-      this.saveDictFile(locale, entries, locale === defaultLocale);
+      await this.saveDictFile(locale, entries, locale === defaultLocale);
     }
   }
 
@@ -962,7 +968,7 @@ export class SonamuDictionary {
         entries.splice(index, 1);
         deleted = true;
 
-        this.saveDictFile(locale, entries, locale === defaultLocale);
+        await this.saveDictFile(locale, entries, locale === defaultLocale);
       }
     }
 

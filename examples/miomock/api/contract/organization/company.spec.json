@@ -63,9 +63,7 @@
     "src/application/company/company.types.ts",
     "src/application/company/company.model.test.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "CompanyModel": "회사 CRUD를 담당한다",
     "Company Types": "회사 파라미터/엔티티 스키마를 정의한다"

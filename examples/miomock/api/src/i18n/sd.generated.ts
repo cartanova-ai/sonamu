@@ -11,7 +11,7 @@ function getCurrentLocale(): (typeof SUPPORTED_LOCALES)[number] {
   try {
     const ctx = Sonamu.getContext();
     return (ctx.locale as (typeof SUPPORTED_LOCALES)[number]) ?? DEFAULT_LOCALE;
-  } catch (_) {
+  } catch {
     return DEFAULT_LOCALE;
   }
 }

@@ -1,5 +1,6 @@
-import type { FastifyReply } from "fastify";
-import type { CacheControlConfig } from "./types.js";
+import { type FastifyReply } from "fastify";
+
+import { type CacheControlConfig } from "./types.js";
 
 /**
  * 자주 사용하는 Cache-Control 프리셋입니다.

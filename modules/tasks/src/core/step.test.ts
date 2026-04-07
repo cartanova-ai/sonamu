@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
+
 import { ok } from "./result";
-import type { StepAttempt, StepAttemptCache } from "./step";
+import { type StepAttempt, type StepAttemptCache } from "./step";
 import {
   addToStepAttemptCache,
   calculateSleepResumeAt,

@@ -1,9 +1,9 @@
 import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
-import type { Knex } from "knex";
-import { assign } from "radashi";
-import { Sonamu } from "../api";
-import type { DatabaseConfig, SonamuConfig } from "../api/config";
+
+import { type Knex } from "knex";
+
+import { type DatabaseConfig, type SonamuConfig } from "../api/config";
 import { createKnexInstance } from "./knex";
 import { TransactionContext } from "./transaction-context";
 
@@ -11,8 +11,37 @@ import { TransactionContext } from "./transaction-context";
  * 여러 설정 객체를 순차적으로 deep merge합니다.
  * undefined/null인 인자는 무시됩니다.
  */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function mergeRecord(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): Record<string, unknown> {
+  for (const [key, value] of Object.entries(source)) {
+    const currentValue = target[key];
+
+    if (isPlainObject(currentValue) && isPlainObject(value)) {
+      target[key] = mergeRecord({ ...currentValue }, value);
+    } else {
+      target[key] = value;
+    }
+  }
+
+  return target;
+}
+
 function mergeConfigs<T extends object>(...configs: (Partial<T> | undefined | null)[]): T {
-  return configs.reduce<T>((acc, config) => (config ? assign(acc, config as T) : acc), {} as T);
+  const merged: Record<string, unknown> = {};
+
+  for (const config of configs) {
+    if (config !== undefined && config !== null) {
+      mergeRecord(merged, config as Record<string, unknown>);
+    }
+  }
+
+  return merged as T;
 }
 
 export type DBPreset = "w" | "r";
@@ -30,6 +59,7 @@ export class DBClass {
   private wdb?: Knex;
   private rdb?: Knex;
   private workerDBs: Map<number, Knex> = new Map();
+  private currentConfig: SonamuDBConfig | null = null;
 
   public transactionStorage = new AsyncLocalStorage<TransactionContext>();
 
@@ -37,12 +67,24 @@ export class DBClass {
     return this.transactionStorage.run(new TransactionContext(), callback);
   }
 
+  setConfig(dbConfig: SonamuDBConfig): void {
+    this.currentConfig = dbConfig;
+  }
+
+  private getCurrentConfig(): SonamuDBConfig {
+    if (this.currentConfig === null) {
+      throw new Error("Sonamu DB config has not been initialized");
+    }
+
+    return this.currentConfig;
+  }
+
   public getTransactionContext(): TransactionContext {
     return this.transactionStorage.getStore() ?? new TransactionContext();
   }
 
   getDB(which: DBPreset): Knex {
-    const dbConfig = Sonamu.dbConfig;
+    const dbConfig = this.getCurrentConfig();
 
     // 테스트 트랜잭션 격리
     if (process.env.NODE_ENV === "test") {
@@ -115,7 +157,7 @@ export class DBClass {
   }
 
   getDBConfig(which: DBPreset): Knex.Config {
-    const dbConfig = Sonamu.dbConfig;
+    const dbConfig = this.getCurrentConfig();
     if (process.env.NODE_ENV === "test") {
       return {
         ...dbConfig.test,
@@ -158,7 +200,7 @@ export class DBClass {
   }
 
   public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
-    const defaultKnexConfig: Partial<DatabaseConfig> = assign(
+    const defaultKnexConfig = mergeConfigs<Partial<DatabaseConfig>>(
       {
         client: "postgresql",
         pool: {
@@ -170,38 +212,31 @@ export class DBClass {
         },
         connection: {
           database: config.name,
-          ...config.defaultOptions?.connection,
         },
       },
       config.defaultOptions,
     );
 
-    // biome-ignore format: 설정 구조 가독성을 위해 여러 줄로 유지
+    // oxfmt-ignore -- 설정 구조 가독성을 위해 여러 줄로 유지
     return {
       // 여기에 나열한 순서대로 Sonamu UI의 DB Migration 탭에 표시됩니다.
       test: mergeConfigs(
-        defaultKnexConfig, 
+        defaultKnexConfig,
         { connection: { database: `${config.name}_test` } },
-        config.environments?.test
+        config.environments?.test,
       ),
       fixture: mergeConfigs(
-        defaultKnexConfig, 
+        defaultKnexConfig,
         { connection: { database: `${config.name}_fixture` } },
         config.environments?.fixture,
       ),
-      development_master: mergeConfigs(
-        defaultKnexConfig, 
-        config.environments?.development
-      ),
+      development_master: mergeConfigs(defaultKnexConfig, config.environments?.development),
       development_slave: mergeConfigs(
         defaultKnexConfig,
         config.environments?.development,
         config.environments?.development_slave,
       ),
-      production_master: mergeConfigs(
-        defaultKnexConfig, 
-        config.environments?.production
-      ),
+      production_master: mergeConfigs(defaultKnexConfig, config.environments?.production),
       production_slave: mergeConfigs(
         defaultKnexConfig,
         config.environments?.production,

@@ -1,17 +1,11 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  type TestFunction,
-  type TestOptions,
-  type VitestUtils,
-  test as vitestTest,
-} from "vitest";
-import type { Context } from "../api/context";
+import { afterAll, afterEach, beforeAll, beforeEach, test as vitestTest } from "vitest";
+import { type TestFunction, type TestOptions, type VitestUtils } from "vitest";
+
+import { type Context } from "../api/context";
 import { Sonamu } from "../api/sonamu";
 import { DB } from "../database/db";
-import { Naite, type SerializedTrace } from "../naite/naite";
+import { Naite } from "../naite/naite";
+import { type SerializedTrace } from "../naite/naite";
 import { NaiteReporter } from "../naite/naite-reporter";
 
 export interface BootstrapOptions {
@@ -80,14 +74,52 @@ export async function runWithMockContext(fn: () => Promise<void>) {
   await runWithContext(getMockContext(), fn);
 }
 
+type TestResult = Promise<ReturnType<typeof vitestTest>>;
+type TestCallbackResult = void | Promise<void>;
+type TestEach = <TArgs extends readonly unknown[]>(
+  cases: readonly TArgs[],
+) => (title: string, fn: (...args: TArgs) => TestCallbackResult) => void;
+
+type TestWrapper = {
+  (title: string, fn: TestFunction, options?: TestOptions): TestResult;
+  skip: (title: string, fn: TestFunction, options?: TestOptions) => TestResult;
+  only: (title: string, fn: TestFunction, options?: TestOptions) => TestResult;
+  todo: (title: string) => void;
+  each: TestEach;
+};
+
+type TestAsWrapper = {
+  <User extends Context["user"]>(
+    user: User,
+    title: string,
+    fn: TestFunction,
+    options?: TestOptions,
+  ): TestResult;
+  skip: <User extends Context["user"]>(
+    user: User,
+    title: string,
+    fn: TestFunction,
+    options?: TestOptions,
+  ) => TestResult;
+  only: <User extends Context["user"]>(
+    user: User,
+    title: string,
+    fn: TestFunction,
+    options?: TestOptions,
+  ) => TestResult;
+  todo: (title: string) => void;
+};
+
+const each: TestEach = vitestTest.each.bind(vitestTest);
+
 declare module "vitest" {
   interface TaskMeta {
     traces: SerializedTrace[];
   }
 }
 
-export const test = Object.assign(
-  async (title: string, fn: TestFunction<object>, options?: TestOptions) => {
+export const test: TestWrapper = Object.assign(
+  async (title: string, fn: TestFunction, options?: TestOptions) => {
     return vitestTest(title, options, async (context) => {
       await runWithMockContext(async () => {
         try {
@@ -101,9 +133,9 @@ export const test = Object.assign(
     });
   },
   {
-    skip: async (title: string, fn: TestFunction<object>, options?: TestOptions) =>
+    skip: async (title: string, fn: TestFunction, options?: TestOptions) =>
       vitestTest.skip(title, options, fn),
-    only: async (title: string, fn: TestFunction<object>, options?: TestOptions) => {
+    only: async (title: string, fn: TestFunction, options?: TestOptions) => {
       return vitestTest.only(title, options, async (context) => {
         await runWithMockContext(async () => {
           try {
@@ -117,15 +149,15 @@ export const test = Object.assign(
       });
     },
     todo: (title: string) => vitestTest.todo(title),
-    each: vitestTest.each.bind(vitestTest) as typeof vitestTest.each,
+    each,
   },
 );
 
-export const testAs = Object.assign(
+export const testAs: TestAsWrapper = Object.assign(
   async <User extends Context["user"]>(
     user: User,
     title: string,
-    fn: TestFunction<object>,
+    fn: TestFunction,
     options?: TestOptions,
   ) => {
     return vitestTest(title, options, async (context) => {
@@ -150,13 +182,13 @@ export const testAs = Object.assign(
     skip: async <User extends Context["user"]>(
       _user: User,
       title: string,
-      fn: TestFunction<object>,
+      fn: TestFunction,
       options?: TestOptions,
     ) => vitestTest.skip(title, options, fn),
     only: async <User extends Context["user"]>(
       user: User,
       title: string,
-      fn: TestFunction<object>,
+      fn: TestFunction,
       options?: TestOptions,
     ) => {
       return vitestTest.only(title, options, async (context) => {

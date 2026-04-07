@@ -14,25 +14,15 @@ Sonamu의 개발은 다음과 같은 사이클로 진행됩니다:
 Sonamu UI에서 엔티티 구조를 정의합니다.
 </Step>
 
-<Step title="2. 마이그레이션">
-데이터베이스에 테이블을 생성하거나 수정합니다.
-</Step>
+<Step title="2. 마이그레이션">데이터베이스에 테이블을 생성하거나 수정합니다.</Step>
 
-<Step title="3. 스캐폴딩">
-Model 파일과 테스트 파일을 자동 생성합니다.
-</Step>
+<Step title="3. 스캐폴딩">Model 파일과 테스트 파일을 자동 생성합니다.</Step>
 
-<Step title="4. 비즈니스 로직 구현">
-생성된 Model 파일에 비즈니스 로직을 추가합니다.
-</Step>
+<Step title="4. 비즈니스 로직 구현">생성된 Model 파일에 비즈니스 로직을 추가합니다.</Step>
 
-<Step title="5. 동기화 (Sync)">
-변경사항을 프론트엔드와 동기화합니다.
-</Step>
+<Step title="5. 동기화 (Sync)">변경사항을 프론트엔드와 동기화합니다.</Step>
 
-<Step title="6. 테스트">
-작성한 코드를 테스트합니다.
-</Step>
+<Step title="6. 테스트">작성한 코드를 테스트합니다.</Step>
 
 <Step title="7. 프론트엔드 통합">
 자동 생성된 Service를 사용하여 UI를 구현합니다.
@@ -60,10 +50,9 @@ pnpm dev
 5. **Relation 정의** - 다른 엔티티와의 관계 설정
 
 <Tip>
-엔티티를 저장하면 다음 파일들이 자동 생성됩니다:
-- `{entity}.entity.json` - 엔티티 정의
-- `{entity}.types.ts` - TypeScript 타입 및 Zod 스키마
-- `sonamu.generated.ts` - Base 스키마 (모든 엔티티)
+  엔티티를 저장하면 다음 파일들이 자동 생성됩니다: - `{entity}.entity.json` - 엔티티 정의 - `
+  {entity}.types.ts` - TypeScript 타입 및 Zod 스키마 - `sonamu.generated.ts` - Base 스키마 (모든
+  엔티티)
 </Tip>
 
 <Tabs>
@@ -115,13 +104,12 @@ pnpm sonamu stub entity User
 이후 Sonamu UI에서 필드를 추가하고 편집할 수 있습니다.
 
 <Info>
-**더 알아보기**
-- [엔티티 정의하기](/ko/core-concepts/entity/defining-entities) - 엔티티 구조와 설정 옵션
-- [Sonamu UI 사용하기](/ko/core-concepts/entity/using-sonamu-ui) - UI에서 엔티티 관리
-- [필드 타입](/ko/core-concepts/entity/field-types) - 사용 가능한 모든 필드 타입
-- [Relation 정의](/ko/core-concepts/entity/relations) - 엔티티 간 관계 설정
-- [Enum 정의](/ko/core-concepts/entity/enums) - 열거형 타입 관리
-- [Entity Management](/ko/tools-and-cli/sonamu-ui/entity-management) - Sonamu UI Entity 탭 가이드
+  **더 알아보기** - [엔티티 정의하기](/ko/core-concepts/entity/defining-entities) - 엔티티 구조와
+  설정 옵션 - [Sonamu UI 사용하기](/ko/core-concepts/entity/using-sonamu-ui) - UI에서 엔티티 관리 -
+  [필드 타입](/ko/core-concepts/entity/field-types) - 사용 가능한 모든 필드 타입 - [Relation
+  정의](/ko/core-concepts/entity/relations) - 엔티티 간 관계 설정 - [Enum
+  정의](/ko/core-concepts/entity/enums) - 열거형 타입 관리 - [Entity
+  Management](/ko/tools-and-cli/sonamu-ui/entity-management) - Sonamu UI Entity 탭 가이드
 </Info>
 
 ## 2단계: 마이그레이션
@@ -135,7 +123,17 @@ pnpm sonamu stub entity User
 3. 생성된 SQL 검토
 4. **Run Migration** - 데이터베이스에 적용
 
-<Frame caption="Migration Execution"><video muted loop playsInline controls className="w-full rounded-xl" preload="metadata" src="/modules/docs/images/devWorkflow1.mp4"></video></Frame>
+<Frame caption="Migration Execution">
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="/modules/docs/images/devWorkflow1.mp4"
+  ></video>
+</Frame>
 
 ### CLI로 마이그레이션 (선택사항)
 
@@ -148,16 +146,16 @@ pnpm sonamu migrate run
 ```
 
 <Warning>
-마이그레이션은 되돌릴 수 없는 작업일 수 있습니다. 프로덕션 환경에서는 특히 주의하세요.
+  마이그레이션은 되돌릴 수 없는 작업일 수 있습니다. 프로덕션 환경에서는 특히 주의하세요.
 </Warning>
 
 <Info>
-**더 알아보기**
-- [마이그레이션 작동 원리](/ko/database/migrations/how-migrations-work) - 마이그레이션 시스템 이해
-- [마이그레이션 생성하기](/ko/database/migrations/creating-migrations) - SQL 자동 생성 메커니즘
-- [마이그레이션 실행하기](/ko/database/migrations/running-migrations) - 안전한 마이그레이션 실행
-- [Migration 탭](/ko/tools-and-cli/sonamu-ui/migration-tab) - Sonamu UI에서 마이그레이션 관리
-- [migrate CLI](/ko/tools-and-cli/sonamu-cli/migrate) - CLI로 마이그레이션 제어
+  **더 알아보기** - [마이그레이션 작동 원리](/ko/database/migrations/how-migrations-work) -
+  마이그레이션 시스템 이해 - [마이그레이션 생성하기](/ko/database/migrations/creating-migrations) -
+  SQL 자동 생성 메커니즘 - [마이그레이션 실행하기](/ko/database/migrations/running-migrations) -
+  안전한 마이그레이션 실행 - [Migration 탭](/ko/tools-and-cli/sonamu-ui/migration-tab) - Sonamu
+  UI에서 마이그레이션 관리 - [migrate CLI](/ko/tools-and-cli/sonamu-cli/migrate) - CLI로
+  마이그레이션 제어
 </Info>
 
 ## 3단계: 스캐폴딩
@@ -174,7 +172,17 @@ pnpm sonamu migrate run
 4. **Preview** (선택사항) - 생성될 코드 미리보기
 5. **Generate** - 파일 생성
 
-<Frame caption="Model Scaffolding"><video muted loop playsInline controls className="w-full rounded-xl" preload="metadata" src="/modules/docshttps://cf.cartanova.ai/sonamu-docs/devWorkflow2.mp4"></video></Frame>
+<Frame caption="Model Scaffolding">
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="/modules/docshttps://cf.cartanova.ai/sonamu-docs/devWorkflow2.mp4"
+  ></video>
+</Frame>
 
 ### CLI로 스캐폴딩 (선택사항)
 
@@ -192,13 +200,13 @@ pnpm sonamu scaffold model_test User
 - `{entity}.model.test.ts` - 테스트 템플릿
 
 생성된 파일은 언제든지 수정하여 비즈니스 로직을 추가할 수 있습니다.
+
 </Info>
 
 <Info>
-**더 알아보기**
-- [Scaffolding 탭](/ko/tools-and-cli/sonamu-ui/scaffolding-tab) - UI에서 코드 생성하기
-- [scaffold CLI](/ko/tools-and-cli/sonamu-cli/scaffold) - CLI로 파일 스캐폴딩
-- [테스트 스캐폴딩](/ko/testing/writing-tests/scaffolding-tests) - 테스트 파일 자동 생성
+  **더 알아보기** - [Scaffolding 탭](/ko/tools-and-cli/sonamu-ui/scaffolding-tab) - UI에서 코드
+  생성하기 - [scaffold CLI](/ko/tools-and-cli/sonamu-cli/scaffold) - CLI로 파일 스캐폴딩 - [테스트
+  스캐폴딩](/ko/testing/writing-tests/scaffolding-tests) - 테스트 파일 자동 생성
 </Info>
 
 ## 4단계: 비즈니스 로직 구현
@@ -224,10 +232,7 @@ class UserModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
-  async findById<T extends UserSubsetKey>(
-    subset: T,
-    id: number,
-  ): Promise<UserSubsetMapping[T]> {
+  async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
     // 기본 CRUD 로직 (스캐폴딩으로 생성됨)
   }
 
@@ -236,10 +241,8 @@ class UserModelClass extends BaseModelClass<
   async changePassword(userId: number, newPassword: string): Promise<void> {
     // 비밀번호 변경 로직
     const hashedPassword = await this.hashPassword(newPassword);
-    
-    await this.db()
-      .where("id", userId)
-      .update({ password: hashedPassword });
+
+    await this.db().where("id", userId).update({ password: hashedPassword });
   }
 
   private async hashPassword(password: string): Promise<string> {
@@ -267,17 +270,17 @@ export const UserModel = new UserModelClass();
 **HMR (Hot Module Replacement)**
 
 Model 파일을 수정하면 API 서버가 자동으로 재시작됩니다. 별도의 서버 재시작이 필요 없습니다!
+
 </Check>
 
 <Info>
-**더 알아보기**
-- [Model이란?](/ko/core-concepts/model/what-is-model) - Model의 역할과 구조
-- [@api 데코레이터](/ko/core-concepts/model/api-decorator) - API 엔드포인트 자동 생성
-- [비즈니스 로직 작성](/ko/core-concepts/model/business-logic) - Model에서 로직 구현하기
-- [BaseModel 메서드](/ko/core-concepts/model/basemodel-methods) - 내장 CRUD 메서드
-- [API 만들기](/ko/api-development/creating-apis/api-decorator) - 상세한 API 개발 가이드
-- [Puri 쿼리 빌더](/ko/database/puri/basic-queries) - 타입 안전한 쿼리 작성
-- [트랜잭션](/ko/database/transactions/transactional-decorator) - 안전한 데이터 처리
+  **더 알아보기** - [Model이란?](/ko/core-concepts/model/what-is-model) - Model의 역할과 구조 -
+  [@api 데코레이터](/ko/core-concepts/model/api-decorator) - API 엔드포인트 자동 생성 - [비즈니스
+  로직 작성](/ko/core-concepts/model/business-logic) - Model에서 로직 구현하기 - [BaseModel
+  메서드](/ko/core-concepts/model/basemodel-methods) - 내장 CRUD 메서드 - [API
+  만들기](/ko/api-development/creating-apis/api-decorator) - 상세한 API 개발 가이드 - [Puri 쿼리
+  빌더](/ko/database/puri/basic-queries) - 타입 안전한 쿼리 작성 -
+  [트랜잭션](/ko/database/transactions/transactional-decorator) - 안전한 데이터 처리
 </Info>
 
 ## 5단계: 동기화 (Sync)
@@ -293,7 +296,15 @@ Model 파일을 수정하면 API 서버가 자동으로 재시작됩니다. 별�
 - ✅ Entity 정의 변경 → 스키마 자동 재생성
 
 <Frame caption="터미널에서 HMR이 동작하는 로그 화면">
-<video muted loop playsInline controls className="w-full rounded-xl" preload="metadata" src="https://cf.cartanova.ai/sonamu-docs/introduction1.mp4"></video>
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/introduction1.mp4"
+  ></video>
 </Frame>
 
 ### 수동 동기화
@@ -319,13 +330,13 @@ pnpm sync
 - 동기화 상태가 꼬였다고 생각될 경우
 
 대부분의 경우 HMR이 자동으로 처리하므로 수동 sync는 드물게 필요합니다.
+
 </Info>
 
 <Info>
-**더 알아보기**
-- [Syncer 이해하기](/ko/core-concepts/auto-generation/syncer) - 동기화 메커니즘 상세
-- [자동 생성되는 것들](/ko/core-concepts/auto-generation/what-gets-generated) - 어떤 파일이 생성되는지
-- [HMR 작동 원리](/ko/tools-and-cli/hmr/how-hmr-works) - Hot Module Replacement 이해
+  **더 알아보기** - [Syncer 이해하기](/ko/core-concepts/auto-generation/syncer) - 동기화 메커니즘
+  상세 - [자동 생성되는 것들](/ko/core-concepts/auto-generation/what-gets-generated) - 어떤 파일이
+  생성되는지 - [HMR 작동 원리](/ko/tools-and-cli/hmr/how-hmr-works) - Hot Module Replacement 이해
 </Info>
 
 ## 6단계: 테스트
@@ -353,7 +364,7 @@ describe("UserModel", () => {
 
   test("changePassword should update password", async () => {
     await UserModel.changePassword(1, "newPassword123");
-    
+
     // 비밀번호 변경 확인
     const user = await UserModel.findById("A", 1);
     expect(user.password).not.toBe("oldPassword");
@@ -375,19 +386,27 @@ pnpm test --watch
 ```
 
 <Frame caption="터미널에서 테스트 실행 결과 화면">
-<video muted loop playsInline controls className="w-full rounded-xl" preload="metadata" src="/images/devWorkflow3.mp4"></video>
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="/images/devWorkflow3.mp4"
+  ></video>
 </Frame>
 
 <Tip>
-Sonamu는 Vitest를 사용합니다. 자세한 내용은 [테스트 작성하기](/ko/testing/writing-tests/test-structure) 문서를 참고하세요.
+  Sonamu는 Vitest를 사용합니다. 자세한 내용은 [테스트
+  작성하기](/ko/testing/writing-tests/test-structure) 문서를 참고하세요.
 </Tip>
 
 <Info>
-**더 알아보기**
-- [테스트 작성하기](/ko/testing/writing-tests/test-structure) - Vitest 기반 테스트 구조
-- [테스트 스캐폴딩](/ko/testing/writing-tests/scaffolding-tests) - 테스트 템플릿 활용
-- [Fixture 만들기](/ko/testing/fixtures/creating-fixtures) - 테스트 데이터 관리
-- [Naite란?](/ko/testing/naite/what-is-naite) - 테스트 로깅 시스템
+  **더 알아보기** - [테스트 작성하기](/ko/testing/writing-tests/test-structure) - Vitest 기반 테스트
+  구조 - [테스트 스캐폴딩](/ko/testing/writing-tests/scaffolding-tests) - 테스트 템플릿 활용 -
+  [Fixture 만들기](/ko/testing/fixtures/creating-fixtures) - 테스트 데이터 관리 -
+  [Naite란?](/ko/testing/naite/what-is-naite) - 테스트 로깅 시스템
 </Info>
 
 ## 7단계: 프론트엔드 통합
@@ -402,7 +421,7 @@ Model에 정의된 API는 자동으로 프론트엔드 Service로 생성됩니�
 export class UserService {
   static async findById(subset: UserSubsetKey, id: number) {
     const res = await axios.get(`/api/users/${id}`, {
-      params: { subset }
+      params: { subset },
     });
     return res.data;
   }
@@ -410,7 +429,7 @@ export class UserService {
   static async changePassword(userId: number, newPassword: string) {
     const res = await axios.post("/api/users/changePassword", {
       userId,
-      newPassword
+      newPassword,
     });
     return res.data;
   }
@@ -465,13 +484,14 @@ export function UserProfile({ userId }: { userId: number }) {
 **타입 안전성**
 
 Service와 타입이 백엔드와 자동 동기화되므로, 타입 불일치 오류를 컴파일 타임에 발견할 수 있습니다!
+
 </Check>
 
 <Info>
-**더 알아보기**
-- [Service 작동 원리](/ko/frontend-integration/generated-services/how-services-work) - 자동 생성 메커니즘
-- [Service 사용하기](/ko/frontend-integration/generated-services/using-services) - 실전 활용 가이드
-- [공유 타입](/ko/frontend-integration/type-safety/shared-types) - 백엔드-프론트엔드 타입 동기화
+  **더 알아보기** - [Service 작동
+  원리](/ko/frontend-integration/generated-services/how-services-work) - 자동 생성 메커니즘 -
+  [Service 사용하기](/ko/frontend-integration/generated-services/using-services) - 실전 활용 가이드
+  - [공유 타입](/ko/frontend-integration/type-safety/shared-types) - 백엔드-프론트엔드 타입 동기화
 </Info>
 
 ## 전체 워크플로우 예시
@@ -492,12 +512,11 @@ Post 엔티티에 `like_count` 필드 추가
   "dbDefault": "0"
 }
 ```
+
 </Step>
 
 <Step title="2. 마이그레이션">
-```sql
-ALTER TABLE posts ADD COLUMN like_count INTEGER DEFAULT 0;
-```
+  ```sql ALTER TABLE posts ADD COLUMN like_count INTEGER DEFAULT 0; ```
 </Step>
 
 <Step title="3. Model에 비즈니스 로직 추가">
@@ -514,9 +533,7 @@ async addLike(postId: number): Promise<Post> {
 </Step>
 
 <Step title="4. 자동 동기화">
-HMR이 자동으로:
-- `post.types.ts` → Web으로 복사
-- `PostService.ts`에 `addLike` 메서드 추가
+  HMR이 자동으로: - `post.types.ts` → Web으로 복사 - `PostService.ts`에 `addLike` 메서드 추가
 </Step>
 
 <Step title="5. 프론트엔드 구현">
@@ -541,7 +558,17 @@ test("addLike should increment like_count", async () => {
 </Step>
 </Steps>
 
-<Frame caption="Complete Development Flow"><video muted loop playsInline controls className="w-full rounded-xl" preload="metadata" src="https://cf.cartanova.ai/sonamu-docs/introduction4.mp4"></video></Frame>
+<Frame caption="Complete Development Flow">
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/introduction4.mp4"
+  ></video>
+</Frame>
 
 ## 개발 팁
 
@@ -572,6 +599,7 @@ test("addLike should increment like_count", async () => {
 ### 6. 문제 발생 시
 
 동기화 상태가 이상하면:
+
 1. 개발 서버 재시작
 2. `pnpm sync` 수동 실행
 3. `rm sonamu.lock` 후 재시작

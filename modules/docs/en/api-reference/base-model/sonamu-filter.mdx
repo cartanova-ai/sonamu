@@ -1,12 +1,14 @@
 ---
-title: 'sonamuFilter'
-description: 'Type-safe entity filtering'
+title: "sonamuFilter"
+description: "Type-safe entity filtering"
 ---
 
 `sonamuFilter` is a feature for type-safe filtering of Entity fields. Filterable fields and allowed operators are automatically inferred from the Entity definition, preventing invalid filtering attempts at both type level and runtime.
 
 <Info>
-`sonamuFilter` is automatically generated based on the Entity's props. Virtual fields are excluded from filtering targets. **Relations that create FK (`BelongsToOne`, `OneToOne` with `hasJoinColumn`) can be filtered using the `{relation_name}_id` format.**
+  `sonamuFilter` is automatically generated based on the Entity's props. Virtual fields are excluded
+  from filtering targets. **Relations that create FK (`BelongsToOne`, `OneToOne` with
+  `hasJoinColumn`) can be filtered using the `{relation_name}_id` format.**
 </Info>
 
 ## Basic Usage
@@ -15,16 +17,16 @@ description: 'Type-safe entity filtering'
 // Simple value filter (equivalent to eq)
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    status: "in_progress"
-  }
+    status: "in_progress",
+  },
 });
 
 // Using operators
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
     budget: { gt: 10000 },
-    name: { contains: "AI" }
-  }
+    name: { contains: "AI" },
+  },
 });
 ```
 
@@ -48,37 +50,37 @@ Available operators are determined by the field type:
 
 ```typescript
 type FilterCondition<T> =
-  | T                           // Direct value (equivalent to eq)
-  | { eq?: T }                  // Equals
-  | { ne?: T }                  // Not equals
-  | { gt?: T }                  // Greater than
-  | { gte?: T }                 // Greater than or equal
-  | { lt?: T }                  // Less than
-  | { lte?: T }                 // Less than or equal
-  | { in?: T[] }                // Included in
-  | { notIn?: T[] }             // Not included in
-  | { between?: [T, T] }        // Range
-  | { contains?: string }       // Contains (string)
-  | { startsWith?: string }     // Starts with (string)
-  | { endsWith?: string }       // Ends with (string)
-  | { isNull?: boolean }        // Is NULL
-  | { isNotNull?: boolean }     // Is NOT NULL
-  | { before?: Date }           // Before (date)
-  | { after?: Date }            // After (date)
+  | T // Direct value (equivalent to eq)
+  | { eq?: T } // Equals
+  | { ne?: T } // Not equals
+  | { gt?: T } // Greater than
+  | { gte?: T } // Greater than or equal
+  | { lt?: T } // Less than
+  | { lte?: T } // Less than or equal
+  | { in?: T[] } // Included in
+  | { notIn?: T[] } // Not included in
+  | { between?: [T, T] } // Range
+  | { contains?: string } // Contains (string)
+  | { startsWith?: string } // Starts with (string)
+  | { endsWith?: string } // Ends with (string)
+  | { isNull?: boolean } // Is NULL
+  | { isNotNull?: boolean } // Is NOT NULL
+  | { before?: Date } // Before (date)
+  | { after?: Date }; // After (date)
 ```
 
 ## Operators by Type
 
-| Type | Supported Operators |
-|------|---------------------|
-| `string` | `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in`, `notIn`, `isNull`, `isNotNull` |
-| `integer` | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull` |
-| `numeric` | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull` |
-| `boolean` | `eq`, `ne`, `isNull`, `isNotNull` |
-| `date` | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull` |
-| `datetime` | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull` |
-| `enum` | `eq`, `ne`, `in`, `notIn`, `isNull`, `isNotNull` |
-| `json` | `isNull`, `isNotNull` |
+| Type       | Supported Operators                                                                    |
+| ---------- | -------------------------------------------------------------------------------------- |
+| `string`   | `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in`, `notIn`, `isNull`, `isNotNull` |
+| `integer`  | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull`  |
+| `numeric`  | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull`  |
+| `boolean`  | `eq`, `ne`, `isNull`, `isNotNull`                                                      |
+| `date`     | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull`                        |
+| `datetime` | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull`                        |
+| `enum`     | `eq`, `ne`, `in`, `notIn`, `isNull`, `isNotNull`                                       |
+| `json`     | `isNull`, `isNotNull`                                                                  |
 
 ## Usage Examples
 
@@ -87,28 +89,28 @@ type FilterCondition<T> =
 ```typescript
 // Exact value
 const { rows } = await ProjectModel.findMany("A", {
-  sonamuFilter: { id: 1 }
+  sonamuFilter: { id: 1 },
 });
 
 // Comparison operators
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    budget: { gt: 10000 }  // budget > 10000
-  }
+    budget: { gt: 10000 }, // budget > 10000
+  },
 });
 
 // Range condition
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    budget: { between: [5000, 20000] }  // 5000 <= budget <= 20000
-  }
+    budget: { between: [5000, 20000] }, // 5000 <= budget <= 20000
+  },
 });
 
 // One of multiple values
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    id: { in: [1, 2, 3] }
-  }
+    id: { in: [1, 2, 3] },
+  },
 });
 ```
 
@@ -118,22 +120,22 @@ const { rows } = await ProjectModel.findMany("A", {
 // Partial match (LIKE '%keyword%')
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    name: { contains: "AI" }
-  }
+    name: { contains: "AI" },
+  },
 });
 
 // Prefix match (LIKE 'keyword%')
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    name: { startsWith: "Project" }
-  }
+    name: { startsWith: "Project" },
+  },
 });
 
 // Suffix match (LIKE '%keyword')
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    name: { endsWith: "2024" }
-  }
+    name: { endsWith: "2024" },
+  },
 });
 ```
 
@@ -143,24 +145,24 @@ const { rows } = await ProjectModel.findMany("A", {
 // Before a specific date
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    deadline: { before: new Date("2024-12-31") }
-  }
+    deadline: { before: new Date("2024-12-31") },
+  },
 });
 
 // After a specific date
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    created_at: { after: new Date("2024-01-01") }
-  }
+    created_at: { after: new Date("2024-01-01") },
+  },
 });
 
 // Date range
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
     deadline: {
-      between: [new Date("2024-01-01"), new Date("2024-12-31")]
-    }
-  }
+      between: [new Date("2024-01-01"), new Date("2024-12-31")],
+    },
+  },
 });
 ```
 
@@ -170,22 +172,22 @@ const { rows } = await ProjectModel.findMany("A", {
 // Single value
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    status: "in_progress"
-  }
+    status: "in_progress",
+  },
 });
 
 // One of multiple values
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    status: { in: ["planning", "in_progress"] }
-  }
+    status: { in: ["planning", "in_progress"] },
+  },
 });
 
 // Exclude specific values
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    status: { notIn: ["cancelled", "completed"] }
-  }
+    status: { notIn: ["cancelled", "completed"] },
+  },
 });
 ```
 
@@ -195,15 +197,15 @@ const { rows } = await ProjectModel.findMany("A", {
 // When NULL
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    description: { isNull: true }
-  }
+    description: { isNull: true },
+  },
 });
 
 // When NOT NULL
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    description: { isNotNull: true }
-  }
+    description: { isNotNull: true },
+  },
 });
 ```
 
@@ -215,8 +217,8 @@ const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
     status: { in: ["planning", "in_progress"] },
     budget: { gt: 5000 },
-    name: { contains: "AI" }
-  }
+    name: { contains: "AI" },
+  },
 });
 // WHERE status IN ('planning', 'in_progress')
 //   AND budget > 5000
@@ -231,22 +233,22 @@ Relations that create FK (`BelongsToOne`, `OneToOne` with `hasJoinColumn`) can b
 // Get projects assigned to a specific employee
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    employee_id: 5  // FK of employee relation
-  }
+    employee_id: 5, // FK of employee relation
+  },
 });
 
 // Get projects assigned to multiple employees
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    employee_id: { in: [1, 2, 3] }
-  }
+    employee_id: { in: [1, 2, 3] },
+  },
 });
 
 // Get projects with no assignee
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    employee_id: { isNull: true }
-  }
+    employee_id: { isNull: true },
+  },
 });
 
 // Combine FK with other conditions
@@ -254,13 +256,14 @@ const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
     employee_id: { in: [1, 2, 3] },
     status: "in_progress",
-    budget: { gt: 10000 }
-  }
+    budget: { gt: 10000 },
+  },
 });
 ```
 
 <Note>
-FK filtering requires the `{relation_name}_id` format, not the relation name itself. For example, if you have an `employee` relation, use `employee_id` instead of `employee` for filtering.
+  FK filtering requires the `{relation_name}_id` format, not the relation name itself. For example,
+  if you have an `employee` relation, use `employee_id` instead of `employee` for filtering.
 </Note>
 
 ## URL Query String
@@ -292,17 +295,17 @@ Only fields defined in the Entity's props can be filtered. Virtual fields are ex
 ```typescript
 // ✅ Relations that create FK can be filtered as {relation_name}_id
 await ProjectModel.findMany("A", {
-  sonamuFilter: { employee_id: { in: [1, 2, 3] } }  // FK of employee relation
+  sonamuFilter: { employee_id: { in: [1, 2, 3] } }, // FK of employee relation
 });
 
 // ❌ Error: Field 'employee' cannot be filtered (relation name itself is not allowed)
 await ProjectModel.findMany("A", {
-  sonamuFilter: { employee: { eq: 1 } }
+  sonamuFilter: { employee: { eq: 1 } },
 });
 
 // ❌ Error: Field 'virtual_test' cannot be filtered
 await ProjectModel.findMany("A", {
-  sonamuFilter: { virtual_test: { eq: 1 } }  // virtual field
+  sonamuFilter: { virtual_test: { eq: 1 } }, // virtual field
 });
 ```
 
@@ -313,7 +316,7 @@ Only operators appropriate for the field type can be used.
 ```typescript
 // ❌ Error: Field 'name' (type: string) does not support 'between' operator
 await ProjectModel.findMany("A", {
-  sonamuFilter: { name: { between: ["a", "z"] } }
+  sonamuFilter: { name: { between: ["a", "z"] } },
 });
 ```
 
@@ -324,7 +327,7 @@ Enum type fields only allow defined values.
 ```typescript
 // ❌ Error: Value 'invalid_status' is not valid for field 'status'
 await ProjectModel.findMany("A", {
-  sonamuFilter: { status: "invalid_status" }
+  sonamuFilter: { status: "invalid_status" },
 });
 ```
 
@@ -341,13 +344,14 @@ const { rows } = await ProjectModel.findMany("A", {
   // sonamuFilter
   sonamuFilter: {
     budget: { gt: 10000 },
-    name: { contains: "AI" }
-  }
+    name: { contains: "AI" },
+  },
 });
 ```
 
 <Warning>
-If existing filters and `sonamuFilter` filter the same field, both conditions are applied with AND. Avoid duplicate filtering on the same field to prevent unintended results.
+  If existing filters and `sonamuFilter` filter the same field, both conditions are applied with
+  AND. Avoid duplicate filtering on the same field to prevent unintended results.
 </Warning>
 
 ## Internal Operation
@@ -357,7 +361,7 @@ If existing filters and `sonamuFilter` filter the same field, both conditions ar
 Converts string values from URL query strings to appropriate types.
 
 ```typescript
-normalizeFilterQuery({ budget: { gt: "10000" } })
+normalizeFilterQuery({ budget: { gt: "10000" } });
 // → { budget: { gt: 10000 } }
 ```
 

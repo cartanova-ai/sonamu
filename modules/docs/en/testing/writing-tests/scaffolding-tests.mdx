@@ -9,24 +9,16 @@ Sonamu automatically generates model test files with the `pnpm generate` command
 
 <CardGroup cols={2}>
   <Card title="Auto Generation" icon="wand-magic-sparkles">
-    model.test.ts creation
-    
-    Basic structure included
+    model.test.ts creation Basic structure included
   </Card>
   <Card title="Bootstrap Included" icon="bolt">
-    Auto test environment setup
-    
-    Immediately executable
+    Auto test environment setup Immediately executable
   </Card>
   <Card title="CRUD Tests" icon="list-check">
-    Basic test skeleton
-    
-    Customizable
+    Basic test skeleton Customizable
   </Card>
   <Card title="Type Safe" icon="shield-check">
-    Model integration
-    
-    Auto-completion support
+    Model integration Auto-completion support
   </Card>
 </CardGroup>
 
@@ -41,6 +33,7 @@ pnpm generate
 When an Entity is defined, `{model}.test.ts` files are automatically generated.
 
 **Generation location**:
+
 ```
 api/src/models/
 ├── user.model.ts
@@ -62,31 +55,31 @@ bootstrap(vi);
 
 test("Create user", async () => {
   const userModel = new UserModel();
-  
+
   // Write test code
   const { user } = await userModel.create({
     username: "john",
     email: "john@example.com",
     password: "password123",
   });
-  
+
   expect(user.id).toBeGreaterThan(0);
   expect(user.username).toBe("john");
 });
 
 test("Get user", async () => {
   const userModel = new UserModel();
-  
+
   // Create test data
   const { user } = await userModel.create({
     username: "jane",
     email: "jane@example.com",
     password: "password123",
   });
-  
+
   // Test retrieval
   const { user: found } = await userModel.getUser("C", user.id);
-  
+
   expect(found.id).toBe(user.id);
   expect(found.username).toBe("jane");
 });
@@ -132,13 +125,13 @@ bootstrap(vi);
 // Create
 test("Create post", async () => {
   const postModel = new PostModel();
-  
+
   const { post } = await postModel.create({
     title: "Test Post",
     content: "Test Content",
     author_id: 1,
   });
-  
+
   expect(post.id).toBeGreaterThan(0);
   expect(post.title).toBe("Test Post");
 });
@@ -146,17 +139,17 @@ test("Create post", async () => {
 // Read
 test("Get post", async () => {
   const postModel = new PostModel();
-  
+
   // Create test data
   const { post } = await postModel.create({
     title: "Test Post",
     content: "Test Content",
     author_id: 1,
   });
-  
+
   // Retrieve
   const { post: found } = await postModel.getPost("C", post.id);
-  
+
   expect(found.id).toBe(post.id);
   expect(found.title).toBe("Test Post");
 });
@@ -164,19 +157,19 @@ test("Get post", async () => {
 // Update
 test("Update post", async () => {
   const postModel = new PostModel();
-  
+
   // Create test data
   const { post } = await postModel.create({
     title: "Original Title",
     content: "Original Content",
     author_id: 1,
   });
-  
+
   // Update
   await postModel.update(post.id, {
     title: "Updated Title",
   });
-  
+
   // Verify
   const { post: updated } = await postModel.getPost("C", post.id);
   expect(updated.title).toBe("Updated Title");
@@ -186,17 +179,17 @@ test("Update post", async () => {
 // Delete
 test("Delete post", async () => {
   const postModel = new PostModel();
-  
+
   // Create test data
   const { post } = await postModel.create({
     title: "Test Post",
     content: "Test Content",
     author_id: 1,
   });
-  
+
   // Delete
   await postModel.delete(post.id);
-  
+
   // Verify
   const deleted = await postModel.findById("C", post.id);
   expect(deleted).toBeNull();
@@ -209,24 +202,24 @@ test("Delete post", async () => {
 test("User and post relationship", async () => {
   const userModel = new UserModel();
   const postModel = new PostModel();
-  
+
   // Create user
   const { user } = await userModel.create({
     username: "author",
     email: "author@example.com",
     password: "password",
   });
-  
+
   // Create post
   const { post } = await postModel.create({
     title: "User's Post",
     content: "Content",
     author_id: user.id,
   });
-  
+
   // Verify relationship
   expect(post.author_id).toBe(user.id);
-  
+
   // Querying with Subset "C" includes author info
   const { post: fullPost } = await postModel.getPost("C", post.id);
   expect(fullPost.author?.username).toBe("author");
@@ -238,30 +231,28 @@ test("User and post relationship", async () => {
 ```typescript
 test("Duplicate email validation", async () => {
   const userModel = new UserModel();
-  
+
   // Create first user
   await userModel.create({
     username: "user1",
     email: "duplicate@example.com",
     password: "password",
   });
-  
+
   // Try to create with same email
   await expect(
     userModel.create({
       username: "user2",
       email: "duplicate@example.com",
       password: "password",
-    })
+    }),
   ).rejects.toThrow("Email already exists");
 });
 
 test("Get non-existent post", async () => {
   const postModel = new PostModel();
-  
-  await expect(
-    postModel.getPost("C", 999999)
-  ).rejects.toThrow("Post not found");
+
+  await expect(postModel.getPost("C", 999999)).rejects.toThrow("Post not found");
 });
 ```
 
@@ -287,7 +278,7 @@ describe("User creation", () => {
     });
     expect(user.id).toBeGreaterThan(0);
   });
-  
+
   test("Duplicate email validation", async () => {
     const userModel = new UserModel();
     await userModel.create({
@@ -295,13 +286,13 @@ describe("User creation", () => {
       email: "duplicate@example.com",
       password: "password",
     });
-    
+
     await expect(
       userModel.create({
         username: "user2",
         email: "duplicate@example.com",
         password: "password",
-      })
+      }),
     ).rejects.toThrow();
   });
 });
@@ -314,16 +305,14 @@ describe("User retrieval", () => {
       email: "test@example.com",
       password: "password",
     });
-    
+
     const { user: found } = await userModel.getUser("C", user.id);
     expect(found.id).toBe(user.id);
   });
-  
+
   test("Get non-existent user", async () => {
     const userModel = new UserModel();
-    await expect(
-      userModel.getUser("C", 999999)
-    ).rejects.toThrow();
+    await expect(userModel.getUser("C", 999999)).rejects.toThrow();
   });
 });
 ```
@@ -338,14 +327,18 @@ Each test should run independently.
 // ✅ Correct: Each test is independent
 test("Test 1", async () => {
   const userModel = new UserModel();
-  const { user } = await userModel.create({ /* ... */ });
+  const { user } = await userModel.create({
+    /* ... */
+  });
   // Auto rollback after test ends
 });
 
 test("Test 2", async () => {
   const userModel = new UserModel();
   // Starts with clean DB state
-  const { user } = await userModel.create({ /* ... */ });
+  const { user } = await userModel.create({
+    /* ... */
+  });
 });
 
 // ❌ Wrong: Dependencies between tests
@@ -353,7 +346,9 @@ let sharedUserId: number;
 
 test("Test 1", async () => {
   const userModel = new UserModel();
-  const { user } = await userModel.create({ /* ... */ });
+  const { user } = await userModel.create({
+    /* ... */
+  });
   sharedUserId = user.id; // ❌ Shared with other tests
 });
 
@@ -388,12 +383,12 @@ test("Update post", async () => {
     content: "Content",
     author_id: 1,
   });
-  
+
   // Act
   await postModel.update(post.id, {
     title: "Updated",
   });
-  
+
   // Assert
   const { post: updated } = await postModel.getPost("C", post.id);
   expect(updated.title).toBe("Updated");
@@ -403,12 +398,10 @@ test("Update post", async () => {
 ## Cautions
 
 <Warning>
-**Cautions when writing tests**:
-1. **Don't modify auto-generated files**: Will be overwritten on regeneration
-2. **Independent tests**: No dependencies between tests
-3. **Transaction based**: Auto rollback after each test
-4. **Async required**: All tests must be async functions
-5. **Clear names**: Clearly state what the test verifies
+  **Cautions when writing tests**: 1. **Don't modify auto-generated files**: Will be overwritten on
+  regeneration 2. **Independent tests**: No dependencies between tests 3. **Transaction based**:
+  Auto rollback after each test 4. **Async required**: All tests must be async functions 5. **Clear
+  names**: Clearly state what the test verifies
 </Warning>
 
 ## Next Steps

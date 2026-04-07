@@ -1,12 +1,14 @@
 ---
-title: 'sonamuFilter'
-description: '타입 안전한 엔티티 필터링'
+title: "sonamuFilter"
+description: "타입 안전한 엔티티 필터링"
 ---
 
 `sonamuFilter`는 Entity의 필드를 타입 안전하게 필터링하는 기능입니다. 필터 가능한 필드와 허용되는 연산자가 Entity 정의에서 자동으로 추론되어 잘못된 필터링 시도를 타입 레벨과 런타임 모두에서 방지합니다.
 
 <Info>
-`sonamuFilter`는 Entity의 props를 기반으로 자동 생성됩니다. 가상 필드(virtual fields)는 필터링 대상에서 제외되며, **FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)는 `{관계명}_id` 형태로 필터링할 수 있습니다.**
+  `sonamuFilter`는 Entity의 props를 기반으로 자동 생성됩니다. 가상 필드(virtual fields)는 필터링
+  대상에서 제외되며, **FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)는 `
+  {관계명}_id` 형태로 필터링할 수 있습니다.**
 </Info>
 
 ## 기본 사용법
@@ -15,16 +17,16 @@ description: '타입 안전한 엔티티 필터링'
 // 단순 값 필터 (eq와 동일)
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    status: "in_progress"
-  }
+    status: "in_progress",
+  },
 });
 
 // 연산자 사용
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
     budget: { gt: 10000 },
-    name: { contains: "AI" }
-  }
+    name: { contains: "AI" },
+  },
 });
 ```
 
@@ -48,37 +50,37 @@ export type ProjectListParams = {
 
 ```typescript
 type FilterCondition<T> =
-  | T                           // 직접 값 (eq와 동일)
-  | { eq?: T }                  // 같음
-  | { ne?: T }                  // 같지 않음
-  | { gt?: T }                  // 보다 큼
-  | { gte?: T }                 // 보다 크거나 같음
-  | { lt?: T }                  // 보다 작음
-  | { lte?: T }                 // 보다 작거나 같음
-  | { in?: T[] }                // 포함
-  | { notIn?: T[] }             // 미포함
-  | { between?: [T, T] }        // 범위
-  | { contains?: string }       // 포함 (문자열)
-  | { startsWith?: string }     // 시작 (문자열)
-  | { endsWith?: string }       // 끝 (문자열)
-  | { isNull?: boolean }        // NULL 여부
-  | { isNotNull?: boolean }     // NOT NULL 여부
-  | { before?: Date }           // 이전 (날짜)
-  | { after?: Date }            // 이후 (날짜)
+  | T // 직접 값 (eq와 동일)
+  | { eq?: T } // 같음
+  | { ne?: T } // 같지 않음
+  | { gt?: T } // 보다 큼
+  | { gte?: T } // 보다 크거나 같음
+  | { lt?: T } // 보다 작음
+  | { lte?: T } // 보다 작거나 같음
+  | { in?: T[] } // 포함
+  | { notIn?: T[] } // 미포함
+  | { between?: [T, T] } // 범위
+  | { contains?: string } // 포함 (문자열)
+  | { startsWith?: string } // 시작 (문자열)
+  | { endsWith?: string } // 끝 (문자열)
+  | { isNull?: boolean } // NULL 여부
+  | { isNotNull?: boolean } // NOT NULL 여부
+  | { before?: Date } // 이전 (날짜)
+  | { after?: Date }; // 이후 (날짜)
 ```
 
 ## 타입별 지원 연산자
 
-| 타입 | 지원 연산자 |
-|------|-------------|
-| `string` | `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in`, `notIn`, `isNull`, `isNotNull` |
-| `integer` | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull` |
-| `numeric` | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull` |
-| `boolean` | `eq`, `ne`, `isNull`, `isNotNull` |
-| `date` | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull` |
-| `datetime` | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull` |
-| `enum` | `eq`, `ne`, `in`, `notIn`, `isNull`, `isNotNull` |
-| `json` | `isNull`, `isNotNull` |
+| 타입       | 지원 연산자                                                                            |
+| ---------- | -------------------------------------------------------------------------------------- |
+| `string`   | `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in`, `notIn`, `isNull`, `isNotNull` |
+| `integer`  | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull`  |
+| `numeric`  | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull`  |
+| `boolean`  | `eq`, `ne`, `isNull`, `isNotNull`                                                      |
+| `date`     | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull`                        |
+| `datetime` | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull`                        |
+| `enum`     | `eq`, `ne`, `in`, `notIn`, `isNull`, `isNotNull`                                       |
+| `json`     | `isNull`, `isNotNull`                                                                  |
 
 ## 사용 예시
 
@@ -87,28 +89,28 @@ type FilterCondition<T> =
 ```typescript
 // 정확한 값
 const { rows } = await ProjectModel.findMany("A", {
-  sonamuFilter: { id: 1 }
+  sonamuFilter: { id: 1 },
 });
 
 // 비교 연산자
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    budget: { gt: 10000 }  // budget > 10000
-  }
+    budget: { gt: 10000 }, // budget > 10000
+  },
 });
 
 // 범위 조건
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    budget: { between: [5000, 20000] }  // 5000 <= budget <= 20000
-  }
+    budget: { between: [5000, 20000] }, // 5000 <= budget <= 20000
+  },
 });
 
 // 여러 값 중 하나
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    id: { in: [1, 2, 3] }
-  }
+    id: { in: [1, 2, 3] },
+  },
 });
 ```
 
@@ -118,22 +120,22 @@ const { rows } = await ProjectModel.findMany("A", {
 // 부분 일치 (LIKE '%keyword%')
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    name: { contains: "AI" }
-  }
+    name: { contains: "AI" },
+  },
 });
 
 // 접두사 일치 (LIKE 'keyword%')
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    name: { startsWith: "Project" }
-  }
+    name: { startsWith: "Project" },
+  },
 });
 
 // 접미사 일치 (LIKE '%keyword')
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    name: { endsWith: "2024" }
-  }
+    name: { endsWith: "2024" },
+  },
 });
 ```
 
@@ -143,24 +145,24 @@ const { rows } = await ProjectModel.findMany("A", {
 // 특정 날짜 이전
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    deadline: { before: new Date("2024-12-31") }
-  }
+    deadline: { before: new Date("2024-12-31") },
+  },
 });
 
 // 특정 날짜 이후
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    created_at: { after: new Date("2024-01-01") }
-  }
+    created_at: { after: new Date("2024-01-01") },
+  },
 });
 
 // 날짜 범위
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
     deadline: {
-      between: [new Date("2024-01-01"), new Date("2024-12-31")]
-    }
-  }
+      between: [new Date("2024-01-01"), new Date("2024-12-31")],
+    },
+  },
 });
 ```
 
@@ -170,22 +172,22 @@ const { rows } = await ProjectModel.findMany("A", {
 // 단일 값
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    status: "in_progress"
-  }
+    status: "in_progress",
+  },
 });
 
 // 여러 값 중 하나
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    status: { in: ["planning", "in_progress"] }
-  }
+    status: { in: ["planning", "in_progress"] },
+  },
 });
 
 // 특정 값 제외
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    status: { notIn: ["cancelled", "completed"] }
-  }
+    status: { notIn: ["cancelled", "completed"] },
+  },
 });
 ```
 
@@ -195,15 +197,15 @@ const { rows } = await ProjectModel.findMany("A", {
 // NULL인 경우
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    description: { isNull: true }
-  }
+    description: { isNull: true },
+  },
 });
 
 // NULL이 아닌 경우
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    description: { isNotNull: true }
-  }
+    description: { isNotNull: true },
+  },
 });
 ```
 
@@ -215,8 +217,8 @@ const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
     status: { in: ["planning", "in_progress"] },
     budget: { gt: 5000 },
-    name: { contains: "AI" }
-  }
+    name: { contains: "AI" },
+  },
 });
 // WHERE status IN ('planning', 'in_progress')
 //   AND budget > 5000
@@ -231,22 +233,22 @@ FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)�
 // 특정 직원이 담당하는 프로젝트 조회
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    employee_id: 5  // employee 관계의 FK
-  }
+    employee_id: 5, // employee 관계의 FK
+  },
 });
 
 // 여러 직원이 담당하는 프로젝트 조회
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    employee_id: { in: [1, 2, 3] }
-  }
+    employee_id: { in: [1, 2, 3] },
+  },
 });
 
 // 담당자가 없는 프로젝트 조회
 const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
-    employee_id: { isNull: true }
-  }
+    employee_id: { isNull: true },
+  },
 });
 
 // FK와 다른 조건 조합
@@ -254,13 +256,14 @@ const { rows } = await ProjectModel.findMany("A", {
   sonamuFilter: {
     employee_id: { in: [1, 2, 3] },
     status: "in_progress",
-    budget: { gt: 10000 }
-  }
+    budget: { gt: 10000 },
+  },
 });
 ```
 
 <Note>
-FK 필터링은 관계명이 아닌 `{관계명}_id` 형식을 사용해야 합니다. 예를 들어 `employee` 관계가 있다면 `employee`가 아닌 `employee_id`로 필터링합니다.
+  FK 필터링은 관계명이 아닌 `{관계명}_id` 형식을 사용해야 합니다. 예를 들어 `employee` 관계가 있다면
+  `employee`가 아닌 `employee_id`로 필터링합니다.
 </Note>
 
 ## URL 쿼리 스트링
@@ -292,17 +295,17 @@ Entity의 props에 정의된 필드만 필터링할 수 있습니다. 가상 필
 ```typescript
 // ✅ FK를 생성하는 관계는 {관계명}_id로 필터링 가능
 await ProjectModel.findMany("A", {
-  sonamuFilter: { employee_id: { in: [1, 2, 3] } }  // employee 관계의 FK
+  sonamuFilter: { employee_id: { in: [1, 2, 3] } }, // employee 관계의 FK
 });
 
 // ❌ 에러: 필드 'employee'는 필터링할 수 없습니다 (관계명 자체는 불가)
 await ProjectModel.findMany("A", {
-  sonamuFilter: { employee: { eq: 1 } }
+  sonamuFilter: { employee: { eq: 1 } },
 });
 
 // ❌ 에러: 필드 'virtual_test'는 필터링할 수 없습니다
 await ProjectModel.findMany("A", {
-  sonamuFilter: { virtual_test: { eq: 1 } }  // 가상 필드
+  sonamuFilter: { virtual_test: { eq: 1 } }, // 가상 필드
 });
 ```
 
@@ -313,7 +316,7 @@ await ProjectModel.findMany("A", {
 ```typescript
 // ❌ 에러: 필드 'name'(타입: string)는 'between' 연산자를 지원하지 않습니다
 await ProjectModel.findMany("A", {
-  sonamuFilter: { name: { between: ["a", "z"] } }
+  sonamuFilter: { name: { between: ["a", "z"] } },
 });
 ```
 
@@ -324,7 +327,7 @@ Enum 타입의 필드는 정의된 값만 허용합니다.
 ```typescript
 // ❌ 에러: 필드 'status'의 값 'invalid_status'는 유효하지 않습니다
 await ProjectModel.findMany("A", {
-  sonamuFilter: { status: "invalid_status" }
+  sonamuFilter: { status: "invalid_status" },
 });
 ```
 
@@ -341,13 +344,14 @@ const { rows } = await ProjectModel.findMany("A", {
   // sonamuFilter
   sonamuFilter: {
     budget: { gt: 10000 },
-    name: { contains: "AI" }
-  }
+    name: { contains: "AI" },
+  },
 });
 ```
 
 <Warning>
-기존 필터와 `sonamuFilter`가 같은 필드를 필터링하면 두 조건이 모두 AND로 적용됩니다. 의도치 않은 결과를 방지하려면 같은 필드에 대한 중복 필터링을 피하세요.
+  기존 필터와 `sonamuFilter`가 같은 필드를 필터링하면 두 조건이 모두 AND로 적용됩니다. 의도치 않은
+  결과를 방지하려면 같은 필드에 대한 중복 필터링을 피하세요.
 </Warning>
 
 ## 내부 동작
@@ -357,7 +361,7 @@ const { rows } = await ProjectModel.findMany("A", {
 URL 쿼리 스트링으로 전달된 문자열 값을 적절한 타입으로 변환합니다.
 
 ```typescript
-normalizeFilterQuery({ budget: { gt: "10000" } })
+normalizeFilterQuery({ budget: { gt: "10000" } });
 // → { budget: { gt: 10000 } }
 ```
 

@@ -46,21 +46,23 @@ Sonamu로 개발할 때는 이렇습니다:
 
 ## 다른 프레임워크와의 차이
 
-| 프레임워크 | HMR 지원 | 자동 생성 코드 싱크 | Entity 변경 반영 |
-|-----------|---------|-------------------|-----------------|
-| NestJS | ❌ 없음 | - | 수동 재시작 필요 |
-| Express | ❌ 없음 | - | nodemon 재시작 |
-| Fastify | ⚠️ 부분 지원 | - | 수동 재시작 필요 |
-| **Sonamu** | **✅ 완전 지원** | **✅ 자동** | **✅ 즉시 반영** |
+| 프레임워크 | HMR 지원         | 자동 생성 코드 싱크 | Entity 변경 반영 |
+| ---------- | ---------------- | ------------------- | ---------------- |
+| NestJS     | ❌ 없음          | -                   | 수동 재시작 필요 |
+| Express    | ❌ 없음          | -                   | nodemon 재시작   |
+| Fastify    | ⚠️ 부분 지원     | -                   | 수동 재시작 필요 |
+| **Sonamu** | **✅ 완전 지원** | **✅ 자동**         | **✅ 즉시 반영** |
 
 ### Sonamu만의 특별함
 
 일반적인 Node.js HMR:
+
 - 단순히 파일 재로드만 함
 - 자동 생성 코드는 직접 관리 필요
 - Entity 변경 시 여러 파일 수동 수정
 
 **Sonamu HMR:**
+
 - 파일 재로드 + Syncer 자동 실행
 - Entity 변경 → 모든 관련 코드 자동 생성/업데이트
 - 의존하는 모든 파일 자동 재로드
@@ -74,14 +76,14 @@ graph TD
         GA["📁 파일 변경 감지"] --> GB["🗑️ ESM 캐시 무효화"]
         GB --> GC["🔄 모듈 재로드"]
         GC --> GD["✅ 완료"]
-        
+
         style GT fill:#FFE4E1,stroke:#FF6B6B,stroke-width:3px,color:#000
         style GA fill:#FFF,stroke:#FF6B6B
         style GB fill:#FFF,stroke:#FF6B6B
         style GC fill:#FFF,stroke:#FF6B6B
         style GD fill:#ffd700,stroke:#FF6B6B
     end
-    
+
     subgraph sonamu[" "]
         direction TB
         ST["🚀 Sonamu HMR"]
@@ -95,7 +97,7 @@ graph TD
         SF --> SG
         SG --> SH["🔌 API 재등록"]
         SH --> SI["✅ 완료"]
-        
+
         style ST fill:#E8F5E9,stroke:#4CAF50,stroke-width:3px,color:#000
         style SA fill:#FFF,stroke:#4CAF50
         style SB fill:#FFF,stroke:#4CAF50
@@ -119,7 +121,7 @@ User Entity에 `nickname` 필드를 추가하는 과정:
 
 ```typescript
 // User Entity에 nickname 추가
-nickname: StringProp({ maxLength: 50 })
+nickname: StringProp({ maxLength: 50 });
 ```
 
 **2단계: 저장하면 즉시**
@@ -173,10 +175,10 @@ async list() {
 // user.api.ts 수정 후
 @api({ httpMethod: "GET" })
 async list(listParams: ListParams & { keyword?: string }) {
-  const where = listParams.keyword 
+  const where = listParams.keyword
     ? { name: { $like: `%${listParams.keyword}%` } }
     : undefined;
-  
+
   return UserModel.findMany({
     where,
     limit: listParams.num,
@@ -209,11 +211,11 @@ User의 활성 상태 체크 로직 추가:
 // user.model.ts
 export class UserModel extends BaseModelClass {
   static async findActive() {
-    return this.findMany({ 
-      where: { status: "active", deletedAt: null } 
+    return this.findMany({
+      where: { status: "active", deletedAt: null },
     });
   }
-  
+
   isActive(): boolean {
     return this.status === "active" && !this.deletedAt;
   }
@@ -227,11 +229,11 @@ export class UserModel extends BaseModelClass {
 @api({ httpMethod: "POST" })
 async create(body: PostForm) {
   const user = await UserModel.findById(body.userId);
-  
+
   if (!user.isActive()) {  // 👈 방금 추가한 메서드 바로 사용!
     throw new BadRequestError("User is not active");
   }
-  
+
   return PostModel.save(body);
 }
 ```
@@ -272,16 +274,16 @@ Syncer가 HMR을 **직접 제어**합니다:
 async syncFromWatcher(event: string, diffFilePath: AbsolutePath) {
   // 1. HMR에게 파일 무효화 요청
   const invalidatedPaths = await hot.invalidateFile(diffFilePath, event);
-  
+
   // 2. 자동 생성 코드 싱크 완료 (순서 보장!)
   await this.doSyncActions([diffFilePath]);
-  
+
   // 3. 이제 안전하게 모듈 재로드
   await this.autoloadTypes();
   await this.autoloadModels();
   await this.autoloadApis();
   await this.autoloadWorkflows();
-  
+
   // 4. 완료!
   this.eventEmitter.emit("onHMRCompleted");
 }
@@ -302,27 +304,27 @@ sequenceDiagram
     participant Syncer as Syncer
     participant HMR as HMR Hook
     participant Module as 모듈 시스템
-    
+
     Dev->>File: user.entity.ts 수정 & 저장
     File->>Syncer: 변경 감지 (chokidar)
-    
+
     Note over Syncer: 1단계: 무효화
     Syncer->>HMR: invalidateFile() 호출
     HMR->>Module: ESM 캐시 제거
     HMR->>Module: 의존성 파일 캐시 제거
     HMR-->>Syncer: invalidatedPaths 반환
-    
+
     Note over Syncer: 2단계: 코드 생성 (순서 보장!)
     Syncer->>Syncer: doSyncActions()
     Syncer->>File: user.types.ts 생성
     Syncer->>File: user.zod.ts 생성
     Syncer->>File: UserService.ts 생성
-    
+
     Note over Syncer: 3단계: 재로드
     Syncer->>Module: autoloadTypes()
     Syncer->>Module: autoloadModels()
     Syncer->>Module: autoloadApis()
-    
+
     Note over Syncer: 4단계: 완료
     Syncer->>Syncer: emit('onHMRCompleted')
     Syncer-->>Dev: ✅ All files are synced!
@@ -345,7 +347,7 @@ if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
 
   await hot.init({
     rootDirectory: process.env.API_ROOT_PATH,
-    boundaries: [`./src/**/*.ts`],  // 모든 .ts 파일이 HMR 대상
+    boundaries: [`./src/**/*.ts`], // 모든 .ts 파일이 HMR 대상
   });
 
   console.log("🔥 HMR-hook initialized");
@@ -372,19 +374,19 @@ graph TD
     A[user.model.ts] --> B[user.api.ts]
     A --> C[post.api.ts]
     A --> D[admin.api.ts]
-    
+
     E[post.model.ts] --> C
     E --> F[comment.api.ts]
-    
+
     style A fill:#E3F2FD,stroke:#1976D2,stroke-width:3px
     style E fill:#E3F2FD,stroke:#1976D2,stroke-width:3px
     style B fill:#FFF3E0,stroke:#F57C00
     style C fill:#FFF3E0,stroke:#F57C00
     style D fill:#FFF3E0,stroke:#F57C00
     style F fill:#FFF3E0,stroke:#F57C00
-    
+
     classDef changed fill:#FFCDD2,stroke:#D32F2F,stroke-width:3px
-    
+
     class A changed
 ```
 
@@ -433,6 +435,7 @@ await this.doSyncActions([diffFilePath]);
 ```
 
 생성되는 파일:
+
 - TypeScript 타입 파일 (`user.types.ts`)
 - Zod 스키마 (`user.zod.ts`)
 - 프론트엔드 Service (`UserService.ts`)
@@ -456,11 +459,11 @@ Model 파일이 변경되면 해당 Model의 모든 API를 재등록합니다:
 removeInvalidatedRegisteredApis(invalidatedPath: AbsolutePath) {
   const entityId = EntityManager.getEntityIdFromPath(invalidatedPath);
   const toRemove = registeredApis.filter((api) => api.modelName === `${entityId}Model`);
-  
+
   for (const api of toRemove) {
     registeredApis.splice(registeredApis.indexOf(api), 1);
   }
-  
+
   return toRemove;
 }
 ```
@@ -481,11 +484,11 @@ Sonamu의 `@sonamu-kit/hmr-hook`은 원본 hot-hook을 fork하여 다음과 같�
 ```typescript
 // 원본 hot-hook: ❌ 불가능
 const modelPath = `./models/${entityId}.model`;
-await import(modelPath);  // 에러 발생!
+await import(modelPath); // 에러 발생!
 
 // Sonamu hmr-hook: ✅ 가능
 const modelPath = `./models/${entityId}.model`;
-await import(modelPath);  // 정상 동작
+await import(modelPath); // 정상 동작
 ```
 
 Sonamu는 Entity 기반 구조라 경로를 동적으로 생성해야 하므로 이 기능이 필수적입니다.
@@ -494,7 +497,7 @@ Sonamu는 Entity 기반 구조라 경로를 동적으로 생성해야 하므로 
 
 ```typescript
 // user.model.ts (boundary)
-import { PostModel } from "./post.model";  // 원본: ❌ / Sonamu: ✅
+import { PostModel } from "./post.model"; // 원본: ❌ / Sonamu: ✅
 
 export class UserModel extends BaseModelClass {
   async getPosts() {
@@ -579,9 +582,7 @@ HOT=yes pnpm dev
 HOT=no pnpm dev
 ```
 
-<Note>
-프로덕션 빌드에서는 HMR이 자동으로 비활성화되며, 정적 빌드가 생성됩니다.
-</Note>
+<Note>프로덕션 빌드에서는 HMR이 자동으로 비활성화되며, 정적 빌드가 생성됩니다.</Note>
 
 ## 개발 팁
 

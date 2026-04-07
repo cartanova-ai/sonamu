@@ -1,4 +1,5 @@
 import { Puri, Sonamu } from "sonamu";
+
 import { UserModel } from "../application/user/user.model";
 
 // BaseModel.getPuri() 사용 예제

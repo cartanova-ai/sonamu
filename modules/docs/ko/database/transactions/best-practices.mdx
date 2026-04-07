@@ -9,24 +9,16 @@ description: "트랜잭션을 효과적으로 사용하는 방법"
 
 <CardGroup cols={2}>
   <Card title="ACID 보장" icon="shield-check">
-    원자성, 일관성, 격리성, 지속성
-    
-    데이터 무결성 유지
+    원자성, 일관성, 격리성, 지속성 데이터 무결성 유지
   </Card>
   <Card title="짧은 트랜잭션" icon="clock">
-    필요한 만큼만
-    
-    락 대기 최소화
+    필요한 만큼만 락 대기 최소화
   </Card>
   <Card title="적절한 격리 수준" icon="sliders">
-    요구사항에 맞게
-    
-    성능과 일관성 균형
+    요구사항에 맞게 성능과 일관성 균형
   </Card>
   <Card title="에러 처리" icon="triangle-exclamation">
-    명확한 롤백 전략
-    
-    일관된 상태 유지
+    명확한 롤백 전략 일관된 상태 유지
   </Card>
 </CardGroup>
 
@@ -37,19 +29,16 @@ description: "트랜잭션을 효과적으로 사용하는 방법"
 ```typescript
 class OrderModel extends BaseModelClass {
   @transactional()
-  async createOrder(
-    userId: number,
-    items: OrderItem[]
-  ): Promise<number> {
+  async createOrder(userId: number, items: OrderItem[]): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     // 트랜잭션 내: 데이터 변경만
     const orderRef = wdb.ubRegister("orders", {
       user_id: userId,
       status: "pending",
       total_amount: this.calculateTotal(items),
     });
-    
+
     items.forEach((item) => {
       wdb.ubRegister("order_items", {
         order_id: orderRef,
@@ -58,27 +47,24 @@ class OrderModel extends BaseModelClass {
         price: item.price,
       });
     });
-    
+
     const [orderId] = await wdb.ubUpsert("orders");
     await wdb.ubUpsert("order_items");
-    
+
     return orderId;
   }
-  
-  async placeOrder(
-    userId: number,
-    items: OrderItem[]
-  ): Promise<number> {
+
+  async placeOrder(userId: number, items: OrderItem[]): Promise<number> {
     // 1. 검증 (트랜잭션 밖)
     await this.validateUser(userId);
     await this.checkInventory(items);
-    
+
     // 2. 주문 생성 (트랜잭션)
     const orderId = await this.createOrder(userId, items);
-    
+
     // 3. 후속 작업 (트랜잭션 밖)
     await this.sendOrderConfirmation(orderId);
-    
+
     return orderId;
   }
 }
@@ -89,39 +75,29 @@ class OrderModel extends BaseModelClass {
 ```typescript
 class OrderModel extends BaseModelClass {
   @transactional()
-  async placeOrderBad(
-    userId: number,
-    items: OrderItem[]
-  ): Promise<number> {
+  async placeOrderBad(userId: number, items: OrderItem[]): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     // ❌ 트랜잭션 안에서 외부 API 호출
     const user = await this.fetchUserFromExternalAPI(userId);
-    
+
     // ❌ 트랜잭션 안에서 복잡한 계산
     await this.calculateComplexPricing(items);
-    
+
     // ❌ 트랜잭션 안에서 이메일 발송
     await this.sendEmail(user.email);
-    
+
     // 실제 데이터 저장
-    const [orderId] = await wdb
-      .table("orders")
-      .insert({ user_id: userId })
-      .returning({ id: "id" });
-    
+    const [orderId] = await wdb.table("orders").insert({ user_id: userId }).returning({ id: "id" });
+
     return orderId.id;
   }
 }
 ```
 
 <Warning>
-**트랜잭션 안에 포함하지 말아야 할 것**:
-- 외부 API 호출
-- 파일 I/O
-- 이메일/SMS 발송
-- 복잡한 계산
-- 느린 쿼리
+  **트랜잭션 안에 포함하지 말아야 할 것**: - 외부 API 호출 - 파일 I/O - 이메일/SMS 발송 - 복잡한
+  계산 - 느린 쿼리
 </Warning>
 
 ## 격리 수준 선택
@@ -136,42 +112,35 @@ class ExampleModel extends BaseModelClass {
     const wdb = this.getPuri("w");
     await wdb.table("users").where("id", userId).update({ bio });
   }
-  
+
   // 일관성 중요 - REPEATABLE READ (기본값)
   @transactional({ isolation: "repeatable read" })
-  async transferPoints(
-    fromUserId: number,
-    toUserId: number,
-    amount: number
-  ): Promise<void> {
+  async transferPoints(fromUserId: number, toUserId: number, amount: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // 같은 트랜잭션 내에서 일관된 데이터 보장
     const fromUser = await wdb.table("users").where("id", fromUserId).first();
-    
+
     if (fromUser.points < amount) {
       throw new Error("Insufficient points");
     }
-    
+
     await wdb.table("users").where("id", fromUserId).decrement("points", amount);
     await wdb.table("users").where("id", toUserId).increment("points", amount);
   }
-  
+
   // 금융 거래 - SERIALIZABLE
   @transactional({ isolation: "serializable" })
-  async processPayment(
-    orderId: number,
-    amount: number
-  ): Promise<void> {
+  async processPayment(orderId: number, amount: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // 최고 수준의 격리 보장
     const order = await wdb.table("orders").where("id", orderId).first();
-    
+
     if (order.status !== "pending") {
       throw new Error("Order already processed");
     }
-    
+
     await wdb.table("orders").where("id", orderId).update({
       status: "paid",
       paid_amount: amount,
@@ -187,7 +156,7 @@ flowchart LR
     B -->|낮음| C[READ COMMITTED<br/>일반 조회/수정]
     B -->|보통| D[REPEATABLE READ<br/>포인트 이체]
     B -->|높음| E[SERIALIZABLE<br/>금융 거래]
-    
+
     style C fill:#e8f5e9
     style D fill:#fff9c4
     style E fill:#ffebee
@@ -207,41 +176,39 @@ class UserModel extends BaseModelClass {
       if (error instanceof DuplicateEmailError) {
         return { success: false, error: "Email already exists" };
       }
-      
+
       if (error instanceof ValidationError) {
         return { success: false, error: error.message };
       }
-      
+
       // 예상치 못한 에러는 로깅 후 재전파
       console.error("Unexpected error:", error);
       throw error;
     }
   }
-  
+
   @transactional()
   private async createUserTransaction(data: UserSaveParams): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     // 중복 체크
     const existing = await wdb.table("users").where("email", data.email).first();
     if (existing) {
       throw new DuplicateEmailError();
     }
-    
+
     // 검증
     if (!this.isValidEmail(data.email)) {
       throw new ValidationError("Invalid email format");
     }
-    
+
     wdb.ubRegister("users", data);
     const [userId] = await wdb.ubUpsert("users");
     return userId;
   }
 }
 
-type Result<T> = 
-  | { success: true; data: T }
-  | { success: false; error: string };
+type Result<T> = { success: true; data: T } | { success: false; error: string };
 ```
 
 ### 패턴 2: 부분 롤백으로 복구
@@ -249,44 +216,35 @@ type Result<T> =
 ```typescript
 class OrderModel extends BaseModelClass {
   @transactional()
-  async createOrderWithRetry(
-    userId: number,
-    items: OrderItem[]
-  ): Promise<number> {
+  async createOrderWithRetry(userId: number, items: OrderItem[]): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     // 1. 주문 생성 (메인 트랜잭션)
     const [orderId] = await wdb
       .table("orders")
       .insert({ user_id: userId, status: "pending" })
       .returning({ id: "id" });
-    
+
     // 2. 주문 아이템 생성 (부분 트랜잭션)
     for (const item of items) {
       try {
         await wdb.transaction(async (trx) => {
           // 재고 확인
-          const product = await trx
-            .table("products")
-            .where("id", item.productId)
-            .first();
-          
+          const product = await trx.table("products").where("id", item.productId).first();
+
           if (!product || product.stock < item.quantity) {
             throw new Error("Insufficient stock");
           }
-          
+
           // 주문 아이템 생성
           await trx.table("order_items").insert({
             order_id: orderId.id,
             product_id: item.productId,
             quantity: item.quantity,
           });
-          
+
           // 재고 차감
-          await trx
-            .table("products")
-            .where("id", item.productId)
-            .decrement("stock", item.quantity);
+          await trx.table("products").where("id", item.productId).decrement("stock", item.quantity);
         });
       } catch (error) {
         console.warn(`Failed to add item ${item.productId}:`, error);
@@ -294,7 +252,7 @@ class OrderModel extends BaseModelClass {
         continue;
       }
     }
-    
+
     return orderId.id;
   }
 }
@@ -307,27 +265,24 @@ class OrderModel extends BaseModelClass {
 ```typescript
 class ProductModel extends BaseModelClass {
   @transactional({ isolation: "repeatable read" })
-  async updateStockOptimistic(
-    productId: number,
-    quantity: number
-  ): Promise<void> {
+  async updateStockOptimistic(productId: number, quantity: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // 1. 현재 버전 조회
     const product = await wdb
       .table("products")
       .select({ id: "id", stock: "stock", version: "version" })
       .where("id", productId)
       .first();
-    
+
     if (!product) {
       throw new Error("Product not found");
     }
-    
+
     if (product.stock < quantity) {
       throw new Error("Insufficient stock");
     }
-    
+
     // 2. 버전 체크와 함께 업데이트
     const updated = await wdb
       .table("products")
@@ -337,7 +292,7 @@ class ProductModel extends BaseModelClass {
         stock: product.stock - quantity,
         version: product.version + 1,
       });
-    
+
     // 3. 업데이트 실패 = 다른 트랜잭션이 먼저 변경
     if (updated === 0) {
       throw new Error("Concurrent modification detected. Please retry.");
@@ -351,44 +306,34 @@ class ProductModel extends BaseModelClass {
 ```typescript
 class AccountModel extends BaseModelClass {
   @transactional({ isolation: "serializable" })
-  async transferMoney(
-    fromAccountId: number,
-    toAccountId: number,
-    amount: number
-  ): Promise<void> {
+  async transferMoney(fromAccountId: number, toAccountId: number, amount: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // FOR UPDATE: 행 락 획득
     const fromAccount = await wdb
       .table("accounts")
       .where("id", fromAccountId)
       .forUpdate() // 비관적 락
       .first();
-    
+
     const toAccount = await wdb
       .table("accounts")
       .where("id", toAccountId)
       .forUpdate() // 비관적 락
       .first();
-    
+
     if (!fromAccount || !toAccount) {
       throw new Error("Account not found");
     }
-    
+
     if (fromAccount.balance < amount) {
       throw new Error("Insufficient balance");
     }
-    
+
     // 락이 걸린 상태에서 안전하게 업데이트
-    await wdb
-      .table("accounts")
-      .where("id", fromAccountId)
-      .decrement("balance", amount);
-    
-    await wdb
-      .table("accounts")
-      .where("id", toAccountId)
-      .increment("balance", amount);
+    await wdb.table("accounts").where("id", fromAccountId).decrement("balance", amount);
+
+    await wdb.table("accounts").where("id", toAccountId).increment("balance", amount);
   }
 }
 ```
@@ -398,16 +343,16 @@ flowchart TD
     A[동시성 제어] --> B{데이터 경합 빈도}
     B -->|낮음| C[낙관적 락<br/>Optimistic Lock]
     B -->|높음| D[비관적 락<br/>Pessimistic Lock]
-    
+
     C --> E[Version 체크]
     E --> F{충돌 발생?}
     F -->|Yes| G[재시도]
     F -->|No| H[성공]
-    
+
     D --> I[FOR UPDATE 락]
     I --> J[대기]
     J --> K[성공]
-    
+
     style C fill:#e8f5e9
     style D fill:#fff9c4
     style H fill:#c8e6c9
@@ -424,27 +369,18 @@ class TransferModel extends BaseModelClass {
   async transferBetweenAccounts(
     accountId1: number,
     accountId2: number,
-    amount: number
+    amount: number,
   ): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // ✅ 좋음: ID 순서대로 락 획득 (데드락 방지)
-    const [fromId, toId] = accountId1 < accountId2 
-      ? [accountId1, accountId2] 
-      : [accountId2, accountId1];
-    
-    const fromAccount = await wdb
-      .table("accounts")
-      .where("id", fromId)
-      .forUpdate()
-      .first();
-    
-    const toAccount = await wdb
-      .table("accounts")
-      .where("id", toId)
-      .forUpdate()
-      .first();
-    
+    const [fromId, toId] =
+      accountId1 < accountId2 ? [accountId1, accountId2] : [accountId2, accountId1];
+
+    const fromAccount = await wdb.table("accounts").where("id", fromId).forUpdate().first();
+
+    const toAccount = await wdb.table("accounts").where("id", toId).forUpdate().first();
+
     // 잔액 이체 로직
     // ...
   }
@@ -457,18 +393,18 @@ class TransferModel extends BaseModelClass {
 class OrderModel extends BaseModelClass {
   async processOrderWithTimeout(orderId: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // 타임아웃 설정 (5초)
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Transaction timeout")), 5000)
+      setTimeout(() => reject(new Error("Transaction timeout")), 5000),
     );
-    
+
     const transactionPromise = wdb.transaction(async (trx) => {
       // 트랜잭션 로직
       await trx.table("orders").where("id", orderId).update({ status: "processing" });
       // ...
     });
-    
+
     try {
       await Promise.race([transactionPromise, timeoutPromise]);
     } catch (error) {
@@ -488,24 +424,24 @@ class UserModel extends BaseModelClass {
   // ❌ 나쁨: 각 User마다 트랜잭션
   async createUsersBad(users: UserSaveParams[]): Promise<number[]> {
     const ids: number[] = [];
-    
+
     for (const user of users) {
       const id = await this.createUser(user); // 각각 트랜잭션
       ids.push(id);
     }
-    
+
     return ids;
   }
-  
+
   // ✅ 좋음: 단일 트랜잭션으로 배치 처리
   @transactional()
   async createUsersGood(users: UserSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
-    
+
     users.forEach((user) => {
       wdb.ubRegister("users", user);
     });
-    
+
     const ids = await wdb.ubUpsert("users");
     return ids;
   }
@@ -516,31 +452,22 @@ class UserModel extends BaseModelClass {
 
 ```typescript
 class ProductModel extends BaseModelClass {
-  async updateProductWithReadReplica(
-    productId: number,
-    data: Partial<Product>
-  ): Promise<void> {
+  async updateProductWithReadReplica(productId: number, data: Partial<Product>): Promise<void> {
     // 1. 조회는 READ DB (트랜잭션 불필요)
     const rdb = this.getPuri("r");
-    const product = await rdb
-      .table("products")
-      .where("id", productId)
-      .first();
-    
+    const product = await rdb.table("products").where("id", productId).first();
+
     if (!product) {
       throw new Error("Product not found");
     }
-    
+
     // 2. 검증 로직 (트랜잭션 밖)
     this.validateProductData(data);
-    
+
     // 3. 쓰기는 WRITE DB (짧은 트랜잭션)
     const wdb = this.getPuri("w");
     await wdb.transaction(async (trx) => {
-      await trx
-        .table("products")
-        .where("id", productId)
-        .update(data);
+      await trx.table("products").where("id", productId).update(data);
     });
   }
 }
@@ -563,7 +490,7 @@ describe("UserModel.createUser", () => {
       password: "pass",
       role: "normal",
     });
-    
+
     // When: 중복 이메일로 생성 시도
     const promise = UserModel.createUser({
       email, // 중복
@@ -571,16 +498,16 @@ describe("UserModel.createUser", () => {
       password: "pass",
       role: "normal",
     });
-    
+
     // Then: 에러 발생
     await expect(promise).rejects.toThrow("Email already exists");
-    
+
     // 롤백 확인: 새 User가 생성되지 않음
     const users = await UserModel.getPuri("r")
       .table("users")
       .where("email", email)
       .select({ username: "username" });
-    
+
     expect(users).toHaveLength(1);
     expect(users[0].username).toBe("existing");
   });
@@ -594,20 +521,20 @@ describe("ProductModel.updateStock", () => {
   test("should handle concurrent updates correctly", async () => {
     // Given: 재고 100개
     const productId = await createProduct({ stock: 100 });
-    
+
     // When: 동시에 10명이 10개씩 구매
-    const promises = Array(10).fill(null).map(() =>
-      ProductModel.updateStock(productId, 10)
-    );
-    
+    const promises = Array(10)
+      .fill(null)
+      .map(() => ProductModel.updateStock(productId, 10));
+
     await Promise.all(promises);
-    
+
     // Then: 재고는 0이어야 함
     const product = await ProductModel.getPuri("r")
       .table("products")
       .where("id", productId)
       .first();
-    
+
     expect(product.stock).toBe(0);
   });
 });
@@ -683,7 +610,7 @@ async createUserGood(data: UserSaveParams): Promise<number> {
 @transactional()
 async outerTransaction(): Promise<void> {
   const wdb = this.getPuri("w");
-  
+
   await wdb.transaction(async (trx) => {
     // 이미 @transactional 안이므로 불필요
     // ...
@@ -713,7 +640,7 @@ class OrderModelClass extends BaseModelClass {
   async createOrderWithPayment(
     userId: number,
     items: OrderItem[],
-    paymentInfo: PaymentInfo
+    paymentInfo: PaymentInfo,
   ): Promise<{ orderId: number; paymentId: number }> {
     const wdb = this.getPuri("w");
 
@@ -765,22 +692,14 @@ class InventoryModelClass extends BaseModelClass {
 
     for (const item of items) {
       // 현재 재고 확인
-      const product = await wdb
-        .table("products")
-        .where("id", item.productId)
-        .first();
+      const product = await wdb.table("products").where("id", item.productId).first();
 
       if (!product || product.stock < item.quantity) {
-        throw new BadRequestError(
-          `상품 ${item.productId}의 재고가 부족합니다.`
-        );
+        throw new BadRequestError(`상품 ${item.productId}의 재고가 부족합니다.`);
       }
 
       // 재고 차감
-      await wdb
-        .table("products")
-        .where("id", item.productId)
-        .decrement("stock", item.quantity);
+      await wdb.table("products").where("id", item.productId).decrement("stock", item.quantity);
     }
   }
 }
@@ -811,6 +730,7 @@ class PaymentModelClass extends BaseModelClass {
 ```
 
 **트랜잭션 컨텍스트 공유**:
+
 - `createOrderWithPayment`가 최상위 트랜잭션 시작
 - `InventoryModel.reserveStock`, `PaymentModel.processPayment`는 같은 트랜잭션 컨텍스트 공유
 - 어느 단계에서든 에러 발생 시 전체 롤백 (재고 차감도 취소됨)
@@ -825,7 +745,7 @@ class OrderModelClass extends BaseModelClass {
   async createOrderWithOptionalDiscount(
     userId: number,
     items: OrderItem[],
-    couponCode?: string
+    couponCode?: string,
   ): Promise<number> {
     const wdb = this.getPuri("w");
 
@@ -869,10 +789,7 @@ class OrderModelClass extends BaseModelClass {
         await wdb.table("coupons").where("id", coupon.id).update({ used: true });
 
         // 할인 금액 업데이트
-        await wdb
-          .table("orders")
-          .where("id", orderId)
-          .update({ discount_amount: coupon.amount });
+        await wdb.table("orders").where("id", orderId).update({ discount_amount: coupon.amount });
 
         // Savepoint 해제
         await wdb.raw("RELEASE SAVEPOINT coupon_apply");
@@ -891,15 +808,14 @@ class OrderModelClass extends BaseModelClass {
 ```
 
 **Savepoint 활용**:
+
 - 주문 생성은 반드시 성공
 - 쿠폰 적용 실패 시 쿠폰 관련 작업만 롤백
 - 전체 트랜잭션은 계속 진행
 
 <Warning>
-**Savepoint 주의사항**:
-- Savepoint는 수동으로 생성/관리해야 합니다 (자동 생성 안 됨)
-- 중첩 레벨이 깊어질수록 복잡도 증가
-- 대부분의 경우 전체 롤백이 더 안전하고 단순합니다
+  **Savepoint 주의사항**: - Savepoint는 수동으로 생성/관리해야 합니다 (자동 생성 안 됨) - 중첩
+  레벨이 깊어질수록 복잡도 증가 - 대부분의 경우 전체 롤백이 더 안전하고 단순합니다
 </Warning>
 
 ### 시나리오 3: 동시성 제어 - 비관적 락
@@ -909,11 +825,7 @@ class OrderModelClass extends BaseModelClass {
 ```typescript
 class ProductModelClass extends BaseModelClass {
   @transactional()
-  async purchaseProduct(
-    productId: number,
-    quantity: number,
-    userId: number
-  ): Promise<number> {
+  async purchaseProduct(productId: number, quantity: number, userId: number): Promise<number> {
     const wdb = this.getPuri("w");
 
     // 비관적 락: SELECT ... FOR UPDATE
@@ -932,10 +844,7 @@ class ProductModelClass extends BaseModelClass {
     }
 
     // 재고 차감
-    await wdb
-      .table("products")
-      .where("id", productId)
-      .decrement("stock", quantity);
+    await wdb.table("products").where("id", productId).decrement("stock", quantity);
 
     // 주문 생성
     const [orderId] = await wdb
@@ -955,10 +864,10 @@ class ProductModelClass extends BaseModelClass {
 
 **동시성 제어 비교**:
 
-| 방식 | 사용 시점 | 장점 | 단점 |
-|------|----------|------|------|
+| 방식                         | 사용 시점                 | 장점                    | 단점                        |
+| ---------------------------- | ------------------------- | ----------------------- | --------------------------- |
 | **비관적 락** (`FOR UPDATE`) | 충돌이 자주 발생하는 경우 | 데이터 일관성 보장 확실 | 대기 시간 증가, 처리량 감소 |
-| **낙관적 락** (version 컬럼) | 충돌이 드문 경우 | 높은 처리량 | 충돌 시 재시도 필요 |
+| **낙관적 락** (version 컬럼) | 충돌이 드문 경우          | 높은 처리량             | 충돌 시 재시도 필요         |
 
 ### 시나리오 4: 데드락 재시도 패턴
 
@@ -969,7 +878,7 @@ class OrderModelClass extends BaseModelClass {
   async createOrderWithRetry(
     userId: number,
     items: OrderItem[],
-    maxRetries: number = 3
+    maxRetries: number = 3,
   ): Promise<number> {
     let lastError: Error | null = null;
 
@@ -997,17 +906,13 @@ class OrderModelClass extends BaseModelClass {
     }
 
     // 최대 재시도 횟수 초과
-    throw new Error(
-      `주문 생성 실패: 최대 재시도 횟수 초과 (${maxRetries}회)`,
-      { cause: lastError }
-    );
+    throw new Error(`주문 생성 실패: 최대 재시도 횟수 초과 (${maxRetries}회)`, {
+      cause: lastError,
+    });
   }
 
   @transactional()
-  private async createOrder(
-    userId: number,
-    items: OrderItem[]
-  ): Promise<number> {
+  private async createOrder(userId: number, items: OrderItem[]): Promise<number> {
     // 실제 주문 생성 로직
     // ...
   }
@@ -1015,8 +920,7 @@ class OrderModelClass extends BaseModelClass {
   private isDeadlockError(error: unknown): boolean {
     if (error instanceof Error) {
       // PostgreSQL 데드락 에러 코드: 40P01
-      return error.message.includes("deadlock") ||
-             error.message.includes("40P01");
+      return error.message.includes("deadlock") || error.message.includes("40P01");
     }
     return false;
   }
@@ -1028,6 +932,7 @@ class OrderModelClass extends BaseModelClass {
 ```
 
 **재시도 전략**:
+
 1. 데드락 에러만 재시도 (다른 에러는 즉시 실패)
 2. 지수 백오프로 재시도 간격 증가 (100ms → 200ms → 400ms)
 3. 최대 재시도 횟수 제한
@@ -1038,10 +943,7 @@ class OrderModelClass extends BaseModelClass {
 
 ```typescript
 class PaymentModelClass extends BaseModelClass {
-  async processOrderPayment(
-    orderId: number,
-    paymentInfo: PaymentInfo
-  ): Promise<PaymentResult> {
+  async processOrderPayment(orderId: number, paymentInfo: PaymentInfo): Promise<PaymentResult> {
     // 1. 주문 정보 조회 (읽기 전용)
     const order = await this.findOrderById(orderId);
     if (!order) {
@@ -1075,7 +977,7 @@ class PaymentModelClass extends BaseModelClass {
   @transactional()
   private async recordPaymentSuccess(
     orderId: number,
-    paymentResult: ExternalPaymentResult
+    paymentResult: ExternalPaymentResult,
   ): Promise<PaymentResult> {
     const wdb = this.getPuri("w");
 
@@ -1091,14 +993,11 @@ class PaymentModelClass extends BaseModelClass {
       .returning("id");
 
     // 주문 상태 업데이트
-    await wdb
-      .table("orders")
-      .where("id", orderId)
-      .update({
-        status: "paid",
-        payment_id: paymentId.id,
-        paid_at: new Date(),
-      });
+    await wdb.table("orders").where("id", orderId).update({
+      status: "paid",
+      payment_id: paymentId.id,
+      paid_at: new Date(),
+    });
 
     return {
       paymentId: paymentId.id,
@@ -1107,9 +1006,7 @@ class PaymentModelClass extends BaseModelClass {
     };
   }
 
-  private async callPaymentGateway(
-    params: PaymentParams
-  ): Promise<ExternalPaymentResult> {
+  private async callPaymentGateway(params: PaymentParams): Promise<ExternalPaymentResult> {
     // 외부 결제 API 호출
     // 이 작업은 트랜잭션 안에서 하면 안 됨
     // ...
@@ -1123,6 +1020,7 @@ class PaymentModelClass extends BaseModelClass {
 ```
 
 **패턴 설명**:
+
 1. **외부 API 호출은 트랜잭션 밖에서**
    - 외부 API는 느리고 롤백 불가능
    - 트랜잭션 시간을 최소화해야 함
@@ -1136,10 +1034,8 @@ class PaymentModelClass extends BaseModelClass {
    - 실패 지점에 따라 다른 복구 전략
 
 <Info>
-**분산 트랜잭션 Best Practice**:
-- 외부 시스템과 통신할 때는 Saga 패턴 사용
-- 각 단계마다 실패 시 보상 작업 정의
-- 멱등성(Idempotency) 보장으로 재시도 안전성 확보
+  **분산 트랜잭션 Best Practice**: - 외부 시스템과 통신할 때는 Saga 패턴 사용 - 각 단계마다 실패 시
+  보상 작업 정의 - 멱등성(Idempotency) 보장으로 재시도 안전성 확보
 </Info>
 
 ## 다음 단계

@@ -1,47 +1,46 @@
-import { dispose as logtapeDispose } from "@logtape/logtape";
 import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
-import type { Auth } from "better-auth";
-import type { FSWatcher } from "chokidar";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fs from "fs/promises";
-import type { IncomingMessage, Server, ServerResponse } from "http";
-import mime, { lookup as mimeLookup } from "mime-types";
+import { type IncomingMessage, type Server, type ServerResponse } from "http";
 import os from "os";
 import path from "path";
-import type { ZodObject } from "zod";
-import {
-  BASE_FIELD_MAPPINGS,
-  convertFastifyHeadersToStandard,
-  createMockSSEFactory,
-  DB,
-  isDaemonServer,
-  merge,
-  NotFoundException,
-} from "..";
-import type { CacheConfig, CacheManager } from "../cache/types";
+
+import { dispose as logtapeDispose } from "@logtape/logtape";
+import { type Auth } from "better-auth";
+import { type FSWatcher } from "chokidar";
+import { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
+import mime, { lookup as mimeLookup } from "mime-types";
+import { type ZodObject } from "zod";
+
+import { BASE_FIELD_MAPPINGS } from "../auth/better-auth-entities";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
-import type { CacheControlConfig, CacheControlRequest } from "../cache-control/types";
+import { type CacheControlConfig, type CacheControlRequest } from "../cache-control/types";
+import { type CacheConfig, type CacheManager } from "../cache/types";
 import { toFastifyCompressOption } from "../compress/compress";
-import type { CompressOptions } from "../compress/types";
-import type { SonamuDBConfig } from "../database/db";
-import { SD } from "../dict/sd";
-import type { LocalizedString } from "../dict/types";
-import { Naite } from "../naite/naite";
+import { type CompressOptions } from "../compress/types";
+import { DB } from "../database/db";
+import { type SonamuDBConfig } from "../database/db";
+import { SD, setSDConfig } from "../dict/sd";
+import { type LocalizedString } from "../dict/types";
+import { NotFoundException } from "../exceptions/so-exceptions";
 import { BufferedFile } from "../storage/buffered-file";
-import type { StorageManager } from "../storage/storage-manager";
-import type { KeyGenerator } from "../storage/types";
+import { type StorageManager } from "../storage/storage-manager";
+import { type KeyGenerator } from "../storage/types";
 import { UploadedFile } from "../storage/uploaded-file";
-import type { Syncer } from "../syncer/syncer";
-import type { WorkflowManager } from "../tasks/workflow-manager";
-import type { DevVitestManager } from "../testing/dev-vitest-manager";
-import type { SonamuFastifyConfig } from "../types/types";
+import { createMockSSEFactory } from "../stream/sse";
+import { type Syncer } from "../syncer/syncer";
+import { type WorkflowManager } from "../tasks/workflow-manager";
+import { type DevVitestManager } from "../testing/dev-vitest-manager";
+import { type SonamuFastifyConfig } from "../types/types";
+import { isDaemonServer } from "../utils/controller";
 import { exists, fileExists } from "../utils/fs-utils";
-import type { AbsolutePath } from "../utils/path-utils";
-import type { SonamuConfig, SonamuServerOptions, SonamuTaskOptions } from "./config";
-import type { Context } from "./context";
-import type { ExtendedApi } from "./decorators";
-import { getSecrets, type SonamuSecrets } from "./secret";
+import { type AbsolutePath } from "../utils/path-utils";
+import { convertFastifyHeadersToStandard, merge } from "../utils/utils";
+import { type SonamuConfig, type SonamuServerOptions, type SonamuTaskOptions } from "./config";
+import { type Context } from "./context";
+import { type ExtendedApi } from "./decorators";
+import { getSecrets } from "./secret";
+import { type SonamuSecrets } from "./secret";
 
 class SonamuClass {
   public isInitialized: boolean = false;
@@ -53,7 +52,7 @@ class SonamuClass {
   public getContext(): Context {
     const store = this.asyncLocalStorage.getStore();
     if (store?.context) {
-      return store.context as Context;
+      return store.context;
     }
 
     if (process.env.NODE_ENV === "test") {
@@ -63,7 +62,7 @@ class SonamuClass {
         reply: null,
         headers: {},
         createSSE: (schema: ZodObject) => createMockSSEFactory(schema),
-        // biome-ignore lint/suspicious/noExplicitAny: 테스팅 환경에서 컨텍스트가 주입되지 않은 경우 빈 컨텍스트 리턴
+        // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 테스팅 환경에서 컨텍스트가 주입되지 않은 경우 빈 컨텍스트 리턴
         naiteStore: new Map<string, any>(),
       } as unknown as Context;
     } else {
@@ -202,6 +201,7 @@ class SonamuClass {
     // 설정을 로딩하는 것부터 시작
     const { loadConfig } = await import("./config");
     this.config = await loadConfig(this.apiRootPath);
+    setSDConfig(this.config.i18n);
     // sonamu.config.ts 기본값 설정
     this.config.database.database = this.config.database.database ?? "pg";
     this.config.database.defaultOptions.client = this.config.database.database ?? "pg";
@@ -217,6 +217,7 @@ class SonamuClass {
     // DB 로드
     const { DB } = await import("../database/db");
     this.dbConfig = DB.generateDBConfig(this.config.database);
+    DB.setConfig(this.dbConfig);
     if (!doSilent) {
       const chalk = (await import("chalk")).default;
       console.log(chalk.green("DB Config Loaded!"));
@@ -269,13 +270,7 @@ class SonamuClass {
     await TemplateManager.autoload();
     await this.syncer.autoloadSSRRoutes();
 
-    const { isLocal, isTest } = await import("../utils/controller");
-    if (isLocal()) {
-      // 로컬에서는 코드 생성을 위해 Biome 셋업이 필요함 (현재 apiRootPath 전달하여 실행)
-      (await import("../utils/formatter")).setupBiome(this.apiRootPath);
-    }
-
-    const { isHotReloadServer } = await import("../utils/controller");
+    const { isLocal, isTest, isHotReloadServer } = await import("../utils/controller");
     if (isLocal() && !isTest() && isHotReloadServer() && enableSync) {
       await this.syncer.sync();
       await this.startWatcher();
@@ -289,7 +284,7 @@ class SonamuClass {
   }
 
   async createServer(initOptions?: { enableSync?: boolean; doSilent?: boolean }) {
-    if (this.isInitialized === false) {
+    if (!this.isInitialized) {
       await this.init(initOptions?.doSilent, initOptions?.enableSync);
     }
 
@@ -342,7 +337,7 @@ class SonamuClass {
       doSilent?: boolean;
     },
   ) {
-    if (this.isInitialized === false) {
+    if (!this.isInitialized) {
       await this.init(options?.doSilent, options?.enableSync);
     }
 
@@ -516,7 +511,7 @@ class SonamuClass {
     });
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: ViteDevServer 타입을 동적으로 로드해야 함
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- ViteDevServer 타입을 동적으로 로드해야 함
   private viteServer: any = null;
 
   /**
@@ -1035,7 +1030,7 @@ class SonamuClass {
    */
   async invokeApiForSSR(
     api: ExtendedApi,
-    // biome-ignore lint/suspicious/noExplicitAny: SSR에서 다양한 타입의 params를 받아야 함
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- SSR에서 다양한 타입의 params를 받아야 함
     params: any[],
     config: SonamuFastifyConfig,
     request: FastifyRequest,
@@ -1066,7 +1061,7 @@ class SonamuClass {
     reply: FastifyReply,
   ): Promise<unknown> {
     const model = this.syncer.models[api.modelName];
-    // biome-ignore lint/suspicious/noExplicitAny: model은 모델 인스턴스이므로 메서드 호출 가능
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- model은 모델 인스턴스이므로 메서드 호출 가능
     const result = await (model as any)[api.methodName].apply(model, args);
     reply.type(api.options.contentType ?? "application/json");
 
@@ -1103,7 +1098,7 @@ class SonamuClass {
             reply,
             headers: request.headers,
             createSSE,
-            naiteStore: Naite.createStore(),
+            naiteStore: new Map(),
             locale,
             // auth
             user: session?.user ?? null,

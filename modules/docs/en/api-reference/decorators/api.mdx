@@ -1,6 +1,6 @@
 ---
-title: '@api'
-description: 'API Endpoint Creation Decorator'
+title: "@api"
+description: "API Endpoint Creation Decorator"
 ---
 
 The `@api` decorator exposes methods of Model or Frame classes as HTTP API endpoints.
@@ -10,11 +10,7 @@ The `@api` decorator exposes methods of Model or Frame classes as HTTP API endpo
 ```typescript
 import { BaseModelClass, api } from "sonamu";
 
-class UserModelClass extends BaseModelClass<
-  UserSubsetKey,
-  UserSubsetMapping,
-  UserSubsetQueries
-> {
+class UserModelClass extends BaseModelClass<UserSubsetKey, UserSubsetMapping, UserSubsetQueries> {
   @api({ httpMethod: "GET" })
   async findById(subset: UserSubsetKey, id: number) {
     const rdb = this.getPuri("r");
@@ -73,9 +69,7 @@ async findById(id: number) {
 }
 ```
 
-<Info>
-Paths are automatically converted to camelCase. `UserModel.findById` → `/user/findById`
-</Info>
+<Info>Paths are automatically converted to camelCase. `UserModel.findById` → `/user/findById`</Info>
 
 ### contentType
 
@@ -134,20 +128,18 @@ async downloadFile(fileId: number, ctx: Context) {
 
 **contentType Use Cases**:
 
-| Content-Type | Use Case | Return Type |
-|--------------|----------|-------------|
-| `text/plain` | CSV, TXT file download | `string` |
-| `text/html` | HTML rendering (SSR) | `string` |
-| `text/xml` | XML data response | `string` |
-| `application/json` | JSON data (default) | `object` |
+| Content-Type               | Use Case                                | Return Type              |
+| -------------------------- | --------------------------------------- | ------------------------ |
+| `text/plain`               | CSV, TXT file download                  | `string`                 |
+| `text/html`                | HTML rendering (SSR)                    | `string`                 |
+| `text/xml`                 | XML data response                       | `string`                 |
+| `application/json`         | JSON data (default)                     | `object`                 |
 | `application/octet-stream` | Binary files (images, PDFs, ZIPs, etc.) | `Buffer` or `Uint8Array` |
 
 <Info>
-**Notes for application/octet-stream**:
-- Must return `Buffer` or `Uint8Array`
-- Use `Content-Disposition` header to specify download filename
-- Use `encodeURIComponent()` for filenames containing non-ASCII characters
-- Consider streaming for large files
+  **Notes for application/octet-stream**: - Must return `Buffer` or `Uint8Array` - Use
+  `Content-Disposition` header to specify download filename - Use `encodeURIComponent()` for
+  filenames containing non-ASCII characters - Consider streaming for large files
 </Info>
 
 ### clients
@@ -158,12 +150,12 @@ Specifies the client types to generate.
 
 ```typescript
 type ServiceClient =
-  | "axios"                          // Axios client
-  | "axios-multipart"                // Multipart form-data
-  | "tanstack-query"                 // TanStack Query (read)
-  | "tanstack-mutation"              // TanStack Mutation (write)
-  | "tanstack-mutation-multipart"    // TanStack Mutation (file upload)
-  | "window-fetch";                  // Native Fetch API
+  | "axios" // Axios client
+  | "axios-multipart" // Multipart form-data
+  | "tanstack-query" // TanStack Query (read)
+  | "tanstack-mutation" // TanStack Mutation (write)
+  | "tanstack-mutation-multipart" // TanStack Mutation (file upload)
+  | "window-fetch"; // Native Fetch API
 ```
 
 ```typescript
@@ -262,20 +254,19 @@ async getPublicData() {
 ```
 
 **CacheControlConfig Type:**
+
 ```typescript
 type CacheControlConfig = {
-  maxAge?: string;        // Browser cache duration
-  sMaxAge?: string;       // CDN/proxy cache duration
-  public?: boolean;       // public/private
-  noCache?: boolean;      // no-cache
-  noStore?: boolean;      // no-store
+  maxAge?: string; // Browser cache duration
+  sMaxAge?: string; // CDN/proxy cache duration
+  public?: boolean; // public/private
+  noCache?: boolean; // no-cache
+  noStore?: boolean; // no-store
   mustRevalidate?: boolean;
 };
 ```
 
-<Tip>
-Time notation supports: `"10s"`, `"5m"`, `"1h"`, `"1d"` formats
-</Tip>
+<Tip>Time notation supports: `"10s"`, `"5m"`, `"1h"`, `"1d"` formats</Tip>
 
 ### compress
 
@@ -343,6 +334,7 @@ class PostModelClass extends BaseModelClass {
 ```
 
 **Rules:**
+
 1. Remove "ModelClass" from class name
 2. Convert the rest to camelCase
 3. Format: `/{modelName}/{methodName}`
@@ -358,6 +350,7 @@ class AuthFrameClass extends BaseFrameClass {
 ```
 
 **Rules:**
+
 1. Remove "FrameClass" from class name
 2. Convert the rest to camelCase
 3. Format: `/{frameName}/{methodName}`
@@ -376,9 +369,7 @@ async save(data: UserSaveParams) {
 }
 ```
 
-<Warning>
-Write `@api` first, then `@transactional`.
-</Warning>
+<Warning>Write `@api` first, then `@transactional`.</Warning>
 
 ### @cache
 
@@ -417,6 +408,7 @@ async subscribe() {}
 ```
 
 **Error Message:**
+
 ```
 @api decorator can only be used once on UserModel.subscribe.
 You can use only one of @api or @stream decorator on the same method.
@@ -434,6 +426,7 @@ async list() {}
 ```
 
 **Error Message:**
+
 ```
 @api decorator on UserModel.list has conflicting path: /users/all.
 The decorator is trying to override the existing path(/users/list)
@@ -487,21 +480,23 @@ export type UserFindByIdResult = UserSubsetMapping[UserSubsetKey];
 ### 3. Client Code
 
 **Axios:**
+
 ```typescript
 // web/src/services/UserService.ts
 export const UserService = {
   async findById(params: UserFindByIdParams) {
     return axios.get<UserFindByIdResult>("/user/findById", { params });
-  }
+  },
 };
 ```
 
 **TanStack Query:**
+
 ```typescript
 export const useUserFindById = (params: UserFindByIdParams) => {
   return useQuery({
     queryKey: ["user", "findById", params],
-    queryFn: () => UserService.findById(params)
+    queryFn: () => UserService.findById(params),
   });
 };
 ```
@@ -564,6 +559,7 @@ Logs are recorded through LogTape, with categories in `[model:user]` or `[frame:
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Caching" icon="bolt">
@@ -600,6 +596,7 @@ Logs are recorded through LogTape, with categories in `[model:user]` or `[frame:
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Access Control" icon="shield-check">
@@ -643,6 +640,7 @@ Logs are recorded through LogTape, with categories in `[model:user]` or `[frame:
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Custom Paths" icon="route">
@@ -674,6 +672,7 @@ Logs are recorded through LogTape, with categories in `[model:user]` or `[frame:
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -688,21 +687,13 @@ Logs are recorded through LogTape, with categories in `[model:user]` or `[frame:
     Create SSE streaming APIs
   </Card>
 
-  <Card
-    title="@transactional"
-    icon="arrows-rotate"
-    href="/en/api-reference/decorators/transactional"
-  >
-    Use database transactions
-  </Card>
+<Card title="@transactional" icon="arrows-rotate" href="/en/api-reference/decorators/transactional">
+  Use database transactions
+</Card>
 
-  <Card
-    title="@upload"
-    icon="upload"
-    href="/en/api-reference/decorators/upload"
-  >
-    Create file upload APIs
-  </Card>
+<Card title="@upload" icon="upload" href="/en/api-reference/decorators/upload">
+  Create file upload APIs
+</Card>
 
   <Card
     title="@cache"

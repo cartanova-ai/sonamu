@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: <이럴 때 아니면 any 언제 씁니까> */
+/* oxlint-disable no-template-curly-in-string */ // <이럴 때 아니면 any 언제 씁니까>
 
 import { bootstrap } from "sonamu/test";
 import { describe, test, vi } from "vitest";
@@ -7,6 +7,7 @@ import { z } from "zod";
 bootstrap(vi);
 
 import { expect } from "vitest";
+
 import {
   propNodeToZodTypeDef,
   propToZodType,
@@ -15,7 +16,10 @@ import {
   zodTypeToTsTypeDef,
   zodTypeToZodCode,
 } from "../../../../../modules/sonamu/dist/template/zod-converter";
-import type { EntityProp, EntityPropNode } from "../../../../../modules/sonamu/dist/types/types";
+import {
+  type EntityProp,
+  type EntityPropNode,
+} from "../../../../../modules/sonamu/dist/types/types";
 import {
   SonamuFileArraySchema,
   SonamuFileSchema,

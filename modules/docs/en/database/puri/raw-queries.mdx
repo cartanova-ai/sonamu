@@ -97,10 +97,10 @@ Raw functions support Knex-style parameter bindings. Use placeholders in the SQL
 
 ### Placeholder Rules
 
-| Placeholder | Purpose | Escaping |
-|---|---|---|
-| `?` | Value binding | Escaped as value (`'hello'`) |
-| `??` | Identifier binding | Escaped as identifier (`"table"."column"`) |
+| Placeholder | Purpose            | Escaping                                   |
+| ----------- | ------------------ | ------------------------------------------ |
+| `?`         | Value binding      | Escaped as value (`'hello'`)               |
+| `??`        | Identifier binding | Escaped as identifier (`"table"."column"`) |
 
 ### Value Bindings (`?`)
 
@@ -131,17 +131,18 @@ You can use `?` and `??` together in a single expression.
 
 ```typescript
 const results = await db.table("documents").select({
-  highlighted: Puri.rawString(
-    "pgroonga_highlight_html(??, ARRAY[?])",
-    ["documents.title", "search term"],
-  ),
+  highlighted: Puri.rawString("pgroonga_highlight_html(??, ARRAY[?])", [
+    "documents.title",
+    "search term",
+  ]),
 });
 // SQL: pgroonga_highlight_html("documents"."title", ARRAY['search term'])
 ```
 
 <Warning>
-  **Don't confuse `??` and `?`.** Using `?` for a column name will escape it as a value, causing SQL errors.
-  Conversely, using `??` for user input will escape it as an identifier, leading to unintended behavior.
+  **Don't confuse `??` and `?`.** Using `?` for a column name will escape it as a value, causing SQL
+  errors. Conversely, using `??` for user input will escape it as an identifier, leading to
+  unintended behavior.
 </Warning>
 
 ## Static SQL Functions
@@ -195,8 +196,8 @@ const results = await db
 ```
 
 <Warning>
-  **SQL Injection Warning**: Always use bindings (`?`) with `whereRaw`.
-  Never put user input directly in strings.
+  **SQL Injection Warning**: Always use bindings (`?`) with `whereRaw`. Never put user input
+  directly in strings.
 </Warning>
 
 ### Complex Conditions
@@ -210,7 +211,7 @@ const results = await db
     (department_id = ? AND salary > ?)
     OR (department_id = ? AND salary > ?)
   `,
-    [1, 60000, 2, 70000]
+    [1, 60000, 2, 70000],
   );
 ```
 
@@ -459,9 +460,7 @@ const results = await db.table("users").select({
   id: "id",
   city: Puri.rawString("metadata->>'city'"),
   age: Puri.rawNumber("(metadata->>'age')::integer"),
-  tags: Puri.rawStringArray(
-    "ARRAY(SELECT jsonb_array_elements_text(metadata->'tags'))"
-  ),
+  tags: Puri.rawStringArray("ARRAY(SELECT jsonb_array_elements_text(metadata->'tags'))"),
 });
 ```
 
@@ -532,18 +531,19 @@ When using Raw SQL, you must either manually call **hydrate()** or follow field 
 
 ### Subset vs Raw Puri Differences
 
-| Feature | Subset Query (`getSubsetQueries` + `executeSubsetQuery`) | Raw Puri Query (`getPuri("r")`) |
-|---------|-------------------------------------------------------|-------------------------------|
-| **Hydrate** | ✅ Automatic | ❌ Manual call required |
-| **JOIN** | ✅ Auto-configured | ⚠️ Manual setup |
-| **Type Inference** | ✅ Subset types | ⚠️ Manual definition |
-| **Field Structuring** | ✅ Automatic (nested objects) | ❌ Manual (flat) |
+| Feature               | Subset Query (`getSubsetQueries` + `executeSubsetQuery`) | Raw Puri Query (`getPuri("r")`) |
+| --------------------- | -------------------------------------------------------- | ------------------------------- |
+| **Hydrate**           | ✅ Automatic                                             | ❌ Manual call required         |
+| **JOIN**              | ✅ Auto-configured                                       | ⚠️ Manual setup                 |
+| **Type Inference**    | ✅ Subset types                                          | ⚠️ Manual definition            |
+| **Field Structuring** | ✅ Automatic (nested objects)                            | ❌ Manual (flat)                |
 
 ### What Hydrate Does
 
 `hydrate()` **transforms flat query results into nested object structures**.
 
 **Before hydrate (Flat)**:
+
 ```typescript
 {
   id: 1,
@@ -556,6 +556,7 @@ When using Raw SQL, you must either manually call **hydrate()** or follow field 
 ```
 
 **After hydrate (Nested)**:
+
 ```typescript
 {
   id: 1,
@@ -584,14 +585,14 @@ const results = await db
   .select({
     id: "users.id",
     username: "users.username",
-    employee__id: "employees.id",                    // double underscore
+    employee__id: "employees.id", // double underscore
     employee__salary: "employees.salary",
-    employee__department__id: "departments.id",      // double underscore for nesting
+    employee__department__id: "departments.id", // double underscore for nesting
     employee__department__name: "departments.name",
   });
 
 // call hydrate
-const hydrated = results.map(row => UserModel.hydrate(row));
+const hydrated = results.map((row) => UserModel.hydrate(row));
 
 // result: nested object structure
 hydrated[0].employee.department.name; // "Engineering"
@@ -599,18 +600,15 @@ hydrated[0].employee.department.name; // "Engineering"
 
 ```typescript
 // ❌ Incorrect naming (single underscore)
-const results = await db
-  .table("users")
-  .join("employees", "users.id", "employees.user_id")
-  .select({
-    id: "users.id",
-    username: "users.username",
-    employee_id: "employees.id",        // ❌ wrong (single underscore)
-    employee_salary: "employees.salary", // ❌ wrong
-  });
+const results = await db.table("users").join("employees", "users.id", "employees.user_id").select({
+  id: "users.id",
+  username: "users.username",
+  employee_id: "employees.id", // ❌ wrong (single underscore)
+  employee_salary: "employees.salary", // ❌ wrong
+});
 
 // hydrate won't create nested structure
-const hydrated = results.map(row => UserModel.hydrate(row));
+const hydrated = results.map((row) => UserModel.hydrate(row));
 hydrated[0].employee; // undefined
 ```
 
@@ -655,7 +653,7 @@ users[0].employee; // undefined
 users[0].employee__id; // 10 (flat)
 
 // ✅ After hydrate: nested structure
-const hydrated = users.map(row => UserModel.hydrate(row));
+const hydrated = users.map((row) => UserModel.hydrate(row));
 hydrated[0].employee.id; // 10
 hydrated[0].employee.department.name; // "Engineering"
 ```
@@ -690,14 +688,14 @@ class UserModelClass extends BaseModelClass<...> {
 
 ### Hydrate Call Summary
 
-| Method | Automatic Hydrate | Description |
-|--------|------------------|------|
-| `getSubsetQueries` + `executeSubsetQuery` | ✅ Yes | Subset queries are automatic |
-| `executeSubsetQuery()` | ✅ Yes | Called internally |
-| `getPuri("r")` | ❌ No | Raw queries are manual |
-| `findById()` | ✅ Yes | BaseModel methods are automatic |
-| `findOne()` | ✅ Yes | BaseModel methods are automatic |
-| `findMany()` | ✅ Yes | BaseModel methods are automatic |
+| Method                                    | Automatic Hydrate | Description                     |
+| ----------------------------------------- | ----------------- | ------------------------------- |
+| `getSubsetQueries` + `executeSubsetQuery` | ✅ Yes            | Subset queries are automatic    |
+| `executeSubsetQuery()`                    | ✅ Yes            | Called internally               |
+| `getPuri("r")`                            | ❌ No             | Raw queries are manual          |
+| `findById()`                              | ✅ Yes            | BaseModel methods are automatic |
+| `findOne()`                               | ✅ Yes            | BaseModel methods are automatic |
+| `findMany()`                              | ✅ Yes            | BaseModel methods are automatic |
 
 ### Practical Example: Raw Query + Hydrate
 
@@ -747,18 +745,15 @@ class UserModelClass extends BaseModelClass<...> {
 ```
 
 <Warning>
-**Cautions when using Hydrate**:
-1. **Field naming**: JOIN fields must use `__` (double underscore)
-2. **Manual call**: Raw Puri queries require manual hydrate() call
-3. **Type safety**: Types after hydrate must be manually defined
-4. **Performance**: hydrate has runtime overhead, so use Subset queries for simple cases
+  **Cautions when using Hydrate**: 1. **Field naming**: JOIN fields must use `__` (double
+  underscore) 2. **Manual call**: Raw Puri queries require manual hydrate() call 3. **Type safety**:
+  Types after hydrate must be manually defined 4. **Performance**: hydrate has runtime overhead, so
+  use Subset queries for simple cases
 </Warning>
 
 <Info>
-**Recommendations**:
-- Use **Subset queries** when possible (automatic hydrate)
-- Only use manual hydrate when complex Raw SQL is needed
-- Apply field naming conventions (`__`) consistently
+  **Recommendations**: - Use **Subset queries** when possible (automatic hydrate) - Only use manual
+  hydrate when complex Raw SQL is needed - Apply field naming conventions (`__`) consistently
 </Info>
 
 ## Next Steps
@@ -774,18 +769,10 @@ class UserModelClass extends BaseModelClass<...> {
   >
     Subqueries and transactions
   </Card>
-  <Card
-    title="Aggregations"
-    icon="calculator"
-    href="/en/database/puri/aggregations"
-  >
+  <Card title="Aggregations" icon="calculator" href="/en/database/puri/aggregations">
     Using aggregate functions
   </Card>
-  <Card
-    title="Basic Queries"
-    icon="magnifying-glass"
-    href="/en/database/puri/basic-queries"
-  >
+  <Card title="Basic Queries" icon="magnifying-glass" href="/en/database/puri/basic-queries">
     Back to basic queries
   </Card>
 </CardGroup>

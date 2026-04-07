@@ -1,6 +1,9 @@
 import inflection from "inflection";
-import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
-import { isEnumProp, isRelationProp, type RelationProp } from "../types/types";
+
+import { EntityManager } from "../entity/entity-manager";
+import { type EntityNamesRecord } from "../entity/entity-manager";
+import { isEnumProp, isRelationProp } from "../types/types";
+import { type RelationProp } from "../types/types";
 
 /**
  * Enum의 표시용 라벨을 가져옵니다.

@@ -3,10 +3,10 @@
  * sonamu 코어 내부에서 사용하는 i18n 함수입니다.
  */
 
-import { Sonamu } from "../api/sonamu";
+import { type SonamuConfig } from "../api/config";
 import en from "./en";
 import ko from "./ko";
-import type { LocalizedString } from "./types";
+import { type LocalizedString } from "./types";
 
 type SonamuDict = typeof ko;
 type DictKey = keyof SonamuDict;
@@ -20,13 +20,26 @@ const dictionaries: Record<string, MergedDictionary> = {
   ko,
   en,
 };
+let currentI18nConfig: SonamuConfig["i18n"] | null = null;
 
 type SDReturnType<K extends DictKey> = SonamuDict[K] extends (...args: infer P) => string
   ? (...args: P) => LocalizedString
   : LocalizedString;
 
+function getCurrentI18nConfig(): SonamuConfig["i18n"] {
+  if (currentI18nConfig === null) {
+    throw new Error("Sonamu i18n config has not been initialized");
+  }
+
+  return currentI18nConfig;
+}
+
+export function setSDConfig(i18nConfig: SonamuConfig["i18n"]): void {
+  currentI18nConfig = i18nConfig;
+}
+
 function getDictValue<K extends DictKey>(key: K, locale: string): SDReturnType<K> {
-  const { defaultLocale, supportedLocales } = Sonamu.config.i18n;
+  const { defaultLocale, supportedLocales } = getCurrentI18nConfig();
 
   // 1. 지정된 locale에서 조회
   const dict = dictionaries[locale];
@@ -61,6 +74,6 @@ function getDictValue<K extends DictKey>(key: K, locale: string): SDReturnType<K
  * SD("error.entityNotFound")("User", 1)  // → "존재하지 않는 User ID 1" (LocalizedString)
  */
 export function SD<K extends DictKey>(key: K): SDReturnType<K> {
-  const configLocale = Sonamu.config.i18n.defaultLocale;
+  const configLocale = getCurrentI18nConfig().defaultLocale;
   return getDictValue(key, configLocale);
 }

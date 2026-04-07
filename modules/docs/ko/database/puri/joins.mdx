@@ -9,24 +9,16 @@ Puri는 여러 테이블을 조인하여 관련 데이터를 함께 조회할 �
 
 <CardGroup cols={2}>
   <Card title="INNER JOIN" icon="link">
-    양쪽 테이블에 모두 존재하는 데이터
-    
-    join()
+    양쪽 테이블에 모두 존재하는 데이터 join()
   </Card>
   <Card title="LEFT JOIN" icon="arrow-left">
-    왼쪽 테이블 기준, 오른쪽은 Optional
-    
-    leftJoin()
+    왼쪽 테이블 기준, 오른쪽은 Optional leftJoin()
   </Card>
   <Card title="Self JOIN" icon="repeat">
-    같은 테이블을 조인
-    
-    alias 사용
+    같은 테이블을 조인 alias 사용
   </Card>
   <Card title="M:N JOIN" icon="diagram-project">
-    다대다 관계 조인
-    
-    중간 테이블 활용
+    다대다 관계 조인 중간 테이블 활용
   </Card>
 </CardGroup>
 
@@ -37,15 +29,12 @@ Puri는 여러 테이블을 조인하여 관련 데이터를 함께 조회할 �
 ### 기본 JOIN
 
 ```typescript
-const results = await db
-  .table("employees")
-  .join("users", "employees.user_id", "users.id")
-  .select({
-    employeeId: "employees.id",
-    employeeNumber: "employees.employee_number",
-    userName: "users.username",
-    userEmail: "users.email",
-  });
+const results = await db.table("employees").join("users", "employees.user_id", "users.id").select({
+  employeeId: "employees.id",
+  employeeNumber: "employees.employee_number",
+  userName: "users.username",
+  userEmail: "users.email",
+});
 
 // SQL:
 // SELECT ...
@@ -54,10 +43,8 @@ const results = await db
 ```
 
 <Info>
-**INNER JOIN 사용 시기**: 
-- 관계가 **필수**인 경우 (NOT NULL 외래 키)
-- 양쪽에 데이터가 있어야 하는 경우
-- 예: 직원 → 사용자 (모든 직원은 반드시 사용자 계정이 있음)
+  **INNER JOIN 사용 시기**: - 관계가 **필수**인 경우 (NOT NULL 외래 키) - 양쪽에 데이터가 있어야
+  하는 경우 - 예: 직원 → 사용자 (모든 직원은 반드시 사용자 계정이 있음)
 </Info>
 
 ### 여러 테이블 JOIN
@@ -102,10 +89,8 @@ const results = await db
 ```
 
 <Info>
-**LEFT JOIN 사용 시기**:
-- 관계가 **선택적**인 경우 (NULLABLE 외래 키)
-- 왼쪽 테이블의 모든 데이터가 필요한 경우
-- 예: 직원 → 부서 (일부 직원은 부서가 없을 수 있음)
+  **LEFT JOIN 사용 시기**: - 관계가 **선택적**인 경우 (NULLABLE 외래 키) - 왼쪽 테이블의 모든
+  데이터가 필요한 경우 - 예: 직원 → 부서 (일부 직원은 부서가 없을 수 있음)
 </Info>
 
 ### INNER JOIN vs LEFT JOIN 비교
@@ -121,7 +106,8 @@ const results = await db
   });
 
 // 부서가 배정된 직원만 조회 (부서 없는 직원 제외)
-```
+
+````
 
 ```typescript title="LEFT JOIN - 왼쪽 전체 + 오른쪽 있으면"
 const results = await db
@@ -133,7 +119,8 @@ const results = await db
   });
 
 // 모든 직원 조회 (부서 없는 직원도 포함, department_name은 null)
-```
+````
+
 </CodeGroup>
 
 ### 복합 LEFT JOIN
@@ -146,8 +133,8 @@ const results = await db
   .select({
     employeeId: "employees.id",
     employeeNumber: "employees.employee_number",
-    departmentName: "departments.name",  // null 가능
-    companyName: "companies.name",       // null 가능
+    departmentName: "departments.name", // null 가능
+    companyName: "companies.name", // null 가능
   });
 
 // employees (필수)
@@ -162,20 +149,17 @@ const results = await db
 ```typescript
 const results = await db
   .table("employees")
-  .join("users", "employees.user_id", "users.id")              // 필수: 모든 직원은 사용자 있음
+  .join("users", "employees.user_id", "users.id") // 필수: 모든 직원은 사용자 있음
   .leftJoin("departments", "employees.department_id", "departments.id") // 선택: 부서 없을 수 있음
   .select({
-    employeeName: "users.username",           // 항상 존재
-    departmentName: "departments.name",       // null 가능
+    employeeName: "users.username", // 항상 존재
+    departmentName: "departments.name", // null 가능
   });
 ```
 
 <Tip>
-**조인 타입 선택 가이드**:
-1. 데이터베이스 스키마 확인 (NOT NULL vs NULLABLE)
-2. NOT NULL 외래 키 → INNER JOIN
-3. NULLABLE 외래 키 → LEFT JOIN
-4. 비즈니스 요구사항 고려
+  **조인 타입 선택 가이드**: 1. 데이터베이스 스키마 확인 (NOT NULL vs NULLABLE) 2. NOT NULL 외래 키
+  → INNER JOIN 3. NULLABLE 외래 키 → LEFT JOIN 4. 비즈니스 요구사항 고려
 </Tip>
 
 ## Self JOIN - 자기 참조
@@ -187,11 +171,7 @@ const results = await db
 ```typescript
 const results = await db
   .table({ child: "departments" })
-  .leftJoin(
-    { parent: "departments" },
-    "child.parent_id",
-    "parent.id"
-  )
+  .leftJoin({ parent: "departments" }, "child.parent_id", "parent.id")
   .select({
     childId: "child.id",
     childName: "child.name",
@@ -216,11 +196,7 @@ const results = await db
 ```typescript
 const results = await db
   .table({ user: "users" })
-  .leftJoin(
-    { referrer: "users" },
-    "user.referrer_id",
-    "referrer.id"
-  )
+  .leftJoin({ referrer: "users" }, "user.referrer_id", "referrer.id")
   .select({
     userId: "user.id",
     userName: "user.username",
@@ -257,14 +233,13 @@ const results = await db
 ```
 
 **결과 특징**:
+
 - 프로젝트 1개에 직원 N명 → N개 행
 - 직원이 없는 프로젝트 → 1개 행 (employee 필드는 null)
 
 <Warning>
-**M:N 조인 주의사항**:
-1. 결과가 중복됨 (프로젝트당 직원 수만큼 행 생성)
-2. 집계 시 주의 (`COUNT(DISTINCT ...)` 사용)
-3. 페이지네이션 복잡해짐
+  **M:N 조인 주의사항**: 1. 결과가 중복됨 (프로젝트당 직원 수만큼 행 생성) 2. 집계 시 주의
+  (`COUNT(DISTINCT ...)` 사용) 3. 페이지네이션 복잡해짐
 </Warning>
 
 ### M:N 직원별로 그룹화
@@ -306,11 +281,7 @@ const empStats = db
 // 부서 + 통계 조인
 const results = await db
   .table("departments")
-  .leftJoin(
-    { stats: empStats },
-    "departments.id",
-    "stats.department_id"
-  )
+  .leftJoin({ stats: empStats }, "departments.id", "stats.department_id")
   .select({
     deptId: "departments.id",
     deptName: "departments.name",
@@ -334,11 +305,7 @@ const latestLogins = db
 // 사용자 + 최신 로그인 조인
 const results = await db
   .table("users")
-  .leftJoin(
-    { latest: latestLogins },
-    "users.id",
-    "latest.user_id"
-  )
+  .leftJoin({ latest: latestLogins }, "users.id", "latest.user_id")
   .select({
     userId: "users.id",
     userName: "users.username",
@@ -360,8 +327,8 @@ const results = await db
     userName: "users.username",
     deptName: "departments.name",
   })
-  .where("users.is_active", true)          // users 필터
-  .where("employees.salary", ">=", 50000)  // employees 필터
+  .where("users.is_active", true) // users 필터
+  .where("employees.salary", ">=", 50000) // employees 필터
   .where("departments.name", "like", "%개발%"); // departments 필터
 ```
 
@@ -497,23 +464,21 @@ const results = await db
   .join("users", "employees.user_id", "users.id")
   .leftJoin("departments", "employees.department_id", "departments.id")
   .select({
-    employeeId: "employees.id",        // number
-    userName: "users.username",         // string
+    employeeId: "employees.id", // number
+    userName: "users.username", // string
     departmentName: "departments.name", // string | null (LEFT JOIN)
   });
 
 // 타입이 자동으로 추론됨
 const first = results[0];
-first.employeeId;     // number
-first.userName;        // string
-first.departmentName;  // string | null
+first.employeeId; // number
+first.userName; // string
+first.departmentName; // string | null
 ```
 
 <Info>
-**LEFT JOIN과 타입**:
-- LEFT JOIN된 테이블의 컬럼은 `T | null` 타입
-- INNER JOIN된 테이블의 컬럼은 `T` 타입
-- 타입스크립트가 자동으로 null 체크 강제
+  **LEFT JOIN과 타입**: - LEFT JOIN된 테이블의 컬럼은 `T | null` 타입 - INNER JOIN된 테이블의 컬럼은
+  `T` 타입 - 타입스크립트가 자동으로 null 체크 강제
 </Info>
 
 ## 성능 최적화
@@ -530,19 +495,13 @@ CREATE INDEX idx_employees_department_id ON employees(department_id);
 
 ```typescript
 // ❌ 나쁨: 모든 컬럼 조회
-await db
-  .table("employees")
-  .join("users", "employees.user_id", "users.id")
-  .selectAll();
+await db.table("employees").join("users", "employees.user_id", "users.id").selectAll();
 
 // ✅ 좋음: 필요한 컬럼만 선택
-await db
-  .table("employees")
-  .join("users", "employees.user_id", "users.id")
-  .select({
-    id: "employees.id",
-    name: "users.username",
-  });
+await db.table("employees").join("users", "employees.user_id", "users.id").select({
+  id: "employees.id",
+  name: "users.username",
+});
 ```
 
 ### JOIN 순서 최적화
@@ -561,7 +520,11 @@ await db
   <Card title="Aggregations" icon="calculator" href="/ko/database/puri/aggregations">
     집계 함수로 데이터 분석하기
   </Card>
-  <Card title="Advanced Patterns" icon="wand-magic-sparkles" href="/ko/database/puri/advanced-patterns">
+  <Card
+    title="Advanced Patterns"
+    icon="wand-magic-sparkles"
+    href="/ko/database/puri/advanced-patterns"
+  >
     서브쿼리와 복잡한 패턴
   </Card>
   <Card title="Type Safety" icon="shield" href="/ko/database/puri/type-safety">

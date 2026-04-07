@@ -1,4 +1,4 @@
-import type { DurationString, StepApi } from "@sonamu-kit/tasks/internal";
+import { type DurationString, type StepApi } from "@sonamu-kit/tasks/internal";
 import inflection from "inflection";
 
 export type StepFunction<TArgs extends unknown[], TResult> = (...args: TArgs) => TResult;

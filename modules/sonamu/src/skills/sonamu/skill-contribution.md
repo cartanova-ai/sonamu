@@ -11,9 +11,9 @@ The process for capturing knowledge from a resolved troubleshooting session into
 
 ## Triggers
 
-| Trigger | Owner | Example |
-|---------|-------|---------|
-| **Explicit request** | User | "Document this in skills", "Record this fix" |
+| Trigger              | Owner | Example                                                                        |
+| -------------------- | ----- | ------------------------------------------------------------------------------ |
+| **Explicit request** | User  | "Document this in skills", "Record this fix"                                   |
 | **Agent suggestion** | Agent | When a detection pattern below is met, propose: "Should I add this to skills?" |
 
 ### Agent detection patterns
@@ -25,6 +25,7 @@ Suggest contribution when the following flow is observed in the conversation:
 3. The same problem is **likely to occur in other projects or for other users**
 
 Do not suggest when:
+
 - Simple typos or missing imports
 - Project-specific business logic bugs
 - One-off environment issues (e.g., port conflict on a specific machine)
@@ -52,22 +53,22 @@ Summarize from the conversation using the following structure:
 symptom: "one-line description (error message or observed behavior)"
 cause: "explanation of root cause"
 solution: "resolution steps (include specific commands/code)"
-source_paths:         # related source file paths
+source_paths: # related source file paths
   - "src/testing/dev-vitest-manager.ts"
-tags:                 # keywords for matching
+tags: # keywords for matching
   - "testing"
   - "devrunner"
-scope: "sonamu"       # "sonamu" (framework-level) or "local" (project-specific)
+scope: "sonamu" # "sonamu" (framework-level) or "local" (project-specific)
 ```
 
 ### Scope decision criteria
 
-| Condition | scope |
-|-----------|-------|
-| Relates to Sonamu framework behavior or constraints | `sonamu` |
-| Relates to Sonamu CLI, config, migration, or shared tooling | `sonamu` |
-| Relates to a specific project's business logic or configuration | `local` |
-| Unclear | Ask the user |
+| Condition                                                       | scope        |
+| --------------------------------------------------------------- | ------------ |
+| Relates to Sonamu framework behavior or constraints             | `sonamu`     |
+| Relates to Sonamu CLI, config, migration, or shared tooling     | `sonamu`     |
+| Relates to a specific project's business logic or configuration | `local`      |
+| Unclear                                                         | Ask the user |
 
 ---
 
@@ -77,30 +78,30 @@ scope: "sonamu"       # "sonamu" (framework-level) or "local" (project-specific)
 
 ### Match priority
 
-| Priority | Method | Description |
-|----------|--------|-------------|
-| 1 | **Source paths** | Check whether `source_paths` overlap with source references in existing skills |
-| 2 | **Tags/keywords** | Compare against each skill's YAML `description` and tags |
-| 3 | **SKILL.md task table** | Cross-reference which task row maps to the problem domain |
+| Priority | Method                  | Description                                                                    |
+| -------- | ----------------------- | ------------------------------------------------------------------------------ |
+| 1        | **Source paths**        | Check whether `source_paths` overlap with source references in existing skills |
+| 2        | **Tags/keywords**       | Compare against each skill's YAML `description` and tags                       |
+| 3        | **SKILL.md task table** | Cross-reference which task row maps to the problem domain                      |
 
 ### Source path → skill mapping (key paths)
 
-| Source path pattern | Corresponding skill |
-|---------------------|---------------------|
-| `src/testing/*` | testing.md, testing-devrunner.md, naite.md, fixture-cli.md |
-| `src/database/puri*` | puri.md |
-| `src/database/migrator*` | migration.md |
-| `src/auth/*` | auth.md, auth-plugins.md, auth-migration.md |
-| `src/entity/*`, `src/syncer/*` | entity-basic.md, entity-relations.md |
-| `src/vector/*` | vector.md |
-| `src/ai/agents/*` | ai-agents.md |
-| `src/naite/*` | naite.md |
-| `src/cone/*` | cone.md |
-| `src/api/*` | api.md |
-| `src/template/*` | framework-change.md |
-| `src/model/*` | model.md |
-| `src/ssr/*` | (no skill — candidate for new file) |
-| `sonamu.config.ts` related | config.md |
+| Source path pattern            | Corresponding skill                                        |
+| ------------------------------ | ---------------------------------------------------------- |
+| `src/testing/*`                | testing.md, testing-devrunner.md, naite.md, fixture-cli.md |
+| `src/database/puri*`           | puri.md                                                    |
+| `src/database/migrator*`       | migration.md                                               |
+| `src/auth/*`                   | auth.md, auth-plugins.md, auth-migration.md                |
+| `src/entity/*`, `src/syncer/*` | entity-basic.md, entity-relations.md                       |
+| `src/vector/*`                 | vector.md                                                  |
+| `src/ai/agents/*`              | ai-agents.md                                               |
+| `src/naite/*`                  | naite.md                                                   |
+| `src/cone/*`                   | cone.md                                                    |
+| `src/api/*`                    | api.md                                                     |
+| `src/template/*`               | framework-change.md                                        |
+| `src/model/*`                  | model.md                                                   |
+| `src/ssr/*`                    | (no skill — candidate for new file)                        |
+| `sonamu.config.ts` related     | config.md                                                  |
 
 If the path is not in this table, fall through to tag/keyword matching.
 
@@ -114,13 +115,13 @@ If the path is not in this table, fall through to tag/keyword matching.
 
 ## [3] Decide
 
-| Match result | Decision | Description |
-|--------------|----------|-------------|
-| **Same content exists** in an existing skill | **SKIP** | Report: "Already documented in {skill}.md" |
-| Match found + skill has **troubleshooting section** | **APPEND** | Add item to existing section |
+| Match result                                           | Decision        | Description                                  |
+| ------------------------------------------------------ | --------------- | -------------------------------------------- |
+| **Same content exists** in an existing skill           | **SKIP**        | Report: "Already documented in {skill}.md"   |
+| Match found + skill has **troubleshooting section**    | **APPEND**      | Add item to existing section                 |
 | Match found + skill has **no troubleshooting section** | **ADD_SECTION** | Add a new troubleshooting section at the end |
-| No match + scope=`sonamu` | **NEW_FILE** | Create a new skill file (rare) |
-| No match + scope=`local` | **LOCAL** | Create in `.claude/skills/local/` |
+| No match + scope=`sonamu`                              | **NEW_FILE**    | Create a new skill file (rare)               |
+| No match + scope=`local`                               | **LOCAL**       | Create in `.claude/skills/local/`            |
 
 **CRITICAL: APPEND and ADD_SECTION should account for the vast majority of cases.** NEW_FILE is only for when the content genuinely does not fit anywhere in the existing skills.
 
@@ -136,6 +137,7 @@ Use the pattern from `testing-devrunner.md` as the standard:
 ## Troubleshooting
 
 ### "Error message or one-line symptom"
+
 → Explanation of root cause
 → Fix: specific resolution (commands / code / config)
 ```
@@ -148,6 +150,7 @@ Adding to cone.md:
 
 ```markdown
 ### "pnpm sonamu cone gen --all fails with 'ANTHROPIC_API_KEY is not set'"
+
 → Key is missing from .env or was set only in root .env rather than packages/api/.env
 → Fix: add `ANTHROPIC_API_KEY=sk-ant-...` to `packages/api/.env`
 ```
@@ -162,6 +165,7 @@ Adding a new section at the end of puri.md:
 ## Troubleshooting
 
 ### "nullable field type inferred as non-null after leftJoin"
+
 → Puri type inference does not account for join direction. leftJoin results may be null at runtime but are not reflected as optional in the types.
 → Fix: explicitly mark the field as optional in the subset, or add a null check at the call site
 ```
@@ -181,6 +185,7 @@ description: Deployment notes for the KOPRI project. Use when deploying KOPRI pr
 ## Troubleshooting
 
 ### "sharp package installation fails during Docker build"
+
 → Alpine image is missing native dependencies for sharp
 → Fix: add `RUN apk add --no-cache vips-dev` to Dockerfile
 ```
@@ -212,13 +217,13 @@ Shall I apply this?
 
 ## [6] Apply
 
-| Decision | Action |
-|----------|--------|
-| SKIP | None |
-| APPEND | Add `###` entry to the troubleshooting section in the skill |
+| Decision    | Action                                                                                                                                 |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| SKIP        | None                                                                                                                                   |
+| APPEND      | Add `###` entry to the troubleshooting section in the skill                                                                            |
 | ADD_SECTION | Add `## Troubleshooting` section + entry at the end of the skill (just before `## References` if it exists, otherwise at the very end) |
-| NEW_FILE | Create new .md file + **register in both tables in SKILL.md** |
-| LOCAL | Create `.claude/skills/local/{name}.md` |
+| NEW_FILE    | Create new .md file + **register in both tables in SKILL.md**                                                                          |
+| LOCAL       | Create `.claude/skills/local/{name}.md`                                                                                                |
 
 ### ADD_SECTION insertion position
 

@@ -1,13 +1,14 @@
-import type { EnhancerMap, RequiredEnhancerKeys } from "sonamu";
+import { type EnhancerMap, type RequiredEnhancerKeys } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expectTypeOf, vi } from "vitest";
-import type {
-  ProjectSubsetA,
-  ProjectSubsetKey,
-  ProjectSubsetMapping,
-  ProjectSubsetP,
+
+import {
+  type ProjectSubsetA,
+  type ProjectSubsetKey,
+  type ProjectSubsetMapping,
+  type ProjectSubsetP,
 } from "../application/sonamu.generated";
-import type { projectSubsetQueries } from "../application/sonamu.generated.sso";
+import { type projectSubsetQueries } from "../application/sonamu.generated.sso";
 
 bootstrap(vi);
 

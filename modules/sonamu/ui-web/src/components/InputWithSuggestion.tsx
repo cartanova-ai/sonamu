@@ -1,6 +1,8 @@
-import { Button, Input, type InputProps } from "@sonamu-kit/react-components";
+import { Button, Input } from "@sonamu-kit/react-components";
+import { type InputProps } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
 import LanguagesIcon from "~icons/lucide/languages";
+
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
 type InputWithSuggestionProps = {
@@ -9,7 +11,7 @@ type InputWithSuggestionProps = {
 } & InputProps;
 export function InputWithSuggestion({ origin, entityId, ...inputProps }: InputWithSuggestionProps) {
   const [loading, setLoading] = useState(false);
-  const [value, setValue] = useState<string>(
+  const [value, setValue] = useState(
     inputProps.value === undefined || inputProps.value === null ? "" : String(inputProps.value),
   );
 

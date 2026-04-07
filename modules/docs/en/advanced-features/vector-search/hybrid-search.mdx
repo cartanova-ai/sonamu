@@ -30,12 +30,14 @@ async searchProducts(query: string) {
 **Problem encountered**:
 
 When a user searches for "MacBook Pro 14":
+
 - "MacBook" - Found (semantically similar)
 - "MacBook Pro" - Found (Korean also works)
 - "**MBP14**" - Not found (**exact model name**)
 - "**SKU-12345**" - Not found (**product code**)
 
 **Limitations of vector search**:
+
 - Weak with exact product names, model names
 - Can't find unique identifiers like product codes, SKUs
 - Vulnerable to technical terms, abbreviations
@@ -61,6 +63,7 @@ flowchart TD
 ```
 
 **Advantages**:
+
 - Vector: Semantic understanding, synonyms, typos
 - FTS: Exact keywords, partial matching
 - **Combined**: Best accuracy
@@ -76,8 +79,8 @@ First, prepare full-text search (FTS).
 ```typescript
 // migrations/20240101_add_fts.ts
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.table('products', (table) => {
-    table.specificType('search_vector', 'tsvector');
+  await knex.schema.table("products", (table) => {
+    table.specificType("search_vector", "tsvector");
   });
 
   // Generate initial data
@@ -97,6 +100,7 @@ export async function up(knex: Knex): Promise<void> {
 ```
 
 **Key points**:
+
 - `'simple'`: Handles Korean + English
 - `setweight`: Higher weight for title (A)
 - GIN index: Fast search
@@ -135,18 +139,19 @@ import { BaseModelClass, api } from "sonamu";
 import { Embedding } from "sonamu/vector";
 
 class ProductModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async hybridSearch(
     query: string,
     vectorWeight: number = 0.7,
     ftsWeight: number = 0.3,
-    limit: number = 10
+    limit: number = 10,
   ) {
     // 1. Query embedding
-    const embedding = await Embedding.embedOne(query, 'voyage', 'query');
+    const embedding = await Embedding.embedOne(query, "voyage", "query");
 
     // 2. Hybrid search SQL
-    const results = await this.getPuri().raw(`
+    const results = await this.getPuri().raw(
+      `
       WITH vector_results AS (
         SELECT
           id,
@@ -175,16 +180,18 @@ class ProductModelClass extends BaseModelClass {
       WHERE v.id IS NOT NULL OR f.id IS NOT NULL
       ORDER BY hybrid_score DESC
       LIMIT ?
-    `, [
-      JSON.stringify(embedding.embedding),  // vector
-      query,  // fts (1)
-      query,  // fts (2)
-      vectorWeight,   // 0.7
-      ftsWeight,      // 0.3
-      limit,
-    ]);
+    `,
+      [
+        JSON.stringify(embedding.embedding), // vector
+        query, // fts (1)
+        query, // fts (2)
+        vectorWeight, // 0.7
+        ftsWeight, // 0.3
+        limit,
+      ],
+    );
 
-    return results.rows.map(row => ({
+    return results.rows.map((row) => ({
       id: row.id,
       name: row.name,
       price: row.price,
@@ -197,6 +204,7 @@ class ProductModelClass extends BaseModelClass {
 ```
 
 **SQL explanation**:
+
 1. `vector_results`: Calculate vector similarity
 2. `fts_results`: Calculate FTS score
 3. `LEFT JOIN`: Include if either matches
@@ -207,26 +215,32 @@ class ProductModelClass extends BaseModelClass {
 ### When to Use Which Weights?
 
 **Balanced** (default)
+
 ```typescript
 vectorWeight: 0.7,
 ftsWeight: 0.3
 ```
+
 - **Use case**: General search
 - **Examples**: Blogs, documents, knowledge bases
 
 **Semantic-focused**
+
 ```typescript
 vectorWeight: 0.9,
 ftsWeight: 0.1
 ```
+
 - **Use case**: When semantic understanding is important
 - **Examples**: Q&A, customer support, recommendations
 
 **Keyword-focused**
+
 ```typescript
 vectorWeight: 0.3,
 ftsWeight: 0.7
 ```
+
 - **Use case**: When exact matching is important
 - **Examples**: Product codes, model names, technical terms
 
@@ -266,16 +280,16 @@ You're building an online store with Sonamu.
 ```typescript
 // migrations/20240101_products.ts
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable('products', (table) => {
-    table.increments('id').primary();
-    table.string('name').notNullable();
-    table.text('description');
-    table.string('sku').unique();
-    table.decimal('price', 10, 2);
+  await knex.schema.createTable("products", (table) => {
+    table.increments("id").primary();
+    table.string("name").notNullable();
+    table.text("description");
+    table.string("sku").unique();
+    table.decimal("price", 10, 2);
 
     // Vector + FTS
-    table.specificType('embedding', 'vector(1024)');
-    table.specificType('search_vector', 'tsvector');
+    table.specificType("embedding", "vector(1024)");
+    table.specificType("search_vector", "tsvector");
 
     table.timestamps(true, true);
   });
@@ -424,6 +438,7 @@ async searchProducts(
 ```
 
 **Usage examples**:
+
 ```typescript
 // General search
 await ProductModel.searchProducts("MacBook Pro");
@@ -442,12 +457,12 @@ await ProductModel.searchProducts("laptop", {
 
 Tested on an actual 1000-product DB:
 
-| Method | Accuracy (MAP@10) | Pros | Cons |
-|--------|-------------------|------|------|
-| Keyword only (LIKE) | 0.45 | Fast | Can't find semantics |
-| FTS only | 0.68 | Partial matching | Weak on synonyms |
-| Vector only | 0.72 | Semantic understanding | Weak on exact matching |
-| **Hybrid** | **0.85** | **Best of both** | Complex |
+| Method              | Accuracy (MAP@10) | Pros                   | Cons                   |
+| ------------------- | ----------------- | ---------------------- | ---------------------- |
+| Keyword only (LIKE) | 0.45              | Fast                   | Can't find semantics   |
+| FTS only            | 0.68              | Partial matching       | Weak on synonyms       |
+| Vector only         | 0.72              | Semantic understanding | Weak on exact matching |
+| **Hybrid**          | **0.85**          | **Best of both**       | Complex                |
 
 **Conclusion**: Hybrid is 15-20% more accurate.
 
@@ -457,17 +472,20 @@ Tested on an actual 1000-product DB:
 **Cautions for hybrid search in Sonamu**:
 
 1. **Both indexes required**: Vector + FTS
+
    ```sql
    CREATE INDEX ... USING hnsw (embedding vector_cosine_ops);
    CREATE INDEX ... USING GIN (search_vector);
    ```
 
 2. **tsvector update**: Automate with trigger
+
    ```sql
    CREATE TRIGGER tsvector_update ...
    ```
 
 3. **Weight sum = 1**: Normalization
+
    ```typescript
    const total = vectorWeight + ftsWeight;
    vectorWeight = vectorWeight / total;
@@ -475,16 +493,19 @@ Tested on an actual 1000-product DB:
    ```
 
 4. **NULL handling**: Use COALESCE
+
    ```sql
    COALESCE(v.vector_score, 0)
    ```
 
 5. **LEFT JOIN**: OK if only one side matches
+
    ```sql
    WHERE v.id IS NOT NULL OR f.id IS NOT NULL
    ```
 
 6. **Use 'simple' for Korean**: FTS language setting
+
    ```sql
    to_tsvector('simple', text)
    ```
@@ -493,7 +514,7 @@ Tested on an actual 1000-product DB:
    ```sql
    EXPLAIN ANALYZE [hybrid query]
    ```
-</Warning>
+   </Warning>
 
 ## When to Use Hybrid Search?
 
@@ -522,7 +543,11 @@ Tested on an actual 1000-product DB:
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Vector Search" icon="magnifying-glass" href="/en/advanced-features/vector-search/vector-search">
+  <Card
+    title="Vector Search"
+    icon="magnifying-glass"
+    href="/en/advanced-features/vector-search/vector-search"
+  >
     Basic vector search implementation
   </Card>
   <Card title="Chunking" icon="scissors" href="/en/advanced-features/vector-search/chunking">

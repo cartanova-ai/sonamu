@@ -1,8 +1,10 @@
 import assert from "assert";
 import crypto from "crypto";
+
 import { DB, Naite } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+
 import { UserModel } from "./user.model";
 
 bootstrap(vi);

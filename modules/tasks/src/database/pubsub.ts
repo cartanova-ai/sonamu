@@ -1,6 +1,9 @@
 import assert from "assert";
-import type { Knex } from "knex";
-import { err, ok, type Result } from "../core/result";
+
+import { type Knex } from "knex";
+
+import { err, ok } from "../core/result";
+import { type Result } from "../core/result";
 
 export type OnSubscribed = (result: Result<string | null>) => void | Promise<void>;
 
@@ -12,7 +15,7 @@ export class PostgresPubSub {
   private _onError: (error: Error) => Promise<void>;
   private _listeners = new Map<string, Set<OnSubscribed>>();
 
-  // biome-ignore lint/suspicious/noExplicitAny: Knex exposes a connection as any
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Knex exposes a connection as any
   private _connection: any | null = null;
 
   private constructor(private readonly knex: Knex) {

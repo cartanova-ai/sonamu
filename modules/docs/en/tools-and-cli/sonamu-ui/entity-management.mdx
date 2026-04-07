@@ -1,15 +1,13 @@
 ---
-title: 'Entity Management'
-description: 'Create, edit, and delete Entities'
+title: "Entity Management"
+description: "Create, edit, and delete Entities"
 ---
 
 Sonamu UI's Entity management feature allows you to **easily create and edit Entities through a visual interface**. It's much faster and more intuitive than directly modifying files via CLI.
 
 ## Entity Tab Structure
 
-<Frame caption="Entity Management Screen">
-  {/* TODO: Add Entity tab screenshot */}
-</Frame>
+<Frame caption="Entity Management Screen">{/* TODO: Add Entity tab screenshot */}</Frame>
 
 The Entity tab consists of two main areas:
 
@@ -26,14 +24,15 @@ Click the **[+ New Entity]** button at the bottom of the sidebar.
 
 When the modal opens, enter the following information:
 
-| Field | Description | Example |
-|-------|-------------|---------|
-| **Entity ID** | Entity identifier (PascalCase) | `Product`, `OrderItem` |
-| **Title** | Display title | `Product`, `Order Item` |
-| **Parent Entity** | Parent Entity (optional) | `Order` |
+| Field             | Description                    | Example                 |
+| ----------------- | ------------------------------ | ----------------------- |
+| **Entity ID**     | Entity identifier (PascalCase) | `Product`, `OrderItem`  |
+| **Title**         | Display title                  | `Product`, `Order Item` |
+| **Parent Entity** | Parent Entity (optional)       | `Order`                 |
 
 <Info>
-If you specify a **Parent Entity**, it becomes a child of that Entity. Example: `Order` → `OrderItem`
+  If you specify a **Parent Entity**, it becomes a child of that Entity. Example: `Order` →
+  `OrderItem`
 </Info>
 
 ### 3. Add Basic Properties
@@ -46,7 +45,7 @@ Created Entities include these basic fields by default:
     { name: "id", type: "int", primaryKey: true, autoIncrement: true },
     { name: "title", type: "string", length: 255 },
     { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
-  ]
+  ];
 }
 ```
 
@@ -57,16 +56,17 @@ Created Entities include these basic fields by default:
 1. Click **[+ Add Property]** button
 2. Enter Property information:
 
-| Field | Required | Description | Example |
-|-------|----------|-------------|---------|
-| **Name** | ✅ | Field name (snake_case) | `email`, `phone_number` |
-| **Type** | ✅ | Data type | `string`, `int`, `decimal` |
-| **Length** | Conditional | String length | `255` |
-| **Nullable** | | Allow NULL | `true` |
-| **Default** | | Default value | `0`, `CURRENT_TIMESTAMP` |
-| **Comment** | | Description | `User email` |
+| Field        | Required    | Description             | Example                    |
+| ------------ | ----------- | ----------------------- | -------------------------- |
+| **Name**     | ✅          | Field name (snake_case) | `email`, `phone_number`    |
+| **Type**     | ✅          | Data type               | `string`, `int`, `decimal` |
+| **Length**   | Conditional | String length           | `255`                      |
+| **Nullable** |             | Allow NULL              | `true`                     |
+| **Default**  |             | Default value           | `0`, `CURRENT_TIMESTAMP`   |
+| **Comment**  |             | Description             | `User email`               |
 
 **Supported data types**:
+
 - **String**: `string`, `text`, `mediumtext`, `longtext`
 - **Number**: `int`, `bigint`, `float`, `double`, `decimal`
 - **Date**: `date`, `datetime`, `timestamp`
@@ -83,8 +83,8 @@ Created Entities include these basic fields by default:
 Click the **[×]** button on the Property row.
 
 <Warning>
-**Data loss warning**: Deleting a Property will delete all data in that column.
-Make sure to backup data before running the migration.
+  **Data loss warning**: Deleting a Property will delete all data in that column. Make sure to
+  backup data before running the migration.
 </Warning>
 
 ## Managing Indexes
@@ -95,12 +95,13 @@ Make sure to backup data before running the migration.
 2. Click **[+ Add Index]** button
 3. Enter Index information:
 
-| Field | Description | Example |
-|-------|-------------|---------|
-| **Fields** | Index target fields (multiple selectable) | `email`, `created_at` |
-| **Type** | Index type | `index`, `unique`, `fulltext` |
+| Field      | Description                               | Example                       |
+| ---------- | ----------------------------------------- | ----------------------------- |
+| **Fields** | Index target fields (multiple selectable) | `email`, `created_at`         |
+| **Type**   | Index type                                | `index`, `unique`, `fulltext` |
 
 **Index types**:
+
 - **index**: Regular index (improves search performance)
 - **unique**: Unique index (prevents duplicates)
 - **fulltext**: Full-text search index (text search)
@@ -113,7 +114,7 @@ Select multiple fields to create a composite index:
 indexes: [
   { fields: ["user_id", "created_at"], type: "index" },
   { fields: ["email"], type: "unique" },
-]
+];
 ```
 
 ## Managing Relations
@@ -127,17 +128,16 @@ Example: `Post` belongs to `User`
 1. Click **[+ Add]** button in the **belongsTo** section
 2. Enter information:
 
-| Field | Description | Example |
-|-------|-------------|---------|
-| **Entity** | Entity to reference | `User` |
-| **As** | Relation alias | `author` |
+| Field           | Description                       | Example     |
+| --------------- | --------------------------------- | ----------- |
+| **Entity**      | Entity to reference               | `User`      |
+| **As**          | Relation alias                    | `author`    |
 | **Foreign Key** | Foreign key field name (optional) | `author_id` |
 
 Generated code:
+
 ```typescript
-belongsTo: [
-  { entityId: "User", as: "author" }
-]
+belongsTo: [{ entityId: "User", as: "author" }];
 ```
 
 ### hasMany (1:N Relationship)
@@ -149,16 +149,15 @@ Example: `User` has multiple `Posts`
 1. Click **[+ Add]** button in the **hasMany** section
 2. Enter information:
 
-| Field | Description | Example |
-|-------|-------------|---------|
-| **Entity** | Target Entity | `Post` |
-| **As** | Relation alias | `posts` |
+| Field      | Description    | Example |
+| ---------- | -------------- | ------- |
+| **Entity** | Target Entity  | `Post`  |
+| **As**     | Relation alias | `posts` |
 
 Generated code:
+
 ```typescript
-hasMany: [
-  { entityId: "Post", as: "posts" }
-]
+hasMany: [{ entityId: "Post", as: "posts" }];
 ```
 
 ## Managing Enums
@@ -170,22 +169,24 @@ Use Enums when a field can only have limited values.
 1. Click **[+ Add Enum]** button in the **Enums** section
 2. Enter Enum information:
 
-| Field | Description | Example |
-|-------|-------------|---------|
-| **Name** | Enum name | `UserRole` |
+| Field      | Description                  | Example              |
+| ---------- | ---------------------------- | -------------------- |
+| **Name**   | Enum name                    | `UserRole`           |
 | **Values** | Value list (comma-separated) | `admin, user, guest` |
 
 Generated code:
+
 ```typescript
 enums: [
   {
     name: "UserRole",
-    values: ["admin", "user", "guest"]
-  }
-]
+    values: ["admin", "user", "guest"],
+  },
+];
 ```
 
 Using in Property:
+
 ```typescript
 {
   name: "role",
@@ -202,6 +203,7 @@ Click the **[💬 AI]** button at the bottom of the sidebar to open the AI chat 
 ### Create Entity with AI
 
 **Example prompt**:
+
 ```
 Create a Post Entity for blog posts.
 I need title, content, author, creation date, and view count.
@@ -212,6 +214,7 @@ AI generates the Entity definition and adds it automatically.
 ### Modify Entity with AI
 
 **Example prompt**:
+
 ```
 Add a profile image field to the User Entity.
 ```
@@ -219,7 +222,8 @@ Add a profile image field to the User Entity.
 AI analyzes the existing Entity and applies the modifications.
 
 <Tip>
-**Be specific**: The more clearly you describe field types, constraints, and relationships, the more accurate results you'll get.
+  **Be specific**: The more clearly you describe field types, constraints, and relationships, the
+  more accurate results you'll get.
 </Tip>
 
 ## Practical Example
@@ -246,19 +250,15 @@ export const ProductEntity = {
     { fields: ["status", "created_at"] },
   ],
 
-  belongsTo: [
-    { entityId: "Category", as: "category" }
-  ],
+  belongsTo: [{ entityId: "Category", as: "category" }],
 
-  hasMany: [
-    { entityId: "Review", as: "reviews" }
-  ],
+  hasMany: [{ entityId: "Review", as: "reviews" }],
 
   enums: [
     {
       name: "ProductStatus",
-      values: ["active", "inactive", "soldout"]
-    }
+      values: ["active", "inactive", "soldout"],
+    },
   ],
 } satisfies EntityType;
 ```
@@ -274,9 +274,7 @@ After modifying an Entity, you need to **create and run a migration** to reflect
 3. **Run Migration**: Run migration to apply to DB
 4. **Scaffolding**: Generate Model and test code
 
-<Info>
-Entity files (`.entity.ts`) are **automatically saved** when modified in the UI.
-</Info>
+<Info>Entity files (`.entity.ts`) are **automatically saved** when modified in the UI.</Info>
 
 ## Next Steps
 
@@ -284,7 +282,11 @@ Entity files (`.entity.ts`) are **automatically saved** when modified in the UI.
   <Card title="Migration Tab" icon="database" href="/en/tools-and-cli/sonamu-ui/migration-tab">
     Create and run migrations
   </Card>
-  <Card title="Scaffolding Tab" icon="wand-magic-sparkles" href="/en/tools-and-cli/sonamu-ui/scaffolding-tab">
+  <Card
+    title="Scaffolding Tab"
+    icon="wand-magic-sparkles"
+    href="/en/tools-and-cli/sonamu-ui/scaffolding-tab"
+  >
     Auto-generate Model code
   </Card>
 </CardGroup>

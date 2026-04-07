@@ -1,6 +1,6 @@
 ---
-title: 'Database'
-description: 'Questions about database and queries'
+title: "Database"
+description: "Questions about database and queries"
 ---
 
 ## Puri Query Builder
@@ -32,10 +32,7 @@ export class Puri<TSchema, TTables, TResult> implements Promise<TResult[]> {
 const users = await UserModel.getPuri().select("id", "name");
 
 // ✅ Use .first() for single object query
-const user = await UserModel.getPuri()
-  .select("id", "name")
-  .where({ id: 1 })
-  .first();
+const user = await UserModel.getPuri().select("id", "name").where({ id: 1 }).first();
 
 // ✅ Use Puri.count() for counting
 const result = await UserModel.getPuri()
@@ -70,16 +67,12 @@ const result = await OrderModel.getPuri()
 const total = result[0].total;
 
 // AVG
-const result = await ProductModel.getPuri()
-  .select({ avg_price: Puri.avg("price") });
+const result = await ProductModel.getPuri().select({ avg_price: Puri.avg("price") });
 const avgPrice = result[0].avg_price;
 
 // COUNT + GROUP BY
 const stats = await OrderModel.getPuri()
-  .select(
-    "user_id",
-    { count: Puri.count(), total: Puri.sum("amount") }
-  )
+  .select("user_id", { count: Puri.count(), total: Puri.sum("amount") })
   .groupBy("user_id");
 ```
 
@@ -109,8 +102,7 @@ const usersWithOrders = await UserModel.getPuri()
 const result = await UserModel.getPuri()
   .select("users.*", "orders.total")
   .leftJoin("orders", (j) => {
-    j.on("orders.user_id", "users.id")
-     .on("orders.status", "=", "completed");
+    j.on("orders.user_id", "users.id").on("orders.status", "=", "completed");
   });
 ```
 
@@ -121,13 +113,9 @@ const result = await UserModel.getPuri()
 **WHERE IN subquery:**
 
 ```typescript
-const activeUserIds = UserModel.getPuri("r")
-  .select("id")
-  .where({ status: "active" });
+const activeUserIds = UserModel.getPuri("r").select("id").where({ status: "active" });
 
-const orders = await OrderModel.getPuri()
-  .select("*")
-  .whereIn("user_id", activeUserIds);
+const orders = await OrderModel.getPuri().select("*").whereIn("user_id", activeUserIds);
 ```
 
 **FROM subquery:**
@@ -214,10 +202,10 @@ export default {
         port: 5432,
         database: "myapp_shadow",
         user: "postgres",
-        password: "password"
-      }
-    }
-  }
+        password: "password",
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -335,7 +323,8 @@ export async function up(knex: Knex): Promise<void> {
 
   await knex.schema.alterTable("orders", (table) => {
     // 3. Recreate FK constraint
-    table.foreign("user_id")
+    table
+      .foreign("user_id")
       .references("id")
       .inTable("users")
       .onDelete("CASCADE")
@@ -354,9 +343,7 @@ export async function down(knex: Knex): Promise<void> {
   `);
 
   await knex.schema.alterTable("orders", (table) => {
-    table.foreign("user_id")
-      .references("id")
-      .inTable("users");
+    table.foreign("user_id").references("id").inTable("users");
   });
 }
 ```
@@ -402,7 +389,7 @@ const productsWithWarranty = await ProductModel.getPuri("r")
 // metadata ? 'discount'
 const productsWithDiscount = await ProductModel.getPuri("r")
   .select("*")
-  .whereRaw("products.metadata ?? 'discount'");  // Use ?? instead of ?
+  .whereRaw("products.metadata ?? 'discount'"); // Use ?? instead of ?
 ```
 
 **Nested JSONB properties:**
@@ -448,7 +435,7 @@ const posts = await PostModel.getPuri()
   .select("*")
   .whereTsSearch("search_vector", "typescript database", {
     parser: "websearch_to_tsquery",
-    config: "simple"
+    config: "simple",
   });
 ```
 
@@ -462,8 +449,8 @@ const posts = await PostModel.getPuri()
     content: Puri.tsHighlight("posts.content", "typescript", {
       startSel: "<mark>",
       stopSel: "</mark>",
-      maxFragments: 3
-    })
+      maxFragments: 3,
+    }),
   })
   .whereTsSearch("search_vector", "typescript");
 ```

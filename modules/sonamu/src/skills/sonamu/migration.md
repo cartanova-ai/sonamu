@@ -10,15 +10,18 @@ description: Sonamu database migration. CREATE/ALTER TABLE, FK ordering, up/down
 **Do not write migration files manually or execute SQL directly.** Sonamu detects entity.json changes and generates accurate migration files.
 
 **Prerequisites:**
+
 - `pnpm dev` must be running in `/packages/api`
 
 **Method 1: Sonamu UI (confirm with user before choosing)**
+
 1. Open Sonamu UI in browser: `http://localhost:34900/sonamu-ui`
 2. Check the prepared list in the Migration menu
 3. Generate a migration file with the "Generate" button
 4. Apply to the actual DB with the "Apply" button
 
 **Method 2: CLI**
+
 ```bash
 cd packages/api
 pnpm sonamu migrate generate   # Generate migration file
@@ -28,6 +31,7 @@ pnpm sonamu migrate run         # Apply to actual DB
 **CRITICAL: Ask the user whether to proceed with UI or CLI before starting.**
 
 **DO NOT:**
+
 - Write migration files manually
 - Execute SQL directly (`CREATE TABLE`, `ALTER TABLE`, etc.)
 
@@ -92,7 +96,11 @@ export async function down(knex: Knex): Promise<void> {
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.alterTable("employees", (table) => {
     table.foreign("user_id").references("users.id").onUpdate("CASCADE").onDelete("CASCADE");
-    table.foreign("department_id").references("departments.id").onUpdate("CASCADE").onDelete("SET NULL");
+    table
+      .foreign("department_id")
+      .references("departments.id")
+      .onUpdate("CASCADE")
+      .onDelete("SET NULL");
   });
 }
 
@@ -107,6 +115,7 @@ export async function down(knex: Knex): Promise<void> {
 ## PK Type Change
 
 ### Situation
+
 When the PK type of an existing table must be changed (e.g. integer -> text, bigint -> uuid), with FKs referencing that PK in multiple tables.
 
 ### Required Order
@@ -124,15 +133,25 @@ export async function up(knex: Knex): Promise<void> {
 
   // Step 3: Change types of the PK column and all FK columns simultaneously
   await knex.raw('ALTER TABLE "parent_table" ALTER COLUMN "id" TYPE new_type USING "id"::new_type');
-  await knex.raw('ALTER TABLE "child_table_1" ALTER COLUMN "parent_id" TYPE new_type USING "parent_id"::new_type');
-  await knex.raw('ALTER TABLE "child_table_2" ALTER COLUMN "parent_id" TYPE new_type USING "parent_id"::new_type');
+  await knex.raw(
+    'ALTER TABLE "child_table_1" ALTER COLUMN "parent_id" TYPE new_type USING "parent_id"::new_type',
+  );
+  await knex.raw(
+    'ALTER TABLE "child_table_2" ALTER COLUMN "parent_id" TYPE new_type USING "parent_id"::new_type',
+  );
 
   // Step 4: ADD the PK constraint
-  await knex.raw('ALTER TABLE "parent_table" ADD CONSTRAINT "parent_table_pkey" PRIMARY KEY ("id")');
+  await knex.raw(
+    'ALTER TABLE "parent_table" ADD CONSTRAINT "parent_table_pkey" PRIMARY KEY ("id")',
+  );
 
   // Step 5: ADD all FK constraints
-  await knex.raw('ALTER TABLE "child_table_1" ADD CONSTRAINT "child_table_1_parent_id_foreign" FOREIGN KEY ("parent_id") REFERENCES "parent_table"("id") ON UPDATE RESTRICT ON DELETE CASCADE');
-  await knex.raw('ALTER TABLE "child_table_2" ADD CONSTRAINT "child_table_2_parent_id_foreign" FOREIGN KEY ("parent_id") REFERENCES "parent_table"("id") ON UPDATE RESTRICT ON DELETE RESTRICT');
+  await knex.raw(
+    'ALTER TABLE "child_table_1" ADD CONSTRAINT "child_table_1_parent_id_foreign" FOREIGN KEY ("parent_id") REFERENCES "parent_table"("id") ON UPDATE RESTRICT ON DELETE CASCADE',
+  );
+  await knex.raw(
+    'ALTER TABLE "child_table_2" ADD CONSTRAINT "child_table_2_parent_id_foreign" FOREIGN KEY ("parent_id") REFERENCES "parent_table"("id") ON UPDATE RESTRICT ON DELETE RESTRICT',
+  );
 }
 ```
 
@@ -164,8 +183,12 @@ export async function up(knex: Knex): Promise<void> {
   await knex.raw('ALTER TABLE "users" ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id")');
 
   // 5. Restore FK constraints
-  await knex.raw('ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT ON DELETE CASCADE');
-  await knex.raw('ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT ON DELETE CASCADE');
+  await knex.raw(
+    'ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT ON DELETE CASCADE',
+  );
+  await knex.raw(
+    'ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT ON DELETE CASCADE',
+  );
 }
 ```
 
@@ -201,27 +224,27 @@ pnpm sonamu migrate apply    # Apply to a specific DB configuration target
 
 ## Entity Type → DB Type
 
-| Entity | DB | Knex |
-|--------|-----|------|
-| `string` | `varchar(n)` / `text` | `table.string(name, length)` |
-| `string[]` | `varchar(n)[]` / `text[]` | `table.specificType(name, 'text[]')` |
-| `integer` | `integer` | `table.integer(name)` |
-| `integer[]` | `integer[]` | `table.specificType(name, 'integer[]')` |
-| `bigInteger` | `bigint` | `table.bigInteger(name)` |
-| `bigInteger[]` | `bigint[]` | `table.specificType(name, 'bigint[]')` |
-| `boolean` | `boolean` | `table.boolean(name)` |
-| `boolean[]` | `boolean[]` | `table.specificType(name, 'boolean[]')` |
-| `number` | `numeric(p,s)` | `table.decimal(name, p, s)` |
-| `numeric` | `numeric(p,s)` | `table.decimal(name, p, s)` |
-| `date` | `timestamptz` | `table.timestamp(name, { useTz: true })` |
-| `date[]` | `timestamptz[]` | `table.specificType(name, 'timestamptz[]')` |
-| `uuid` | `uuid` | `table.uuid(name)` |
-| `uuid[]` | `uuid[]` | `table.specificType(name, 'uuid[]')` |
-| `json` | `jsonb` | `table.jsonb(name)` |
-| `enum` | `text` | `table.text(name)` |
-| `vector` | `vector(n)` | `table.specificType(name, 'vector(n)')` |
-| `vector[]` | `vector(n)[]` | `table.specificType(name, 'vector(n)[]')` |
-| `tsvector` | `tsvector` | `table.specificType(name, 'tsvector')` |
+| Entity         | DB                        | Knex                                        |
+| -------------- | ------------------------- | ------------------------------------------- |
+| `string`       | `varchar(n)` / `text`     | `table.string(name, length)`                |
+| `string[]`     | `varchar(n)[]` / `text[]` | `table.specificType(name, 'text[]')`        |
+| `integer`      | `integer`                 | `table.integer(name)`                       |
+| `integer[]`    | `integer[]`               | `table.specificType(name, 'integer[]')`     |
+| `bigInteger`   | `bigint`                  | `table.bigInteger(name)`                    |
+| `bigInteger[]` | `bigint[]`                | `table.specificType(name, 'bigint[]')`      |
+| `boolean`      | `boolean`                 | `table.boolean(name)`                       |
+| `boolean[]`    | `boolean[]`               | `table.specificType(name, 'boolean[]')`     |
+| `number`       | `numeric(p,s)`            | `table.decimal(name, p, s)`                 |
+| `numeric`      | `numeric(p,s)`            | `table.decimal(name, p, s)`                 |
+| `date`         | `timestamptz`             | `table.timestamp(name, { useTz: true })`    |
+| `date[]`       | `timestamptz[]`           | `table.specificType(name, 'timestamptz[]')` |
+| `uuid`         | `uuid`                    | `table.uuid(name)`                          |
+| `uuid[]`       | `uuid[]`                  | `table.specificType(name, 'uuid[]')`        |
+| `json`         | `jsonb`                   | `table.jsonb(name)`                         |
+| `enum`         | `text`                    | `table.text(name)`                          |
+| `vector`       | `vector(n)`               | `table.specificType(name, 'vector(n)')`     |
+| `vector[]`     | `vector(n)[]`             | `table.specificType(name, 'vector(n)[]')`   |
+| `tsvector`     | `tsvector`                | `table.specificType(name, 'tsvector')`      |
 
 ## Execution Order (Important!)
 
@@ -248,7 +271,7 @@ The sync command references `dist/sonamu.config.js`. An error will occur if it d
 
 ```bash
 cd packages/api
-npx swc src/sonamu.config.ts -o dist/sonamu.config.js --config-file .swcrc
+pnpm exec tsdown --config tsdown.config.ts
 ```
 
 ### 2. Verify DB Connection
@@ -272,7 +295,7 @@ Split the migration, or set the FK to nullable and add it later.
 cd packages/api
 
 # 1. Build config
-npx swc src/sonamu.config.ts -o dist/sonamu.config.js --config-file .swcrc
+pnpm exec tsdown --config tsdown.config.ts
 
 # 2. Run sync
 pnpm sonamu sync

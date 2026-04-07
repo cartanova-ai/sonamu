@@ -107,13 +107,11 @@ npx shadcn@latest add table
 ## 주의사항 ⚠️
 
 1. **Peer Dependencies 경고**
-
    - 현재 @sonamu-kit/react-components가 react, react-dom을 찾지 못하는 경고가 있음
    - 실제 동작에는 문제 없음 (web 프로젝트의 react 사용)
    - 필요시 shadcn-ui/package.json에 react, react-dom을 devDependencies에 추가 가능
 
 2. **스타일 충돌**
-
    - 기존 semantic-ui-css와 tailwindcss가 공존할 수 있음
    - 점진적 마이그레이션 시 스타일 충돌 주의
 

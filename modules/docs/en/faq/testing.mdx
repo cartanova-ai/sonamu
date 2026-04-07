@@ -1,6 +1,6 @@
 ---
-title: 'Testing'
-description: 'Questions about writing and running tests'
+title: "Testing"
+description: "Questions about writing and running tests"
 ---
 
 ## Testing Basics
@@ -11,6 +11,7 @@ description: 'Questions about writing and running tests'
 Sonamu uses **Vitest**.
 
 **Features:**
+
 - Very fast execution based on Vite
 - Jest-compatible API
 - Native TypeScript support
@@ -70,7 +71,7 @@ describe("UserModel", () => {
   test("save", async () => {
     const user = await UserModel.save({
       name: "Test User",
-      email: "test@example.com"
+      email: "test@example.com",
     });
     expect(user.id).toBeGreaterThan(0);
     expect(user.name).toBe("Test User");
@@ -99,7 +100,7 @@ class UserModelClass extends BaseModelClass {
     await this.bulkInsert([
       { id: 1, name: "John", email: "john@example.com" },
       { id: 2, name: "Jane", email: "jane@example.com" },
-      { id: 3, name: "Bob", email: "bob@example.com" }
+      { id: 3, name: "Bob", email: "bob@example.com" },
     ]);
   }
 }
@@ -178,7 +179,7 @@ describe("UserModel CRUD", () => {
   test("save - create", async () => {
     const user = await UserModel.save({
       name: "New User",
-      email: "new@example.com"
+      email: "new@example.com",
     });
     expect(user.id).toBeGreaterThan(0);
     expect(user.name).toBe("New User");
@@ -187,7 +188,7 @@ describe("UserModel CRUD", () => {
   test("save - update", async () => {
     const user = await UserModel.save({
       id: 1,
-      name: "Updated Name"
+      name: "Updated Name",
     });
     expect(user.id).toBe(1);
     expect(user.name).toBe("Updated Name");
@@ -275,7 +276,7 @@ describe("User API", () => {
   test("createUser", async () => {
     const user = await UserModel.createUser({
       name: "API Test User",
-      email: "apitest@example.com"
+      email: "apitest@example.com",
     });
     expect(user.id).toBeGreaterThan(0);
     expect(user.name).toBe("API Test User");
@@ -283,7 +284,7 @@ describe("User API", () => {
 
   test("updateUser", async () => {
     const user = await UserModel.updateUser(1, {
-      name: "Updated via API"
+      name: "Updated via API",
     });
     expect(user.id).toBe(1);
     expect(user.name).toBe("Updated via API");
@@ -309,20 +310,18 @@ describe("User API Errors", () => {
     await expect(
       UserModel.createUser({
         name: "Test",
-        email: "john@example.com"  // Already exists
-      })
+        email: "john@example.com", // Already exists
+      }),
     ).rejects.toThrow(BadRequestError);
   });
 
   test("findById - non-existent ID", async () => {
-    await expect(
-      UserModel.findById(99999)
-    ).rejects.toThrow(NotFoundError);
+    await expect(UserModel.findById(99999)).rejects.toThrow(NotFoundError);
   });
 
   test("deleteUser - no permission", async () => {
     await expect(
-      UserModel.deleteUser(1)  // Permission check fails
+      UserModel.deleteUser(1), // Permission check fails
     ).rejects.toThrow(ForbiddenError);
   });
 });
@@ -342,14 +341,8 @@ describe("User API Errors", () => {
 describe("Transactions", () => {
   test("transaction success", async () => {
     await UserModel.transaction(async (trx) => {
-      const user = await UserModel.save(
-        { name: "Tx User" },
-        { trx }
-      );
-      const profile = await ProfileModel.save(
-        { user_id: user.id, bio: "Bio" },
-        { trx }
-      );
+      const user = await UserModel.save({ name: "Tx User" }, { trx });
+      const profile = await ProfileModel.save({ user_id: user.id, bio: "Bio" }, { trx });
 
       expect(user.id).toBeGreaterThan(0);
       expect(profile.user_id).toBe(user.id);
@@ -369,7 +362,7 @@ describe("Transactions", () => {
     }
 
     const finalCount = await UserModel.count();
-    expect(finalCount).toBe(initialCount);  // No change
+    expect(finalCount).toBe(initialCount); // No change
   });
 });
 ```
@@ -388,7 +381,7 @@ describe("Async Operations", () => {
   test("file upload", async () => {
     const file = {
       buffer: Buffer.from("test content"),
-      originalname: "test.txt"
+      originalname: "test.txt",
     } as Express.Multer.File;
 
     const result = await UserModel.uploadAvatar(file);
@@ -413,8 +406,7 @@ import { vi } from "vitest";
 describe("Mocking", () => {
   test("external service Mock", async () => {
     // Mock EmailService.send
-    const sendMock = vi.spyOn(EmailService, "send")
-      .mockResolvedValue({ success: true });
+    const sendMock = vi.spyOn(EmailService, "send").mockResolvedValue({ success: true });
 
     await UserModel.sendWelcomeEmail(1);
 
@@ -422,8 +414,8 @@ describe("Mocking", () => {
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "john@example.com",
-        subject: "Welcome!"
-      })
+        subject: "Welcome!",
+      }),
     );
 
     sendMock.mockRestore();
@@ -457,7 +449,7 @@ describe("Validation", () => {
     ["john@example.com", true],
     ["invalid-email", false],
     ["", false],
-    ["test@", false]
+    ["test@", false],
   ])("email validation: %s -> %s", async (email, expected) => {
     const isValid = await UserModel.validateEmail(email);
     expect(isValid).toBe(expected);
@@ -468,7 +460,7 @@ describe("UserRole", () => {
   test.each([
     ["admin", true],
     ["user", false],
-    ["guest", false]
+    ["guest", false],
   ])("admin permission: %s -> %s", async (role, expected) => {
     const user = await UserModel.findById(1);
     user.role = role;
@@ -485,20 +477,20 @@ describe("UserRole", () => {
 ```typescript
 describe("UserModel", () => {
   describe("CRUD Operations", () => {
-    test("create", async () => { });
-    test("read", async () => { });
-    test("update", async () => { });
-    test("delete", async () => { });
+    test("create", async () => {});
+    test("read", async () => {});
+    test("update", async () => {});
+    test("delete", async () => {});
   });
 
   describe("Validations", () => {
-    test("email validation", async () => { });
-    test("password strength", async () => { });
+    test("email validation", async () => {});
+    test("password strength", async () => {});
   });
 
   describe("Relations", () => {
-    test("posts", async () => { });
-    test("profile", async () => { });
+    test("posts", async () => {});
+    test("profile", async () => {});
   });
 });
 ```
@@ -514,6 +506,7 @@ describe("UserModel", () => {
 <Accordion title="Guidelines for writing tests">
 
 **DO:**
+
 - ✅ Each test should be independently executable
 - ✅ Initialize test data with `beforeAll` or `beforeEach`
 - ✅ Use meaningful test names
@@ -521,6 +514,7 @@ describe("UserModel", () => {
 - ✅ Always test error cases
 
 **DON'T:**
+
 - ❌ Don't create dependencies between tests
 - ❌ Don't call real external services (use Mocks)
 - ❌ Don't use production DB

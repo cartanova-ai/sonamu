@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { Cone, EntityJson } from "../types/types";
+
+import { type Cone, type EntityJson } from "../types/types";
 
 /**
  * Cone 생성 컨텍스트
@@ -308,12 +309,12 @@ async function callAnthropicAPI(
     if (error && typeof error === "object" && "statusCode" in error) {
       const statusCode = (error as { statusCode: number }).statusCode;
       if (statusCode === 429) {
-        throw new Error("Rate limit exceeded. Please try again later.");
+        throw new Error("Rate limit exceeded. Please try again later.", { cause: error });
       }
     }
 
     const message = error instanceof Error ? error.message : "Unknown error";
-    throw new Error(`LLM API failed: ${message}`);
+    throw new Error(`LLM API failed: ${message}`, { cause: error });
   }
 }
 
@@ -348,6 +349,7 @@ function parseConeResponse(text: string): ConeGenerationResult {
       `Failed to parse LLM response: ${message}\n\n` +
         `Original response:\n${text}\n\n` +
         `Cleaned JSON:\n${jsonText}`,
+      { cause: error },
     );
   }
 }

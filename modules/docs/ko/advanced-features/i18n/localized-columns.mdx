@@ -18,23 +18,23 @@ const tag = {
 };
 
 // Context locale이 "ko"일 때
-localizedColumn(tag, "name")  // "태그"
+localizedColumn(tag, "name"); // "태그"
 
 // Context locale이 "en"일 때
-localizedColumn(tag, "name")  // "Tag"
+localizedColumn(tag, "name"); // "Tag"
 
 // Context locale이 "ja"일 때 (지원하지 않는 locale)
-localizedColumn(tag, "name")  // "default" (기본 컬럼으로 폴백)
+localizedColumn(tag, "name"); // "default" (기본 컬럼으로 폴백)
 ```
 
 ## 우선순위
 
 `localizedColumn()`은 다음 순서로 값을 찾습니다:
 
-| 현재 locale | 우선순위 |
-|------------|---------|
-| `ko` | `name_ko` → `name` → `name_en` |
-| `en` | `name_en` → `name` → `name_ko` |
+| 현재 locale | 우선순위                       |
+| ----------- | ------------------------------ |
+| `ko`        | `name_ko` → `name` → `name_en` |
+| `en`        | `name_en` → `name` → `name_ko` |
 
 빈 문자열(`""`)이나 `null`은 건너뛰고 다음 우선순위를 확인합니다.
 
@@ -67,7 +67,7 @@ import { localizedColumn } from "../i18n/sd.generated";
 class TagModelClass extends BaseModelClass {
   async findMany<T extends TagSubsetKey>(subset: T, params: TagListParams) {
     // ...
-    
+
     const enhancers = this.createEnhancers({
       A: (row) => ({
         ...row,
@@ -75,7 +75,7 @@ class TagModelClass extends BaseModelClass {
         displayName: localizedColumn(row, "name"),
       }),
     });
-    
+
     return this.executeSubsetQuery({ subset, qb, params, enhancers });
   }
 }
@@ -87,7 +87,7 @@ class TagModelClass extends BaseModelClass {
 @api({ httpMethod: "GET" })
 async getTagOptions(): Promise<{ id: number; label: string }[]> {
   const tags = await this.findMany("A", { num: 100 });
-  
+
   return tags.rows.map(tag => ({
     id: tag.id,
     label: localizedColumn(tag, "name") ?? tag.name,
@@ -103,25 +103,21 @@ async getTagOptions(): Promise<{ id: number; label: string }[]> {
 import { localizedColumn } from "@/i18n/sd.generated";
 
 function TagBadge({ tag }: { tag: Tag }) {
-  return (
-    <span className="badge">
-      {localizedColumn(tag, "name")}
-    </span>
-  );
+  return <span className="badge">{localizedColumn(tag, "name")}</span>;
 }
 ```
 
 ## 컬럼 네이밍 패턴
 
-| 기본 컬럼 | locale 컬럼 | 설명 |
-|----------|------------|------|
-| `name` | `name_ko`, `name_en` | 이름 |
-| `title` | `title_ko`, `title_en` | 제목 |
+| 기본 컬럼     | locale 컬럼                        | 설명 |
+| ------------- | ---------------------------------- | ---- |
+| `name`        | `name_ko`, `name_en`               | 이름 |
+| `title`       | `title_ko`, `title_en`             | 제목 |
 | `description` | `description_ko`, `description_en` | 설명 |
-| `content` | `content_ko`, `content_en` | 내용 |
+| `content`     | `content_ko`, `content_en`         | 내용 |
 
 <Note>
-컬럼 이름은 반드시 `{기본컬럼}_{locale}` 형식이어야 합니다. 예: `name_ko`, `title_en`
+  컬럼 이름은 반드시 `{기본컬럼}_{locale}` 형식이어야 합니다. 예: `name_ko`, `title_en`
 </Note>
 
 ## 주의사항

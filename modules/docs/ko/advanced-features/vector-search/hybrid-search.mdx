@@ -11,7 +11,7 @@ Sonamu로 상품 검색 API를 만들었습니다:
 @api({ httpMethod: 'POST' })
 async searchProducts(query: string) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
-  
+
   const results = await this.getPuri().raw(`
     SELECT name, description,
       1 - (embedding <=> ?) AS similarity
@@ -22,7 +22,7 @@ async searchProducts(query: string) {
     JSON.stringify(embedding.embedding),
     JSON.stringify(embedding.embedding),
   ]);
-  
+
   return results.rows;
 }
 ```
@@ -30,12 +30,14 @@ async searchProducts(query: string) {
 **문제 발생**:
 
 사용자가 "MacBook Pro 14"로 검색하면?
+
 - ✅ "MacBook" → 찾음 (의미 유사)
 - ✅ "맥북 프로" → 찾음 (한글도 OK)
 - ❌ "**MBP14**" → 못 찾음 (**정확한 모델명**)
 - ❌ "**SKU-12345**" → 못 찾음 (**상품 코드**)
 
 **벡터 검색의 한계**:
+
 - 정확한 제품명, 모델명에 약함
 - 상품 코드, SKU 같은 고유 식별자 못 찾음
 - 기술 용어, 약어에 취약
@@ -47,20 +49,21 @@ async searchProducts(query: string) {
 ```mermaid
 flowchart TD
     Q["쿼리: MacBook Pro 14"]
-    
+
     Q --> V["벡터 검색<br/>(의미 이해)"]
     Q --> F["전문 검색 FTS<br/>(키워드 매칭)"]
-    
+
     V --> R1["1. MacBook Air: 0.85<br/>2. 맥북 프로: 0.82<br/>3. iPad Pro: 0.70"]
     F --> R2["1. MacBook Pro 14: 1.0<br/>2. MacBook Pro 16: 0.95<br/>3. Pro Display: 0.50"]
-    
+
     R1 --> H["하이브리드 결합<br/>(가중 평균)"]
     R2 --> H
-    
+
     H --> Final["최종 결과:<br/>1. MacBook Pro 14<br/>2. MacBook Pro 16<br/>3. MacBook Air"]
 ```
 
 **장점**:
+
 - 벡터: 의미 이해, 동의어, 오타
 - FTS: 정확한 키워드, 부분 매칭
 - **결합**: 최고의 정확도
@@ -76,10 +79,10 @@ flowchart TD
 ```typescript
 // migrations/20240101_add_fts.ts
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.table('products', (table) => {
-    table.specificType('search_vector', 'tsvector');
+  await knex.schema.table("products", (table) => {
+    table.specificType("search_vector", "tsvector");
   });
-  
+
   // 초기 데이터 생성
   await knex.raw(`
     UPDATE products
@@ -87,7 +90,7 @@ export async function up(knex: Knex): Promise<void> {
       setweight(to_tsvector('simple', coalesce(name, '')), 'A') ||
       setweight(to_tsvector('simple', coalesce(description, '')), 'B')
   `);
-  
+
   // GIN 인덱스
   await knex.raw(`
     CREATE INDEX idx_products_search
@@ -97,6 +100,7 @@ export async function up(knex: Knex): Promise<void> {
 ```
 
 **포인트**:
+
 - `'simple'`: 한국어 + 영어 처리
 - `setweight`: 제목(A)에 더 높은 가중치
 - GIN 인덱스: 빠른 검색
@@ -116,7 +120,7 @@ export async function up(knex: Knex): Promise<void> {
     END;
     $$ LANGUAGE plpgsql;
   `);
-  
+
   // 트리거 생성
   await knex.raw(`
     CREATE TRIGGER tsvector_update
@@ -135,18 +139,19 @@ import { BaseModelClass, api } from "sonamu";
 import { Embedding } from "sonamu/vector";
 
 class ProductModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async hybridSearch(
     query: string,
     vectorWeight: number = 0.7,
     ftsWeight: number = 0.3,
-    limit: number = 10
+    limit: number = 10,
   ) {
     // 1. 쿼리 임베딩
-    const embedding = await Embedding.embedOne(query, 'voyage', 'query');
-    
+    const embedding = await Embedding.embedOne(query, "voyage", "query");
+
     // 2. 하이브리드 검색 SQL
-    const results = await this.getPuri().raw(`
+    const results = await this.getPuri().raw(
+      `
       WITH vector_results AS (
         SELECT 
           id,
@@ -175,16 +180,18 @@ class ProductModelClass extends BaseModelClass {
       WHERE v.id IS NOT NULL OR f.id IS NOT NULL
       ORDER BY hybrid_score DESC
       LIMIT ?
-    `, [
-      JSON.stringify(embedding.embedding),  // vector
-      query,  // fts (1)
-      query,  // fts (2)
-      vectorWeight,   // 0.7
-      ftsWeight,      // 0.3
-      limit,
-    ]);
-    
-    return results.rows.map(row => ({
+    `,
+      [
+        JSON.stringify(embedding.embedding), // vector
+        query, // fts (1)
+        query, // fts (2)
+        vectorWeight, // 0.7
+        ftsWeight, // 0.3
+        limit,
+      ],
+    );
+
+    return results.rows.map((row) => ({
       id: row.id,
       name: row.name,
       price: row.price,
@@ -197,6 +204,7 @@ class ProductModelClass extends BaseModelClass {
 ```
 
 **SQL 설명**:
+
 1. `vector_results`: 벡터 유사도 계산
 2. `fts_results`: FTS 점수 계산
 3. `LEFT JOIN`: 둘 중 하나라도 매칭되면 포함
@@ -207,26 +215,32 @@ class ProductModelClass extends BaseModelClass {
 ### 언제 어떤 가중치를?
 
 **균형형** (기본)
+
 ```typescript
 vectorWeight: 0.7,
 ftsWeight: 0.3
 ```
+
 - **용도**: 일반적인 검색
 - **예**: 블로그, 문서, 지식 베이스
 
 **의미 중심**
+
 ```typescript
 vectorWeight: 0.9,
 ftsWeight: 0.1
 ```
+
 - **용도**: 의미 이해가 중요한 경우
 - **예**: Q&A, 고객 지원, 추천
 
 **키워드 중심**
+
 ```typescript
 vectorWeight: 0.3,
 ftsWeight: 0.7
 ```
+
 - **용도**: 정확한 매칭이 중요한 경우
 - **예**: 상품 코드, 모델명, 기술 용어
 
@@ -238,7 +252,7 @@ async smartSearch(query: string, limit: number = 10) {
   // 쿼리 길이에 따라 자동 조정
   let vectorWeight = 0.7;
   let ftsWeight = 0.3;
-  
+
   if (query.length < 10) {
     // 짧은 쿼리: 키워드 우선
     // 예: "MBP", "SKU-123"
@@ -250,7 +264,7 @@ async smartSearch(query: string, limit: number = 10) {
     vectorWeight = 0.8;
     ftsWeight = 0.2;
   }
-  
+
   return await this.hybridSearch(query, vectorWeight, ftsWeight, limit);
 }
 ```
@@ -266,31 +280,31 @@ Sonamu로 쇼핑몰을 만들고 있습니다.
 ```typescript
 // migrations/20240101_products.ts
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable('products', (table) => {
-    table.increments('id').primary();
-    table.string('name').notNullable();
-    table.text('description');
-    table.string('sku').unique();
-    table.decimal('price', 10, 2);
-    
+  await knex.schema.createTable("products", (table) => {
+    table.increments("id").primary();
+    table.string("name").notNullable();
+    table.text("description");
+    table.string("sku").unique();
+    table.decimal("price", 10, 2);
+
     // 벡터 + FTS
-    table.specificType('embedding', 'vector(1024)');
-    table.specificType('search_vector', 'tsvector');
-    
+    table.specificType("embedding", "vector(1024)");
+    table.specificType("search_vector", "tsvector");
+
     table.timestamps(true, true);
   });
-  
+
   // 인덱스
   await knex.raw(`
     CREATE INDEX idx_products_embedding
     ON products USING hnsw (embedding vector_cosine_ops)
   `);
-  
+
   await knex.raw(`
     CREATE INDEX idx_products_search
     ON products USING GIN (search_vector)
   `);
-  
+
   // FTS 트리거
   await knex.raw(`
     CREATE FUNCTION products_search_trigger() RETURNS trigger AS $$
@@ -326,7 +340,7 @@ async addProduct(
     'voyage',
     'document'
   );
-  
+
   // 저장 (search_vector는 트리거가 자동 생성)
   const product = await this.saveOne({
     name,
@@ -335,7 +349,7 @@ async addProduct(
     price,
     embedding: embedding.embedding,
   });
-  
+
   return product;
 }
 ```
@@ -354,7 +368,7 @@ async searchProducts(
   limit: number = 20
 ) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
-  
+
   // 필터 조건
   const conditions: string[] = [];
   const params: any[] = [
@@ -364,44 +378,44 @@ async searchProducts(
     0.6,  // vectorWeight
     0.4,  // ftsWeight
   ];
-  
+
   if (filters.minPrice) {
     conditions.push(`p.price >= ?`);
     params.push(filters.minPrice);
   }
-  
+
   if (filters.maxPrice) {
     conditions.push(`p.price <= ?`);
     params.push(filters.maxPrice);
   }
-  
+
   if (filters.category) {
     conditions.push(`p.category = ?`);
     params.push(filters.category);
   }
-  
+
   const whereClause = conditions.length > 0
     ? `AND ${conditions.join(' AND ')}`
     : '';
-  
+
   params.push(limit);
-  
+
   const results = await this.getPuri().raw(`
     WITH vector_results AS (
-      SELECT 
+      SELECT
         id,
         1 - (embedding <=> ?) AS vector_score
       FROM products
       WHERE embedding IS NOT NULL
     ),
     fts_results AS (
-      SELECT 
+      SELECT
         id,
         ts_rank(search_vector, plainto_tsquery('simple', ?)) AS fts_score
       FROM products
       WHERE search_vector @@ plainto_tsquery('simple', ?)
     )
-    SELECT 
+    SELECT
       p.id,
       p.name,
       p.description,
@@ -418,12 +432,13 @@ async searchProducts(
     ORDER BY hybrid_score DESC
     LIMIT ?
   `, params);
-  
+
   return results.rows;
 }
 ```
 
 **사용 예시**:
+
 ```typescript
 // 일반 검색
 await ProductModel.searchProducts("MacBook Pro");
@@ -442,12 +457,12 @@ await ProductModel.searchProducts("노트북", {
 
 실제 1000개 상품 DB에서 테스트:
 
-| 방식 | 정확도 (MAP@10) | 장점 | 단점 |
-|------|----------------|------|------|
-| 키워드만 (LIKE) | 0.45 | 빠름 | 의미 못 찾음 |
-| FTS만 | 0.68 | 부분 매칭 | 동의어 약함 |
-| 벡터만 | 0.72 | 의미 이해 | 정확한 매칭 약함 |
-| **하이브리드** | **0.85** | **양쪽 장점** | 복잡함 |
+| 방식            | 정확도 (MAP@10) | 장점          | 단점             |
+| --------------- | --------------- | ------------- | ---------------- |
+| 키워드만 (LIKE) | 0.45            | 빠름          | 의미 못 찾음     |
+| FTS만           | 0.68            | 부분 매칭     | 동의어 약함      |
+| 벡터만          | 0.72            | 의미 이해     | 정확한 매칭 약함 |
+| **하이브리드**  | **0.85**        | **양쪽 장점** | 복잡함           |
 
 **결론**: 하이브리드가 15-20% 더 정확합니다.
 
@@ -457,17 +472,20 @@ await ProductModel.searchProducts("노트북", {
 **Sonamu에서 하이브리드 검색 시 주의사항**:
 
 1. **두 인덱스 필수**: 벡터 + FTS
+
    ```sql
    CREATE INDEX ... USING hnsw (embedding vector_cosine_ops);
    CREATE INDEX ... USING GIN (search_vector);
    ```
 
 2. **tsvector 업데이트**: 트리거로 자동화
+
    ```sql
    CREATE TRIGGER tsvector_update ...
    ```
 
 3. **가중치 합 = 1**: 정규화
+
    ```typescript
    const total = vectorWeight + ftsWeight;
    vectorWeight = vectorWeight / total;
@@ -475,16 +493,19 @@ await ProductModel.searchProducts("노트북", {
    ```
 
 4. **NULL 처리**: COALESCE 사용
+
    ```sql
    COALESCE(v.vector_score, 0)
    ```
 
 5. **LEFT JOIN**: 한쪽만 매칭도 OK
+
    ```sql
    WHERE v.id IS NOT NULL OR f.id IS NOT NULL
    ```
 
 6. **한국어는 'simple'**: FTS 언어 설정
+
    ```sql
    to_tsvector('simple', text)
    ```
@@ -493,36 +514,46 @@ await ProductModel.searchProducts("노트북", {
    ```sql
    EXPLAIN ANALYZE [하이브리드 쿼리]
    ```
-</Warning>
+   </Warning>
 
 ## 언제 하이브리드를 쓰나요?
 
 ### 하이브리드 추천
 
 ✅ **이커머스 상품 검색**
+
 - 의미 + 모델명, SKU
 
 ✅ **기술 문서 검색**
+
 - 개념 + 함수명, 코드
 
 ✅ **고객 지원**
+
 - 문제 설명 + 정확한 용어
 
 ### 벡터만으로 충분
 
 ❌ **추천 시스템**
+
 - 키워드 불필요
 
 ❌ **이미지 검색**
+
 - 텍스트 키워드 없음
 
 ❌ **유사 문서 찾기**
+
 - 의미만 중요
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="벡터 검색" icon="magnifying-glass" href="/ko/advanced-features/vector-search/vector-search">
+  <Card
+    title="벡터 검색"
+    icon="magnifying-glass"
+    href="/ko/advanced-features/vector-search/vector-search"
+  >
     기본 벡터 검색 구현
   </Card>
   <Card title="청킹" icon="scissors" href="/ko/advanced-features/vector-search/chunking">

@@ -18,23 +18,23 @@ const tag = {
 };
 
 // When Context locale is "ko"
-localizedColumn(tag, "name")  // "태그"
+localizedColumn(tag, "name"); // "태그"
 
 // When Context locale is "en"
-localizedColumn(tag, "name")  // "Tag"
+localizedColumn(tag, "name"); // "Tag"
 
 // When Context locale is "ja" (unsupported locale)
-localizedColumn(tag, "name")  // "default" (falls back to base column)
+localizedColumn(tag, "name"); // "default" (falls back to base column)
 ```
 
 ## Priority Order
 
 `localizedColumn()` looks for values in the following order:
 
-| Current locale | Priority |
-|---------------|----------|
-| `ko` | `name_ko` → `name` → `name_en` |
-| `en` | `name_en` → `name` → `name_ko` |
+| Current locale | Priority                       |
+| -------------- | ------------------------------ |
+| `ko`           | `name_ko` → `name` → `name_en` |
+| `en`           | `name_en` → `name` → `name_ko` |
 
 Empty strings (`""`) and `null` are skipped, and the next priority is checked.
 
@@ -103,25 +103,21 @@ The same function can be used in the frontend (exported from web's sd.generated.
 import { localizedColumn } from "@/i18n/sd.generated";
 
 function TagBadge({ tag }: { tag: Tag }) {
-  return (
-    <span className="badge">
-      {localizedColumn(tag, "name")}
-    </span>
-  );
+  return <span className="badge">{localizedColumn(tag, "name")}</span>;
 }
 ```
 
 ## Column Naming Patterns
 
-| Base column | Locale columns | Description |
-|-------------|----------------|-------------|
-| `name` | `name_ko`, `name_en` | Name |
-| `title` | `title_ko`, `title_en` | Title |
+| Base column   | Locale columns                     | Description |
+| ------------- | ---------------------------------- | ----------- |
+| `name`        | `name_ko`, `name_en`               | Name        |
+| `title`       | `title_ko`, `title_en`             | Title       |
 | `description` | `description_ko`, `description_en` | Description |
-| `content` | `content_ko`, `content_en` | Content |
+| `content`     | `content_ko`, `content_en`         | Content     |
 
 <Note>
-Column names must follow the `{base_column}_{locale}` format. Example: `name_ko`, `title_en`
+  Column names must follow the `{base_column}_{locale}` format. Example: `name_ko`, `title_en`
 </Note>
 
 ## Important Notes

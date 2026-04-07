@@ -35,9 +35,7 @@ import PostModel from "../post/post.model";
 import CommentModel from "../comment/comment.model";
 
 // User helper
-export async function createTestUser(
-  params?: Partial<UserSaveParams>,
-): Promise<number> {
+export async function createTestUser(params?: Partial<UserSaveParams>): Promise<number> {
   const user: UserSaveParams = {
     email: `test-${Date.now()}@example.com`,
     name: "Test User",
@@ -598,11 +596,7 @@ export async function createTestConsultationWithDeps() {
     role: "counselor",
   });
   const damageTypeId = await createTestDamageType(null);
-  const consultationId = await createTestConsultation(
-    applicantId,
-    counselorId,
-    damageTypeId,
-  );
+  const consultationId = await createTestConsultation(applicantId, counselorId, damageTypeId);
   return { applicantId, counselorId, damageTypeId, consultationId };
 }
 ```
@@ -625,8 +619,7 @@ This is what differentiates it from simple CRUD tests, and it's **the core that 
 describe("E. Business Logic", () => {
   test("full process from consultation submission to completion", async () => {
     // 1. submit consultation + create dependencies
-    const { consultationId, counselorId } =
-      await createTestConsultationWithDeps();
+    const { consultationId, counselorId } = await createTestConsultationWithDeps();
     // 2. record channel logs (online submission, phone consultation)
     await createTestConsultationChannelLog(consultationId, {
       channel: "online",
@@ -785,12 +778,12 @@ const [id] = await FAQModel.save([
 
 #### Application Criteria
 
-| Field type | Handling |
+| Field type                       | Handling                        |
 | -------------------------------- | ------------------------------- |
 | `id`, `created_at`, `updated_at` | Always partial (auto-generated) |
-| Fields with `dbDefault` | `.optional().default(value)` |
-| Fields with `nullable: true` | partial + extend + `.nullish()` |
-| Required fields | Excluded from partial |
+| Fields with `dbDefault`          | `.optional().default(value)`    |
+| Fields with `nullable: true`     | partial + extend + `.nullish()` |
+| Required fields                  | Excluded from partial           |
 
 #### Checklist
 
@@ -872,12 +865,12 @@ expect(item?.field).toBe(expectedValue); // find() can return undefined
 
 Sonamu Model provides the following methods by default. Tests are written targeting these methods:
 
-| Method | Purpose | Returns |
-| -------------------------- | ------------------ | ----------------------------- |
-| `findById(subset, id)` | Fetch single record | `Promise<Subset>` |
-| `findMany(subset, params)` | Fetch list | `Promise<ListResult<Subset>>` |
-| `save(rows)` | Create/update (upsert) | `Promise<number[]>` (ids) |
-| `del(ids)` | Delete | `Promise<number>` (delete count) |
+| Method                     | Purpose                | Returns                          |
+| -------------------------- | ---------------------- | -------------------------------- |
+| `findById(subset, id)`     | Fetch single record    | `Promise<Subset>`                |
+| `findMany(subset, params)` | Fetch list             | `Promise<ListResult<Subset>>`    |
+| `save(rows)`               | Create/update (upsert) | `Promise<number[]>` (ids)        |
+| `del(ids)`                 | Delete                 | `Promise<number>` (delete count) |
 
 **Note:** It's `del`, not `delete`. This avoids JavaScript reserved words.
 
@@ -1231,9 +1224,7 @@ test("validate select query", async () => {
 
   expectQuery(query, "type").toBe("select");
   expectQuery(query, "table").toBe("users");
-  expectQuery(query, "columns").toMatchInlineSnapshot(
-    `""users"."id" AS \`id\`"`,
-  );
+  expectQuery(query, "columns").toMatchInlineSnapshot(`""users"."id" AS \`id\`"`);
 });
 
 test("validate where condition", async () => {
@@ -1246,9 +1237,7 @@ test("validate where condition", async () => {
 
 test("validate join", async () => {
   const db = UserModel.getPuri("r");
-  await db
-    .table("employees")
-    .leftJoin("departments", "employees.department_id", "departments.id");
+  await db.table("employees").leftJoin("departments", "employees.department_id", "departments.id");
   const query = Naite.get("puri:executed-query").first();
 
   expectQuery(query, "join").toMatchInlineSnapshot(
@@ -1427,9 +1416,7 @@ test("unresolved reference error", async () => {
   ub.register("departments", { company_id: companyRef, name: "Dept" });
 
   // attempt upsert in wrong order
-  await expect(ub.upsert(wdb, "departments")).rejects.toThrow(
-    /unresolved reference/,
-  );
+  await expect(ub.upsert(wdb, "departments")).rejects.toThrow(/unresolved reference/);
 });
 ```
 
@@ -1572,10 +1559,7 @@ SaveParams types are exported from each entity's types.ts, not from sonamu.gener
 
 ```typescript
 // test-helpers.ts
-import type {
-  UserSaveParams,
-  TaskSaveParams,
-} from "../application/sonamu.generated"; // WRONG
+import type { UserSaveParams, TaskSaveParams } from "../application/sonamu.generated"; // WRONG
 ```
 
 **Correct:**
@@ -1870,9 +1854,7 @@ function uniqueId(prefix: string) {
   return `${prefix}_${Date.now()}_${++counter}`;
 }
 
-export async function createTestInstitution(
-  override?: Partial<InstitutionSaveParams>,
-) {
+export async function createTestInstitution(override?: Partial<InstitutionSaveParams>) {
   const [id] = await InstitutionModel.save([
     {
       name: "Test Institution",
@@ -1903,10 +1885,7 @@ export async function createTestDepartment(
   return id;
 }
 
-export async function createTestUser(
-  institutionId: number,
-  override?: Partial<UserSaveParams>,
-) {
+export async function createTestUser(institutionId: number, override?: Partial<UserSaveParams>) {
   const [id] = await UserModel.save([
     {
       employee_no: uniqueId("EMP"),
@@ -1940,18 +1919,14 @@ export async function createTestTask(
 }
 
 // create the entire dependency chain at once
-export async function createTestTaskWithDeps(
-  taskOverride?: Partial<TaskSaveParams>,
-) {
+export async function createTestTaskWithDeps(taskOverride?: Partial<TaskSaveParams>) {
   const institutionId = await createTestInstitution();
   const userId = await createTestUser(institutionId);
   const taskId = await createTestTask(userId, taskOverride);
   return { institutionId, userId, taskId };
 }
 
-export async function createTestUserWithDeps(
-  userOverride?: Partial<UserSaveParams>,
-) {
+export async function createTestUserWithDeps(userOverride?: Partial<UserSaveParams>) {
   const institutionId = await createTestInstitution();
   const userId = await createTestUser(institutionId, userOverride);
   return { institutionId, userId };
@@ -2005,14 +1980,7 @@ When modifying findById results and saving again, relations must be converted to
 
 // Task Subset A → SaveParams conversion
 export function taskToSaveParams(task: TaskSubsetA): TaskSaveParams {
-  const {
-    program,
-    project,
-    principal_investigator,
-    department,
-    prev_task,
-    ...rest
-  } = task;
+  const { program, project, principal_investigator, department, prev_task, ...rest } = task;
 
   return {
     ...rest,
@@ -2047,10 +2015,7 @@ export function relationToFk<T extends Record<string, any>>(
 ### Simplifying Update Tests
 
 ```typescript
-import {
-  createTestTaskWithDeps,
-  taskToSaveParams,
-} from "../../testing/test-helpers";
+import { createTestTaskWithDeps, taskToSaveParams } from "../../testing/test-helpers";
 
 test("Update - update task info", async () => {
   const { taskId } = await createTestTaskWithDeps();

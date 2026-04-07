@@ -12,21 +12,25 @@ Sonamu 프론트엔드 통합의 시작점인 `SonamuProvider` 설정 방법을 
     UserService.useMe 연결
 
     로그인/로그아웃 흐름
+
   </Card>
   <Card title="파일 업로드" icon="upload">
     FileService 통합
 
     useTypeForm 자동 연결
+
   </Card>
   <Card title="다국어 지원" icon="language">
     SD 함수 제공
 
     타입 안전한 번역
+
   </Card>
   <Card title="전역 상태" icon="globe">
     Context API 기반
 
     모든 컴포넌트에서 접근
+
   </Card>
 </CardGroup>
 
@@ -147,6 +151,7 @@ function SonamuProviderWrapper({ children }: { children: React.ReactNode }) {
 
 `createSonamuConfig`는 React 훅(`useQueryClient`, `useNavigate` 등)을 사용하므로 컴포넌트 안에서 호출되어야 합니다.
 따라서 별도 컴포넌트로 분리하여 `QueryClientProvider` 아래에 배치합니다.
+
 </Info>
 
 ## 인증 설정
@@ -183,6 +188,7 @@ const auth_config: SonamuAuth<UserSubsetSS, UserLoginParams> = {
 
 Session Summary의 약자로, 세션 관리에 필요한 최소한의 사용자 정보만 포함합니다.
 전체 사용자 정보(Subset "A")를 로드하는 것보다 가볍고 빠릅니다.
+
 </Info>
 
 ### 로그인 흐름
@@ -212,6 +218,7 @@ login: (loginParams: UserLoginParams) => {
 ```
 
 **핵심 단계**:
+
 1. `loginMutation.mutate`: 백엔드 로그인 API 호출
 2. `invalidateQueries`: 기존 사용자 정보 캐시 무효화
 3. `refetchQueries`: 새로운 사용자 정보 가져오기
@@ -297,6 +304,7 @@ const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
 ```
 
 **동작**:
+
 1. `mutateAsync`로 파일을 백엔드에 업로드
 2. 업로드된 파일 정보 (`SonamuFile[]`) 반환
 3. `useTypeForm`이 자동으로 이 uploader를 사용
@@ -341,6 +349,7 @@ export function UserForm() {
 
 `submit` 함수는 내부적으로 `traverseAndUploadFiles`를 호출하여 모든 `File` 객체를 찾아 업로드합니다.
 중첩된 객체나 배열 안의 파일도 자동으로 처리됩니다.
+
 </Info>
 
 ### 커스텀 업로드 로직
@@ -363,7 +372,7 @@ const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
         Key: key,
         Body: file,
         ContentType: file.type,
-      })
+      }),
     );
 
     return {
@@ -409,6 +418,7 @@ export function WelcomeMessage() {
 **왜 Context를 통해 SD를 제공하나요?**
 
 직접 import해서 사용해도 되지만, Context를 통하면 미래에 런타임 locale 전환이나 동적 dictionary 로딩을 쉽게 추가할 수 있습니다.
+
 </Info>
 
 ## 타입 안전성
@@ -449,7 +459,9 @@ SD("
 
 ```typescript
 export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
-  const auth_config = { /* ... */ };
+  const auth_config = {
+    /* ... */
+  };
   const sd_config = SD;
 
   return { auth: auth_config, SD: sd_config };
@@ -458,8 +470,8 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
 ```
 
 <Warning>
-`uploader`를 생략하면 `FileInput` 사용 시 에러가 발생합니다.
-파일 업로드 기능이 필요하다면 반드시 설정하세요.
+  `uploader`를 생략하면 `FileInput` 사용 시 에러가 발생합니다. 파일 업로드 기능이 필요하다면 반드시
+  설정하세요.
 </Warning>
 
 ### Auth 없이 사용

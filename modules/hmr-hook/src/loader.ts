@@ -1,20 +1,22 @@
 import { access, realpath } from "node:fs/promises";
-import type { InitializeHook, LoadHook, ResolveHook } from "node:module";
+import { type InitializeHook, type LoadHook, type ResolveHook } from "node:module";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { MessagePort } from "node:worker_threads";
-import chokidar, { type FSWatcher } from "chokidar";
+import { type MessagePort } from "node:worker_threads";
+
+import chokidar from "chokidar";
+import { type FSWatcher } from "chokidar";
 
 import debug from "./debug.js";
 import DependencyTree from "./dependency_tree.js";
 import { DynamicImportChecker } from "./dynamic_import_checker.js";
 import { FileNotImportedDynamicallyException } from "./errors/file_not_imported_dynamically_exception.js";
 import { Matcher } from "./matcher.js";
-import type {
-  FileChangeAction,
-  InitializeHookOptions,
-  MessageChannelMessage,
-  MessageChannelPerType,
+import {
+  type FileChangeAction,
+  type InitializeHookOptions,
+  type MessageChannelMessage,
+  type MessageChannelPerType,
 } from "./types.js";
 
 export class HotHookLoader {
@@ -79,7 +81,7 @@ export class HotHookLoader {
   /**
    * When a message is received from the main thread
    */
-  // biome-ignore lint/suspicious/noExplicitAny: worker thread message는 런타임에 타입이 결정됨
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- worker thread message는 런타임에 타입이 결정됨
   async #onMessage(message: any) {
     if (message.type === "hmr-hook:dump") {
       return this.#messagePort?.postMessage({
@@ -324,7 +326,7 @@ export class HotHookLoader {
     // 여기에서는 실제 파일의 변경을 감지해야 하므로,
     // result.importAttributes.ts가 존재할 경우 이를 사용합니다.
     const actualSourcePath = result.importAttributes?.ts
-      ? fileURLToPath(new URL(result.importAttributes.ts as string))
+      ? fileURLToPath(new URL(result.importAttributes.ts))
       : resultPath;
 
     // 나중에 parent로 사용될 때를 위해 매핑 저장

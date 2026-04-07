@@ -1,7 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
+import BoldIcon from "~icons/lucide/bold";
+import ItalicIcon from "~icons/lucide/italic";
+import UnderlineIcon from "~icons/lucide/underline";
+import UploadIcon from "~icons/lucide/upload";
+
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { Combobox } from "@/components/ui/combobox";
+import { type ComboboxOption } from "@/components/ui/combobox";
 import { FileInput } from "@/components/ui/file-input";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,10 +25,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useSonamuBaseContext } from "@/contexts";
 import { useTypeForm } from "@/lib/form-helpers";
-import BoldIcon from "~icons/lucide/bold";
-import ItalicIcon from "~icons/lucide/italic";
-import UnderlineIcon from "~icons/lucide/underline";
-import UploadIcon from "~icons/lucide/upload";
+
 import { FormDebugPanel } from "../components/FormDebugPanel";
 import { FormDemoSchema } from "../schemas/form-demo.schema";
 

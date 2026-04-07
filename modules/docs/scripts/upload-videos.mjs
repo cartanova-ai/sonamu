@@ -5,9 +5,9 @@
  * Usage: pnpm upload-videos [--dry-run]
  */
 
+import { execSync } from "child_process";
 import { readdir, readFile, writeFile, stat, rename, mkdir } from "fs/promises";
 import { join, dirname, basename } from "path";
-import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,7 +32,12 @@ async function findMdxFiles(dir) {
 
   for (const entry of entries) {
     const fullPath = join(dir, entry.name);
-    if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules" && entry.name !== "scripts") {
+    if (
+      entry.isDirectory() &&
+      !entry.name.startsWith(".") &&
+      entry.name !== "node_modules" &&
+      entry.name !== "scripts"
+    ) {
       files.push(...(await findMdxFiles(fullPath)));
     } else if (entry.isFile() && entry.name.endsWith(".mdx")) {
       files.push(fullPath);
@@ -71,9 +76,12 @@ async function uploadToS3(filePath, filename) {
   }
 
   try {
-    execSync(`aws s3 cp "${filePath}" "s3://${BUCKET}/sonamu-docs/${filename}" --content-type "video/mp4"`, {
-      stdio: "inherit",
-    });
+    execSync(
+      `aws s3 cp "${filePath}" "s3://${BUCKET}/sonamu-docs/${filename}" --content-type "video/mp4"`,
+      {
+        stdio: "inherit",
+      },
+    );
     return true;
   } catch (error) {
     console.error(`  ❌ 업로드 실패: ${error.message}`);
@@ -83,7 +91,7 @@ async function uploadToS3(filePath, filename) {
 
 async function moveToArchive(filePath, filename) {
   const archivePath = join(ARCHIVE_DIR, filename);
-  
+
   if (isDryRun) {
     console.log(`  [DRY-RUN] 이동: ${filename} → at-s3-bucket/`);
     return true;
@@ -106,29 +114,29 @@ function optimizeVideoTag(content, cdnUrl) {
   // video 태그에서 해당 CDN URL을 src로 가진 것 찾기
   // 멀티라인 video 태그도 처리
   const videoRegex = /<video[\s\S]*?>/g;
-  
+
   return content.replace(videoRegex, (videoTag) => {
     // 이 video 태그가 해당 CDN URL을 포함하는지 확인
     if (!videoTag.includes(cdnUrl)) {
       return videoTag;
     }
-    
+
     let updated = videoTag;
-    
+
     // autoPlay 제거 (대소문자 무관)
-    updated = updated.replace(/\s+autoPlay/gi, '');
-    updated = updated.replace(/autoPlay\s+/gi, '');
-    updated = updated.replace(/autoPlay/gi, '');
-    
+    updated = updated.replace(/\s+autoPlay/gi, "");
+    updated = updated.replace(/autoPlay\s+/gi, "");
+    updated = updated.replace(/autoPlay/gi, "");
+
     // preload 속성 처리
-    if (updated.includes('preload=')) {
+    if (updated.includes("preload=")) {
       // 기존 preload 값을 metadata로 변경
       updated = updated.replace(/preload="[^"]*"/i, 'preload="metadata"');
     } else {
       // preload 속성이 없으면 추가
       updated = updated.replace(/<video\s+/, '<video\n    preload="metadata"\n    ');
     }
-    
+
     return updated;
   });
 }

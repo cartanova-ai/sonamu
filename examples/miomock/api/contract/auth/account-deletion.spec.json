@@ -34,13 +34,8 @@
   ],
   "lastModified": "2026-03-09",
   "status": "done",
-  "sources": [
-    "src/application/user/user.model.ts",
-    "src/application/user/user.model.test.ts"
-  ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "sources": ["src/application/user/user.model.ts", "src/application/user/user.model.test.ts"],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "UserModel": "관리자 권한 기반 계정 삭제(soft delete)를 담당한다"
   },

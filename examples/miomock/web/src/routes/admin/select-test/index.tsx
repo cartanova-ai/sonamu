@@ -11,17 +11,15 @@ import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import z from "zod";
+import ListIcon from "~icons/mdi/format-list-bulleted";
+
 import {
   CompanyAsyncIdConfig,
   CompanyService,
   EmployeeAsyncIdConfig,
 } from "@/services/services.generated";
-import {
-  CompanyBaseSchema,
-  type CompanySubsetA,
-  type EmployeeSubsetA,
-} from "@/services/sonamu.generated";
-import ListIcon from "~icons/mdi/format-list-bulleted";
+import { CompanyBaseSchema } from "@/services/sonamu.generated";
+import { type CompanySubsetA, type EmployeeSubsetA } from "@/services/sonamu.generated";
 
 export const Route = createFileRoute("/admin/select-test/")({
   head: () => ({
@@ -296,8 +294,8 @@ function SelectTestPage() {
                     error={companyError}
                     onSearch={handleCompanySearch}
                     searchDebounce={300}
-                    valueKey={(company) => String((company as Company).id)}
-                    renderItem={(company) => (company as Company).name}
+                    valueKey={(company) => String(company.id)}
+                    renderItem={(company) => company.name}
                     className="bg-white"
                   />
                   <div className="p-3 bg-white rounded border border-blue-200">
@@ -423,8 +421,8 @@ function SelectTestPage() {
                     onSearch={handleMultiCompanySearch}
                     searchDebounce={300}
                     maxCount={2}
-                    valueKey={(company) => String((company as Company).id)}
-                    renderItem={(company) => (company as Company).name}
+                    valueKey={(company) => String(company.id)}
+                    renderItem={(company) => company.name}
                     className="bg-white"
                   />
                   <div className="p-3 bg-white rounded border border-green-200">

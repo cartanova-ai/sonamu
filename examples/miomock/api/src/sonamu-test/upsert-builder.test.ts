@@ -1,6 +1,8 @@
-import { DB, isRefField, Naite, Sonamu, type SonamuFile, type UBRef, UpsertBuilder } from "sonamu";
+import { DB, isRefField, Naite, Sonamu, UpsertBuilder } from "sonamu";
+import { type SonamuFile, type UBRef } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, describe, expect, vi } from "vitest";
+
 import { expectUB } from "../testing/expect-ub";
 
 bootstrap(vi);
@@ -1015,7 +1017,7 @@ describe("Upsert Builder", () => {
       }
 
       const ids = await ub.upsert(wdb, "users");
-      const sortedIds = [...ids].sort((a, b) => a.localeCompare(b));
+      const sortedIds = [...ids].toSorted((a, b) => a.localeCompare(b));
 
       // [expect] 3개 ID 생성됨
       expect(ids).toHaveLength(3);
@@ -1789,7 +1791,7 @@ describe("Upsert Builder", () => {
       }
 
       const ids = await ub.upsert(wdb, "users");
-      const sortedIds = [...ids].sort((a, b) => a.localeCompare(b));
+      const sortedIds = [...ids].toSorted((a, b) => a.localeCompare(b));
 
       // [expect] 3명 생성됨
       expect(ids).toHaveLength(3);

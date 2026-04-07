@@ -1,6 +1,8 @@
 import assert from "assert";
+
 import { range } from "radashi";
 import { Sonamu } from "sonamu";
+
 import { EmployeeModel } from "../application/employee/employee.model";
 
 // UpdateBatch 예제
@@ -58,7 +60,7 @@ async function examples() {
     // 검증
     assert(updatedUsers.every((u) => u.username.startsWith("updated_user")));
     assert(updatedUsers.every((u) => u.bio?.startsWith("Updated bio")));
-    assert(updatedUsers.every((u) => u.is_verified === true));
+    assert(updatedUsers.every((u) => u.is_verified));
 
     // 정리
     await trx.table("users").whereIn("id", userIds).delete();
@@ -170,7 +172,7 @@ async function examples() {
     assert(updatedUser);
     assert(updatedUser.bio === "Updated bio only");
     assert(updatedUser.username === "partialuser"); // 변경 안됨
-    assert(updatedUser.is_verified === false); // 변경 안됨
+    assert(!updatedUser.is_verified); // 변경 안됨
 
     // 정리
     await trx.table("users").where("id", userIds[0]).delete();

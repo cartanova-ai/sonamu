@@ -1,9 +1,11 @@
-import { randomUUID } from "node:crypto";
 import assert from "assert";
-import type { Knex } from "knex";
+import { randomUUID } from "node:crypto";
+
+import { type Knex } from "knex";
 import { Puri, Sonamu } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
+
 import { UserModel } from "../application/user/user.model";
 import {
   cleanupTestRecords,
@@ -785,7 +787,7 @@ describe("Puri Wrapper", () => {
         ]);
 
         // 업데이트할 데이터를 ubRegister로 등록
-        const sortedIds = [...ids].sort((a, b) => a.localeCompare(b));
+        const sortedIds = [...ids].toSorted((a, b) => a.localeCompare(b));
         for (const [index, id] of sortedIds.entries()) {
           trx.ubRegister("users", {
             id,
@@ -814,7 +816,7 @@ describe("Puri Wrapper", () => {
       });
 
       // 트랜잭션 완료 후 데이터 확인
-      const sortedIds = [...insertedIds].sort((a, b) => a.localeCompare(b));
+      const sortedIds = [...insertedIds].toSorted((a, b) => a.localeCompare(b));
       const updatedUsers = await rdb.table("users").whereIn("id", insertedIds).orderBy("id", "asc");
 
       expect(updatedUsers).toHaveLength(3);

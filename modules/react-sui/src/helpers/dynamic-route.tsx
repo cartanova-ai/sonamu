@@ -1,7 +1,8 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: 동적 라우트 로드에서 any 허용 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 동적 라우트 로드에서 any 허용
 
 import { last, set } from "radashi";
-import React, { type ComponentType } from "react";
+import React from "react";
+import { type ComponentType } from "react";
 import { Route } from "react-router-dom";
 
 type ModulePromise = () => Promise<{ default: ComponentType<any> }>;
@@ -37,7 +38,7 @@ export function loadDynamicRoutes(modules: Record<string, () => unknown>): JSX.E
   const renderModulesObject = (obj: ModulesObject) => {
     return Object.entries(obj).map(([key, child]) => {
       if (
-        // biome-ignore lint/suspicious/noPrototypeBuiltins: react-sui deprecated 예정이라 won't fix
+        // react-sui deprecated 예정이라 won't fix
         child.hasOwnProperty("module") &&
         typeof child.module === "function"
       ) {

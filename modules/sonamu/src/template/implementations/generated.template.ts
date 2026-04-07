@@ -1,15 +1,13 @@
 import assert from "assert";
+
 import { unique } from "radashi";
+
 import { Sonamu } from "../../api";
-import type { Entity } from "../../entity/entity";
+import { type Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
 import { Naite } from "../../naite/naite";
-import {
-  type EntityIndex,
-  type EntityPropNode,
-  isVirtualCodeProp,
-  isVirtualQueryProp,
-} from "../../types/types";
+import { isVirtualCodeProp, isVirtualQueryProp } from "../../types/types";
+import { type EntityIndex, type EntityPropNode } from "../../types/types";
 import { nonNullable } from "../../utils/utils";
 import { Template } from "../template";
 import { BUILT_IN_TYPES, propNodeToZodTypeDef, zodTypeToZodCode } from "../zod-converter";
@@ -69,7 +67,7 @@ export class Template__generated extends Template {
         }
         return {
           lines: [...result.lines, `// ${ts.label}`, ...ts.lines, ""],
-          importKeys: unique([...result.importKeys, ...ts.importKeys].sort()),
+          importKeys: unique([...result.importKeys, ...ts.importKeys].toSorted()),
         };
       },
       {
@@ -132,9 +130,7 @@ export class Template__generated extends Template {
         " * @generated",
         " * 직접 수정하지 마세요.",
         " */",
-        "/** biome-ignore-all lint: generated는 무시 */",
-        "/** biome-ignore-all assist: generated는 무시 */",
-        "/** biome-ignore-all format: generated는 무시 */",
+        "/* oxlint-disable */",
         "",
         `import { z } from 'zod';`,
         `import { ${sonamuImports.join(",")} } from "sonamu";`,
@@ -148,17 +144,15 @@ export class Template__generated extends Template {
     }
     return {
       label: `Enums: ${entity.id}`,
-      lines: [
-        ...Object.entries(entity.enumLabels)
-          .filter(([_, enumLabel]) => Object.keys(enumLabel).length > 0)
-          .flatMap(([enumId, enumLabel]) => [
-            `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
-              (el) => `"${el}"`,
-            )}]).describe("${enumId}");`,
-            `export type ${enumId} = z.infer<typeof ${enumId}>;`,
-            `export const ${enumId}Label = ${JSON.stringify(enumLabel)};`,
-          ]),
-      ],
+      lines: Object.entries(entity.enumLabels)
+        .filter(([_, enumLabel]) => Object.keys(enumLabel).length > 0)
+        .flatMap(([enumId, enumLabel]) => [
+          `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
+            (el) => `"${el}"`,
+          )}]).describe("${enumId}");`,
+          `export type ${enumId} = z.infer<typeof ${enumId}>;`,
+          `export const ${enumId}Label = ${JSON.stringify(enumLabel)};`,
+        ]),
       importKeys: [],
     };
   }
@@ -260,13 +254,11 @@ export class Template__generated extends Template {
                     .map((col) => `"${col}"`)
                     .join(", ")}],`
                 : "") +
-              (
-                generatedColumns.length > 0
-                  ? `readonly __generated__: readonly [${generatedColumns
-                      .map((col) => `"${col}"`)
-                      .join(", ")}],`
-                  : ""
-              ) +
+              (generatedColumns.length > 0
+                ? `readonly __generated__: readonly [${generatedColumns
+                    .map((col) => `"${col}"`)
+                    .join(", ")}],`
+                : "") +
               (hasVectorColumns.length > 0
                 ? `readonly __vector__: readonly [${hasVectorColumns
                     .map((col) => `"${col}"`)

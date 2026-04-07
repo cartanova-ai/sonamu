@@ -1,6 +1,6 @@
 ---
-title: '@transactional'
-description: 'Database Transaction Management Decorator'
+title: "@transactional"
+description: "Database Transaction Management Decorator"
 ---
 
 The `@transactional` decorator wraps methods in a database transaction to ensure data consistency.
@@ -10,11 +10,7 @@ The `@transactional` decorator wraps methods in a database transaction to ensure
 ```typescript
 import { BaseModelClass, api, transactional } from "sonamu";
 
-class UserModelClass extends BaseModelClass<
-  UserSubsetKey,
-  UserSubsetMapping,
-  UserSubsetQueries
-> {
+class UserModelClass extends BaseModelClass<UserSubsetKey, UserSubsetMapping, UserSubsetQueries> {
   @api({ httpMethod: "POST" })
   @transactional()
   async create(data: UserCreateParams) {
@@ -50,11 +46,7 @@ class UserModelClass extends BaseModelClass<
 Specifies the transaction isolation level.
 
 ```typescript
-type IsolationLevel =
-  | "read uncommitted"
-  | "read committed"
-  | "repeatable read"
-  | "serializable";
+type IsolationLevel = "read uncommitted" | "read committed" | "repeatable read" | "serializable";
 ```
 
 **Default:** Database default isolation level (PostgreSQL: `read committed`)
@@ -83,21 +75,24 @@ async updateStatus(id: number) {
   - Dirty reads possible
   - Fastest but risky
 
-  **read committed** (Default)
-  - Only reads committed data
-  - Prevents dirty reads
-  - Non-repeatable reads possible
+**read committed** (Default)
 
-  **repeatable read**
-  - Same data always returns same value within transaction
-  - Prevents non-repeatable reads
-  - Phantom reads possible
+- Only reads committed data
+- Prevents dirty reads
+- Non-repeatable reads possible
 
-  **serializable** (Highest)
-  - Transactions behave as if executed serially
-  - Prevents all anomalies
-  - Safest but slowest
-</Accordion>
+**repeatable read**
+
+- Same data always returns same value within transaction
+- Prevents non-repeatable reads
+- Phantom reads possible
+
+**serializable** (Highest)
+
+- Transactions behave as if executed serially
+- Prevents all anomalies
+- Safest but slowest
+  </Accordion>
 
 ### readOnly
 
@@ -122,7 +117,8 @@ async generateReport(startDate: Date, endDate: Date) {
 ```
 
 <Info>
-Using `readOnly: true` allows the database to perform optimizations, potentially improving performance.
+  Using `readOnly: true` allows the database to perform optimizations, potentially improving
+  performance.
 </Info>
 
 ### dbPreset
@@ -218,6 +214,7 @@ class UserModelClass extends BaseModelClass {
 ```
 
 **Log Output:**
+
 ```
 [DEBUG] transactional: UserModel.createUser
 [DEBUG] new transaction context: w
@@ -260,9 +257,7 @@ async save(data: SaveParams) {
 }
 ```
 
-<Warning>
-Order matters: Write `@api` first, then `@transactional`.
-</Warning>
+<Warning>Order matters: Write `@api` first, then `@transactional`.</Warning>
 
 ### With @cache
 
@@ -534,6 +529,7 @@ async save() {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Order Processing" icon="cart-shopping">
@@ -584,6 +580,7 @@ async save() {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Complex Report" icon="file-chart-line">
@@ -628,6 +625,7 @@ async save() {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Batch Processing" icon="layer-group">
@@ -675,6 +673,7 @@ async save() {
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -689,21 +688,13 @@ async save() {
     Create API endpoints
   </Card>
 
-  <Card
-    title="@upload"
-    icon="upload"
-    href="/en/api-reference/decorators/upload"
-  >
-    Create file upload APIs
-  </Card>
+<Card title="@upload" icon="upload" href="/en/api-reference/decorators/upload">
+  Create file upload APIs
+</Card>
 
-  <Card
-    title="Database Guide"
-    icon="database"
-    href="/en/core-concepts/database/puri"
-  >
-    Use Puri query builder
-  </Card>
+<Card title="Database Guide" icon="database" href="/en/core-concepts/database/puri">
+  Use Puri query builder
+</Card>
 
   <Card
     title="Error Handling"

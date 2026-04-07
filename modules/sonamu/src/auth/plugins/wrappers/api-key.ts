@@ -1,4 +1,6 @@
-import { apiKey as _apiKey, type ApiKeyOptions } from "better-auth/plugins";
+import { apiKey as _apiKey } from "better-auth/plugins";
+import { type ApiKeyOptions } from "better-auth/plugins";
+
 import { merge } from "../../../utils/utils";
 
 export type { ApiKeyOptions } from "better-auth/plugins";

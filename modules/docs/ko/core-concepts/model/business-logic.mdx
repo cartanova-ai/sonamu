@@ -11,24 +11,16 @@ Model은 비즈니스 로직의 중심입니다. 데이터 검증, 복잡한 쿼
 
 <CardGroup cols={2}>
   <Card title="데이터 검증" icon="circle-check">
-    입력값 유효성 검사
-    
-    중복 체크, 형식 검증
+    입력값 유효성 검사 중복 체크, 형식 검증
   </Card>
   <Card title="데이터 변환" icon="arrows-rotate">
-    데이터 가공 및 계산
-    
-    암호화, 포맷 변환
+    데이터 가공 및 계산 암호화, 포맷 변환
   </Card>
   <Card title="도메인 규칙" icon="scale-balanced">
-    비즈니스 제약 조건
-    
-    권한, 상태 전이 규칙
+    비즈니스 제약 조건 권한, 상태 전이 규칙
   </Card>
   <Card title="워크플로우" icon="diagram-project">
-    복잡한 프로세스
-    
-    여러 단계의 작업 조율
+    복잡한 프로세스 여러 단계의 작업 조율
   </Card>
 </CardGroup>
 
@@ -66,16 +58,17 @@ class UserModelClass extends BaseModelClass {
 // ❌ 비즈니스 로직을 API 레이어에 작성하지 말 것
 app.post("/user/save", async (req, res) => {
   const params = req.body;
-  
+
   // ❌ 검증 로직이 여기 있으면 재사용 불가
   if (params.age < 18) {
     return res.status(400).json({ error: "..." });
   }
-  
+
   // ❌ 다른 API에서도 같은 로직을 반복해야 함
   await UserModel.save(params);
 });
 ```
+
 </CodeGroup>
 
 ### 2. 타입 안전성
@@ -86,14 +79,17 @@ Zod 스키마로 타입을 검증합니다.
 export const UserSaveParams = z.object({
   id: z.number().optional(),
   email: z.string().email("올바른 이메일 형식이 아닙니다"),
-  username: z.string()
+  username: z
+    .string()
     .min(2, "이름은 최소 2자 이상이어야 합니다")
     .max(50, "이름은 최대 50자까지 가능합니다"),
-  age: z.number()
+  age: z
+    .number()
     .int("나이는 정수여야 합니다")
     .min(0, "나이는 0 이상이어야 합니다")
     .max(150, "유효하지 않은 나이입니다"),
-  password: z.string()
+  password: z
+    .string()
     .min(8, "비밀번호는 최소 8자 이상이어야 합니다")
     .regex(/[A-Z]/, "대문자를 포함해야 합니다")
     .regex(/[0-9]/, "숫자를 포함해야 합니다"),
@@ -122,7 +118,7 @@ async createUserWithProfile(
   const [profileId] = await ProfileModel.save([
     { ...profileData, user_id: userId }
   ]);
-  
+
   // 성공 시 자동 커밋
   // 실패 시 자동 롤백
   return { userId, profileId };
@@ -141,14 +137,14 @@ async save(params: UserSaveParams[]): Promise<number[]> {
       .where("email", param.email)
       .whereNot("id", param.id ?? 0)  // 수정 시 자신 제외
       .first();
-      
+
     if (existing) {
       throw new BadRequestException(
         `이미 사용중인 이메일입니다: ${param.email}`
       );
     }
   }
-  
+
   // 저장...
 }
 ```
@@ -164,7 +160,7 @@ async save(params: UserSaveParams[]): Promise<number[]> {
         "이메일 인증이 필요합니다"
       );
     }
-    
+
     // 관리자만 다른 사용자의 역할 변경 가능
     if (param.role && param.role !== "normal") {
       const context = Sonamu.getContext();
@@ -175,7 +171,7 @@ async save(params: UserSaveParams[]): Promise<number[]> {
       }
     }
   }
-  
+
   // 저장...
 }
 ```
@@ -189,17 +185,17 @@ async save(params: ProductSaveParams[]): Promise<number[]> {
     if (param.price < 0) {
       throw new BadRequestException("가격은 0 이상이어야 합니다");
     }
-    
+
     if (param.price > 1000000) {
       throw new BadRequestException("가격은 100만원 이하여야 합니다");
     }
-    
+
     // 할인율 검증
     if (param.discount_rate && (param.discount_rate < 0 || param.discount_rate > 100)) {
       throw new BadRequestException("할인율은 0~100 사이여야 합니다");
     }
   }
-  
+
   // 저장...
 }
 ```
@@ -215,10 +211,10 @@ async save(params: UserSaveParams[]): Promise<number[]> {
     ...p,
     password: bcrypt.hashSync(p.password, 10),
   }));
-  
+
   const wdb = this.getPuri("w");
   hashedParams.forEach(p => wdb.ubRegister("users", p));
-  
+
   return wdb.transaction(async (trx) => {
     return trx.ubUpsert("users");
   });
@@ -236,7 +232,7 @@ async save(params: UserSaveParams[]): Promise<number[]> {
     username: p.username.trim(),           // 공백 제거
     phone: p.phone?.replace(/[^0-9]/g, ""), // 전화번호 숫자만
   }));
-  
+
   // 저장...
 }
 ```
@@ -251,7 +247,7 @@ async save(params: ProductSaveParams[]): Promise<number[]> {
     discounted_price: p.price * (1 - (p.discount_rate ?? 0) / 100),
     final_price: Math.floor(p.price * (1 - (p.discount_rate ?? 0) / 100)),
   }));
-  
+
   // 저장...
 }
 ```
@@ -275,7 +271,7 @@ async updateStatus(
   newStatus: OrderStatus
 ): Promise<void> {
   const order = await this.findById("A", orderId);
-  
+
   // 상태 전이 검증
   const allowedTransitions = OrderStatusTransitions[order.status];
   if (!allowedTransitions.includes(newStatus)) {
@@ -283,7 +279,7 @@ async updateStatus(
       `${order.status}에서 ${newStatus}로 변경할 수 없습니다`
     );
   }
-  
+
   // 상태 변경
   await this.getPuri("w")
     .table("orders")
@@ -301,7 +297,7 @@ async updateStatus(
 ): Promise<void> {
   const context = Sonamu.getContext();
   const order = await this.findById("A", orderId);
-  
+
   // 권한 검증
   if (newStatus === "cancelled") {
     // 사용자는 pending만 취소 가능
@@ -311,7 +307,7 @@ async updateStatus(
       );
     }
   }
-  
+
   if (newStatus === "delivered") {
     // 배송 완료는 배송 담당자만 가능
     if (context.user?.role !== "delivery") {
@@ -320,7 +316,7 @@ async updateStatus(
       );
     }
   }
-  
+
   // 상태 변경...
 }
 ```
@@ -335,20 +331,20 @@ async findMany<T extends UserSubsetKey>(
   params: UserListParams
 ): Promise<ListResult<UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
-  
+
   // 조건부 필터링
   if (params.role) {
     qb.whereIn("users.role", asArray(params.role));
   }
-  
+
   if (params.is_active !== undefined) {
     qb.where("users.is_active", params.is_active);
   }
-  
+
   if (params.created_after) {
     qb.where("users.created_at", ">=", params.created_after);
   }
-  
+
   if (params.keyword) {
     qb.where((builder) => {
       builder
@@ -356,7 +352,7 @@ async findMany<T extends UserSubsetKey>(
         .orWhereLike("users.username", `%${params.keyword}%`);
     });
   }
-  
+
   // 실행...
   return this.executeSubsetQuery({ subset, qb, params });
 }
@@ -367,7 +363,7 @@ async findMany<T extends UserSubsetKey>(
 ```typescript
 async findUsersWithStats(): Promise<UserWithStats[]> {
   const rdb = this.getDB("r");
-  
+
   return rdb("users")
     .select([
       "users.*",
@@ -386,7 +382,7 @@ async findUsersWithStats(): Promise<UserWithStats[]> {
 ```typescript
 async findTopUsers(limit: number): Promise<User[]> {
   const rdb = this.getDB("r");
-  
+
   const subquery = rdb("orders")
     .select("user_id")
     .sum("total_price as total_spent")
@@ -394,7 +390,7 @@ async findTopUsers(limit: number): Promise<User[]> {
     .orderBy("total_spent", "desc")
     .limit(limit)
     .as("top_users");
-  
+
   return rdb("users")
     .select("users.*", "top_users.total_spent")
     .joinRaw("JOIN ? ON users.id = top_users.user_id", [subquery]);
@@ -417,18 +413,18 @@ async transferPoints(
   if (fromUser.points < points) {
     throw new BadRequestException("포인트가 부족합니다");
   }
-  
+
   await this.getPuri("w")
     .table("users")
     .where("id", fromUserId)
     .decrement("points", points);
-  
+
   // 포인트 증가
   await this.getPuri("w")
     .table("users")
     .where("id", toUserId)
     .increment("points", points);
-  
+
   // 둘 다 성공하거나 둘 다 롤백됨
 }
 ```
@@ -438,23 +434,23 @@ async transferPoints(
 ```typescript
 async complexOperation(): Promise<void> {
   const wdb = this.getPuri("w");
-  
+
   await wdb.transaction(async (trx) => {
     // 1단계
     const [userId] = await trx
       .table("users")
       .insert({ email: "test@test.com" });
-    
+
     // 2단계
     await trx
       .table("profiles")
       .insert({ user_id: userId, bio: "Hello" });
-    
+
     // 3단계
     await trx
       .table("settings")
       .insert({ user_id: userId, theme: "dark" });
-    
+
     // 모두 성공하면 커밋
     // 하나라도 실패하면 전체 롤백
   });
@@ -468,7 +464,7 @@ async complexOperation(): Promise<void> {
 async outerTransaction(): Promise<void> {
   // 외부 트랜잭션
   await this.save([{ email: "user1@test.com" }]);
-  
+
   // 내부 트랜잭션 (같은 트랜잭션 재사용)
   await this.innerTransaction();
 }
@@ -489,26 +485,26 @@ async login(params: LoginParams): Promise<{ user: User }> {
   const user = await this.puri()
     .where("email", params.email)
     .first();
-  
+
   if (!user) {
     throw new UnauthorizedException(
       "이메일 또는 비밀번호가 일치하지 않습니다"
     );
   }
-  
+
   const isValid = await bcrypt.compare(params.password, user.password);
   if (!isValid) {
     throw new UnauthorizedException(
       "이메일 또는 비밀번호가 일치하지 않습니다"
     );
   }
-  
+
   if (!user.is_verified) {
     throw new ForbiddenException(
       "이메일 인증이 완료되지 않았습니다. 인증 메일을 확인해주세요."
     );
   }
-  
+
   return { user };
 }
 ```
@@ -525,11 +521,11 @@ class InsufficientPointsException extends BadRequestException {
 async purchaseItem(userId: number, itemId: number): Promise<void> {
   const user = await this.findById("A", userId);
   const item = await ItemModel.findById("A", itemId);
-  
+
   if (user.points < item.price) {
     throw new InsufficientPointsException(item.price, user.points);
   }
-  
+
   // 구매 처리...
 }
 ```
@@ -547,7 +543,7 @@ async getUserDashboard(userId: number): Promise<Dashboard> {
     CommentModel.findMany("SS", { user_id: userId, num: 10 }),
     FollowerModel.countFollowers(userId),
   ]);
-  
+
   return {
     user,
     posts: posts.rows,
@@ -563,16 +559,16 @@ async getUserDashboard(userId: number): Promise<Dashboard> {
 async processOrder(orderId: number): Promise<void> {
   // 순차적으로 실행
   const order = await this.findById("A", orderId);
-  
+
   // 재고 확인
   await InventoryModel.checkStock(order.product_id, order.quantity);
-  
+
   // 결제 처리
   await PaymentModel.charge(order.user_id, order.total_price);
-  
+
   // 주문 확정
   await this.updateStatus(orderId, "confirmed");
-  
+
   // 배송 시작
   await DeliveryModel.startShipping(orderId);
 }
@@ -587,7 +583,11 @@ async processOrder(orderId: number): Promise<void> {
   <Card title="Puri Query Builder" icon="database" href="/ko/database/puri/basic-queries">
     타입 안전한 쿼리 작성하기
   </Card>
-  <Card title="Transactions" icon="arrows-rotate" href="/ko/database/transactions/using-transactions">
+  <Card
+    title="Transactions"
+    icon="arrows-rotate"
+    href="/ko/database/transactions/using-transactions"
+  >
     트랜잭션 상세 가이드
   </Card>
   <Card title="Testing" icon="flask" href="/ko/testing/model-testing/unit-tests">

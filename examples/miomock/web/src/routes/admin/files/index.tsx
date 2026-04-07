@@ -19,15 +19,21 @@ import {
   Table,
   TableBody,
   TableCell,
-  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
+import { type TableCol } from "@sonamu-kit/react-components/components";
 import { datetimeF, useListParams, useTypeForm } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import z from "zod";
+import EditIcon from "~icons/lucide/square-pen";
+import TrashIcon from "~icons/lucide/trash-2";
+import ListIcon from "~icons/mdi/format-list-bulleted";
+import SearchIcon from "~icons/mdi/magnify";
+import UploadIcon from "~icons/mdi/upload";
+
 import { ApiLogViewer } from "@/admin-common/ApiLogViewer";
 import { SD } from "@/i18n/sd.generated";
 import { FileListParams } from "@/services/file/file.types";
@@ -38,12 +44,8 @@ import {
   FileSearchField,
   FileSearchFieldLabel,
 } from "@/services/sonamu.generated";
-import { type SonamuFile, SonamuFileSchema } from "@/services/sonamu.shared";
-import EditIcon from "~icons/lucide/square-pen";
-import TrashIcon from "~icons/lucide/trash-2";
-import ListIcon from "~icons/mdi/format-list-bulleted";
-import SearchIcon from "~icons/mdi/magnify";
-import UploadIcon from "~icons/mdi/upload";
+import { SonamuFileSchema } from "@/services/sonamu.shared";
+import { type SonamuFile } from "@/services/sonamu.shared";
 
 export const Route = createFileRoute("/admin/files/")({
   head: () => ({
@@ -58,7 +60,7 @@ function FileList({}: FileListProps) {
   const navigate = useNavigate();
 
   // 상태 관리
-  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const [selectedItems, setSelectedItems] = useState(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number } | null>(null);
 

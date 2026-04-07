@@ -12,21 +12,25 @@ Sonamu automatically generates frontend components based on backend Entity defin
     Entity record search selection
 
     Server search support
+
   </Card>
   <Card title="OrderBySelect" icon="arrow-down-up-across-line">
     Sort option selection
 
     Enum based
+
   </Card>
   <Card title="SearchFieldSelect" icon="list-check">
     Search target field selection
 
     Dynamic search criteria
+
   </Card>
   <Card title="StatusSelect" icon="circle-check">
     Status/role selection
 
     Enum based
+
   </Card>
 </CardGroup>
 
@@ -43,6 +47,7 @@ web/src/components/{entity}/{Entity}IdAsyncSelect.tsx
 ```
 
 **Examples**:
+
 - `UserIdAsyncSelect.tsx`
 - `ProjectIdAsyncSelect.tsx`
 - `CompanyIdAsyncSelect.tsx`
@@ -125,11 +130,13 @@ export function ProjectForm() {
 ### Key Features
 
 **1. Server Search**:
+
 - Calls backend API with user-entered keyword
 - Display real-time search results
 - Fast search even with large datasets
 
 **2. Single/Multi Selection**:
+
 ```typescript
 // Single selection (default)
 <UserIdAsyncSelect
@@ -152,7 +159,7 @@ By default, it's in `username (email)` format, but you can modify the component 
 ```typescript
 // Modification example
 return rows.map((row) => ({
-  label: `${row.id}. ${row.username}`,  // "1. admin"
+  label: `${row.id}. ${row.username}`, // "1. admin"
   value: row.id,
 }));
 ```
@@ -164,6 +171,7 @@ return rows.map((row) => ({
 - **Regular Select**: 10~50 or fewer fixed options
 
 Example: Use IdAsyncSelect for user selection, regular Select for role selection (admin/normal)
+
 </Info>
 
 ## 2. OrderBySelect
@@ -320,11 +328,7 @@ export function UserListPage() {
 
 ```typescript
 // user.types.ts (backend)
-export const UserSearchField = z.enum([
-  "id",
-  "username",
-  "email",
-]);
+export const UserSearchField = z.enum(["id", "username", "email"]);
 ```
 
 Auto-generated labels:
@@ -345,6 +349,7 @@ export const UserSearchFieldLabel = {
 - **Input (keyword)**: Enter actual search term
 
 Using both together enables dynamic search criteria.
+
 </Info>
 
 ## 4. StatusSelect (Enum Select)
@@ -360,6 +365,7 @@ web/src/components/{entity}/{Entity}{EnumName}Select.tsx
 ```
 
 **Examples**:
+
 - `ProjectStatusSelect.tsx` (Project's status field)
 - `UserRoleSelect.tsx` (User's role field)
 
@@ -449,6 +455,7 @@ export const ProjectStatusLabel = {
 Auto-generated components are **initial templates** and can be modified to fit project requirements.
 
 **When modification is needed**:
+
 1. Change IdAsyncSelect label format
 2. Change search target Subset
 3. Change defaults like placeholder, className
@@ -499,7 +506,7 @@ const { rows } = await UserService.getUsers("B", {
 
 // Can use fields only in Subset "B"
 return rows.map((row) => ({
-  label: `${row.username} - ${row.department?.name}`,  // department only in Subset B
+  label: `${row.username} - ${row.department?.name}`, // department only in Subset B
   value: row.id,
 }));
 ```
@@ -509,6 +516,7 @@ return rows.map((row) => ({
 
 Using larger Subsets can degrade search performance.
 It's better to create custom Subsets with only necessary fields.
+
 </Warning>
 
 ### Modification Example 3: Additional Filtering
@@ -522,7 +530,7 @@ const loadOptions = async (keyword: string) => {
     page: 1,
     search: "id",
     keyword,
-    role: "admin",  // Search only admins
+    role: "admin", // Search only admins
   });
 
   return rows.map((row) => ({
@@ -544,6 +552,7 @@ const loadOptions = async (keyword: string) => {
 2. Want to delete existing component and start from scratch
 
 **Method**:
+
 ```bash
 # Delete component
 rm web/src/components/user/UserIdAsyncSelect.tsx
@@ -557,6 +566,7 @@ pnpm dev
 
 These components are "scaffolding files". They provide initial templates and developers freely modify them afterward.
 Different from "real-time sync files" like `sonamu.generated.ts`.
+
 </Info>
 
 ## Usage Patterns

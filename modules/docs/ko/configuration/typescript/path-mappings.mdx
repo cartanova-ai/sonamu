@@ -1,6 +1,6 @@
 ---
-title: 'Path Mapping'
-description: '모듈 경로 별칭 설정하기'
+title: "Path Mapping"
+description: "모듈 경로 별칭 설정하기"
 ---
 
 Path Mapping을 사용하면 상대 경로 대신 절대 경로로 모듈을 import할 수 있습니다. 코드 가독성이 향상되고 파일 이동 시 import 경로를 수정할 필요가 없습니다.
@@ -42,7 +42,7 @@ export default defineConfig({
 ```
 
 <Warning>
-TypeScript와 Vite 모두에 설정해야 합니다. 하나만 설정하면 타입 체크나 빌드가 실패합니다.
+  TypeScript와 Vite 모두에 설정해야 합니다. 하나만 설정하면 타입 체크나 빌드가 실패합니다.
 </Warning>
 
 ### 사용 예시
@@ -76,6 +76,7 @@ TypeScript와 Vite 모두에 설정해야 합니다. 하나만 설정하면 타�
     - 파일 위치가 바뀌면 모든 import 수정 필요
     - `../../../` 같은 복잡한 경로
     - 가독성이 떨어짐
+
   </Tab>
 
   <Tab title="After (절대 경로)" icon="check">
@@ -91,6 +92,7 @@ TypeScript와 Vite 모두에 설정해야 합니다. 하나만 설정하면 타�
     - 파일 위치가 바뀌어도 import 경로 유지
     - 어디서든 동일한 방식으로 import
     - 가독성 향상
+
   </Tab>
 </Tabs>
 
@@ -143,9 +145,7 @@ import { useAuth } from "@hooks/useAuth";
 import type { User } from "@types/user";
 ```
 
-<Tip>
-`@/*` 하나만 사용하는 것을 권장합니다. 너무 많은 매핑은 오히려 혼란을 줄 수 있습니다.
-</Tip>
+<Tip>`@/*` 하나만 사용하는 것을 권장합니다. 너무 많은 매핑은 오히려 혼란을 줄 수 있습니다.</Tip>
 
 ## API 서버의 모듈 해석
 
@@ -156,7 +156,7 @@ API 서버는 일반적으로 path mapping을 사용하지 않습니다.
 ```json title="api/tsconfig.json"
 {
   "compilerOptions": {
-    "moduleResolution": "bundler",  // Vite가 모듈 해석
+    "moduleResolution": "bundler", // Vite가 모듈 해석
     "target": "esnext",
     "module": "esnext"
   }
@@ -164,6 +164,7 @@ API 서버는 일반적으로 path mapping을 사용하지 않습니다.
 ```
 
 **Vite가 모든 모듈을 해석**
+
 - API는 Vite로 빌드되므로 별도의 path mapping 불필요
 - `sonamu` 같은 패키지는 Vite가 자동으로 해석
 - 상대 경로가 더 명확하고 단순함
@@ -173,15 +174,8 @@ API 서버는 일반적으로 path mapping을 사용하지 않습니다.
 API는 상대적으로 간단한 구조를 가집니다.
 
 <FileTree>
-- api/
-  - src/
-    - application/
-      - controllers/
-      - services/
-    - domain/
-      - entities/
-      - models/
-    - sonamu.config.ts
+  - api/ - src/ - application/ - controllers/ - services/ - domain/ - entities/ - models/ -
+  sonamu.config.ts
 </FileTree>
 
 ```typescript title="api/src/application/controllers/UserController.ts"
@@ -190,9 +184,7 @@ import { UserService } from "../services/UserService";
 import { User } from "../../domain/entities/User";
 ```
 
-<Info>
-API에서 path mapping이 필요하다면 추가할 수 있지만, 일반적으로 불필요합니다.
-</Info>
+<Info>API에서 path mapping이 필요하다면 추가할 수 있지만, 일반적으로 불필요합니다.</Info>
 
 ## Sonamu 패키지 Import
 
@@ -210,13 +202,12 @@ import type { Context, SonamuConfig } from "sonamu";
 ```
 
 **Sonamu 패키지 구조:**
+
 - `sonamu` - 메인 패키지
 - `sonamu/storage` - 스토리지 드라이버
 - `sonamu/cache` - 캐시 드라이버
 
-<Info>
-Sonamu는 `package.json`의 `exports` 필드로 서브패키지를 제공합니다.
-</Info>
+<Info>Sonamu는 `package.json`의 `exports` 필드로 서브패키지를 제공합니다.</Info>
 
 ## 타입 Import
 
@@ -234,9 +225,7 @@ import { DB, type Context } from "sonamu";
 import { User } from "@/types/user";
 ```
 
-<Tip>
-`type` import는 컴파일 후 제거되어 번들 크기를 줄입니다.
-</Tip>
+<Tip>`type` import는 컴파일 후 제거되어 번들 크기를 줄입니다.</Tip>
 
 ## IDE 자동 완성
 
@@ -261,37 +250,40 @@ Path mapping을 설정하면 IDE가 자동으로 인식합니다.
   - `@/...` 경로가 빨간 밑줄
   - 자동 완성이 작동하지 않음
 
-  **해결:**
+**해결:**
 
-  1. **TypeScript 서버 재시작**
-     ```
-     VS Code: Cmd/Ctrl + Shift + P → "TypeScript: Restart TS Server"
-     ```
+1. **TypeScript 서버 재시작**
 
-  2. **tsconfig.json 확인**
-     ```json
-     {
-       "compilerOptions": {
-         "baseUrl": ".",  // 필수!
-         "paths": {
-           "@/*": ["./src/*"]
-         }
+   ```
+   VS Code: Cmd/Ctrl + Shift + P → "TypeScript: Restart TS Server"
+   ```
+
+2. **tsconfig.json 확인**
+
+   ```json
+   {
+     "compilerOptions": {
+       "baseUrl": ".", // 필수!
+       "paths": {
+         "@/*": ["./src/*"]
        }
      }
-     ```
+   }
+   ```
 
-  3. **Vite 개발 서버 재시작**
-     ```bash
-     # Vite 재시작
-     pnpm dev
-     ```
+3. **Vite 개발 서버 재시작**
 
-  4. **node_modules 재설치**
-     ```bash
-     rm -rf node_modules
-     pnpm install
-     ```
-</Accordion>
+   ```bash
+   # Vite 재시작
+   pnpm dev
+   ```
+
+4. **node_modules 재설치**
+   `bash
+rm -rf node_modules
+pnpm install
+`
+    </Accordion>
 
 ## Jest 테스트 설정
 
@@ -329,42 +321,47 @@ describe("Button", () => {
   Cannot find module '@/components/Button' or its corresponding type declarations.
   ```
 
-  **원인:**
-  1. `baseUrl`이 설정되지 않음
-  2. Vite alias가 설정되지 않음
-  3. 경로 오타
+**원인:**
 
-  **해결:**
+1. `baseUrl`이 설정되지 않음
+2. Vite alias가 설정되지 않음
+3. 경로 오타
 
-  **1. tsconfig.json 확인**
-  ```json
-  {
-    "compilerOptions": {
-      "baseUrl": ".",  // 반드시 필요!
-      "paths": {
-        "@/*": ["./src/*"]
-      }
+**해결:**
+
+**1. tsconfig.json 확인**
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".", // 반드시 필요!
+    "paths": {
+      "@/*": ["./src/*"]
     }
   }
-  ```
+}
+```
 
-  **2. vite.config.ts 확인**
-  ```typescript
-  import path from "path";
+**2. vite.config.ts 확인**
 
-  export default defineConfig({
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
+```typescript
+import path from "path";
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
     },
-  });
-  ```
+  },
+});
+```
 
-  **3. 파일 존재 확인**
-  ```bash
-  ls -la src/components/Button.tsx
-  ```
+**3. 파일 존재 확인**
+
+```bash
+ls -la src/components/Button.tsx
+```
+
 </Accordion>
 
 <Accordion title="빌드는 되지만 타입 체크 실패" icon="code">
@@ -374,22 +371,25 @@ describe("Button", () => {
   pnpm tsc    # ❌ 타입 에러
   ```
 
-  **원인:**
-  - Vite는 alias를 인식하지만 TypeScript는 인식하지 못함
+**원인:**
 
-  **해결:**
-  
-  `tsconfig.json`에 `baseUrl`과 `paths` 추가:
-  ```json
-  {
-    "compilerOptions": {
-      "baseUrl": ".",
-      "paths": {
-        "@/*": ["./src/*"]
-      }
+- Vite는 alias를 인식하지만 TypeScript는 인식하지 못함
+
+**해결:**
+
+`tsconfig.json`에 `baseUrl`과 `paths` 추가:
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
     }
   }
-  ```
+}
+```
+
 </Accordion>
 
 <Accordion title="타입 체크는 되지만 빌드 실패" icon="hammer">
@@ -399,23 +399,26 @@ describe("Button", () => {
   pnpm build  # ❌ 빌드 에러
   ```
 
-  **원인:**
-  - TypeScript는 alias를 인식하지만 Vite는 인식하지 못함
+**원인:**
 
-  **해결:**
+- TypeScript는 alias를 인식하지만 Vite는 인식하지 못함
 
-  `vite.config.ts`에 alias 추가:
-  ```typescript
-  import path from "path";
+**해결:**
 
-  export default defineConfig({
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
+`vite.config.ts`에 alias 추가:
+
+```typescript
+import path from "path";
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
     },
-  });
-  ```
+  },
+});
+```
+
 </Accordion>
 
 ## 권장 사항
@@ -445,6 +448,7 @@ describe("Button", () => {
     **피해야 할 것:**
     - 너무 많은 alias (혼란 가중)
     - 하위 디렉토리마다 alias (불필요)
+
   </Tab>
 
   <Tab title="API" icon="server">
@@ -465,6 +469,7 @@ describe("Button", () => {
     ```
 
     단, Vite 설정은 필요 없음 (moduleResolution: bundler)
+
   </Tab>
 
   <Tab title="일관성" icon="check">
@@ -491,41 +496,30 @@ describe("Button", () => {
     import { Button } from "@/components/Button";  // 프로젝트 B
     import { Button } from "#/components/Button";  // 프로젝트 C
     ```
+
   </Tab>
 </Tabs>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="tsconfig.json" 
-    icon="file-code" 
-    href="/ko/configuration/typescript/tsconfig"
-  >
+  <Card title="tsconfig.json" icon="file-code" href="/ko/configuration/typescript/tsconfig">
     전체 TypeScript 설정을 확인하세요
   </Card>
-  
-  <Card 
-    title="타입 체크" 
-    icon="shield-check" 
-    href="/ko/configuration/typescript/type-checking"
-  >
-    타입 체크 옵션을 학습하세요
-  </Card>
-  
-  <Card 
-    title="컴포넌트 작성" 
-    icon="cube" 
-    href="/ko/frontend-integration/react-components/generated-components"
-  >
-    React 컴포넌트를 작성하세요
-  </Card>
-  
-  <Card 
-    title="프로젝트 구조" 
-    icon="folder-tree" 
-    href="/ko/getting-started/project-structure"
-  >
+
+<Card title="타입 체크" icon="shield-check" href="/ko/configuration/typescript/type-checking">
+  타입 체크 옵션을 학습하세요
+</Card>
+
+<Card
+  title="컴포넌트 작성"
+  icon="cube"
+  href="/ko/frontend-integration/react-components/generated-components"
+>
+  React 컴포넌트를 작성하세요
+</Card>
+
+  <Card title="프로젝트 구조" icon="folder-tree" href="/ko/getting-started/project-structure">
     전체 프로젝트 구조를 확인하세요
   </Card>
 </CardGroup>

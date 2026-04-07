@@ -16,6 +16,7 @@ getDB(preset: DBPreset): Knex
 ```
 
 **Parameters**:
+
 - `preset`: `"r"` (read) or `"w"` (write)
 
 **Usage examples**:
@@ -34,7 +35,7 @@ async findCustomQuery(): Promise<User[]> {
 ```typescript title="Write connection"
 async deleteOldRecords(): Promise<number> {
   const wdb = this.getDB("w");
-  
+
   return wdb("users")
     .where("created_at", "<", new Date("2020-01-01"))
     .delete();
@@ -44,7 +45,7 @@ async deleteOldRecords(): Promise<number> {
 ```typescript title="Raw query"
 async customQuery(): Promise<any[]> {
   const rdb = this.getDB("r");
-  
+
   const [rows] = await rdb.raw(`
     SELECT u.*, COUNT(p.id) as post_count
     FROM users u
@@ -52,10 +53,11 @@ async customQuery(): Promise<any[]> {
     GROUP BY u.id
     HAVING post_count > 10
   `);
-  
+
   return rows;
 }
 ```
+
 </CodeGroup>
 
 <Info>
@@ -64,6 +66,7 @@ async customQuery(): Promise<any[]> {
 - `"w"`: Write - Writable (INSERT, UPDATE, DELETE)
 
 Separating read/write allows distributing read load in database replication.
+
 </Info>
 
 ### getPuri(preset)
@@ -75,6 +78,7 @@ getPuri(preset: DBPreset): PuriWrapper
 ```
 
 **Parameters**:
+
 - `preset`: `"r"` (read) or `"w"` (write)
 
 **Usage examples**:
@@ -97,7 +101,7 @@ async findActive(): Promise<User[]> {
 async updateWithTransaction(id: number, data: any): Promise<void> {
   // Automatically uses transaction connection when transaction is active
   const wdb = this.getPuri("w");
-  
+
   await wdb
     .table("users")
     .where("id", id)
@@ -108,18 +112,20 @@ async updateWithTransaction(id: number, data: any): Promise<void> {
 ```typescript title="Upsert Builder"
 async save(params: UserSaveParams[]): Promise<number[]> {
   const wdb = this.getPuri("w");
-  
+
   params.forEach(p => wdb.ubRegister("users", p));
-  
+
   return wdb.transaction(async (trx) => {
     return trx.ubUpsert("users");
   });
 }
 ```
+
 </CodeGroup>
 
 <Tip>
-`getPuri()` automatically detects transaction context. When called within `@transactional()` decorator, it returns the transaction connection.
+  `getPuri()` automatically detects transaction context. When called within `@transactional()`
+  decorator, it returns the transaction connection.
 </Tip>
 
 ## Subset Query Methods
@@ -138,6 +144,7 @@ getSubsetQueries<T extends TSubsetKey>(
 ```
 
 **Return values**:
+
 - `qb`: Query builder (for adding conditions)
 - `onSubset`: Subset-specific type casting function
 
@@ -167,13 +174,13 @@ async findMany<T extends UserSubsetKey>(
   params: UserListParams
 ): Promise<ListResult<UserSubsetMapping[T]>> {
   const { qb, onSubset } = this.getSubsetQueries(subset);
-  
+
   // Access fields only in subset "P"
   if (params.departmentName) {
     // TypeScript checks employee__department.name type
     onSubset("P").where("employee__department.name", params.departmentName);
   }
-  
+
   return this.executeSubsetQuery({ subset, qb, params });
 }
 ```
@@ -184,15 +191,16 @@ async findMany<T extends UserSubsetKey>(
   params: UserListParams
 ): Promise<ListResult<UserSubsetMapping[T]>> {
   const { qb, onSubset } = this.getSubsetQueries(subset);
-  
+
   // Only access fields in both A and P
   if (params.id) {
     onSubset(["A", "P"]).whereIn("users.id", asArray(params.id));
   }
-  
+
   return this.executeSubsetQuery({ subset, qb, params });
 }
 ```
+
 </CodeGroup>
 
 <Warning>
@@ -203,6 +211,7 @@ async findMany<T extends UserSubsetKey>(
 qb.where("users.id", 1);
 onSubset("A").where("users.id", 1);
 ```
+
 </Warning>
 
 ### executeSubsetQuery(params)
@@ -228,24 +237,24 @@ executeSubsetQuery<T extends TSubsetKey>(
 
 **Parameters**:
 
-| Parameter | Type | Description | Default |
-|-----------|------|-------------|---------|
-| `subset` | string | Subset key | *required* |
-| `qb` | Puri | Query builder | *required* |
-| `params.num` | number | Page size | *required* |
-| `params.page` | number | Page number (starts from 1) | *required* |
-| `params.queryMode` | string | Query mode | `"both"` |
-| `enhancers` | object | Virtual field calculation functions | - |
-| `debug` | boolean | Query debugging output | `false` |
-| `optimizeCountQuery` | boolean | COUNT query optimization | `false` |
+| Parameter            | Type    | Description                         | Default    |
+| -------------------- | ------- | ----------------------------------- | ---------- |
+| `subset`             | string  | Subset key                          | _required_ |
+| `qb`                 | Puri    | Query builder                       | _required_ |
+| `params.num`         | number  | Page size                           | _required_ |
+| `params.page`        | number  | Page number (starts from 1)         | _required_ |
+| `params.queryMode`   | string  | Query mode                          | `"both"`   |
+| `enhancers`          | object  | Virtual field calculation functions | -          |
+| `debug`              | boolean | Query debugging output              | `false`    |
+| `optimizeCountQuery` | boolean | COUNT query optimization            | `false`    |
 
 **queryMode options**:
 
-| Mode | Return Value | Use Case |
-|------|--------------|----------|
-| `"both"` | `{ rows, total }` | Normal list query (default) |
-| `"list"` | `{ rows }` | When total is not needed |
-| `"count"` | `{ total }` | When only count is needed |
+| Mode      | Return Value      | Use Case                    |
+| --------- | ----------------- | --------------------------- |
+| `"both"`  | `{ rows, total }` | Normal list query (default) |
+| `"list"`  | `{ rows }`        | When total is not needed    |
+| `"count"` | `{ total }`       | When only count is needed   |
 
 **Usage examples**:
 
@@ -301,7 +310,7 @@ const result = await this.executeSubsetQuery({
   subset: "A",
   qb,
   params: { num: 10, page: 1 },
-  debug: true,  // Output query to console
+  debug: true, // Output query to console
 });
 ```
 
@@ -310,19 +319,16 @@ const result = await this.executeSubsetQuery({
   subset: "A",
   qb,
   params: { num: 10, page: 1 },
-  optimizeCountQuery: true,  // Remove LEFT JOINs not in WHERE
+  optimizeCountQuery: true, // Remove LEFT JOINs not in WHERE
 });
 ```
+
 </CodeGroup>
 
 <Info>
-**Execution order**:
-1. Execute COUNT query (calculate total)
-2. Execute LIST query (apply pagination)
-3. Execute Loader (load HasMany, ManyToMany data)
-4. Hydrate (flat object → nested object conversion)
-5. Apply Enhancer (calculate virtual fields)
-6. Remove Internal fields
+  **Execution order**: 1. Execute COUNT query (calculate total) 2. Execute LIST query (apply
+  pagination) 3. Execute Loader (load HasMany, ManyToMany data) 4. Hydrate (flat object → nested
+  object conversion) 5. Apply Enhancer (calculate virtual fields) 6. Remove Internal fields
 </Info>
 
 ### createEnhancers(enhancers)
@@ -353,19 +359,20 @@ const enhancers = this.createEnhancers({
 });
 
 await this.executeSubsetQuery({
-  subset: "A",
-  qb,
-  params,
-  enhancers,
+subset: "A",
+qb,
+params,
+enhancers,
 });
-```
+
+````
 
 ```typescript title="Async Enhancer"
 const enhancers = this.createEnhancers({
   A: async (row) => {
     // External API call
     const additionalData = await fetchFromExternalAPI(row.id);
-    
+
     return {
       ...row,
       external_data: additionalData,
@@ -373,7 +380,7 @@ const enhancers = this.createEnhancers({
   },
   SS: (row) => row,
 });
-```
+````
 
 ```typescript title="Conditional transformation"
 const enhancers = this.createEnhancers({
@@ -381,17 +388,17 @@ const enhancers = this.createEnhancers({
     ...row,
     status_label: row.is_active ? "Active" : "Inactive",
     is_premium: row.subscription_level === "premium",
-    days_since_created: Math.floor(
-      (Date.now() - row.created_at.getTime()) / (1000 * 60 * 60 * 24)
-    ),
+    days_since_created: Math.floor((Date.now() - row.created_at.getTime()) / (1000 * 60 * 60 * 24)),
   }),
   SS: (row) => row,
 });
 ```
+
 </CodeGroup>
 
 <Tip>
-Enhancers are called for each row, so avoid heavy operations. If needed, use Loaders or separate APIs.
+  Enhancers are called for each row, so avoid heavy operations. If needed, use Loaders or separate
+  APIs.
 </Tip>
 
 ## Utility Methods
@@ -412,13 +419,13 @@ getInsertedIds(
 
 **Parameters**:
 
-| Parameter | Type | Description | Default |
-|-----------|------|-------------|---------|
-| `wdb` | Knex | Database connection | - |
-| `rows` | object[] | Inserted records | - |
-| `tableName` | string | Table name | - |
-| `unqKeyFields` | string[] | Unique key field names | - |
-| `chunkSize` | number | Number to query at once | `500` |
+| Parameter      | Type     | Description             | Default |
+| -------------- | -------- | ----------------------- | ------- |
+| `wdb`          | Knex     | Database connection     | -       |
+| `rows`         | object[] | Inserted records        | -       |
+| `tableName`    | string   | Table name              | -       |
+| `unqKeyFields` | string[] | Unique key field names  | -       |
+| `chunkSize`    | number   | Number to query at once | `500`   |
 
 **Usage examples**:
 
@@ -448,12 +455,12 @@ async saveUsers(users: User[]): Promise<number[]> {
 ```typescript title="Composite Unique key"
 async saveOrderItems(items: OrderItem[]): Promise<number[]> {
   const wdb = this.getDB("w");
-  
+
   await wdb("order_items")
     .insert(items)
     .onConflict(["order_id", "product_id"])
     .merge();
-  
+
   // Query IDs by order_id + product_id combination
   const ids = await this.getInsertedIds(
     wdb,
@@ -461,10 +468,11 @@ async saveOrderItems(items: OrderItem[]): Promise<number[]> {
     "order_items",
     ["order_id", "product_id"]
   );
-  
+
   return ids;
 }
 ```
+
 </CodeGroup>
 
 ### hydrate(rows)
@@ -476,6 +484,7 @@ hydrate<T>(rows: T[]): T[]
 ```
 
 **Conversion rules**:
+
 - `user__name` → `{ user: { name } }`
 - `user__profile__bio` → `{ user: { profile: { bio } } }`
 - If nullable relation's id is null, the entire object becomes null
@@ -498,19 +507,20 @@ const flatRows = [
 // Convert to nested object
 const nested = this.hydrate(flatRows);
 // [
-//   {
-//     id: 1,
-//     name: "John",
-//     user: {
-//       id: 10,
-//       email: "john@test.com",
-//       profile: {
-//         bio: "Hello"
-//       }
-//     }
-//   }
+// {
+// id: 1,
+// name: "John",
+// user: {
+// id: 10,
+// email: "john@test.com",
+// profile: {
+// bio: "Hello"
+// }
+// }
+// }
 // ]
-```
+
+````
 
 ```typescript title="Nullable relation"
 const flatRows = [
@@ -530,11 +540,13 @@ const nested = this.hydrate(flatRows);
 //     parent: null  // Entire object is null
 //   }
 // ]
-```
+````
+
 </CodeGroup>
 
 <Info>
-`hydrate()` is automatically called inside `executeSubsetQuery()`, so you rarely need to call it directly.
+  `hydrate()` is automatically called inside `executeSubsetQuery()`, so you rarely need to call it
+  directly.
 </Info>
 
 ### omitInternalFields(row, fields)
@@ -558,15 +570,12 @@ const row = {
   employee: {
     id: 10,
     salary: 50000,
-    department: { name: "IT" }
-  }
+    department: { name: "IT" },
+  },
 };
 
 // Remove Internal fields
-const cleaned = this.omitInternalFields(row, [
-  "password",
-  "employee.salary"
-]);
+const cleaned = this.omitInternalFields(row, ["password", "employee.salary"]);
 
 // {
 //   id: 1,
@@ -593,6 +602,7 @@ Fields specified with the `internal` option in Subset are automatically removed 
   }
 }
 ```
+
 </Info>
 
 ### destroy()
@@ -614,7 +624,7 @@ process.on("SIGTERM", async () => {
 ```
 
 <Warning>
-Calling `destroy()` closes DB connections for all Models. Use only in test environments.
+  Calling `destroy()` closes DB connections for all Models. Use only in test environments.
 </Warning>
 
 ## Practical Usage Patterns
@@ -761,7 +771,11 @@ async getStatistics(): Promise<UserStatistics> {
   <Card title="Subset" icon="layer-group" href="/en/core-concepts/model/using-subsets">
     Data retrieval using Subsets
   </Card>
-  <Card title="Transactions" icon="arrows-rotate" href="/en/database/transactions/using-transactions">
+  <Card
+    title="Transactions"
+    icon="arrows-rotate"
+    href="/en/database/transactions/using-transactions"
+  >
     Detailed transaction management guide
   </Card>
   <Card title="Testing" icon="flask" href="/en/testing/model-testing/unit-tests">

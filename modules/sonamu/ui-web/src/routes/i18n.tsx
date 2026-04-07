@@ -14,9 +14,10 @@ import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import TrashIcon from "~icons/lucide/trash-2";
 import UploadIcon from "~icons/lucide/upload";
+
 import { useSonamuContext } from "../contexts/sonamu-provider";
-import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
+import { defaultCatch } from "../services/sonamu.shared";
 
 type I18nDictionaryRow = SonamuUIService.I18nDictionaryRow;
 
@@ -42,7 +43,7 @@ function I18nIndex() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // 미사용 키 상태
-  const [unusedKeys, setUnusedKeys] = useState<Set<string>>(new Set());
+  const [unusedKeys, setUnusedKeys] = useState(new Set());
   const [usageCheckError, setUsageCheckError] = useState<string | null>(null);
 
   // 키 추가 모달 상태
@@ -145,7 +146,7 @@ function I18nIndex() {
         await SonamuUIService.updateI18n({
           oldKey,
           newKey: editValue,
-          source: row.source as "entity" | "project" | "sonamu",
+          source: row.source,
           values,
         });
       } else {
@@ -153,7 +154,7 @@ function I18nIndex() {
         await SonamuUIService.updateI18n({
           oldKey,
           newKey: oldKey,
-          source: row.source as "entity" | "project" | "sonamu",
+          source: row.source,
           values: { [field]: editValue },
         });
       }

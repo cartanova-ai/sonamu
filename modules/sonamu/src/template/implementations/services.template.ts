@@ -1,14 +1,15 @@
 import inflection from "inflection";
 import { diff, unique } from "radashi";
+
 import {
   apiParamToTsCode,
   apiParamTypeToTsType,
   unwrapPromiseOnce,
 } from "../../api/code-converters";
-import type { ExtendedApi } from "../../api/decorators";
+import { type ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
 import { EntityManager } from "../../entity/entity-manager";
-import type { TemplateOptions } from "../../types/types";
+import { type TemplateOptions } from "../../types/types";
 import { ApiParamType } from "../../types/types";
 import { assertDefined } from "../../utils/utils";
 import { Template } from "../template";
@@ -53,7 +54,7 @@ export class Template__services extends Template {
             (param) =>
               !ApiParamType.isContext(param.type) &&
               !ApiParamType.isRefKnex(param.type) &&
-              !(param.optional === true && param.name.startsWith("_")),
+              !(param.optional && param.name.startsWith("_")),
           );
 
           const apiBaseUrl = `${Sonamu.config.api.route.prefix}${api.path}`;
@@ -90,7 +91,7 @@ export function ${methodNameStreamCamelized}(
           (param) =>
             !ApiParamType.isContext(param.type) &&
             !ApiParamType.isRefKnex(param.type) &&
-            !(param.optional === true && param.name.startsWith("_")),
+            !(param.optional && param.name.startsWith("_")),
         );
 
         // 타입 파라미터 정의
@@ -253,11 +254,7 @@ export const use${hookName}Mutation = ${typeParamsDef}() => useMutation({
           // paramsDef 예: "params: { category: string }" → "{ category: string }"
           const paramsTypeDef =
             paramsWithoutContext.length > 0
-              ? paramsDef
-                  .split(":")
-                  .slice(1)
-                  .join(":")
-                  .trim() // "params: { category: string }" → "{ category: string }"
+              ? paramsDef.split(":").slice(1).join(":").trim() // "params: { category: string }" → "{ category: string }"
               : "";
 
           const mutationParamType =
@@ -367,8 +364,7 @@ export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}Subset
         " * @generated",
         " * 직접 수정하지 마세요.",
         " */",
-        "/** biome-ignore-all lint: generated는 무시 */",
-        "/** biome-ignore-all assist: generated는 무시 */",
+        "/* oxlint-disable */",
         "",
         `import { queryOptions, useQuery, useMutation, type UseMutationOptions } from '@tanstack/react-query';`,
         `import type { AxiosProgressEvent } from 'axios';`,

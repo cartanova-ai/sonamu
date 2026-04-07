@@ -3,7 +3,7 @@
 exports[`Migrator - preparedCodes 생성 > FK 변경 감지 (onUpdate/onDelete) 1`] = `
 [
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
@@ -24,7 +24,7 @@ export async function down(knex: Knex): Promise<void> {
     "type": "normal",
   },
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
@@ -52,7 +52,7 @@ export async function down(knex: Knex): Promise<void> {
 exports[`Migrator - preparedCodes 생성 > FK 삭제 감지 1`] = `
 [
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
@@ -73,7 +73,7 @@ export async function down(knex: Knex): Promise<void> {
     "type": "normal",
   },
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
@@ -97,7 +97,7 @@ export async function down(knex: Knex): Promise<void> {
 exports[`Migrator - preparedCodes 생성 > FK 추가 감지 (BelongsToOne) 1`] = `
 [
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
@@ -118,7 +118,7 @@ export async function down(knex: Knex): Promise<void> {
     "type": "normal",
   },
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
@@ -144,7 +144,7 @@ exports[`Migrator - preparedCodes 생성 > FK 추가 감지 (HasMany) 1`] = `[]`
 exports[`Migrator - preparedCodes 생성 > FK 추가 감지 (ManyToMany) 1`] = `
 [
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("labels", (table) => {
@@ -162,7 +162,7 @@ export async function down(knex: Knex): Promise<void> {
     "type": "normal",
   },
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("users__labels", (table) => {
@@ -181,7 +181,7 @@ export async function down(knex: Knex): Promise<void> {
     "type": "normal",
   },
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users__labels", (table) => {
@@ -209,7 +209,7 @@ export async function down(knex: Knex): Promise<void> {
 exports[`Migrator - preparedCodes 생성 > FK 추가 감지 (OneToOne) 1`] = `
 [
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
@@ -230,7 +230,7 @@ export async function down(knex: Knex): Promise<void> {
     "type": "normal",
   },
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
@@ -258,7 +258,7 @@ export async function down(knex: Knex): Promise<void> {
 exports[`Migrator - preparedCodes 생성 > 신규 엔티티 감지 1`] = `
 [
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("test_entities", (table) => {
@@ -286,7 +286,7 @@ export async function down(knex: Knex): Promise<void> {
 exports[`Migrator - preparedCodes 생성 > 인덱스 삭제 감지 1`] = `
 [
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
@@ -310,7 +310,7 @@ export async function down(knex: Knex): Promise<void> {
 exports[`Migrator - preparedCodes 생성 > 컬럼 삭제 감지 1`] = `
 [
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
@@ -336,7 +336,7 @@ export async function down(knex: Knex): Promise<void> {
 exports[`Migrator - preparedCodes 생성 > 컬럼 속성 변경 감지 1`] = `
 [
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
@@ -362,7 +362,7 @@ export async function down(knex: Knex): Promise<void> {
 exports[`Migrator - preparedCodes 생성 > 컬럼 이름 변경 감지 (Drop & Add) 1`] = `
 [
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
@@ -392,7 +392,7 @@ export async function down(knex: Knex): Promise<void> {
 exports[`Migrator - preparedCodes 생성 > 컬럼 추가 감지 1`] = `
 [
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
@@ -419,7 +419,7 @@ export async function down(knex: Knex): Promise<void> {
 exports[`Migrator - preparedCodes 생성 > 코드 정렬 순서 1`] = `
 [
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("test_order_entities", (table) => {
@@ -442,7 +442,7 @@ export async function down(knex: Knex): Promise<void> {
     "type": "normal",
   },
   {
-    "formatted": "import type { Knex } from "knex";
+    "formatted": "import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.alterTable("test_order_entities", (table) => {

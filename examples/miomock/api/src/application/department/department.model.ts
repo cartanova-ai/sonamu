@@ -4,14 +4,15 @@ import {
   BadRequestException,
   BaseModelClass,
   exhaustive,
-  type ListResult,
   NotFoundException,
 } from "sonamu";
+import { type ListResult } from "sonamu";
+
 import { SD } from "../../i18n/sd.generated";
 import { AuditLogModel } from "../audit-log/audit-log.model";
-import type { DepartmentSubsetKey, DepartmentSubsetMapping } from "../sonamu.generated";
+import { type DepartmentSubsetKey, type DepartmentSubsetMapping } from "../sonamu.generated";
 import { departmentLoaderQueries, departmentSubsetQueries } from "../sonamu.generated.sso";
-import type { DepartmentListParams, DepartmentSaveParams } from "./department.types";
+import { type DepartmentListParams, type DepartmentSaveParams } from "./department.types";
 
 /*
   Department Model

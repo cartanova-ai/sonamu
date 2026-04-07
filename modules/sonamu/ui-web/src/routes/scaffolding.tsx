@@ -9,20 +9,22 @@ import {
   Table,
   TableBody,
   TableCell,
-  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components";
+import { type TableCol } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import CheckIcon from "~icons/lucide/check";
 import CodeIcon from "~icons/lucide/code";
 import PlayIcon from "~icons/lucide/play";
 import XIcon from "~icons/lucide/x";
+
 import { useSonamuContext } from "../contexts/sonamu-provider";
+import { SonamuUIService } from "../services/sonamu-ui.service";
+import { type ScaffoldingStatus } from "../services/sonamu-ui.service";
 import { defaultCatch } from "../services/sonamu.shared";
-import { type ScaffoldingStatus, SonamuUIService } from "../services/sonamu-ui.service";
 
 export const Route = createFileRoute("/scaffolding")({
   component: ScaffoldingIndex,

@@ -9,20 +9,16 @@ Learn how to import actual production data to Fixture DB for use in tests.
 
 <CardGroup cols={2}>
   <Card title="Real Data" icon="database">
-    Production data
-    Realistic testing
+    Production data Realistic testing
   </Card>
   <Card title="Auto Relation Resolution" icon="link">
-    Auto BelongsTo tracking
-    Related data together
+    Auto BelongsTo tracking Related data together
   </Card>
   <Card title="Duplicate Prevention" icon="shield-check">
-    ID-based management
-    Safe import
+    ID-based management Safe import
   </Card>
   <Card title="Simple Command" icon="terminal">
-    One-line execution
-    Auto sync
+    One-line execution Auto sync
   </Card>
 </CardGroup>
 
@@ -62,7 +58,7 @@ async function importFixture(entityId: string, ids: number[]) {
     ids.map(async (id) => {
       // Generate import query for each ID
       return await this.getImportQueries(entityId, "id", id);
-    })
+    }),
   );
 
   // Execute queries
@@ -90,11 +86,7 @@ pnpm sonamu fixture import User 1
 **Internal operation**:
 
 ```typescript
-async function getImportQueries(
-  entityId: string,
-  field: string,
-  id: number
-): Promise<string[]> {
+async function getImportQueries(entityId: string, field: string, id: number): Promise<string[]> {
   // Prevent circular references
   const recordKey = `${entityId}#${field}#${id}`;
   if (this.visitedRecords.has(recordKey)) {
@@ -117,9 +109,7 @@ async function getImportQueries(
       const relatedId = row[`${relation.name}_id`];
       if (relatedId) {
         // Recursively import related data
-        relatedQueries.push(
-          ...(await this.getImportQueries(relation.with, "id", relatedId))
-        );
+        relatedQueries.push(...(await this.getImportQueries(relation.with, "id", relatedId)));
       }
     }
   }
@@ -333,43 +323,25 @@ pnpm sonamu fixture import User 6,7,8,9,10
 ## Cautions
 
 <Warning>
-  **Cautions when loading fixtures**:
-  1. **Minimal data**: Import only minimum necessary records
-  2. **Check relations**: BelongsTo is automatic, HasMany is manual
-  3. **Duplicate safe**: INSERT IGNORE prevents duplicates
-  4. **Circular references**: Handled automatically
-  5. **Check permissions**: Write permission needed for Fixture DB
+  **Cautions when loading fixtures**: 1. **Minimal data**: Import only minimum necessary records 2.
+  **Check relations**: BelongsTo is automatic, HasMany is manual 3. **Duplicate safe**: INSERT
+  IGNORE prevents duplicates 4. **Circular references**: Handled automatically 5. **Check
+  permissions**: Write permission needed for Fixture DB
 </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card
-    title="Test DB"
-    icon="database"
-    href="/en/testing/fixtures/test-database"
-  >
+  <Card title="Test DB" icon="database" href="/en/testing/fixtures/test-database">
     Test DB setup
   </Card>
-  <Card
-    title="Creating Fixtures"
-    icon="plus"
-    href="/en/testing/fixtures/creating-fixtures"
-  >
+  <Card title="Creating Fixtures" icon="plus" href="/en/testing/fixtures/creating-fixtures">
     Writing fixture.ts
   </Card>
-  <Card
-    title="Syncing Fixtures"
-    icon="arrows-rotate"
-    href="/en/testing/fixtures/syncing-fixtures"
-  >
+  <Card title="Syncing Fixtures" icon="arrows-rotate" href="/en/testing/fixtures/syncing-fixtures">
     Fixture → Test DB
   </Card>
-  <Card
-    title="Writing Tests"
-    icon="vial"
-    href="/en/testing/writing-tests/test-structure"
-  >
+  <Card title="Writing Tests" icon="vial" href="/en/testing/writing-tests/test-structure">
     Understanding test structure
   </Card>
 </CardGroup>

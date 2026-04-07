@@ -18,7 +18,9 @@ An Entity is a data model definition that includes:
 ## How to Define an Entity
 
 <Note>
-It's recommended to visually define Entities in **Sonamu UI** (`http://localhost:34900/sonamu-ui`). Sonamu UI provides auto-completion, validation, and real-time preview features.
+  It's recommended to visually define Entities in **Sonamu UI**
+  (`http://localhost:34900/sonamu-ui`). Sonamu UI provides auto-completion, validation, and
+  real-time preview features.
 </Note>
 
 ### entity.json File Structure
@@ -28,7 +30,7 @@ Entities are saved as `entity.json` files with the following structure:
 ```json
 {
   "id": "User",
-  "table": "users", 
+  "table": "users",
   "title": "User",
   "props": [...],
   "indexes": [...],
@@ -52,8 +54,7 @@ The unique identifier for the Entity. Written in **PascalCase**.
 ```
 
 <Info>
-- Used for Entity class names and type names
-- Example: `UserModel`, `User`, `UserBaseSchema`
+  - Used for Entity class names and type names - Example: `UserModel`, `User`, `UserBaseSchema`
 </Info>
 
 ### table
@@ -67,9 +68,8 @@ The database table name. Written in **snake_case**.
 ```
 
 <Tip>
-If the table name is omitted, it's auto-generated based on the Entity ID:
-- `User` → `users`
-- `BlogPost` → `blog_posts`
+  If the table name is omitted, it's auto-generated based on the Entity ID: - `User` → `users` -
+  `BlogPost` → `blog_posts`
 </Tip>
 
 ### title
@@ -98,18 +98,17 @@ An array of Entity properties (columns). Each property defines its type and opti
 
 **Basic Property Options**:
 
-| Option | Type | Description | Default |
-|--------|------|-------------|---------|
-| `name` | string | Property name (snake_case) | *required* |
-| `type` | string | Data type | *required* |
-| `desc` | string | Description | - |
-| `nullable` | boolean | Allow NULL | `false` |
-| `dbDefault` | string | DB default value | - |
+| Option      | Type    | Description                | Default    |
+| ----------- | ------- | -------------------------- | ---------- |
+| `name`      | string  | Property name (snake_case) | _required_ |
+| `type`      | string  | Data type                  | _required_ |
+| `desc`      | string  | Description                | -          |
+| `nullable`  | boolean | Allow NULL                 | `false`    |
+| `dbDefault` | string  | DB default value           | -          |
 
 <Info>
-**Learn More**
-- [Field Types](/en/core-concepts/entity/field-types) - All available data types
-- [Relations](/en/core-concepts/entity/relations) - Defining Entity relationships
+  **Learn More** - [Field Types](/en/core-concepts/entity/field-types) - All available data types -
+  [Relations](/en/core-concepts/entity/relations) - Defining Entity relationships
 </Info>
 
 ## Optional Fields
@@ -126,9 +125,7 @@ Used when inheriting from another Entity.
 }
 ```
 
-<Warning>
-Using parentId inherits all props from the parent Entity. Use carefully.
-</Warning>
+<Warning>Using parentId inherits all props from the parent Entity. Use carefully.</Warning>
 
 ### indexes
 
@@ -143,7 +140,7 @@ Defines database indexes.
       "columns": [{ "name": "email" }]
     },
     {
-      "type": "index", 
+      "type": "index",
       "name": "users_created_at_idx",
       "columns": [{ "name": "created_at" }]
     }
@@ -152,6 +149,7 @@ Defines database indexes.
 ```
 
 **Index Types**:
+
 - `index` - Regular index (improves search performance)
 - `unique` - Unique index (prevents duplicates)
 - `hnsw` - HNSW index for Vector search
@@ -189,8 +187,9 @@ type UserSubsetA = {
   email: string;
   username: string;
   created_at: Date;
-}
+};
 ```
+
 </CodeGroup>
 
 **Including Relation Fields**:
@@ -198,18 +197,14 @@ type UserSubsetA = {
 ```json
 {
   "subsets": {
-    "P": [
-      "id",
-      "username",
-      "employee.id",
-      "employee.department.name"
-    ]
+    "P": ["id", "username", "employee.id", "employee.department.name"]
   }
 }
 ```
 
 <Info>
-Using dot notation in Subsets, you can include fields from related Entities. Sonamu automatically generates JOINs.
+  Using dot notation in Subsets, you can include fields from related Entities. Sonamu automatically
+  generates JOINs.
 </Info>
 
 ### enums
@@ -261,7 +256,12 @@ async updateRole(userId: number, role: Role) {
   "title": "User",
   "props": [
     { "name": "id", "type": "integer", "desc": "ID" },
-    { "name": "created_at", "type": "date", "desc": "Created At", "dbDefault": "CURRENT_TIMESTAMP" },
+    {
+      "name": "created_at",
+      "type": "date",
+      "desc": "Created At",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
     { "name": "email", "type": "string", "length": 255, "desc": "Email" },
     { "name": "username", "type": "string", "length": 255, "desc": "Name" },
     { "name": "password", "type": "string", "length": 255, "desc": "Password" },
@@ -270,9 +270,7 @@ async updateRole(userId: number, role: Role) {
     { "name": "is_verified", "type": "boolean", "desc": "Verified", "dbDefault": "false" },
     { "name": "deleted_at", "type": "date", "nullable": true, "desc": "Deleted At" }
   ],
-  "indexes": [
-    { "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }
-  ],
+  "indexes": [{ "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }],
   "subsets": {
     "A": ["id", "email", "username", "role", "created_at"],
     "P": ["id", "email", "username", "role"]
@@ -293,7 +291,12 @@ async updateRole(userId: number, role: Role) {
   "title": "Employee",
   "props": [
     { "name": "id", "type": "integer", "desc": "ID" },
-    { "name": "created_at", "type": "date", "desc": "Created At", "dbDefault": "CURRENT_TIMESTAMP" },
+    {
+      "name": "created_at",
+      "type": "date",
+      "desc": "Created At",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
     {
       "type": "relation",
       "name": "user",
@@ -313,7 +316,14 @@ async updateRole(userId: number, role: Role) {
       "onDelete": "SET NULL"
     },
     { "name": "employee_number", "type": "string", "length": 32, "desc": "Employee Number" },
-    { "name": "salary", "type": "numeric", "precision": 10, "scale": 2, "nullable": true, "desc": "Salary" },
+    {
+      "name": "salary",
+      "type": "numeric",
+      "precision": 10,
+      "scale": 2,
+      "nullable": true,
+      "desc": "Salary"
+    },
     { "name": "hire_date", "type": "date", "nullable": true, "desc": "Hire Date" }
   ],
   "indexes": [
@@ -343,6 +353,7 @@ async updateRole(userId: number, role: Role) {
 ## Defining Entities in Sonamu UI
 
 1. **Access Sonamu UI**
+
    ```bash
    # After running API server
    http://localhost:34900/sonamu-ui
@@ -368,12 +379,10 @@ async updateRole(userId: number, role: Role) {
    - Entity file auto-generated
    - Migration auto-generated
 
-<Frame caption="📸 Needed: Complete process of creating Entity in Sonamu UI (screenshot or GIF)">
-</Frame>
+<Frame caption="📸 Needed: Complete process of creating Entity in Sonamu UI (screenshot or GIF)"></Frame>
 
 <Info>
-**Learn More**
-- [Using Sonamu UI](/en/core-concepts/entity/using-sonamu-ui) - Detailed UI guide
+  **Learn More** - [Using Sonamu UI](/en/core-concepts/entity/using-sonamu-ui) - Detailed UI guide
 </Info>
 
 ## What Gets Auto-Generated After Entity Definition
@@ -398,18 +407,15 @@ When you define and save an Entity, Sonamu automatically generates the following
 ## Cautions
 
 <Warning>
-**Be Careful When Modifying Entity Definitions**
-- Be cautious when deleting columns or changing types on deployed tables
-- Recommend making changes gradually through migrations
-- Consider referential integrity when changing Relations
+  **Be Careful When Modifying Entity Definitions** - Be cautious when deleting columns or changing
+  types on deployed tables - Recommend making changes gradually through migrations - Consider
+  referential integrity when changing Relations
 </Warning>
 
 <Tip>
-**Entity Design Tips**
-- Always start IDs with `integer` type
-- Include `created_at`, `updated_at` fields
-- Explicitly specify indexes for fields requiring unique constraints
-- Add indexes to frequently searched fields
+  **Entity Design Tips** - Always start IDs with `integer` type - Include `created_at`, `updated_at`
+  fields - Explicitly specify indexes for fields requiring unique constraints - Add indexes to
+  frequently searched fields
 </Tip>
 
 ## Next Steps

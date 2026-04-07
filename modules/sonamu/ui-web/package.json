@@ -2,6 +2,7 @@
   "name": "ui-web",
   "version": "0.0.1",
   "description": "Sonamu UI Web (for only static build)",
+  "type": "module",
   "publishConfig": {
     "access": "public"
   },
@@ -10,7 +11,6 @@
     "prebuild": "tsx ../../../scripts/hard-link.ts",
     "build": "tsc --noEmit && vite build"
   },
-  "type": "module",
   "dependencies": {
     "@ai-sdk/react": "catalog:",
     "@dagrejs/dagre": "catalog:",

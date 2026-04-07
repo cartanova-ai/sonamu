@@ -1,4 +1,5 @@
-import { DndContext, type DragEndEvent, useDraggable } from "@dnd-kit/core";
+import { DndContext, useDraggable } from "@dnd-kit/core";
+import { type DragEndEvent } from "@dnd-kit/core";
 import {
   Button,
   Dialog,
@@ -10,7 +11,7 @@ import {
   Textarea,
 } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
-import type { Cone } from "sonamu";
+import { type Cone } from "sonamu";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 

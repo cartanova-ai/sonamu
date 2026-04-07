@@ -1,4 +1,4 @@
-import type { ResolutionConfig } from "./scope.js";
+import { type ResolutionConfig } from "./scope.js";
 
 const fileNameOf = (file: URL) => {
   const { pathname } = file;

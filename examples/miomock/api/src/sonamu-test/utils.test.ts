@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+
 import {
   assertDefined,
   assertExists,
@@ -107,7 +108,7 @@ describe("utils", () => {
    */
   describe("findAppRootPath (앱 루트 경로)", () => {
     test("API 루트의 상위 디렉토리를 반환", async () => {
-      const result = await findAppRootPath();
+      const result = findAppRootPath();
 
       expect(result).toBeTruthy();
       expect(typeof result).toBe("string");
@@ -118,7 +119,7 @@ describe("utils", () => {
     });
 
     test("경로 구조 확인", async () => {
-      const appRoot = await findAppRootPath();
+      const appRoot = findAppRootPath();
       const apiRoot = findApiRootPath();
 
       // API 루트는 App 루트로 시작해야 함 (하위 디렉토리이므로)

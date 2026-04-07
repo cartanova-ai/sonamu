@@ -25,6 +25,7 @@ pnpm migrate status
 ```
 
 **Output example**:
+
 ```
 Development Master: ✓ Up to date (v20240115_143022)
 Testing: ⚠ 2 pending migrations
@@ -36,6 +37,7 @@ Prepared migrations:
 ```
 
 **Status types**:
+
 - `✓ Up to date`: All migrations applied
 - `⚠ N pending`: N migrations not yet applied
 - `❌ Error`: Database connection failed
@@ -49,6 +51,7 @@ pnpm migrate run
 ```
 
 **Execution process**:
+
 ```
 Running migrations...
 
@@ -64,12 +67,14 @@ All migrations completed successfully!
 ```
 
 **Auto-generation and application**:
+
 - Detect Entity changes
 - Auto-generate migration code
 - Apply sequentially to all target DBs
 
 <Info>
-Sonamu analyzes Entity definitions and **automatically generates** necessary migrations. No need to manually write migration files.
+  Sonamu analyzes Entity definitions and **automatically generates** necessary migrations. No need
+  to manually write migration files.
 </Info>
 
 ## Migration Generation
@@ -131,6 +136,7 @@ export async function down(knex: Knex): Promise<void> {
 ```
 
 **Structure**:
+
 - `up()`: Apply migration (create tables, add columns, etc.)
 - `down()`: Rollback migration (revert changes)
 
@@ -138,14 +144,14 @@ export async function down(knex: Knex): Promise<void> {
 
 Changes that Sonamu auto-detects and generates migrations for:
 
-| Change Type | Description | Example |
-|-------------|-------------|---------|
-| Table creation | Add new Entity | Create `PostEntity` |
-| Column addition | Add new property | Add `phone` field |
-| Column modification | Change type/length | `varchar(100)` → `varchar(255)` |
-| Column deletion | Remove property | Delete `deprecated_field` |
-| Index addition | Define index | `indexes` array |
-| Foreign key addition | Define relationship | `belongsTo` relation |
+| Change Type          | Description         | Example                         |
+| -------------------- | ------------------- | ------------------------------- |
+| Table creation       | Add new Entity      | Create `PostEntity`             |
+| Column addition      | Add new property    | Add `phone` field               |
+| Column modification  | Change type/length  | `varchar(100)` → `varchar(255)` |
+| Column deletion      | Remove property     | Delete `deprecated_field`       |
+| Index addition       | Define index        | `indexes` array                 |
+| Foreign key addition | Define relationship | `belongsTo` relation            |
 
 ## Multi-Database Management
 
@@ -195,6 +201,7 @@ export default {
 ```
 
 **Migration targets**:
+
 - Databases ending with `_master`
 - All databases not ending with `_slave`
 
@@ -253,9 +260,7 @@ pnpm migrate run
 ```typescript title="user.model.ts"
 class UserModelClass extends BaseModelClass {
   async updateProfileImage(userId: number, imageUrl: string) {
-    await this.getPuri("w")
-      .update({ profile_image: imageUrl })
-      .where("id", userId);
+    await this.getPuri("w").update({ profile_image: imageUrl }).where("id", userId);
   }
 }
 ```
@@ -297,21 +302,23 @@ Sonamu.runScript(async () => {
 ```
 
 **Run**:
+
 ```bash
 pnpm tsx src/scripts/rollback-migration.ts
 ```
 
 <Warning>
-**Data loss risk**: Rollback can delete tables or columns, so use **very carefully in production**.
+  **Data loss risk**: Rollback can delete tables or columns, so use **very carefully in
+  production**.
 </Warning>
 
 ### Available Actions
 
 Actions supported by `Migrator.runAction()`:
 
-| Action | Description | Use Case |
-|--------|-------------|----------|
-| `apply` | Apply migrations | Apply new schema changes |
+| Action     | Description         | Use Case                   |
+| ---------- | ------------------- | -------------------------- |
+| `apply`    | Apply migrations    | Apply new schema changes   |
 | `rollback` | Rollback last batch | Revert mistaken migrations |
 
 ## Troubleshooting
@@ -319,11 +326,13 @@ Actions supported by `Migrator.runAction()`:
 ### Migration Conflict
 
 **Problem**: Multiple developers create migrations simultaneously
+
 ```
 Error: Migration conflict detected
 ```
 
 **Solution**:
+
 ```bash
 # 1. Get latest code
 git pull
@@ -338,11 +347,13 @@ pnpm migrate run
 ### Database Connection Failed
 
 **Problem**: DB connection failed
+
 ```
 Error: connect ECONNREFUSED 127.0.0.1:3306
 ```
 
 **Solution**:
+
 ```bash
 # 1. Check MySQL is running
 mysql -u root -p -e "SHOW DATABASES;"
@@ -357,6 +368,7 @@ mysql -u root -p -e "CREATE DATABASE myapp_dev;"
 ### Migration Order Error
 
 **Problem**: Applied in wrong order
+
 ```
 Error: Foreign key constraint violation
 ```
@@ -366,6 +378,7 @@ Error: Foreign key constraint violation
 When there are foreign key references, referenced tables must be created first.
 
 **Fix method 1: Programmatic rollback and reapply**
+
 ```typescript
 // Rollback
 const migrator = new Migrator();
@@ -379,6 +392,7 @@ await migrator.runAction("apply", ["development_master"]);
 ```
 
 **Fix method 2: Adjust Entity definition order**
+
 ```typescript
 // Adjust Entity file order to create users table first
 // Then run pnpm migrate run

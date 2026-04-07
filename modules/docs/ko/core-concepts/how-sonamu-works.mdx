@@ -15,11 +15,13 @@ Sonamu는 다음 원칙을 기반으로 설계되었습니다:
 </Step>
 
 <Step title="2. Type Safety (타입 안전성)">
-백엔드부터 프론트엔드까지 **완전한 타입 안전성**을 보장합니다. 컴파일 타임에 오류를 발견할 수 있습니다.
+  백엔드부터 프론트엔드까지 **완전한 타입 안전성**을 보장합니다. 컴파일 타임에 오류를 발견할 수
+  있습니다.
 </Step>
 
 <Step title="3. Code Generation (코드 자동 생성)">
-반복적인 보일러플레이트 코드를 **자동으로 생성**합니다. 개발자는 비즈니스 로직에만 집중할 수 있습니다.
+  반복적인 보일러플레이트 코드를 **자동으로 생성**합니다. 개발자는 비즈니스 로직에만 집중할 수
+  있습니다.
 </Step>
 
 <Step title="4. Developer Experience (개발자 경험)">
@@ -39,7 +41,7 @@ graph TD
     D["💼 Business Logic<br/><br/>Model (.model.ts)<br/>• CRUD 메서드<br/>• 커스텀 로직<br/>• @api 데코레이터"] --> E
     E["🔌 API Layer<br/><br/>Fastify Server<br/>• REST API<br/>• 자동 검증 (Zod)<br/>• 에러 핸들링"] --> F
     F["⚛️ Frontend Integration<br/><br/>Service (Web/App)<br/>• Type-safe API Client<br/>• Axios / TanStack Query<br/>• React Components"]
-    
+
     style A fill:#e3f2fd
     style B fill:#fff3e0
     style C fill:#f3e5f5
@@ -82,11 +84,8 @@ graph TD
 ```
 
 <Check>
-**엔티티 정의의 역할**
-- 데이터베이스 스키마의 소스
-- TypeScript 타입 생성의 기반
-- API 인터페이스의 정의
-- 프론트엔드 타입의 기준
+  **엔티티 정의의 역할** - 데이터베이스 스키마의 소스 - TypeScript 타입 생성의 기반 - API
+  인터페이스의 정의 - 프론트엔드 타입의 기준
 </Check>
 
 ### 2. Type System (타입 시스템)
@@ -104,11 +103,12 @@ export type User = z.infer<typeof UserBaseSchema>;
 
 // 커스텀 타입 (직접 작성 가능)
 export const UserSaveParams = UserBaseSchema.partial({
-  id: true,
-  created_at: true,
+id: true,
+created_at: true,
 });
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
-```
+
+````
 
 ```typescript title="sonamu.generated.ts (전체 Base 스키마)"
 // 자동 생성 - 수정 금지!
@@ -126,7 +126,7 @@ export type UserSubsetMapping = {
   A: User;
   C: Pick<User, "id" | "email" | "name">;
 };
-```
+````
 
 ```typescript title="sonamu.generated.sso.ts (쿼리 정의)"
 // 자동 생성 - 수정 금지!
@@ -135,13 +135,12 @@ export const userSubsetQueries = {
   C: `SELECT id, email, name FROM users`,
 };
 ```
+
 </CodeGroup>
 
 <Note>
-**타입 파일 3종 세트**
-1. `{entity}.types.ts` - 엔티티별 타입 (확장 가능)
-2. `sonamu.generated.ts` - 전체 Base 스키마 (자동 생성)
-3. `sonamu.generated.sso.ts` - Subset 쿼리 (자동 생성)
+  **타입 파일 3종 세트** 1. `{entity}.types.ts` - 엔티티별 타입 (확장 가능) 2. `sonamu.generated.ts`
+  - 전체 Base 스키마 (자동 생성) 3. `sonamu.generated.sso.ts` - Subset 쿼리 (자동 생성)
 </Note>
 
 ### 3. Model (비즈니스 로직)
@@ -164,10 +163,7 @@ class UserModelClass extends BaseModelClass<
 
   // CRUD API
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
-  async findById<T extends UserSubsetKey>(
-    subset: T,
-    id: number,
-  ): Promise<UserSubsetMapping[T]> {
+  async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
     const user = await this.db().where("id", id).first();
     return user;
   }
@@ -190,11 +186,8 @@ export const UserModel = new UserModelClass();
 ```
 
 <Check>
-**Model의 특징**
-- `@api` 데코레이터로 **자동 REST API 생성**
-- `BaseModelClass` 상속으로 **기본 CRUD 메서드** 제공
-- **Puri 쿼리 빌더**로 타입 안전한 DB 쿼리
-- **비즈니스 로직**에만 집중 가능
+  **Model의 특징** - `@api` 데코레이터로 **자동 REST API 생성** - `BaseModelClass` 상속으로 **기본
+  CRUD 메서드** 제공 - **Puri 쿼리 빌더**로 타입 안전한 DB 쿼리 - **비즈니스 로직**에만 집중 가능
 </Check>
 
 ### 4. Syncer (동기화 시스템)
@@ -268,9 +261,8 @@ graph TD
 ```
 
 <Info>
-**Syncer 동작 시점**
-- **자동**: `pnpm dev` 실행 중 파일 변경 시 (HMR)
-- **수동**: `pnpm sync` 명령어 실행 시
+  **Syncer 동작 시점** - **자동**: `pnpm dev` 실행 중 파일 변경 시 (HMR) - **수동**: `pnpm sync`
+  명령어 실행 시
 </Info>
 
 ### 5. API Layer (REST API)
@@ -302,12 +294,8 @@ curl http://localhost:34900/api/users/1?subset=A
 ```
 
 <Check>
-**자동 생성되는 것들**
-- ✅ REST API 라우트
-- ✅ 요청 파라미터 검증 (Zod)
-- ✅ 응답 타입
-- ✅ 에러 핸들링
-- ✅ API 문서 (sonamu.generated.http)
+  **자동 생성되는 것들** - ✅ REST API 라우트 - ✅ 요청 파라미터 검증 (Zod) - ✅ 응답 타입 - ✅ 에러
+  핸들링 - ✅ API 문서 (sonamu.generated.http)
 </Check>
 
 ### 6. Frontend Service (프론트엔드 통합)
@@ -323,10 +311,7 @@ export class UserService {
     return res.data;
   }
 
-  static async changePassword(
-    userId: number,
-    newPassword: string,
-  ): Promise<void> {
+  static async changePassword(userId: number, newPassword: string): Promise<void> {
     await axios.post("/api/users/changePassword", {
       userId,
       newPassword,
@@ -336,8 +321,8 @@ export class UserService {
 ```
 
 <Check>
-**타입 안전성**
-백엔드의 타입이 프론트엔드에 그대로 동기화되어, 타입 불일치 오류를 **컴파일 타임**에 발견할 수 있습니다!
+  **타입 안전성** 백엔드의 타입이 프론트엔드에 그대로 동기화되어, 타입 불일치 오류를 **컴파일
+  타임**에 발견할 수 있습니다!
 </Check>
 
 ## 개발 플로우
@@ -361,14 +346,8 @@ export class UserService {
 </Step>
 
 <Step title="2. 마이그레이션 (Migration 탭)">
-```sql
-CREATE TABLE posts (
-  id SERIAL PRIMARY KEY,
-  title VARCHAR(255) NOT NULL
-);
-```
-**실행 시:**
-- 데이터베이스에 테이블 생성
+  ```sql CREATE TABLE posts ( id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL ); ``` **실행 시:**
+  - 데이터베이스에 테이블 생성
 </Step>
 
 <Step title="3. Model 작성 (직접 또는 스캐폴딩)">
@@ -396,7 +375,17 @@ console.log(post.invalid); // ❌ 컴파일 에러!
 </Step>
 </Steps>
 
-<Frame caption="Development Flow"><video muted loop playsInline controls className="w-full rounded-xl" preload="metadata" src="https://cf.cartanova.ai/sonamu-docs/introduction1.mp4"></video></Frame>
+<Frame caption="Development Flow">
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/introduction1.mp4"
+  ></video>
+</Frame>
 
 ## HMR (Hot Module Replacement)
 
@@ -422,14 +411,20 @@ graceful shutdown → reload
 ```
 
 <Check>
-**HMR의 이점**
-- ✅ **빠른 피드백** - 코드 변경 후 1-2초 내 반영
-- ✅ **상태 유지** - 데이터베이스 연결 등 유지
-- ✅ **자동 동기화** - 프론트엔드 Service 자동 업데이트
+  **HMR의 이점** - ✅ **빠른 피드백** - 코드 변경 후 1-2초 내 반영 - ✅ **상태 유지** - 데이터베이스
+  연결 등 유지 - ✅ **자동 동기화** - 프론트엔드 Service 자동 업데이트
 </Check>
 
 <Frame caption="HMR in Action">
-<video muted loop playsInline controls className="w-full rounded-xl" preload="metadata" src="/images/introduction3.mp4"></video>
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="/images/introduction3.mp4"
+  ></video>
 </Frame>
 
 ## 자동 생성 메커니즘
@@ -477,6 +472,7 @@ user.types.ts 수정
 - `sonamu.generated.sso.ts` - 다음 sync 시 덮어씌워짐
 
 이 파일들은 항상 자동으로 생성되므로 직접 수정하지 마세요!
+
 </Warning>
 
 ## 타입 안전성의 흐름
@@ -534,6 +530,7 @@ console.log(user.invalid); // ❌ 컴파일 에러!
 4. Service → UI 타입 체크
 
 어느 단계에서든 타입이 변경되면, 전체 체인에 반영되어 컴파일 타임에 오류를 발견합니다!
+
 </Check>
 
 ## Sonamu의 주요 장점
@@ -563,7 +560,7 @@ Sonamu 방법:
 
 ```typescript
 // ❌ 전통적인 방법: 런타임 에러
-const user = await fetch("/api/users/1").then(r => r.json());
+const user = await fetch("/api/users/1").then((r) => r.json());
 console.log(user.eamil); // 오타! 런타임에만 발견 ⚠️
 
 // ✅ Sonamu: 컴파일 에러
@@ -618,7 +615,7 @@ Sonamu의 강력한 기능은 일부 제약사항을 동반합니다:
 2. **자동 생성 파일 수정 불가**: 수동 수정 시 덮어씌워집니다
 3. **엔티티 중심 설계 필수**: Sonamu 방식을 따라야 합니다
 4. **복잡한 쿼리**: 매우 복잡한 경우 Raw SQL 사용 필요
-</Warning>
+   </Warning>
 
 <Check>
 **하지만 장점이 훨씬 큽니다**
@@ -628,6 +625,7 @@ Sonamu의 강력한 기능은 일부 제약사항을 동반합니다:
 ✅ 유지보수성 향상
 ✅ 코드 일관성
 ✅ 팀 생산성 향상
+
 </Check>
 
 ## 다음 단계
@@ -641,7 +639,11 @@ Sonamu의 작동 원리를 이해했다면, 이제 각 구성 요소를 자세�
   <Card title="Model 이해하기" icon="code" href="/ko/core-concepts/model/what-is-model">
     Model의 역할과 비즈니스 로직 작성 방법을 배워보세요.
   </Card>
-  <Card title="자동 생성 메커니즘" icon="wand-magic-sparkles" href="/ko/core-concepts/auto-generation/what-gets-generated">
+  <Card
+    title="자동 생성 메커니즘"
+    icon="wand-magic-sparkles"
+    href="/ko/core-concepts/auto-generation/what-gets-generated"
+  >
     어떤 파일들이 자동으로 생성되는지 알아보세요.
   </Card>
   <Card title="타입 시스템" icon="shield" href="/ko/core-concepts/type-system/entity-types">

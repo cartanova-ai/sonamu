@@ -1,11 +1,13 @@
 import * as React from "react";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { useSonamuBaseContext } from "@/contexts";
 import CheckIcon from "~icons/lucide/check";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import Loader2Icon from "~icons/lucide/loader2";
 import XIcon from "~icons/lucide/x";
 import XCircleIcon from "~icons/lucide/x-circle";
+
+import { useSonamuBaseContext } from "@/contexts";
+
 import { cn } from "../../../lib/utils";
 import { Badge } from "../badge";
 import { Button } from "../button";
@@ -185,9 +187,7 @@ function useSelectCommon<Item>(
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   // async 모드에서 선택된 옵션 캐시
-  const [reservedOptions, setReservedOptions] = useState<Map<string, NormalizedItem<Value>>>(
-    new Map(),
-  );
+  const [reservedOptions, setReservedOptions] = useState(new Map());
 
   // 값 → 키 변환
   const getKeyForValue = useCallback(

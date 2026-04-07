@@ -23,36 +23,33 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   @api({ httpMethod: "GET" })
   async getCurrentUser(): Promise<User> {
     // Get Context
     const context = Sonamu.getContext();
-    
+
     // Access user info
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", context.user.id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", context.user.id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     return user;
   }
 }
 ```
 
 <Info>
-`Sonamu.getContext()` returns the Context of the currently executing API request.
-It returns the correct Context even during async operations.
+  `Sonamu.getContext()` returns the Context of the currently executing API request. It returns the
+  correct Context even during async operations.
 </Info>
 
 ## When to Use?
@@ -73,12 +70,12 @@ class PostModelClass extends BaseModelClass<
   @api({ httpMethod: "POST" })
   async create(params: PostSaveParams): Promise<{ postId: number }> {
     const context = Sonamu.getContext();
-    
+
     // Check login
     if (!context.user) {
       throw new Error("Login required");
     }
-    
+
     // Set current user as author
     const wdb = this.getPuri("w");
     const [post] = await wdb
@@ -89,7 +86,7 @@ class PostModelClass extends BaseModelClass<
         author: context.user.username,
       })
       .returning({ id: "id" });
-    
+
     return { postId: post.id };
   }
 }
@@ -111,17 +108,17 @@ class AdminModelClass extends BaseModelClass<
   @api({ httpMethod: "DELETE" })
   async deleteUser(userId: number): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     // Check authentication
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     // Check permission
     if (context.user.role !== "admin") {
       throw new Error("Admin permission required");
     }
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("users").where("id", userId).delete();
   }
@@ -142,36 +139,30 @@ class PostModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "PUT" })
-  async update(
-    postId: number,
-    params: PostSaveParams
-  ): Promise<void> {
+  async update(postId: number, params: PostSaveParams): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     const rdb = this.getPuri("r");
-    
+
     // Get post
-    const post = await rdb
-      .table("posts")
-      .where("id", postId)
-      .first();
-    
+    const post = await rdb.table("posts").where("id", postId).first();
+
     if (!post) {
       throw new Error("Post not found");
     }
-    
+
     // Check ownership (author or admin only)
     const isOwner = post.user_id === context.user.id;
     const isAdmin = context.user.role === "admin";
-    
+
     if (!isOwner && !isAdmin) {
       throw new Error("Permission denied");
     }
-    
+
     // Update
     const wdb = this.getPuri("w");
     await wdb.table("posts").where("id", postId).update(params);
@@ -195,9 +186,9 @@ class AnalyticsModelClass extends BaseModelClass<
   @api({ httpMethod: "POST" })
   async trackEvent(params: EventParams): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     const wdb = this.getPuri("w");
-    
+
     // Record Request info
     await wdb.table("analytics").insert({
       ...params,
@@ -228,23 +219,17 @@ class FileModelClass extends BaseModelClass<
   async download(fileId: number): Promise<Buffer> {
     const context = Sonamu.getContext();
     const rdb = this.getPuri("r");
-    
-    const file = await rdb
-      .table("files")
-      .where("id", fileId)
-      .first();
-    
+
+    const file = await rdb.table("files").where("id", fileId).first();
+
     if (!file) {
       throw new Error("File not found");
     }
-    
+
     // Set download headers
     context.reply.header("Content-Type", file.mime_type);
-    context.reply.header(
-      "Content-Disposition",
-      `attachment; filename="${file.filename}"`
-    );
-    
+    context.reply.header("Content-Disposition", `attachment; filename="${file.filename}"`);
+
     return Buffer.from(file.content);
   }
 }
@@ -259,28 +244,28 @@ class BaseModelClass {
   // Auth check helper
   protected requireAuth(): ContextUser {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       context.reply.status(401);
       throw new Error("Authentication required");
     }
-    
+
     return context.user;
   }
-  
+
   // Role check helper
   protected requireRole(role: UserRole): ContextUser {
     const user = this.requireAuth();
-    
+
     if (user.role !== role) {
       const context = Sonamu.getContext();
       context.reply.status(403);
       throw new Error(`${role} permission required`);
     }
-    
+
     return user;
   }
-  
+
   // Admin check helper
   protected requireAdmin(): ContextUser {
     return this.requireRole("admin");
@@ -302,16 +287,16 @@ class UserModelClass extends BaseModelClass<
   async remove(userId: number): Promise<void> {
     // Simple permission check
     this.requireAdmin();
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("users").where("id", userId).delete();
   }
-  
+
   @api({ httpMethod: "GET" })
   async getMyProfile(): Promise<User> {
     // Just check login
     const user = this.requireAuth();
-    
+
     const rdb = this.getPuri("r");
     return rdb.table("users").where("id", user.id).first();
   }
@@ -325,26 +310,23 @@ class BaseModelClass {
   protected async requireOwnership(
     tableName: string,
     itemId: number,
-    userIdField: string = "user_id"
+    userIdField: string = "user_id",
   ): Promise<void> {
     const user = this.requireAuth();
     const context = Sonamu.getContext();
     const rdb = this.getPuri("r");
-    
-    const item = await rdb
-      .table(tableName)
-      .where("id", itemId)
-      .first();
-    
+
+    const item = await rdb.table(tableName).where("id", itemId).first();
+
     if (!item) {
       context.reply.status(404);
       throw new Error("Item not found");
     }
-    
+
     // Allow owner or admin only
     const isOwner = item[userIdField] === user.id;
     const isAdmin = user.role === "admin";
-    
+
     if (!isOwner && !isAdmin) {
       context.reply.status(403);
       throw new Error("Permission denied");
@@ -367,7 +349,7 @@ class PostModelClass extends BaseModelClass<
   async remove(postId: number): Promise<void> {
     // Auto ownership check
     await this.requireOwnership("posts", postId);
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("posts").where("id", postId).delete();
   }
@@ -392,28 +374,28 @@ class UserModelClass extends BaseModelClass<
   @api({ httpMethod: "GET" })
   async getCurrentUser(): Promise<User> {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     return this.getUserById(context.user.id);
   }
-  
+
   // Also available in private methods
   private async getUserById(userId: number): Promise<User> {
     const context = Sonamu.getContext();
-    
+
     // Request logging
     console.log("getUserById called from IP:", context.request.ip);
-    
+
     const rdb = this.getPuri("r");
     const user = await rdb.table("users").where("id", userId).first();
-    
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     return user;
   }
 }
@@ -424,13 +406,13 @@ class UserModelClass extends BaseModelClass<
 ```typescript
 class AnalyticsFrame extends BaseFrameClass {
   frameName = "Analytics";
-  
+
   @api({ httpMethod: "POST" })
   async track(params: TrackParams): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     const wdb = this.getPuri("w");
-    
+
     await wdb.table("analytics").insert({
       event_type: params.eventType,
       event_data: JSON.stringify(params.data),
@@ -457,34 +439,28 @@ class NotificationModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "POST" })
-  async sendBulk(params: {
-    userIds: number[];
-    message: string;
-  }): Promise<void> {
+  async sendBulk(params: { userIds: number[]; message: string }): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     // Context accessible in async operations
     const promises = params.userIds.map(async (userId) => {
       const innerContext = Sonamu.getContext();
-      
+
       // Same Context
       console.log(innerContext.user?.id === context.user?.id); // true
-      
+
       return this.sendNotification(userId, params.message);
     });
-    
+
     await Promise.all(promises);
   }
-  
-  private async sendNotification(
-    userId: number,
-    message: string
-  ): Promise<void> {
+
+  private async sendNotification(userId: number, message: string): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     // Same Context here too
     const wdb = this.getPuri("w");
-    
+
     await wdb.table("notifications").insert({
       user_id: userId,
       message,
@@ -504,7 +480,7 @@ class BaseModelClass {
   protected async logAudit(action: string, details: any): Promise<void> {
     const context = Sonamu.getContext();
     const wdb = this.getPuri("w");
-    
+
     await wdb.table("audit_logs").insert({
       user_id: context.user?.id,
       action,
@@ -529,16 +505,16 @@ class UserModelClass extends BaseModelClass<
   @api({ httpMethod: "DELETE" })
   async remove(userId: number): Promise<void> {
     this.requireAdmin();
-    
+
     const rdb = this.getPuri("r");
     const user = await rdb.table("users").where("id", userId).first();
-    
+
     // Record audit log
     await this.logAudit("USER_DELETE", {
       targetUserId: userId,
       targetUsername: user.username,
     });
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("users").where("id", userId).delete();
   }
@@ -561,24 +537,22 @@ class ApiModelClass extends BaseModelClass<
   private async checkRateLimit(): Promise<void> {
     const context = Sonamu.getContext();
     const rdb = this.getPuri("r");
-    
-    const key = context.user
-      ? `user:${context.user.id}`
-      : `ip:${context.request.ip}`;
-    
+
+    const key = context.user ? `user:${context.user.id}` : `ip:${context.request.ip}`;
+
     const oneMinuteAgo = new Date(Date.now() - 60000);
-    
+
     const [{ count }] = await rdb
       .table("request_logs")
       .where("key", key)
       .where("timestamp", ">=", oneMinuteAgo)
       .count({ count: "*" });
-    
+
     if (count >= 100) {
       context.reply.status(429);
       throw new Error("Too many requests");
     }
-    
+
     // Log request
     const wdb = this.getPuri("w");
     await wdb.table("request_logs").insert({
@@ -586,11 +560,11 @@ class ApiModelClass extends BaseModelClass<
       timestamp: new Date(),
     });
   }
-  
+
   @api({ httpMethod: "GET" })
   async list(): Promise<any[]> {
     await this.checkRateLimit();
-    
+
     const rdb = this.getPuri("r");
     return rdb.table("items").select("*");
   }
@@ -612,32 +586,32 @@ class I18nModelClass extends BaseModelClass<
 
   private getLanguage(): string {
     const context = Sonamu.getContext();
-    
+
     // Extract language from Accept-Language header
     const acceptLanguage = context.request.headers["accept-language"];
-    
+
     if (acceptLanguage) {
       const lang = acceptLanguage.split(",")[0].split("-")[0];
       return lang;
     }
-    
+
     return "en"; // Default
   }
-  
+
   @api({ httpMethod: "GET" })
   async getMessages(): Promise<Record<string, string>> {
     const language = this.getLanguage();
     const rdb = this.getPuri("r");
-    
-    const messages = await rdb
-      .table("translations")
-      .where("language", language)
-      .select("*");
-    
-    return messages.reduce((acc, msg) => {
-      acc[msg.key] = msg.value;
-      return acc;
-    }, {} as Record<string, string>);
+
+    const messages = await rdb.table("translations").where("language", language).select("*");
+
+    return messages.reduce(
+      (acc, msg) => {
+        acc[msg.key] = msg.value;
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
   }
 }
 ```
@@ -645,12 +619,9 @@ class I18nModelClass extends BaseModelClass<
 ## Cautions
 
 <Warning>
-**Cautions when using Context**:
-1. Can only be called within API methods
-2. Cannot be called in constructors or class fields
-3. Same Context maintained across async boundaries
-4. Multiple calls return the same object
-5. Recommended to treat Context as read-only
+  **Cautions when using Context**: 1. Can only be called within API methods 2. Cannot be called in
+  constructors or class fields 3. Same Context maintained across async boundaries 4. Multiple calls
+  return the same object 5. Recommended to treat Context as read-only
 </Warning>
 
 ### Common Mistakes
@@ -664,7 +635,7 @@ class UserModelClass extends BaseModelClass<
   typeof userLoaderQueries
 > {
   private currentUser?: ContextUser;
-  
+
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
     // No Context in constructor
@@ -714,7 +685,7 @@ class UserModelClass extends BaseModelClass<
     const context = Sonamu.getContext(); // ← OK
     // ...
   }
-  
+
   private async helperMethod(): Promise<void> {
     // OK when called from API method
     const context = Sonamu.getContext(); // ← OK
@@ -729,13 +700,21 @@ class UserModelClass extends BaseModelClass<
   <Card title="SonamuContext" icon="cube" href="/en/api-development/context/sonamu-context">
     Understanding Context structure
   </Card>
-  <Card title="Custom Context" icon="puzzle-piece" href="/en/api-development/context/custom-context">
+  <Card
+    title="Custom Context"
+    icon="puzzle-piece"
+    href="/en/api-development/context/custom-context"
+  >
     Extending Context
   </Card>
   <Card title="@api Decorator" icon="at" href="/en/api-development/creating-apis/api-decorator">
     API basic usage
   </Card>
-  <Card title="Error Handling" icon="triangle-exclamation" href="/en/api-development/error-handling">
+  <Card
+    title="Error Handling"
+    icon="triangle-exclamation"
+    href="/en/api-development/error-handling"
+  >
     API error handling
   </Card>
 </CardGroup>

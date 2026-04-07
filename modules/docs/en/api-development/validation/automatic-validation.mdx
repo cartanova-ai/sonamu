@@ -9,24 +9,16 @@ Sonamu can automatically validate API parameters using Zod.
 
 <CardGroup cols={2}>
   <Card title="Type Safety" icon="shield-check">
-    Compile-time validation
-    
-    Automated runtime validation
+    Compile-time validation Automated runtime validation
   </Card>
   <Card title="Automatic Validation" icon="wand-magic-sparkles">
-    Schema-based validation
-    
-    Auto-generated error messages
+    Schema-based validation Auto-generated error messages
   </Card>
   <Card title="Type Inference" icon="code">
-    TypeScript type generation
-    
-    Autocomplete support
+    TypeScript type generation Autocomplete support
   </Card>
   <Card title="Extensible" icon="puzzle-piece">
-    Custom validation rules
-    
-    Transform support
+    Custom validation rules Transform support
   </Card>
 </CardGroup>
 
@@ -38,9 +30,7 @@ npm install zod
 pnpm add zod
 ```
 
-<Info>
-Sonamu supports Zod v4. Install the latest version.
-</Info>
+<Info>Sonamu supports Zod v4. Install the latest version.</Info>
 
 ## Basic Usage
 
@@ -71,18 +61,15 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     // Validate with schema
     const validated = CreateUserSchema.parse(params);
-    
+
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(validated)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+
     return { userId: user.id };
   }
 }
@@ -106,13 +93,10 @@ class UserModelClass extends BaseModelClass<
     try {
       // Validate
       const validated = CreateUserSchema.parse(params);
-      
+
       const wdb = this.getPuri("w");
-      const [user] = await wdb
-        .table("users")
-        .insert(validated)
-        .returning({ id: "id" });
-      
+      const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+
       return { userId: user.id };
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -160,14 +144,18 @@ const UserSchema = z.object({
   email: z.string().email(),
   username: z.string().min(3).max(20),
   age: z.number().int().min(18).optional(),
-  profile: z.object({
-    bio: z.string().max(500).optional(),
-    avatarUrl: z.string().url().optional(),
-    socialLinks: z.object({
-      twitter: z.string().url().optional(),
-      github: z.string().url().optional(),
-    }).optional(),
-  }).optional(),
+  profile: z
+    .object({
+      bio: z.string().max(500).optional(),
+      avatarUrl: z.string().url().optional(),
+      socialLinks: z
+        .object({
+          twitter: z.string().url().optional(),
+          github: z.string().url().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
 });
 
 type User = z.infer<typeof UserSchema>;
@@ -197,7 +185,7 @@ const UserArraySchema = z.array(
   z.object({
     id: z.number(),
     name: z.string(),
-  })
+  }),
 );
 
 // Min/max length
@@ -218,11 +206,7 @@ type Role = z.infer<typeof RoleSchema>; // "admin" | "manager" | "normal"
 const StatusSchema = z.literal(["active", "inactive", "pending"]);
 
 // Union
-const RoleOrStatusSchema = z.union([
-  z.literal("admin"),
-  z.literal("user"),
-  z.literal("guest"),
-]);
+const RoleOrStatusSchema = z.union([z.literal("admin"), z.literal("user"), z.literal("guest")]);
 ```
 
 ### Optional and Nullable
@@ -249,27 +233,29 @@ const DefaultSchema = z.string().default("default value");
 ### User Registration
 
 ```typescript
-const RegisterSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  username: z
-    .string()
-    .min(3, "Username must be at least 3 characters")
-    .max(20, "Username can be up to 20 characters")
-    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Password must contain at least 1 uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least 1 lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least 1 number"),
-  confirmPassword: z.string(),
-  agreeToTerms: z.boolean().refine((val) => val === true, {
-    message: "You must agree to the terms of service",
-  }),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
+const RegisterSchema = z
+  .object({
+    email: z.string().email("Please enter a valid email"),
+    username: z
+      .string()
+      .min(3, "Username must be at least 3 characters")
+      .max(20, "Username can be up to 20 characters")
+      .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain at least 1 uppercase letter")
+      .regex(/[a-z]/, "Password must contain at least 1 lowercase letter")
+      .regex(/[0-9]/, "Password must contain at least 1 number"),
+    confirmPassword: z.string(),
+    agreeToTerms: z.boolean().refine((val) => val === true, {
+      message: "You must agree to the terms of service",
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 type RegisterParams = z.infer<typeof RegisterSchema>;
 
@@ -286,12 +272,12 @@ class AuthModelClass extends BaseModelClass<
   @api({ httpMethod: "POST" })
   async register(params: RegisterParams): Promise<{ userId: number }> {
     const validated = RegisterSchema.parse(params);
-    
+
     const wdb = this.getPuri("w");
-    
+
     // Save excluding confirmPassword
     const { confirmPassword, agreeToTerms, ...userData } = validated;
-    
+
     const [user] = await wdb
       .table("users")
       .insert({
@@ -299,7 +285,7 @@ class AuthModelClass extends BaseModelClass<
         role: "normal",
       })
       .returning({ id: "id" });
-    
+
     return { userId: user.id };
   }
 }
@@ -341,31 +327,31 @@ class UserModelClass extends BaseModelClass<
     pageSize: number;
   }> {
     const validated = UserListSchema.parse(params);
-    
+
     const rdb = this.getPuri("r");
-    
+
     let query = rdb.table("users");
-    
+
     if (validated.search) {
       query = query.where("username", "like", `%${validated.search}%`);
     }
-    
+
     if (validated.role) {
       query = query.where("role", validated.role);
     }
-    
+
     if (validated.isActive !== undefined) {
       query = query.where("is_active", validated.isActive);
     }
-    
+
     const users = await query
       .orderBy(validated.sortBy || "created_at", validated.sortOrder)
       .limit(validated.pageSize)
       .offset((validated.page - 1) * validated.pageSize)
       .select("*");
-    
+
     const [{ count }] = await rdb.table("users").count({ count: "*" });
-    
+
     return {
       users,
       total: count,
@@ -379,16 +365,15 @@ class UserModelClass extends BaseModelClass<
 ### Date Range Validation
 
 ```typescript
-const DateRangeSchema = z.object({
-  startDate: z.string().datetime(),
-  endDate: z.string().datetime(),
-}).refine(
-  (data) => new Date(data.startDate) < new Date(data.endDate),
-  {
+const DateRangeSchema = z
+  .object({
+    startDate: z.string().datetime(),
+    endDate: z.string().datetime(),
+  })
+  .refine((data) => new Date(data.startDate) < new Date(data.endDate), {
     message: "Start date must be before end date",
     path: ["endDate"],
-  }
-);
+  });
 
 const ReportSchema = z.object({
   dateRange: DateRangeSchema,
@@ -411,7 +396,7 @@ class ReportModelClass extends BaseModelClass<
   @api({ httpMethod: "POST" })
   async generate(params: ReportParams): Promise<{ reportId: number }> {
     const validated = ReportSchema.parse(params);
-    
+
     // Report generation logic
     // ...
   }
@@ -431,7 +416,10 @@ const LowercaseEmailSchema = z
   .transform((val) => val.toLowerCase());
 
 const UserSchema = z.object({
-  email: z.string().email().transform((val) => val.toLowerCase()),
+  email: z
+    .string()
+    .email()
+    .transform((val) => val.toLowerCase()),
   username: z.string().transform((val) => val.trim()),
 });
 ```
@@ -545,7 +533,7 @@ const ComplexSchema = z
         path: ["endDate"],
       });
     }
-    
+
     // Participant count validation
     if (data.participants.length < 2) {
       ctx.addIssue({
@@ -554,7 +542,7 @@ const ComplexSchema = z
         path: ["participants"],
       });
     }
-    
+
     // Duplicate validation
     const uniqueParticipants = new Set(data.participants);
     if (uniqueParticipants.size !== data.participants.length) {
@@ -584,29 +572,26 @@ class UserModelClass extends BaseModelClass<
   async create(params: unknown): Promise<{ userId: number }> {
     // safeParse doesn't throw exceptions
     const result = CreateUserSchema.safeParse(params);
-    
+
     if (!result.success) {
       // Validation failed
       const context = Sonamu.getContext();
       context.reply.status(400);
-      
+
       const errors = result.error.errors.map((e) => ({
         field: e.path.join("."),
         message: e.message,
       }));
-      
+
       throw new Error(JSON.stringify({ errors }));
     }
-    
+
     // Validation succeeded
     const validated = result.data;
-    
+
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(validated)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+
     return { userId: user.id };
   }
 }
@@ -629,13 +614,13 @@ z.setErrorMap((issue, ctx) => {
       return { message: "Must be a number" };
     }
   }
-  
+
   if (issue.code === z.ZodIssueCode.too_small) {
     if (issue.type === "string") {
       return { message: `Must be at least ${issue.minimum} characters` };
     }
   }
-  
+
   return { message: ctx.defaultError };
 });
 ```
@@ -644,36 +629,45 @@ z.setErrorMap((issue, ctx) => {
 
 ```typescript
 const UserSchema = z.object({
-  email: z.string({
-    required_error: "Email is required",
-    invalid_type_error: "Email must be a string",
-  }).email("Invalid email format"),
-  
-  age: z.number({
-    required_error: "Age is required",
-    invalid_type_error: "Age must be a number",
-  }).min(18, "Must be at least 18 years old"),
+  email: z
+    .string({
+      required_error: "Email is required",
+      invalid_type_error: "Email must be a string",
+    })
+    .email("Invalid email format"),
+
+  age: z
+    .number({
+      required_error: "Age is required",
+      invalid_type_error: "Age must be a number",
+    })
+    .min(18, "Must be at least 18 years old"),
 });
 ```
 
 ## Cautions
 
 <Warning>
-**Cautions when using Zod validation**:
-1. parse() throws exception on validation failure
-2. safeParse() returns result object
-3. Transform executes after validation
-4. refine() executes last
-5. Reuse schemas for performance
+  **Cautions when using Zod validation**: 1. parse() throws exception on validation failure 2.
+  safeParse() returns result object 3. Transform executes after validation 4. refine() executes last
+  5. Reuse schemas for performance
 </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Custom Validation" icon="code" href="/en/api-development/validation/custom-validation">
+  <Card
+    title="Custom Validation"
+    icon="code"
+    href="/en/api-development/validation/custom-validation"
+  >
     Implementing custom validation logic
   </Card>
-  <Card title="Error Handling" icon="triangle-exclamation" href="/en/api-development/validation/error-handling">
+  <Card
+    title="Error Handling"
+    icon="triangle-exclamation"
+    href="/en/api-development/validation/error-handling"
+  >
     Using SonamuError
   </Card>
   <Card title="Parameters" icon="sliders" href="/en/api-development/creating-apis/parameters">

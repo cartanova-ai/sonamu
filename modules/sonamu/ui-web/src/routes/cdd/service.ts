@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
+
 import { fetch } from "../../services/sonamu.shared";
-import type {
-  CddAcListResult,
-  CddAddRuleRequest,
-  CddContentResult,
-  CddRuleDetail,
-  CddRuleSummary,
-  CddTreeNode,
+import {
+  type CddAcListResult,
+  type CddAddRuleRequest,
+  type CddContentResult,
+  type CddRuleDetail,
+  type CddRuleSummary,
+  type CddTreeNode,
 } from "./types";
 
 export namespace CddService {

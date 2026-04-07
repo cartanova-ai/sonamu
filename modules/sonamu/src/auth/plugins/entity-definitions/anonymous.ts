@@ -1,4 +1,4 @@
-import type { BetterAuthEntityDef } from "./types";
+import { type BetterAuthEntityDef } from "./types";
 
 /**
  * better-auth Anonymous 플러그인 엔티티 정의

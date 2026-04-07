@@ -21,6 +21,7 @@ graph LR
 ```
 
 **Key Features**:
+
 - Text Generation
 - Streaming Responses
 - Tool Calling
@@ -34,12 +35,12 @@ graph LR
 Generates plain text.
 
 ```typescript
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+import { openai } from "@ai-sdk/openai";
+import { generateText } from "ai";
 
 const result = await generateText({
-  model: openai('gpt-4o'),
-  prompt: 'Tell me how to create an Express server with TypeScript',
+  model: openai("gpt-4o"),
+  prompt: "Tell me how to create an Express server with TypeScript",
 });
 
 console.log(result.text);
@@ -50,12 +51,12 @@ console.log(result.text);
 
 ```typescript
 const result = await generateText({
-  model: openai('gpt-4o'),
+  model: openai("gpt-4o"),
   messages: [
-    { role: 'system', content: 'You are a friendly programming assistant.' },
-    { role: 'user', content: 'What is TypeScript?' },
-    { role: 'assistant', content: 'TypeScript is JavaScript with types added...' },
-    { role: 'user', content: 'What are its advantages?' },
+    { role: "system", content: "You are a friendly programming assistant." },
+    { role: "user", content: "What is TypeScript?" },
+    { role: "assistant", content: "TypeScript is JavaScript with types added..." },
+    { role: "user", content: "What are its advantages?" },
   ],
 });
 ```
@@ -67,12 +68,12 @@ const result = await generateText({
 Streams text in real-time.
 
 ```typescript
-import { openai } from '@ai-sdk/openai';
-import { streamText } from 'ai';
+import { openai } from "@ai-sdk/openai";
+import { streamText } from "ai";
 
 const result = streamText({
-  model: openai('gpt-4o'),
-  prompt: 'Tell me a long story',
+  model: openai("gpt-4o"),
+  prompt: "Tell me a long story",
 });
 
 // Process stream
@@ -85,8 +86,8 @@ for await (const chunk of result.textStream) {
 
 ```typescript
 import { BaseModelClass, stream } from "sonamu";
-import { openai } from '@ai-sdk/openai';
-import { streamText } from 'ai';
+import { openai } from "@ai-sdk/openai";
+import { streamText } from "ai";
 import { z } from "zod";
 
 const ChatStreamEvents = z.object({
@@ -100,7 +101,7 @@ const ChatStreamEvents = z.object({
 
 class ChatModelClass extends BaseModelClass {
   @stream({
-    type: 'sse',
+    type: "sse",
     events: ChatStreamEvents,
   })
   async streamChat(message: string, ctx: Context): Promise<void> {
@@ -108,20 +109,18 @@ class ChatModelClass extends BaseModelClass {
 
     try {
       const result = streamText({
-        model: openai('gpt-4o'),
-        messages: [
-          { role: 'user', content: message },
-        ],
+        model: openai("gpt-4o"),
+        messages: [{ role: "user", content: message }],
       });
 
       // Real-time transmission
       for await (const chunk of result.textStream) {
-        sse.publish('chunk', { text: chunk });
+        sse.publish("chunk", { text: chunk });
       }
 
       // Completion statistics
       const usage = await result.usage;
-      sse.publish('complete', {
+      sse.publish("complete", {
         totalTokens: usage.totalTokens,
       });
     } finally {
@@ -136,18 +135,18 @@ class ChatModelClass extends BaseModelClass {
 ### Single Tool
 
 ```typescript
-import { openai } from '@ai-sdk/openai';
-import { generateText, tool } from 'ai';
-import { z } from 'zod';
+import { openai } from "@ai-sdk/openai";
+import { generateText, tool } from "ai";
+import { z } from "zod";
 
 const result = await generateText({
-  model: openai('gpt-4o'),
-  prompt: 'Tell me the current weather in Seoul',
+  model: openai("gpt-4o"),
+  prompt: "Tell me the current weather in Seoul",
   tools: {
     getWeather: tool({
-      description: 'Fetches the current weather for a specific city',
+      description: "Fetches the current weather for a specific city",
       parameters: z.object({
-        city: z.string().describe('City name'),
+        city: z.string().describe("City name"),
       }),
       execute: async ({ city }) => {
         // Call weather API
@@ -159,7 +158,7 @@ const result = await generateText({
       },
     }),
   },
-  maxSteps: 5,  // Maximum number of tool calls
+  maxSteps: 5, // Maximum number of tool calls
 });
 
 console.log(result.text);
@@ -170,11 +169,11 @@ console.log(result.text);
 
 ```typescript
 const result = await generateText({
-  model: openai('gpt-4o'),
-  prompt: 'Check the weather in Seoul and tell me if I need an umbrella',
+  model: openai("gpt-4o"),
+  prompt: "Check the weather in Seoul and tell me if I need an umbrella",
   tools: {
     getWeather: tool({
-      description: 'Get weather information',
+      description: "Get weather information",
       parameters: z.object({
         city: z.string(),
       }),
@@ -183,13 +182,13 @@ const result = await generateText({
       },
     }),
     checkUmbrella: tool({
-      description: 'Determine if an umbrella is needed based on weather information',
+      description: "Determine if an umbrella is needed based on weather information",
       parameters: z.object({
-        condition: z.string().describe('Weather condition'),
+        condition: z.string().describe("Weather condition"),
       }),
       execute: async ({ condition }) => {
         return {
-          needUmbrella: ['rain', 'snow'].includes(condition),
+          needUmbrella: ["rain", "snow"].includes(condition),
         };
       },
     }),
@@ -205,12 +204,12 @@ const result = await generateText({
 Generates structured data in JSON format.
 
 ```typescript
-import { openai } from '@ai-sdk/openai';
-import { generateObject } from 'ai';
-import { z } from 'zod';
+import { openai } from "@ai-sdk/openai";
+import { generateObject } from "ai";
+import { z } from "zod";
 
 const result = await generateObject({
-  model: openai('gpt-4o'),
+  model: openai("gpt-4o"),
   schema: z.object({
     name: z.string(),
     age: z.number(),
@@ -220,7 +219,7 @@ const result = await generateObject({
       country: z.string(),
     }),
   }),
-  prompt: 'Generate information about John Doe',
+  prompt: "Generate information about John Doe",
 });
 
 console.log(result.object);
@@ -239,15 +238,15 @@ console.log(result.object);
 
 ```typescript
 import { BaseModelClass, api } from "sonamu";
-import { openai } from '@ai-sdk/openai';
-import { generateObject } from 'ai';
-import { z } from 'zod';
+import { openai } from "@ai-sdk/openai";
+import { generateObject } from "ai";
+import { z } from "zod";
 
 class ProductModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async generateProductDescription(productName: string) {
     const result = await generateObject({
-      model: openai('gpt-4o'),
+      model: openai("gpt-4o"),
       schema: z.object({
         title: z.string(),
         description: z.string(),
@@ -286,13 +285,13 @@ RTZR_CLIENT_SECRET=your_client_secret
 ### Basic Usage
 
 ```typescript
-import { rtzr } from 'sonamu/ai/providers/rtzr';
+import { rtzr } from "sonamu/ai/providers/rtzr";
 
-const model = rtzr.transcription('whisper');
+const model = rtzr.transcription("whisper");
 
 const result = await model.doGenerate({
-  audio: audioBuffer,  // Uint8Array or Base64
-  mediaType: 'audio/wav',
+  audio: audioBuffer, // Uint8Array or Base64
+  mediaType: "audio/wav",
 });
 
 console.log(result.text);
@@ -309,21 +308,21 @@ console.log(result.segments);
 
 ```typescript
 import { BaseModelClass, upload, api } from "sonamu";
-import { rtzr } from 'sonamu/ai/providers/rtzr';
+import { rtzr } from "sonamu/ai/providers/rtzr";
 
 class TranscriptionModelClass extends BaseModelClass {
-  @upload({ mode: 'single' })
-  @api({ httpMethod: 'POST' })
+  @upload({ mode: "single" })
+  @api({ httpMethod: "POST" })
   async transcribeAudio() {
     const { files } = Sonamu.getContext();
     const file = files?.[0]; // Use first file
 
     if (!file) {
-      throw new Error('No audio file provided');
+      throw new Error("No audio file provided");
     }
 
     // Speech recognition
-    const model = rtzr.transcription('whisper');
+    const model = rtzr.transcription("whisper");
     const buffer = await file.toBuffer();
 
     const result = await model.doGenerate({
@@ -353,16 +352,16 @@ class TranscriptionModelClass extends BaseModelClass {
 ```typescript
 const result = await model.doGenerate({
   audio: audioBuffer,
-  mediaType: 'audio/wav',
+  mediaType: "audio/wav",
   providerOptions: {
     rtzr: {
-      domain: 'GENERAL',  // 'CALL' | 'GENERAL'
-      language: 'ko',
-      diarization: true,  // Speaker separation
-      wordTimestamp: true,  // Word-level timestamps
-      profanityFilter: false,  // Profanity filter
-    }
-  }
+      domain: "GENERAL", // 'CALL' | 'GENERAL'
+      language: "ko",
+      diarization: true, // Speaker separation
+      wordTimestamp: true, // Word-level timestamps
+      profanityFilter: false, // Profanity filter
+    },
+  },
 });
 ```
 
@@ -371,19 +370,19 @@ const result = await model.doGenerate({
 GPT-4o can accept images as input.
 
 ```typescript
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+import { openai } from "@ai-sdk/openai";
+import { generateText } from "ai";
 
 const result = await generateText({
-  model: openai('gpt-4o'),
+  model: openai("gpt-4o"),
   messages: [
     {
-      role: 'user',
+      role: "user",
       content: [
-        { type: 'text', text: 'What is in this image?' },
+        { type: "text", text: "What is in this image?" },
         {
-          type: 'image',
-          image: imageBuffer,  // Uint8Array or URL
+          type: "image",
+          image: imageBuffer, // Uint8Array or URL
         },
       ],
     },
@@ -398,30 +397,30 @@ console.log(result.text);
 
 ```typescript
 import { BaseModelClass, upload, api } from "sonamu";
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+import { openai } from "@ai-sdk/openai";
+import { generateText } from "ai";
 
 class ImageAnalysisModelClass extends BaseModelClass {
-  @upload({ mode: 'single' })
-  @api({ httpMethod: 'POST' })
+  @upload({ mode: "single" })
+  @api({ httpMethod: "POST" })
   async analyzeImage() {
     const { files } = Sonamu.getContext();
     const file = files?.[0]; // Use first file
 
-    if (!file || !file.mimetype.startsWith('image/')) {
-      throw new Error('An image file is required');
+    if (!file || !file.mimetype.startsWith("image/")) {
+      throw new Error("An image file is required");
     }
 
     const buffer = await file.toBuffer();
 
     const result = await generateText({
-      model: openai('gpt-4o'),
+      model: openai("gpt-4o"),
       messages: [
         {
-          role: 'user',
+          role: "user",
           content: [
-            { type: 'text', text: 'Analyze this image in detail' },
-            { type: 'image', image: buffer },
+            { type: "text", text: "Analyze this image in detail" },
+            { type: "image", image: buffer },
           ],
         },
       ],
@@ -438,27 +437,27 @@ class ImageAnalysisModelClass extends BaseModelClass {
 ## Error Handling
 
 ```typescript
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+import { openai } from "@ai-sdk/openai";
+import { generateText } from "ai";
 
 try {
   const result = await generateText({
-    model: openai('gpt-4o'),
-    prompt: '...',
+    model: openai("gpt-4o"),
+    prompt: "...",
   });
 
   return result.text;
 } catch (error) {
-  if (error.name === 'AI_APICallError') {
+  if (error.name === "AI_APICallError") {
     // API call error
-    console.error('API Error:', error.message);
-    console.error('Status:', error.statusCode);
-  } else if (error.name === 'AI_InvalidPromptError') {
+    console.error("API Error:", error.message);
+    console.error("Status:", error.statusCode);
+  } else if (error.name === "AI_InvalidPromptError") {
     // Prompt error
-    console.error('Invalid Prompt:', error.message);
+    console.error("Invalid Prompt:", error.message);
   } else {
     // Other errors
-    console.error('Unknown Error:', error);
+    console.error("Unknown Error:", error);
   }
 
   throw error;
@@ -469,19 +468,19 @@ try {
 
 ```typescript
 const result = await generateText({
-  model: openai('gpt-4o'),
-  prompt: '...',
+  model: openai("gpt-4o"),
+  prompt: "...",
 });
 
 // Token usage
-console.log('Prompt Tokens:', result.usage.promptTokens);
-console.log('Completion Tokens:', result.usage.completionTokens);
-console.log('Total Tokens:', result.usage.totalTokens);
+console.log("Prompt Tokens:", result.usage.promptTokens);
+console.log("Completion Tokens:", result.usage.completionTokens);
+console.log("Total Tokens:", result.usage.totalTokens);
 
 // Cost calculation (example)
-const costPerToken = 0.00003;  // GPT-4o pricing
+const costPerToken = 0.00003; // GPT-4o pricing
 const cost = result.usage.totalTokens * costPerToken;
-console.log('Cost:', cost);
+console.log("Cost:", cost);
 ```
 
 ## Practical Integration Example
@@ -490,35 +489,29 @@ console.log('Cost:', cost);
 
 ```typescript
 import { BaseModelClass, api } from "sonamu";
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
-import { z } from 'zod';
+import { openai } from "@ai-sdk/openai";
+import { generateText } from "ai";
+import { z } from "zod";
 
 class ChatModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
-  async chat(
-    message: string,
-    conversationId: number | null,
-    ctx: Context
-  ) {
+  @api({ httpMethod: "POST" })
+  async chat(message: string, conversationId: number | null, ctx: Context) {
     // Retrieve conversation history
-    const history = conversationId
-      ? await ConversationModel.findById(conversationId)
-      : null;
+    const history = conversationId ? await ConversationModel.findById(conversationId) : null;
 
     const messages = history?.messages || [];
     messages.push({
-      role: 'user',
+      role: "user",
       content: message,
     });
 
     // Generate AI response
     const result = await generateText({
-      model: openai('gpt-4o'),
+      model: openai("gpt-4o"),
       messages: [
         {
-          role: 'system',
-          content: 'You are a friendly customer support chatbot.',
+          role: "system",
+          content: "You are a friendly customer support chatbot.",
         },
         ...messages,
       ],
@@ -528,7 +521,7 @@ class ChatModelClass extends BaseModelClass {
 
     // Save response
     messages.push({
-      role: 'assistant',
+      role: "assistant",
       content: result.text,
     });
 
@@ -554,15 +547,17 @@ class ChatModelClass extends BaseModelClass {
 **Important considerations when using the AI SDK**:
 
 1. **API Key Security**: Use environment variables
+
    ```typescript
    // ❌ Hardcoded
-   const model = openai('gpt-4o', { apiKey: 'sk-...' });
+   const model = openai("gpt-4o", { apiKey: "sk-..." });
 
    // ✅ Environment variable
-   const model = openai('gpt-4o');  // Automatically uses OPENAI_API_KEY
+   const model = openai("gpt-4o"); // Automatically uses OPENAI_API_KEY
    ```
 
 2. **Error Handling**: Always use try-catch
+
    ```typescript
    try {
      const result = await generateText({ ... });
@@ -572,15 +567,17 @@ class ChatModelClass extends BaseModelClass {
    ```
 
 3. **Token Limits**: Set maxTokens
+
    ```typescript
    generateText({
-     model: openai('gpt-4o'),
-     prompt: '...',
-     maxTokens: 1000,  // Cost control
+     model: openai("gpt-4o"),
+     prompt: "...",
+     maxTokens: 1000, // Cost control
    });
    ```
 
 4. **Streaming Cleanup**: Terminate stream even on errors
+
    ```typescript
    try {
      for await (const chunk of result.textStream) {
@@ -592,9 +589,10 @@ class ChatModelClass extends BaseModelClass {
    ```
 
 5. **Rtzr File Size**: Large files require chunking
+
    ```typescript
    if (file.size > 10 * 1024 * 1024) {
-     throw new Error('File size must be 10MB or less');
+     throw new Error("File size must be 10MB or less");
    }
    ```
 
@@ -602,10 +600,10 @@ class ChatModelClass extends BaseModelClass {
    ```typescript
    // Image size limit (20MB)
    if (imageBuffer.length > 20 * 1024 * 1024) {
-     throw new Error('Image is too large');
+     throw new Error("Image is too large");
    }
    ```
-</Warning>
+   </Warning>
 
 ## Vercel AI SDK Documentation
 
@@ -618,7 +616,11 @@ For more features, refer to the official documentation:
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Agent Configuration" icon="gear" href="/en/advanced-features/ai-agents/agent-configuration">
+  <Card
+    title="Agent Configuration"
+    icon="gear"
+    href="/en/advanced-features/ai-agents/agent-configuration"
+  >
     Configure agent basics
   </Card>
   <Card title="Creating Agents" icon="robot" href="/en/advanced-features/ai-agents/creating-agents">

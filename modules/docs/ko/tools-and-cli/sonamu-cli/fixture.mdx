@@ -25,6 +25,7 @@ pnpm fixture init
 ```
 
 **실행 과정**:
+
 ```
 DUMP...
   ✓ Schema dumped from development_master
@@ -41,12 +42,11 @@ Fixture initialization completed!
 ```
 
 **생성되는 데이터베이스**:
+
 - **Fixture DB** (원격): 공유 fixture 저장소
 - **Test DB** (로컬): 로컬 테스트용 DB
 
-<Info>
-`init`은 **스키마만** 복사합니다. 데이터는 포함되지 않습니다.
-</Info>
+<Info>`init`은 **스키마만** 복사합니다. 데이터는 포함되지 않습니다.</Info>
 
 ### import - 데이터 가져오기
 
@@ -63,7 +63,7 @@ pnpm fixture import
 ❯ User
   Post
   Comment
-  
+
 ? Enter record IDs (comma-separated): 1,2,3
 
 Importing fixtures...
@@ -76,6 +76,7 @@ Fixture import completed!
 ```
 
 **자동으로 포함되는 관련 데이터**:
+
 - 외래키로 참조되는 레코드
 - 관계 테이블의 레코드
 - 역참조 레코드 (선택 가능)
@@ -89,6 +90,7 @@ pnpm fixture sync
 ```
 
 **실행 과정**:
+
 ```
 Syncing fixtures...
 
@@ -104,9 +106,7 @@ Applying fixtures...
 Fixture sync completed!
 ```
 
-<Tip>
-테스트 실행 전에 `sync`를 호출하면 항상 깨끗한 상태에서 시작할 수 있습니다.
-</Tip>
+<Tip>테스트 실행 전에 `sync`를 호출하면 항상 깨끗한 상태에서 시작할 수 있습니다.</Tip>
 
 ### gen - 자동 Fixture 생성
 
@@ -117,6 +117,7 @@ pnpm fixture gen
 ```
 
 **대화형 모드**:
+
 ```
 ? Fixture를 생성할 Entity를 선택하세요: (Use arrow keys)
 ❯ ◯ User
@@ -136,17 +137,18 @@ pnpm fixture gen
 
 **CLI 옵션**:
 
-| 옵션 | 설명 | 예시 |
-|------|------|------|
-| `--all` | 모든 Entity에 대해 생성 | `pnpm fixture gen --all` |
-| `--include` | 특정 Entity만 포함 | `pnpm fixture gen --include User,Post` |
-| `--exclude` | 특정 Entity 제외 (--all과 함께 사용) | `pnpm fixture gen --all --exclude Comment` |
-| `--count` | 생성할 레코드 수 | `pnpm fixture gen --include User --count 10` |
-| `--save-to` | 저장 방식 지정 | `pnpm fixture gen --save-to db` |
-| `--use-llm` | LLM으로 현실적인 데이터 생성 (fixtureHint 기반, `ANTHROPIC_API_KEY` 필요) | `pnpm fixture gen --use-llm` |
-| `--no-cache` | LLM 캐시 비활성화 (`--use-llm`과 함께 사용) | `pnpm fixture gen --use-llm --no-cache` |
+| 옵션         | 설명                                                                      | 예시                                         |
+| ------------ | ------------------------------------------------------------------------- | -------------------------------------------- |
+| `--all`      | 모든 Entity에 대해 생성                                                   | `pnpm fixture gen --all`                     |
+| `--include`  | 특정 Entity만 포함                                                        | `pnpm fixture gen --include User,Post`       |
+| `--exclude`  | 특정 Entity 제외 (--all과 함께 사용)                                      | `pnpm fixture gen --all --exclude Comment`   |
+| `--count`    | 생성할 레코드 수                                                          | `pnpm fixture gen --include User --count 10` |
+| `--save-to`  | 저장 방식 지정                                                            | `pnpm fixture gen --save-to db`              |
+| `--use-llm`  | LLM으로 현실적인 데이터 생성 (fixtureHint 기반, `ANTHROPIC_API_KEY` 필요) | `pnpm fixture gen --use-llm`                 |
+| `--no-cache` | LLM 캐시 비활성화 (`--use-llm`과 함께 사용)                               | `pnpm fixture gen --use-llm --no-cache`      |
 
 **저장 방식**:
+
 - `db`: Fixture DB에 직접 저장 (기본값)
 - `file`: `test/fixtures/{entity_table}.json` 파일로 저장
 - `file:{filename}`: 지정된 파일명으로 저장
@@ -168,11 +170,13 @@ pnpm fixture gen --include User,Post --count 10 --save-to db
 5. **타입별 기본 생성** — 위 어떤 전략도 해당하지 않으면 필드 타입(string, number, date 등)에 따라 자동 생성합니다.
 
 <Info>
-`--use-llm` 사용 시 cone.note가 있는 필드는 `fixtureGenerator`보다 LLM이 우선합니다. 이를 통해 도메인에 맞는 더 현실적인 데이터를 생성할 수 있습니다.
+  `--use-llm` 사용 시 cone.note가 있는 필드는 `fixtureGenerator`보다 LLM이 우선합니다. 이를 통해
+  도메인에 맞는 더 현실적인 데이터를 생성할 수 있습니다.
 </Info>
 
 <Info>
-LLM이 생성한 문자열이 해당 필드의 `length` 제약을 초과하면 자동으로 잘라냅니다. 예를 들어 `varchar(100)` 필드에 대해 LLM이 120자를 생성하면 앞 100자만 사용됩니다.
+  LLM이 생성한 문자열이 해당 필드의 `length` 제약을 초과하면 자동으로 잘라냅니다. 예를 들어
+  `varchar(100)` 필드에 대해 LLM이 120자를 생성하면 앞 100자만 사용됩니다.
 </Info>
 
 **Companion Fixture 자동 생성**:
@@ -201,11 +205,11 @@ Entity의 cone에 `fixtureCompanions`가 선언되어 있으면, 부모 fixture 
 }
 ```
 
-| 속성 | 설명 |
-|------|------|
-| `entity` | 함께 생성할 companion Entity 이름 |
+| 속성        | 설명                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| `entity`    | 함께 생성할 companion Entity 이름                                                                                   |
 | `overrides` | companion fixture에 적용할 고정 오버라이드 값. `{{fieldName}}` 형식으로 부모 fixture의 필드 값을 참조할 수 있습니다 |
-| `count` | 부모 1개당 생성할 companion 개수 (기본값: 1) |
+| `count`     | 부모 1개당 생성할 companion 개수 (기본값: 1)                                                                        |
 
 better-auth를 사용하는 기존 프로젝트에 `fixtureCompanions`를 소급 적용하려면:
 
@@ -238,12 +242,13 @@ pnpm sonamu auth add-companions
 }
 ```
 
-| 속성 | 설명 |
-|------|------|
+| 속성                     | 설명                                                                                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `fixtureParentOverrides` | 부모 테이블에서 사용 가능한 레코드를 조회할 때 적용할 WHERE 조건. 예를 들어 서브타입별로 구분 컬럼이 있는 경우 해당 값으로 필터링합니다 |
 
 <Warning>
-부모 테이블에 서브타입이 없는 레코드가 부족하면 해당 엔티티의 fixture 생성을 건너뜁니다. 사전에 부모 엔티티의 fixture를 충분히 생성해 두어야 합니다.
+  부모 테이블에 서브타입이 없는 레코드가 부족하면 해당 엔티티의 fixture 생성을 건너뜁니다. 사전에
+  부모 엔티티의 fixture를 충분히 생성해 두어야 합니다.
 </Warning>
 
 ### fetch - 운영 DB에서 데이터 가져오기
@@ -255,6 +260,7 @@ pnpm fixture fetch
 ```
 
 **대화형 모드**:
+
 ```
 ? Import할 Entity를 선택하세요: (Use arrow keys)
 ❯ ◯ User
@@ -268,15 +274,16 @@ User, Post import 중...
 
 **CLI 옵션**:
 
-| 옵션 | 설명 | 예시 |
-|------|------|------|
-| `--all` | 모든 Entity에서 가져오기 | `pnpm fixture fetch --all` |
-| `--include` | 특정 Entity만 포함 | `pnpm fixture fetch --include User,Post` |
-| `--exclude` | 특정 Entity 제외 | `pnpm fixture fetch --all --exclude Log` |
-| `--strategy` | 데이터 선택 전략 | `pnpm fixture fetch --strategy recent` |
-| `--limit` | 가져올 레코드 수 | `pnpm fixture fetch --limit 20` |
+| 옵션         | 설명                     | 예시                                     |
+| ------------ | ------------------------ | ---------------------------------------- |
+| `--all`      | 모든 Entity에서 가져오기 | `pnpm fixture fetch --all`               |
+| `--include`  | 특정 Entity만 포함       | `pnpm fixture fetch --include User,Post` |
+| `--exclude`  | 특정 Entity 제외         | `pnpm fixture fetch --all --exclude Log` |
+| `--strategy` | 데이터 선택 전략         | `pnpm fixture fetch --strategy recent`   |
+| `--limit`    | 가져올 레코드 수         | `pnpm fixture fetch --limit 20`          |
 
 **데이터 선택 전략**:
+
 - `recent` (기본값): 최근 데이터부터 가져옴
 - `sample`: 무작위 샘플링
 
@@ -286,6 +293,7 @@ pnpm fixture fetch --include User --strategy recent --limit 20
 ```
 
 **특징**:
+
 - 관계된 데이터도 함께 자동으로 가져옴 (깊이 2 레벨까지)
 - 외래키 참조 무결성 유지
 
@@ -298,6 +306,7 @@ pnpm fixture explore
 ```
 
 **대화형 모드**:
+
 ```
 ? 탐색할 Entity: User
 
@@ -313,13 +322,14 @@ User 10개 조회 완료:
 
 **CLI 옵션**:
 
-| 옵션 | 설명 | 예시 |
-|------|------|------|
-| `--include` | 탐색할 Entity | `pnpm fixture explore --include User` |
+| 옵션         | 설명             | 예시                                     |
+| ------------ | ---------------- | ---------------------------------------- |
+| `--include`  | 탐색할 Entity    | `pnpm fixture explore --include User`    |
 | `--strategy` | 데이터 선택 전략 | `pnpm fixture explore --strategy sample` |
-| `--limit` | 조회할 레코드 수 | `pnpm fixture explore --limit 5` |
+| `--limit`    | 조회할 레코드 수 | `pnpm fixture explore --limit 5`         |
 
 **데이터 선택 전략**:
+
 - `sample` (기본값): 무작위 샘플
 - `recent`: 최근 데이터
 - `random`: 완전 무작위
@@ -367,7 +377,7 @@ beforeAll(async () => {
 test("User를 이메일로 찾기", async () => {
   // Fixture의 User #1 사용
   const user = await UserModel.findByEmail("user1@example.com");
-  
+
   expect(user).toBeDefined();
   expect(user.id).toBe(1);
 });
@@ -417,6 +427,7 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 ```
 
 **특징**:
+
 - JSON 형식
 - Entity별로 파일 분리
 - 관계 데이터 자동 포함
@@ -472,13 +483,13 @@ describe("User CRUD", () => {
       email: "new@example.com",
       name: "신규사용자",
     });
-    
+
     expect(user.id).toBeDefined();
   });
 
   test("사용자 삭제", async () => {
     await UserModel.deleteById(1);
-    
+
     const user = await UserModel.findById(1);
     expect(user).toBeNull();
   });
@@ -486,6 +497,7 @@ describe("User CRUD", () => {
 ```
 
 **격리 효과**:
+
 - 각 테스트가 독립적
 - 테스트 순서 무관
 - 병렬 실행 가능
@@ -500,7 +512,7 @@ test("트랜잭션 테스트", async () => {
     // 트랜잭션 내에서 실행
     const user = await UserModel.create({...});
     const post = await PostModel.create({...});
-    
+
     // 테스트 완료 후 자동 롤백
   });
 });
@@ -521,7 +533,7 @@ describe("Post with Comments", () => {
     const post = await PostModel.findById(1, {
       include: ["comments"],
     });
-    
+
     expect(post.comments).toHaveLength(3);
     expect(post.comments[0].author_id).toBe(2);
   });
@@ -540,7 +552,7 @@ describe("Premium User Features", () => {
 
   test("프리미엄 기능 접근", async () => {
     const user = await UserModel.findById(10);
-    
+
     expect(user.isPremium).toBe(true);
     expect(await user.canAccessFeature("advanced")).toBe(true);
   });
@@ -552,18 +564,20 @@ describe("Premium User Features", () => {
 ### Fixture DB 연결 실패
 
 **문제**: 원격 fixture DB에 접근 불가
+
 ```
 Error: connect ECONNREFUSED
 ```
 
 **해결**:
+
 ```typescript title="sonamu.config.ts"
 export default {
   database: {
     fixture: {
       client: "pg",
       connection: {
-        host: "fixture-db.example.com",  // 올바른 호스트
+        host: "fixture-db.example.com", // 올바른 호스트
         database: "myapp_fixture",
         user: "postgres",
         password: process.env.FIXTURE_DB_PASSWORD,
@@ -576,11 +590,13 @@ export default {
 ### 관계 데이터 누락
 
 **문제**: 외래키 에러 발생
+
 ```
 Error: Foreign key constraint violation
 ```
 
 **해결**:
+
 ```bash
 # 관련 데이터를 먼저 import
 pnpm fixture import
@@ -595,11 +611,13 @@ pnpm fixture import
 ### Fixture 충돌
 
 **문제**: ID 중복
+
 ```
 Error: Duplicate entry '1' for key 'PRIMARY'
 ```
 
 **해결**:
+
 ```bash
 # Test DB 초기화
 pnpm fixture init
@@ -658,7 +676,7 @@ jobs:
         run: |
           pnpm fixture init
           pnpm fixture sync
-      
+
       - name: Run Tests
         run: pnpm test
 ```

@@ -1,22 +1,29 @@
-import chalk from "chalk";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
+
+import chalk from "chalk";
 import { unique } from "radashi";
+
 import { Sonamu } from "../api/sonamu";
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
-import type { RenderedTemplate } from "../template/template";
+import { type RenderedTemplate } from "../template/template";
 import { TemplateManager } from "../template/template-manager";
 import { BUILT_IN_TYPES } from "../template/zod-converter";
-import type { GenerateOptions, PathAndCode, TemplateKey, TemplateOptions } from "../types/types";
+import {
+  type GenerateOptions,
+  type PathAndCode,
+  type TemplateKey,
+  type TemplateOptions,
+} from "../types/types";
 import { everyAsync, filterAsync } from "../utils/async-utils";
 import { isTest } from "../utils/controller";
 import { formatCode } from "../utils/formatter";
 import { exists } from "../utils/fs-utils";
 import { wrapIf } from "../utils/lodash-able";
-import type { AbsolutePath } from "../utils/path-utils";
+import { type AbsolutePath } from "../utils/path-utils";
 
 /**
  * 템플릿을 렌더링하고 파일로 생성합니다.
@@ -50,7 +57,7 @@ export async function generateTemplate<T extends TemplateKey>(
   ).flat();
 
   const filteredPathAndCodes: PathAndCode[] = await (async () => {
-    if (generateOptions.overwrite === true) {
+    if (generateOptions.overwrite) {
       return pathAndCodes;
     } else {
       return await filterAsync(pathAndCodes, async (pathAndCode) => {
@@ -126,12 +133,13 @@ async function resolveRenderedTemplate(
         } catch (error) {
           throw new Error(
             `[resolveRenderedTemplate:${key}] ${importKey} 모듈 경로 찾기 실패: ${error}`,
+            { cause: error },
           );
         }
         let importPath = modulePath;
         if (modulePath.includes("/") || modulePath.includes(".")) {
           importPath = wrapIf(path.relative(path.dirname(filePath), modulePath), (p) => [
-            p.startsWith(".") === false,
+            !p.startsWith("."),
             `./${p}`,
           ]);
         }
@@ -154,7 +162,7 @@ async function resolveRenderedTemplate(
       }[],
     )
     // 셀프 참조 방지
-    .filter((importDef) => filePath.endsWith(`${importDef.from.replace("./", "")}.ts`) === false);
+    .filter((importDef) => !filePath.endsWith(`${importDef.from.replace("./", "")}.ts`));
 
   // 커스텀 헤더 포함하여 헤더 생성
   const header = [
@@ -169,7 +177,7 @@ async function resolveRenderedTemplate(
       return [header, body].join("\n\n");
     } else {
       Naite.t("resolveRenderedTemplate:beforeFormat", { key, header, body });
-      const formatted = formatCode(
+      const formatted = await formatCode(
         [header, body].join("\n\n"),
         key === "entity" ? "json" : "typescript",
         `${Sonamu.appRootPath}/${filePath}`,

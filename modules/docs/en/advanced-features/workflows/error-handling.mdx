@@ -16,9 +16,11 @@ export const processPayment = workflow(
   { name: "process_payment" },
   async ({ input, step, logger }) => {
     try {
-      await step.define({ name: "charge" }, async () => {
-        await paymentGateway.charge(input.amount);
-      }).run();
+      await step
+        .define({ name: "charge" }, async () => {
+          await paymentGateway.charge(input.amount);
+        })
+        .run();
 
       return { success: true };
     } catch (error) {
@@ -27,11 +29,12 @@ export const processPayment = workflow(
       // Re-throw error (workflow fails)
       throw error;
     }
-  }
+  },
 );
 ```
 
 **Key Concepts**:
+
 - Log errors with `logger.error()`
 - Fail the workflow with `throw error`
 - Failed workflows are automatically retried by the Worker
@@ -41,36 +44,40 @@ export const processPayment = workflow(
 Not all steps are required. Some steps can fail without stopping the workflow. Wrap these **optional steps** in try-catch to absorb errors.
 
 ```typescript
-export const syncData = workflow(
-  { name: "sync_data" },
-  async ({ input, step, logger }) => {
-    // Step 1: Required task
-    const data = await step.define({ name: "fetch_data" }, async () => {
+export const syncData = workflow({ name: "sync_data" }, async ({ input, step, logger }) => {
+  // Step 1: Required task
+  const data = await step
+    .define({ name: "fetch_data" }, async () => {
       return await fetchFromAPI(input.url);
-    }).run();
+    })
+    .run();
 
-    // Step 2: Optional task (continue even if it fails)
-    let cached = false;
-    try {
-      await step.define({ name: "cache_data" }, async () => {
+  // Step 2: Optional task (continue even if it fails)
+  let cached = false;
+  try {
+    await step
+      .define({ name: "cache_data" }, async () => {
         await cacheData(data);
-      }).run();
-      cached = true;
-    } catch (error) {
-      logger.warn("Cache failed, continuing...", { error });
-    }
-
-    // Step 3: Final save
-    await step.define({ name: "save_data" }, async () => {
-      await saveToDatabase(data);
-    }).run();
-
-    return { saved: true, cached };
+      })
+      .run();
+    cached = true;
+  } catch (error) {
+    logger.warn("Cache failed, continuing...", { error });
   }
-);
+
+  // Step 3: Final save
+  await step
+    .define({ name: "save_data" }, async () => {
+      await saveToDatabase(data);
+    })
+    .run();
+
+  return { saved: true, cached };
+});
 ```
 
 **Use Cases**:
+
 - Cache failure (data must still be saved)
 - Notification failure (order must still complete)
 - Logging failure (business logic continues)
@@ -90,12 +97,11 @@ export const fetchWithRetry = workflow(
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const data = await step.define(
-          { name: `fetch_attempt_${attempt}` },
-          async () => {
+        const data = await step
+          .define({ name: `fetch_attempt_${attempt}` }, async () => {
             return await unstableAPICall(input.url);
-          }
-        ).run();
+          })
+          .run();
 
         logger.info("Fetch succeeded", { attempt });
         return { data, attempts: attempt };
@@ -112,11 +118,12 @@ export const fetchWithRetry = workflow(
 
     // All attempts failed
     throw new Error(`Failed after ${maxRetries} attempts: ${lastError?.message}`);
-  }
+  },
 );
 ```
 
 **Retry Strategy**:
+
 1. Maximum 3 attempts
 2. 5 second wait between attempts
 3. Throw error if all attempts fail
@@ -133,12 +140,11 @@ export const fetchWithBackoff = workflow(
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        return await step.define(
-          { name: `attempt_${attempt}` },
-          async () => {
+        return await step
+          .define({ name: `attempt_${attempt}` }, async () => {
             return await externalAPI.fetch(input.url);
-          }
-        ).run();
+          })
+          .run();
       } catch (error) {
         logger.warn("Attempt failed", { attempt, error });
 
@@ -151,17 +157,19 @@ export const fetchWithBackoff = workflow(
         }
       }
     }
-  }
+  },
 );
 ```
 
 **Backoff Intervals**:
+
 - 1st failure -> 2 second wait
 - 2nd failure -> 4 second wait
 - 3rd failure -> 8 second wait
 - 4th failure -> 16 second wait
 
 **Benefits**:
+
 - Provides time to recover from temporary overload
 - Distributes server load
 - Improves retry success rate
@@ -171,63 +179,72 @@ export const fetchWithBackoff = workflow(
 In distributed transactions, when some operations fail, **already completed operations must be rolled back**. This is called a Compensating Transaction.
 
 ```typescript
-export const processOrder = workflow(
-  { name: "process_order" },
-  async ({ input, step, logger }) => {
-    let paymentId: string | null = null;
-    let inventoryReserved = false;
+export const processOrder = workflow({ name: "process_order" }, async ({ input, step, logger }) => {
+  let paymentId: string | null = null;
+  let inventoryReserved = false;
 
-    try {
-      // Step 1: Payment
-      paymentId = await step.define({ name: "charge_payment" }, async () => {
+  try {
+    // Step 1: Payment
+    paymentId = await step
+      .define({ name: "charge_payment" }, async () => {
         return await paymentService.charge(input.amount);
-      }).run();
+      })
+      .run();
 
-      // Step 2: Reserve inventory
-      await step.define({ name: "reserve_inventory" }, async () => {
+    // Step 2: Reserve inventory
+    await step
+      .define({ name: "reserve_inventory" }, async () => {
         await inventoryService.reserve(input.items);
-      }).run();
-      inventoryReserved = true;
+      })
+      .run();
+    inventoryReserved = true;
 
-      // Step 3: Create order
-      const orderId = await step.define({ name: "create_order" }, async () => {
+    // Step 3: Create order
+    const orderId = await step
+      .define({ name: "create_order" }, async () => {
         return await orderService.create({
           paymentId,
           items: input.items,
         });
-      }).run();
+      })
+      .run();
 
-      return { orderId, success: true };
-    } catch (error) {
-      logger.error("Order processing failed, rolling back...", { error });
+    return { orderId, success: true };
+  } catch (error) {
+    logger.error("Order processing failed, rolling back...", { error });
 
-      // Compensate: Release inventory
-      if (inventoryReserved) {
-        await step.define({ name: "rollback_inventory" }, async () => {
+    // Compensate: Release inventory
+    if (inventoryReserved) {
+      await step
+        .define({ name: "rollback_inventory" }, async () => {
           await inventoryService.release(input.items);
-        }).run();
-      }
-
-      // Compensate: Refund payment
-      if (paymentId) {
-        await step.define({ name: "rollback_payment" }, async () => {
-          await paymentService.refund(paymentId);
-        }).run();
-      }
-
-      throw error;
+        })
+        .run();
     }
+
+    // Compensate: Refund payment
+    if (paymentId) {
+      await step
+        .define({ name: "rollback_payment" }, async () => {
+          await paymentService.refund(paymentId);
+        })
+        .run();
+    }
+
+    throw error;
   }
-);
+});
 ```
 
 **Compensating Transaction Pattern**:
+
 1. Track completion status of each operation
 2. Check completed operations when failure occurs
 3. Cancel operations in reverse order
 4. Re-throw the error
 
 **Practical Uses**:
+
 - Payment refund
 - Inventory restoration
 - Reservation cancellation
@@ -238,15 +255,10 @@ export const processOrder = workflow(
 If an external API doesn't respond, the workflow could wait indefinitely. Set a **timeout** to fail after a certain duration.
 
 ```typescript
-async function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number
-): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return Promise.race([
     promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout")), timeoutMs)
-    ),
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Timeout")), timeoutMs)),
   ]);
 }
 
@@ -254,12 +266,14 @@ export const fetchWithTimeout = workflow(
   { name: "fetch_with_timeout" },
   async ({ input, step, logger }) => {
     try {
-      const data = await step.define({ name: "fetch" }, async () => {
-        return await withTimeout(
-          externalAPI.fetch(input.url),
-          30000  // 30 seconds
-        );
-      }).run();
+      const data = await step
+        .define({ name: "fetch" }, async () => {
+          return await withTimeout(
+            externalAPI.fetch(input.url),
+            30000, // 30 seconds
+          );
+        })
+        .run();
 
       return { data };
     } catch (error) {
@@ -268,11 +282,12 @@ export const fetchWithTimeout = workflow(
       }
       throw error;
     }
-  }
+  },
 );
 ```
 
 **Timeout Strategies**:
+
 - Short timeout (5-10 seconds): Fast APIs
 - Medium timeout (30-60 seconds): Standard APIs
 - Long timeout (5-10 minutes): File processing
@@ -282,41 +297,40 @@ export const fetchWithTimeout = workflow(
 Use **different handling strategies** based on error types. Network errors should be retried, but data validation errors should fail immediately.
 
 ```typescript
-export const processData = workflow(
-  { name: "process_data" },
-  async ({ input, step, logger }) => {
-    try {
-      await step.define({ name: "process" }, async () => {
+export const processData = workflow({ name: "process_data" }, async ({ input, step, logger }) => {
+  try {
+    await step
+      .define({ name: "process" }, async () => {
         await dataService.process(input.data);
-      }).run();
-    } catch (error) {
-      // Network error: Retry
-      if (error.code === 'ECONNREFUSED') {
-        logger.warn("Connection refused, retrying...");
-        await step.sleep("retry_delay", "10s");
-        throw error;  // Retry
-      }
-
-      // Validation error: Fail immediately
-      if (error.code === 'VALIDATION_ERROR') {
-        logger.error("Validation failed", { error });
-        throw new Error("Invalid data, not retrying");
-      }
-
-      // Other errors
-      throw error;
+      })
+      .run();
+  } catch (error) {
+    // Network error: Retry
+    if (error.code === "ECONNREFUSED") {
+      logger.warn("Connection refused, retrying...");
+      await step.sleep("retry_delay", "10s");
+      throw error; // Retry
     }
+
+    // Validation error: Fail immediately
+    if (error.code === "VALIDATION_ERROR") {
+      logger.error("Validation failed", { error });
+      throw new Error("Invalid data, not retrying");
+    }
+
+    // Other errors
+    throw error;
   }
-);
+});
 ```
 
 **Error Classification**:
 
-| Error Type | Handling | Examples |
-|-----------|----------|----------|
-| Transient errors | Retry | Network, timeout, 503 |
-| Permanent errors | Fail immediately | Validation, auth, 404 |
-| Partial failures | Selective handling | Some data corrupted |
+| Error Type       | Handling           | Examples              |
+| ---------------- | ------------------ | --------------------- |
+| Transient errors | Retry              | Network, timeout, 503 |
+| Permanent errors | Fail immediately   | Validation, auth, 404 |
+| Partial failures | Selective handling | Some data corrupted   |
 
 ## Practical Examples
 
@@ -325,50 +339,49 @@ export const processData = workflow(
 If email sending fails 3 times, add it to a **Dead Letter Queue** for manual processing later.
 
 ```typescript
-export const sendEmail = workflow(
-  { name: "send_email" },
-  async ({ input, step, logger }) => {
-    const maxRetries = 3;
+export const sendEmail = workflow({ name: "send_email" }, async ({ input, step, logger }) => {
+  const maxRetries = 3;
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        await step.define(
-          { name: `send_attempt_${attempt}` },
-          async () => {
-            await emailService.send({
-              to: input.email,
-              subject: input.subject,
-              body: input.body,
-            });
-          }
-        ).run();
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await step
+        .define({ name: `send_attempt_${attempt}` }, async () => {
+          await emailService.send({
+            to: input.email,
+            subject: input.subject,
+            body: input.body,
+          });
+        })
+        .run();
 
-        logger.info("Email sent", { attempt });
-        return { success: true, attempts: attempt };
-      } catch (error) {
-        logger.warn("Email send failed", { attempt, error });
+      logger.info("Email sent", { attempt });
+      return { success: true, attempts: attempt };
+    } catch (error) {
+      logger.warn("Email send failed", { attempt, error });
 
-        if (attempt < maxRetries) {
-          await step.sleep("retry_delay", "30s");
-        } else {
-          // Final failure: Move to Dead Letter Queue
-          await step.define({ name: "move_to_dlq" }, async () => {
+      if (attempt < maxRetries) {
+        await step.sleep("retry_delay", "30s");
+      } else {
+        // Final failure: Move to Dead Letter Queue
+        await step
+          .define({ name: "move_to_dlq" }, async () => {
             await deadLetterQueue.add({
               type: "email",
               data: input,
               error: error.message,
             });
-          }).run();
+          })
+          .run();
 
-          throw error;
-        }
+        throw error;
       }
     }
   }
-);
+});
 ```
 
 **DLQ Pattern**:
+
 - 3 retry failures
 - Add to DLQ (process later)
 - Notify administrator
@@ -382,7 +395,7 @@ class CircuitBreaker {
   private failures = 0;
   private lastFailureTime = 0;
   private readonly threshold = 5;
-  private readonly timeout = 60000;  // 1 minute
+  private readonly timeout = 60000; // 1 minute
 
   async call<T>(fn: () => Promise<T>): Promise<T> {
     // Circuit is open
@@ -397,7 +410,7 @@ class CircuitBreaker {
 
     try {
       const result = await fn();
-      this.failures = 0;  // Reset on success
+      this.failures = 0; // Reset on success
       return result;
     } catch (error) {
       this.failures++;
@@ -409,28 +422,26 @@ class CircuitBreaker {
 
 const circuitBreaker = new CircuitBreaker();
 
-export const callAPI = workflow(
-  { name: "call_api" },
-  async ({ input, step, logger }) => {
-    try {
-      const data = await step.define({ name: "api_call" }, async () => {
-        return await circuitBreaker.call(() =>
-          fetch(input.url).then(r => r.json())
-        );
-      }).run();
+export const callAPI = workflow({ name: "call_api" }, async ({ input, step, logger }) => {
+  try {
+    const data = await step
+      .define({ name: "api_call" }, async () => {
+        return await circuitBreaker.call(() => fetch(input.url).then((r) => r.json()));
+      })
+      .run();
 
-      return { data };
-    } catch (error) {
-      if (error.message === "Circuit breaker is open") {
-        logger.error("Circuit breaker open, API unavailable");
-      }
-      throw error;
+    return { data };
+  } catch (error) {
+    if (error.message === "Circuit breaker is open") {
+      logger.error("Circuit breaker open, API unavailable");
     }
+    throw error;
   }
-);
+});
 ```
 
 **Circuit Breaker States**:
+
 - **Closed**: Normal operation
 - **Open**: Blocked after 5 failures (for 1 minute)
 - **Half-Open**: Retry after 1 minute
@@ -440,57 +451,54 @@ export const callAPI = workflow(
 When uploading multiple files, **retry each file independently** so that some failures don't prevent others from succeeding.
 
 ```typescript
-export const uploadFiles = workflow(
-  { name: "upload_files" },
-  async ({ input, step, logger }) => {
-    const results = [];
+export const uploadFiles = workflow({ name: "upload_files" }, async ({ input, step, logger }) => {
+  const results = [];
 
-    for (let i = 0; i < input.files.length; i++) {
-      const file = input.files[i];
-      let uploaded = false;
+  for (let i = 0; i < input.files.length; i++) {
+    const file = input.files[i];
+    let uploaded = false;
 
-      // Retry each file individually
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          await step.define(
-            { name: `upload_${i}_attempt_${attempt}` },
-            async () => {
-              await s3.upload(file.key, file.content);
-            }
-          ).run();
+    // Retry each file individually
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await step
+          .define({ name: `upload_${i}_attempt_${attempt}` }, async () => {
+            await s3.upload(file.key, file.content);
+          })
+          .run();
 
-          uploaded = true;
-          results.push({ file: file.key, success: true });
-          break;
-        } catch (error) {
-          logger.warn("Upload failed", { file: file.key, attempt, error });
+        uploaded = true;
+        results.push({ file: file.key, success: true });
+        break;
+      } catch (error) {
+        logger.warn("Upload failed", { file: file.key, attempt, error });
 
-          if (attempt < 3) {
-            await step.sleep(`retry_${i}_${attempt}`, "5s");
-          }
+        if (attempt < 3) {
+          await step.sleep(`retry_${i}_${attempt}`, "5s");
         }
       }
-
-      if (!uploaded) {
-        results.push({ file: file.key, success: false });
-      }
     }
 
-    const failed = results.filter(r => !r.success);
-    if (failed.length > 0) {
-      logger.error("Some uploads failed", { failed });
+    if (!uploaded) {
+      results.push({ file: file.key, success: false });
     }
-
-    return {
-      total: input.files.length,
-      succeeded: results.filter(r => r.success).length,
-      failed: failed.length,
-    };
   }
-);
+
+  const failed = results.filter((r) => !r.success);
+  if (failed.length > 0) {
+    logger.error("Some uploads failed", { failed });
+  }
+
+  return {
+    total: input.files.length,
+    succeeded: results.filter((r) => r.success).length,
+    failed: failed.length,
+  };
+});
 ```
 
 **Partial Retry Strategy**:
+
 - Each file has independent steps
 - 3 retries per file
 - Workflow succeeds even if some fail
@@ -502,6 +510,7 @@ export const uploadFiles = workflow(
 **Error Handling Best Practices**:
 
 1. **Error Logging**: Always log errors to enable problem tracking.
+
    ```typescript
    catch (error) {
      logger.error("Operation failed", { error, context });
@@ -509,11 +518,13 @@ export const uploadFiles = workflow(
    ```
 
 2. **Retry Limits**: Prevent infinite retries by setting a maximum count.
+
    ```typescript
-   const maxRetries = 3;  // Clear limit
+   const maxRetries = 3; // Clear limit
    ```
 
 3. **Compensating Transactions**: Clean up completed operations on failure.
+
    ```typescript
    catch (error) {
      await rollbackCompletedSteps();
@@ -522,11 +533,13 @@ export const uploadFiles = workflow(
    ```
 
 4. **Timeout Settings**: Prevent infinite waits.
+
    ```typescript
    await withTimeout(promise, 30000);
    ```
 
 5. **Dead Letter Queue**: Store final failures separately for manual processing.
+
    ```typescript
    await deadLetterQueue.add(failedItem);
    ```
@@ -534,17 +547,21 @@ export const uploadFiles = workflow(
 6. **Error Type Distinction**: Differentiate between retryable and non-retryable errors.
    ```typescript
    if (isRetryable(error)) {
-     throw error;  // Retry
+     throw error; // Retry
    } else {
-     throw new NonRetryableError();  // Fail immediately
+     throw new NonRetryableError(); // Fail immediately
    }
    ```
-</Warning>
+   </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="@workflow Decorator" icon="code" href="/en/advanced-features/workflows/workflow-decorator">
+  <Card
+    title="@workflow Decorator"
+    icon="code"
+    href="/en/advanced-features/workflows/workflow-decorator"
+  >
     Learn workflow definition and scheduling
   </Card>
   <Card title="Step" icon="list" href="/en/advanced-features/workflows/steps">

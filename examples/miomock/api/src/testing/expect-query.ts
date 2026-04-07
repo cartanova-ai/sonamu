@@ -1,4 +1,5 @@
-import { type AST, type Binary, type OrderBy, Parser } from "node-sql-parser";
+import { Parser } from "node-sql-parser";
+import { type AST, type Binary, type OrderBy } from "node-sql-parser";
 import { Sonamu } from "sonamu";
 import { assert, expect } from "vitest";
 
@@ -41,7 +42,7 @@ function parseQuery(query: string): AST {
     assert(ast);
     return ast;
   } catch (e) {
-    throw new Error(`Failed to parse SQL query: ${query}\n${e}`);
+    throw new Error(`Failed to parse SQL query: ${query}\n${e}`, { cause: e });
   }
 }
 

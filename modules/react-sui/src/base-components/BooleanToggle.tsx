@@ -1,5 +1,6 @@
-import type { FormEvent } from "react";
-import { Checkbox, type CheckboxProps } from "semantic-ui-react";
+import { type FormEvent } from "react";
+import { Checkbox } from "semantic-ui-react";
+import { type CheckboxProps } from "semantic-ui-react";
 
 export function BooleanToggle(
   props: Omit<CheckboxProps, "value"> & {

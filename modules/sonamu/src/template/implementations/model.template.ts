@@ -1,8 +1,10 @@
 import type z from "zod";
+
 import { Sonamu } from "../../api";
-import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
+import { EntityManager } from "../../entity/entity-manager";
+import { type EntityNamesRecord } from "../../entity/entity-manager";
 import { Naite } from "../../naite/naite";
-import type { TemplateOptions } from "../../types/types";
+import { type TemplateOptions } from "../../types/types";
 import { Template } from "../template";
 import { getZodTypeById, zodTypeToRenderingNode } from "../zod-converter";
 import { Template__view_list } from "./view_list.template";

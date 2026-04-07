@@ -68,7 +68,7 @@ export declare namespace StandardSchemaV1 {
     Schema["~standard"]["types"]
   >["output"];
 
-  // eslint-disable-next-line unicorn/require-module-specifiers
-  // biome-ignore lint/complexity/noUselessEmptyExport: needed for granular visibility control of TS namespace
+  // needed for granular visibility control of TS namespace
+  // oxlint-disable-next-line
   export {};
 }

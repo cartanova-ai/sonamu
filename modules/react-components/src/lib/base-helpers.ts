@@ -1,8 +1,9 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 파싱 결과이므로 any 허용
 
 import qs from "qs";
 import { isObject } from "radashi";
-import type { z } from "zod";
+import { type z } from "zod";
+
 import { caster } from "./caster";
 
 // ============================================================================
@@ -29,7 +30,7 @@ export function paramsToSearchParams<T>(params: T): {
   [key in string]: string | string[];
 } {
   return Object.fromEntries(
-    // biome-ignore lint/complexity/useFlatMap: 여기는 flatMap 사용하면 깨짐
+    // oxlint-disable-next-line unicorn/prefer-array-flat-map -- 여기는 flatMap 사용하면 깨짐
     Object.entries(params as any)
       .filter(([, value]) => {
         return value !== undefined;

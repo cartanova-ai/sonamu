@@ -1,23 +1,26 @@
 import assert from "assert";
-import chalk from "chalk";
 import { mkdir, readdir, unlink, writeFile } from "fs/promises";
-import type { Knex } from "knex";
 import path from "path";
+
+import chalk from "chalk";
+import { type Knex } from "knex";
 import { group, sum, unique } from "radashi";
-import { Sonamu } from "../api";
-import { DB, type SonamuDBConfig } from "../database/db";
+
+import { Sonamu } from "../api/sonamu";
+import { DB } from "../database/db";
+import { type SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
-import type { GenMigrationCode, MigrationSet } from "../types/types";
+import { type GenMigrationCode, type MigrationSet } from "../types/types";
 import { isTest } from "../utils/controller";
 import { exists } from "../utils/fs-utils";
 import { generateAlterCode, generateCreateCode } from "./code-generation";
 import { getMigrationSetFromEntity } from "./migration-set";
 import { PostgreSQLSchemaReader } from "./postgresql-schema-reader";
-import type { ConnString, MigrationCode, MigrationStatus } from "./types";
+import { type ConnString, type MigrationCode, type MigrationStatus } from "./types";
 
 export type MigrationResult = {
   connKey: string;
@@ -26,6 +29,26 @@ export type MigrationResult = {
 }[];
 
 export class Migrator {
+  private async runMigrationsSequentially(
+    conns: { connKey: keyof SonamuDBConfig; knex: Knex }[],
+    action: "apply" | "rollback",
+  ): Promise<MigrationResult> {
+    const results: MigrationResult = [];
+
+    for (const { connKey, knex } of conns) {
+      const [batchNo, applied] =
+        action === "apply" ? await knex.migrate.latest() : await knex.migrate.rollback();
+
+      results.push({
+        connKey,
+        batchNo,
+        applied,
+      });
+    }
+
+    return results;
+  }
+
   private async getMigrationCodes(): Promise<MigrationCode[]> {
     const srcMigrationsDir = path.join(Sonamu.apiRootPath, "src", "migrations"); // 이건 환경에 관계없이 항상 src에서 찾아야 해요.
 
@@ -41,7 +64,7 @@ export class Migrator {
         name: f.replace(".ts", ""),
         path: path.join(srcMigrationsDir, f),
       }))
-      .sort((a, b) => (a.name < b.name ? 1 : -1)); // 이름 내림차순 정렬(최신순)
+      .toSorted((a, b) => (a.name < b.name ? 1 : -1)); // 이름 내림차순 정렬(최신순)
 
     Naite.t("migrator:getMigrationCodes:results", codes);
     return codes;
@@ -61,7 +84,7 @@ export class Migrator {
     Naite.t("migrator:getStatus:codes", codes);
 
     const connKeys = Object.keys(Sonamu.dbConfig).filter(
-      (key) => key.endsWith("_slave") === false,
+      (key) => !key.endsWith("_slave"),
     ) as (keyof typeof Sonamu.dbConfig)[];
 
     let migrationStatusError: string | undefined;
@@ -72,7 +95,7 @@ export class Migrator {
         const tConn = createKnexInstance(knexOptions);
 
         try {
-          const status = await (async () => {
+          const status: number | "error" = await (async () => {
             try {
               return await tConn.migrate.status();
             } catch (err) {
@@ -94,7 +117,7 @@ export class Migrator {
               return [];
             }
           })();
-          const currentVersion = await (async () => {
+          const currentVersion: string | "error" = await (async () => {
             try {
               return await tConn.migrate.currentVersion();
             } catch (_err) {
@@ -113,7 +136,7 @@ export class Migrator {
               connection.port
             }/${connection.database}` as ConnString,
             currentVersion,
-            status: status as number | "error",
+            status: status,
             pending,
           };
         } finally {
@@ -175,7 +198,7 @@ export class Migrator {
       targets
         .map((target) => ({
           connKey: target,
-          options: Sonamu.dbConfig[target as keyof typeof Sonamu.dbConfig],
+          options: Sonamu.dbConfig[target],
         }))
         .filter((c) => c.options !== undefined),
       ({ options }) =>
@@ -197,27 +220,9 @@ export class Migrator {
       const result = await (async () => {
         switch (action) {
           case "apply":
-            return Promise.all(
-              conns.map(async ({ connKey, knex }) => {
-                const [batchNo, applied] = await knex.migrate.latest();
-                return {
-                  connKey,
-                  batchNo,
-                  applied, // 이번 latest 호출로 인해 "up"이 적용된 마이그레이션 이름(e.g. "20251124233557_create__companies.ts")들의 배열입니다. 참고: https://github.com/knex/knex/blob/01b177c485d696f1b72858dee728ba143c4fad76/lib/migrations/migrate/Migrator.js#L560
-                };
-              }),
-            );
+            return this.runMigrationsSequentially(conns, "apply");
           case "rollback":
-            return Promise.all(
-              conns.map(async ({ connKey, knex }) => {
-                const [batchNo, applied] = await knex.migrate.rollback();
-                return {
-                  connKey,
-                  batchNo,
-                  applied, // 이번 rollback 호출로 인해 "down"이 적용된(=롤백된) 마이그레이션 이름(e.g. "20251124233557_create__companies.ts")들의 배열입니다. 참고: https://github.com/knex/knex/blob/01b177c485d696f1b72858dee728ba143c4fad76/lib/migrations/migrate/Migrator.js#L611
-                };
-              }),
-            );
+            return this.runMigrationsSequentially(conns, "rollback");
         }
       })();
 
@@ -242,7 +247,7 @@ export class Migrator {
    */
   validateDeletable(conns: MigrationStatus["conns"], codeNames: string[]) {
     const appliedCodes = codeNames.filter((codeName) =>
-      conns.some((conn) => conn.pending.includes(codeName) === false),
+      conns.some((conn) => !conn.pending.includes(codeName)),
     );
 
     return {

@@ -45,6 +45,7 @@ export default defineConfig({
 ```
 
 Configuration type (`SonamuDevRunnerConfig`):
+
 - `enabled: boolean` — Whether to enable DevRunner (default: false)
 - `routePrefix?: string` — Test endpoint path prefix (default: `/__test__`)
 - `vitestConfigPath?: string` — vitest.config.ts path (relative to api-root)
@@ -82,6 +83,7 @@ sonamu test user.model -p "findMany" -t
 ```
 
 Argument processing rules:
+
 - `--pattern` / `-p`: test name string filter (`setGlobalTestNamePattern` → `resetGlobalTestNamePattern` after execution)
 - `--traces` / `-t`: boolean flag, enables Naite trace output
 - Arguments not starting with `-`: treated as file list
@@ -115,6 +117,7 @@ For trace data details: see `naite.md`
 ### HMR Integration — Automatic Vitest Module Graph Invalidation on Source Changes
 
 When a source file is modified, `syncFromWatcher` in the syncer triggers both of the following simultaneously:
+
 1. Server HMR cache invalidation (`hot.invalidateFile`)
 2. Vitest module graph invalidation (`Sonamu.devVitestManager.invalidateFiles([filePath])`)
 
@@ -127,6 +130,7 @@ sonamu test user.model  ← runs with latest code
 Because Vite's `moduleGraph.invalidateModule()` recursively cascades in the importer direction, invalidating a single source file automatically invalidates any test files that import it. No restart is needed.
 
 **Transitive dependency example:**
+
 - Change `utils.ts` → `user.model.ts` (imports utils) → `user.model.test.ts` all automatically invalidated
 
 ### Direct HTTP API Calls
@@ -144,24 +148,36 @@ curl http://localhost:3000/__test__/status
 ```
 
 **POST `/__test__/run`** request:
+
 ```json
 { "files": ["src/user/user.model.test.ts"], "pattern": "should create user" }
 ```
 
 Response (success):
+
 ```json
 {
   "ok": true,
   "summary": { "total": 12, "passed": 11, "failed": 1, "skipped": 0, "durationMs": 842 },
   "failed": [
-    { "file": "src/user/user.model.test.ts", "name": "UserModel > should create user", "error": "Expected ..." }
+    {
+      "file": "src/user/user.model.test.ts",
+      "name": "UserModel > should create user",
+      "error": "Expected ..."
+    }
   ],
   "traces": [
     {
       "testName": "UserModel > should create user",
       "file": "src/user/user.model.test.ts",
       "traces": [
-        { "key": "esq-query", "value": "select ...", "filePath": "user.model.ts", "lineNumber": 113, "at": "2026-02-23T14:51:35+09:00" }
+        {
+          "key": "esq-query",
+          "value": "select ...",
+          "filePath": "user.model.ts",
+          "lineNumber": 113,
+          "at": "2026-02-23T14:51:35+09:00"
+        }
       ]
     }
   ]
@@ -169,6 +185,7 @@ Response (success):
 ```
 
 **GET `/__test__/status`** response:
+
 ```json
 { "ready": true, "running": false, "lastRunAt": "2026-02-13T12:34:56.000Z" }
 ```
@@ -176,6 +193,7 @@ Response (success):
 ### Internal Architecture
 
 **DevVitestManager** (`testing/dev-vitest-manager.ts`):
+
 - Creates a resident instance with `createVitest('test', cliOptions, viteOverrides)`
 - Configured with `watch: true, standalone: true`, but blocks automatic re-runs:
   - `forceRerunTriggers: []`
@@ -187,11 +205,13 @@ Response (success):
 - Keeps loading the project's `vitest.config.ts` (reuses existing sequencer/reporter/globalSetup)
 
 **Fastify integration** (`testing/dev-test-routes.ts`):
+
 - Registers routes with `registerDevTestRoutes(server, config)`
 - Stores manager instance in `Sonamu.devVitestManager`
 - Ensures `shutdown()` is called in `server.addHook('onClose')`
 
 **CLI** (`bin/test-command.ts`):
+
 - Calls `testCommand()` directly before `tsicli` matching (to handle variadic arguments)
 - Included in `bootstrap()`'s `notToInit` list (no need for `Sonamu.init` since it only makes HTTP calls)
 - Server port/host read from `server.listen` in `sonamu.config.ts`
@@ -200,30 +220,30 @@ Response (success):
 
 Single file (`user.model.test.ts`):
 
-| Item | `vitest run` | `sonamu test` | Difference |
-|---|---|---|---|
-| Test execution time | 2,610ms | 823ms | 3.2x faster |
-| Total elapsed time (wall clock) | 4,118ms | 1,907ms | 2.2x faster |
+| Item                            | `vitest run` | `sonamu test` | Difference  |
+| ------------------------------- | ------------ | ------------- | ----------- |
+| Test execution time             | 2,610ms      | 823ms         | 3.2x faster |
+| Total elapsed time (wall clock) | 4,118ms      | 1,907ms       | 2.2x faster |
 
 Multiple files (puri tests, 4 files 147 tests):
 
-| Item | `vitest run` | `sonamu test` | Difference |
-|---|---|---|---|
-| Test execution time | 5,740ms | 1,774ms | 3.2x faster |
-| Total elapsed time (wall clock) | 7,035ms | 2,673ms | 2.6x faster |
+| Item                            | `vitest run` | `sonamu test` | Difference  |
+| ------------------------------- | ------------ | ------------- | ----------- |
+| Test execution time             | 5,740ms      | 1,774ms       | 3.2x faster |
+| Total elapsed time (wall clock) | 7,035ms      | 2,673ms       | 2.6x faster |
 
 Speed difference reason: `vitest run` requires process boot (~1.5s) + module transform (~400ms) on every execution, whereas `sonamu test` reuses an already-initialized instance and avoids this overhead.
 
 ### `pnpm sonamu test` vs `pnpm test` Comparison
 
-| | `pnpm sonamu test` (default) | `pnpm test` (CI/fallback) |
-|---|---|---|
-| Execution method | Resident instance inside dev server | Independent Vitest process |
-| Initialization cost | None (already initialized) | Initialization on every run |
-| HMR integration | Source changes reflected immediately | Not applicable |
-| Naite trace | CLI output via `--traces` flag | Available through reporter |
-| Use case | **Default test execution during development** | CI environments |
-| Prerequisite | `sonamu dev` running (assumed always running) | None |
+|                     | `pnpm sonamu test` (default)                  | `pnpm test` (CI/fallback)   |
+| ------------------- | --------------------------------------------- | --------------------------- |
+| Execution method    | Resident instance inside dev server           | Independent Vitest process  |
+| Initialization cost | None (already initialized)                    | Initialization on every run |
+| HMR integration     | Source changes reflected immediately          | Not applicable              |
+| Naite trace         | CLI output via `--traces` flag                | Available through reporter  |
+| Use case            | **Default test execution during development** | CI environments             |
+| Prerequisite        | `sonamu dev` running (assumed always running) | None                        |
 
 ### Troubleshooting
 
@@ -275,8 +295,8 @@ Both `pnpm sonamu test` and `pnpm test` share the parallel configuration. Only c
 ```typescript
 export default defineConfig({
   test: {
-    parallel: true,   // Separate DB execution per worker
-    maxWorkers: 4,    // Number of workers (default: 4)
+    parallel: true, // Separate DB execution per worker
+    maxWorkers: 4, // Number of workers (default: 4)
   },
 });
 ```
@@ -291,14 +311,14 @@ To use `pnpm sonamu test`, DevRunner must be enabled. Just add `test.devRunner.e
 export default defineConfig({
   server: {
     listen: {
-      port: 3000,          // CLI sends HTTP requests to this port
-      host: "localhost",   // CLI connects to this host (default: localhost)
+      port: 3000, // CLI sends HTTP requests to this port
+      host: "localhost", // CLI connects to this host (default: localhost)
     },
   },
 
   test: {
     devRunner: {
-      enabled: true,                     // Required: enable DevRunner
+      enabled: true, // Required: enable DevRunner
       // routePrefix: "/__test__",       // Optional: endpoint path (default value)
       // vitestConfigPath: undefined,     // Optional: vitest.config.ts path (default: vitest.config.ts in api-root)
     },
@@ -310,16 +330,16 @@ export default defineConfig({
 
 ### Source Code Reference Locations per Setting
 
-| Setting path | Default | Reference location | Purpose |
-|---|---|---|---|
-| `test.devRunner.enabled` | `false` | `sonamu.ts` L394, `test-command.ts` | DevRunner activation condition |
-| `test.devRunner.routePrefix` | `"/__test__"` | `dev-test-routes.ts`, `test-command.ts` | HTTP endpoint path |
-| `test.devRunner.vitestConfigPath` | `undefined` | `dev-vitest-manager.ts` `start()` | Vitest config file location |
-| `test.parallel` | `false` | `vitest-helpers.ts` `getSonamuTestConfig()` | `pool: "forks"` + `SONAMU_WORKER_DB` env injection |
-| `test.maxWorkers` | `4` | `vitest-helpers.ts`, `global-setup.ts` | Vitest maxWorkers + number of worker DBs |
-| `server.listen.port` | `3000` | `test-command.ts` | CLI → dev server HTTP connection port |
-| `server.listen.host` | `"localhost"` | `test-command.ts` | CLI → dev server HTTP connection host |
-| `database.name` | — | `db.ts` `generateDBConfig()`, `global-setup.ts` | Test DB name (`{name}_test`) |
+| Setting path                      | Default       | Reference location                              | Purpose                                            |
+| --------------------------------- | ------------- | ----------------------------------------------- | -------------------------------------------------- |
+| `test.devRunner.enabled`          | `false`       | `sonamu.ts` L394, `test-command.ts`             | DevRunner activation condition                     |
+| `test.devRunner.routePrefix`      | `"/__test__"` | `dev-test-routes.ts`, `test-command.ts`         | HTTP endpoint path                                 |
+| `test.devRunner.vitestConfigPath` | `undefined`   | `dev-vitest-manager.ts` `start()`               | Vitest config file location                        |
+| `test.parallel`                   | `false`       | `vitest-helpers.ts` `getSonamuTestConfig()`     | `pool: "forks"` + `SONAMU_WORKER_DB` env injection |
+| `test.maxWorkers`                 | `4`           | `vitest-helpers.ts`, `global-setup.ts`          | Vitest maxWorkers + number of worker DBs           |
+| `server.listen.port`              | `3000`        | `test-command.ts`                               | CLI → dev server HTTP connection port              |
+| `server.listen.host`              | `"localhost"` | `test-command.ts`                               | CLI → dev server HTTP connection host              |
+| `database.name`                   | —             | `db.ts` `generateDBConfig()`, `global-setup.ts` | Test DB name (`{name}_test`)                       |
 
 ### Activation Conditions
 
@@ -372,10 +392,10 @@ export { setup } from "sonamu/test";
 ```typescript
 export default defineConfig({
   test: {
-    parallel: true,   // Enable parallel testing
-    maxWorkers: 4,    // Number of workers (default: 4)
+    parallel: true, // Enable parallel testing
+    maxWorkers: 4, // Number of workers (default: 4)
     devRunner: {
-      enabled: true,  // Enable DevRunner
+      enabled: true, // Enable DevRunner
     },
   },
 });

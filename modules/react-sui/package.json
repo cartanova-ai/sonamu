@@ -1,25 +1,28 @@
 {
   "name": "@sonamu-kit/react-sui",
   "version": "0.1.17",
-  "type": "module",
+  "license": "MIT",
   "author": "CartaNova <dev@cartanova.ai>",
   "repository": {
     "type": "git",
     "url": "https://github.com/cartanova-ai/sonamu.git"
   },
-  "license": "MIT",
   "files": [
     "dist"
   ],
+  "type": "module",
   "main": "./dist/react-sui.cjs.js",
-  "types": "./dist/index.d.ts",
   "module": "./dist/react-sui.es.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/react-sui.es.js",
       "require": "./dist/react-sui.cjs.js"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "vite",
@@ -35,10 +38,10 @@
     "date-fns": "catalog:",
     "fast-deep-equal": "catalog:",
     "inflection": "catalog:",
-    "radashi": "catalog:",
     "luxon": "catalog:",
     "prop-types": "catalog:",
     "qs": "catalog:",
+    "radashi": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router-dom": "catalog:",
@@ -59,7 +62,6 @@
     "corepack": "catalog:",
     "debug": "catalog:",
     "radashi": "catalog:",
-    "@biomejs/biome": "catalog:",
     "scss": "catalog:",
     "semantic-ui-css": "catalog:",
     "supports-color": "catalog:",
@@ -74,8 +76,5 @@
     "react-router-dom": "catalog:",
     "react-semantic-ui-datepickers": "catalog:",
     "zod": "catalog:"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

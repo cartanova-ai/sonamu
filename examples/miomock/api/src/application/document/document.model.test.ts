@@ -1,6 +1,8 @@
 import assert from "assert";
+
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+
 import { DocumentModel } from "./document.model";
 
 bootstrap(vi);

@@ -1,6 +1,6 @@
 ---
-title: 'getPuri'
-description: 'Puri 쿼리 빌더 가져오기'
+title: "getPuri"
+description: "Puri 쿼리 빌더 가져오기"
 ---
 
 `getPuri`는 Puri 쿼리 빌더를 가져오는 메서드입니다. 직접 SQL 쿼리를 작성하거나 UpsertBuilder를 사용할 때 필요합니다.
@@ -30,9 +30,7 @@ const rdb = this.getPuri("r");
 const wdb = this.getPuri("w");
 ```
 
-<Info>
-`"r"`과 `"w"`는 동일한 DB를 가리킬 수 있습니다. 설정에 따라 다릅니다.
-</Info>
+<Info>`"r"`과 `"w"`는 동일한 DB를 가리킬 수 있습니다. 설정에 따라 다릅니다.</Info>
 
 ## 반환값
 
@@ -57,14 +55,10 @@ const users = await wdb.table("users").where("status", "active").select();
 const wdb = this.getPuri("w");
 
 // table() 사용
-const users = await wdb.table("users")
-  .where("status", "active")
-  .select();
+const users = await wdb.table("users").where("status", "active").select();
 
 // from() 사용 (동일)
-const posts = await wdb.from("posts")
-  .where("published", true)
-  .select();
+const posts = await wdb.from("posts").where("published", true).select();
 ```
 
 ### transaction
@@ -78,7 +72,7 @@ await wdb.transaction(async (trx) => {
   // 트랜잭션 내에서 쿼리 실행
   await trx.table("users").insert({ ... });
   await trx.table("posts").insert({ ... });
-  
+
   // 모두 성공하거나 모두 실패
 });
 ```
@@ -94,7 +88,7 @@ const wdb = this.getPuri("w");
 
 wdb.ubRegister("users", {
   email: "john@example.com",
-  name: "John"
+  name: "John",
 });
 ```
 
@@ -130,7 +124,7 @@ wdb.ubRegister("users", { id: 2, name: "Updated 2" });
 
 await wdb.ubUpdateBatch("users", {
   chunkSize: 500,
-  where: "id"
+  where: "id",
 });
 ```
 
@@ -141,9 +135,12 @@ Raw SQL을 실행합니다.
 ```typescript
 const wdb = this.getPuri("w");
 
-const result = await wdb.raw(`
+const result = await wdb.raw(
+  `
   SELECT * FROM users WHERE status = ?
-`, ["active"]);
+`,
+  ["active"],
+);
 ```
 
 ## 기본 사용법
@@ -156,13 +153,14 @@ import { BaseModelClass } from "sonamu";
 class UserModelClass extends BaseModelClass {
   async getActiveUsers() {
     const rdb = this.getPuri("r");
-    
-    const users = await rdb.table("users")
+
+    const users = await rdb
+      .table("users")
       .where("status", "active")
       .orderBy("created_at", "desc")
       .limit(10)
       .select();
-    
+
     return users;
   }
 }
@@ -173,7 +171,7 @@ class UserModelClass extends BaseModelClass {
 ```typescript
 async getUserStats() {
   const rdb = this.getPuri("r");
-  
+
   const stats = await rdb.table("users")
     .leftJoin("posts", "users.id", "posts.user_id")
     .groupBy("users.id")
@@ -182,7 +180,7 @@ async getUserStats() {
       user_name: "users.name",
       post_count: rdb.raw("COUNT(posts.id)")
     });
-  
+
   return stats;
 }
 ```
@@ -192,18 +190,18 @@ async getUserStats() {
 ```typescript
 async transferPoints(fromUserId: number, toUserId: number, points: number) {
   const wdb = this.getPuri("w");
-  
+
   await wdb.transaction(async (trx) => {
     // 포인트 차감
     await trx.table("users")
       .where("id", fromUserId)
       .decrement("points", points);
-    
+
     // 포인트 증가
     await trx.table("users")
       .where("id", toUserId)
       .increment("points", points);
-    
+
     // 히스토리 기록
     await trx.table("point_history").insert({
       from_user_id: fromUserId,
@@ -252,28 +250,24 @@ import { BaseModelClass, transactional, api } from "sonamu";
 class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   @transactional()
-  async createUserWithProfile(params: {
-    email: string;
-    name: string;
-    bio: string;
-  }) {
+  async createUserWithProfile(params: { email: string; name: string; bio: string }) {
     // @transactional 내에서 getPuri 호출
     const wdb = this.getPuri("w");
 
     // wdb는 @transactional이 생성한 트랜잭션을 자동으로 사용
     // 별도의 트랜잭션 관리 코드 불필요
-    const [user] = await wdb.table("users")
+    const [user] = await wdb
+      .table("users")
       .insert({
         email: params.email,
-        name: params.name
+        name: params.name,
       })
       .returning("*");
 
-    await wdb.table("profiles")
-      .insert({
-        user_id: user.id,
-        bio: params.bio
-      });
+    await wdb.table("profiles").insert({
+      user_id: user.id,
+      bio: params.bio,
+    });
 
     return user;
   }
@@ -290,9 +284,7 @@ class UserModelClass extends BaseModelClass {
   async createUser(email: string, name: string) {
     const wdb = this.getPuri("w");
 
-    const [user] = await wdb.table("users")
-      .insert({ email, name })
-      .returning("*");
+    const [user] = await wdb.table("users").insert({ email, name }).returning("*");
 
     // 다른 메서드 호출 - 동일한 트랜잭션 사용
     await this.createDefaultProfile(user.id);
@@ -305,21 +297,22 @@ class UserModelClass extends BaseModelClass {
     const wdb = this.getPuri("w");
 
     // createUser의 트랜잭션을 자동으로 재사용
-    await wdb.table("profiles")
-      .insert({
-        user_id: userId,
-        bio: "Welcome!"
-      });
+    await wdb.table("profiles").insert({
+      user_id: userId,
+      bio: "Welcome!",
+    });
   }
 }
 ```
 
 <Info>
-`@transactional` 데코레이터가 설정한 트랜잭션 컨텍스트는 모든 하위 메서드 호출에서 자동으로 공유됩니다. 이는 AsyncLocalStorage를 통해 구현됩니다.
+  `@transactional` 데코레이터가 설정한 트랜잭션 컨텍스트는 모든 하위 메서드 호출에서 자동으로
+  공유됩니다. 이는 AsyncLocalStorage를 통해 구현됩니다.
 </Info>
 
 <Warning>
-트랜잭션 내에서 `getPuri`로 얻은 PuriWrapper와 `wdb.transaction()`으로 시작한 새로운 트랜잭션은 **서로 다른 트랜잭션**입니다. 중첩 트랜잭션이 필요한 경우 명시적으로 관리해야 합니다.
+  트랜잭션 내에서 `getPuri`로 얻은 PuriWrapper와 `wdb.transaction()`으로 시작한 새로운 트랜잭션은
+  **서로 다른 트랜잭션**입니다. 중첩 트랜잭션이 필요한 경우 명시적으로 관리해야 합니다.
 </Warning>
 
 ## 실전 예시
@@ -332,7 +325,7 @@ class UserModelClass extends BaseModelClass {
     class AnalyticsModelClass extends BaseModelClass {
       async getDailySales(startDate: Date, endDate: Date) {
         const rdb = this.getPuri("r");
-        
+
         const sales = await rdb.table("orders")
           .whereBetween("created_at", [startDate, endDate])
           .groupBy(rdb.raw("DATE(created_at)"))
@@ -343,13 +336,13 @@ class UserModelClass extends BaseModelClass {
             avg_amount: rdb.raw("AVG(total_amount)")
           })
           .orderBy("date", "asc");
-        
+
         return sales;
       }
-      
+
       async getTopUsers(limit: number = 10) {
         const rdb = this.getPuri("r");
-        
+
         const users = await rdb.table("users")
           .leftJoin("orders", "users.id", "orders.user_id")
           .groupBy("users.id")
@@ -361,11 +354,12 @@ class UserModelClass extends BaseModelClass {
           })
           .orderBy("total_spent", "desc")
           .limit(limit);
-        
+
         return users;
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Raw SQL" icon="code">
@@ -375,11 +369,11 @@ class UserModelClass extends BaseModelClass {
     class ReportModelClass extends BaseModelClass {
       async getComplexReport() {
         const rdb = this.getPuri("r");
-        
+
         // Raw SQL로 복잡한 쿼리
         const [result] = await rdb.raw(`
           WITH monthly_sales AS (
-            SELECT 
+            SELECT
               DATE_FORMAT(created_at, '%Y-%m') as month,
               COUNT(*) as order_count,
               SUM(total_amount) as total
@@ -387,7 +381,7 @@ class UserModelClass extends BaseModelClass {
             WHERE status = 'completed'
             GROUP BY month
           )
-          SELECT 
+          SELECT
             month,
             order_count,
             total,
@@ -397,16 +391,16 @@ class UserModelClass extends BaseModelClass {
           ORDER BY month DESC
           LIMIT 12
         `);
-        
+
         return result;
       }
-      
+
       async searchFullText(keyword: string) {
         const rdb = this.getPuri("r");
-        
+
         // Full-text search
         const posts = await rdb.raw(`
-          SELECT 
+          SELECT
             id,
             title,
             content,
@@ -416,11 +410,12 @@ class UserModelClass extends BaseModelClass {
           ORDER BY relevance DESC
           LIMIT 20
         `, [keyword, keyword]);
-        
+
         return posts[0];
       }
     }
     ```
+
   </Tab>
 
   <Tab title="배치 작업" icon="layer-group">
@@ -433,30 +428,30 @@ class UserModelClass extends BaseModelClass {
         status: string
       ) {
         const wdb = this.getPuri("w");
-        
+
         // 500개씩 배치 처리
         const chunkSize = 500;
         let updated = 0;
-        
+
         for (let i = 0; i < userIds.length; i += chunkSize) {
           const chunk = userIds.slice(i, i + chunkSize);
-          
+
           const count = await wdb.table("users")
             .whereIn("id", chunk)
             .update({
               status,
               updated_at: new Date()
             });
-          
+
           updated += count;
         }
-        
+
         return { updated };
       }
-      
+
       async batchInsert(users: Array<{ email: string; name: string }>) {
         const wdb = this.getPuri("w");
-        
+
         return wdb.transaction(async (trx) => {
           // UpsertBuilder로 배치 등록
           users.forEach(user => {
@@ -467,17 +462,18 @@ class UserModelClass extends BaseModelClass {
               created_at: new Date()
             });
           });
-          
+
           // 한 번에 upsert
           const ids = await trx.ubUpsert("users", {
             chunkSize: 500
           });
-          
+
           return { count: ids.length, ids };
         });
       }
     }
     ```
+
   </Tab>
 
   <Tab title="복잡한 트랜잭션" icon="arrows-rotate">
@@ -487,39 +483,39 @@ class UserModelClass extends BaseModelClass {
     class OrderModelClass extends BaseModelClass {
       async processOrder(orderId: number) {
         const wdb = this.getPuri("w");
-        
+
         return wdb.transaction(async (trx) => {
           // 1. 주문 조회
           const [order] = await trx.table("orders")
             .where("id", orderId)
             .forUpdate()  // 락 걸기
             .select();
-          
+
           if (!order) {
             throw new Error("Order not found");
           }
-          
+
           // 2. 주문 항목 조회
           const items = await trx.table("order_items")
             .where("order_id", orderId)
             .select();
-          
+
           // 3. 재고 확인 및 차감
           for (const item of items) {
             const [product] = await trx.table("products")
               .where("id", item.product_id)
               .forUpdate()
               .select();
-            
+
             if (product.stock < item.quantity) {
               throw new Error(`Insufficient stock for ${product.name}`);
             }
-            
+
             await trx.table("products")
               .where("id", item.product_id)
               .decrement("stock", item.quantity);
           }
-          
+
           // 4. 주문 상태 업데이트
           await trx.table("orders")
             .where("id", orderId)
@@ -527,19 +523,20 @@ class UserModelClass extends BaseModelClass {
               status: "processing",
               processed_at: new Date()
             });
-          
+
           // 5. 히스토리 기록
           await trx.table("order_history").insert({
             order_id: orderId,
             status: "processing",
             created_at: new Date()
           });
-          
+
           return { success: true };
         });
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -572,7 +569,7 @@ await wdb("users").where("id", 1).select();
 ```
 
 <Info>
-대부분의 경우 `getPuri`를 사용하는 것을 권장합니다. 타입 안정성과 UpsertBuilder 기능을 제공합니다.
+  대부분의 경우 `getPuri`를 사용하는 것을 권장합니다. 타입 안정성과 UpsertBuilder 기능을 제공합니다.
 </Info>
 
 ## 트랜잭션 격리 수준
@@ -585,13 +582,14 @@ await wdb.transaction(
     // 트랜잭션 작업
   },
   {
-    isolation: "serializable",  // 격리 수준
-    readOnly: false              // 읽기 전용 여부
-  }
+    isolation: "serializable", // 격리 수준
+    readOnly: false, // 읽기 전용 여부
+  },
 );
 ```
 
 **격리 수준:**
+
 - `"read uncommitted"`
 - `"read committed"` (PostgreSQL 기본)
 - `"repeatable read"` (MySQL 기본)
@@ -605,15 +603,15 @@ Puri는 완전한 타입 안정성을 제공합니다.
 const wdb = this.getPuri("w");
 
 // ✅ 타입 안전
-const users = await wdb.table("users")
-  .where("status", "active")  // status 필드 자동 완성
+const users = await wdb
+  .table("users")
+  .where("status", "active") // status 필드 자동 완성
   .select();
 
-users[0].email;  // ✅ 타입 추론됨
+users[0].email; // ✅ 타입 추론됨
 
 // ❌ 타입 에러
-await wdb.table("users")
-  .where("unknown_field", "value");  // 존재하지 않는 필드
+await wdb.table("users").where("unknown_field", "value"); // 존재하지 않는 필드
 ```
 
 ## 주의사항
@@ -665,9 +663,10 @@ await wdb.transaction(async (trx) => {
 
 ```typescript
 // WHERE 조건에 인덱스 사용
-const users = await rdb.table("users")
-  .where("status", "active")  // status에 인덱스 필요
-  .where("created_at", ">", startDate)  // created_at에 인덱스 필요
+const users = await rdb
+  .table("users")
+  .where("status", "active") // status에 인덱스 필요
+  .where("created_at", ">", startDate) // created_at에 인덱스 필요
   .select();
 ```
 
@@ -678,8 +677,7 @@ const users = await rdb.table("users")
 const users = await rdb.table("users").select();
 
 // ✅ 필요한 필드만
-const users = await rdb.table("users")
-  .select("id", "email", "name");
+const users = await rdb.table("users").select("id", "email", "name");
 ```
 
 ### 3. 배치 처리
@@ -695,35 +693,19 @@ for (let i = 0; i < ids.length; i += 500) {
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="Puri 쿼리 빌더" 
-    icon="code" 
-    href="/ko/database/puri/basic-queries"
-  >
+  <Card title="Puri 쿼리 빌더" icon="code" href="/ko/database/puri/basic-queries">
     Puri 쿼리 작성 방법
   </Card>
-  
-  <Card 
-    title="UpsertBuilder" 
-    icon="layer-group" 
-    href="/ko/database/upsert-builder/basic-usage"
-  >
-    UpsertBuilder 사용 가이드
-  </Card>
-  
-  <Card 
-    title="@transactional" 
-    icon="arrows-rotate" 
-    href="/ko/api-reference/decorators/transactional"
-  >
-    트랜잭션 데코레이터
-  </Card>
-  
-  <Card 
-    title="트랜잭션" 
-    icon="database" 
-    href="/ko/database/transactions/manual-transactions"
-  >
+
+<Card title="UpsertBuilder" icon="layer-group" href="/ko/database/upsert-builder/basic-usage">
+  UpsertBuilder 사용 가이드
+</Card>
+
+<Card title="@transactional" icon="arrows-rotate" href="/ko/api-reference/decorators/transactional">
+  트랜잭션 데코레이터
+</Card>
+
+  <Card title="트랜잭션" icon="database" href="/ko/database/transactions/manual-transactions">
     수동 트랜잭션 관리
   </Card>
 </CardGroup>

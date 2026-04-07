@@ -1,4 +1,4 @@
-import type { SerializedError } from "./error";
+import { type SerializedError } from "./error";
 
 export interface RetryDecision {
   shouldRetry: boolean;

@@ -1,4 +1,4 @@
-import type { TemplateOptions } from "../../types/types";
+import { type TemplateOptions } from "../../types/types";
 import { Template } from "../template";
 
 export class Template__entry_server extends Template {

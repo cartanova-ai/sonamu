@@ -1,6 +1,6 @@
-import type { BaseFrameClass } from "../api/base-frame";
+import { type BaseFrameClass } from "../api/base-frame";
 import { BaseModelClass } from "../database/base-model";
-import type { CacheDecoratorOptions, CacheManager } from "./types";
+import { type CacheDecoratorOptions, type CacheManager } from "./types";
 
 type DecoratorTarget = { constructor: { name: string } };
 

@@ -8,6 +8,7 @@ description: Sonamu Tasks workflow system. Background jobs, scheduling, durable 
 PostgreSQL-based durable workflow engine. Uses the `@sonamu-kit/tasks` package.
 
 **Source code:**
+
 - Decorator: `modules/sonamu/src/tasks/decorator.ts`
 - StepWrapper: `modules/sonamu/src/tasks/step-wrapper.ts`
 - WorkflowManager: `modules/sonamu/src/tasks/workflow-manager.ts`
@@ -28,31 +29,34 @@ export const myTask = workflow({
 });
 
 // Method 2: decorator + function inlined
-export const myTask = workflow({
-  version: "1",
-}, async ({ input, step, logger, version }) => {
-  // ...
-});
+export const myTask = workflow(
+  {
+    version: "1",
+  },
+  async ({ input, step, logger, version }) => {
+    // ...
+  },
+);
 ```
 
 ### DefineWorkflowOptions
 
-| Option | Type | Required | Description |
-|------|------|------|------|
-| `version` | `string` | Y | Workflow version (distinguishes from existing runs when changed) |
-| `name` | `string` | N | Workflow name (default: function name converted to underscore case) |
-| `schema` | `StandardSchemaV1` | N | Input validation schema (Zod, etc.) |
-| `schedules` | `Schedule[]` | N | Array of cron schedules |
-| `retryPolicy` | `RetryPolicy` | N | Retry policy |
+| Option        | Type               | Required | Description                                                         |
+| ------------- | ------------------ | -------- | ------------------------------------------------------------------- |
+| `version`     | `string`           | Y        | Workflow version (distinguishes from existing runs when changed)    |
+| `name`        | `string`           | N        | Workflow name (default: function name converted to underscore case) |
+| `schema`      | `StandardSchemaV1` | N        | Input validation schema (Zod, etc.)                                 |
+| `schedules`   | `Schedule[]`       | N        | Array of cron schedules                                             |
+| `retryPolicy` | `RetryPolicy`      | N        | Retry policy                                                        |
 
 ### Workflow Function Parameters
 
-| Parameter | Type | Description |
-|---------|------|------|
-| `input` | `Input` | Input value passed when the workflow runs |
-| `step` | `StepWrapper` | Tool for defining/executing steps |
-| `logger` | `Logger` | @logtape/logtape logger |
-| `version` | `string \| null` | Current workflow version |
+| Parameter | Type             | Description                               |
+| --------- | ---------------- | ----------------------------------------- |
+| `input`   | `Input`          | Input value passed when the workflow runs |
+| `step`    | `StepWrapper`    | Tool for defining/executing steps         |
+| `logger`  | `Logger`         | @logtape/logtape logger                   |
+| `version` | `string \| null` | Current workflow version                  |
 
 ## Step
 
@@ -61,10 +65,12 @@ An atomic unit of execution within a workflow. On failure, retry begins from tha
 ### step.define — Inline Function
 
 ```typescript
-const result = await step.define({ name: "fetch-data" }, async () => {
-  const data = await fetchSomething();
-  return data;
-}).run();
+const result = await step
+  .define({ name: "fetch-data" }, async () => {
+    const data = await fetchSomething();
+    return data;
+  })
+  .run();
 ```
 
 ### step.get — Wrapping an Existing Method
@@ -78,6 +84,7 @@ const result = await step.get({ name: "custom_step" }, MyService, "execute").run
 ```
 
 Overloads for `step.get`:
+
 - `step.get(object, methodName)` — Step name is the methodName converted to underscore case
 - `step.get({ name }, object, methodName)` — Step name specified directly
 
@@ -95,23 +102,28 @@ The wait time is preserved even if the server restarts.
 ## Scheduling (cron)
 
 ```typescript
-export const dailyReport = workflow({
-  version: "1",
-  schedules: [{
-    expression: "0 9 * * *",    // every day at 9am
-    name: "daily-report",        // optional (default: workflowName[expression])
-    input: () => ({ date: new Date().toISOString() }),  // optional
-  }],
-}, async ({ input, step }) => {
-  // ...
-});
+export const dailyReport = workflow(
+  {
+    version: "1",
+    schedules: [
+      {
+        expression: "0 9 * * *", // every day at 9am
+        name: "daily-report", // optional (default: workflowName[expression])
+        input: () => ({ date: new Date().toISOString() }), // optional
+      },
+    ],
+  },
+  async ({ input, step }) => {
+    // ...
+  },
+);
 ```
 
-| Field | Type | Required | Description |
-|------|------|------|------|
-| `expression` | `string` | Y | cron expression |
-| `name` | `string` | N | Schedule name (default: `workflowName[expression]`) |
-| `input` | `Executable<Input>` | N | Input value to pass on execution (function or value) |
+| Field        | Type                | Required | Description                                          |
+| ------------ | ------------------- | -------- | ---------------------------------------------------- |
+| `expression` | `string`            | Y        | cron expression                                      |
+| `name`       | `string`            | N        | Schedule name (default: `workflowName[expression]`)  |
+| `input`      | `Executable<Input>` | N        | Input value to pass on execution (function or value) |
 
 The timezone follows the `api.timezone` setting in `sonamu.config.ts`.
 
@@ -120,17 +132,20 @@ The timezone follows the `api.timezone` setting in `sonamu.config.ts`.
 ### Static Policy (Default)
 
 ```typescript
-export const reliableTask = workflow({
-  version: "1",
-  retryPolicy: {
-    maxAttempts: 5,           // maximum retry attempts (default: 5)
-    initialIntervalMs: 1000,  // first retry wait time (default: 1000ms)
-    backoffCoefficient: 2,    // wait time multiplier (default: 2)
-    maximumIntervalMs: 60000, // maximum wait time
+export const reliableTask = workflow(
+  {
+    version: "1",
+    retryPolicy: {
+      maxAttempts: 5, // maximum retry attempts (default: 5)
+      initialIntervalMs: 1000, // first retry wait time (default: 1000ms)
+      backoffCoefficient: 2, // wait time multiplier (default: 2)
+      maximumIntervalMs: 60000, // maximum wait time
+    },
   },
-}, async ({ step }) => {
-  // ...
-});
+  async ({ step }) => {
+    // ...
+  },
+);
 ```
 
 ### Dynamic Policy
@@ -152,9 +167,9 @@ export default defineConfig({
   tasks: {
     enableWorker: true,
     workerOptions: {
-      concurrency: 4,       // concurrent execution count (default: CPU cores - 1)
-      usePubSub: true,      // use DB pub/sub (default: true)
-      listenDelay: 500,      // execution delay after pub/sub receive in ms (default: 500)
+      concurrency: 4, // concurrent execution count (default: CPU cores - 1)
+      usePubSub: true, // use DB pub/sub (default: true)
+      listenDelay: 500, // execution delay after pub/sub receive in ms (default: 500)
     },
     contextProvider: (defaultContext) => {
       // build Context to use within workflows
@@ -164,13 +179,13 @@ export default defineConfig({
 });
 ```
 
-| Option | Type | Description |
-|------|------|------|
-| `enableWorker` | `boolean` | Whether to enable Worker (use only in daemon mode) |
-| `workerOptions.concurrency` | `number` | Number of concurrently executing tasks |
-| `workerOptions.usePubSub` | `boolean` | Use PostgreSQL pub/sub |
-| `workerOptions.listenDelay` | `number` | Execution delay after pub/sub receive (ms) |
-| `contextProvider` | `(ctx) => Context` | Context creation function when workflow runs |
+| Option                      | Type               | Description                                        |
+| --------------------------- | ------------------ | -------------------------------------------------- |
+| `enableWorker`              | `boolean`          | Whether to enable Worker (use only in daemon mode) |
+| `workerOptions.concurrency` | `number`           | Number of concurrently executing tasks             |
+| `workerOptions.usePubSub`   | `boolean`          | Use PostgreSQL pub/sub                             |
+| `workerOptions.listenDelay` | `number`           | Execution delay after pub/sub receive (ms)         |
+| `contextProvider`           | `(ctx) => Context` | Context creation function when workflow runs       |
 
 ## Manual Execution
 
@@ -180,7 +195,7 @@ import { Sonamu } from "sonamu";
 // Run via WorkflowManager
 const handle = await Sonamu.workflowManager.run(
   { name: "my-task", version: "1" },
-  { target: "manual" }
+  { target: "manual" },
 );
 
 // Wait for result

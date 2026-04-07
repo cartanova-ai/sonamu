@@ -12,13 +12,7 @@ export function useSheetTable(options: {
 }) {
   const { sheets, onExecute, onKeywordChanged, onKeydown, disable } = options;
 
-  const sheetConfigsRef = useRef<
-    {
-      name: string;
-      width: number;
-      height: number;
-    }[]
-  >(
+  const sheetConfigsRef = useRef(
     sheets.map((sheet) => ({
       name: sheet.name,
       width: 0,
@@ -39,7 +33,7 @@ export function useSheetTable(options: {
     y: number;
     x: number;
   };
-  const [cursor, setCursor] = useState<Cursor>({
+  const [cursor, setCursor] = useState({
     sheet: "props",
     y: 0,
     x: 0,
@@ -171,7 +165,7 @@ export function useSheetTable(options: {
 
   // 키 타이머 (1초 이내 입력인 경우 keyword를 누적하고 아닌 경우 초기화 후 입력)
   const keyTimerRef = useRef<{ keyword: string; timestamp: number } | null>(null);
-  const keySwitchRef = useRef<boolean>(true);
+  const keySwitchRef = useRef(true);
   useEffect(() => {
     if (disable) {
       return;
@@ -185,7 +179,7 @@ export function useSheetTable(options: {
 
       if (onKeydown) {
         const toPropargate = onKeydown(e);
-        if (toPropargate === false) {
+        if (!toPropargate) {
           return;
         }
       }

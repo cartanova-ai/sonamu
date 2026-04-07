@@ -1,8 +1,9 @@
+import { createRequire } from "node:module";
 import { register } from "node:module";
-import * as path from "node:path";
-import { exists } from "../utils/fs-utils.js";
+import { pathToFileURL } from "node:url";
 
 const tsLoaderRegisterStateKey = Symbol.for("sonamu.ts-loader-register.state");
+const require = createRequire(import.meta.url);
 
 type TsLoaderRegisterState = {
   registered: boolean;
@@ -22,33 +23,16 @@ function getTsLoaderRegisterState(): TsLoaderRegisterState {
   return globalState[tsLoaderRegisterStateKey];
 }
 
-async function setupSwcConfig(apiRoot: string) {
-  try {
-    const projectSwcrcPath = path.join(apiRoot, ".swcrc");
-    if (await exists(projectSwcrcPath)) {
-      process.env.SWCRC_PATH = projectSwcrcPath;
-      return;
-    }
-
-    const sonamuSwcrcPath = path.join(import.meta.dirname, "..", "..", ".swcrc.project-default");
-    if (await exists(sonamuSwcrcPath)) {
-      process.env.SWCRC_PATH = sonamuSwcrcPath;
-      return;
-    }
-  } catch {
-    // 환경 변수 설정 실패는 무시 (loader가 기본 설정 사용)
-  }
-}
-
 export async function ensureTsLoaderRegistered(apiRoot: string): Promise<void> {
   const state = getTsLoaderRegisterState();
   if (state.registered) {
     return;
   }
 
-  await setupSwcConfig(apiRoot);
+  void apiRoot;
+  const loaderPath = require.resolve("@sonamu-kit/ts-loader/loader");
 
-  register("@sonamu-kit/ts-loader/loader", {
+  register(pathToFileURL(loaderPath).href, {
     parentURL: import.meta.url,
   });
   state.registered = true;

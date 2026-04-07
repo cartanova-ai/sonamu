@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { SonamuFile } from "@/contexts";
+
+import { type SonamuFile } from "@/contexts";
 
 /**
  * Form 페이지의 모든 컴포넌트를 포함하는 Zod 스키마

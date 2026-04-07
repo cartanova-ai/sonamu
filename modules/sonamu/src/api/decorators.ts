@@ -1,24 +1,23 @@
-import type { FastifyMultipartBaseOptions } from "@fastify/multipart";
-import { getLogger } from "@logtape/logtape";
 import assert from "assert";
-import type { HTTPMethods } from "fastify";
+
+import { type FastifyMultipartBaseOptions } from "@fastify/multipart";
+import { getLogger } from "@logtape/logtape";
+import { type HTTPMethods } from "fastify";
 import inflection from "inflection";
 import { isEqual } from "radashi";
-import type { z } from "zod";
-import type { CacheControlConfig } from "../cache-control/types";
-import type { CompressConfig } from "../compress/types";
+import { type z } from "zod";
+
+import { type CacheControlConfig } from "../cache-control/types";
+import { type CompressConfig } from "../compress/types";
 import { BaseModelClass } from "../database/base-model";
 import { DB } from "../database/db";
-import {
-  PuriTransactionWrapper,
-  type PuriWrapper,
-  type TransactionalOptions,
-} from "../database/puri-wrapper";
+import { PuriTransactionWrapper } from "../database/puri-wrapper";
+import { type TransactionalOptions } from "../database/puri-wrapper";
 import { UpsertBuilder } from "../database/upsert-builder";
 import { convertDomainToCategory } from "../logger/category";
-import type { DriverKey } from "../storage/drivers";
-import type { KeyGenerator } from "../storage/types";
-import type { ApiParam, ApiParamType } from "../types/types";
+import { type DriverKey } from "../storage/drivers";
+import { type KeyGenerator } from "../storage/types";
+import { type ApiParam, type ApiParamType } from "../types/types";
 import { BaseFrameClass } from "./base-frame";
 
 export interface GuardKeys {
@@ -55,7 +54,7 @@ export type ApiDecoratorOptions = {
 };
 export type StreamDecoratorOptions = {
   type: "sse"; // | 'ws
-  // biome-ignore lint/suspicious/noExplicitAny: 이벤트 키별로 넘겨주는 값이므로 어떤 타입이든 상관없음
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 이벤트 키별로 넘겨주는 값이므로 어떤 타입이든 상관없음
   events: z.ZodObject<any>;
   path?: string;
   resourceName?: string;
@@ -301,7 +300,7 @@ export function transactional(options: TransactionalOptions = {}) {
 
       // AsyncLocalStorage 컨텍스트 없거나 해당 preset의 트랜잭션이 없으면 새로 시작
       const startTransaction = async () => {
-        const puri = this.getPuri(dbPreset) as PuriWrapper;
+        const puri = this.getPuri(dbPreset);
 
         return puri.knex.transaction(
           async (trx) => {
@@ -454,9 +453,9 @@ function assertNoConflictingOptions(
   decoratorName: string,
   modelName: string,
   methodName: string,
-  // biome-ignore lint/suspicious/noExplicitAny: <아 쉽게쉽게 좀 갑시다>
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- <아 쉽게쉽게 좀 갑시다>
   existingOptions: Record<string, any>,
-  // biome-ignore lint/suspicious/noExplicitAny: <이럴 때 아니면 any 언제 씁니까>
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- <이럴 때 아니면 any 언제 씁니까>
   newOptions: Record<string, any>,
 ) {
   Object.keys(newOptions).forEach((key) => {

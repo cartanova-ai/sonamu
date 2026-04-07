@@ -9,24 +9,16 @@ Sonamu가 API 변경을 컴파일 타임에 감지하여 런타임 에러를 사
 
 <CardGroup cols={2}>
   <Card title="즉시 감지" icon="bolt">
-    API 변경 시
-    
-    컴파일 타임 에러
+    API 변경 시 컴파일 타임 에러
   </Card>
   <Card title="런타임 안전" icon="shield-check">
-    배포 전 발견
-    
-    프로덕션 안정성
+    배포 전 발견 프로덕션 안정성
   </Card>
   <Card title="IDE 통합" icon="code">
-    빨간 밑줄
-    
-    즉각적인 피드백
+    빨간 밑줄 즉각적인 피드백
   </Card>
   <Card title="리팩터링 안전" icon="rotate">
-    대규모 변경
-    
-    영향 범위 파악
+    대규모 변경 영향 범위 파악
   </Card>
 </CardGroup>
 
@@ -43,7 +35,7 @@ Sonamu가 API 변경을 컴파일 타임에 감지하여 런타임 에러를 사
 // 프론트엔드 (변경 사항 모름)
 function UserProfile({ userId }: { userId: number }) {
   const user = await fetchUser(userId);
-  
+
   return (
     <div>
       {/* 런타임 에러! username 필드가 없음 */}
@@ -54,6 +46,7 @@ function UserProfile({ userId }: { userId: number }) {
 ```
 
 **런타임 에러의 문제점**:
+
 1. **프로덕션에서 발생**: 사용자가 직접 경험
 2. **발견 지연**: QA나 사용자 리포트로만 발견
 3. **디버깅 어려움**: 어디서 문제가 발생했는지 추적 필요
@@ -81,12 +74,12 @@ async getUser(): Promise<{
 // 프론트엔드 (컴파일 타임 에러 발생!)
 function UserProfile({ userId }: { userId: number }) {
   const { data } = UserService.useUser("A", userId);
-  
+
   return (
     <div>
       {/* ❌ 컴파일 에러! Property 'username' does not exist */}
       <h1>{data.user.username}</h1>
-      
+
       {/* ✅ 수정 후 정상 */}
       <h1>{data.user.displayName}</h1>
     </div>
@@ -95,6 +88,7 @@ function UserProfile({ userId }: { userId: number }) {
 ```
 
 **컴파일 타임 에러의 장점**:
+
 1. ✨ **즉시 발견**: 코드 작성 중 IDE에서 즉시 표시
 2. ✨ **배포 전 수정**: 프로덕션 배포 전에 모든 문제 해결
 3. ✨ **영향 범위 파악**: 변경이 영향을 주는 모든 곳 확인
@@ -120,6 +114,7 @@ console.log(data.user.username); // ❌ 컴파일 에러
 ```
 
 **IDE 에러 메시지**:
+
 ```
 Property 'username' does not exist on type '{ id: number; displayName: string; }'.
 Did you mean 'displayName'?
@@ -138,11 +133,12 @@ async getUser(): Promise<{
 
 // 프론트엔드
 const { data } = await UserService.getUser("A", 123);
-const nextYear = data.user.age + 1; 
+const nextYear = data.user.age + 1;
 // ❌ 컴파일 에러: string + number
 ```
 
 **IDE 에러 메시지**:
+
 ```
 Operator '+' cannot be applied to types 'string' and 'number'.
 ```
@@ -168,11 +164,13 @@ const bioLength = data.user.bio.length;
 ```
 
 **IDE 에러 메시지**:
+
 ```
 Object is possibly 'undefined'.
 ```
 
 **수정**:
+
 ```typescript
 // ✅ 옵셔널 체이닝 사용
 const bioLength = data.user.bio?.length;
@@ -224,6 +222,7 @@ await UserService.searchUsers({
 ```
 
 **IDE 에러 메시지**:
+
 ```
 Type 'string' is not assignable to type 'number'.
 ```
@@ -246,6 +245,7 @@ console.log(data.posts.title);
 ```
 
 **수정**:
+
 ```typescript
 // ✅ 배열 처리
 data.posts.forEach((post) => {
@@ -292,6 +292,7 @@ async getUser(): Promise<{
 **pnpm generate 실행 후**:
 
 IDE에서 모든 에러 위치가 표시됩니다:
+
 ```
 src/components/UserProfile.tsx:15 - Property 'name' does not exist
 src/components/UserCard.tsx:8 - Property 'name' does not exist
@@ -300,6 +301,7 @@ src/pages/users/[id].tsx:42 - Property 'email' does not exist
 ```
 
 **수정 과정**:
+
 1. IDE의 "Problems" 패널에서 모든 에러 확인
 2. 각 위치를 방문하여 새로운 구조에 맞게 수정
 3. 모든 에러가 해결되면 컴파일 성공
@@ -322,10 +324,10 @@ TypeScript의 강력한 리팩터링 기능을 활용할 수 있습니다.
 // IDE가 자동으로 프로젝트 전체에서 변경
 
 // Before
-data.user.username
+data.user.username;
 
 // After (자동 변경됨)
-data.user.displayName
+data.user.displayName;
 ```
 
 ## 실전 워크플로우
@@ -353,6 +355,7 @@ pnpm generate
 ```
 
 **출력**:
+
 ```
 ✓ Analyzing API methods...
 ✓ Generating services.generated.ts...
@@ -367,14 +370,15 @@ pnpm tsc --noEmit
 ```
 
 **출력 (에러 발생)**:
+
 ```
-src/components/UserProfile.tsx:15:23 - error TS2339: 
+src/components/UserProfile.tsx:15:23 - error TS2339:
 Property 'username' does not exist on type '{ id: number; displayName: string; email: string; }'.
 
 15     <h1>{data.user.username}</h1>
                       ~~~~~~~~
 
-src/components/UserCard.tsx:8:35 - error TS2339: 
+src/components/UserCard.tsx:8:35 - error TS2339:
 Property 'username' does not exist on type '{ id: number; displayName: string; email: string; }'.
 
 8   const name = user.username;
@@ -402,6 +406,7 @@ pnpm tsc --noEmit
 ```
 
 **출력 (성공)**:
+
 ```
 ✓ No errors found!
 ```
@@ -423,26 +428,27 @@ on: [push, pull_request]
 jobs:
   typecheck:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '22'
-      
+          node-version: "22"
+
       - name: Install dependencies
         run: pnpm install
-      
+
       - name: Generate Services
         run: pnpm generate
-      
+
       - name: TypeScript Check
         run: pnpm tsc --noEmit
 ```
 
 **이점**:
+
 - Pull Request에서 타입 에러 자동 감지
 - 타입 에러가 있으면 머지 차단
 - 팀 전체의 코드 품질 보장
@@ -508,56 +514,75 @@ console.log(data.user.displayName);
 ### 자주 보는 에러 메시지
 
 **1. Property does not exist**
+
 ```
 Property 'username' does not exist on type 'User'.
 ```
+
 → 필드가 삭제되었거나 이름이 변경됨
 
 **2. Type is not assignable**
+
 ```
 Type 'string' is not assignable to type 'number'.
 ```
+
 → 타입이 변경됨
 
 **3. Object is possibly undefined**
+
 ```
 Object is possibly 'undefined'.
 ```
+
 → 필수에서 옵셔널로 변경됨
 
 **4. Cannot find name**
+
 ```
 Cannot find name 'UserService'.
 ```
+
 → Service가 재생성되지 않았거나 import 누락
 
 **5. Expected N arguments, but got M**
+
 ```
 Expected 2 arguments, but got 1.
 ```
+
 → API 파라미터가 추가/삭제됨
 
 ## 주의사항
 
 <Warning>
-**컴파일 타임 에러 처리 시 주의사항**:
-1. **pnpm generate 필수**: API 변경 후 반드시 실행
-2. **@ts-ignore 금지**: 타입 에러를 무시하지 말 것
-3. **any 타입 금지**: 타입 안전성이 깨짐
-4. **모든 에러 수정**: 하나라도 남기면 런타임 에러 가능
-5. **CI/CD 통합**: 자동 타입 체크 설정
+  **컴파일 타임 에러 처리 시 주의사항**: 1. **pnpm generate 필수**: API 변경 후 반드시 실행 2.
+  **@ts-ignore 금지**: 타입 에러를 무시하지 말 것 3. **any 타입 금지**: 타입 안전성이 깨짐 4. **모든
+  에러 수정**: 하나라도 남기면 런타임 에러 가능 5. **CI/CD 통합**: 자동 타입 체크 설정
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="API 타입 추론" icon="wand-magic-sparkles" href="/ko/frontend-integration/type-safety/api-type-inference">
+  <Card
+    title="API 타입 추론"
+    icon="wand-magic-sparkles"
+    href="/ko/frontend-integration/type-safety/api-type-inference"
+  >
     타입 추론 이해
   </Card>
-  <Card title="공유 타입" icon="share-nodes" href="/ko/frontend-integration/type-safety/shared-types">
+  <Card
+    title="공유 타입"
+    icon="share-nodes"
+    href="/ko/frontend-integration/type-safety/shared-types"
+  >
     타입 파일 구조
   </Card>
-  <Card title="Service 사용하기" icon="code" href="/ko/frontend-integration/generated-services/using-services">
+  <Card
+    title="Service 사용하기"
+    icon="code"
+    href="/ko/frontend-integration/generated-services/using-services"
+  >
     Service 활용법
   </Card>
   <Card title="테스팅" icon="vial" href="/ko/testing/overview">

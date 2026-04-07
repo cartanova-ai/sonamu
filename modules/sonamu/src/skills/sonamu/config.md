@@ -44,21 +44,21 @@ SLACK_CHANNEL_ID=C0123456789
 
 ### Environment Variable Reference
 
-| Variable | Required | Description |
-|-----|-----|------|
-| `DB_HOST` | ✓ | DB host (Docker: `0.0.0.0`, external DB: the relevant IP) |
-| `DB_PORT` | ✓ | DB port (default: `5432`) |
-| `DB_USER` | ✓ | DB username (default: `postgres`) |
-| `DB_PASSWORD` | ✓ | DB password |
-| `DATABASE_NAME` | ✓ | Database name |
-| `PROJECT_NAME` | ✓ | Project name (used in Docker, config) |
-| `CONTAINER_NAME` | | Docker container name |
-| `SESSION_SECRET` | | Session encryption key (required in production) |
-| `SESSION_SALT` | | Session salt (16 characters) |
-| `AWS_ACCESS_KEY_ID` | | Required when using S3 |
-| `AWS_SECRET_ACCESS_KEY` | | Required when using S3 |
-| `S3_REGION` | | S3 region (default: `ap-northeast-2`) |
-| `S3_BUCKET` | | S3 bucket name |
+| Variable                | Required | Description                                               |
+| ----------------------- | -------- | --------------------------------------------------------- |
+| `DB_HOST`               | ✓        | DB host (Docker: `0.0.0.0`, external DB: the relevant IP) |
+| `DB_PORT`               | ✓        | DB port (default: `5432`)                                 |
+| `DB_USER`               | ✓        | DB username (default: `postgres`)                         |
+| `DB_PASSWORD`           | ✓        | DB password                                               |
+| `DATABASE_NAME`         | ✓        | Database name                                             |
+| `PROJECT_NAME`          | ✓        | Project name (used in Docker, config)                     |
+| `CONTAINER_NAME`        |          | Docker container name                                     |
+| `SESSION_SECRET`        |          | Session encryption key (required in production)           |
+| `SESSION_SALT`          |          | Session salt (16 characters)                              |
+| `AWS_ACCESS_KEY_ID`     |          | Required when using S3                                    |
+| `AWS_SECRET_ACCESS_KEY` |          | Required when using S3                                    |
+| `S3_REGION`             |          | S3 region (default: `ap-northeast-2`)                     |
+| `S3_BUCKET`             |          | S3 bucket name                                            |
 
 ---
 
@@ -79,14 +79,30 @@ const port = 34900;
 
 export default defineConfig({
   projectName: process.env.PROJECT_NAME ?? "MyProject",
-  api: { /* API settings */ },
-  i18n: { /* i18n settings */ },
-  sync: { /* sync settings */ },
-  database: { /* DB settings */ },
-  logging: { /* logging settings (disable with false) */ },
-  test: { /* test settings */ },
-  server: { /* server settings */ },
-  slackConfirm: { /* Production migration Slack approval */ },
+  api: {
+    /* API settings */
+  },
+  i18n: {
+    /* i18n settings */
+  },
+  sync: {
+    /* sync settings */
+  },
+  database: {
+    /* DB settings */
+  },
+  logging: {
+    /* logging settings (disable with false) */
+  },
+  test: {
+    /* test settings */
+  },
+  server: {
+    /* server settings */
+  },
+  slackConfirm: {
+    /* Production migration Slack approval */
+  },
 });
 ```
 
@@ -190,6 +206,7 @@ pnpm sonamu auth generate
 ```
 
 Generated entities:
+
 - **User** - user (id, name, email, email_verified, image)
 - **Session** - session (token, expires_at, user_id)
 - **Account** - account (provider_id, access_token, etc.)
@@ -221,12 +238,12 @@ server: {
 
 Automatically registered under the `/api/auth/*` path:
 
-| Endpoint | Method | Description |
-|------------|--------|------|
-| `/api/auth/sign-up/email` | POST | Sign up |
-| `/api/auth/sign-in/email` | POST | Sign in |
-| `/api/auth/sign-out` | POST | Sign out |
-| `/api/auth/get-session` | GET | Get session |
+| Endpoint                  | Method | Description |
+| ------------------------- | ------ | ----------- |
+| `/api/auth/sign-up/email` | POST   | Sign up     |
+| `/api/auth/sign-in/email` | POST   | Sign in     |
+| `/api/auth/sign-out`      | POST   | Sign out    |
+| `/api/auth/get-session`   | GET    | Get session |
 
 ### 4. Accessing user/session from Context
 
@@ -243,12 +260,12 @@ async me(): Promise<UserSubsetA | null> {
 
 better-auth uses camelCase, Sonamu uses snake_case. Automatic mapping is applied:
 
-| better-auth | Sonamu |
-|-------------|--------|
+| better-auth     | Sonamu           |
+| --------------- | ---------------- |
 | `emailVerified` | `email_verified` |
-| `createdAt` | `created_at` |
-| `userId` | `user_id` |
-| `expiresAt` | `expires_at` |
+| `createdAt`     | `created_at`     |
+| `userId`        | `user_id`        |
+| `expiresAt`     | `expires_at`     |
 
 ---
 
@@ -277,8 +294,8 @@ declare module "sonamu" {
     query: true;
     admin: true;
     user: true;
-    manager: true;      // added
-    superadmin: true;   // added
+    manager: true; // added
+    superadmin: true; // added
   }
 }
 ```
@@ -370,9 +387,11 @@ export function canAccess(userRole: string, menu: keyof typeof menuPermissions) 
 
 ```tsx
 // web/src/components/Sidebar.tsx
-{canAccess(user.role, "userManagement") && (
-  <MenuItem href="/admin/users">User Management</MenuItem>
-)}
+{
+  canAccess(user.role, "userManagement") && (
+    <MenuItem href="/admin/users">User Management</MenuItem>
+  );
+}
 ```
 
 ---
@@ -394,6 +413,7 @@ session: {
 ```
 
 **Production checklist:**
+
 - `SESSION_SECRET`: must be changed to a strong random string
 - `SESSION_SALT`: change to a 16-character random string
 - `cookie.domain`: change to the actual domain
@@ -480,6 +500,7 @@ cache: {
 ```
 
 **Available drivers:**
+
 - `memory` - in-memory cache (default)
 - `file` - file-based cache
 - `redis` - Redis cache
@@ -576,6 +597,7 @@ lifecycle: {
 ## Sonamu Local Development Environment Setup
 
 **When is this needed:**
+
 - When modifying the Sonamu framework source code during development
 - When linking a local Sonamu repository to a project for development
 
@@ -610,7 +632,7 @@ overrides:
 ```json
 {
   "dependencies": {
-    "sonamu": "^0.7.45"  // specify the latest published version
+    "sonamu": "^0.7.45" // specify the latest published version
   }
 }
 ```
@@ -694,17 +716,17 @@ Pass Fastify server options directly (excluding `logger`).
 
 ### Full Plugin List
 
-| Plugin | Type | Description |
-|----------|------|------|
-| `compress` | `boolean \| FastifyCompressOptions` | Response compression (@fastify/compress) |
-| `cors` | `boolean \| FastifyCorsOptions` | CORS configuration |
-| `formbody` | `boolean \| FastifyFormbodyOptions` | x-www-form-urlencoded parsing |
-| `multipart` | `boolean \| FastifyMultipartOptions` | File upload |
-| `qs` | `boolean \| QsPluginOptions` | Query string parsing |
-| `session` | session config | Session management |
-| `sse` | `boolean \| SsePluginOptions` | Server-Sent Events |
-| `static` | `boolean \| FastifyStaticOptions` | Static file serving |
-| `custom` | `(server: FastifyInstance) => void` | Custom plugin registration function |
+| Plugin      | Type                                 | Description                              |
+| ----------- | ------------------------------------ | ---------------------------------------- |
+| `compress`  | `boolean \| FastifyCompressOptions`  | Response compression (@fastify/compress) |
+| `cors`      | `boolean \| FastifyCorsOptions`      | CORS configuration                       |
+| `formbody`  | `boolean \| FastifyFormbodyOptions`  | x-www-form-urlencoded parsing            |
+| `multipart` | `boolean \| FastifyMultipartOptions` | File upload                              |
+| `qs`        | `boolean \| QsPluginOptions`         | Query string parsing                     |
+| `session`   | session config                       | Session management                       |
+| `sse`       | `boolean \| SsePluginOptions`        | Server-Sent Events                       |
+| `static`    | `boolean \| FastifyStaticOptions`    | Static file serving                      |
+| `custom`    | `(server: FastifyInstance) => void`  | Custom plugin registration function      |
 
 ## logging
 
@@ -742,6 +764,7 @@ slackConfirm: {
 5. Access Sonamu UI: http://localhost:34900/sonamu-ui
 
 Before production deployment:
+
 - [ ] Change `SESSION_SECRET`
 - [ ] Change `SESSION_SALT`
 - [ ] Change `cookie.domain` to the actual domain

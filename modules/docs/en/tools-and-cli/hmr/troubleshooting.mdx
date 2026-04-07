@@ -15,7 +15,7 @@ Problems that may occur during HMR usage and practical solutions.
 // Modified user.model.ts
 export class UserModel extends BaseModelClass {
   isActive(): boolean {
-    return this.status === "active";  // Added this logic but...
+    return this.status === "active"; // Added this logic but...
   }
 }
 ```
@@ -56,7 +56,9 @@ app.get("/users", async (req, res) => {
 ```
 
 <Note>
-Sonamu's Syncer automatically handles dynamic imports for Entity-based files, so this problem doesn't occur in typical Model/API files. It mainly occurs in custom scripts or initialization code.
+  Sonamu's Syncer automatically handles dynamic imports for Entity-based files, so this problem
+  doesn't occur in typical Model/API files. It mainly occurs in custom scripts or initialization
+  code.
 </Note>
 
 ### Cause 2: Error Hidden in Console
@@ -127,7 +129,7 @@ await hot.init({
   rootDirectory: process.env.API_ROOT_PATH,
   boundaries: [
     `./src/**/*.ts`,
-    `!./src/config/**/*`,  // Exclude config folder
+    `!./src/config/**/*`, // Exclude config folder
   ],
 });
 ```
@@ -137,12 +139,13 @@ await hot.init({
 ```typescript
 await hot.init({
   boundaries: [`./src/**/*.ts`],
-  throwWhenBoundariesAreNotDynamicallyImported: false,  // Ignore error
+  throwWhenBoundariesAreNotDynamicallyImported: false, // Ignore error
 });
 ```
 
 <Warning>
-Using Option 3 means HMR won't work for that file. Not recommended as it significantly reduces development convenience.
+  Using Option 3 means HMR won't work for that file. Not recommended as it significantly reduces
+  development convenience.
 </Warning>
 
 ## Memory Increase on Reload
@@ -342,7 +345,7 @@ export class UserModel extends BaseModelClass {
 }
 
 // post.model.ts
-import { UserModel } from "../user/user.model";  // ← 🚨 Circular reference!
+import { UserModel } from "../user/user.model"; // ← 🚨 Circular reference!
 
 export class PostModel extends BaseModelClass {
   async getAuthor() {
@@ -357,7 +360,7 @@ export class PostModel extends BaseModelClass {
 
 ```typescript
 // user.model.ts
-import type { PostSaved } from "../post/post.types";  // ✅ Types only
+import type { PostSaved } from "../post/post.types"; // ✅ Types only
 
 export class UserModel extends BaseModelClass {
   async getPosts(): Promise<PostSaved[]> {
@@ -368,7 +371,7 @@ export class UserModel extends BaseModelClass {
 }
 
 // post.model.ts
-import type { UserSaved } from "../user/user.types";  // ✅ Types only
+import type { UserSaved } from "../user/user.types"; // ✅ Types only
 
 export class PostModel extends BaseModelClass {
   async getAuthor(): Promise<UserSaved> {
@@ -382,8 +385,12 @@ export class PostModel extends BaseModelClass {
 
 ```typescript
 // shared-types.ts
-export type UserSaved = { /* ... */ };
-export type PostSaved = { /* ... */ };
+export type UserSaved = {
+  /* ... */
+};
+export type PostSaved = {
+  /* ... */
+};
 
 // user.model.ts
 import type { PostSaved } from "./shared-types";
@@ -396,7 +403,7 @@ import type { UserSaved } from "./shared-types";
 
 ```typescript
 // Reference user.model.ts only from post.model.ts
-import { UserModel } from "../user/user.model";  // ✅ Unidirectional
+import { UserModel } from "../user/user.model"; // ✅ Unidirectional
 
 export class PostModel extends BaseModelClass {
   async getAuthor() {
@@ -424,7 +431,7 @@ export class PostModel extends BaseModelClass {
 
 ```typescript
 const dump = await hot.dump();
-const helper = dump.find(d => d.nodePath.includes("admin-helper.ts"));
+const helper = dump.find((d) => d.nodePath.includes("admin-helper.ts"));
 
 if (!helper) {
   console.log("❌ This file is not a Boundary!");
@@ -438,7 +445,7 @@ if (!helper) {
 await hot.init({
   rootDirectory: process.env.API_ROOT_PATH,
   boundaries: [
-    `./src/**/*.ts`,  // Should already be included
+    `./src/**/*.ts`, // Should already be included
   ],
 });
 ```
@@ -512,7 +519,7 @@ Dependency tree is too deep or wide, invalidating many files.
 
 ```typescript
 const dump = await hot.dump();
-const userModel = dump.find(d => d.nodePath.includes("user.model.ts"));
+const userModel = dump.find((d) => d.nodePath.includes("user.model.ts"));
 
 console.log(`Dependencies: ${userModel?.children?.length}`);
 // If over 100, that's a problem!
@@ -586,7 +593,7 @@ hmr-hook:loader Invalidated 3 files
 const dump = await hot.dump();
 
 // Check dependencies for specific file
-const userModel = dump.find(d => d.nodePath.includes("user.model.ts"));
+const userModel = dump.find((d) => d.nodePath.includes("user.model.ts"));
 console.log("Children:", userModel?.children);
 
 // Save entire tree as JSON
@@ -622,7 +629,7 @@ setInterval(() => {
     heapTotal: `${Math.round(used.heapTotal / 1024 / 1024)}MB`,
     external: `${Math.round(used.external / 1024 / 1024)}MB`,
   });
-}, 10000);  // Every 10 seconds
+}, 10000); // Every 10 seconds
 ```
 
 ## Last Resort: Full Restart
@@ -672,17 +679,17 @@ Please provide this information for problem resolution:
 Clearly show the file structure where the problem occurs:
 
 <Card>
-<FileTree>
-  <FileItem name="src/">
-    <FileItem name="user/">
-      <FileItem name="user.model.ts" description="When modifying this file" />
-      <FileItem name="user.api.ts" description="HMR doesn't work" />
+  <FileTree>
+    <FileItem name="src/">
+      <FileItem name="user/">
+        <FileItem name="user.model.ts" description="When modifying this file" />
+        <FileItem name="user.api.ts" description="HMR doesn't work" />
+      </FileItem>
+      <FileItem name="post/">
+        <FileItem name="post.model.ts" />
+      </FileItem>
     </FileItem>
-    <FileItem name="post/">
-      <FileItem name="post.model.ts" />
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 **Please include an example description:**

@@ -3,7 +3,8 @@
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import * as React from "react";
 import CheckIcon from "~icons/lucide/check";
-import type { Override } from "../../lib/types";
+
+import { type Override } from "../../lib/types";
 import { cn } from "../../lib/utils";
 
 type CheckboxProps = Override<
@@ -41,7 +42,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
     const checkboxRef = React.useRef<HTMLButtonElement>(null);
     const labelId = React.useId();
 
-    // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
+    // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => inputRef.current!);
 
     const handleCheckedChange = (newChecked: boolean | "indeterminate") => {

@@ -12,6 +12,7 @@ pnpm dev
 ```
 
 Once the development server starts, you can use the following features:
+
 - **Auto-restart**: Automatic server restart on code changes
 - **TypeScript support**: Run .ts files directly
 - **Source map support**: Accurate line numbers on errors
@@ -21,13 +22,14 @@ Once the development server starts, you can use the following features:
 
 You can run API and Web separately.
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Integrated API + Web dev server (default) |
+| Command        | Description                                          |
+| -------------- | ---------------------------------------------------- |
+| `pnpm dev`     | Integrated API + Web dev server (default)            |
 | `pnpm dev api` | API-only dev server (integrated web server disabled) |
-| `pnpm dev web` | Standalone Vite dev server |
+| `pnpm dev web` | Standalone Vite dev server                           |
 
 **Running API and Web in separate terminals**:
+
 ```bash
 # Terminal 1: API server
 pnpm dev api
@@ -37,21 +39,19 @@ pnpm dev web
 ```
 
 <Tip>
-`pnpm dev web` passes arguments after `--` directly to Vite. For example, to change the port:
-```bash
-pnpm dev web -- --port 5174
-```
+  `pnpm dev web` passes arguments after `--` directly to Vite. For example, to change the port:
+  ```bash pnpm dev web -- --port 5174 ```
 </Tip>
 
 ## How It Works
 
 `pnpm dev` internally uses the following tools:
 
-| Tool | Role | Provider |
-|------|------|----------|
-| `@sonamu-kit/hmr-runner` | HMR execution engine | Sonamu |
-| `@sonamu-kit/ts-loader` | TypeScript loader | Sonamu |
-| `@sonamu-kit/hmr-hook` | HMR hook | Sonamu |
+| Tool                     | Role                 | Provider |
+| ------------------------ | -------------------- | -------- |
+| `@sonamu-kit/hmr-runner` | HMR execution engine | Sonamu   |
+| `@sonamu-kit/ts-loader`  | TypeScript loader    | Sonamu   |
+| `@sonamu-kit/hmr-hook`   | HMR hook             | Sonamu   |
 
 **Important**: These packages are automatically provided by Sonamu, so **no separate installation is needed**.
 
@@ -67,17 +67,18 @@ pnpm dev web -- --port 5174
 
 You can use the following shortcuts while the development server is running:
 
-| Shortcut | Function | Description |
-|----------|----------|-------------|
-| `r` | Restart | Manually restart the server |
-| `c` | Clear screen | Clear the terminal screen |
-| `f` | Force restart | Delete `sonamu.lock` file and restart |
-| `Enter` | Test | Key binding test |
-| `Ctrl+F Ctrl+F` | Update | Git pull, install packages, build, and restart |
+| Shortcut        | Function      | Description                                    |
+| --------------- | ------------- | ---------------------------------------------- |
+| `r`             | Restart       | Manually restart the server                    |
+| `c`             | Clear screen  | Clear the terminal screen                      |
+| `f`             | Force restart | Delete `sonamu.lock` file and restart          |
+| `Enter`         | Test          | Key binding test                               |
+| `Ctrl+F Ctrl+F` | Update        | Git pull, install packages, build, and restart |
 
 ### Shortcut Usage Examples
 
 **Server restart**:
+
 ```
 # While development server is running in terminal
 [Server running...]
@@ -90,6 +91,7 @@ r
 ```
 
 **Force restart (cache reset)**:
+
 ```
 # Press 'f' key
 f
@@ -103,21 +105,21 @@ f
 
 The development server automatically sets the following environment variables:
 
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `NODE_ENV` | `development` | Development mode indicator |
-| `HOT` | `yes` | HMR activation flag |
-| `API_ROOT_PATH` | Project path | HMR root directory |
+| Variable        | Value         | Description                |
+| --------------- | ------------- | -------------------------- |
+| `NODE_ENV`      | `development` | Development mode indicator |
+| `HOT`           | `yes`         | HMR activation flag        |
+| `API_ROOT_PATH` | Project path  | HMR root directory         |
 
 You can check environment variables in code:
 
 ```typescript
-if (process.env.NODE_ENV === 'development') {
-  console.log('Development mode');
+if (process.env.NODE_ENV === "development") {
+  console.log("Development mode");
 }
 
-if (process.env.HOT === 'yes') {
-  console.log('HMR is enabled');
+if (process.env.HOT === "yes") {
+  console.log("HMR is enabled");
 }
 ```
 
@@ -166,11 +168,13 @@ export function formatDate(date: Date) {
 ### Server Won't Start
 
 **Problem**: Port already in use
+
 ```
 Error: listen EADDRINUSE: address already in use :::3000
 ```
 
 **Solution**:
+
 ```bash
 # Kill process using the port
 lsof -ti:3000 | xargs kill -9
@@ -184,6 +188,7 @@ pnpm dev
 **Problem**: Code changes not reflected
 
 **Solution**:
+
 ```bash
 # 1. Force restart (f key)
 f
@@ -197,6 +202,7 @@ pnpm dev
 **Problem**: Server won't start due to type errors
 
 **Solution**:
+
 ```bash
 # Type check
 pnpm tsc --noEmit
@@ -226,9 +232,9 @@ async getUsers() {
 Development server outputs all logs to console:
 
 ```typescript
-console.log('User query:', user);
-logger.info('API call', { method, path });
-logger.error('Error occurred', { error });
+console.log("User query:", user);
+logger.info("API call", { method, path });
+logger.error("Error occurred", { error });
 ```
 
 ### 3. Debugging
@@ -243,13 +249,13 @@ Error: User not found
 
 ## Differences from Production
 
-| Feature | Development Server | Production |
-|---------|-------------------|------------|
-| HMR | ✅ Enabled | ❌ Disabled |
-| TypeScript | Immediate execution | Compilation needed |
-| Source maps | Original files | Compressed files |
-| Performance | Slower | Faster |
-| Error display | Detailed | Brief |
+| Feature       | Development Server  | Production         |
+| ------------- | ------------------- | ------------------ |
+| HMR           | ✅ Enabled          | ❌ Disabled        |
+| TypeScript    | Immediate execution | Compilation needed |
+| Source maps   | Original files      | Compressed files   |
+| Performance   | Slower              | Faster             |
+| Error display | Detailed            | Brief              |
 
 <Warning>
 **Don't use development server in production!**
@@ -259,6 +265,7 @@ Error: User not found
 - Security vulnerabilities
 
 Use `pnpm build` then `pnpm start` for production.
+
 </Warning>
 
 ## Next Steps

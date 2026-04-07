@@ -1,6 +1,6 @@
 ---
-title: '캐시 (BentoCache)'
-description: 'BentoCache 기반 캐싱 설정'
+title: "캐시 (BentoCache)"
+description: "BentoCache 기반 캐싱 설정"
 ---
 
 Sonamu는 BentoCache를 기반으로 하는 강력한 캐싱 시스템을 제공합니다. 메모리, Redis 등 다양한 드라이버를 지원하며, 다층 캐시(L1/L2)와 분산 무효화를 지원합니다.
@@ -38,7 +38,7 @@ export default defineConfig({
 export default defineConfig({
   server: {
     cache: {
-      default: "main",  // stores.main 사용
+      default: "main", // stores.main 사용
       stores: {
         main: store().useL1Layer(drivers.memory({ maxSize: "100mb" })),
       },
@@ -61,9 +61,8 @@ export default defineConfig({
     cache: {
       default: "main",
       stores: {
-        main: store()
-          .useL1Layer(drivers.memory({ maxSize: "100mb" })),
-        
+        main: store().useL1Layer(drivers.memory({ maxSize: "100mb" })),
+
         distributed: store()
           .useL1Layer(drivers.memory({ maxSize: "50mb" }))
           .useL2Layer(drivers.redis({ connection: redisConnection }))
@@ -125,6 +124,7 @@ export default defineConfig({
 ```
 
 **동작 방식**:
+
 1. 캐시 조회 시 L1(메모리) 먼저 확인
 2. L1에 없으면 L2(Redis) 확인
 3. L2에서 찾으면 L1에도 저장
@@ -159,13 +159,12 @@ export default defineConfig({
 ```
 
 **동작 방식**:
+
 - 한 서버에서 캐시를 무효화하면
 - Bus를 통해 다른 모든 서버에 전파
 - 모든 서버의 L1 캐시도 자동 무효화
 
-<Tip>
-다중 서버(로드 밸런서 뒤)를 운영한다면 Bus를 활성화하세요. 캐시 일관성이 보장됩니다.
-</Tip>
+<Tip>다중 서버(로드 밸런서 뒤)를 운영한다면 Bus를 활성화하세요. 캐시 일관성이 보장됩니다.</Tip>
 
 ## ttl
 
@@ -180,14 +179,17 @@ export default defineConfig({
   server: {
     cache: {
       default: "main",
-      stores: { /* ... */ },
-      ttl: "1h",  // 1시간
+      stores: {
+        /* ... */
+      },
+      ttl: "1h", // 1시간
     },
   },
 });
 ```
 
 **시간 형식**:
+
 - `"5s"` - 5초
 - `"1m"` - 1분
 - `"1h"` - 1시간
@@ -199,13 +201,13 @@ export default defineConfig({
 import { cache } from "sonamu";
 
 export class ProductModel {
-  @cache({ ttl: "10m" })  // 10분 캐시
+  @cache({ ttl: "10m" }) // 10분 캐시
   @api()
   static async list() {
     // ...
   }
-  
-  @cache({ ttl: "1h" })  // 1시간 캐시
+
+  @cache({ ttl: "1h" }) // 1시간 캐시
   @api()
   static async detail(id: number) {
     // ...
@@ -226,8 +228,10 @@ export default defineConfig({
   server: {
     cache: {
       default: "main",
-      stores: { /* ... */ },
-      prefix: "myapp:",  // 모든 키에 "myapp:" 추가
+      stores: {
+        /* ... */
+      },
+      prefix: "myapp:", // 모든 키에 "myapp:" 추가
     },
   },
 });
@@ -241,9 +245,7 @@ await cache.set("user:123", data);
 // 실제 Redis 키: "myapp:user:123"
 ```
 
-<Tip>
-같은 Redis 인스턴스를 여러 앱이 공유한다면 prefix를 설정하여 키 충돌을 방지하세요.
-</Tip>
+<Tip>같은 Redis 인스턴스를 여러 앱이 공유한다면 prefix를 설정하여 키 충돌을 방지하세요.</Tip>
 
 ## 드라이버 옵션
 
@@ -253,11 +255,12 @@ await cache.set("user:123", data);
 
 ```typescript
 drivers.memory({
-  maxSize: "100mb",  // 최대 메모리 크기
-})
+  maxSize: "100mb", // 최대 메모리 크기
+});
 ```
 
 **옵션**:
+
 - `maxSize`: 최대 메모리 사용량 (`"50mb"`, `"100mb"`, `"1gb"` 등)
 
 ### redis 드라이버
@@ -274,7 +277,7 @@ const redisConnection = createClient({
 
 drivers.redis({
   connection: redisConnection,
-})
+});
 ```
 
 **connection 설정**:
@@ -298,12 +301,10 @@ Redis Pub/Sub을 사용하여 캐시 무효화를 전파합니다.
 ```typescript
 drivers.redisBus({
   connection: redisConnection,
-})
+});
 ```
 
-<Note>
-`redisBus`는 `redis` 드라이버와 같은 연결을 사용할 수 있습니다.
-</Note>
+<Note>`redisBus`는 `redis` 드라이버와 같은 연결을 사용할 수 있습니다.</Note>
 
 ## 실전 예시
 
@@ -407,9 +408,8 @@ export default defineConfig({
       default: "short",
       stores: {
         // 짧은 캐시 (API 응답)
-        short: store()
-          .useL1Layer(drivers.memory({ maxSize: "50mb" })),
-        
+        short: store().useL1Layer(drivers.memory({ maxSize: "50mb" })),
+
         // 긴 캐시 (정적 데이터)
         long: store()
           .useL1Layer(drivers.memory({ maxSize: "30mb" }))
@@ -431,12 +431,16 @@ export class DataModel {
   // 짧은 캐시 (기본 스토어)
   @cache({ ttl: "1m" })
   @api()
-  static async list() { /* ... */ }
-  
+  static async list() {
+    /* ... */
+  }
+
   // 긴 캐시 (long 스토어)
   @cache({ store: "long", ttl: "1d" })
   @api()
-  static async staticData() { /* ... */ }
+  static async staticData() {
+    /* ... */
+  }
 }
 ```
 
@@ -455,7 +459,7 @@ export class ProductModel {
     // 이후 10분간: 캐시에서 반환
     return this.getPuri().select("*");
   }
-  
+
   @cache({ key: (id) => `product:${id}`, ttl: "1h" })
   @api()
   static async detail(id: number) {
@@ -507,7 +511,9 @@ redis-cli ping
 
 ```typescript
 // ✅ 좋은 예: 연결 재사용
-const redisConnection = createClient({ /* ... */ });
+const redisConnection = createClient({
+  /* ... */
+});
 await redisConnection.connect();
 
 export default defineConfig({
@@ -528,18 +534,18 @@ export default defineConfig({
 ```typescript
 // 서버 메모리를 고려하여 설정
 drivers.memory({
-  maxSize: "100mb",  // 서버 메모리의 10-20% 정도
-})
+  maxSize: "100mb", // 서버 메모리의 10-20% 정도
+});
 ```
 
 ### 3. TTL 선택
 
 ```typescript
 // 데이터 변경 빈도에 따라 조정
-ttl: "1m"   // 자주 변경되는 데이터
-ttl: "10m"  // 일반적인 API 응답
-ttl: "1h"   // 거의 변경되지 않는 데이터
-ttl: "1d"   // 정적 데이터
+ttl: "1m"; // 자주 변경되는 데이터
+ttl: "10m"; // 일반적인 API 응답
+ttl: "1h"; // 거의 변경되지 않는 데이터
+ttl: "1d"; // 정적 데이터
 ```
 
 ## 다음 단계

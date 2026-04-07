@@ -18,16 +18,15 @@
  *  - resolveRenderType
  */
 
-import inflection from "inflection";
 import path from "path";
+
+import inflection from "inflection";
 import { z } from "zod";
-import type { $ZodLooseShape } from "zod/v4/core";
+
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import {
   BUILT_IN_TYPE_IDS,
-  type EntityProp,
-  type EntityPropNode,
   isBelongsToOneRelationProp,
   isBigIntegerArrayProp,
   isBigIntegerSingleProp,
@@ -55,9 +54,13 @@ import {
   isVectorArrayProp,
   isVectorSingleProp,
   isVirtualProp,
-  type RenderingNode,
   SonamuFileArraySchema,
   SonamuFileSchema,
+} from "../types/types";
+import {
+  type EntityProp,
+  type EntityPropNode,
+  type RenderingNode,
   type ZodStringFormat,
 } from "../types/types";
 import { createImportUrl } from "../utils/esm-utils";
@@ -65,13 +68,13 @@ import { runtimePath } from "../utils/path-utils";
 
 // <any>를 자제하고, Zod에서 제약하는 기본적인 Generic Type Parameter를 사용함.
 type AnyZodRecord = z.ZodRecord<z.ZodString | z.ZodNumber | z.ZodSymbol, z.ZodType>;
-type AnyZodObject = z.ZodObject<$ZodLooseShape>;
+type AnyZodObject = z.ZodObject;
 type AnyZodNullable = z.ZodNullable<z.ZodType>;
 type AnyZodDefault = z.ZodDefault<z.ZodType>;
 type AnyZodUnion = z.ZodUnion<z.ZodType[]>;
 type AnyZodArray = z.ZodArray<z.ZodType>;
 type AnyZodOptional = z.ZodOptional<z.ZodType>;
-type AnyZodTemplateLiteral = z.ZodTemplateLiteral<string>;
+type AnyZodTemplateLiteral = z.ZodTemplateLiteral;
 
 /**
  * 내장 타입 정의 (Zod 스키마 + UI 렌더링 타입)

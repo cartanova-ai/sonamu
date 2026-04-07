@@ -1,6 +1,6 @@
 ---
-title: 'Database'
-description: 'PostgreSQL connection and environment-specific settings'
+title: "Database"
+description: "PostgreSQL connection and environment-specific settings"
 ---
 
 This covers database connection settings. Sonamu uses PostgreSQL as the default database and supports different database configurations for each environment.
@@ -23,8 +23,12 @@ export default defineConfig({
       },
     },
     environments: {
-      development: { /* ... */ },
-      production: { /* ... */ },
+      development: {
+        /* ... */
+      },
+      production: {
+        /* ... */
+      },
     },
   },
   // ...
@@ -42,7 +46,7 @@ Specifies the PostgreSQL driver to use.
 ```typescript
 export default defineConfig({
   database: {
-    database: "pg",  // Use default pg module
+    database: "pg", // Use default pg module
     // ...
   },
 });
@@ -63,7 +67,8 @@ export default defineConfig({
   - Sonamu automatically converts the connection object to a libpq connection string and includes TCP keepAlive parameters (`keepalives=1`, `keepalives_idle=10`, `keepalives_interval=10`, `keepalives_count=5`)
 
 <Tip>
-Use `"pg"` unless you have specific performance requirements. Installation and deployment are simpler.
+  Use `"pg"` unless you have specific performance requirements. Installation and deployment are
+  simpler.
 </Tip>
 
 ## name
@@ -76,7 +81,7 @@ Specifies the database name.
 export default defineConfig({
   database: {
     database: "pg",
-    name: "ecommerce",  // Name of database to connect to
+    name: "ecommerce", // Name of database to connect to
     // ...
   },
 });
@@ -117,10 +122,10 @@ export default defineConfig({
     name: "mydb",
     defaultOptions: {
       connection: {
-        host: "localhost",       // Database host
-        port: 5432,             // PostgreSQL port
-        user: "postgres",       // Username
-        password: "password",   // Password
+        host: "localhost", // Database host
+        port: 5432, // PostgreSQL port
+        user: "postgres", // Username
+        password: "password", // Password
       },
     },
   },
@@ -147,7 +152,7 @@ export default defineConfig({
 ```
 
 <Warning>
-Always manage database passwords with environment variables. Never write them directly in code!
+  Always manage database passwords with environment variables. Never write them directly in code!
 </Warning>
 
 ### Additional Knex Options
@@ -160,7 +165,9 @@ export default defineConfig({
     database: "pg",
     name: "mydb",
     defaultOptions: {
-      connection: { /* ... */ },
+      connection: {
+        /* ... */
+      },
 
       // Connection pool settings
       pool: {
@@ -180,13 +187,13 @@ export default defineConfig({
 
 Sonamu automatically applies the following pool options internally. These are applied even without explicit user configuration, and will override user-provided values:
 
-| Option | Default | Description |
-|--------|---------|-------------|
+| Option                 | Default | Description                                                      |
+| ---------------------- | ------- | ---------------------------------------------------------------- |
 | `propagateCreateError` | `false` | Does not propagate connection creation errors to the entire pool |
-| `idleTimeoutMillis` | `10000` | Idle connections are automatically released after 10 seconds |
-| `reapIntervalMillis` | `1000` | Idle connection cleanup interval is set to 1 second |
-| `acquireTimeoutMillis` | `30000` | Connection acquisition wait time is limited to 30 seconds |
-| `createTimeoutMillis` | `30000` | Connection creation wait time is limited to 30 seconds |
+| `idleTimeoutMillis`    | `10000` | Idle connections are automatically released after 10 seconds     |
+| `reapIntervalMillis`   | `1000`  | Idle connection cleanup interval is set to 1 second              |
+| `acquireTimeoutMillis` | `30000` | Connection acquisition wait time is limited to 30 seconds        |
+| `createTimeoutMillis`  | `30000` | Connection creation wait time is limited to 30 seconds           |
 
 Additionally, the pool's `afterCreate` callback registers socket-level keepAlive settings and error handlers for each connection. Connections that encounter errors are automatically excluded from the pool.
 
@@ -232,7 +239,7 @@ export default defineConfig({
           password: "dev_password",
         },
       },
-      
+
       // Production environment
       production: {
         connection: {
@@ -243,10 +250,10 @@ export default defineConfig({
         },
         pool: {
           min: 5,
-          max: 30,  // Larger pool for production
+          max: 30, // Larger pool for production
         },
       },
-      
+
       // Test environment
       test: {
         connection: {
@@ -254,7 +261,7 @@ export default defineConfig({
           port: 5432,
           user: "test_user",
           password: "test_password",
-          database: "mydb_test",  // Separate test DB
+          database: "mydb_test", // Separate test DB
         },
       },
     },
@@ -289,7 +296,9 @@ export default defineConfig({
   database: {
     database: "pg",
     name: "mydb",
-    defaultOptions: { /* ... */ },
+    defaultOptions: {
+      /* ... */
+    },
     environments: {
       production: {
         connection: {
@@ -312,9 +321,7 @@ export default defineConfig({
 });
 ```
 
-<Note>
-Slave DB is used for read-only queries to distribute load from the master DB.
-</Note>
+<Note>Slave DB is used for read-only queries to distribute load from the master DB.</Note>
 
 ## Practical Examples
 
@@ -411,7 +418,7 @@ export default defineConfig({
           max: 10,
         },
       },
-      
+
       production: {
         connection: {
           host: process.env.PROD_DB_HOST,
@@ -426,7 +433,7 @@ export default defineConfig({
         },
         acquireConnectionTimeout: 60000,
       },
-      
+
       production_slave: {
         connection: {
           host: process.env.PROD_SLAVE_DB_HOST,
@@ -440,7 +447,7 @@ export default defineConfig({
           max: 20,
         },
       },
-      
+
       test: {
         connection: {
           host: "localhost",
@@ -454,7 +461,7 @@ export default defineConfig({
           max: 5,
         },
       },
-      
+
       fixture: {
         connection: {
           host: "localhost",
@@ -505,11 +512,11 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
-  
+
   api:
     build: .
     environment:
-      DB_HOST: postgres  # Service name
+      DB_HOST: postgres # Service name
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: postgres
@@ -548,11 +555,14 @@ If connection issues occur, check that PostgreSQL is running:
 brew services list
 
 # Linux
+
 systemctl status postgresql
 
 # Docker
+
 docker ps
-```
+
+````
 </Tip>
 
 ## Important Notes
@@ -581,7 +591,7 @@ export default defineConfig({
     },
   },
 });
-```
+````
 
 ### 2. Port Number Type
 

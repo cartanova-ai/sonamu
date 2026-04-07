@@ -1,6 +1,6 @@
 ---
-title: '@cache'
-description: '메서드 결과 캐싱 데코레이터'
+title: "@cache"
+description: "메서드 결과 캐싱 데코레이터"
 ---
 
 `@cache` 데코레이터는 메서드의 실행 결과를 캐시하여 성능을 향상시킵니다. BentoCache를 기반으로 메모리, Redis, DynamoDB 등 다양한 스토리지를 지원합니다.
@@ -38,33 +38,33 @@ import { drivers, store } from "sonamu/cache";
 export default defineConfig({
   server: {
     cache: {
-      default: "multi",  // 기본 스토어
+      default: "multi", // 기본 스토어
       stores: {
         // 메모리 전용
-        memory: store()
-          .useL1Layer(drivers.memory({ maxSize: "100mb" })),
+        memory: store().useL1Layer(drivers.memory({ maxSize: "100mb" })),
 
         // Redis 전용
-        redis: store()
-          .useL1Layer(drivers.redis({
-            connection: { host: "127.0.0.1", port: 6379 }
-          })),
+        redis: store().useL1Layer(
+          drivers.redis({
+            connection: { host: "127.0.0.1", port: 6379 },
+          }),
+        ),
 
         // Multi-tier (메모리 + Redis)
         multi: store()
           .useL1Layer(drivers.memory({ maxSize: "100mb" }))
-          .useL2Layer(drivers.redis({
-            connection: { host: "127.0.0.1", port: 6379 }
-          }))
-      }
-    }
-  }
+          .useL2Layer(
+            drivers.redis({
+              connection: { host: "127.0.0.1", port: 6379 },
+            }),
+          ),
+      },
+    },
+  },
 });
 ```
 
-<Info>
-캐시 설정이 없으면 `@cache` 사용 시 에러가 발생합니다.
-</Info>
+<Info>캐시 설정이 없으면 `@cache` 사용 시 에러가 발생합니다.</Info>
 
 ## 옵션
 
@@ -73,7 +73,7 @@ export default defineConfig({
 캐시 유효 시간을 지정합니다.
 
 ```typescript
-type TTL = string | number;  // "10s", "5m", "1h", "1d" 또는 밀리초
+type TTL = string | number; // "10s", "5m", "1h", "1d" 또는 밀리초
 ```
 
 ```typescript
@@ -90,9 +90,7 @@ async getDailySummary() {}
 async getQuickData() {}
 ```
 
-<Tip>
-문자열 형식을 사용하면 가독성이 좋습니다: `"10s"`, `"5m"`, `"1h"`, `"1d"`
-</Tip>
+<Tip>문자열 형식을 사용하면 가독성이 좋습니다: `"10s"`, `"5m"`, `"1h"`, `"1d"`</Tip>
 
 ### key
 
@@ -113,6 +111,7 @@ async getQuickData() {}
       // 캐시 키: "Product.search:["search term",1]"
     }
     ```
+
   </Tab>
 
   <Tab title="고정 키" icon="key">
@@ -129,6 +128,7 @@ async getQuickData() {}
       // 인자가 자동으로 suffix로 추가됨
     }
     ```
+
   </Tab>
 
   <Tab title="함수로 생성" icon="code">
@@ -152,6 +152,7 @@ async getQuickData() {}
       // 캐시 키: "search:category=electronics:price=100"
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -195,7 +196,8 @@ await Sonamu.cache.deleteByTags(["products"]);
 ### grace
 
 <Info>
-`grace`, `timeouts` 등의 고급 옵션은 BentoCache의 `RawCommonOptions`에서 제공됩니다. 자세한 내용은 [BentoCache 문서](https://bentocache.dev)를 참고하세요.
+  `grace`, `timeouts` 등의 고급 옵션은 BentoCache의 `RawCommonOptions`에서 제공됩니다. 자세한 내용은
+  [BentoCache 문서](https://bentocache.dev)를 참고하세요.
 </Info>
 
 캐시가 만료된 후에도 일정 시간 동안 이전 값(Stale)을 반환하는 유예 기간입니다 (Stale-While-Revalidate 패턴).
@@ -213,12 +215,14 @@ async getData() {
 ```
 
 **작동 방식**:
+
 - TTL 내: 신선한 캐시 반환
 - TTL 만료 후 grace 기간 내: Stale 캐시 즉시 반환, 백그라운드에서 갱신
 - grace 기간 경과 후: 캐시 미스
 
 <Info>
-Stale-While-Revalidate는 사용자에게 빠른 응답(Stale이라도 즉시)을 제공하면서, 백그라운드에서 갱신하여 다음 사용자는 신선한 데이터를 받게 하는 패턴입니다.
+  Stale-While-Revalidate는 사용자에게 빠른 응답(Stale이라도 즉시)을 제공하면서, 백그라운드에서
+  갱신하여 다음 사용자는 신선한 데이터를 받게 하는 패턴입니다.
 </Info>
 
 ### timeouts
@@ -256,10 +260,10 @@ class ProductModelClass extends BaseModelClass {
   async create(data: ProductCreateParams) {
     const wdb = this.getDB("w");
     const result = await this.insert(wdb, data);
-    
+
     // "products" 태그의 모든 캐시 무효화
     await Sonamu.cache.deleteByTags(["products"]);
-    
+
     return result;
   }
 }
@@ -303,17 +307,15 @@ async getData() {
 async getComplexData() {
   // 읽기 전용 트랜잭션 + 캐싱
   const rdb = this.getPuri("r");
-  
+
   const users = await rdb.table("users").select();
   const posts = await rdb.table("posts").select();
-  
+
   return { users, posts };
 }
 ```
 
-<Warning>
-데코레이터 순서: `@api` → `@cache` → `@transactional`
-</Warning>
+<Warning>데코레이터 순서: `@api` → `@cache` → `@transactional`</Warning>
 
 ## 캐시 작동 방식
 
@@ -373,9 +375,7 @@ async search(params: { name: string; age: number }) {
 }
 ```
 
-<Tip>
-직렬화가 어려운 객체는 `key` 함수로 직접 키를 생성하세요.
-</Tip>
+<Tip>직렬화가 어려운 객체는 `key` 함수로 직접 키를 생성하세요.</Tip>
 
 ### 3. null/undefined 캐싱
 
@@ -443,9 +443,7 @@ class ProductModelClass extends BaseModelClass {
   async warmupCache() {
     // 인기 상품 미리 캐싱
     const popularIds = [1, 2, 3, 4, 5];
-    await Promise.all(
-      popularIds.map(id => this.findById(id))
-    );
+    await Promise.all(popularIds.map((id) => this.findById(id)));
   }
 
   @cache({ ttl: "1h" })
@@ -470,11 +468,11 @@ export default defineConfig({
           logger: {
             log: (level, message) => {
               console.log(`[${level}] ${message}`);
-            }
-          }
-        })
-    }
-  }
+            },
+          },
+        }),
+    },
+  },
 });
 ```
 
@@ -507,14 +505,15 @@ export default defineConfig({
       async create(data: ProductCreateParams) {
         const wdb = this.getDB("w");
         const result = await this.insert(wdb, data);
-        
+
         // 캐시 무효화
         await Sonamu.cache.deleteByTags(["products"]);
-        
+
         return result;
       }
     }
     ```
+
   </Tab>
 
   <Tab title="사용자 프로필" icon="user">
@@ -546,14 +545,15 @@ export default defineConfig({
       async updateProfile(id: number, data: UserUpdateParams) {
         const wdb = this.getDB("w");
         await this.upsert(wdb, { id, ...data });
-        
+
         // 해당 사용자 캐시만 무효화
         await Sonamu.cache.delete(`user:profile:${id}`);
-        
+
         return this.getProfile(id);
       }
     }
     ```
+
   </Tab>
 
   <Tab title="집계 데이터" icon="chart-line">
@@ -584,7 +584,7 @@ export default defineConfig({
       })
       async getDailyStats(date: string) {
         const rdb = this.getPuri("r");
-        
+
         return rdb.table("orders")
           .whereRaw("DATE(created_at) = ?", [date])
           .select(
@@ -596,6 +596,7 @@ export default defineConfig({
       }
     }
     ```
+
   </Tab>
 
   <Tab title="검색 결과" icon="magnifying-glass">
@@ -642,41 +643,26 @@ export default defineConfig({
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="@api" 
-    icon="plug" 
-    href="/ko/api-reference/decorators/api"
-  >
+  <Card title="@api" icon="plug" href="/ko/api-reference/decorators/api">
     API 엔드포인트 만들기
   </Card>
-  
-  <Card 
-    title="@transactional" 
-    icon="arrows-rotate" 
-    href="/ko/api-reference/decorators/transactional"
-  >
-    트랜잭션 사용하기
-  </Card>
-  
-  <Card 
-    title="BentoCache" 
-    icon="book" 
-    href="https://bentocache.dev"
-  >
-    BentoCache 공식 문서
-  </Card>
-  
-  <Card 
-    title="성능 최적화" 
-    icon="gauge-high" 
-    href="/ko/guides/performance"
-  >
+
+<Card title="@transactional" icon="arrows-rotate" href="/ko/api-reference/decorators/transactional">
+  트랜잭션 사용하기
+</Card>
+
+<Card title="BentoCache" icon="book" href="https://bentocache.dev">
+  BentoCache 공식 문서
+</Card>
+
+  <Card title="성능 최적화" icon="gauge-high" href="/ko/guides/performance">
     성능 최적화 가이드
   </Card>
 </CardGroup>

@@ -1,6 +1,6 @@
 ---
-title: 'BadRequestException'
-description: '400 Exception for Handling Invalid Requests'
+title: "BadRequestException"
+description: "400 Exception for Handling Invalid Requests"
 ---
 
 `BadRequestException` is an exception used when a client's request is invalid. It returns an HTTP 400 status code and is used for validation failures, invalid parameters, malformed requests, etc.
@@ -9,10 +9,7 @@ description: '400 Exception for Handling Invalid Requests'
 
 ```typescript
 class BadRequestException extends SoException {
-  constructor(
-    message: LocalizedString,
-    payload?: unknown,
-  );
+  constructor(message: LocalizedString, payload?: unknown);
 }
 ```
 
@@ -333,8 +330,8 @@ async createProduct(
 throw new BadRequestException("Input validation failed", {
   errors: [
     { field: "email", code: "INVALID_FORMAT" },
-    { field: "password", code: "TOO_SHORT", minLength: 8 }
-  ]
+    { field: "password", code: "TOO_SHORT", minLength: 8 },
+  ],
 });
 ```
 
@@ -343,8 +340,8 @@ throw new BadRequestException("Input validation failed", {
 ```typescript
 throw new BadRequestException("File size exceeded", {
   size: file.size,
-  limit: 5242880,  // 5MB in bytes
-  unit: "bytes"
+  limit: 5242880, // 5MB in bytes
+  unit: "bytes",
 });
 ```
 
@@ -354,7 +351,7 @@ throw new BadRequestException("File size exceeded", {
 throw new BadRequestException("Daily request limit exceeded", {
   limit: 100,
   used: 100,
-  resetsAt: new Date("2024-01-01T00:00:00Z")
+  resetsAt: new Date("2024-01-01T00:00:00Z"),
 });
 ```
 

@@ -1,4 +1,4 @@
-import type { SSRRoute } from "./types";
+import { type SSRRoute } from "./types";
 
 const ssrRoutes: SSRRoute[] = [];
 

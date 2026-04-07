@@ -1,4 +1,4 @@
-import type { SubsetQuery } from "sonamu";
+import { type SubsetQuery } from "sonamu";
 
 export function getSubsetLoaders(subsets: string[], subsetQueries: Record<string, SubsetQuery>) {
   return subsets.reduce(

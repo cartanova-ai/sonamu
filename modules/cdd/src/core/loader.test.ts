@@ -2,7 +2,9 @@ import assert from "node:assert";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+
 import { describe, expect, it } from "vitest";
+
 import { findContractDir, loadProject, validateRulesStructure } from "./loader.js";
 
 const MIOMOCK_CONTRACT_DIR = path.resolve(

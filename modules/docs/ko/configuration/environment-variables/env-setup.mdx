@@ -1,12 +1,12 @@
 ---
-title: '.env 설정'
-description: '환경 변수 파일 생성 및 관리'
+title: ".env 설정"
+description: "환경 변수 파일 생성 및 관리"
 ---
 
 Sonamu는 환경별로 다른 설정을 적용하기 위해 `.env` 파일을 사용합니다. 데이터베이스 연결 정보, API 키, 세션 비밀키 등 민감한 정보는 `.env` 파일에 저장하고 `sonamu.config.ts`에서 참조합니다.
 
 <Warning>
-`.env` 파일은 절대 Git에 커밋하면 안 됩니다! `.gitignore`에 `.env`가 포함되어 있는지 확인하세요.
+  `.env` 파일은 절대 Git에 커밋하면 안 됩니다! `.gitignore`에 `.env`가 포함되어 있는지 확인하세요.
 </Warning>
 
 ## 빠른 시작
@@ -20,17 +20,10 @@ Sonamu는 환경별로 다른 설정을 적용하기 위해 `.env` 파일을 사
     ```
   </Step>
 
-  <Step title="환경변수 설정" icon="pen">
-    `.env` 파일을 열어 실제 값으로 수정합니다.
-    
-    ```bash
-    # 예시
-    DB_HOST=localhost
-    DB_PORT=5432
-    DB_USER=postgres
-    DB_PASSWORD=your-db-password
-    ```
-  </Step>
+<Step title="환경변수 설정" icon="pen">
+  `.env` 파일을 열어 실제 값으로 수정합니다. ```bash # 예시 DB_HOST=localhost DB_PORT=5432
+  DB_USER=postgres DB_PASSWORD=your-db-password ```
+</Step>
 
   <Step title="설정 파일에서 참조" icon="code">
     `sonamu.config.ts`에서 `process.env`로 환경변수를 읽습니다.
@@ -82,9 +75,7 @@ OPENAI_API_KEY=your-openai-api-key
 DISABLE_WORKER=false
 ```
 
-<Info>
-주석은 `#`으로 시작합니다. 빈 줄은 무시됩니다.
-</Info>
+<Info>주석은 `#`으로 시작합니다. 빈 줄은 무시됩니다.</Info>
 
 ## 환경별 설정
 
@@ -117,36 +108,16 @@ DISABLE_WORKER=false
     - 간단한 비밀키 (보안 불필요)
   </Tab>
 
-  <Tab title="스테이징" icon="flask">
-    ```bash title=".env.staging"
-    # 테스트 서버용 설정
-    PROJECT_NAME=MyProject-Staging
-    
-    DB_HOST=staging-db.example.com
-    DB_PORT=5432
-    DB_USER=myproject_user
-    DB_PASSWORD=your-staging-password  # 최소 32자
-    DATABASE_NAME=myproject_staging
-    
-    SESSION_SECRET=your-staging-session-secret  # 최소 64자
-    SESSION_SALT=your-staging-session-salt
-    
-    DRIVE_DISK=s3
-    AWS_ACCESS_KEY_ID=your-staging-aws-key-id
-    AWS_SECRET_ACCESS_KEY=your-staging-aws-secret-key
-    S3_REGION=ap-northeast-2
-    S3_BUCKET=myproject-staging
-    
-    OPENAI_API_KEY=your-staging-openai-key
-    
-    DISABLE_WORKER=false
-    ```
-    
-    **특징:**
-    - 원격 데이터베이스
-    - S3 스토리지
-    - 프로덕션과 유사한 환경
-  </Tab>
+<Tab title="스테이징" icon="flask">
+  ```bash title=".env.staging" # 테스트 서버용 설정 PROJECT_NAME=MyProject-Staging
+  DB_HOST=staging-db.example.com DB_PORT=5432 DB_USER=myproject_user
+  DB_PASSWORD=your-staging-password # 최소 32자 DATABASE_NAME=myproject_staging
+  SESSION_SECRET=your-staging-session-secret # 최소 64자 SESSION_SALT=your-staging-session-salt
+  DRIVE_DISK=s3 AWS_ACCESS_KEY_ID=your-staging-aws-key-id
+  AWS_SECRET_ACCESS_KEY=your-staging-aws-secret-key S3_REGION=ap-northeast-2
+  S3_BUCKET=myproject-staging OPENAI_API_KEY=your-staging-openai-key DISABLE_WORKER=false ```
+  **특징:** - 원격 데이터베이스 - S3 스토리지 - 프로덕션과 유사한 환경
+</Tab>
 
   <Tab title="프로덕션" icon="server">
     ```bash title=".env.production"
@@ -191,7 +162,7 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   projectName: process.env.PROJECT_NAME ?? "DefaultName",
-  
+
   database: {
     name: process.env.DATABASE_NAME ?? "database_name",
     defaultOptions: {
@@ -203,7 +174,7 @@ export default defineConfig({
       },
     },
   },
-  
+
   // ...
 });
 ```
@@ -218,7 +189,8 @@ const name = process.env.PROJECT_NAME ?? "DefaultName";
 // undefined, null → "DefaultName"
 // ""(빈 문자열) → "" 유지
 // 0 → 0 유지
-```
+
+````
 
 ```typescript Logical OR (||)
 // 주의: falsy 값 모두 대체
@@ -226,34 +198,36 @@ const name = process.env.PROJECT_NAME || "DefaultName";
 
 // undefined, null, "", 0, false → "DefaultName"
 // 빈 문자열도 기본값으로 대체됨
-```
+````
+
 </CodeGroup>
 
 <Tip>
-환경변수가 설정되지 않았을 때만 기본값을 사용하려면 `??`를 사용하세요. `||`는 빈 문자열도 falsy로 처리합니다.
+  환경변수가 설정되지 않았을 때만 기본값을 사용하려면 `??`를 사용하세요. `||`는 빈 문자열도 falsy로
+  처리합니다.
 </Tip>
 
 ### 숫자 변환
 
 ```typescript
 // ✅ 올바른 방법
-port: Number(process.env.DB_PORT) || 5432
+port: Number(process.env.DB_PORT) || 5432;
 
 // ❌ 잘못된 방법
-port: process.env.DB_PORT || 5432  // 문자열 "5432"가 될 수 있음
+port: process.env.DB_PORT || 5432; // 문자열 "5432"가 될 수 있음
 ```
 
 ### 불린 변환
 
 ```typescript
 // ✅ 올바른 방법
-enableWorker: !["true", "1"].includes(process.env.DISABLE_WORKER ?? "false")
+enableWorker: !["true", "1"].includes(process.env.DISABLE_WORKER ?? "false");
 
 // 또는
-enableCache: process.env.ENABLE_CACHE === "true"
+enableCache: process.env.ENABLE_CACHE === "true";
 
 // ❌ 잘못된 방법
-enableCache: process.env.ENABLE_CACHE || false  // "false"도 truthy
+enableCache: process.env.ENABLE_CACHE || false; // "false"도 truthy
 ```
 
 ## 보안 모범 사례
@@ -261,55 +235,57 @@ enableCache: process.env.ENABLE_CACHE || false  // "false"도 truthy
 <Accordion title="비밀키 생성" icon="key">
   ### 강력한 비밀키 생성하기
 
-  ```bash
-  # 64자 랜덤 문자열 생성
-  openssl rand -base64 48
-  
-  # 또는
-  node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
-  ```
+```bash
+# 64자 랜덤 문자열 생성
+openssl rand -base64 48
 
-  **SESSION_SECRET 예시:**
-  ```bash
-  SESSION_SECRET=your-64-character-random-session-secret-change-in-production
-  ```
+# 또는
+node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+```
 
-  **최소 길이:**
-  - SESSION_SECRET: 64자 이상
-  - SESSION_SALT: 16자 이상
-  - DB_PASSWORD: 32자 이상 (프로덕션)
-</Accordion>
+**SESSION_SECRET 예시:**
+
+```bash
+SESSION_SECRET=your-64-character-random-session-secret-change-in-production
+```
+
+**최소 길이:**
+
+- SESSION_SECRET: 64자 이상
+- SESSION_SALT: 16자 이상
+- DB_PASSWORD: 32자 이상 (프로덕션)
+  </Accordion>
 
 <Accordion title="Git 보안" icon="git-alt">
   ### .gitignore 설정
 
-  ```bash title=".gitignore"
-  # 환경변수
-  .env
-  .env.local
-  .env.*.local
-  
-  # 프로덕션 환경변수는 절대 커밋 금지
-  .env.production
-  
-  # 테스트용도 허용할 수 있음 (민감 정보 없다면)
-  # .env.test
-  ```
+```bash title=".gitignore"
+# 환경변수
+.env
+.env.local
+.env.*.local
 
-  ### .env.example 유지
+# 프로덕션 환경변수는 절대 커밋 금지
+.env.production
 
-  ```bash title=".env.example"
-  # 실제 값 없이 키만 나열
-  PROJECT_NAME=
-  
-  DB_HOST=localhost
-  DB_PORT=5432
-  DB_USER=
-  DB_PASSWORD=
-  
-  SESSION_SECRET=
-  SESSION_SALT=
-  ```
+# 테스트용도 허용할 수 있음 (민감 정보 없다면)
+# .env.test
+```
+
+### .env.example 유지
+
+```bash title=".env.example"
+# 실제 값 없이 키만 나열
+PROJECT_NAME=
+
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=
+DB_PASSWORD=
+
+SESSION_SECRET=
+SESSION_SALT=
+```
 
   <Info>
   `.env.example`은 Git에 커밋하여 팀원들이 참고하도록 합니다.
@@ -319,50 +295,51 @@ enableCache: process.env.ENABLE_CACHE || false  // "false"도 truthy
 <Accordion title="권한 관리" icon="shield">
   ### 파일 권한 설정
 
-  ```bash
-  # .env 파일 권한을 소유자만 읽기/쓰기
-  chmod 600 .env
-  
-  # 확인
-  ls -la .env
-  # -rw------- 1 user user 512 Jan 09 10:00 .env
-  ```
+```bash
+# .env 파일 권한을 소유자만 읽기/쓰기
+chmod 600 .env
 
-  ### 환경변수 접근 제한
+# 확인
+ls -la .env
+# -rw------- 1 user user 512 Jan 09 10:00 .env
+```
 
-  ```typescript
-  // ✅ 필요한 곳에서만 접근
-  const dbPassword = process.env.DB_PASSWORD;
-  
-  // ❌ 로그에 출력 금지
-  console.log("Password:", process.env.DB_PASSWORD);
-  
-  // ❌ 클라이언트에 노출 금지
-  res.send({ secret: process.env.SESSION_SECRET });
-  ```
+### 환경변수 접근 제한
+
+```typescript
+// ✅ 필요한 곳에서만 접근
+const dbPassword = process.env.DB_PASSWORD;
+
+// ❌ 로그에 출력 금지
+console.log("Password:", process.env.DB_PASSWORD);
+
+// ❌ 클라이언트에 노출 금지
+res.send({ secret: process.env.SESSION_SECRET });
+```
+
 </Accordion>
 
 <Accordion title="CI/CD 환경변수" icon="gears">
   ### GitHub Actions
 
-  ```yaml title=".github/workflows/deploy.yml"
-  jobs:
-    deploy:
-      steps:
-        - name: Deploy
-          env:
-            DB_HOST: ${{ secrets.DB_HOST }}
-            DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-            SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-          run: |
-            npm run deploy
-  ```
+```yaml title=".github/workflows/deploy.yml"
+jobs:
+  deploy:
+    steps:
+      - name: Deploy
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        run: |
+          npm run deploy
+```
 
-  ### Vercel/Netlify
+### Vercel/Netlify
 
-  1. 프로젝트 설정 → Environment Variables
-  2. 각 변수를 개별 추가
-  3. 환경별로 다른 값 설정 (Production/Preview/Development)
+1. 프로젝트 설정 → Environment Variables
+2. 각 변수를 개별 추가
+3. 환경별로 다른 값 설정 (Production/Preview/Development)
 
   <Warning>
   프로덕션 비밀키는 절대 개발/스테이징 환경에 사용하지 마세요!
@@ -374,38 +351,43 @@ enableCache: process.env.ENABLE_CACHE || false  // "false"도 truthy
 <Accordion title="환경변수가 undefined" icon="circle-question">
   **증상:** `process.env.DB_PASSWORD`가 `undefined`
 
-  **원인:**
-  1. `.env` 파일이 없음
-  2. `.env` 파일 위치가 잘못됨
-  3. 변수 이름 오타
-  4. 서버 재시작 안 함
+**원인:**
 
-  **해결:**
-  ```bash
-  # 1. .env 파일 확인
-  cat .env | grep DB_PASSWORD
-  
-  # 2. .env 파일 위치 확인 (프로젝트 루트)
-  ls -la .env
-  
-  # 3. 서버 재시작
-  npm run dev
-  ```
+1. `.env` 파일이 없음
+2. `.env` 파일 위치가 잘못됨
+3. 변수 이름 오타
+4. 서버 재시작 안 함
+
+**해결:**
+
+```bash
+# 1. .env 파일 확인
+cat .env | grep DB_PASSWORD
+
+# 2. .env 파일 위치 확인 (프로젝트 루트)
+ls -la .env
+
+# 3. 서버 재시작
+npm run dev
+```
+
 </Accordion>
 
 <Accordion title="환경변수 값이 적용 안 됨" icon="rotate">
   **증상:** 환경변수 변경했는데 여전히 이전 값 사용
 
-  **원인:**
-  - Node.js 프로세스가 시작할 때만 `.env` 파일을 읽음
-  - 파일 변경 후 서버 재시작 필요
+**원인:**
 
-  **해결:**
-  ```bash
-  # 개발 서버 재시작
-  # Ctrl+C로 종료 후
-  npm run dev
-  ```
+- Node.js 프로세스가 시작할 때만 `.env` 파일을 읽음
+- 파일 변경 후 서버 재시작 필요
+
+**해결:**
+
+```bash
+# 개발 서버 재시작
+# Ctrl+C로 종료 후
+npm run dev
+```
 
   <Info>
   HMR(Hot Module Replacement)은 코드만 자동 리로드하며, 환경변수는 재시작해야 적용됩니다.
@@ -415,58 +397,49 @@ enableCache: process.env.ENABLE_CACHE || false  // "false"도 truthy
 <Accordion title="프로덕션에서 환경변수 로드 실패" icon="server">
   **증상:** 로컬은 되는데 프로덕션에서 `undefined`
 
-  **원인:**
-  - 프로덕션 서버에 `.env` 파일이 없음
-  - 호스팅 플랫폼의 환경변수 설정 미비
+**원인:**
 
-  **해결:**
+- 프로덕션 서버에 `.env` 파일이 없음
+- 호스팅 플랫폼의 환경변수 설정 미비
 
-  **방법 1: 서버에 .env 파일 배포**
-  ```bash
-  # SSH로 접속 후
-  cd /path/to/app
-  nano .env
-  # 내용 붙여넣기 후 저장
-  ```
+**해결:**
 
-  **방법 2: 호스팅 플랫폼 환경변수 사용**
-  - Vercel: Project Settings → Environment Variables
-  - AWS EC2: `/etc/environment` 또는 `~/.bashrc`
-  - Docker: `docker run -e DB_HOST=... -e DB_PASSWORD=...`
-</Accordion>
+**방법 1: 서버에 .env 파일 배포**
+
+```bash
+# SSH로 접속 후
+cd /path/to/app
+nano .env
+# 내용 붙여넣기 후 저장
+```
+
+**방법 2: 호스팅 플랫폼 환경변수 사용**
+
+- Vercel: Project Settings → Environment Variables
+- AWS EC2: `/etc/environment` 또는 `~/.bashrc`
+- Docker: `docker run -e DB_HOST=... -e DB_PASSWORD=...`
+  </Accordion>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="데이터베이스 인증 정보" 
-    icon="database" 
+  <Card
+    title="데이터베이스 인증 정보"
+    icon="database"
     href="/ko/configuration/environment-variables/database-credentials"
   >
     DB 연결 정보를 안전하게 설정하세요
   </Card>
-  
-  <Card 
-    title="API 키 관리" 
-    icon="key" 
-    href="/ko/configuration/environment-variables/api-keys"
-  >
-    외부 서비스 API 키를 안전하게 관리하세요
-  </Card>
-  
-  <Card 
-    title="sonamu.config.ts" 
-    icon="gear" 
-    href="/ko/configuration/sonamu-config"
-  >
-    프로젝트 전체 설정을 구성하세요
-  </Card>
-  
-  <Card 
-    title="인증 설정" 
-    icon="shield" 
-    href="/ko/api-development/authentication/setup"
-  >
+
+<Card title="API 키 관리" icon="key" href="/ko/configuration/environment-variables/api-keys">
+  외부 서비스 API 키를 안전하게 관리하세요
+</Card>
+
+<Card title="sonamu.config.ts" icon="gear" href="/ko/configuration/sonamu-config">
+  프로젝트 전체 설정을 구성하세요
+</Card>
+
+  <Card title="인증 설정" icon="shield" href="/ko/api-development/authentication/setup">
     인증 및 세션 보안을 설정하세요
   </Card>
 </CardGroup>

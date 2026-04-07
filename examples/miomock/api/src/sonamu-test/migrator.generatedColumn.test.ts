@@ -1,14 +1,14 @@
 import {
   Entity,
-  type EntityJson,
   EntityManager,
   getMigrationSetFromEntity,
-  type MigrationSet,
   Migrator,
   PostgreSQLSchemaReader,
 } from "sonamu";
+import { type EntityJson, type MigrationSet } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
+
 import { mockEntityManagerGet } from "../testing/test-helpers";
 
 bootstrap(vi, { forTesting: false });

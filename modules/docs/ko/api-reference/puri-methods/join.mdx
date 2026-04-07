@@ -1,6 +1,6 @@
 ---
-title: 'join'
-description: '테이블 조인하기'
+title: "join"
+description: "테이블 조인하기"
 ---
 
 `join`과 `leftJoin`은 여러 테이블을 연결하여 관계 데이터를 조회하는 메서드입니다. 타입 안전하게 테이블을 조인하고, 복잡한 조인 조건을 지원합니다.
@@ -10,13 +10,11 @@ description: '테이블 조인하기'
 ### INNER JOIN
 
 ```typescript
-const posts = await puri.table("posts")
-  .join("users", "posts.user_id", "users.id")
-  .select({
-    post_id: "posts.id",
-    title: "posts.title",
-    author_name: "users.name"
-  });
+const posts = await puri.table("posts").join("users", "posts.user_id", "users.id").select({
+  post_id: "posts.id",
+  title: "posts.title",
+  author_name: "users.name",
+});
 
 // SELECT posts.id as post_id, posts.title, users.name as author_name
 // FROM posts
@@ -26,13 +24,11 @@ const posts = await puri.table("posts")
 ### LEFT JOIN
 
 ```typescript
-const posts = await puri.table("posts")
-  .leftJoin("users", "posts.user_id", "users.id")
-  .select({
-    post_id: "posts.id",
-    title: "posts.title",
-    author_name: "users.name"  // null 가능
-  });
+const posts = await puri.table("posts").leftJoin("users", "posts.user_id", "users.id").select({
+  post_id: "posts.id",
+  title: "posts.title",
+  author_name: "users.name", // null 가능
+});
 
 // SELECT posts.id as post_id, posts.title, users.name as author_name
 // FROM posts
@@ -40,8 +36,8 @@ const posts = await puri.table("posts")
 ```
 
 <Info>
-**INNER JOIN**: 양쪽 테이블 모두에 매칭되는 레코드만 반환  
-**LEFT JOIN**: 왼쪽 테이블의 모든 레코드 반환 (오른쪽은 null 가능)
+  **INNER JOIN**: 양쪽 테이블 모두에 매칭되는 레코드만 반환 **LEFT JOIN**: 왼쪽 테이블의 모든 레코드
+  반환 (오른쪽은 null 가능)
 </Info>
 
 ## 테이블 별칭 (Alias)
@@ -49,12 +45,10 @@ const posts = await puri.table("posts")
 ### 별칭 사용
 
 ```typescript
-const posts = await puri.table("posts")
-  .join({ u: "users" }, "posts.user_id", "u.id")
-  .select({
-    post_id: "posts.id",
-    author_name: "u.name"  // 별칭 사용
-  });
+const posts = await puri.table("posts").join({ u: "users" }, "posts.user_id", "u.id").select({
+  post_id: "posts.id",
+  author_name: "u.name", // 별칭 사용
+});
 
 // FROM posts
 // INNER JOIN users AS u ON posts.user_id = u.id
@@ -63,13 +57,14 @@ const posts = await puri.table("posts")
 ### 같은 테이블 여러 번 조인
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .join({ author: "users" }, "posts.author_id", "author.id")
   .leftJoin({ editor: "users" }, "posts.editor_id", "editor.id")
   .select({
     post_id: "posts.id",
     author_name: "author.name",
-    editor_name: "editor.name"  // null 가능
+    editor_name: "editor.name", // null 가능
   });
 
 // FROM posts
@@ -84,35 +79,38 @@ const posts = await puri.table("posts")
 여러 조건을 조합할 수 있습니다.
 
 ```typescript
-const result = await puri.table("orders")
+const result = await puri
+  .table("orders")
   .join("users", (j) => {
-    j.on("orders.user_id", "users.id")
-     .on("orders.country", "users.country");
+    j.on("orders.user_id", "users.id").on("orders.country", "users.country");
   })
   .select({
     order_id: "orders.id",
-    user_name: "users.name"
+    user_name: "users.name",
   });
 
 // FROM orders
-// INNER JOIN users ON orders.user_id = users.id 
+// INNER JOIN users ON orders.user_id = users.id
 //                  AND orders.country = users.country
 ```
 
 ### OR 조건
 
 ```typescript
-const result = await puri.table("products")
+const result = await puri
+  .table("products")
   .leftJoin("categories", (j) => {
-    j.on("products.category_id", "categories.id")
-     .orOn("products.parent_category_id", "categories.id");
+    j.on("products.category_id", "categories.id").orOn(
+      "products.parent_category_id",
+      "categories.id",
+    );
   })
   .select({
     product_name: "products.name",
-    category_name: "categories.name"
+    category_name: "categories.name",
   });
 
-// LEFT JOIN categories ON products.category_id = categories.id 
+// LEFT JOIN categories ON products.category_id = categories.id
 //                      OR products.parent_category_id = categories.id
 ```
 
@@ -121,11 +119,12 @@ const result = await puri.table("products")
 컬럼과 리터럴 값을 비교할 때는 `on()` 대신 `onVal()`을 사용해야 합니다. `on()`은 인자를 컬럼 참조로 처리하므로, 값을 파라미터로 바인딩하려면 `onVal()`이 필요합니다.
 
 ```typescript
-const result = await puri.table("orders")
+const result = await puri
+  .table("orders")
   .join("users", (j) => {
     j.on("orders.user_id", "users.id")
-     .onVal("users.status", "=", "active")  // 값을 파라미터로 바인딩
-     .onVal("orders.created_at", ">", new Date("2024-01-01"));
+      .onVal("users.status", "=", "active") // 값을 파라미터로 바인딩
+      .onVal("orders.created_at", ">", new Date("2024-01-01"));
   })
   .selectAll();
 ```
@@ -135,14 +134,14 @@ const result = await puri.table("orders")
 `onVal`은 조인 조건에서 값을 **파라미터 바인딩**으로 안전하게 비교합니다. `on`이 두 컬럼 간 비교에 사용되는 반면, `onVal`은 컬럼과 리터럴 값의 비교에 사용됩니다.
 
 ```typescript
-const result = await puri.table("orders")
+const result = await puri
+  .table("orders")
   .join("users", (j) => {
-    j.on("orders.user_id", "users.id")
-     .onVal("users.status", "active");  // 파라미터 바인딩
+    j.on("orders.user_id", "users.id").onVal("users.status", "active"); // 파라미터 바인딩
   })
   .select({
     order_id: "orders.id",
-    user_name: "users.name"
+    user_name: "users.name",
   });
 
 // INNER JOIN users ON orders.user_id = users.id
@@ -152,10 +151,10 @@ const result = await puri.table("orders")
 연산자를 지정할 수도 있습니다.
 
 ```typescript
-const result = await puri.table("orders")
+const result = await puri
+  .table("orders")
   .join("shipments", (j) => {
-    j.on("orders.id", "shipments.order_id")
-     .onVal("shipments.status", "!=", "cancelled");
+    j.on("orders.id", "shipments.order_id").onVal("shipments.status", "!=", "cancelled");
   })
   .selectAll();
 
@@ -168,15 +167,16 @@ const result = await puri.table("orders")
 `andOnVal`은 `onVal`의 명시적인 AND 버전이고, `orOnVal`은 OR 조건으로 값을 비교합니다.
 
 ```typescript
-const result = await puri.table("products")
+const result = await puri
+  .table("products")
   .leftJoin("promotions", (j) => {
     j.on("products.id", "promotions.product_id")
-     .onVal("promotions.active", true)
-     .orOnVal("promotions.featured", true);
+      .onVal("promotions.active", true)
+      .orOnVal("promotions.featured", true);
   })
   .select({
     product_name: "products.name",
-    promo_name: "promotions.name"
+    promo_name: "promotions.name",
   });
 
 // LEFT JOIN promotions ON products.id = promotions.product_id
@@ -185,7 +185,8 @@ const result = await puri.table("products")
 ```
 
 <Info>
-**on vs onVal**: `on("col1", "col2")`는 두 컬럼을 비교합니다. `onVal("col", value)`는 컬럼과 값을 비교하며, 값을 SQL 파라미터로 바인딩합니다.
+  **on vs onVal**: `on("col1", "col2")`는 두 컬럼을 비교합니다. `onVal("col", value)`는 컬럼과 값을
+  비교하며, 값을 SQL 파라미터로 바인딩합니다.
 </Info>
 
 ## 서브쿼리 조인
@@ -194,25 +195,27 @@ const result = await puri.table("products")
 
 ```typescript
 // 서브쿼리 생성
-const recentOrders = puri.table("orders")
+const recentOrders = puri
+  .table("orders")
   .where("orders.created_at", ">", new Date("2024-01-01"))
   .select({
     user_id: "orders.user_id",
-    order_count: Puri.count()
+    order_count: Puri.count(),
   })
   .groupBy("orders.user_id");
 
 // 서브쿼리 조인
-const result = await puri.table("users")
+const result = await puri
+  .table("users")
   .join(
-    { ro: recentOrders },  // 별칭 필수
+    { ro: recentOrders }, // 별칭 필수
     "users.id",
-    "ro.user_id"
+    "ro.user_id",
   )
   .select({
     user_id: "users.id",
     user_name: "users.name",
-    order_count: "ro.order_count"
+    order_count: "ro.order_count",
   });
 
 // FROM users
@@ -229,7 +232,8 @@ const result = await puri.table("users")
 순차적으로 여러 테이블을 조인할 수 있습니다.
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .join("users", "posts.user_id", "users.id")
   .leftJoin("categories", "posts.category_id", "categories.id")
   .leftJoin("tags", "posts.id", "tags.post_id")
@@ -237,16 +241,16 @@ const posts = await puri.table("posts")
     // posts
     post_id: "posts.id",
     title: "posts.title",
-    
+
     // users
     author_name: "users.name",
     author_email: "users.email",
-    
+
     // categories (nullable)
     category_name: "categories.name",
-    
+
     // tags (nullable)
-    tag_name: "tags.name"
+    tag_name: "tags.name",
   });
 
 // FROM posts
@@ -405,6 +409,7 @@ const posts = await puri.table("posts")
         .limit(limit);
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -413,18 +418,19 @@ const posts = await puri.table("posts")
 복잡한 조인 조건을 그룹으로 묶을 수 있습니다.
 
 ```typescript
-const result = await puri.table("products")
+const result = await puri
+  .table("products")
   .leftJoin("discounts", (j) => {
-    j.on("products.id", "discounts.product_id")
-     .on((nested) => {
-       nested.onVal("discounts.start_date", "<=", new Date())
-             .onVal("discounts.end_date", ">=", new Date());
-     });
+    j.on("products.id", "discounts.product_id").on((nested) => {
+      nested
+        .onVal("discounts.start_date", "<=", new Date())
+        .onVal("discounts.end_date", ">=", new Date());
+    });
   })
   .select({
     product_id: "products.id",
     product_name: "products.name",
-    discount_rate: "discounts.rate"
+    discount_rate: "discounts.rate",
   });
 
 // LEFT JOIN discounts ON products.id = discounts.product_id
@@ -439,16 +445,14 @@ const result = await puri.table("products")
 LEFT JOIN 결과는 nullable 타입으로 자동 추론됩니다.
 
 ```typescript
-const posts = await puri.table("posts")
-  .leftJoin("users", "posts.user_id", "users.id")
-  .select({
-    post_id: "posts.id",
-    title: "posts.title",
-    author_name: "users.name"  // string | null
-  });
+const posts = await puri.table("posts").leftJoin("users", "posts.user_id", "users.id").select({
+  post_id: "posts.id",
+  title: "posts.title",
+  author_name: "users.name", // string | null
+});
 
 // 타입 체크
-posts.forEach(post => {
+posts.forEach((post) => {
   if (post.author_name !== null) {
     console.log(post.author_name.toUpperCase());
   }
@@ -502,18 +506,16 @@ posts.forEach(post => {
 조인한 테이블의 컬럼은 타입 자동 완성과 검증을 지원합니다.
 
 ```typescript
-const posts = await puri.table("posts")
-  .join("users", "posts.user_id", "users.id")
-  .select({
-    post_id: "posts.id",      // ✅ OK
-    user_name: "users.name",   // ✅ OK
-    
-    // ❌ 타입 에러: 존재하지 않는 컬럼
-    unknown: "posts.unknown_field",
-    
-    // ❌ 타입 에러: 조인하지 않은 테이블
-    category: "categories.name"
-  });
+const posts = await puri.table("posts").join("users", "posts.user_id", "users.id").select({
+  post_id: "posts.id", // ✅ OK
+  user_name: "users.name", // ✅ OK
+
+  // ❌ 타입 에러: 존재하지 않는 컬럼
+  unknown: "posts.unknown_field",
+
+  // ❌ 타입 에러: 조인하지 않은 테이블
+  category: "categories.name",
+});
 ```
 
 ## 주의사항
@@ -563,18 +565,14 @@ const posts = await puri.table("posts")
 ```typescript
 // ❌ 나쁨: N+1 쿼리
 for (const post of posts) {
-  const user = await puri.table("users")
-    .where("users.id", post.user_id)
-    .first();
+  const user = await puri.table("users").where("users.id", post.user_id).first();
 }
 
 // ✅ 좋음: JOIN으로 한 번에
-const posts = await puri.table("posts")
-  .join("users", "posts.user_id", "users.id")
-  .select({
-    post_id: "posts.id",
-    user_name: "users.name"
-  });
+const posts = await puri.table("posts").join("users", "posts.user_id", "users.id").select({
+  post_id: "posts.id",
+  user_name: "users.name",
+});
 ```
 
 ## JOIN vs Loader
@@ -596,42 +594,24 @@ Puri는 두 가지 관계 데이터 로딩 방법을 제공합니다.
 // Subset Loader로 처리 (별도 쿼리)
 ```
 
-<Info>
-JOIN은 행이 곱해지므로, **1:N 관계에는 Loader**를 사용하는 것이 좋습니다.
-</Info>
+<Info>JOIN은 행이 곱해지므로, **1:N 관계에는 Loader**를 사용하는 것이 좋습니다.</Info>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="where" 
-    icon="filter" 
-    href="/ko/api-reference/puri-methods/where"
-  >
+  <Card title="where" icon="filter" href="/ko/api-reference/puri-methods/where">
     조건 필터링하기
   </Card>
-  
-  <Card 
-    title="select" 
-    icon="list-check" 
-    href="/ko/api-reference/puri-methods/select"
-  >
-    조회할 필드 선택하기
-  </Card>
-  
-  <Card 
-    title="order-by" 
-    icon="arrow-down-1-9" 
-    href="/ko/api-reference/puri-methods/order-by"
-  >
-    결과 정렬하기
-  </Card>
-  
-  <Card 
-    title="Subset" 
-    icon="layer-group" 
-    href="/ko/database/subsets/what-are-subsets"
-  >
+
+<Card title="select" icon="list-check" href="/ko/api-reference/puri-methods/select">
+  조회할 필드 선택하기
+</Card>
+
+<Card title="order-by" icon="arrow-down-1-9" href="/ko/api-reference/puri-methods/order-by">
+  결과 정렬하기
+</Card>
+
+  <Card title="Subset" icon="layer-group" href="/ko/database/subsets/what-are-subsets">
     서브셋으로 관계 데이터 로딩
   </Card>
 </CardGroup>

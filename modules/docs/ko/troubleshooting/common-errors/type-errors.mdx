@@ -1,6 +1,6 @@
 ---
-title: '타입 오류'
-description: '타입 에러 해결하기'
+title: "타입 오류"
+description: "타입 에러 해결하기"
 ---
 
 Sonamu에서 자주 발생하는 TypeScript 타입 관련 오류와 해결 방법을 다룹니다.
@@ -11,7 +11,8 @@ Sonamu에서 자주 발생하는 TypeScript 타입 관련 오류와 해결 방�
 
 ```typescript
 class UserModelClass extends BaseModelClass {
-  async delete(id: number) {  // ❌
+  async delete(id: number) {
+    // ❌
     // delete는 JavaScript 예약어
   }
 }
@@ -54,18 +55,80 @@ async getReturn() { }
 
 ```typescript
 const RESERVED_KEYWORDS = [
-  "break", "case", "catch", "class", "const", "continue", "debugger",
-  "default", "delete", "do", "else", "enum", "export", "extends",
-  "false", "finally", "for", "function", "if", "import", "in",
-  "instanceof", "new", "null", "return", "super", "switch",
-  "this", "throw", "true", "try", "typeof", "var", "void",
-  "while", "with", "yield", "let", "static", "implements",
-  "interface", "package", "private", "protected", "public",
-  "await", "abstract", "as", "asserts", "any", "async",
-  "boolean", "constructor", "declare", "get", "infer", "is",
-  "keyof", "module", "namespace", "never", "readonly", "require",
-  "number", "object", "set", "string", "symbol", "type",
-  "undefined", "unique", "unknown", "from", "of"
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "enum",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "function",
+  "if",
+  "import",
+  "in",
+  "instanceof",
+  "new",
+  "null",
+  "return",
+  "super",
+  "switch",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "typeof",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield",
+  "let",
+  "static",
+  "implements",
+  "interface",
+  "package",
+  "private",
+  "protected",
+  "public",
+  "await",
+  "abstract",
+  "as",
+  "asserts",
+  "any",
+  "async",
+  "boolean",
+  "constructor",
+  "declare",
+  "get",
+  "infer",
+  "is",
+  "keyof",
+  "module",
+  "namespace",
+  "never",
+  "readonly",
+  "require",
+  "number",
+  "object",
+  "set",
+  "string",
+  "symbol",
+  "type",
+  "undefined",
+  "unique",
+  "unknown",
+  "from",
+  "of",
 ];
 ```
 
@@ -95,6 +158,7 @@ pnpm sonamu sync
 #### 2. TypeScript 서버 재시작
 
 **VSCode:**
+
 ```
 Command Palette (Cmd+Shift+P)
 > TypeScript: Restart TS Server
@@ -170,7 +234,8 @@ pnpm sonamu sync
 type OrderStatus = "pending" | "processing" | "completed";
 
 class OrderModelClass extends BaseModelClass {
-  async updateStatus(id: number, status: string) {  // ❌
+  async updateStatus(id: number, status: string) {
+    // ❌
     // status는 OrderStatus여야 함
   }
 }
@@ -186,11 +251,9 @@ class OrderModelClass extends BaseModelClass {
 type OrderStatus = "pending" | "processing" | "completed";
 
 class OrderModelClass extends BaseModelClass {
-  async updateStatus(id: number, status: OrderStatus) {  // ✅
-    return this.updateOne(
-      { id },
-      { status }
-    );
+  async updateStatus(id: number, status: OrderStatus) {
+    // ✅
+    return this.updateOne({ id }, { status });
   }
 }
 ```
@@ -253,7 +316,7 @@ type WithTimestamps = {
 type User = {
   id: number;
   email: string;
-} & WithTimestamps;  // Intersection 타입
+} & WithTimestamps; // Intersection 타입
 
 // 타입이 복잡하게 표시됨
 ```
@@ -267,7 +330,7 @@ Sonamu 0.7.29+부터는 intersection/union 타입을 자동으로 괄호로 감�
 type User = {
   id: number;
   email: string;
-} & (WithTimestamps);  // 괄호 추가로 명확성 향상
+} & WithTimestamps; // 괄호 추가로 명확성 향상
 ```
 
 업데이트 후 sync 재실행:
@@ -310,7 +373,7 @@ Sonamu는 자동으로 backslash escaping 처리:
 생성된 Zod 스키마:
 
 ```typescript
-z.literal(`user:$\{string}`)  // 올바르게 escape됨
+z.literal(`user:$\{string}`); // 올바르게 escape됨
 ```
 
 ## 순환 참조 타입 오류
@@ -422,12 +485,13 @@ async uploadFile() {
 ### 증상
 
 ```typescript
-function isUser(value: any): boolean {  // ❌
+function isUser(value: any): boolean {
+  // ❌
   return value && typeof value.id === "number";
 }
 
 if (isUser(data)) {
-  console.log(data.email);  // Error: Property 'email' does not exist
+  console.log(data.email); // Error: Property 'email' does not exist
 }
 ```
 
@@ -440,16 +504,13 @@ if (isUser(data)) {
 Type predicate 사용:
 
 ```typescript
-function isUser(value: any): value is User {  // ✅
-  return (
-    value &&
-    typeof value.id === "number" &&
-    typeof value.email === "string"
-  );
+function isUser(value: any): value is User {
+  // ✅
+  return value && typeof value.id === "number" && typeof value.email === "string";
 }
 
 if (isUser(data)) {
-  console.log(data.email);  // ✅ 타입 안전
+  console.log(data.email); // ✅ 타입 안전
 }
 ```
 
@@ -460,7 +521,7 @@ if (isUser(data)) {
 ```typescript
 async function fetchData<T>(url: string): Promise<T> {
   const response = await fetch(url);
-  return response.json();  // Type: any
+  return response.json(); // Type: any
 }
 
 const users = await fetchData("/api/users");
@@ -479,17 +540,14 @@ const users = await fetchData<User[]>("/api/users");
 또는 타입 검증:
 
 ```typescript
-async function fetchData<T>(
-  url: string,
-  validator: (data: unknown) => data is T
-): Promise<T> {
+async function fetchData<T>(url: string, validator: (data: unknown) => data is T): Promise<T> {
   const response = await fetch(url);
   const data = await response.json();
-  
+
   if (!validator(data)) {
     throw new Error("Invalid data format");
   }
-  
+
   return data;
 }
 

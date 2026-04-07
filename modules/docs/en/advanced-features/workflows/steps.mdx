@@ -11,37 +11,38 @@ Without Steps in a Workflow, if something fails midway, you have to **restart fr
 
 ```typescript
 // Bad: Without Steps - restart from beginning on failure
-export const processOrder = workflow(
-  { name: "process_order" },
-  async ({ input }) => {
-    await validatePayment(input.orderId);      // 1. Validate payment
-    await updateInventory(input.items);        // 2. Update inventory
-    await sendConfirmationEmail(input.email);  // 3. Send email
-    // What if step 3 fails? -> Restart from step 1
-  }
-);
+export const processOrder = workflow({ name: "process_order" }, async ({ input }) => {
+  await validatePayment(input.orderId); // 1. Validate payment
+  await updateInventory(input.items); // 2. Update inventory
+  await sendConfirmationEmail(input.email); // 3. Send email
+  // What if step 3 fails? -> Restart from step 1
+});
 
 // Good: With Steps - retry from failed step
-export const processOrder = workflow(
-  { name: "process_order" },
-  async ({ input, step }) => {
-    await step.define({ name: "validate_payment" }, async () => {
+export const processOrder = workflow({ name: "process_order" }, async ({ input, step }) => {
+  await step
+    .define({ name: "validate_payment" }, async () => {
       await validatePayment(input.orderId);
-    }).run();
+    })
+    .run();
 
-    await step.define({ name: "update_inventory" }, async () => {
+  await step
+    .define({ name: "update_inventory" }, async () => {
       await updateInventory(input.items);
-    }).run();
+    })
+    .run();
 
-    await step.define({ name: "send_email" }, async () => {
+  await step
+    .define({ name: "send_email" }, async () => {
       await sendConfirmationEmail(input.email);
-    }).run();
-    // What if step 3 fails? -> Retry from step 3
-  }
-);
+    })
+    .run();
+  // What if step 3 fails? -> Retry from step 3
+});
 ```
 
 **Benefits of Using Steps**:
+
 - **Partial Retry**: Re-execute only from the failed step
 - **Progress Tracking**: Check execution time and status of each step
 - **Easier Debugging**: Clearly identify which step failed
@@ -51,25 +52,22 @@ export const processOrder = workflow(
 `step.define()` is the most basic way to wrap a function as a step. When you make an async function a step, its execution history is saved to the database.
 
 ```typescript
-export const sendEmail = workflow(
-  { name: "send_email" },
-  async ({ input, step }) => {
-    // Define and run step
-    await step.define(
-      { name: "send" },
-      async () => {
-        await emailService.send({
-          to: input.email,
-          subject: "Hello",
-          body: "...",
-        });
-      }
-    ).run();
-  }
-);
+export const sendEmail = workflow({ name: "send_email" }, async ({ input, step }) => {
+  // Define and run step
+  await step
+    .define({ name: "send" }, async () => {
+      await emailService.send({
+        to: input.email,
+        subject: "Hello",
+        body: "...",
+      });
+    })
+    .run();
+});
 ```
 
 **Key Concepts**:
+
 - `name`: Step identifier (must be unique within the workflow)
 - Async function: Code that performs the actual work
 - `.run()`: Executes the step and returns the result
@@ -79,46 +77,39 @@ export const sendEmail = workflow(
 You can use the return value of a Step in subsequent steps. Each step is saved independently, but data is passed in memory.
 
 ```typescript
-export const processData = workflow(
-  { name: "process_data" },
-  async ({ input, step }) => {
-    // Step 1: Fetch data
-    const data = await step.define(
-      { name: "fetch_data" },
-      async () => {
-        return await fetchDataFromAPI(input.userId);
-      }
-    ).run();
+export const processData = workflow({ name: "process_data" }, async ({ input, step }) => {
+  // Step 1: Fetch data
+  const data = await step
+    .define({ name: "fetch_data" }, async () => {
+      return await fetchDataFromAPI(input.userId);
+    })
+    .run();
 
-    // Step 2: Transform data (uses previous step result)
-    const transformed = await step.define(
-      { name: "transform" },
-      async () => {
-        return transformData(data);
-      }
-    ).run();
+  // Step 2: Transform data (uses previous step result)
+  const transformed = await step
+    .define({ name: "transform" }, async () => {
+      return transformData(data);
+    })
+    .run();
 
-    // Step 3: Save
-    await step.define(
-      { name: "save" },
-      async () => {
-        await saveToDatabase(transformed);
-      }
-    ).run();
+  // Step 3: Save
+  await step
+    .define({ name: "save" }, async () => {
+      await saveToDatabase(transformed);
+    })
+    .run();
 
-    return { count: transformed.length };
-  }
-);
+  return { count: transformed.length };
+});
 ```
 
 **Data Flow**:
+
 1. `fetch_data` step returns data
 2. data is passed in memory to `transform` step
 3. transformed is passed in memory to `save` step
 
-<Info>
-When a Step is retried, previous step results are **restored from the database**.
-</Info>
+<Info>When a Step is retried, previous step results are **restored from the database**.</Info>
 
 ## step.get()
 
@@ -138,19 +129,14 @@ class UserModelClass extends BaseModelClass {
   }
 }
 
-export const onboardUser = workflow(
-  { name: "onboard_user" },
-  async ({ input, step }) => {
-    // Run Model method as a step
-    await step.get(
-      UserModel,
-      "sendWelcomeEmail"
-    ).run(input.userId);
-  }
-);
+export const onboardUser = workflow({ name: "onboard_user" }, async ({ input, step }) => {
+  // Run Model method as a step
+  await step.get(UserModel, "sendWelcomeEmail").run(input.userId);
+});
 ```
 
 **Use Cases**:
+
 - Reuse Model business logic
 - Eliminate code duplication
 - Maintain type safety
@@ -160,11 +146,13 @@ export const onboardUser = workflow(
 You can explicitly specify a Step name to make logs more readable.
 
 ```typescript
-await step.get(
-  { name: "send_email" },  // Custom name
-  UserModel,
-  "sendWelcomeEmail"
-).run(userId);
+await step
+  .get(
+    { name: "send_email" }, // Custom name
+    UserModel,
+    "sendWelcomeEmail",
+  )
+  .run(userId);
 ```
 
 ### Using Return Values
@@ -172,10 +160,7 @@ await step.get(
 Model method return values work the same way.
 
 ```typescript
-const user = await step.get(
-  UserModel,
-  "findById"
-).run(userId);
+const user = await step.get(UserModel, "findById").run(userId);
 
 console.log(user.email);
 ```
@@ -190,14 +175,13 @@ export const retryWithDelay = workflow(
   async ({ input, step, logger }) => {
     for (let i = 0; i < 3; i++) {
       try {
-        await step.define(
-          { name: `attempt_${i + 1}` },
-          async () => {
+        await step
+          .define({ name: `attempt_${i + 1}` }, async () => {
             await unreliableAPICall(input.data);
-          }
-        ).run();
+          })
+          .run();
 
-        break;  // Success
+        break; // Success
       } catch (error) {
         logger.warn(`Attempt ${i + 1} failed`, { error });
 
@@ -205,30 +189,32 @@ export const retryWithDelay = workflow(
           // Wait before retry
           await step.sleep("retry_delay", "5s");
         } else {
-          throw error;  // Final attempt failed
+          throw error; // Final attempt failed
         }
       }
     }
-  }
+  },
 );
 ```
 
 **Supported Time Formats**:
 
-| Format | Description | Example |
-|--------|-------------|---------|
-| `s` | Seconds | `"5s"` = 5 seconds |
-| `m` | Minutes | `"10m"` = 10 minutes |
-| `h` | Hours | `"2h"` = 2 hours |
-| `d` | Days | `"1d"` = 1 day |
+| Format | Description | Example              |
+| ------ | ----------- | -------------------- |
+| `s`    | Seconds     | `"5s"` = 5 seconds   |
+| `m`    | Minutes     | `"10m"` = 10 minutes |
+| `h`    | Hours       | `"2h"` = 2 hours     |
+| `d`    | Days        | `"1d"` = 1 day       |
 
 **Practical Uses**:
+
 - **Retry delay**: Wait 5 seconds after failure
 - **Rate limiting**: Wait 1 second between API calls
 - **Batch interval**: Rest 10 seconds after processing 100 items
 
 <Tip>
-`step.sleep()` is also a step, so it's recorded in the database. On retry, the sleep won't be re-executed.
+  `step.sleep()` is also a step, so it's recorded in the database. On retry, the sleep won't be
+  re-executed.
 </Tip>
 
 ## Practical Examples
@@ -238,36 +224,31 @@ export const retryWithDelay = workflow(
 When processing large amounts of data, divide into smaller batches. Making each batch a separate step means already processed batches won't be re-run on failure.
 
 ```typescript
-export const processBatch = workflow(
-  { name: "process_batch" },
-  async ({ input, step, logger }) => {
-    const batchSize = 100;
-    const total = input.items.length;
+export const processBatch = workflow({ name: "process_batch" }, async ({ input, step, logger }) => {
+  const batchSize = 100;
+  const total = input.items.length;
 
-    for (let i = 0; i < total; i += batchSize) {
-      const batch = input.items.slice(i, i + batchSize);
+  for (let i = 0; i < total; i += batchSize) {
+    const batch = input.items.slice(i, i + batchSize);
 
-      await step.define(
-        { name: `process_batch_${i / batchSize}` },
-        async () => {
-          await Promise.all(
-            batch.map(item => processItem(item))
-          );
-        }
-      ).run();
+    await step
+      .define({ name: `process_batch_${i / batchSize}` }, async () => {
+        await Promise.all(batch.map((item) => processItem(item)));
+      })
+      .run();
 
-      logger.info("Batch processed", {
-        batch: i / batchSize,
-        progress: `${Math.min(i + batchSize, total)}/${total}`,
-      });
-    }
-
-    return { processed: total };
+    logger.info("Batch processed", {
+      batch: i / batchSize,
+      progress: `${Math.min(i + batchSize, total)}/${total}`,
+    });
   }
-);
+
+  return { processed: total };
+});
 ```
 
 **Key Points**:
+
 - Process in batches of 100
 - Each batch is an independent step
 - Progress logged
@@ -277,41 +258,31 @@ export const processBatch = workflow(
 External API calls can fail due to network issues. With Steps, you can retry only the failed API call.
 
 ```typescript
-export const syncData = workflow(
-  { name: "sync_data" },
-  async ({ input, step, logger }) => {
-    // Step 1: Fetch data from API
-    const externalData = await step.define(
-      { name: "fetch_from_api" },
-      async () => {
-        const response = await fetch(
-          `https://api.example.com/data?userId=${input.userId}`
-        );
-        return await response.json();
-      }
-    ).run();
+export const syncData = workflow({ name: "sync_data" }, async ({ input, step, logger }) => {
+  // Step 1: Fetch data from API
+  const externalData = await step
+    .define({ name: "fetch_from_api" }, async () => {
+      const response = await fetch(`https://api.example.com/data?userId=${input.userId}`);
+      return await response.json();
+    })
+    .run();
 
-    // Step 2: Normalize data
-    const normalized = await step.define(
-      { name: "normalize_data" },
-      async () => {
-        return normalizeData(externalData);
-      }
-    ).run();
+  // Step 2: Normalize data
+  const normalized = await step
+    .define({ name: "normalize_data" }, async () => {
+      return normalizeData(externalData);
+    })
+    .run();
 
-    // Step 3: Save to DB
-    await step.get(
-      { name: "save_to_db" },
-      DataModel,
-      "saveMany"
-    ).run(normalized);
+  // Step 3: Save to DB
+  await step.get({ name: "save_to_db" }, DataModel, "saveMany").run(normalized);
 
-    logger.info("Sync completed", { count: normalized.length });
-  }
-);
+  logger.info("Sync completed", { count: normalized.length });
+});
 ```
 
 **Benefits**:
+
 - On API call failure, **skip data normalization**
 - On normalization failure, **don't re-call the API**
 - Can measure execution time for each stage
@@ -325,43 +296,40 @@ export const processUploadedFile = workflow(
   { name: "process_uploaded_file" },
   async ({ input, step, logger }) => {
     // Step 1: Download file
-    const fileContent = await step.define(
-      { name: "download_file" },
-      async () => {
+    const fileContent = await step
+      .define({ name: "download_file" }, async () => {
         return await downloadFromS3(input.fileKey);
-      }
-    ).run();
+      })
+      .run();
 
     // Step 2: Parse
-    const parsed = await step.define(
-      { name: "parse_file" },
-      async () => {
+    const parsed = await step
+      .define({ name: "parse_file" }, async () => {
         return parseCSV(fileContent);
-      }
-    ).run();
+      })
+      .run();
 
     // Step 3: Validate
-    const validated = await step.define(
-      { name: "validate" },
-      async () => {
+    const validated = await step
+      .define({ name: "validate" }, async () => {
         return validateData(parsed);
-      }
-    ).run();
+      })
+      .run();
 
     // Step 4: Save to DB
-    await step.define(
-      { name: "save_to_db" },
-      async () => {
+    await step
+      .define({ name: "save_to_db" }, async () => {
         await bulkInsert(validated);
-      }
-    ).run();
+      })
+      .run();
 
     return { imported: validated.length };
-  }
+  },
 );
 ```
 
 **Pipeline Structure**:
+
 1. Download -> 2. Parse -> 3. Validate -> 4. Save
 2. On failure, retry from that step
 3. File is downloaded only once
@@ -378,13 +346,12 @@ export const sendNotifications = workflow(
 
     for (const userId of users) {
       // Notify each user
-      await step.define(
-        { name: `notify_user_${userId}` },
-        async () => {
+      await step
+        .define({ name: `notify_user_${userId}` }, async () => {
           const user = await UserModel.findById(userId);
           await sendPushNotification(user.deviceToken, input.message);
-        }
-      ).run();
+        })
+        .run();
 
       // Delay between users (avoid API limits)
       if (userId !== users[users.length - 1]) {
@@ -393,11 +360,12 @@ export const sendNotifications = workflow(
     }
 
     return { sent: users.length };
-  }
+  },
 );
 ```
 
 **Rate Limiting Strategy**:
+
 - Wait 100ms between each notification
 - Prevent API server overload
 - On retry, skip already successful notifications
@@ -425,16 +393,19 @@ When creating steps in loops, include the index to make names unique.
 ```typescript
 // In a loop
 for (let i = 0; i < items.length; i++) {
-  await step.define(
-    { name: `process_item_${i}` },  // Each step has different name
-    async () => {
-      await processItem(items[i]);
-    }
-  ).run();
+  await step
+    .define(
+      { name: `process_item_${i}` }, // Each step has different name
+      async () => {
+        await processItem(items[i]);
+      },
+    )
+    .run();
 }
 ```
 
 **Naming Tips**:
+
 - Use nouns describing the task: `fetch_user`, `send_email`
 - Include index: `process_batch_0`, `process_batch_1`
 - Snake case recommended: `send_welcome_email`
@@ -445,18 +416,25 @@ for (let i = 0; i < items.length; i++) {
 **Step Best Practices**:
 
 1. **Unique Names**: Step names must be unique within the workflow.
+
    ```typescript
-   { name: "step_1" }  // Good
-   { name: "step_1" }  // Bad - duplicate
+   {
+     name: "step_1";
+   } // Good
+   {
+     name: "step_1";
+   } // Bad - duplicate
    ```
 
 2. **Execution Order**: Steps execute in the order written in code.
+
    ```typescript
    await step.define({ name: "first" }, ...).run();
    await step.define({ name: "second" }, ...).run();
    ```
 
 3. **Error Propagation**: When a step fails, the workflow stops. Wrap optional tasks in try-catch.
+
    ```typescript
    try {
      await step.define({ name: "optional" }, ...).run();
@@ -466,24 +444,33 @@ for (let i = 0; i < items.length; i++) {
    ```
 
 4. **Type Inference**: TypeScript automatically infers step return types.
+
    ```typescript
    const data: UserData = await step.define(...).run();
    ```
 
 5. **Sleep Duration Limits**: Very long sleeps are not recommended as they maintain database connections.
    ```typescript
-   await step.sleep("delay", "1h");   // OK
-   await step.sleep("delay", "30d");  // Not recommended
+   await step.sleep("delay", "1h"); // OK
+   await step.sleep("delay", "30d"); // Not recommended
    ```
-</Warning>
+   </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="@workflow Decorator" icon="code" href="/en/advanced-features/workflows/workflow-decorator">
+  <Card
+    title="@workflow Decorator"
+    icon="code"
+    href="/en/advanced-features/workflows/workflow-decorator"
+  >
     Define and schedule workflows
   </Card>
-  <Card title="Error Handling" icon="triangle-exclamation" href="/en/advanced-features/workflows/error-handling">
+  <Card
+    title="Error Handling"
+    icon="triangle-exclamation"
+    href="/en/advanced-features/workflows/error-handling"
+  >
     Learn retry patterns and compensating transactions
   </Card>
 </CardGroup>

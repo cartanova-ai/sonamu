@@ -1,6 +1,6 @@
 ---
-title: '@cache'
-description: 'Method Result Caching Decorator'
+title: "@cache"
+description: "Method Result Caching Decorator"
 ---
 
 The `@cache` decorator caches method execution results to improve performance. Based on BentoCache, it supports various storage options including memory, Redis, and DynamoDB.
@@ -38,33 +38,33 @@ import { drivers, store } from "sonamu/cache";
 export default defineConfig({
   server: {
     cache: {
-      default: "multi",  // Default store
+      default: "multi", // Default store
       stores: {
         // Memory only
-        memory: store()
-          .useL1Layer(drivers.memory({ maxSize: "100mb" })),
+        memory: store().useL1Layer(drivers.memory({ maxSize: "100mb" })),
 
         // Redis only
-        redis: store()
-          .useL1Layer(drivers.redis({
-            connection: { host: "127.0.0.1", port: 6379 }
-          })),
+        redis: store().useL1Layer(
+          drivers.redis({
+            connection: { host: "127.0.0.1", port: 6379 },
+          }),
+        ),
 
         // Multi-tier (Memory + Redis)
         multi: store()
           .useL1Layer(drivers.memory({ maxSize: "100mb" }))
-          .useL2Layer(drivers.redis({
-            connection: { host: "127.0.0.1", port: 6379 }
-          }))
-      }
-    }
-  }
+          .useL2Layer(
+            drivers.redis({
+              connection: { host: "127.0.0.1", port: 6379 },
+            }),
+          ),
+      },
+    },
+  },
 });
 ```
 
-<Info>
-Without cache configuration, using `@cache` will cause an error.
-</Info>
+<Info>Without cache configuration, using `@cache` will cause an error.</Info>
 
 ## Options
 
@@ -73,7 +73,7 @@ Without cache configuration, using `@cache` will cause an error.
 Specifies cache validity time.
 
 ```typescript
-type TTL = string | number;  // "10s", "5m", "1h", "1d" or milliseconds
+type TTL = string | number; // "10s", "5m", "1h", "1d" or milliseconds
 ```
 
 ```typescript
@@ -90,9 +90,7 @@ async getDailySummary() {}
 async getQuickData() {}
 ```
 
-<Tip>
-String format is more readable: `"10s"`, `"5m"`, `"1h"`, `"1d"`
-</Tip>
+<Tip>String format is more readable: `"10s"`, `"5m"`, `"1h"`, `"1d"`</Tip>
 
 ### key
 
@@ -113,6 +111,7 @@ Specifies the cache key.
       // Cache key: "Product.search:["search term",1]"
     }
     ```
+
   </Tab>
 
   <Tab title="Fixed Key" icon="key">
@@ -129,6 +128,7 @@ Specifies the cache key.
       // Arguments automatically added as suffix
     }
     ```
+
   </Tab>
 
   <Tab title="Function Generator" icon="code">
@@ -152,6 +152,7 @@ Specifies the cache key.
       // Cache key: "search:category=electronics:price=100"
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -195,7 +196,8 @@ await Sonamu.cache.deleteByTags(["products"]);
 ### grace
 
 <Info>
-Advanced options like `grace` and `timeouts` are provided by BentoCache's `RawCommonOptions`. See [BentoCache documentation](https://bentocache.dev) for details.
+  Advanced options like `grace` and `timeouts` are provided by BentoCache's `RawCommonOptions`. See
+  [BentoCache documentation](https://bentocache.dev) for details.
 </Info>
 
 Grace period that returns the previous value (Stale) for a certain time after cache expires (Stale-While-Revalidate pattern).
@@ -213,12 +215,14 @@ async getData() {
 ```
 
 **How it works**:
+
 - Within TTL: Return fresh cache
 - Within grace period after TTL: Return stale cache immediately, refresh in background
 - After grace period: Cache miss
 
 <Info>
-Stale-While-Revalidate provides fast responses to users (even if stale), while refreshing in the background so the next user gets fresh data.
+  Stale-While-Revalidate provides fast responses to users (even if stale), while refreshing in the
+  background so the next user gets fresh data.
 </Info>
 
 ### timeouts
@@ -311,9 +315,7 @@ async getComplexData() {
 }
 ```
 
-<Warning>
-Decorator order: `@api` → `@cache` → `@transactional`
-</Warning>
+<Warning>Decorator order: `@api` → `@cache` → `@transactional`</Warning>
 
 ## How Cache Works
 
@@ -374,7 +376,7 @@ async search(params: { name: string; age: number }) {
 ```
 
 <Tip>
-For objects that are difficult to serialize, use the `key` function to generate keys directly.
+  For objects that are difficult to serialize, use the `key` function to generate keys directly.
 </Tip>
 
 ### 3. Caching null/undefined
@@ -443,9 +445,7 @@ class ProductModelClass extends BaseModelClass {
   async warmupCache() {
     // Pre-cache popular products
     const popularIds = [1, 2, 3, 4, 5];
-    await Promise.all(
-      popularIds.map(id => this.findById(id))
-    );
+    await Promise.all(popularIds.map((id) => this.findById(id)));
   }
 
   @cache({ ttl: "1h" })
@@ -470,11 +470,11 @@ export default defineConfig({
           logger: {
             log: (level, message) => {
               console.log(`[${level}] ${message}`);
-            }
-          }
-        })
-    }
-  }
+            },
+          },
+        }),
+    },
+  },
 });
 ```
 
@@ -515,6 +515,7 @@ export default defineConfig({
       }
     }
     ```
+
   </Tab>
 
   <Tab title="User Profile" icon="user">
@@ -554,6 +555,7 @@ export default defineConfig({
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Aggregate Data" icon="chart-line">
@@ -596,6 +598,7 @@ export default defineConfig({
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Search Results" icon="magnifying-glass">
@@ -642,6 +645,7 @@ export default defineConfig({
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -656,21 +660,13 @@ export default defineConfig({
     Create API endpoints
   </Card>
 
-  <Card
-    title="@transactional"
-    icon="arrows-rotate"
-    href="/en/api-reference/decorators/transactional"
-  >
-    Use transactions
-  </Card>
+<Card title="@transactional" icon="arrows-rotate" href="/en/api-reference/decorators/transactional">
+  Use transactions
+</Card>
 
-  <Card
-    title="BentoCache"
-    icon="book"
-    href="https://bentocache.dev"
-  >
-    BentoCache official documentation
-  </Card>
+<Card title="BentoCache" icon="book" href="https://bentocache.dev">
+  BentoCache official documentation
+</Card>
 
   <Card
     title="Performance Optimization"

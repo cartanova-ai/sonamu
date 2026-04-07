@@ -17,10 +17,11 @@ import PauseCircleIcon from "~icons/lucide/pause-circle";
 import PlayCircleIcon from "~icons/lucide/play-circle";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import XCircleIcon from "~icons/lucide/x-circle";
+
 import { useSonamuContext } from "../contexts/sonamu-provider";
 import { useLocale } from "../i18n";
-import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
+import { defaultCatch } from "../services/sonamu.shared";
 import { formatDateTime, formatDuration, STATUS_STYLES } from "../utils/tasks";
 
 export const Route = createFileRoute("/tasks_/$workflowRunId")({
@@ -61,7 +62,7 @@ function WorkflowRunDetailPage() {
 
   const steps = stepsData?.data ?? [];
 
-  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+  const [expandedSteps, setExpandedSteps] = useState(new Set());
   const toggleStep = (id: string) => {
     setExpandedSteps((prev) => {
       const next = new Set(prev);

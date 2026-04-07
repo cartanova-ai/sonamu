@@ -12,31 +12,31 @@ The `josa()` function selects the appropriate Korean particle based on whether t
 ```typescript
 import { josa } from "sonamu/dict";
 
-josa("사람", "은는")  // "사람은"
-josa("나", "은는")    // "나는"
+josa("사람", "은는"); // "사람은"
+josa("나", "은는"); // "나는"
 
-josa("물", "이가")    // "물이"
-josa("바다", "이가")  // "바다가"
+josa("물", "이가"); // "물이"
+josa("바다", "이가"); // "바다가"
 
-josa("밥", "을를")    // "밥을"
-josa("커피", "을를")  // "커피를"
+josa("밥", "을를"); // "밥을"
+josa("커피", "을를"); // "커피를"
 
-josa("빵", "과와")    // "빵과"
-josa("우유", "과와")  // "우유와"
+josa("빵", "과와"); // "빵과"
+josa("우유", "과와"); // "우유와"
 
-josa("집", "으로")    // "집으로"
-josa("학교", "으로")  // "학교로"
+josa("집", "으로"); // "집으로"
+josa("학교", "으로"); // "학교로"
 ```
 
 ### Supported Particles
 
 | Particle | With final consonant | Without final consonant |
-|----------|---------------------|------------------------|
-| `은는` | 은 | 는 |
-| `이가` | 이 | 가 |
-| `을를` | 을 | 를 |
-| `과와` | 과 | 와 |
-| `으로` | 으로 | 로 |
+| -------- | -------------------- | ----------------------- |
+| `은는`   | 은                   | 는                      |
+| `이가`   | 이                   | 가                      |
+| `을를`   | 을                   | 를                      |
+| `과와`   | 과                   | 와                      |
+| `으로`   | 으로                 | 로                      |
 
 ### Using in Dictionary
 
@@ -51,8 +51,8 @@ export default {
 } as const;
 
 // Usage
-SD("validation.required")("이메일")  // "이메일은 필수입니다"
-SD("validation.required")("이름")    // "이름은 필수입니다"
+SD("validation.required")("이메일"); // "이메일은 필수입니다"
+SD("validation.required")("이름"); // "이름은 필수입니다"
 ```
 
 ## plural - Pluralization Handling
@@ -62,24 +62,24 @@ The `plural()` function returns different text based on the number:
 ```typescript
 import { plural } from "sonamu/dict";
 
-plural(0, { zero: "none", one: "1 item", other: "multiple items" })  // "none"
-plural(1, { zero: "none", one: "1 item", other: "multiple items" })  // "1 item"
-plural(5, { zero: "none", one: "1 item", other: "multiple items" })  // "multiple items"
+plural(0, { zero: "none", one: "1 item", other: "multiple items" }); // "none"
+plural(1, { zero: "none", one: "1 item", other: "multiple items" }); // "1 item"
+plural(5, { zero: "none", one: "1 item", other: "multiple items" }); // "multiple items"
 
 // Using a function for other
-plural(5, { other: (n) => `${n} items` })  // "5 items"
+plural(5, { other: (n) => `${n} items` }); // "5 items"
 
 // Falls back to other if zero or one is not defined
-plural(0, { other: "default" })  // "default"
-plural(1, { other: "default" })  // "default"
+plural(0, { other: "default" }); // "default"
+plural(1, { other: "default" }); // "default"
 ```
 
 ### Options
 
-| Option | Condition | Description |
-|--------|-----------|-------------|
-| `zero` | n === 0 | Text when count is 0 |
-| `one` | n === 1 | Text when count is 1 |
+| Option  | Condition | Description             |
+| ------- | --------- | ----------------------- |
+| `zero`  | n === 0   | Text when count is 0    |
+| `one`   | n === 1   | Text when count is 1    |
 | `other` | otherwise | Default text (required) |
 
 ### Using in Dictionary
@@ -89,16 +89,18 @@ plural(1, { other: "default" })  // "default"
 import { plural } from "sonamu/dict";
 
 export default {
-  "items.count": (count: number) => plural(count, {
-    zero: "항목이 없습니다",
-    one: "1개 항목",
-    other: (n) => `${n}개 항목`,
-  }),
+  "items.count": (count: number) =>
+    plural(count, {
+      zero: "항목이 없습니다",
+      one: "1개 항목",
+      other: (n) => `${n}개 항목`,
+    }),
 
-  "cart.items": (count: number) => plural(count, {
-    zero: "장바구니가 비어있습니다",
-    other: (n) => `장바구니에 ${n}개 상품`,
-  }),
+  "cart.items": (count: number) =>
+    plural(count, {
+      zero: "장바구니가 비어있습니다",
+      other: (n) => `장바구니에 ${n}개 상품`,
+    }),
 } as const;
 ```
 
@@ -111,12 +113,12 @@ import { createFormat } from "sonamu/dict";
 
 const format = createFormat("ko");
 
-format.number(1234567)  // "1,234,567"
-format.date(new Date("2024-01-15"))  // "2024. 1. 15."
+format.number(1234567); // "1,234,567"
+format.date(new Date("2024-01-15")); // "2024. 1. 15."
 
 const enFormat = createFormat("en");
-enFormat.number(1234567)  // "1,234,567"
-enFormat.date(new Date("2024-01-15"))  // "1/15/2024"
+enFormat.number(1234567); // "1,234,567"
+enFormat.date(new Date("2024-01-15")); // "1/15/2024"
 ```
 
 ### Using in Dictionary
@@ -173,7 +175,11 @@ export default {
   <Card title="Using the SD Function" icon="code" href="/en/advanced-features/i18n/dictionary">
     Writing and using dictionaries
   </Card>
-  <Card title="Localized Columns" icon="database" href="/en/advanced-features/i18n/localized-columns">
+  <Card
+    title="Localized Columns"
+    icon="database"
+    href="/en/advanced-features/i18n/localized-columns"
+  >
     Multilingual DB column support
   </Card>
 </CardGroup>

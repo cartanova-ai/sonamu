@@ -12,21 +12,25 @@ description: "URL-based list filtering and pagination management"
     Store search params in URL
 
     Bookmarkable state
+
   </Card>
   <Card title="Type Safety" icon="shield-check">
     Zod schema based
 
     Automatic type inference
+
   </Card>
   <Card title="Auto Page Reset" icon="rotate">
     Reset to page 1 on filter change
 
     Improved UX
+
   </Card>
   <Card title="register Pattern" icon="hand-pointer">
     Easy form component binding
 
     Remove boilerplate
+
   </Card>
 </CardGroup>
 
@@ -41,16 +45,13 @@ import { UserListParams } from "@/services/sonamu.generated";
 
 export function UserListPage() {
   // Parse and initialize parameters from URL
-  const { listParams, setListParams, register } = useListParams(
-    UserListParams,
-    {
-      num: 24,
-      page: 1,
-      orderBy: "id-desc" as const,
-      search: "id" as const,
-      keyword: "",
-    }
-  );
+  const { listParams, setListParams, register } = useListParams(UserListParams, {
+    num: 24,
+    page: 1,
+    orderBy: "id-desc" as const,
+    search: "id" as const,
+    keyword: "",
+  });
 
   // API call (pass listParams directly)
   const { data, isLoading } = UserService.useUsers("A", listParams);
@@ -60,6 +61,7 @@ export function UserListPage() {
 ```
 
 **Parameter Explanation**:
+
 - `UserListParams`: Zod schema (auto-generated)
 - Default value object: Initial values when URL has no values
 
@@ -68,6 +70,7 @@ export function UserListPage() {
 
 URL search parameters are strings, so a schema is needed to parse them into numbers or booleans.
 `UserListParams` is auto-generated in `sonamu.generated.ts` and always stays in sync with backend type definitions.
+
 </Info>
 
 ### Using listParams
@@ -81,14 +84,15 @@ const { listParams } = useListParams(UserListParams, defaultValue);
 const { data } = UserService.useUsers("A", listParams);
 
 // Or check specific values
-console.log(listParams.page);     // 1
-console.log(listParams.keyword);  // "admin"
-console.log(listParams.orderBy);  // "id-desc"
+console.log(listParams.page); // 1
+console.log(listParams.keyword); // "admin"
+console.log(listParams.orderBy); // "id-desc"
 ```
 
 **Type**:
+
 ```typescript
-listParams: Partial<z.infer<UserListParams>> & DefaultValue
+listParams: Partial<z.infer<UserListParams>> & DefaultValue;
 ```
 
 ### Changing State with setListParams
@@ -107,12 +111,13 @@ setListParams({ ...listParams, page: 1, orderBy: "created_at-desc" });
 // Change search keyword
 setListParams({
   ...listParams,
-  page: 1,  // Always reset to page 1 on search
-  keyword: "admin"
+  page: 1, // Always reset to page 1 on search
+  keyword: "admin",
 });
 ```
 
 **How it works**:
+
 1. Deep equal comparison between `listParams` and `newParams`
 2. If changed, update URL with TanStack Router's `navigate`
 3. URL change → `useSearch` hook re-runs → `listParams` automatically updated
@@ -129,6 +134,7 @@ setListParams({ ...listParams, page: 2 });
 ```
 
 Always use spread operator to preserve existing filter values.
+
 </Warning>
 
 ### Form Binding with register
@@ -155,6 +161,7 @@ return (
 ```
 
 **What register returns**:
+
 ```typescript
 {
   value: listParams[name] ?? defaultValue[name] ?? (name === "page" ? 1 : ""),
@@ -293,6 +300,7 @@ https://example.com/users?page=2&keyword=admin&orderBy=created_at-desc&role=admi
 ```
 
 **Benefits of bookmarkable state**:
+
 - Users can bookmark frequently used filter combinations
 - Share URL to show colleagues the same view
 - Navigate through filter history with browser back/forward
@@ -304,20 +312,19 @@ https://example.com/users?page=2&keyword=admin&orderBy=created_at-desc&role=admi
 Disable URL synchronization and manage state locally only.
 
 ```typescript
-const { listParams, setListParams, register } = useListParams(
-  UserListParams,
-  defaultValue,
-  { disableSearchParams: true }
-);
+const { listParams, setListParams, register } = useListParams(UserListParams, defaultValue, {
+  disableSearchParams: true,
+});
 ```
 
 **Use cases**:
+
 - List inside a modal (when you don't want to change URL)
 - Embedded widget (when independent state management is needed)
 - Test environment
 
 <Warning>
-Using `disableSearchParams: true` will disable bookmark and URL sharing functionality.
+  Using `disableSearchParams: true` will disable bookmark and URL sharing functionality.
 </Warning>
 
 ## Type Safety
@@ -355,6 +362,7 @@ register("
 ## TanStack Router Integration
 
 `useListParams` internally uses TanStack Router hooks:
+
 - `useSearch`: Read URL search parameters
 - `useNavigate`: Update URL
 
@@ -381,6 +389,7 @@ export function useListParams<U, T>(zType: U, defaultValue: T) {
 
 `useSearch({ strict: false })` allows reading search parameters not defined in the current route.
 This enables flexible handling of dynamically added filters.
+
 </Info>
 
 ## Cautions
@@ -401,6 +410,7 @@ const { listParams } = useListParams(UserListParams, {
 ```
 
 **Required fields**:
+
 - `num`: Items per page
 - `page`: Current page (starts from 1)
 

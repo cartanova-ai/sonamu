@@ -1,9 +1,10 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: Puri.types.ts는 다양한 타입을 사용하고 있습니다. */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Puri.types.ts는 다양한 타입을 사용하고 있습니다.
 
-import type { QueryResult } from "pg";
-import type { DatabaseForeignKeys, DatabaseSchemaExtend } from "../types/types";
-import type { Puri } from "./puri";
-import type { PuriSubsetFn } from "./puri-subset.types";
+import { type QueryResult } from "pg";
+
+import { type DatabaseForeignKeys, type DatabaseSchemaExtend } from "../types/types";
+import { type Puri } from "./puri";
+import { type PuriSubsetFn } from "./puri-subset.types";
 
 // ============================================
 // 내부 타입 키 (메타데이터)
@@ -141,12 +142,8 @@ export type IsNullableColumn<
 // FK nullable 여부에 따른 마커 타입 결정
 // nullable FK로 leftJoin → LeftJoinedMarker (객체 자체가 null일 수 있음)
 // non-null FK로 leftJoin → 마커 없음 (부모가 있으면 자식도 반드시 있음)
-export type LeftJoinMarkerFor<TTables, Path extends string> = IsNullableColumn<
-  TTables,
-  Path
-> extends true
-  ? LeftJoinedMarker
-  : {};
+export type LeftJoinMarkerFor<TTables, Path extends string> =
+  IsNullableColumn<TTables, Path> extends true ? LeftJoinedMarker : {};
 
 // 주어진 테이블이 FK nullable로 leftJoin 된 테이블인지 확인합니다.
 // 사실 LeftJoinMarker가 붙었는지 확인하는게 다입니다.
@@ -351,7 +348,7 @@ export type InsertData<T> = Omit<
 };
 
 // Insert Result 타입
-export type InsertResult = Pick<QueryResult<any>, "command" | "rowCount" | "rows" | "oid">;
+export type InsertResult = Pick<QueryResult, "command" | "rowCount" | "rows" | "oid">;
 
 // SubsetQuery를 위한 타입 유틸리티
 export type ExtractTTables<T extends Puri<any, any, any>> =

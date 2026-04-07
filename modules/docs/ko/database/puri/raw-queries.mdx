@@ -97,10 +97,10 @@ Raw 함수는 Knex 스타일의 파라미터 바인딩을 지원합니다. SQL �
 
 ### 플레이스홀더 규칙
 
-| 플레이스홀더 | 용도 | 이스케이핑 |
-|---|---|---|
-| `?` | 값 바인딩 | 값으로 이스케이핑 (`'hello'`) |
-| `??` | 식별자 바인딩 | 식별자로 이스케이핑 (`"table"."column"`) |
+| 플레이스홀더 | 용도          | 이스케이핑                               |
+| ------------ | ------------- | ---------------------------------------- |
+| `?`          | 값 바인딩     | 값으로 이스케이핑 (`'hello'`)            |
+| `??`         | 식별자 바인딩 | 식별자로 이스케이핑 (`"table"."column"`) |
 
 ### 값 바인딩 (`?`)
 
@@ -131,17 +131,18 @@ const results = await db.table("employees").select({
 
 ```typescript
 const results = await db.table("documents").select({
-  highlighted: Puri.rawString(
-    "pgroonga_highlight_html(??, ARRAY[?])",
-    ["documents.title", "검색어"],
-  ),
+  highlighted: Puri.rawString("pgroonga_highlight_html(??, ARRAY[?])", [
+    "documents.title",
+    "검색어",
+  ]),
 });
 // SQL: pgroonga_highlight_html("documents"."title", ARRAY['검색어'])
 ```
 
 <Warning>
-  **`??`와 `?`를 혼동하지 마세요.** 컬럼명에 `?`를 사용하면 값으로 이스케이핑되어 SQL 오류가 발생합니다.
-  반대로 사용자 입력에 `??`를 사용하면 식별자로 이스케이핑되어 의도치 않은 동작이 발생할 수 있습니다.
+  **`??`와 `?`를 혼동하지 마세요.** 컬럼명에 `?`를 사용하면 값으로 이스케이핑되어 SQL 오류가
+  발생합니다. 반대로 사용자 입력에 `??`를 사용하면 식별자로 이스케이핑되어 의도치 않은 동작이 발생할
+  수 있습니다.
 </Warning>
 
 ## Static SQL 함수
@@ -195,8 +196,8 @@ const results = await db
 ```
 
 <Warning>
-  **SQL Injection 주의**: `whereRaw`에서는 반드시 바인딩(`?`)을 사용하세요.
-  사용자 입력을 직접 문자열에 넣으면 안 됩니다.
+  **SQL Injection 주의**: `whereRaw`에서는 반드시 바인딩(`?`)을 사용하세요. 사용자 입력을 직접
+  문자열에 넣으면 안 됩니다.
 </Warning>
 
 ### 복잡한 조건
@@ -210,7 +211,7 @@ const results = await db
     (department_id = ? AND salary > ?)
     OR (department_id = ? AND salary > ?)
   `,
-    [1, 60000, 2, 70000]
+    [1, 60000, 2, 70000],
   );
 ```
 
@@ -459,9 +460,7 @@ const results = await db.table("users").select({
   id: "id",
   city: Puri.rawString("metadata->>'city'"),
   age: Puri.rawNumber("(metadata->>'age')::integer"),
-  tags: Puri.rawStringArray(
-    "ARRAY(SELECT jsonb_array_elements_text(metadata->'tags'))"
-  ),
+  tags: Puri.rawStringArray("ARRAY(SELECT jsonb_array_elements_text(metadata->'tags'))"),
 });
 ```
 
@@ -532,18 +531,19 @@ Raw SQL을 사용할 때는 **hydrate()**를 수동으로 호출하거나, 필�
 
 ### Subset vs Raw Puri의 차이
 
-| 기능 | Subset 쿼리 (`getSubsetQueries` + `executeSubsetQuery`) | Raw Puri 쿼리 (`getPuri("r")`) |
-|------|-------------------------------------------------------|-------------------------------|
-| **Hydrate** | ✅ 자동 호출 | ❌ 수동 호출 필요 |
-| **JOIN** | ✅ 자동 설정 | ⚠️ 수동 설정 |
-| **타입 추론** | ✅ Subset 타입 | ⚠️ 수동 정의 |
-| **필드 구조화** | ✅ 자동 (중첩 객체) | ❌ 수동 (flat) |
+| 기능            | Subset 쿼리 (`getSubsetQueries` + `executeSubsetQuery`) | Raw Puri 쿼리 (`getPuri("r")`) |
+| --------------- | ------------------------------------------------------- | ------------------------------ |
+| **Hydrate**     | ✅ 자동 호출                                            | ❌ 수동 호출 필요              |
+| **JOIN**        | ✅ 자동 설정                                            | ⚠️ 수동 설정                   |
+| **타입 추론**   | ✅ Subset 타입                                          | ⚠️ 수동 정의                   |
+| **필드 구조화** | ✅ 자동 (중첩 객체)                                     | ❌ 수동 (flat)                 |
 
 ### Hydrate가 하는 일
 
 `hydrate()`는 **flat한 쿼리 결과를 중첩된 객체 구조로 변환**합니다.
 
 **Before hydrate (Flat)**:
+
 ```typescript
 {
   id: 1,
@@ -556,6 +556,7 @@ Raw SQL을 사용할 때는 **hydrate()**를 수동으로 호출하거나, 필�
 ```
 
 **After hydrate (Nested)**:
+
 ```typescript
 {
   id: 1,
@@ -584,14 +585,14 @@ const results = await db
   .select({
     id: "users.id",
     username: "users.username",
-    employee__id: "employees.id",                    // 언더바 2개
+    employee__id: "employees.id", // 언더바 2개
     employee__salary: "employees.salary",
-    employee__department__id: "departments.id",      // 중첩 시 언더바 2개씩
+    employee__department__id: "departments.id", // 중첩 시 언더바 2개씩
     employee__department__name: "departments.name",
   });
 
 // hydrate 호출
-const hydrated = results.map(row => UserModel.hydrate(row));
+const hydrated = results.map((row) => UserModel.hydrate(row));
 
 // 결과: 중첩된 객체 구조
 hydrated[0].employee.department.name; // "Engineering"
@@ -599,18 +600,15 @@ hydrated[0].employee.department.name; // "Engineering"
 
 ```typescript
 // ❌ 잘못된 네이밍 (언더바 1개)
-const results = await db
-  .table("users")
-  .join("employees", "users.id", "employees.user_id")
-  .select({
-    id: "users.id",
-    username: "users.username",
-    employee_id: "employees.id",        // ❌ 잘못됨 (언더바 1개)
-    employee_salary: "employees.salary", // ❌ 잘못됨
-  });
+const results = await db.table("users").join("employees", "users.id", "employees.user_id").select({
+  id: "users.id",
+  username: "users.username",
+  employee_id: "employees.id", // ❌ 잘못됨 (언더바 1개)
+  employee_salary: "employees.salary", // ❌ 잘못됨
+});
 
 // hydrate 호출해도 중첩 구조 생성 안됨
-const hydrated = results.map(row => UserModel.hydrate(row));
+const hydrated = results.map((row) => UserModel.hydrate(row));
 hydrated[0].employee; // undefined
 ```
 
@@ -655,7 +653,7 @@ users[0].employee; // undefined
 users[0].employee__id; // 10 (flat)
 
 // ✅ hydrate 후: 중첩 구조
-const hydrated = users.map(row => UserModel.hydrate(row));
+const hydrated = users.map((row) => UserModel.hydrate(row));
 hydrated[0].employee.id; // 10
 hydrated[0].employee.department.name; // "Engineering"
 ```
@@ -690,14 +688,14 @@ class UserModelClass extends BaseModelClass<...> {
 
 ### Hydrate 호출 시점 정리
 
-| 메서드 | Hydrate 자동 호출 | 설명 |
-|--------|------------------|------|
-| `getSubsetQueries` + `executeSubsetQuery` | ✅ Yes | Subset 쿼리는 자동 |
-| `executeSubsetQuery()` | ✅ Yes | 내부에서 자동 호출 |
-| `getPuri("r")` | ❌ No | Raw 쿼리는 수동 |
-| `findById()` | ✅ Yes | BaseModel 메서드는 자동 |
-| `findOne()` | ✅ Yes | BaseModel 메서드는 자동 |
-| `findMany()` | ✅ Yes | BaseModel 메서드는 자동 |
+| 메서드                                    | Hydrate 자동 호출 | 설명                    |
+| ----------------------------------------- | ----------------- | ----------------------- |
+| `getSubsetQueries` + `executeSubsetQuery` | ✅ Yes            | Subset 쿼리는 자동      |
+| `executeSubsetQuery()`                    | ✅ Yes            | 내부에서 자동 호출      |
+| `getPuri("r")`                            | ❌ No             | Raw 쿼리는 수동         |
+| `findById()`                              | ✅ Yes            | BaseModel 메서드는 자동 |
+| `findOne()`                               | ✅ Yes            | BaseModel 메서드는 자동 |
+| `findMany()`                              | ✅ Yes            | BaseModel 메서드는 자동 |
 
 ### 실전 예제: Raw 쿼리 + Hydrate
 
@@ -747,18 +745,15 @@ class UserModelClass extends BaseModelClass<...> {
 ```
 
 <Warning>
-**Hydrate 사용 시 주의사항**:
-1. **필드 네이밍**: JOIN 필드는 반드시 `__`(언더바 2개) 사용
-2. **수동 호출**: Raw Puri 쿼리는 hydrate() 수동 호출 필수
-3. **타입 안전성**: hydrate 후 타입은 수동으로 정의 필요
-4. **성능**: hydrate는 런타임 오버헤드가 있으므로, 간단한 쿼리는 Subset 사용 권장
+  **Hydrate 사용 시 주의사항**: 1. **필드 네이밍**: JOIN 필드는 반드시 `__`(언더바 2개) 사용 2.
+  **수동 호출**: Raw Puri 쿼리는 hydrate() 수동 호출 필수 3. **타입 안전성**: hydrate 후 타입은
+  수동으로 정의 필요 4. **성능**: hydrate는 런타임 오버헤드가 있으므로, 간단한 쿼리는 Subset 사용
+  권장
 </Warning>
 
 <Info>
-**권장 사항**:
-- 가능하면 **Subset 쿼리**를 사용하세요 (hydrate 자동)
-- 복잡한 Raw SQL이 필요할 때만 수동 hydrate 사용
-- 필드 네이밍 규칙(`__`)을 일관되게 적용
+  **권장 사항**: - 가능하면 **Subset 쿼리**를 사용하세요 (hydrate 자동) - 복잡한 Raw SQL이 필요할
+  때만 수동 hydrate 사용 - 필드 네이밍 규칙(`__`)을 일관되게 적용
 </Info>
 
 ## 다음 단계
@@ -774,18 +769,10 @@ class UserModelClass extends BaseModelClass<...> {
   >
     서브쿼리와 트랜잭션
   </Card>
-  <Card
-    title="Aggregations"
-    icon="calculator"
-    href="/ko/database/puri/aggregations"
-  >
+  <Card title="Aggregations" icon="calculator" href="/ko/database/puri/aggregations">
     집계 함수 사용하기
   </Card>
-  <Card
-    title="Basic Queries"
-    icon="magnifying-glass"
-    href="/ko/database/puri/basic-queries"
-  >
+  <Card title="Basic Queries" icon="magnifying-glass" href="/ko/database/puri/basic-queries">
     기본 쿼리로 돌아가기
   </Card>
 </CardGroup>

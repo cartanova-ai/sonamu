@@ -1,14 +1,16 @@
 import equal from "fast-deep-equal";
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 import { alphabetical, diff } from "radashi";
-import { EntityManager, Naite } from "..";
-import type {
-  EntityProp,
-  GenMigrationCode,
-  MigrationColumn,
-  MigrationForeign,
-  MigrationIndex,
-  MigrationSet,
+
+import { EntityManager } from "../entity/entity-manager";
+import { Naite } from "../naite/naite";
+import {
+  type EntityProp,
+  type GenMigrationCode,
+  type MigrationColumn,
+  type MigrationForeign,
+  type MigrationIndex,
+  type MigrationSet,
 } from "../types/types";
 import { isSearchTextProp } from "../types/types";
 import { formatCode } from "../utils/formatter";
@@ -468,7 +470,7 @@ function normalizeSearchTextExpressionNode(
         (name === "sonamu_text_array_agg" || name === "sonamu_jsonb_array_agg") &&
         args.length === 2 &&
         args[1]?.type === "boolean" &&
-        args[1].value === true
+        args[1].value
       ) {
         args = [args[0]];
       }
@@ -772,7 +774,7 @@ async function generateCreateCode_ColumnAndIndexes(
     table,
     type: "normal",
     title: `create__${table}`,
-    formatted: formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`),
+    formatted: await formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`),
   };
 }
 
@@ -1097,7 +1099,7 @@ async function generateCreateCode_Foreign(
       table,
       type: "foreign",
       title: `foreign__${table}__${foreignKeysString}`,
-      formatted: formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`),
+      formatted: await formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`),
     },
   ];
 }
@@ -1207,12 +1209,12 @@ async function generateAlterCode_ColumnAndIndexes(
   const recreatedSearchTextDbIndexes = dbIndexes.filter(
     (index) =>
       index.columns.some(({ name }) => recreatedSearchTextColumnNames.has(name)) &&
-      alterIndexesTo.drop.some((dropIndex) => dropIndex.name === index.name) === false,
+      !alterIndexesTo.drop.some((dropIndex) => dropIndex.name === index.name),
   );
   const recreatedSearchTextEntityIndexes = entityIndexes.filter(
     (index) =>
       index.columns.some(({ name }) => recreatedSearchTextColumnNames.has(name)) &&
-      alterIndexesTo.add.some((addIndex) => addIndex.name === index.name) === false,
+      !alterIndexesTo.add.some((addIndex) => addIndex.name === index.name),
   );
   const implicitlyDroppedDbIndexes = alterIndexesTo.drop.filter((index) =>
     index.columns.every(({ name }) => alterColumnsTo.drop.some((column) => column.name === name)),
@@ -1220,8 +1222,7 @@ async function generateAlterCode_ColumnAndIndexes(
 
   // 인덱스가 삭제되는 경우, 컬럼과 같이 삭제된 케이스에는 drop에서 제외해야함!
   const indexNeedsToDrop = alterIndexesTo.drop.filter(
-    (index) =>
-      implicitlyDroppedDbIndexes.some((droppedIndex) => droppedIndex.name === index.name) === false,
+    (index) => !implicitlyDroppedDbIndexes.some((droppedIndex) => droppedIndex.name === index.name),
   );
 
   // 빈 코드 생성 방지
@@ -1280,9 +1281,9 @@ async function generateAlterCode_ColumnAndIndexes(
     ...alterIndexesTo.add
       .filter(
         (index) =>
-          index.columns.every((indexCol) =>
+          !index.columns.every((indexCol) =>
             alterColumnsTo.add.map((col) => col.name).includes(indexCol.name),
-          ) === false,
+          ),
       )
       .map(genIndexDropDefinition),
   ];
@@ -1313,7 +1314,7 @@ async function generateAlterCode_ColumnAndIndexes(
     "}",
   ];
 
-  const formatted = formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
+  const formatted = await formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
   const title = [
     "alter",
     table,
@@ -1586,7 +1587,7 @@ export function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: Mi
   const identity = <T extends Record<string, unknown>>(index: T): string => {
     const keys = Object.keys(index)
       .filter((key) => key !== "name")
-      .sort();
+      .toSorted();
 
     return keys
       .map((key) => {
@@ -1596,7 +1597,7 @@ export function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: Mi
         if (key === "columns") {
           return (index[key] as MigrationIndex["columns"]).map((col) => {
             return Object.keys(col)
-              .sort()
+              .toSorted()
               .map((k) => `${k}=${col[k as keyof typeof col]}`)
               .join("//");
           });
@@ -1680,7 +1681,7 @@ async function generateAlterCode_Foreigns(
         return result;
       }
 
-      if (equal(entityF, matchingDbF) === false) {
+      if (!equal(entityF, matchingDbF)) {
         result.alterSrc.push(matchingDbF);
         result.alterDst.push(entityF);
         return result;
@@ -1758,7 +1759,7 @@ async function generateAlterCode_Foreigns(
     "}",
   ];
 
-  const formatted = formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
+  const formatted = await formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
   const title = ["alter", table, "foreigns"].join("_");
 
   return [
@@ -1888,7 +1889,7 @@ export async function generateAlterCode(
   }
 
   // 2. foreigns 처리 (삭제될 컬럼 정보 전달)
-  if (equal(entityForeigns, dbForeigns) === false) {
+  if (!equal(entityForeigns, dbForeigns)) {
     alterCodes.push(
       await generateAlterCode_Foreigns(
         entitySet.table,
@@ -2076,7 +2077,7 @@ async function generatePkTypeChangeMigration(
     "}",
   ];
 
-  const formatted = formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
+  const formatted = await formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
 
   return [
     {

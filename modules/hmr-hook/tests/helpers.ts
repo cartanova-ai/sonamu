@@ -1,7 +1,8 @@
 import path from "node:path";
+
 import { getActiveTest } from "@japa/runner";
 import { join } from "desm";
-import type { NodeOptions } from "execa";
+import { type NodeOptions } from "execa";
 import { execaNode } from "execa";
 import fs from "fs-extra";
 import { pEvent } from "p-event";
@@ -15,6 +16,7 @@ export async function fakeInstall(destination: string) {
   );
 
   await fs.ensureSymlink(projectRoot, path.resolve(destination, "node_modules", packageName));
+  await fs.ensureSymlink(projectRoot, path.resolve(destination, "node_modules", "hot-hook"));
 
   if (typeof bin === "string") {
     const binPath = bin;
@@ -23,10 +25,14 @@ export async function fakeInstall(destination: string) {
       path.resolve(projectRoot, binPath),
       path.resolve(destination, "node_modules", ".bin", binName),
     );
+    await fs.ensureSymlink(
+      path.resolve(projectRoot, binPath),
+      path.resolve(destination, "node_modules", ".bin", "hot-hook"),
+    );
   } else {
     for (const [binName, binPath] of Object.entries(bin)) {
       await fs.ensureSymlink(
-        // biome-ignore lint/suspicious/noExplicitAny: package.json bin 필드는 런타임에 string으로 보장됨
+        // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- package.json bin 필드는 런타임에 string으로 보장됨
         path.resolve(projectRoot, binPath as any),
         path.resolve(destination, "node_modules", ".bin", binName),
       );

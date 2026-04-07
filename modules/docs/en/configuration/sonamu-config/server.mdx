@@ -1,6 +1,6 @@
 ---
-title: 'Server'
-description: 'Fastify server basic settings and plugins'
+title: "Server"
+description: "Fastify server basic settings and plugins"
 ---
 
 Sonamu is a high-performance HTTP server based on Fastify. You can configure server port, host, plugins, lifecycle hooks, and more.
@@ -18,7 +18,7 @@ export default defineConfig({
   server: {
     baseUrl: `http://${host}:${port}`,
     listen: { port, host },
-    
+
     plugins: {
       formbody: true,
       qs: true,
@@ -32,14 +32,14 @@ export default defineConfig({
         salt: process.env.SESSION_SALT,
       },
     },
-    
+
     apiConfig: {
       contextProvider: (defaultContext, request) => ({
         ...defaultContext,
         ip: request.ip,
       }),
     },
-    
+
     lifecycle: {
       onStart: () => console.log(`🌲 Server listening on http://${host}:${port}`),
       onShutdown: () => console.log("graceful shutdown"),
@@ -74,15 +74,13 @@ export default defineConfig({
 ```typescript
 export default defineConfig({
   server: {
-    baseUrl: "https://api.myapp.com",  // Production URL
+    baseUrl: "https://api.myapp.com", // Production URL
     listen: { port: 3000, host: "0.0.0.0" },
   },
 });
 ```
 
-<Tip>
-`baseUrl` is used for URLs generated during file uploads, SSR meta tags, etc.
-</Tip>
+<Tip>`baseUrl` is used for URLs generated during file uploads, SSR meta tags, etc.</Tip>
 
 ## listen
 
@@ -107,7 +105,7 @@ The port number the server listens on.
 export default defineConfig({
   server: {
     listen: {
-      port: 34900,  // Listen on this port
+      port: 34900, // Listen on this port
     },
   },
 });
@@ -138,7 +136,7 @@ export default defineConfig({
   server: {
     listen: {
       port: 34900,
-      host: "localhost",  // Only accessible locally
+      host: "localhost", // Only accessible locally
     },
   },
 });
@@ -151,15 +149,13 @@ export default defineConfig({
   server: {
     listen: {
       port: 34900,
-      host: "0.0.0.0",  // Allow external access
+      host: "0.0.0.0", // Allow external access
     },
   },
 });
 ```
 
-<Warning>
-When using `0.0.0.0` in production, verify your firewall settings.
-</Warning>
+<Warning>When using `0.0.0.0` in production, verify your firewall settings.</Warning>
 
 ## fastify
 
@@ -174,16 +170,14 @@ export default defineConfig({
       connectionTimeout: 30000,
       keepAliveTimeout: 5000,
       maxParamLength: 200,
-      trustProxy: true,  // When behind a proxy
+      trustProxy: true, // When behind a proxy
     },
     // ...
   },
 });
 ```
 
-<Note>
-Logging is configured separately through Sonamu's `logging` settings.
-</Note>
+<Note>Logging is configured separately through Sonamu's `logging` settings.</Note>
 
 ## plugins
 
@@ -199,7 +193,7 @@ Parses `application/x-www-form-urlencoded` request bodies.
 export default defineConfig({
   server: {
     plugins: {
-      formbody: true,  // Enable with default settings
+      formbody: true, // Enable with default settings
     },
   },
 });
@@ -212,7 +206,7 @@ export default defineConfig({
   server: {
     plugins: {
       formbody: {
-        bodyLimit: 1048576,  // 1MB
+        bodyLimit: 1048576, // 1MB
       },
     },
   },
@@ -229,7 +223,7 @@ Parses query strings. Supports nested objects and arrays.
 export default defineConfig({
   server: {
     plugins: {
-      qs: true,  // Parses ?filter[status]=active&sort[name]=asc
+      qs: true, // Parses ?filter[status]=active&sort[name]=asc
     },
   },
 });
@@ -247,8 +241,8 @@ export default defineConfig({
     plugins: {
       multipart: {
         limits: {
-          fileSize: 1024 * 1024 * 30,  // 30MB
-          files: 10,  // Maximum 10 files
+          fileSize: 1024 * 1024 * 30, // 30MB
+          files: 10, // Maximum 10 files
         },
       },
     },
@@ -264,7 +258,7 @@ export default defineConfig({
     plugins: {
       multipart: {
         limits: {
-          fileSize: 1024 * 1024 * 100,  // 100MB
+          fileSize: 1024 * 1024 * 100, // 100MB
           files: 20,
         },
       },
@@ -287,7 +281,7 @@ export default defineConfig({
     plugins: {
       static: {
         root: path.join(import.meta.dirname, "/../", "public"),
-        prefix: "/api/public",  // Served at /api/public/* path
+        prefix: "/api/public", // Served at /api/public/* path
       },
     },
   },
@@ -312,7 +306,7 @@ export default defineConfig({
         cookie: {
           domain: "localhost",
           path: "/",
-          maxAge: 60 * 60 * 24 * 365 * 10,  // 10 years
+          maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
         },
       },
     },
@@ -321,7 +315,7 @@ export default defineConfig({
 ```
 
 <Warning>
-In production environments, you must set `secret` and `salt` via environment variables!
+  In production environments, you must set `secret` and `salt` via environment variables!
 </Warning>
 
 **Production settings**:
@@ -336,8 +330,8 @@ export default defineConfig({
         cookie: {
           domain: process.env.COOKIE_DOMAIN,
           path: "/",
-          maxAge: 60 * 60 * 24 * 30,  // 30 days
-          secure: true,  // HTTPS only
+          maxAge: 60 * 60 * 24 * 30, // 30 days
+          secure: true, // HTTPS only
           httpOnly: true,
           sameSite: "strict",
         },
@@ -358,8 +352,8 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: false,  // Control per API
-        threshold: 1024,  // Only compress above 1KB
+        global: false, // Control per API
+        threshold: 1024, // Only compress above 1KB
         encodings: ["gzip"],
       },
     },
@@ -395,12 +389,13 @@ export default defineConfig({
 export default defineConfig({
   server: {
     plugins: {
-      cors: process.env.NODE_ENV === "development" 
-        ? { origin: true }  // Allow all origins
-        : {
-            origin: ["https://myapp.com"],
-            credentials: true,
-          },
+      cors:
+        process.env.NODE_ENV === "development"
+          ? { origin: true } // Allow all origins
+          : {
+              origin: ["https://myapp.com"],
+              credentials: true,
+            },
     },
   },
 });
@@ -439,7 +434,7 @@ export default defineConfig({
         server.addHook("onRequest", async (request, reply) => {
           console.log(`${request.method} ${request.url}`);
         });
-        
+
         // Register custom plugins
         server.register(myCustomPlugin);
       },
@@ -581,12 +576,10 @@ export default defineConfig({
     lifecycle: {
       onError: (error, request, reply) => {
         console.error(`[ERROR] ${request.method} ${request.url}`, error);
-        
+
         reply.status(500).send({
           error: "Internal Server Error",
-          message: process.env.NODE_ENV === "development" 
-            ? error.message 
-            : undefined,
+          message: process.env.NODE_ENV === "development" ? error.message : undefined,
         });
       },
     },
@@ -609,7 +602,7 @@ export default defineConfig({
   server: {
     baseUrl: `http://${host}:${port}`,
     listen: { port, host },
-    
+
     plugins: {
       formbody: true,
       qs: true,
@@ -628,7 +621,7 @@ export default defineConfig({
         },
       },
     },
-    
+
     apiConfig: {
       contextProvider: (defaultContext, request) => ({
         ...defaultContext,
@@ -636,7 +629,7 @@ export default defineConfig({
         session: request.session,
       }),
     },
-    
+
     lifecycle: {
       onStart: () => console.log(`🌲 Server started at http://${host}:${port}`),
     },
@@ -657,58 +650,58 @@ const host = "0.0.0.0";
 export default defineConfig({
   server: {
     baseUrl: process.env.BASE_URL ?? "https://api.myapp.com",
-    
+
     listen: { port, host },
-    
+
     fastify: {
       trustProxy: true,
       connectionTimeout: 60000,
       keepAliveTimeout: 30000,
     },
-    
+
     plugins: {
       compress: {
         global: false,
         threshold: 1024,
         encodings: ["gzip", "br"],
       },
-      
+
       cors: {
         origin: [process.env.FRONTEND_URL ?? "https://myapp.com"],
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE"],
       },
-      
+
       formbody: true,
       qs: true,
-      
+
       multipart: {
         limits: {
-          fileSize: 1024 * 1024 * 50,  // 50MB
+          fileSize: 1024 * 1024 * 50, // 50MB
           files: 20,
         },
       },
-      
+
       static: {
         root: path.join(import.meta.dirname, "/../", "public"),
         prefix: "/api/public",
-        maxAge: 86400000,  // 1 day
+        maxAge: 86400000, // 1 day
       },
-      
+
       session: {
         secret: process.env.SESSION_SECRET!,
         salt: process.env.SESSION_SALT!,
         cookie: {
           domain: process.env.COOKIE_DOMAIN,
           path: "/",
-          maxAge: 60 * 60 * 24 * 30,  // 30 days
+          maxAge: 60 * 60 * 24 * 30, // 30 days
           secure: true,
           httpOnly: true,
           sameSite: "strict",
         },
       },
     },
-    
+
     apiConfig: {
       contextProvider: (defaultContext, request) => ({
         ...defaultContext,
@@ -716,31 +709,31 @@ export default defineConfig({
         session: request.session,
         userAgent: request.headers["user-agent"],
       }),
-      
+
       guardHandler: (guard, request) => {
         if (guard === "admin" && !request.session.isAdmin) {
           throw new UnauthorizedError("Admin access required");
         }
       },
     },
-    
+
     lifecycle: {
       onStart: () => {
         console.log(`🌲 Production server started`);
         console.log(`   Port: ${port}`);
         console.log(`   Base URL: ${process.env.BASE_URL}`);
       },
-      
+
       onShutdown: async () => {
         console.log("Shutting down gracefully...");
       },
-      
+
       onError: (error, request, reply) => {
         console.error(`[ERROR] ${request.method} ${request.url}`, {
           message: error.message,
           stack: error.stack,
         });
-        
+
         reply.status(500).send({
           error: "Internal Server Error",
         });
@@ -761,16 +754,16 @@ const port = Number(process.env.PORT ?? 3000);
 export default defineConfig({
   server: {
     baseUrl: process.env.BASE_URL ?? `http://localhost:${port}`,
-    
+
     listen: {
       port,
-      host: "0.0.0.0",  // Allow access from outside container
+      host: "0.0.0.0", // Allow access from outside container
     },
-    
+
     fastify: {
-      trustProxy: true,  // When behind reverse proxy
+      trustProxy: true, // When behind reverse proxy
     },
-    
+
     // ... plugin settings
   },
   // ...

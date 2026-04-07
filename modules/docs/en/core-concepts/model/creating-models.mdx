@@ -26,16 +26,18 @@ First, you need to define an Entity.
   }
 }
 ```
+
 </Step>
 
 <Step title="Auto Type Generation">
 Type files are automatically generated when you save the Entity.
 
 Generated files:
+
 - `user.types.ts` - TypeScript types and Zod schemas
 - `sonamu.generated.ts` - Base schemas and Enums
 - `sonamu.generated.sso.ts` - Subset query functions
-</Step>
+  </Step>
 
 <Step title="Generate Model Scaffold">
 Use Sonamu CLI to generate a Model template.
@@ -45,6 +47,7 @@ pnpm sonamu generate model --entity User
 ```
 
 Or generate from the **Scaffolding** tab in Sonamu UI.
+
 </Step>
 
 <Step title="Customize Model">
@@ -57,6 +60,7 @@ async login(params: LoginParams) {
   // Implement login logic
 }
 ```
+
 </Step>
 </Steps>
 
@@ -70,8 +74,10 @@ async login(params: LoginParams) {
 pnpm sonamu generate model --entity User
 
 # Generate multiple Entities at once
+
 pnpm sonamu generate model --entity User,Post,Comment
-```
+
+````
 
 ```bash title="Options"
 # Overwrite existing file
@@ -79,7 +85,8 @@ pnpm sonamu generate model --entity User --overwrite
 
 # Generate in specific directory
 pnpm sonamu generate model --entity User --output ./custom/path
-```
+````
+
 </CodeGroup>
 
 ### Using Sonamu UI
@@ -89,14 +96,11 @@ pnpm sonamu generate model --entity User --output ./custom/path
 Click the **Scaffolding** tab in Sonamu UI (`http://localhost:34900/sonamu-ui`).
 </Step>
 
-<Step title="Select Model Template">
-Select the **"Model"** template and specify the Entity.
-</Step>
+<Step title="Select Model Template">Select the **"Model"** template and specify the Entity.</Step>
 
 <Step title="Configure Options">
-- **Default Search Field**: Default search field (e.g., `email`)
-- **Default Order By**: Default sorting (e.g., `id-desc`)
-- **Overwrite**: Whether to overwrite existing files
+  - **Default Search Field**: Default search field (e.g., `email`) - **Default Order By**: Default
+  sorting (e.g., `id-desc`) - **Overwrite**: Whether to overwrite existing files
 </Step>
 
 <Step title="Execute Generation">
@@ -104,8 +108,7 @@ Click the **"Generate"** button to create the Model file.
 </Step>
 </Steps>
 
-<Frame caption="📸 Needed: Scaffolding tab in Sonamu UI - Model generation screen">
-</Frame>
+<Frame caption="📸 Needed: Scaffolding tab in Sonamu UI - Model generation screen"></Frame>
 
 ## Generated Model Structure
 
@@ -140,10 +143,7 @@ class UserModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "User" })
-  async findById<T extends UserSubsetKey>(
-    subset: T,
-    id: number
-  ): Promise<UserSubsetMapping[T]> {
+  async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
       num: 1,
@@ -157,7 +157,7 @@ class UserModelClass extends BaseModelClass<
 
   async findOne<T extends UserSubsetKey>(
     subset: T,
-    listParams: UserListParams
+    listParams: UserListParams,
   ): Promise<UserSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
@@ -175,7 +175,7 @@ class UserModelClass extends BaseModelClass<
   })
   async findMany<T extends UserSubsetKey, LP extends UserListParams>(
     subset: T,
-    rawParams?: LP
+    rawParams?: LP,
   ): Promise<ListResult<LP, UserSubsetMapping[T]>> {
     // params with defaults
     const params = {
@@ -271,6 +271,7 @@ async findById<T extends UserSubsetKey>(
 ```
 
 **Features**:
+
 - Receives Subset as parameter to query only needed fields
 - Throws `NotFoundException` if record doesn't exist
 - Creates HTTP endpoint with `@api` decorator
@@ -287,6 +288,7 @@ async findOne<T extends UserSubsetKey>(
 ```
 
 **Features**:
+
 - Returns `null` if record doesn't exist (no exception thrown)
 - Internally calls `findMany` with `num: 1, page: 1`
 
@@ -302,6 +304,7 @@ async findMany<T extends UserSubsetKey, LP extends UserListParams>(
 ```
 
 **Features**:
+
 - Supports pagination (`num`, `page`)
 - Search/filtering (`search`, `keyword`)
 - Sorting (`orderBy`)
@@ -316,6 +319,7 @@ async save(spa: UserSaveParams[]): Promise<number[]>
 ```
 
 **Features**:
+
 - Uses Upsert Builder (Insert or Update)
 - Processes multiple records at once with array
 - Executes wrapped in transaction
@@ -330,6 +334,7 @@ async del(ids: number[]): Promise<number>
 ```
 
 **Features**:
+
 - Receives multiple IDs as array
 - Executes in transaction
 - Only admins can delete with `guards: ["admin"]`
@@ -348,16 +353,19 @@ import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
 
 class UserModelClass extends BaseModelClass<
-  UserSubsetKey,
-  UserSubsetMapping,
-  typeof userSubsetQueries,
-  typeof userLoaderQueries
-> {
-  constructor() {
-    super("User", userSubsetQueries, userLoaderQueries);
-  }
+UserSubsetKey,
+UserSubsetMapping,
+typeof userSubsetQueries,
+typeof userLoaderQueries
 
-  // Add methods...
+> {
+> constructor() {
+
+    super("User", userSubsetQueries, userLoaderQueries);
+
+}
+
+// Add methods...
 }
 
 export const UserModel = new UserModelClass();
@@ -368,39 +376,41 @@ export const UserModel = new UserModelClass();
 import { BaseModelClass } from "sonamu";
 
 // Auto-generated types
-import type { 
-  UserSubsetKey,      // "A" | "P" | "SS"
-  UserSubsetMapping   // Type for each subset
+import type {
+  UserSubsetKey, // "A" | "P" | "SS"
+  UserSubsetMapping, // Type for each subset
 } from "../sonamu.generated";
 
 // Auto-generated query functions
-import { 
-  userLoaderQueries,  // Loader queries
-  userSubsetQueries   // Subset queries
+import {
+  userLoaderQueries, // Loader queries
+  userSubsetQueries, // Subset queries
 } from "../sonamu.generated.sso";
 ```
+
 </CodeGroup>
 
 ### Naming Conventions
 
-| Category | Pattern | Example |
-|----------|---------|---------|
-| Class name | `{Entity}ModelClass` | `UserModelClass` |
-| Export name | `{Entity}Model` | `UserModel` |
-| File name | `{entity}.model.ts` | `user.model.ts` |
+| Category    | Pattern              | Example          |
+| ----------- | -------------------- | ---------------- |
+| Class name  | `{Entity}ModelClass` | `UserModelClass` |
+| Export name | `{Entity}Model`      | `UserModel`      |
+| File name   | `{entity}.model.ts`  | `user.model.ts`  |
 
 <Warning>
 Class name must end with `ModelClass`. Export must end with `Model`.
 
 ```typescript
 // ✅ Correct naming
-class UserModelClass extends BaseModelClass { }
+class UserModelClass extends BaseModelClass {}
 export const UserModel = new UserModelClass();
 
 // ❌ Wrong naming
-class UserModel extends BaseModelClass { }  // X
-export const User = new UserModelClass();   // X
+class UserModel extends BaseModelClass {} // X
+export const User = new UserModelClass(); // X
 ```
+
 </Warning>
 
 ## Model File Location
@@ -460,6 +470,7 @@ export type UserLoginParams = z.infer<typeof UserLoginParams>;
 ```
 
 **Types file patterns**:
+
 - `{Entity}ListParams`: For list queries
 - `{Entity}SaveParams`: For create/update
 - `{Entity}{Action}Params`: For specific actions (e.g., `LoginParams`)
@@ -476,7 +487,8 @@ export * from "./user/user.model";
 ```
 
 <Tip>
-`sonamu.generated.ts` is automatically updated when you save Entities. When you add a Model, it's automatically added to this file too.
+  `sonamu.generated.ts` is automatically updated when you save Entities. When you add a Model, it's
+  automatically added to this file too.
 </Tip>
 
 ## Next Steps

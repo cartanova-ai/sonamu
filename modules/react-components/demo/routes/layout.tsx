@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import ChevronDownIcon from "~icons/lucide/chevron-down";
+
 import {
   Accordion,
   AccordionContent,
@@ -20,7 +22,6 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ChevronDownIcon from "~icons/lucide/chevron-down";
 
 export const Route = createFileRoute("/layout")({
   component: LayoutPage,

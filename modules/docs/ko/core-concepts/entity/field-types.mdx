@@ -9,15 +9,15 @@ Sonamu는 다양한 데이터 타입을 지원하며, 각 타입은 PostgreSQL, 
 
 모든 필드 타입에 공통으로 적용되는 옵션입니다.
 
-| 옵션 | 타입 | 설명 | 기본값 |
-|------|------|------|--------|
-| `name` | string | 필드명 (snake_case) | *필수* |
-| `type` | string | 데이터 타입 | *필수* |
-| `desc` | string | 필드 설명 | - |
-| `nullable` | boolean | NULL 허용 여부 | `false` |
-| `toFilter` | boolean | 검색 필터링 가능 여부 | `false` |
-| `dbDefault` | string | 데이터베이스 기본값 | - |
-| `generated` | GeneratedColumn | 계산 컬럼 설정 | - |
+| 옵션        | 타입            | 설명                  | 기본값  |
+| ----------- | --------------- | --------------------- | ------- |
+| `name`      | string          | 필드명 (snake_case)   | _필수_  |
+| `type`      | string          | 데이터 타입           | _필수_  |
+| `desc`      | string          | 필드 설명             | -       |
+| `nullable`  | boolean         | NULL 허용 여부        | `false` |
+| `toFilter`  | boolean         | 검색 필터링 가능 여부 | `false` |
+| `dbDefault` | string          | 데이터베이스 기본값   | -       |
+| `generated` | GeneratedColumn | 계산 컬럼 설정        | -       |
 
 ### Generated Column
 
@@ -35,14 +35,15 @@ Sonamu는 다양한 데이터 타입을 지원하며, 각 타입은 PostgreSQL, 
 ```
 
 **옵션**:
+
 - `type`: `STORED` | `VIRTUAL`
   - `STORED`: 물리적으로 저장됨 (인덱스 생성 가능)
   - `VIRTUAL`: 조회 시에만 계산됨 (메모리 절약)
 - `expression`: SQL 표현식
 
 <Warning>
-- `VIRTUAL` 타입은 배열 타입, json, vector에서 사용할 수 없습니다
-- `generated`와 `dbDefault`를 동시에 사용할 수 없습니다
+  - `VIRTUAL` 타입은 배열 타입, json, vector에서 사용할 수 없습니다 - `generated`와 `dbDefault`를
+  동시에 사용할 수 없습니다
 </Warning>
 
 ## 숫자 타입
@@ -85,9 +86,7 @@ Sonamu는 다양한 데이터 타입을 지원하며, 각 타입은 PostgreSQL, 
   </Tab>
 </Tabs>
 
-<Tip>
-**사용 예시**: ID, 개수, 나이, 순서, 년도
-</Tip>
+<Tip>**사용 예시**: ID, 개수, 나이, 순서, 년도</Tip>
 
 ### bigInteger / bigInteger[]
 
@@ -127,7 +126,8 @@ Sonamu는 다양한 데이터 타입을 지원하며, 각 타입은 PostgreSQL, 
 </Tabs>
 
 <Warning>
-JavaScript의 `Number.MAX_SAFE_INTEGER` (2^53 - 1)를 초과하는 값은 `bigint`를 사용해야 정확도가 유지됩니다.
+  JavaScript의 `Number.MAX_SAFE_INTEGER` (2^53 - 1)를 초과하는 값은 `bigint`를 사용해야 정확도가
+  유지됩니다.
 </Warning>
 
 ### number / number[]
@@ -176,15 +176,13 @@ JavaScript의 `Number.MAX_SAFE_INTEGER` (2^53 - 1)를 초과하는 값은 `bigin
 
 **numberType 선택 가이드**:
 
-| 타입 | 정밀도 | 메모리 | 사용 예시 |
-|------|--------|--------|-----------|
-| `numeric` | 정확함 (권장) | 많음 | 금액, 통화 |
-| `real` | 근사값 (6자리) | 4 bytes | 과학적 데이터 |
-| `double precision` | 근사값 (15자리) | 8 bytes | 좌표, 측정값 |
+| 타입               | 정밀도          | 메모리  | 사용 예시     |
+| ------------------ | --------------- | ------- | ------------- |
+| `numeric`          | 정확함 (권장)   | 많음    | 금액, 통화    |
+| `real`             | 근사값 (6자리)  | 4 bytes | 과학적 데이터 |
+| `double precision` | 근사값 (15자리) | 8 bytes | 좌표, 측정값  |
 
-<Tip>
-**금액 처리**: `precision: 10, scale: 2`로 설정하면 최대 99,999,999.99까지 저장 가능
-</Tip>
+<Tip>**금액 처리**: `precision: 10, scale: 2`로 설정하면 최대 99,999,999.99까지 저장 가능</Tip>
 
 ### numeric / numeric[]
 
@@ -235,6 +233,7 @@ JavaScript의 `Number.MAX_SAFE_INTEGER` (2^53 - 1)를 초과하는 값은 `bigin
 - `numeric`: TypeScript에서 `string` 타입 (정밀도 유지)
 
 큰 숫자나 매우 정확한 소수점 계산이 필요한 경우 `numeric`을 사용하세요.
+
 </Warning>
 
 ## 문자열 타입
@@ -263,6 +262,7 @@ JavaScript의 `Number.MAX_SAFE_INTEGER` (2^53 - 1)를 초과하는 값은 `bigin
     **추가 옵션**:
     - `length`: 최대 길이 (생략 시 `text` 타입 사용)
     - `zodFormat`: Zod 4 String Format validation (아래 참조)
+
   </Tab>
 
   <Tab title="배열">
@@ -278,6 +278,7 @@ JavaScript의 `Number.MAX_SAFE_INTEGER` (2^53 - 1)를 초과하는 값은 `bigin
     - PostgreSQL: `text[]` 또는 `varchar(n)[]`
     - TypeScript: `string[]`
     - JSON: `string[]`
+
   </Tab>
 </Tabs>
 
@@ -298,48 +299,46 @@ JavaScript의 `Number.MAX_SAFE_INTEGER` (2^53 - 1)를 초과하는 값은 `bigin
 
 **지원 포맷**:
 
-| 카테고리 | 포맷 | 설명 |
-|----------|------|------|
-| 기본 | `email` | 이메일 주소 형식 |
-| | `uuid` | UUID 형식 |
-| | `url` | URL 형식 |
-| | `httpUrl` | HTTP/HTTPS URL 형식 |
-| | `hostname` | 호스트명 형식 |
-| | `emoji` | 이모지 형식 |
-| | `jwt` | JWT 토큰 형식 |
-| 인코딩 | `base64` | Base64 인코딩 |
-| | `base64url` | URL-safe Base64 인코딩 |
-| | `hex` | 16진수 문자열 |
-| ID | `nanoid` | NanoID 형식 |
-| | `cuid` | CUID 형식 |
-| | `cuid2` | CUID2 형식 |
-| | `ulid` | ULID 형식 |
-| 네트워크 | `ipv4` | IPv4 주소 |
-| | `ipv6` | IPv6 주소 |
-| | `mac` | MAC 주소 |
-| | `cidrv4` | IPv4 CIDR 표기법 |
-| | `cidrv6` | IPv6 CIDR 표기법 |
-| 해시 | `hashMd5` | MD5 해시 |
-| | `hashSha1` | SHA-1 해시 |
-| | `hashSha256` | SHA-256 해시 |
-| | `hashSha384` | SHA-384 해시 |
-| | `hashSha512` | SHA-512 해시 |
-| ISO | `isoDate` | ISO 8601 날짜 (YYYY-MM-DD) |
-| | `isoTime` | ISO 8601 시간 (HH:MM:SS) |
-| | `isoDatetime` | ISO 8601 날짜시간 |
-| | `isoDuration` | ISO 8601 기간 |
+| 카테고리 | 포맷          | 설명                       |
+| -------- | ------------- | -------------------------- |
+| 기본     | `email`       | 이메일 주소 형식           |
+|          | `uuid`        | UUID 형식                  |
+|          | `url`         | URL 형식                   |
+|          | `httpUrl`     | HTTP/HTTPS URL 형식        |
+|          | `hostname`    | 호스트명 형식              |
+|          | `emoji`       | 이모지 형식                |
+|          | `jwt`         | JWT 토큰 형식              |
+| 인코딩   | `base64`      | Base64 인코딩              |
+|          | `base64url`   | URL-safe Base64 인코딩     |
+|          | `hex`         | 16진수 문자열              |
+| ID       | `nanoid`      | NanoID 형식                |
+|          | `cuid`        | CUID 형식                  |
+|          | `cuid2`       | CUID2 형식                 |
+|          | `ulid`        | ULID 형식                  |
+| 네트워크 | `ipv4`        | IPv4 주소                  |
+|          | `ipv6`        | IPv6 주소                  |
+|          | `mac`         | MAC 주소                   |
+|          | `cidrv4`      | IPv4 CIDR 표기법           |
+|          | `cidrv6`      | IPv6 CIDR 표기법           |
+| 해시     | `hashMd5`     | MD5 해시                   |
+|          | `hashSha1`    | SHA-1 해시                 |
+|          | `hashSha256`  | SHA-256 해시               |
+|          | `hashSha384`  | SHA-384 해시               |
+|          | `hashSha512`  | SHA-512 해시               |
+| ISO      | `isoDate`     | ISO 8601 날짜 (YYYY-MM-DD) |
+|          | `isoTime`     | ISO 8601 시간 (HH:MM:SS)   |
+|          | `isoDatetime` | ISO 8601 날짜시간          |
+|          | `isoDuration` | ISO 8601 기간              |
 
 <Tip>
-**length 설정 가이드**:
-- 짧은 텍스트 (이름, 이메일): `255`
-- 긴 텍스트 (설명, 내용): 생략 (text 타입)
-- 고정 길이 (우편번호, 전화번호): 정확한 길이 지정
+  **length 설정 가이드**: - 짧은 텍스트 (이름, 이메일): `255` - 긴 텍스트 (설명, 내용): 생략 (text
+  타입) - 고정 길이 (우편번호, 전화번호): 정확한 길이 지정
 </Tip>
 
 <Tip>
-**zodFormat과 uuid 타입의 차이**:
-- `type: "uuid"`: PostgreSQL의 `uuid` 컬럼 타입을 사용하며, UUID 전용 인덱스 및 함수 활용 가능
-- `type: "string"` + `zodFormat: "uuid"`: PostgreSQL의 `text`/`varchar` 컬럼을 사용하면서 API 레벨에서만 UUID 형식 검증
+  **zodFormat과 uuid 타입의 차이**: - `type: "uuid"`: PostgreSQL의 `uuid` 컬럼 타입을 사용하며, UUID
+  전용 인덱스 및 함수 활용 가능 - `type: "string"` + `zodFormat: "uuid"`: PostgreSQL의
+  `text`/`varchar` 컬럼을 사용하면서 API 레벨에서만 UUID 형식 검증
 </Tip>
 
 ### enum / enum[]
@@ -414,12 +413,10 @@ const UserRole = z.enum(["admin", "normal"]);
 // TypeScript 타입
 type UserRole = z.infer<typeof UserRole>; // "admin" | "normal"
 ```
+
 </CodeGroup>
 
-<Info>
-**더 알아보기**
-- [Enums](/ko/core-concepts/entity/enums) - Enum 상세 가이드
-</Info>
+<Info>**더 알아보기** - [Enums](/ko/core-concepts/entity/enums) - Enum 상세 가이드</Info>
 
 ## 논리 타입
 
@@ -459,9 +456,7 @@ type UserRole = z.infer<typeof UserRole>; // "admin" | "normal"
   </Tab>
 </Tabs>
 
-<Tip>
-**기본값 설정**: `dbDefault: "true"` 또는 `dbDefault: "false"`
-</Tip>
+<Tip>**기본값 설정**: `dbDefault: "true"` 또는 `dbDefault: "false"`</Tip>
 
 ## 날짜/시간 타입
 
@@ -502,9 +497,8 @@ type UserRole = z.infer<typeof UserRole>; // "admin" | "normal"
 </Tabs>
 
 <Tip>
-**자주 사용되는 기본값**:
-- `CURRENT_TIMESTAMP`: 현재 시각
-- `CURRENT_DATE`: 현재 날짜 (시간 00:00:00)
+  **자주 사용되는 기본값**: - `CURRENT_TIMESTAMP`: 현재 시각 - `CURRENT_DATE`: 현재 날짜 (시간
+  00:00:00)
 </Tip>
 
 ## UUID 타입
@@ -546,7 +540,7 @@ type UserRole = z.infer<typeof UserRole>; // "admin" | "normal"
 </Tabs>
 
 <Info>
-**UUID 생성**: PostgreSQL의 `gen_random_uuid()` 함수를 `dbDefault`로 사용하면 자동 생성됩니다.
+  **UUID 생성**: PostgreSQL의 `gen_random_uuid()` 함수를 `dbDefault`로 사용하면 자동 생성됩니다.
 </Info>
 
 ## 구조화된 데이터 타입
@@ -566,11 +560,13 @@ JSON 형식의 구조화된 데이터를 저장하는 타입입니다.
 ```
 
 **매핑**:
+
 - PostgreSQL: `json`
 - TypeScript: 사용자 정의 타입 (`ProductMetadata`)
 - JSON: `any`
 
 **추가 옵션**:
+
 - `id`: TypeScript 타입 ID (`.types.ts`에서 정의)
 
 **타입 정의 예시**:
@@ -595,10 +591,12 @@ export type ProductMetadata = {
   tags: string[];
 };
 ```
+
 </CodeGroup>
 
 <Warning>
-JSON 타입은 인덱싱이 어렵고 성능이 낮을 수 있습니다. 자주 검색되는 필드는 별도 컬럼으로 분리하는 것을 권장합니다.
+  JSON 타입은 인덱싱이 어렵고 성능이 낮을 수 있습니다. 자주 검색되는 필드는 별도 컬럼으로 분리하는
+  것을 권장합니다.
 </Warning>
 
 ### virtual
@@ -616,11 +614,13 @@ JSON 타입은 인덱싱이 어렵고 성능이 낮을 수 있습니다. 자주 
 ```
 
 **매핑**:
+
 - PostgreSQL: 저장되지 않음
 - TypeScript: 사용자 정의 타입 (또는 `string`, `number` 등)
 - JSON: 포함됨 (계산 후)
 
 **추가 옵션**:
+
 - `id`: TypeScript 타입 ID
 - `virtualType`: `code` | `query` (기본값: `code`)
   - `code`: TypeScript 코드로 계산
@@ -666,9 +666,8 @@ JSON 타입은 인덱싱이 어렵고 성능이 낮을 수 있습니다. 자주 
 </Tabs>
 
 <Tip>
-**virtualType 선택 가이드**:
-- 단순 문자열 조합, 수식 계산 → `query`
-- 복잡한 비즈니스 로직, 외부 API 호출 → `code`
+  **virtualType 선택 가이드**: - 단순 문자열 조합, 수식 계산 → `query` - 복잡한 비즈니스 로직, 외부
+  API 호출 → `code`
 </Tip>
 
 ## Vector 타입
@@ -748,9 +747,8 @@ async searchSimilar(queryEmbedding: number[]) {
 ```
 
 <Info>
-**더 알아보기**
-- [Vector Search](/ko/advanced-features/vector-search/setup) - Vector 검색 상세 가이드
-- [pgvector](https://github.com/pgvector/pgvector) - PostgreSQL vector 확장
+  **더 알아보기** - [Vector Search](/ko/advanced-features/vector-search/setup) - Vector 검색 상세
+  가이드 - [pgvector](https://github.com/pgvector/pgvector) - PostgreSQL vector 확장
 </Info>
 
 ### tsvector
@@ -769,6 +767,7 @@ PostgreSQL 전문 검색(Full-Text Search)을 위한 타입입니다.
 ```
 
 **매핑**:
+
 - PostgreSQL: `tsvector`
 - TypeScript: `string`
 - JSON: `string`
@@ -789,7 +788,8 @@ PostgreSQL 전문 검색(Full-Text Search)을 위한 타입입니다.
 ```
 
 <Info>
-**전문 검색**: 자연어 텍스트의 키워드 검색에 최적화된 타입입니다. 형태소 분석, 어간 추출 등을 지원합니다.
+  **전문 검색**: 자연어 텍스트의 키워드 검색에 최적화된 타입입니다. 형태소 분석, 어간 추출 등을
+  지원합니다.
 </Info>
 
 ## Relation 타입
@@ -807,53 +807,53 @@ PostgreSQL 전문 검색(Full-Text Search)을 위한 타입입니다.
 ```
 
 **Relation 타입**:
+
 - `BelongsToOne`: N:1 관계
 - `OneToOne`: 1:1 관계
 - `HasMany`: 1:N 관계
 - `ManyToMany`: N:M 관계
 
 <Info>
-**더 알아보기**
-- [Relations](/ko/core-concepts/entity/relations) - Relation 상세 가이드
+  **더 알아보기** - [Relations](/ko/core-concepts/entity/relations) - Relation 상세 가이드
 </Info>
 
 ## 타입 선택 가이드
 
 ### 숫자 저장
 
-| 데이터 | 타입 | 이유 |
-|--------|------|------|
-| ID, 나이, 개수 | `integer` | 일반적인 정수 |
-| 큰 ID, 타임스탬프 | `bigInteger` | 큰 범위 필요 |
-| 금액, 가격 | `number` (precision, scale) | 정확한 소수점 |
-| 과학적 측정값 | `number` (numberType: real) | 근사값 허용 |
-| 초정밀 계산 | `numeric` | 정밀도 손실 방지 |
+| 데이터            | 타입                        | 이유             |
+| ----------------- | --------------------------- | ---------------- |
+| ID, 나이, 개수    | `integer`                   | 일반적인 정수    |
+| 큰 ID, 타임스탬프 | `bigInteger`                | 큰 범위 필요     |
+| 금액, 가격        | `number` (precision, scale) | 정확한 소수점    |
+| 과학적 측정값     | `number` (numberType: real) | 근사값 허용      |
+| 초정밀 계산       | `numeric`                   | 정밀도 손실 방지 |
 
 ### 문자열 저장
 
-| 데이터 | 타입 | 이유 |
-|--------|------|------|
+| 데이터       | 타입                   | 이유            |
+| ------------ | ---------------------- | --------------- |
 | 이름, 이메일 | `string` (length: 255) | 일반적인 텍스트 |
-| 설명, 본문 | `string` (length 생략) | 긴 텍스트 |
-| 상태, 역할 | `enum` | 제한된 값 목록 |
-| UUID, 토큰 | `uuid` | 고유 식별자 |
+| 설명, 본문   | `string` (length 생략) | 긴 텍스트       |
+| 상태, 역할   | `enum`                 | 제한된 값 목록  |
+| UUID, 토큰   | `uuid`                 | 고유 식별자     |
 
 ### 날짜/시간 저장
 
-| 데이터 | 타입 | 설정 |
-|--------|------|------|
+| 데이터   | 타입   | 설정                             |
+| -------- | ------ | -------------------------------- |
 | 생성일시 | `date` | `dbDefault: "CURRENT_TIMESTAMP"` |
-| 수정일시 | `date` | 업데이트 트리거 필요 |
-| 날짜만 | `date` | 시간은 00:00:00 |
+| 수정일시 | `date` | 업데이트 트리거 필요             |
+| 날짜만   | `date` | 시간은 00:00:00                  |
 
 ### 복잡한 데이터
 
-| 데이터 | 타입 | 이유 |
-|--------|------|------|
-| 설정, 메타데이터 | `json` | 구조화된 데이터 |
-| 계산 필드 | `virtual` | 저장 불필요 |
-| 텍스트 임베딩 | `vector` | AI 검색 |
-| 전문 검색 | `tsvector` | 키워드 검색 |
+| 데이터           | 타입       | 이유            |
+| ---------------- | ---------- | --------------- |
+| 설정, 메타데이터 | `json`     | 구조화된 데이터 |
+| 계산 필드        | `virtual`  | 저장 불필요     |
+| 텍스트 임베딩    | `vector`   | AI 검색         |
+| 전문 검색        | `tsvector` | 키워드 검색     |
 
 ## 다음 단계
 

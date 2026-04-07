@@ -1,12 +1,13 @@
 ---
-title: 'findMany'
-description: '리스트 조회 및 페이지네이션'
+title: "findMany"
+description: "리스트 조회 및 페이지네이션"
 ---
 
 `findMany`는 조건에 맞는 여러 레코드를 조회하는 메서드입니다. 페이지네이션, 검색, 필터링, 정렬을 지원하며 총 개수와 함께 결과를 반환합니다.
 
 <Info>
-`findMany`는 BaseModelClass에 정의되어 있지 않습니다. Entity를 생성하면 Syncer가 각 Model 클래스에 자동으로 생성하는 **표준 패턴**입니다.
+  `findMany`는 BaseModelClass에 정의되어 있지 않습니다. Entity를 생성하면 Syncer가 각 Model 클래스에
+  자동으로 생성하는 **표준 패턴**입니다.
 </Info>
 
 ## 타입 시그니처
@@ -41,7 +42,7 @@ class UserModelClass extends BaseModelClass {
 
     // 2. 서브셋 쿼리 빌더 가져오기
     const { qb } = this.getSubsetQueries(subset);
-    
+
     // 3. 필터링 조건 추가
     if (params.id) {
       qb.whereIn("users.id", asArray(params.id));
@@ -55,7 +56,7 @@ class UserModelClass extends BaseModelClass {
         qb.where("users.email", "like", `%${params.keyword}%`);
       }
     }
-      
+
     // 5. 정렬
     if (params.orderBy === "id-desc") {
       qb.orderBy("users.id", "desc");
@@ -81,6 +82,7 @@ class UserModelClass extends BaseModelClass {
 ```
 
 **내부 동작:**
+
 1. **getSubsetQueries()**: BaseModelClass 메서드로 서브셋 쿼리 빌더 획득
 2. **조건 추가**: WHERE, 검색, 정렬 조건 추가
 3. **createEnhancers()**: BaseModelClass 메서드로 virtual 필드 계산 함수 생성
@@ -116,26 +118,26 @@ const { rows } = await UserModel.findMany("B", { num: 10, page: 1 });
 ```typescript
 type UserListParams = {
   // 페이지네이션
-  num?: number;        // 페이지당 개수 (기본: 24)
-  page?: number;       // 페이지 번호 (기본: 1)
-  
+  num?: number; // 페이지당 개수 (기본: 24)
+  page?: number; // 페이지 번호 (기본: 1)
+
   // 필터링
-  id?: number | number[];      // ID 필터
-  status?: "active" | "inactive";  // 커스텀 필터
-  
+  id?: number | number[]; // ID 필터
+  status?: "active" | "inactive"; // 커스텀 필터
+
   // 검색
-  search?: "id" | "email" | "name";  // 검색 필드
-  keyword?: string;                   // 검색어
-  
+  search?: "id" | "email" | "name"; // 검색 필드
+  keyword?: string; // 검색어
+
   // 정렬
-  orderBy?: "id-desc" | "created-desc";  // 정렬 방식
-  
+  orderBy?: "id-desc" | "created-desc"; // 정렬 방식
+
   // 쿼리 모드
-  queryMode?: "list" | "count" | "both";  // 조회 모드
+  queryMode?: "list" | "count" | "both"; // 조회 모드
 
   // 의미 검색 (벡터 검색)
-  semanticQuery?: Record<string, unknown>;  // 의미 검색 파라미터
-}
+  semanticQuery?: Record<string, unknown>; // 의미 검색 파라미터
+};
 ```
 
 #### 기본값
@@ -146,7 +148,7 @@ const params = {
   page: 1,
   search: "id",
   orderBy: "id-desc",
-  ...rawParams,  // 사용자 입력으로 덮어쓰기
+  ...rawParams, // 사용자 입력으로 덮어쓰기
 };
 ```
 
@@ -191,7 +193,7 @@ const { rows } = await PostModel.findMany("A", {
 ```typescript
 const { rows } = await UserModel.findMany("A", { num: 10, page: 1 });
 
-rows.forEach(user => {
+rows.forEach((user) => {
   console.log(user.id, user.name);
 });
 ```
@@ -236,19 +238,19 @@ const { rows } = await UserModel.findMany("A", { num: 0 });
 // 첫 번째 페이지
 const { rows: page1 } = await UserModel.findMany("A", {
   num: 10,
-  page: 1  // 1~10번째 레코드
+  page: 1, // 1~10번째 레코드
 });
 
 // 두 번째 페이지
 const { rows: page2 } = await UserModel.findMany("A", {
   num: 10,
-  page: 2  // 11~20번째 레코드
+  page: 2, // 11~20번째 레코드
 });
 
 // 세 번째 페이지
 const { rows: page3 } = await UserModel.findMany("A", {
   num: 10,
-  page: 3  // 21~30번째 레코드
+  page: 3, // 21~30번째 레코드
 });
 ```
 
@@ -271,20 +273,20 @@ Entity 정의에 따라 추가 필터를 사용할 수 있습니다.
 ```typescript
 // 상태 필터
 const { rows } = await UserModel.findMany("A", {
-  status: "active"
+  status: "active",
 });
 
 // 날짜 범위 필터
 const { rows } = await UserModel.findMany("A", {
   created_from: "2024-01-01",
-  created_to: "2024-12-31"
+  created_to: "2024-12-31",
 });
 
 // 여러 필터 조합
 const { rows } = await UserModel.findMany("A", {
   status: "active",
   role: "admin",
-  verified: true
+  verified: true,
 });
 ```
 
@@ -296,19 +298,19 @@ const { rows } = await UserModel.findMany("A", {
 // ID로 검색
 const { rows } = await UserModel.findMany("A", {
   search: "id",
-  keyword: "123"
+  keyword: "123",
 });
 
 // 이메일로 검색
 const { rows } = await UserModel.findMany("A", {
   search: "email",
-  keyword: "john"
+  keyword: "john",
 });
 
 // 이름으로 검색 (부분 일치)
 const { rows } = await UserModel.findMany("A", {
   search: "name",
-  keyword: "Smith"
+  keyword: "Smith",
 });
 ```
 
@@ -338,17 +340,17 @@ if (params.search && params.keyword && params.keyword.length > 0) {
 ```typescript
 // ID 내림차순 (기본)
 const { rows } = await UserModel.findMany("A", {
-  orderBy: "id-desc"
+  orderBy: "id-desc",
 });
 
 // 생성일 내림차순
 const { rows } = await UserModel.findMany("A", {
-  orderBy: "created-desc"
+  orderBy: "created-desc",
 });
 
 // 이름 오름차순
 const { rows } = await UserModel.findMany("A", {
-  orderBy: "name-asc"
+  orderBy: "name-asc",
 });
 ```
 
@@ -379,7 +381,7 @@ if (params.orderBy) {
 const { rows, total } = await UserModel.findMany("A", {
   num: 10,
   page: 1,
-  queryMode: "both"  // 기본값
+  queryMode: "both", // 기본값
 });
 
 console.log(`${rows.length} of ${total}`);
@@ -393,15 +395,13 @@ console.log(`${rows.length} of ${total}`);
 const { rows } = await UserModel.findMany("A", {
   num: 10,
   page: 1,
-  queryMode: "list"  // total 없음
+  queryMode: "list", // total 없음
 });
 
 // total은 undefined
 ```
 
-<Info>
-COUNT 쿼리가 무거운 경우 `queryMode: "list"`를 사용하면 성능이 향상됩니다.
-</Info>
+<Info>COUNT 쿼리가 무거운 경우 `queryMode: "list"`를 사용하면 성능이 향상됩니다.</Info>
 
 ### queryMode: "count"
 
@@ -410,7 +410,7 @@ COUNT 쿼리가 무거운 경우 `queryMode: "list"`를 사용하면 성능이 �
 ```typescript
 const { total } = await UserModel.findMany("A", {
   status: "active",
-  queryMode: "count"  // rows 없음
+  queryMode: "count", // rows 없음
 });
 
 console.log(`Total active users: ${total}`);
@@ -427,14 +427,14 @@ class UserService {
   async getUsers(page: number = 1) {
     const { rows, total } = await UserModel.findMany("A", {
       num: 20,
-      page
+      page,
     });
-    
+
     return {
       users: rows,
       total,
       page,
-      totalPages: Math.ceil(total / 20)
+      totalPages: Math.ceil(total / 20),
     };
   }
 }
@@ -449,7 +449,7 @@ async getActiveUsers(page: number = 1) {
     num: 20,
     page
   });
-  
+
   return { rows, total };
 }
 ```
@@ -464,7 +464,7 @@ async searchUsers(keyword: string) {
     orderBy: "name-asc",
     num: 50
   });
-  
+
   return rows;
 }
 ```
@@ -487,7 +487,7 @@ async searchUsers(keyword: string) {
           queryMode: "list",
           orderBy: "created-desc"
         });
-        
+
         return {
           users: rows,
           hasMore: rows.length === 20,  // 20개면 다음 페이지 있음
@@ -495,10 +495,10 @@ async searchUsers(keyword: string) {
         };
       }
     }
-    
+
     // React에서 사용
     import { useInfiniteQuery } from "@tanstack/react-query";
-    
+
     function UserList() {
       const {
         data,
@@ -506,12 +506,12 @@ async searchUsers(keyword: string) {
         hasNextPage,
       } = useInfiniteQuery({
         queryKey: ["users"],
-        queryFn: ({ pageParam = 1 }) => 
+        queryFn: ({ pageParam = 1 }) =>
           UserService.getUsersInfinite(pageParam),
-        getNextPageParam: (lastPage) => 
+        getNextPageParam: (lastPage) =>
           lastPage.hasMore ? lastPage.nextPage : undefined,
       });
-      
+
       return (
         <div>
           {data?.pages.map((page) =>
@@ -528,6 +528,7 @@ async searchUsers(keyword: string) {
       );
     }
     ```
+
   </Tab>
 
   <Tab title="데이터 테이블" icon="table">
@@ -551,7 +552,7 @@ async searchUsers(keyword: string) {
           keyword: params.keyword,
           orderBy: params.orderBy as any
         });
-        
+
         return {
           data: rows,
           total,
@@ -561,14 +562,14 @@ async searchUsers(keyword: string) {
         };
       }
     }
-    
+
     // React 테이블
     function UserTable() {
       const [page, setPage] = useState(1);
       const [pageSize, setPageSize] = useState(20);
       const [search, setSearch] = useState("name");
       const [keyword, setKeyword] = useState("");
-      
+
       const { data, isLoading } = useQuery({
         queryKey: ["users", page, pageSize, search, keyword],
         queryFn: () => UserService.getUserTable({
@@ -578,7 +579,7 @@ async searchUsers(keyword: string) {
           keyword
         })
       });
-      
+
       return (
         <div>
           <input
@@ -586,7 +587,7 @@ async searchUsers(keyword: string) {
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="Search users..."
           />
-          
+
           <table>
             <thead>
               <tr>
@@ -605,16 +606,16 @@ async searchUsers(keyword: string) {
               ))}
             </tbody>
           </table>
-          
+
           <div>
             Page {data?.page} of {data?.totalPages}
-            <button 
+            <button
               onClick={() => setPage(p => p - 1)}
               disabled={page === 1}
             >
               Previous
             </button>
-            <button 
+            <button
               onClick={() => setPage(p => p + 1)}
               disabled={page === data?.totalPages}
             >
@@ -625,6 +626,7 @@ async searchUsers(keyword: string) {
       );
     }
     ```
+
   </Tab>
 
   <Tab title="통계 및 카운트" icon="chart-bar">
@@ -643,20 +645,20 @@ async searchUsers(keyword: string) {
           { total: pendingOrders }
         ] = await Promise.all([
           UserModel.findMany("A", { queryMode: "count" }),
-          UserModel.findMany("A", { 
-            status: "active", 
-            queryMode: "count" 
+          UserModel.findMany("A", {
+            status: "active",
+            queryMode: "count"
           }),
-          OrderModel.findMany("A", { 
+          OrderModel.findMany("A", {
             created_from: new Date().toISOString().split('T')[0],
-            queryMode: "count" 
+            queryMode: "count"
           }),
-          OrderModel.findMany("A", { 
-            status: "pending", 
-            queryMode: "count" 
+          OrderModel.findMany("A", {
+            status: "pending",
+            queryMode: "count"
           })
         ]);
-        
+
         return {
           totalUsers,
           activeUsers,
@@ -667,6 +669,7 @@ async searchUsers(keyword: string) {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Export" icon="file-export">
@@ -719,6 +722,7 @@ async searchUsers(keyword: string) {
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -742,7 +746,7 @@ Virtual 필드 계산 함수를 생성합니다.
 const enhancers = this.createEnhancers({
   A: (row) => ({
     ...row,
-    full_name: `${row.first_name} ${row.last_name}`
+    full_name: `${row.first_name} ${row.last_name}`,
   }),
 });
 ```
@@ -758,7 +762,7 @@ return this.executeSubsetQuery({
   params,
   enhancers,
   debug: false,
-  optimizeCountQuery: false
+  optimizeCountQuery: false,
 });
 ```
 
@@ -769,11 +773,11 @@ return this.executeSubsetQuery({
 ```typescript
 // 서브셋 A
 const { rows: usersA } = await UserModel.findMany("A", {});
-usersA[0].posts;  // ❌ 타입 에러
+usersA[0].posts; // ❌ 타입 에러
 
 // 서브셋 B (posts 포함)
 const { rows: usersB } = await UserModel.findMany("B", {});
-usersB[0].posts;  // ✅ Post[]
+usersB[0].posts; // ✅ Post[]
 ```
 
 ### ListParams 타입
@@ -781,11 +785,11 @@ usersB[0].posts;  // ✅ Post[]
 ```typescript
 // params는 UserListParams 타입으로 제한됨
 await UserModel.findMany("A", {
-  unknownField: true  // ❌ 타입 에러
+  unknownField: true, // ❌ 타입 에러
 });
 
 await UserModel.findMany("A", {
-  status: "active"    // ✅ 정의된 필드
+  status: "active", // ✅ 정의된 필드
 });
 ```
 
@@ -794,22 +798,22 @@ await UserModel.findMany("A", {
 ```typescript
 // queryMode: "both"
 const { rows, total } = await UserModel.findMany("A", {
-  queryMode: "both"
+  queryMode: "both",
 });
-rows;   // ✅ User[]
-total;  // ✅ number
+rows; // ✅ User[]
+total; // ✅ number
 
 // queryMode: "list"
 const { rows } = await UserModel.findMany("A", {
-  queryMode: "list"
+  queryMode: "list",
 });
-total;  // ❌ 타입 에러 (total 없음)
+total; // ❌ 타입 에러 (total 없음)
 
 // queryMode: "count"
 const { total } = await UserModel.findMany("A", {
-  queryMode: "count"
+  queryMode: "count",
 });
-rows;   // ❌ 타입 에러 (rows 없음)
+rows; // ❌ 타입 에러 (rows 없음)
 ```
 
 ## 성능 최적화
@@ -822,14 +826,14 @@ COUNT 쿼리가 무거운 경우:
 // ❌ 느림: COUNT(*) 실행
 const { rows, total } = await UserModel.findMany("A", {
   num: 20,
-  page: 1
+  page: 1,
 });
 
 // ✅ 빠름: COUNT 생략
 const { rows } = await UserModel.findMany("A", {
   num: 20,
   page: 1,
-  queryMode: "list"
+  queryMode: "list",
 });
 ```
 
@@ -903,35 +907,19 @@ const { rows } = await UserModel.findMany("A", { num: 1000 });
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="findById" 
-    icon="magnifying-glass" 
-    href="/ko/api-reference/base-model/find-by-id"
-  >
+  <Card title="findById" icon="magnifying-glass" href="/ko/api-reference/base-model/find-by-id">
     ID로 단일 레코드 조회
   </Card>
-  
-  <Card 
-    title="save" 
-    icon="floppy-disk" 
-    href="/ko/api-reference/base-model/save"
-  >
-    레코드 저장 및 수정
-  </Card>
-  
-  <Card 
-    title="Subset" 
-    icon="layer-group" 
-    href="/ko/database/subsets/what-are-subsets"
-  >
-    서브셋 이해하기
-  </Card>
-  
-  <Card 
-    title="Puri 쿼리 빌더" 
-    icon="code" 
-    href="/ko/database/puri/basic-queries"
-  >
+
+<Card title="save" icon="floppy-disk" href="/ko/api-reference/base-model/save">
+  레코드 저장 및 수정
+</Card>
+
+<Card title="Subset" icon="layer-group" href="/ko/database/subsets/what-are-subsets">
+  서브셋 이해하기
+</Card>
+
+  <Card title="Puri 쿼리 빌더" icon="code" href="/ko/database/puri/basic-queries">
     고급 쿼리 작성하기
   </Card>
 </CardGroup>

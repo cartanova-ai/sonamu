@@ -34,6 +34,7 @@ sequenceDiagram
 ```
 
 **효과**:
+
 - 전송 크기: 100KB → 10KB (90% 감소)
 - 다운로드 시간: 1초 → 0.1초 (10배 빠름)
 - 대역폭 절약
@@ -48,13 +49,14 @@ import { type SonamuConfig } from "sonamu";
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      compress: true,  // 압축 활성화 (기본 설정)
+      compress: true, // 압축 활성화 (기본 설정)
     },
   },
 };
 ```
 
 **기본 동작**:
+
 - threshold: 1024 (1KB 이상만 압축)
 - encodings: `["br", "gzip", "deflate"]` (우선순위 순)
 - 모든 API에 자동 적용
@@ -87,6 +89,7 @@ export const config: SonamuConfig = {
       } as FastifyCompressOptions
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -106,11 +109,13 @@ plugins: {
 ```
 
 **특징**:
+
 - 압축률: 최고 (gzip 대비 15~20% 더 압축)
 - 속도: 느림 (CPU 사용량 높음)
 - 지원: 모던 브라우저 (IE 미지원)
 
 **적합한 경우**:
+
 - 정적 콘텐츠 (사전 압축 가능)
 - 대역폭이 중요한 경우
 - 서버 CPU에 여유가 있는 경우
@@ -129,11 +134,13 @@ plugins: {
 ```
 
 **특징**:
+
 - 압축률: 중간
 - 속도: 빠름
 - 지원: 모든 브라우저
 
 **적합한 경우**:
+
 - 동적 API 응답
 - 실시간 압축
 - 호환성이 중요한 경우
@@ -152,6 +159,7 @@ plugins: {
 ```
 
 **특징**:
+
 - 압축률: gzip과 유사
 - 속도: 빠름
 - 지원: 대부분 브라우저
@@ -171,6 +179,7 @@ plugins: {
 ```
 
 **작동 방식**:
+
 ```
 브라우저 요청: Accept-Encoding: br, gzip, deflate
 
@@ -193,11 +202,13 @@ plugins: {
 ```
 
 **이유**:
+
 - 작은 데이터는 압축 효율이 낮음
 - 압축/압축 해제 오버헤드가 더 클 수 있음
 - HTTP 헤더 크기 증가
 
 **권장값**:
+
 - 기본값: `1024` (1KB)
 - 적극적: `256` (256B)
 - 보수적: `4096` (4KB)
@@ -206,10 +217,10 @@ plugins: {
 
 ```typescript
 // 100 바이트 응답
-threshold: 1024  // 압축 안 함 (너무 작음)
+threshold: 1024; // 압축 안 함 (너무 작음)
 
 // 2KB 응답
-threshold: 1024  // 압축 함 (>= 1KB)
+threshold: 1024; // 압축 함 (>= 1KB)
 ```
 
 ## Custom Types
@@ -225,12 +236,14 @@ plugins: {
 ```
 
 **기본 동작**: 대부분의 텍스트 기반 응답 압축
+
 - `text/*` (text/html, text/css, text/plain)
 - `application/json`
 - `application/javascript`
 - `application/xml`
 
 **이미지/비디오는 이미 압축됨**:
+
 - `image/png`, `image/jpeg` (이미 압축된 형식)
 - `video/mp4` (이미 압축된 형식)
 - 추가 압축해도 효과 없음
@@ -242,8 +255,8 @@ plugins: {
   compress: {
     customTypes: (contentType: string) => {
       // JSON만 압축
-      return contentType === 'application/json';
-    }
+      return contentType === "application/json";
+    };
   }
 }
 ```
@@ -256,13 +269,14 @@ plugins: {
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      compress: true,  // 간단하게 활성화
+      compress: true, // 간단하게 활성화
     },
   },
 };
 ```
 
 **사용하는 설정**:
+
 - threshold: 1024 (1KB)
 - encodings: `["br", "gzip", "deflate"]`
 
@@ -273,15 +287,16 @@ export const config: SonamuConfig = {
   server: {
     plugins: {
       compress: {
-        threshold: 256,  // 작은 응답도 압축
-        encodings: ["br", "gzip", "deflate"],  // 모든 알고리즘
-      }
+        threshold: 256, // 작은 응답도 압축
+        encodings: ["br", "gzip", "deflate"], // 모든 알고리즘
+      },
     },
   },
 };
 ```
 
 **특징**:
+
 - 최대 압축률 (brotli 우선)
 - 256 바이트 이상 모두 압축
 - 대역폭 최적화
@@ -294,14 +309,15 @@ export const config: SonamuConfig = {
     plugins: {
       compress: {
         threshold: 1024,
-        encodings: ["gzip", "deflate"],  // brotli 제외
-      }
+        encodings: ["gzip", "deflate"], // brotli 제외
+      },
     },
   },
 };
 ```
 
 **특징**:
+
 - IE 등 오래된 브라우저 지원
 - gzip만 사용 (안정적)
 
@@ -333,6 +349,7 @@ async getData() {
 ```
 
 **용도**:
+
 - 대부분 API는 압축 불필요
 - 특정 API만 선택적으로 압축
 
@@ -343,15 +360,16 @@ export const config: SonamuConfig = {
   server: {
     plugins: {
       compress: {
-        threshold: 4096,  // 4KB 이상만 압축
-        encodings: ["gzip"],  // gzip만 (빠름)
-      }
+        threshold: 4096, // 4KB 이상만 압축
+        encodings: ["gzip"], // gzip만 (빠름)
+      },
     },
   },
 };
 ```
 
 **특징**:
+
 - CPU 사용량 최소화
 - 큰 응답만 압축
 - 빠른 처리
@@ -362,22 +380,25 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      compress: process.env.NODE_ENV === 'production'
-        ? {
-            threshold: 256,
-            encodings: ["br", "gzip", "deflate"],
-          }
-        : false,  // 개발 환경에서는 비활성화
+      compress:
+        process.env.NODE_ENV === "production"
+          ? {
+              threshold: 256,
+              encodings: ["br", "gzip", "deflate"],
+            }
+          : false, // 개발 환경에서는 비활성화
     },
   },
 };
 ```
 
 **개발 환경**: 압축 비활성화
+
 - 디버깅 용이
 - 빠른 응답 (압축 오버헤드 없음)
 
 **프로덕션**: 적극적 압축
+
 - 대역폭 절약
 - 사용자 경험 개선
 
@@ -391,7 +412,7 @@ Network 탭 → 요청 선택 → Headers 탭
 Response Headers:
   Content-Encoding: gzip
   Content-Length: 1234 (압축된 크기)
-  
+
 Size:
   10.5 KB (압축된 크기)
   52.3 KB (원본 크기)
@@ -414,6 +435,7 @@ curl -H "Accept-Encoding: gzip" http://localhost:3000/api/products -v
 **압축 사용 시 주의사항**:
 
 1. **이미 압축된 파일은 제외**: 이미지, 비디오는 압축 효과 없음
+
    ```typescript
    compress: {
      customTypes: /^text\/|application\/json/,  // 텍스트만
@@ -421,6 +443,7 @@ curl -H "Accept-Encoding: gzip" http://localhost:3000/api/products -v
    ```
 
 2. **작은 응답은 압축하지 말 것**: threshold 설정
+
    ```typescript
    compress: {
      threshold: 1024,  // 1KB 미만은 압축 안 함
@@ -428,18 +451,18 @@ curl -H "Accept-Encoding: gzip" http://localhost:3000/api/products -v
    ```
 
 3. **CPU 부하 고려**: brotli는 CPU 사용량이 높음
+
    ```typescript
    // ❌ 낮은 사양 서버에서 brotli 사용
-   encodings: ["br"]
-   
+   encodings: ["br"];
+
    // ✅ gzip 사용 (빠름)
-   encodings: ["gzip"]
+   encodings: ["gzip"];
    ```
 
 4. **HTTPS에서만 brotli 지원**: HTTP에서는 gzip 사용
-   
 5. **압축 해제 오류 주의**: 클라이언트가 제대로 압축 해제하는지 확인
-</Warning>
+   </Warning>
 
 ## 성능 영향
 
@@ -480,7 +503,11 @@ async getStatus() {
   <Card title="API별 제어" icon="code" href="/ko/advanced-features/compress/per-api-control">
     @api 데코레이터에 압축 설정
   </Card>
-  <Card title="성능 최적화" icon="gauge-high" href="/ko/advanced-features/compress/performance-optimization">
+  <Card
+    title="성능 최적화"
+    icon="gauge-high"
+    href="/ko/advanced-features/compress/performance-optimization"
+  >
     압축 최적화 전략
   </Card>
 </CardGroup>

@@ -12,10 +12,11 @@ import {
 import { camelize, pluralize, underscore } from "inflection";
 import { useEffect } from "react";
 import { z } from "zod";
+
 import { EntityIdSelect } from "../../components/EntityIdSelect";
 import { InputWithSuggestion } from "../../components/InputWithSuggestion";
-import { defaultCatch, isSonamuError } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
+import { defaultCatch, isSonamuError } from "../../services/sonamu.shared";
 
 type EntityCreateModalProps = {
   open: boolean;
@@ -60,7 +61,7 @@ export function EntityCreateModal({ open, onOpenChange, onCompleted }: EntityCre
         }
         return false;
       })
-      .some((e) => e === true);
+      .some((e) => e);
     if (ifError) {
       return;
     }

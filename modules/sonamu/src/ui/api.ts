@@ -1,30 +1,35 @@
 import { execSync } from "child_process";
-import type { FastifyInstance } from "fastify";
 import fs from "fs";
-import inflection from "inflection";
-import type { AddressInfo } from "net";
 import path from "path";
+
+import { type FastifyInstance } from "fastify";
+import inflection from "inflection";
 import { range } from "radashi";
+
 import { Sonamu } from "../api/sonamu";
-import { DB, type SonamuDBConfig } from "../database/db";
+import { DB } from "../database/db";
+import { type SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";
 import { SD } from "../dict/sd";
 import { sonamuDictionary } from "../dict/sonamu-dictionary";
-import type { Entity } from "../entity/entity";
+import { type Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
   BadRequestException,
   isSoException,
   ServiceUnavailableException,
 } from "../exceptions/so-exceptions";
-import { type MigrationResult, Migrator } from "../migration/migrator";
-import { SlackConfirm, type SlackConfirmPendingResult } from "../migration/slack-confirm";
+import { Migrator } from "../migration/migrator";
+import { type MigrationResult } from "../migration/migrator";
+import { SlackConfirm } from "../migration/slack-confirm";
+import { type SlackConfirmPendingResult } from "../migration/slack-confirm";
 import { TemplateManager } from "../template/template-manager";
 import { DataExplorer } from "../testing/data-explorer";
 import { FixtureGenerator } from "../testing/fixture-generator";
-import { type DuplicateCheckOptions, FixtureManager } from "../testing/fixture-manager";
+import { FixtureManager } from "../testing/fixture-manager";
+import { type DuplicateCheckOptions } from "../testing/fixture-manager";
+import { BUILT_IN_TYPE_IDS, TemplateKey } from "../types/types";
 import {
-  BUILT_IN_TYPE_IDS,
   type Cone,
   type EntityIndex,
   type EntityProp,
@@ -33,11 +38,10 @@ import {
   type FixtureSearchOptions,
   type FlattenSubsetRow,
   type PathAndCode,
-  TemplateKey,
 } from "../types/types";
 import { nonNullable } from "../utils/utils";
 import { setAiApi } from "./ai-api";
-import type { CddAddRuleRequest } from "./cdd-service";
+import { type CddAddRuleRequest } from "./cdd-service";
 import {
   addRule,
   editContent,
@@ -522,16 +526,14 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             throw new Error(`이미 존재하는 enumId입니다: ${newEnumId}`);
           }
 
-          entity.enumLabels[newEnumId] = {
-            ...(newEnumId.endsWith("Status")
-              ? {
-                  active: "노출",
-                  hidden: "숨김",
-                }
-              : {
-                  "": "",
-                }),
-          };
+          entity.enumLabels[newEnumId] = newEnumId.endsWith("Status")
+            ? {
+                active: "노출",
+                hidden: "숨김",
+              }
+            : {
+                "": "",
+              };
           await entity.save();
 
           return 1;
@@ -752,7 +754,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
               const pendingMigrations = [
                 ...new Set(
                   conns
-                    .filter((conn) => targets.includes(conn.connKey as keyof SonamuDBConfig))
+                    .filter((conn) => targets.includes(conn.connKey))
                     .flatMap((conn) => conn.pending),
                 ),
               ];
@@ -1192,7 +1194,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
        */
       server.get("/api/sonamu/health", async (request) => {
         const address = request.server.server.address();
-        const port = address && typeof address === "object" ? (address as AddressInfo).port : 0;
+        const port = address && typeof address === "object" ? address.port : 0;
 
         return {
           ok: true,

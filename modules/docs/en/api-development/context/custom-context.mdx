@@ -9,24 +9,16 @@ You can extend SonamuContext to add custom data needed for your project.
 
 <CardGroup cols={2}>
   <Card title="Type Extension" icon="code">
-    TypeScript type extension
-    
-    Autocomplete support
+    TypeScript type extension Autocomplete support
   </Card>
   <Card title="Middleware" icon="layer-group">
-    Request preprocessing
-    
-    Custom data injection
+    Request preprocessing Custom data injection
   </Card>
   <Card title="Validation Logic" icon="shield-check">
-    Auth/permission checks
-    
-    Business rule application
+    Auth/permission checks Business rule application
   </Card>
   <Card title="Common Data" icon="database">
-    Session, tenant, etc.
-    
-    Request-scoped data
+    Session, tenant, etc. Request-scoped data
   </Card>
 </CardGroup>
 
@@ -44,7 +36,7 @@ declare module "sonamu" {
     email: string;
     username: string;
     role: "admin" | "manager" | "normal";
-    
+
     // Add custom fields
     organizationId: number;
     departmentId: number;
@@ -66,7 +58,7 @@ declare module "sonamu" {
     request: FastifyRequest;
     reply: FastifyReply;
     user?: ContextUser;
-    
+
     // Add custom fields
     tenant?: {
       id: number;
@@ -74,14 +66,14 @@ declare module "sonamu" {
       subdomain: string;
       features: string[];
     };
-    
+
     session?: {
       id: string;
       createdAt: Date;
       expiresAt: Date;
       data: Record<string, any>;
     };
-    
+
     locale: string;
     timezone: string;
     requestId: string;
@@ -90,8 +82,8 @@ declare module "sonamu" {
 ```
 
 <Info>
-Use TypeScript's Declaration Merging to extend types.
-This enables IDE autocomplete and type checking.
+  Use TypeScript's Declaration Merging to extend types. This enables IDE autocomplete and type
+  checking.
 </Info>
 
 ## Injecting Data with Middleware
@@ -104,19 +96,16 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
 import { Sonamu } from "sonamu";
 
-export async function authMiddleware(
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
+export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
   // Extract token from Authorization header
   const authHeader = request.headers.authorization;
-  
+
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return; // No token (optional auth)
   }
-  
+
   const token = authHeader.substring(7);
-  
+
   try {
     // Verify JWT token
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
@@ -126,19 +115,16 @@ export async function authMiddleware(
       departmentId: number;
       permissions: string[];
     };
-    
+
     // Get user info from DB
     const rdb = Sonamu.getPuri("r");
-    const user = await rdb
-      .table("users")
-      .where("id", payload.userId)
-      .first();
-    
+    const user = await rdb.table("users").where("id", payload.userId).first();
+
     if (!user) {
       reply.status(401);
       throw new Error("Invalid token");
     }
-    
+
     // Set user in Context
     const context = Sonamu.getContext();
     context.user = {
@@ -152,12 +138,9 @@ export async function authMiddleware(
       lastLoginAt: user.last_login_at,
       preferredLanguage: user.preferred_language,
     };
-    
+
     // Update last activity time
-    await rdb
-      .table("users")
-      .where("id", user.id)
-      .update({ last_activity_at: new Date() });
+    await rdb.table("users").where("id", user.id).update({ last_activity_at: new Date() });
   } catch (error) {
     reply.status(401);
     throw new Error("Invalid or expired token");
@@ -174,17 +157,17 @@ import { Sonamu } from "sonamu";
 
 export async function tenantMiddleware(request: FastifyRequest) {
   const context = Sonamu.getContext();
-  
+
   // Extract tenant info from subdomain or header
   const subdomain = getSubdomain(request.hostname);
   const tenantId = request.headers["x-tenant-id"] as string;
-  
+
   if (!subdomain && !tenantId) {
     return; // No tenant info
   }
-  
+
   const rdb = Sonamu.getPuri("r");
-  
+
   // Get tenant
   const tenant = await rdb
     .table("tenants")
@@ -197,16 +180,16 @@ export async function tenantMiddleware(request: FastifyRequest) {
       }
     })
     .first();
-  
+
   if (!tenant) {
     throw new Error("Tenant not found");
   }
-  
+
   // Check tenant active status
   if (!tenant.is_active) {
     throw new Error("Tenant is inactive");
   }
-  
+
   // Set tenant in Context
   context.tenant = {
     id: tenant.id,
@@ -237,20 +220,20 @@ const DEFAULT_LOCALE = "en";
 
 export function localeMiddleware(request: FastifyRequest) {
   const context = Sonamu.getContext();
-  
+
   // 1. URL query parameter
   const queryLocale = request.query?.locale as string;
   if (queryLocale && SUPPORTED_LOCALES.includes(queryLocale)) {
     context.locale = queryLocale;
     return;
   }
-  
+
   // 2. User preference (logged in state)
   if (context.user?.preferredLanguage) {
     context.locale = context.user.preferredLanguage;
     return;
   }
-  
+
   // 3. Accept-Language header
   const acceptLanguage = request.headers["accept-language"];
   if (acceptLanguage) {
@@ -260,7 +243,7 @@ export function localeMiddleware(request: FastifyRequest) {
       return;
     }
   }
-  
+
   // 4. Default
   context.locale = DEFAULT_LOCALE;
 }
@@ -276,14 +259,12 @@ import crypto from "crypto";
 
 export function requestIdMiddleware(request: FastifyRequest) {
   const context = Sonamu.getContext();
-  
+
   // Client-provided Request ID or generate new
-  const requestId =
-    (request.headers["x-request-id"] as string) ||
-    crypto.randomUUID();
-  
+  const requestId = (request.headers["x-request-id"] as string) || crypto.randomUUID();
+
   context.requestId = requestId;
-  
+
   // Add to response header as well
   context.reply.header("X-Request-Id", requestId);
 }
@@ -320,33 +301,30 @@ class ProductModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async list(): Promise<Product[]> {
     const context = Sonamu.getContext();
-    
+
     // Check tenant
     if (!context.tenant) {
       throw new Error("Tenant required");
     }
-    
+
     const rdb = this.getPuri("r");
-    
+
     // Query only tenant-specific data
-    const products = await rdb
-      .table("products")
-      .where("tenant_id", context.tenant.id)
-      .select("*");
-    
+    const products = await rdb.table("products").where("tenant_id", context.tenant.id).select("*");
+
     return products;
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: ProductSaveParams): Promise<{ productId: number }> {
     const context = Sonamu.getContext();
-    
+
     if (!context.tenant) {
       throw new Error("Tenant required");
     }
-    
+
     const wdb = this.getPuri("w");
-    
+
     // Auto-add tenant ID
     const [product] = await wdb
       .table("products")
@@ -355,7 +333,7 @@ class ProductModel extends BaseModelClass {
         tenant_id: context.tenant.id,
       })
       .returning({ id: "id" });
-    
+
     return { productId: product.id };
   }
 }
@@ -367,12 +345,12 @@ class ProductModel extends BaseModelClass {
 class BaseModelClass {
   protected requirePermission(permission: string): void {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       context.reply.status(401);
       throw new Error("Authentication required");
     }
-    
+
     if (!context.user.permissions.includes(permission)) {
       context.reply.status(403);
       throw new Error(`Permission denied: ${permission} required`);
@@ -385,20 +363,17 @@ class UserModel extends BaseModelClass {
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     // Check permission
     this.requirePermission("user:create");
-    
+
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(params)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
+
     return { userId: user.id };
   }
-  
+
   @api({ httpMethod: "DELETE" })
   async remove(userId: number): Promise<void> {
     this.requirePermission("user:delete");
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("users").where("id", userId).delete();
   }
@@ -432,7 +407,7 @@ const messages: Record<string, Record<string, string>> = {
 export function t(key: string): string {
   const context = Sonamu.getContext();
   const locale = context.locale || "en";
-  
+
   return messages[locale]?.[key] || key;
 }
 
@@ -442,12 +417,12 @@ class UserModel extends BaseModelClass {
   async get(id: number): Promise<User> {
     const rdb = this.getPuri("r");
     const user = await rdb.table("users").where("id", id).first();
-    
+
     if (!user) {
       // Internationalized error message
       throw new Error(t("user.not_found"));
     }
-    
+
     return user;
   }
 }
@@ -461,11 +436,11 @@ class BaseModelClass {
     action: string,
     resourceType: string,
     resourceId: number,
-    details?: any
+    details?: any,
   ): Promise<void> {
     const context = Sonamu.getContext();
     const wdb = this.getPuri("w");
-    
+
     await wdb.table("audit_logs").insert({
       user_id: context.user?.id,
       tenant_id: context.tenant?.id,
@@ -485,24 +460,21 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(params)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
+
     // Auto audit log
     await this.audit("CREATE", "user", user.id, { email: params.email });
-    
+
     return { userId: user.id };
   }
-  
+
   @api({ httpMethod: "DELETE" })
   async remove(userId: number): Promise<void> {
     const rdb = this.getPuri("r");
     const user = await rdb.table("users").where("id", userId).first();
-    
+
     await this.audit("DELETE", "user", userId, { username: user.username });
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("users").where("id", userId).delete();
   }
@@ -516,15 +488,15 @@ class DocumentModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async list(): Promise<Document[]> {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     const rdb = this.getPuri("r");
-    
+
     let query = rdb.table("documents");
-    
+
     // Non-admins see only their organization/department
     if (context.user.role !== "admin") {
       query = query.where((qb) => {
@@ -533,7 +505,7 @@ class DocumentModel extends BaseModelClass {
           .orWhere("user_id", context.user!.id);
       });
     }
-    
+
     return query.select("*");
   }
 }
@@ -544,18 +516,18 @@ class DocumentModel extends BaseModelClass {
 ```typescript
 class CacheService {
   private cache = new Map<string, any>();
-  
+
   get(key: string): any {
     const context = Sonamu.getContext();
     const cacheKey = `${context.tenant?.id || "global"}:${key}`;
     return this.cache.get(cacheKey);
   }
-  
+
   set(key: string, value: any, ttl: number = 3600): void {
     const context = Sonamu.getContext();
     const cacheKey = `${context.tenant?.id || "global"}:${key}`;
     this.cache.set(cacheKey, value);
-    
+
     // Delete after TTL
     setTimeout(() => {
       this.cache.delete(cacheKey);
@@ -566,7 +538,7 @@ class CacheService {
 // Usage
 class ProductModel extends BaseModelClass {
   private cacheService = new CacheService();
-  
+
   @api({ httpMethod: "GET" })
   async list(): Promise<Product[]> {
     // Tenant-specific cache
@@ -574,17 +546,14 @@ class ProductModel extends BaseModelClass {
     if (cached) {
       return cached;
     }
-    
+
     const context = Sonamu.getContext();
     const rdb = this.getPuri("r");
-    
-    const products = await rdb
-      .table("products")
-      .where("tenant_id", context.tenant?.id)
-      .select("*");
-    
+
+    const products = await rdb.table("products").where("tenant_id", context.tenant?.id).select("*");
+
     this.cacheService.set("products:list", products);
-    
+
     return products;
   }
 }
@@ -593,12 +562,9 @@ class ProductModel extends BaseModelClass {
 ## Cautions
 
 <Warning>
-**Cautions when using custom Context**:
-1. Define type extensions early in the project
-2. Middleware execution order matters
-3. Treat Context data as immutable
-4. Consider encrypting sensitive information
-5. Prevent memory leaks (avoid storing large data)
+  **Cautions when using custom Context**: 1. Define type extensions early in the project 2.
+  Middleware execution order matters 3. Treat Context data as immutable 4. Consider encrypting
+  sensitive information 5. Prevent memory leaks (avoid storing large data)
 </Warning>
 
 ## Next Steps

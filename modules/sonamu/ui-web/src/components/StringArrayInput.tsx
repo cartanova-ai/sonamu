@@ -5,7 +5,7 @@ type StringArrayInputProps = {
   onChange: (_e: {}, data: { value: string[] }) => void;
 };
 export function StringArrayInput({ value, onChange }: StringArrayInputProps) {
-  const [inputValue, setInputValue] = useState<string>("");
+  const [inputValue, setInputValue] = useState("");
 
   const handleUserInput = (userInput: string) => {
     if (userInput.endsWith(",") || userInput.endsWith(" ")) {

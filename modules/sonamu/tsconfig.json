@@ -9,7 +9,7 @@
     "lib": ["esnext", "dom"],
 
     // NOTE(Haze, 251106): SSE 관련 fastify 타입 이슈로 명시적으로 추가함.
-    "types": ["fastify-sse-v2"],
+    "types": ["fastify-sse-v2", "node"],
 
     "declaration": true,
     "declarationMap": true,
@@ -42,7 +42,7 @@
 
     /* Advanced Options */
     "forceConsistentCasingInFileNames": true,
-    "noErrorTruncation": true,
+    "noErrorTruncation": true
   },
   "exclude": [
     "node_modules",
@@ -53,8 +53,10 @@
     "src/**/*.test-hold.ts",
     "src/**/*.ignore.ts",
     "vitest.config.ts",
+    "tsdown.config.ts",
+    "tsdown.api.config.ts",
     "wasted_src/**",
     "_templates/**",
-    "**/__mocks__/**",
-  ],
+    "**/__mocks__/**"
+  ]
 }

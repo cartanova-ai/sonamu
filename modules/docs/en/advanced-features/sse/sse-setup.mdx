@@ -37,13 +37,13 @@ sequenceDiagram
 
 ### Comparison Table
 
-| Feature | HTTP | SSE | WebSocket |
-|---------|------|-----|-----------|
-| Direction | Request→Response | Server→Client | Bidirectional |
-| Protocol | HTTP | HTTP | WebSocket |
-| Reconnection | X | Automatic | Manual |
-| Complexity | Low | Medium | High |
-| Use case | General API | Real-time push | Real-time chat |
+| Feature      | HTTP             | SSE            | WebSocket      |
+| ------------ | ---------------- | -------------- | -------------- |
+| Direction    | Request→Response | Server→Client  | Bidirectional  |
+| Protocol     | HTTP             | HTTP           | WebSocket      |
+| Reconnection | X                | Automatic      | Manual         |
+| Complexity   | Low              | Medium         | High           |
+| Use case     | General API      | Real-time push | Real-time chat |
 
 ### SSE Use Cases
 
@@ -72,13 +72,14 @@ import { type SonamuConfig } from "sonamu";
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      sse: true,  // Enable SSE plugin
-    }
-  }
+      sse: true, // Enable SSE plugin
+    },
+  },
 };
 ```
 
 **Default behavior**:
+
 - Automatic SSE endpoint registration
 - Automatic reconnection support
 - Automatic keep-alive sending
@@ -95,6 +96,7 @@ export const config: SonamuConfig = {
       sse: false,  // Disable
     }
     ```
+
   </Tab>
 
   <Tab title="SsePluginOptions" icon="gear">
@@ -111,6 +113,7 @@ export const config: SonamuConfig = {
     ```
 
     **Note**: Default settings are sufficient in most cases.
+
   </Tab>
 </Tabs>
 
@@ -147,6 +150,7 @@ Connection: keep-alive
 ```
 
 **Characteristics**:
+
 - `text/event-stream`: SSE-specific Content-Type
 - `no-cache`: Prevents caching
 - `keep-alive`: Maintains connection
@@ -159,23 +163,23 @@ Connection: keep-alive
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      sse: true,  // Simply enable
-    }
-  }
+      sse: true, // Simply enable
+    },
+  },
 };
 ```
 
 ### 2. Development/Production Separation
 
 ```typescript
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.NODE_ENV === "development";
 
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      sse: !isDevelopment,  // Enable only in production
-    }
-  }
+      sse: !isDevelopment, // Enable only in production
+    },
+  },
 };
 ```
 
@@ -187,9 +191,9 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      sse: process.env.ENABLE_SSE === 'true',
-    }
-  }
+      sse: process.env.ENABLE_SSE === "true",
+    },
+  },
 };
 ```
 
@@ -207,16 +211,17 @@ export const config: SonamuConfig = {
     plugins: {
       sse: true,
       compress: {
-        global: true,  // Enable global compression
+        global: true, // Enable global compression
         threshold: 1024,
         encodings: ["gzip"],
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **Handled automatically in @stream decorator**:
+
 ```typescript
 @stream({
   type: 'sse',
@@ -240,11 +245,11 @@ export const config: SonamuConfig = {
     plugins: {
       sse: true,
       cors: {
-        origin: ['https://example.com', 'https://app.example.com'],
+        origin: ["https://example.com", "https://app.example.com"],
         credentials: true,
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -260,11 +265,11 @@ export const config: SonamuConfig = {
     plugins: {
       sse: true,
       cors: {
-        origin: 'http://localhost:5173',  // Vite dev server
+        origin: "http://localhost:5173", // Vite dev server
         credentials: true,
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -278,9 +283,9 @@ export const config: SonamuConfig = {
       cors: {
         origin: process.env.FRONTEND_URL,
         credentials: true,
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -296,17 +301,18 @@ SSE connections are maintained for long periods, so timeout configuration is imp
 export const config: SonamuConfig = {
   server: {
     fastify: {
-      connectionTimeout: 0,  // Disable timeout
-      keepAliveTimeout: 5000,  // Keep-alive: 5 seconds
+      connectionTimeout: 0, // Disable timeout
+      keepAliveTimeout: 5000, // Keep-alive: 5 seconds
     },
     plugins: {
       sse: true,
-    }
-  }
+    },
+  },
 };
 ```
 
 **Configuration values**:
+
 - `connectionTimeout: 0`: Disable connection timeout (SSE maintains long connections)
 - `keepAliveTimeout`: Keep-alive interval (default: 5 seconds)
 
@@ -339,6 +345,7 @@ server {
 ```
 
 **Key settings**:
+
 - `proxy_buffering off`: Disable buffering (immediate transmission)
 - `proxy_cache off`: Disable caching
 - `proxy_read_timeout 24h`: Read timeout (long duration)
@@ -384,6 +391,7 @@ curl -N http://localhost:3000/stream/updates
 ```
 
 **Options**:
+
 - `-N`: Disable buffering (immediate output)
 
 ## Important Notes
@@ -392,12 +400,14 @@ curl -N http://localhost:3000/stream/updates
 **Important considerations when configuring SSE**:
 
 1. **Disable compression**: SSE is streaming, so compression is prohibited (handled automatically by @stream decorator)
+
    ```typescript
    @stream({ type: 'sse', events: z.object({ message: z.string() }) })
    async streamData(ctx: Context): Promise<void> { ... }
    ```
 
 2. **Timeout settings**: Maintain long connections
+
    ```typescript
    fastify: {
      connectionTimeout: 0,
@@ -405,6 +415,7 @@ curl -N http://localhost:3000/stream/updates
    ```
 
 3. **CORS configuration**: Required when using from different domains
+
    ```typescript
    cors: {
      origin: 'https://example.com',
@@ -413,9 +424,10 @@ curl -N http://localhost:3000/stream/updates
    ```
 
 4. **Reconnection handling**: Clients need to implement auto-reconnection
+
    ```typescript
    // EventSource handles this automatically
-   const source = new EventSource('/stream/updates');
+   const source = new EventSource("/stream/updates");
    ```
 
 5. **Browser limitations**: Concurrent SSE connection limit (6 per domain)
@@ -425,29 +437,37 @@ curl -N http://localhost:3000/stream/updates
    ```nginx
    proxy_buffering off;
    ```
-</Warning>
+   </Warning>
 
 ## Browser Support
 
 SSE is supported in all modern browsers:
 
-| Browser | Support |
-|---------|---------|
-| Chrome | ✅ |
-| Firefox | ✅ |
-| Safari | ✅ |
-| Edge | ✅ |
-| IE 11 | ❌ (polyfill required) |
+| Browser | Support                |
+| ------- | ---------------------- |
+| Chrome  | ✅                     |
+| Firefox | ✅                     |
+| Safari  | ✅                     |
+| Edge    | ✅                     |
+| IE 11   | ❌ (polyfill required) |
 
 **IE 11 support**: [event-source-polyfill](https://www.npmjs.com/package/event-source-polyfill)
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Creating SSE Endpoints" icon="code" href="/en/advanced-features/sse/creating-sse-endpoints">
+  <Card
+    title="Creating SSE Endpoints"
+    icon="code"
+    href="/en/advanced-features/sse/creating-sse-endpoints"
+  >
     Build SSE APIs with the @stream decorator
   </Card>
-  <Card title="Client Integration" icon="browser" href="/en/advanced-features/sse/client-integration">
+  <Card
+    title="Client Integration"
+    icon="browser"
+    href="/en/advanced-features/sse/client-integration"
+  >
     Using SSE in the frontend
   </Card>
 </CardGroup>

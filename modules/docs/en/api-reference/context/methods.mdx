@@ -1,6 +1,6 @@
 ---
-title: 'Context Methods'
-description: 'Context Access Methods Reference'
+title: "Context Methods"
+description: "Context Access Methods Reference"
 ---
 
 Sonamu provides multiple methods to access the Context. These methods are useful when you need Context outside of API methods.
@@ -59,7 +59,7 @@ class PostModelClass extends BaseModelClass {
     return this.create({
       title,
       content,
-      authorId: user.id
+      authorId: user.id,
     });
   }
 }
@@ -114,12 +114,12 @@ import { runWithMockContext } from "sonamu/test";
 it("should use context in test", async () => {
   await runWithMockContext(
     {
-      user: { id: 1, email: "test@example.com" }
+      user: { id: 1, email: "test@example.com" },
     },
     async () => {
       const ctx = Sonamu.getContext();
       expect(ctx.user?.id).toBe(1);
-    }
+    },
   );
 });
 ```
@@ -129,6 +129,7 @@ it("should use context in test", async () => {
 For file upload requests, uploaded file information is accessed through `Sonamu.getContext()`. Available only in methods with the `@upload` decorator.
 
 Two properties are used depending on the upload mode:
+
 - **Buffer mode (default)**: `bufferedFiles` - files loaded in memory, suitable for MD5 calculation/image processing
 - **Stream mode**: `uploadedFiles` - files streamed directly to storage, suitable for large files
 
@@ -174,10 +175,10 @@ class FileModelClass extends BaseModelClass {
     }
 
     // Check file information
-    console.log(file.filename);    // "avatar.jpg"
-    console.log(file.mimetype);    // "image/jpeg"
-    console.log(file.size);        // 102400 (bytes)
-    console.log(file.extname);     // "jpg"
+    console.log(file.filename); // "avatar.jpg"
+    console.log(file.mimetype); // "image/jpeg"
+    console.log(file.size); // 102400 (bytes)
+    console.log(file.extname); // "jpg"
 
     // Save file (diskName, key order)
     const key = `avatars/${Date.now()}_${file.filename}`;
@@ -205,7 +206,7 @@ class FileModelClass extends BaseModelClass {
         const key = `documents/${Date.now()}_${i}_${file.filename}`;
         const url = await file.saveToDisk("fs", key);
         return { url, filename: file.filename, size: file.size };
-      })
+      }),
     );
 
     // Save file metadata to database
@@ -214,8 +215,8 @@ class FileModelClass extends BaseModelClass {
         folderId,
         filename: file.filename,
         url: file.url,
-        size: file.size
-      }))
+        size: file.size,
+      })),
     );
 
     return { count: savedFiles.length, files: savedFiles };
@@ -265,9 +266,7 @@ export function validateFileTypes(allowedTypes: string[]) {
 
   for (const file of bufferedFiles) {
     if (!allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException(
-        `File type not allowed: ${file.mimetype}`
-      );
+      throw new BadRequestException(`File type not allowed: ${file.mimetype}`);
     }
   }
 }
@@ -279,12 +278,7 @@ class FileModelClass extends BaseModelClass {
   @upload()
   async uploadImages(ctx: Context) {
     // Allow only image files
-    validateFileTypes([
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "image/webp"
-    ]);
+    validateFileTypes(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
     const files = getBufferedFiles();
 

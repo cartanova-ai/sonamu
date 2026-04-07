@@ -1,6 +1,6 @@
 ---
-title: 'getPuri'
-description: 'Getting the Puri Query Builder'
+title: "getPuri"
+description: "Getting the Puri Query Builder"
 ---
 
 `getPuri` is a method that retrieves the Puri query builder. It is necessary when writing direct SQL queries or using UpsertBuilder.
@@ -30,9 +30,7 @@ const rdb = this.getPuri("r");
 const wdb = this.getPuri("w");
 ```
 
-<Info>
-`"r"` and `"w"` may point to the same DB depending on your configuration.
-</Info>
+<Info>`"r"` and `"w"` may point to the same DB depending on your configuration.</Info>
 
 ## Return Value
 
@@ -57,14 +55,10 @@ Starts a Puri query builder by specifying a table.
 const wdb = this.getPuri("w");
 
 // Using table()
-const users = await wdb.table("users")
-  .where("status", "active")
-  .select();
+const users = await wdb.table("users").where("status", "active").select();
 
 // Using from() (equivalent)
-const posts = await wdb.from("posts")
-  .where("published", true)
-  .select();
+const posts = await wdb.from("posts").where("published", true).select();
 ```
 
 ### transaction
@@ -94,7 +88,7 @@ const wdb = this.getPuri("w");
 
 wdb.ubRegister("users", {
   email: "john@example.com",
-  name: "John"
+  name: "John",
 });
 ```
 
@@ -130,7 +124,7 @@ wdb.ubRegister("users", { id: 2, name: "Updated 2" });
 
 await wdb.ubUpdateBatch("users", {
   chunkSize: 500,
-  where: "id"
+  where: "id",
 });
 ```
 
@@ -141,9 +135,12 @@ Executes raw SQL.
 ```typescript
 const wdb = this.getPuri("w");
 
-const result = await wdb.raw(`
+const result = await wdb.raw(
+  `
   SELECT * FROM users WHERE status = ?
-`, ["active"]);
+`,
+  ["active"],
+);
 ```
 
 ## Basic Usage
@@ -157,7 +154,8 @@ class UserModelClass extends BaseModelClass {
   async getActiveUsers() {
     const rdb = this.getPuri("r");
 
-    const users = await rdb.table("users")
+    const users = await rdb
+      .table("users")
       .where("status", "active")
       .orderBy("created_at", "desc")
       .limit(10)
@@ -252,28 +250,24 @@ import { BaseModelClass, transactional, api } from "sonamu";
 class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   @transactional()
-  async createUserWithProfile(params: {
-    email: string;
-    name: string;
-    bio: string;
-  }) {
+  async createUserWithProfile(params: { email: string; name: string; bio: string }) {
     // Call getPuri within @transactional
     const wdb = this.getPuri("w");
 
     // wdb automatically uses the transaction created by @transactional
     // No separate transaction management code needed
-    const [user] = await wdb.table("users")
+    const [user] = await wdb
+      .table("users")
       .insert({
         email: params.email,
-        name: params.name
+        name: params.name,
       })
       .returning("*");
 
-    await wdb.table("profiles")
-      .insert({
-        user_id: user.id,
-        bio: params.bio
-      });
+    await wdb.table("profiles").insert({
+      user_id: user.id,
+      bio: params.bio,
+    });
 
     return user;
   }
@@ -290,9 +284,7 @@ class UserModelClass extends BaseModelClass {
   async createUser(email: string, name: string) {
     const wdb = this.getPuri("w");
 
-    const [user] = await wdb.table("users")
-      .insert({ email, name })
-      .returning("*");
+    const [user] = await wdb.table("users").insert({ email, name }).returning("*");
 
     // Call another method - uses the same transaction
     await this.createDefaultProfile(user.id);
@@ -305,21 +297,23 @@ class UserModelClass extends BaseModelClass {
     const wdb = this.getPuri("w");
 
     // Automatically reuses the transaction from createUser
-    await wdb.table("profiles")
-      .insert({
-        user_id: userId,
-        bio: "Welcome!"
-      });
+    await wdb.table("profiles").insert({
+      user_id: userId,
+      bio: "Welcome!",
+    });
   }
 }
 ```
 
 <Info>
-The transaction context set by the `@transactional` decorator is automatically shared across all sub-method calls. This is implemented via AsyncLocalStorage.
+  The transaction context set by the `@transactional` decorator is automatically shared across all
+  sub-method calls. This is implemented via AsyncLocalStorage.
 </Info>
 
 <Warning>
-A PuriWrapper obtained via `getPuri` within a transaction and a new transaction started with `wdb.transaction()` are **different transactions**. If you need nested transactions, you must manage them explicitly.
+  A PuriWrapper obtained via `getPuri` within a transaction and a new transaction started with
+  `wdb.transaction()` are **different transactions**. If you need nested transactions, you must
+  manage them explicitly.
 </Warning>
 
 ## Practical Examples
@@ -366,6 +360,7 @@ A PuriWrapper obtained via `getPuri` within a transaction and a new transaction 
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Raw SQL" icon="code">
@@ -421,6 +416,7 @@ A PuriWrapper obtained via `getPuri` within a transaction and a new transaction 
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Batch Operations" icon="layer-group">
@@ -478,6 +474,7 @@ A PuriWrapper obtained via `getPuri` within a transaction and a new transaction 
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Complex Transactions" icon="arrows-rotate">
@@ -540,6 +537,7 @@ A PuriWrapper obtained via `getPuri` within a transaction and a new transaction 
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -572,7 +570,8 @@ await wdb("users").where("id", 1).select();
 ```
 
 <Info>
-In most cases, we recommend using `getPuri`. It provides type safety and UpsertBuilder functionality.
+  In most cases, we recommend using `getPuri`. It provides type safety and UpsertBuilder
+  functionality.
 </Info>
 
 ## Transaction Isolation Levels
@@ -585,13 +584,14 @@ await wdb.transaction(
     // Transaction work
   },
   {
-    isolation: "serializable",  // Isolation level
-    readOnly: false              // Read-only mode
-  }
+    isolation: "serializable", // Isolation level
+    readOnly: false, // Read-only mode
+  },
 );
 ```
 
 **Isolation levels:**
+
 - `"read uncommitted"`
 - `"read committed"` (PostgreSQL default)
 - `"repeatable read"` (MySQL default)
@@ -605,15 +605,15 @@ Puri provides complete type safety.
 const wdb = this.getPuri("w");
 
 // ✅ Type-safe
-const users = await wdb.table("users")
-  .where("status", "active")  // status field auto-completion
+const users = await wdb
+  .table("users")
+  .where("status", "active") // status field auto-completion
   .select();
 
-users[0].email;  // ✅ Type inferred
+users[0].email; // ✅ Type inferred
 
 // ❌ Type error
-await wdb.table("users")
-  .where("unknown_field", "value");  // Non-existent field
+await wdb.table("users").where("unknown_field", "value"); // Non-existent field
 ```
 
 ## Caveats
@@ -665,9 +665,10 @@ await wdb.transaction(async (trx) => {
 
 ```typescript
 // Use indexes in WHERE conditions
-const users = await rdb.table("users")
-  .where("status", "active")  // Index needed on status
-  .where("created_at", ">", startDate)  // Index needed on created_at
+const users = await rdb
+  .table("users")
+  .where("status", "active") // Index needed on status
+  .where("created_at", ">", startDate) // Index needed on created_at
   .select();
 ```
 
@@ -678,8 +679,7 @@ const users = await rdb.table("users")
 const users = await rdb.table("users").select();
 
 // ✅ Select only needed fields
-const users = await rdb.table("users")
-  .select("id", "email", "name");
+const users = await rdb.table("users").select("id", "email", "name");
 ```
 
 ### 3. Batch Processing
@@ -703,21 +703,13 @@ for (let i = 0; i < ids.length; i += 500) {
     How to write Puri queries
   </Card>
 
-  <Card
-    title="UpsertBuilder"
-    icon="layer-group"
-    href="/en/database/upsert-builder/basic-usage"
-  >
-    UpsertBuilder usage guide
-  </Card>
+<Card title="UpsertBuilder" icon="layer-group" href="/en/database/upsert-builder/basic-usage">
+  UpsertBuilder usage guide
+</Card>
 
-  <Card
-    title="@transactional"
-    icon="arrows-rotate"
-    href="/en/api-reference/decorators/transactional"
-  >
-    Transaction decorator
-  </Card>
+<Card title="@transactional" icon="arrows-rotate" href="/en/api-reference/decorators/transactional">
+  Transaction decorator
+</Card>
 
   <Card
     title="Transactions"

@@ -19,20 +19,20 @@ Sonamu UI는 i18n 딕셔너리를 Excel로 내보내고 가져오는 기능을 �
 ```mermaid
 block-beta
     columns 4
-    
+
     block:header:4
         A1["Sonamu Dictionary"]
     end
-    
+
     space:4
-    
+
     H1["key"] H2["source"] H3["ko"] H4["en"]
-    
+
     D1["entity.User"] D2["entity"] D3["사용자"] D4["User"]
     D5["entity.User.email"] D6["entity"] D7["이메일"] D8["Email"]
     D9["common.save"] D10["project"] D11["저장"] D12["Save"]
     D13["error.notFound"] D14["project"] D15["찾을 수 없습니다"] D16["Not found"]
-    
+
     style A1 fill:#e2e8f0,stroke:#64748b
     style H1 fill:#f1f5f9,stroke:#64748b
     style H2 fill:#f1f5f9,stroke:#64748b
@@ -40,11 +40,11 @@ block-beta
     style H4 fill:#f1f5f9,stroke:#64748b
 ```
 
-| 컬럼 | 설명 |
-|------|------|
-| `key` | 딕셔너리 키 |
-| `source` | `entity` (자동 추출) 또는 `project` (수동 작성) |
-| `ko`, `en`, ... | 각 locale의 번역 값 |
+| 컬럼            | 설명                                            |
+| --------------- | ----------------------------------------------- |
+| `key`           | 딕셔너리 키                                     |
+| `source`        | `entity` (자동 추출) 또는 `project` (수동 작성) |
+| `ko`, `en`, ... | 각 locale의 번역 값                             |
 
 ## Excel Import
 
@@ -57,13 +57,13 @@ block-beta
 
 ### Import 동작 방식
 
-| source | defaultLocale (ko) | 다른 locale (en) |
-|--------|-------------------|------------------|
-| `entity` | `entity.json` 업데이트 | `en.ts`에 저장 |
-| `project` | `ko.ts`에 저장 | `en.ts`에 저장 |
+| source    | defaultLocale (ko)     | 다른 locale (en) |
+| --------- | ---------------------- | ---------------- |
+| `entity`  | `entity.json` 업데이트 | `en.ts`에 저장   |
+| `project` | `ko.ts`에 저장         | `en.ts`에 저장   |
 
 <Note>
-`entity` source의 defaultLocale 값은 Entity의 title, prop.desc, enumLabels를 직접 수정합니다.
+  `entity` source의 defaultLocale 값은 Entity의 title, prop.desc, enumLabels를 직접 수정합니다.
 </Note>
 
 ## 번역 워크플로우
@@ -77,7 +77,7 @@ flowchart TD
     E --> F[Sonamu UI: Import]
     F --> G[ko.ts, en.ts 업데이트]
     G --> H[entity.json 업데이트]
-    
+
     style D fill:#10b981,color:#fff
     style F fill:#10b981,color:#fff
 ```
@@ -92,9 +92,9 @@ flowchart TD
 
 Excel에서 함수형 값도 그대로 유지됩니다:
 
-| key | ko |
-|-----|----|
-| `common.results` | `(count: number) => \`${count}개 결과\`` |
+| key                   | ko                                           |
+| --------------------- | -------------------------------------------- |
+| `common.results`      | `(count: number) => \`${count}개 결과\``     |
 | `validation.required` | `(field: string) => \`${field}은(는) 필수\`` |
 
 Import 시 화살표 함수 패턴(`(...) => ...`)을 자동으로 감지하여 함수로 저장합니다.

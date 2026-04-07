@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const tsLoaderRegisterStateKey = Symbol.for("sonamu.ts-loader-register.state");
@@ -17,7 +18,6 @@ type GlobalWithTsLoaderRegisterState = typeof globalThis & {
 function resetRegisterState() {
   const globalState = globalThis as GlobalWithTsLoaderRegisterState;
   delete globalState[tsLoaderRegisterStateKey];
-  delete process.env.SWCRC_PATH;
 }
 
 async function createTempRoot(): Promise<string> {
@@ -26,6 +26,20 @@ async function createTempRoot(): Promise<string> {
 
 async function writeSourceFixture(rootPath: string): Promise<void> {
   await mkdir(path.join(rootPath, "src"), { recursive: true });
+  await writeFile(
+    path.join(rootPath, "tsconfig.json"),
+    JSON.stringify(
+      {
+        compilerOptions: {
+          experimentalDecorators: true,
+          module: "esnext",
+          target: "esnext",
+        },
+      },
+      null,
+      2,
+    ),
+  );
   await writeFile(
     path.join(rootPath, "src", "support.ts"),
     `
@@ -122,7 +136,6 @@ describe("loadConfig", () => {
   const tempRoots: string[] = [];
   const originalHot = process.env.HOT;
   const originalVitest = process.env.VITEST;
-  const originalSwcrcPath = process.env.SWCRC_PATH;
 
   beforeEach(() => {
     vi.resetModules();
@@ -147,12 +160,6 @@ describe("loadConfig", () => {
       delete process.env.VITEST;
     } else {
       process.env.VITEST = originalVitest;
-    }
-
-    if (originalSwcrcPath === undefined) {
-      delete process.env.SWCRC_PATH;
-    } else {
-      process.env.SWCRC_PATH = originalSwcrcPath;
     }
 
     await Promise.all(

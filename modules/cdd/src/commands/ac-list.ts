@@ -1,8 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+
 import chalk from "chalk";
 import fg from "fast-glob";
-import type { OutputResult } from "../utils/output.js";
+
+import { type OutputResult } from "../utils/output.js";
 
 interface AcEntry {
   describe: string | null;
@@ -35,7 +37,7 @@ export async function runAcList(fileRef: string | undefined, cwd: string): Promi
       absolute: true,
       ignore: ["**/node_modules/**", "**/dist/**"],
     });
-    files.push(...found.sort());
+    files.push(...found.toSorted());
   }
 
   const results: AcFileResult[] = [];

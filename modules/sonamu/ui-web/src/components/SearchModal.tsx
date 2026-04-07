@@ -9,6 +9,7 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import type React from "react";
 import { useMemo, useState } from "react";
+
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
 const SCORE_THRESHOLD = 0.3;
@@ -195,7 +196,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         return null;
       })
       .filter(Boolean)
-      .sort((a, b) => (b?.bestScore ?? 0) - (a?.bestScore ?? 0));
+      .toSorted((a, b) => (b?.bestScore ?? 0) - (a?.bestScore ?? 0));
   }, [entities, search]);
 
   const handleSelect = (url: string, elementId?: string) => {

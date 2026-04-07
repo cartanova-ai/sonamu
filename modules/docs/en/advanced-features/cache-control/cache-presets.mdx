@@ -59,7 +59,7 @@ registerSSR({
 **Completely prohibits cache storage**.
 
 ```typescript
-CachePresets.noStore
+CachePresets.noStore;
 // Generated header: Cache-Control: no-store
 ```
 
@@ -72,12 +72,10 @@ CachePresets.noStore
     ```
   </Tab>
 
-  <Tab title="When to Use" icon="lightbulb">
-    - Sensitive data (personal information, payment info)
-    - Mutation requests (POST, PUT, DELETE)
-    - Real-time data (stock prices, auctions)
-    - One-time tokens, OTP
-  </Tab>
+<Tab title="When to Use" icon="lightbulb">
+  - Sensitive data (personal information, payment info) - Mutation requests (POST, PUT, DELETE) -
+  Real-time data (stock prices, auctions) - One-time tokens, OTP
+</Tab>
 
   <Tab title="Example" icon="code">
     ```typescript
@@ -99,6 +97,7 @@ CachePresets.noStore
       return this.getSensitiveData(ctx.user.id);
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -107,7 +106,7 @@ CachePresets.noStore
 **Stores cache but revalidates every time**.
 
 ```typescript
-CachePresets.noCache
+CachePresets.noCache;
 // Generated header: Cache-Control: no-cache
 ```
 
@@ -120,11 +119,10 @@ CachePresets.noCache
     ```
   </Tab>
 
-  <Tab title="When to Use" icon="lightbulb">
-    - Data where freshness verification is important
-    - When you want to reduce server load but data changes frequently
-    - Using conditional requests (ETag, Last-Modified)
-  </Tab>
+<Tab title="When to Use" icon="lightbulb">
+  - Data where freshness verification is important - When you want to reduce server load but data
+  changes frequently - Using conditional requests (ETag, Last-Modified)
+</Tab>
 
   <Tab title="Example" icon="code">
     ```typescript
@@ -141,6 +139,7 @@ CachePresets.noCache
 </Tabs>
 
 **Benefits of no-cache**:
+
 ```
 1st request: GET /api/data → 200 OK + ETag: "abc123"
 2nd request: GET /api/data (If-None-Match: "abc123")
@@ -152,7 +151,7 @@ CachePresets.noCache
 **1 minute cache** - Suitable for frequently changing data.
 
 ```typescript
-CachePresets.shortLived
+CachePresets.shortLived;
 // Generated header: Cache-Control: public, max-age=60
 ```
 
@@ -166,12 +165,10 @@ CachePresets.shortLived
     ```
   </Tab>
 
-  <Tab title="When to Use" icon="lightbulb">
-    - Frequently changing API responses
-    - Data where real-time accuracy is not critical
-    - CSR fallback pages
-    - Post lists
-  </Tab>
+<Tab title="When to Use" icon="lightbulb">
+  - Frequently changing API responses - Data where real-time accuracy is not critical - CSR fallback
+  pages - Post lists
+</Tab>
 
   <Tab title="Example" icon="code">
     ```typescript
@@ -190,6 +187,7 @@ CachePresets.shortLived
       cacheControl: CachePresets.shortLived,
     });
     ```
+
   </Tab>
 </Tabs>
 
@@ -198,7 +196,7 @@ CachePresets.shortLived
 **SSR page optimization** - 10 second cache + Stale-While-Revalidate 30 seconds
 
 ```typescript
-CachePresets.ssr
+CachePresets.ssr;
 // Generated header: Cache-Control: public, max-age=10, stale-while-revalidate=30
 ```
 
@@ -223,13 +221,13 @@ CachePresets.ssr
 
     **After 40 seconds**: Expired
     - Server request required
+
   </Tab>
 
-  <Tab title="When to Use" icon="lightbulb">
-    - SSR pages (product details, blog posts)
-    - Dynamic content where slight delay is acceptable
-    - Maximize CDN efficiency
-  </Tab>
+<Tab title="When to Use" icon="lightbulb">
+  - SSR pages (product details, blog posts) - Dynamic content where slight delay is acceptable -
+  Maximize CDN efficiency
+</Tab>
 
   <Tab title="Example" icon="code">
     ```typescript
@@ -247,6 +245,7 @@ CachePresets.ssr
       Component: BlogPost,
     });
     ```
+
   </Tab>
 </Tabs>
 
@@ -255,7 +254,7 @@ CachePresets.ssr
 **5 minute cache** - Suitable for rarely changing data.
 
 ```typescript
-CachePresets.mediumLived
+CachePresets.mediumLived;
 // Generated header: Cache-Control: public, max-age=300
 ```
 
@@ -269,12 +268,10 @@ CachePresets.mediumLived
     ```
   </Tab>
 
-  <Tab title="When to Use" icon="lightbulb">
-    - Configuration data (terms, policies)
-    - Category lists
-    - Statistical data (daily updates)
-    - FAQ, announcements
-  </Tab>
+<Tab title="When to Use" icon="lightbulb">
+  - Configuration data (terms, policies) - Category lists - Statistical data (daily updates) - FAQ,
+  announcements
+</Tab>
 
   <Tab title="Example" icon="code">
     ```typescript
@@ -296,6 +293,7 @@ CachePresets.mediumLived
       return this.findOne(['type', 'terms']);
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -304,7 +302,7 @@ CachePresets.mediumLived
 **1 hour cache** - Suitable for static content.
 
 ```typescript
-CachePresets.longLived
+CachePresets.longLived;
 // Generated header: Cache-Control: public, max-age=3600
 ```
 
@@ -318,11 +316,10 @@ CachePresets.longLived
     ```
   </Tab>
 
-  <Tab title="When to Use" icon="lightbulb">
-    - Static content that rarely changes
-    - Images, fonts (files without hash)
-    - Reference data (country list, currency codes)
-  </Tab>
+<Tab title="When to Use" icon="lightbulb">
+  - Static content that rarely changes - Images, fonts (files without hash) - Reference data
+  (country list, currency codes)
+</Tab>
 
   <Tab title="Example" icon="code">
     ```typescript
@@ -344,6 +341,7 @@ CachePresets.longLived
       return this.config;
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -352,7 +350,7 @@ CachePresets.longLived
 **Permanent cache** - For static files with hash
 
 ```typescript
-CachePresets.immutable
+CachePresets.immutable;
 // Generated header: Cache-Control: public, max-age=31536000, immutable
 ```
 
@@ -367,13 +365,10 @@ CachePresets.immutable
     ```
   </Tab>
 
-  <Tab title="When to Use" icon="lightbulb">
-    - Filenames with hash
-      - `bundle-abc123.js`
-      - `styles-def456.css`
-      - `image-789xyz.png`
-    - When filename changes if content changes
-  </Tab>
+<Tab title="When to Use" icon="lightbulb">
+  - Filenames with hash - `bundle-abc123.js` - `styles-def456.css` - `image-789xyz.png` - When
+  filename changes if content changes
+</Tab>
 
   <Tab title="Example" icon="code">
     ```typescript
@@ -389,10 +384,12 @@ CachePresets.immutable
       return reply.sendFile(filename);
     });
     ```
+
   </Tab>
 </Tabs>
 
 **Benefits of immutable**:
+
 - Uses only cache without revalidation (fastest)
 - When file changes → new hash → new filename → automatic cache update
 
@@ -401,7 +398,7 @@ CachePresets.immutable
 **Personalized data** - Different response per user
 
 ```typescript
-CachePresets.private
+CachePresets.private;
 // Generated header: Cache-Control: private, no-cache
 ```
 
@@ -415,12 +412,10 @@ CachePresets.private
     ```
   </Tab>
 
-  <Tab title="When to Use" icon="lightbulb">
-    - Per-user data after login
-    - My page, profile
-    - Shopping cart, order history
-    - Personalized recommendations
-  </Tab>
+<Tab title="When to Use" icon="lightbulb">
+  - Per-user data after login - My page, profile - Shopping cart, order history - Personalized
+  recommendations
+</Tab>
 
   <Tab title="Example" icon="code">
     ```typescript
@@ -444,25 +439,27 @@ CachePresets.private
       });
     }
     ```
+
   </Tab>
 </Tabs>
 
 **private vs public**:
+
 - `private`: Cached only in browser (not on CDN)
 - `public`: Cached everywhere (browser + CDN)
 
 ## Preset Comparison Table
 
-| Preset | Header | Use Case | TTL |
-|--------|--------|----------|-----|
-| `noStore` | `no-store` | Sensitive data, Mutations | None |
-| `noCache` | `no-cache` | Requires revalidation | None (revalidate) |
-| `shortLived` | `public, max-age=60` | Frequently changes | 1 minute |
-| `ssr` | `public, max-age=10, stale-while-revalidate=30` | SSR pages | 10 seconds + SWR 30 seconds |
-| `mediumLived` | `public, max-age=300` | Rarely changes | 5 minutes |
-| `longLived` | `public, max-age=3600` | Static content | 1 hour |
-| `immutable` | `public, max-age=31536000, immutable` | Hashed files | 1 year (permanent) |
-| `private` | `private, no-cache` | Personalized data | None (private) |
+| Preset        | Header                                          | Use Case                  | TTL                         |
+| ------------- | ----------------------------------------------- | ------------------------- | --------------------------- |
+| `noStore`     | `no-store`                                      | Sensitive data, Mutations | None                        |
+| `noCache`     | `no-cache`                                      | Requires revalidation     | None (revalidate)           |
+| `shortLived`  | `public, max-age=60`                            | Frequently changes        | 1 minute                    |
+| `ssr`         | `public, max-age=10, stale-while-revalidate=30` | SSR pages                 | 10 seconds + SWR 30 seconds |
+| `mediumLived` | `public, max-age=300`                           | Rarely changes            | 5 minutes                   |
+| `longLived`   | `public, max-age=3600`                          | Static content            | 1 hour                      |
+| `immutable`   | `public, max-age=31536000, immutable`           | Hashed files              | 1 year (permanent)          |
+| `private`     | `private, no-cache`                             | Personalized data         | None (private)              |
 
 ## Custom Configuration
 
@@ -507,30 +504,31 @@ export const config: SonamuConfig = {
     apiConfig: {
       cacheControlHandler: (req) => {
         // API requests
-        if (req.type === 'api') {
-          if (req.method !== 'GET') {
-            return CachePresets.noStore;  // Mutations use no-store
+        if (req.type === "api") {
+          if (req.method !== "GET") {
+            return CachePresets.noStore; // Mutations use no-store
           }
-          return CachePresets.shortLived;  // GET uses 1 minute cache
+          return CachePresets.shortLived; // GET uses 1 minute cache
         }
 
         // Static files
-        if (req.type === 'assets') {
-          if (req.path.includes('-')) {  // Contains hash
+        if (req.type === "assets") {
+          if (req.path.includes("-")) {
+            // Contains hash
             return CachePresets.immutable;
           }
           return CachePresets.longLived;
         }
 
         // SSR
-        if (req.type === 'ssr') {
+        if (req.type === "ssr") {
           return CachePresets.ssr;
         }
 
-        return undefined;  // Default
-      }
-    }
-  }
+        return undefined; // Default
+      },
+    },
+  },
 };
 ```
 
@@ -542,7 +540,7 @@ export const config: SonamuConfig = {
 class ProductModelClass extends BaseModelClass {
   // List: Frequently changes → Short cache
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.shortLived,
   })
   async findAll() {
@@ -551,16 +549,16 @@ class ProductModelClass extends BaseModelClass {
 
   // Detail: Less frequent changes → Medium cache
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.mediumLived,
   })
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 
   // Categories: Rarely changes → Long cache
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.longLived,
   })
   async getCategories() {
@@ -569,7 +567,7 @@ class ProductModelClass extends BaseModelClass {
 
   // Create/Update: Mutation → no-store
   @api({
-    httpMethod: 'POST',
+    httpMethod: "POST",
     cacheControl: CachePresets.noStore,
   })
   async create(data: ProductSave) {
@@ -583,21 +581,21 @@ class ProductModelClass extends BaseModelClass {
 ```typescript
 // Homepage: SSR optimized
 registerSSR({
-  path: '/',
+  path: "/",
   cacheControl: CachePresets.ssr,
   Component: HomePage,
 });
 
 // Product list: Short cache
 registerSSR({
-  path: '/products',
+  path: "/products",
   cacheControl: CachePresets.shortLived,
   Component: ProductList,
 });
 
 // Terms: Long cache
 registerSSR({
-  path: '/terms',
+  path: "/terms",
   cacheControl: CachePresets.longLived,
   Component: Terms,
 });
@@ -609,6 +607,7 @@ registerSSR({
 **Precautions when using presets**:
 
 1. **Presets are starting points**: Customize as needed
+
    ```typescript
    // ✅ Adjust for your situation
    cacheControl: {
@@ -618,6 +617,7 @@ registerSSR({
    ```
 
 2. **Only cache GET**: Use `noStore` for POST, PUT, DELETE
+
    ```typescript
    // ❌ Wrong example
    @api({
@@ -633,6 +633,7 @@ registerSSR({
    ```
 
 3. **Private data must be private**: Prevent CDN caching
+
    ```typescript
    // ❌ Dangerous: Personal data cached on CDN
    @api({
@@ -648,21 +649,27 @@ registerSSR({
    ```
 
 4. **immutable only for hashed files**: Must change filename to update
+
    ```typescript
    // ❌ Wrong usage
    // main.js (no hash) → Cache persists even if content changes
-   cacheControl: CachePresets.immutable
+   cacheControl: CachePresets.immutable;
 
    // ✅ Correct usage
    // main-abc123.js (has hash) → Filename changes when content changes
-   cacheControl: CachePresets.immutable
+   cacheControl: CachePresets.immutable;
    ```
-</Warning>
+
+   </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="What is Cache-Control?" icon="circle-question" href="/en/advanced-features/cache-control/what-is-cache-control">
+  <Card
+    title="What is Cache-Control?"
+    icon="circle-question"
+    href="/en/advanced-features/cache-control/what-is-cache-control"
+  >
     HTTP caching fundamentals
   </Card>
   <Card title="Using in APIs" icon="code" href="/en/advanced-features/cache-control/using-in-apis">

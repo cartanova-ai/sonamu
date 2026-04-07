@@ -1,4 +1,4 @@
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   // text[]를 jsonb로 변환하려면 먼저 array_to_json을 거쳐야 합니다

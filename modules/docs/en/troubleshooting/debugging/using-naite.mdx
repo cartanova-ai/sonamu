@@ -1,6 +1,6 @@
 ---
-title: 'Using Naite'
-description: 'Debugging with Naite'
+title: "Using Naite"
+description: "Debugging with Naite"
 ---
 
 This covers effective debugging methods using Naite.
@@ -10,6 +10,7 @@ This covers effective debugging methods using Naite.
 Naite is Sonamu's test-dedicated logging system that collects and analyzes all logs generated during test execution.
 
 **Key features:**
+
 - Log isolation per test
 - Key-value based log storage
 - Powerful query capabilities
@@ -67,7 +68,7 @@ test("API call tracking", async () => {
   // Record request
   Naite.t("api.request", {
     method: "findMany",
-    params
+    params,
   });
 
   const users = await UserModel.findMany(params);
@@ -75,7 +76,7 @@ test("API call tracking", async () => {
   // Record response
   Naite.t("api.response", {
     count: users.length,
-    firstUser: users[0]
+    firstUser: users[0],
   });
 
   expect(users.length).toBeGreaterThan(0);
@@ -96,7 +97,7 @@ test("query tracking", async () => {
   // After query
   Naite.t("db.query.after", {
     found: !!user,
-    data: user
+    data: user,
   });
 
   expect(user).toBeDefined();
@@ -119,7 +120,7 @@ test("order process tracking", async () => {
   const payment = await processPayment(order);
   Naite.t("payment.processed", {
     paymentId: payment.id,
-    amount: payment.amount
+    amount: payment.amount,
   });
 
   // 3. Update order status
@@ -151,6 +152,7 @@ Naite.t("test", value);
 ```
 
 **Recommended pattern:**
+
 ```
 {domain}.{action}.{stage}
 Example: user.create.input, order.payment.complete
@@ -275,6 +277,7 @@ pnpm naite:view
 ```
 
 **Viewer features:**
+
 - Filter logs by test
 - Key-based search
 - Timeline view
@@ -308,12 +311,12 @@ test("failing test", async () => {
 afterEach(() => {
   // Summarize logs after test
   const allLogs = Naite.getAll();
-  const errorKeys = Object.keys(allLogs).filter(key =>
-    key.includes("error") || key.includes("fail")
+  const errorKeys = Object.keys(allLogs).filter(
+    (key) => key.includes("error") || key.includes("fail"),
   );
 
   if (errorKeys.length > 0) {
-    const errorLogs = errorKeys.map(key => ({ key, data: allLogs[key] }));
+    const errorLogs = errorKeys.map((key) => ({ key, data: allLogs[key] }));
     console.log("Warning - Error logs:", errorLogs);
   }
 });
@@ -325,7 +328,7 @@ afterEach(() => {
 test("bug reproduction", async () => {
   // Reproduce the scenario where the bug occurred
   Naite.t("bug.reproduction.start", {
-    scenario: "Delete user immediately after creation"
+    scenario: "Delete user immediately after creation",
   });
 
   const user = await UserModel.create({ email: "test@example.com" });
@@ -358,7 +361,7 @@ test("performance measurement", async () => {
   Naite.t("perf.end", {
     timestamp: end,
     duration: end - start,
-    result
+    result,
   });
 
   // Verify performance criteria
@@ -387,13 +390,13 @@ test("logging cautions", async () => {
   // Do not log sensitive information like passwords
   Naite.t("user.create", {
     email,
-    password  // Bad
+    password, // Bad
   });
 
   // Exclude sensitive information
   Naite.t("user.create", {
     email,
-    hasPassword: !!password  // Good
+    hasPassword: !!password, // Good
   });
 });
 ```
@@ -409,7 +412,7 @@ for (let i = 0; i < 1000; i++) {
 // Summary logging
 Naite.t("items.processed", {
   count: 1000,
-  sample: items.slice(0, 3)  // Good - Sample only
+  sample: items.slice(0, 3), // Good - Sample only
 });
 ```
 

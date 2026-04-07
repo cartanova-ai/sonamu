@@ -1,6 +1,6 @@
 ---
-title: '스토리지'
-description: '파일 저장소 드라이버 설정'
+title: "스토리지"
+description: "파일 저장소 드라이버 설정"
 ---
 
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
@@ -19,8 +19,12 @@ export default defineConfig({
     storage: {
       default: process.env.DRIVE_DISK ?? "fs",
       drivers: {
-        fs: drivers.fs({ /* ... */ }),
-        s3: drivers.s3({ /* ... */ }),
+        fs: drivers.fs({
+          /* ... */
+        }),
+        s3: drivers.s3({
+          /* ... */
+        }),
       },
     },
   },
@@ -38,7 +42,7 @@ export default defineConfig({
 export default defineConfig({
   server: {
     storage: {
-      default: "fs",  // fs 드라이버 사용
+      default: "fs", // fs 드라이버 사용
       // ...
     },
   },
@@ -51,7 +55,7 @@ export default defineConfig({
 export default defineConfig({
   server: {
     storage: {
-      default: process.env.DRIVE_DISK ?? "fs",  // 환경에 따라 전환
+      default: process.env.DRIVE_DISK ?? "fs", // 환경에 따라 전환
       // ...
     },
   },
@@ -68,9 +72,7 @@ DRIVE_DISK=fs
 DRIVE_DISK=s3
 ```
 
-<Tip>
-환경 변수를 사용하면 코드 변경 없이 스토리지를 전환할 수 있습니다.
-</Tip>
+<Tip>환경 변수를 사용하면 코드 변경 없이 스토리지를 전환할 수 있습니다.</Tip>
 
 ## drivers
 
@@ -86,8 +88,12 @@ export default defineConfig({
     storage: {
       default: "fs",
       drivers: {
-        fs: drivers.fs({ /* ... */ }),    // 로컬 파일 시스템
-        s3: drivers.s3({ /* ... */ }),    // AWS S3
+        fs: drivers.fs({
+          /* ... */
+        }), // 로컬 파일 시스템
+        s3: drivers.s3({
+          /* ... */
+        }), // AWS S3
       },
     },
   },
@@ -134,27 +140,27 @@ export default defineConfig({
 drivers.fs({
   location: path.join(import.meta.dirname, "/../public/uploaded"),
   // ...
-})
+});
 ```
 
 **경로 예시**:
 
 <Card>
-<FileTree>
-  <FileItem name="project-root/">
-    <FileItem name="api/">
-      <FileItem name="src/">
-        <FileItem name="sonamu.config.ts" description="여기서 실행" />
+  <FileTree>
+    <FileItem name="project-root/">
+      <FileItem name="api/">
+        <FileItem name="src/">
+          <FileItem name="sonamu.config.ts" description="여기서 실행" />
+        </FileItem>
+      </FileItem>
+      <FileItem name="public/">
+        <FileItem name="uploaded/" description="파일 저장 위치">
+          <FileItem name="profile-images/" />
+          <FileItem name="documents/" />
+        </FileItem>
       </FileItem>
     </FileItem>
-    <FileItem name="public/">
-      <FileItem name="uploaded/" description="파일 저장 위치">
-        <FileItem name="profile-images/" />
-        <FileItem name="documents/" />
-      </FileItem>
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 #### visibility
@@ -169,9 +175,9 @@ drivers.fs({
 ```typescript
 drivers.fs({
   location: path.join(import.meta.dirname, "/../public/uploaded"),
-  visibility: "public",  // 공개 파일
+  visibility: "public", // 공개 파일
   // ...
-})
+});
 ```
 
 #### urlBuilder
@@ -186,14 +192,14 @@ drivers.fs({
     generateURL(key) {
       return `/api/public/uploaded/${key}`;
     },
-    
+
     // 서명된 URL 생성 (임시 접근)
     generateSignedURL(key, expiresIn) {
       // fs에서는 보통 일반 URL과 동일
       return `/api/public/uploaded/${key}`;
     },
   },
-})
+});
 ```
 
 **generateURL**: 파일의 공개 URL을 생성합니다.
@@ -253,12 +259,10 @@ drivers.s3({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
   },
   // ...
-})
+});
 ```
 
-<Warning>
-AWS 인증 정보는 반드시 환경 변수로 관리하세요. 코드에 직접 작성하지 마세요!
-</Warning>
+<Warning>AWS 인증 정보는 반드시 환경 변수로 관리하세요. 코드에 직접 작성하지 마세요!</Warning>
 
 **.env**:
 
@@ -276,8 +280,8 @@ S3 버킷이 위치한 AWS 리전입니다.
 ```typescript
 drivers.s3({
   // ...
-  region: "ap-northeast-2",  // 서울 리전
-})
+  region: "ap-northeast-2", // 서울 리전
+});
 ```
 
 **주요 리전**:
@@ -298,7 +302,7 @@ drivers.s3({
 drivers.s3({
   // ...
   bucket: "my-app-uploads",
-})
+});
 ```
 
 **환경별로 다른 버킷 사용**:
@@ -307,7 +311,7 @@ drivers.s3({
 drivers.s3({
   // ...
   bucket: process.env.S3_BUCKET ?? "my-app-dev",
-})
+});
 ```
 
 #### visibility
@@ -319,8 +323,8 @@ S3 객체의 ACL(Access Control List)을 설정합니다.
 ```typescript
 drivers.s3({
   // ...
-  visibility: "private",  // 인증 필요
-})
+  visibility: "private", // 인증 필요
+});
 ```
 
 - `"public"`: 퍼블릭 읽기 허용 (`public-read` ACL)
@@ -369,8 +373,8 @@ import { drivers } from "sonamu/storage";
 export default defineConfig({
   server: {
     storage: {
-      default: process.env.DRIVE_DISK ?? "fs",  // 환경 변수로 전환
-      
+      default: process.env.DRIVE_DISK ?? "fs", // 환경 변수로 전환
+
       drivers: {
         // 개발: 로컬 파일 시스템
         fs: drivers.fs({
@@ -385,7 +389,7 @@ export default defineConfig({
             },
           },
         }),
-        
+
         // 프로덕션: AWS S3
         s3: drivers.s3({
           credentials: {
@@ -431,7 +435,7 @@ export default defineConfig({
   server: {
     storage: {
       default: "s3-public",
-      
+
       drivers: {
         // 공개 파일용 (프로필 이미지 등)
         "s3-public": drivers.s3({
@@ -443,7 +447,7 @@ export default defineConfig({
           bucket: "my-app-public",
           visibility: "public",
         }),
-        
+
         // 프라이빗 파일용 (문서, 영수증 등)
         "s3-private": drivers.s3({
           credentials: {
@@ -488,10 +492,10 @@ export class FileModel {
     // 파일 저장
     const key = `uploads/${Date.now()}-${file.filename}`;
     await StorageManager.put(key, file.buffer);
-    
+
     // URL 생성
     const url = await StorageManager.url(key);
-    
+
     return { key, url };
   }
 }
@@ -539,16 +543,8 @@ Sonamu가 S3에 접근하려면 적절한 IAM 권한이 필요합니다.
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": [
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject",
-        "s3:ListBucket"
-      ],
-      "Resource": [
-        "arn:aws:s3:::my-app-uploads",
-        "arn:aws:s3:::my-app-uploads/*"
-      ]
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::my-app-uploads", "arn:aws:s3:::my-app-uploads/*"]
     }
   ]
 }
@@ -565,7 +561,7 @@ drivers.s3({
     accessKeyId: "AKIAXXXXXXXXXXXXXXXX",
     secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCY...",
   },
-})
+});
 
 // ✅ 좋은 예: 환경 변수 사용
 drivers.s3({
@@ -573,17 +569,17 @@ drivers.s3({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
   },
-})
+});
 ```
 
 ### 2. visibility 선택
 
 ```typescript
 // 공개 파일 (프로필 이미지, 상품 이미지 등)
-visibility: "public"
+visibility: "public";
 
 // 프라이빗 파일 (개인 문서, 영수증, 계약서 등)
-visibility: "private"
+visibility: "private";
 ```
 
 ### 3. 파일 경로 설계

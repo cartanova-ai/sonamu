@@ -195,9 +195,7 @@ import { saveUser } from "@/services/services.generated";
 import type { UserSaveParams } from "@/services/user/user.types";
 
 // ✅ 타입 안전
-const params: UserSaveParams[] = [
-  { email: "john@test.com", age: 30, role: "admin" },
-];
+const params: UserSaveParams[] = [{ email: "john@test.com", age: 30, role: "admin" }];
 await saveUser(params);
 
 // ❌ 컴파일 에러
@@ -340,7 +338,7 @@ function UserForm() {
           // ids: number[]
           console.log("Created user IDs:", ids);
         },
-      }
+      },
     );
   };
 
@@ -633,11 +631,7 @@ describe("User type validation", () => {
   >
     Zod 검증 상세 가이드
   </Card>
-  <Card
-    title="Entity Types"
-    icon="database"
-    href="/ko/core-concepts/type-system/entity-types"
-  >
+  <Card title="Entity Types" icon="database" href="/ko/core-concepts/type-system/entity-types">
     Entity 타입 변환 이해하기
   </Card>
   <Card

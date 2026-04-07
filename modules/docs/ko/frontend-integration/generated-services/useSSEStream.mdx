@@ -12,21 +12,25 @@ description: "Server-Sent Events 실시간 스트리밍"
     서버에서 클라이언트로
 
     단방향 실시간 데이터
+
   </Card>
   <Card title="자동 재연결" icon="rotate">
     연결 실패 시 자동 재시도
 
     설정 가능한 횟수/간격
+
   </Card>
   <Card title="타입 안전" icon="shield-check">
     이벤트별 타입 지정
 
     제네릭 기반
+
   </Card>
   <Card title="연결 상태" icon="signal">
     isConnected, error 추적
 
     UI 피드백 가능
+
   </Card>
 </CardGroup>
 
@@ -36,13 +40,13 @@ Server-Sent Events는 서버에서 클라이언트로 실시간 데이터를 **�
 
 ### WebSocket vs SSE
 
-| 특징 | WebSocket | SSE |
-|------|-----------|-----|
-| 통신 방향 | 양방향 (Full-duplex) | 단방향 (Server → Client) |
-| 프로토콜 | WS/WSS | HTTP/HTTPS |
-| 재연결 | 수동 구현 필요 | 브라우저 자동 재연결 |
-| 복잡도 | 높음 | 낮음 |
-| 사용 케이스 | 채팅, 게임 | 알림, 로그, 진행 상황 |
+| 특징        | WebSocket            | SSE                      |
+| ----------- | -------------------- | ------------------------ |
+| 통신 방향   | 양방향 (Full-duplex) | 단방향 (Server → Client) |
+| 프로토콜    | WS/WSS               | HTTP/HTTPS               |
+| 재연결      | 수동 구현 필요       | 브라우저 자동 재연결     |
+| 복잡도      | 높음                 | 낮음                     |
+| 사용 케이스 | 채팅, 게임           | 알림, 로그, 진행 상황    |
 
 <Info>
 **SSE를 사용해야 하는 경우**
@@ -52,7 +56,7 @@ Server-Sent Events는 서버에서 클라이언트로 실시간 데이터를 **�
 - 실시간 로그 모니터링
 - 파일 업로드/처리 진행 상황
 - 서버 이벤트 알림
-</Info>
+  </Info>
 
 ## 기본 사용법
 
@@ -63,7 +67,9 @@ import { useSSEStream } from "./sonamu.shared";
 ```
 
 <Info>
-`useSSEStream`은 프로젝트 스캐폴딩 시 생성되는 `sonamu.shared.ts`에 정의되어 있습니다. `services.generated.ts`에서는 각 `@stream` API에 대한 래퍼 함수를 자동 생성하며, 내부적으로 `useSSEStream`을 사용합니다.
+  `useSSEStream`은 프로젝트 스캐폴딩 시 생성되는 `sonamu.shared.ts`에 정의되어 있습니다.
+  `services.generated.ts`에서는 각 `@stream` API에 대한 래퍼 함수를 자동 생성하며, 내부적으로
+  `useSSEStream`을 사용합니다.
 </Info>
 
 ### 타입 정의
@@ -71,9 +77,9 @@ import { useSSEStream } from "./sonamu.shared";
 ```typescript
 // 이벤트 타입 정의
 type AIStreamEvents = {
-  token: { text: string };     // token 이벤트: 텍스트 조각
-  usage: { tokens: number };   // usage 이벤트: 토큰 사용량
-  end: string;                  // end 이벤트: 완료 신호
+  token: { text: string }; // token 이벤트: 텍스트 조각
+  usage: { tokens: number }; // usage 이벤트: 토큰 사용량
+  end: string; // end 이벤트: 완료 신호
 };
 ```
 
@@ -134,13 +140,14 @@ function useSSEStream<T extends Record<string, any>>(
   handlers: {
     [K in keyof T]?: (data: T[K]) => void;
   },
-  options?: SSEStreamOptions
-): SSEStreamState
+  options?: SSEStreamOptions,
+): SSEStreamState;
 ```
 
 ### 파라미터
 
 #### url
+
 SSE 엔드포인트 URL입니다.
 
 ```typescript
@@ -148,6 +155,7 @@ useSSEStream("/api/ai/stream", params, handlers);
 ```
 
 #### params
+
 URL 쿼리 파라미터로 전달될 객체입니다.
 
 ```typescript
@@ -158,7 +166,7 @@ useSSEStream(
     model: "gpt-4",
     temperature: 0.7,
   },
-  handlers
+  handlers,
 );
 
 // 실제 요청 URL:
@@ -166,6 +174,7 @@ useSSEStream(
 ```
 
 #### handlers
+
 이벤트별 핸들러 함수입니다.
 
 ```typescript
@@ -183,25 +192,26 @@ useSSEStream(
 ```
 
 **특수 이벤트**:
+
 - `end`: 서버가 명시적으로 스트림 종료를 알릴 때
 - `message`: 이벤트 타입이 지정되지 않은 기본 메시지
 
 #### options
 
-| 옵션 | 타입 | 기본값 | 설명 |
-|------|------|--------|------|
-| `enabled` | `boolean` | `true` | 자동 연결 여부 |
-| `retry` | `number` | `3` | 최대 재시도 횟수 |
-| `retryInterval` | `number` | `3000` | 재시도 간격 (ms) |
+| 옵션            | 타입      | 기본값 | 설명             |
+| --------------- | --------- | ------ | ---------------- |
+| `enabled`       | `boolean` | `true` | 자동 연결 여부   |
+| `retry`         | `number`  | `3`    | 최대 재시도 횟수 |
+| `retryInterval` | `number`  | `3000` | 재시도 간격 (ms) |
 
 ### 반환값 (SSEStreamState)
 
 ```typescript
 type SSEStreamState = {
-  isConnected: boolean;  // 현재 연결 상태
-  error: string | null;  // 에러 메시지
-  retryCount: number;    // 현재 재시도 횟수
-  isEnded: boolean;      // 정상 종료 여부
+  isConnected: boolean; // 현재 연결 상태
+  error: string | null; // 에러 메시지
+  retryCount: number; // 현재 재시도 횟수
+  isEnded: boolean; // 정상 종료 여부
 };
 ```
 
@@ -444,7 +454,7 @@ import { BaseModelClass, stream, Sonamu, z } from "sonamu";
 
 class AIModelClass extends BaseModelClass {
   @stream({
-    type: 'sse',
+    type: "sse",
     events: z.object({
       token: z.object({ text: z.string() }),
       usage: z.object({ tokens: z.number() }),
@@ -457,7 +467,7 @@ class AIModelClass extends BaseModelClass {
       z.object({
         token: z.object({ text: z.string() }),
         usage: z.object({ tokens: z.number() }),
-      })
+      }),
     );
 
     const stream = await openai.chat.completions.create({
@@ -469,11 +479,11 @@ class AIModelClass extends BaseModelClass {
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content ?? "";
       if (text) {
-        sse.publish('token', { text });
+        sse.publish("token", { text });
       }
     }
 
-    sse.publish('usage', { tokens: 42 });
+    sse.publish("usage", { tokens: 42 });
     await sse.end();
   }
 }
@@ -482,18 +492,22 @@ class AIModelClass extends BaseModelClass {
 ### publish 형식
 
 ```typescript
-sse.publish('이벤트명', { /* 데이터 */ });
+sse.publish("이벤트명", {
+  /* 데이터 */
+});
 ```
 
 **예시**:
+
 ```typescript
-sse.publish('token', { text: "Hello" });
-sse.publish('usage', { tokens: 42 });
-await sse.end();  // 스트림 종료 시 end 이벤트 전송
+sse.publish("token", { text: "Hello" });
+sse.publish("usage", { tokens: 42 });
+await sse.end(); // 스트림 종료 시 end 이벤트 전송
 ```
 
 <Info>
-SSE 엔드포인트 구현에 대한 자세한 내용은 [SSE 엔드포인트 만들기](/ko/advanced-features/sse/creating-sse-endpoints)를 참고하세요.
+  SSE 엔드포인트 구현에 대한 자세한 내용은 [SSE 엔드포인트
+  만들기](/ko/advanced-features/sse/creating-sse-endpoints)를 참고하세요.
 </Info>
 
 ## 고급 기능
@@ -525,8 +539,8 @@ const [filter, setFilter] = useState("all");
 
 useSSEStream(
   "/api/logs/stream",
-  { level: filter },  // filter가 바뀌면 재연결
-  handlers
+  { level: filter }, // filter가 바뀌면 재연결
+  handlers,
 );
 
 // filter가 변경되면 자동으로 연결이 끊기고 새 파라미터로 재연결됨
@@ -557,8 +571,8 @@ const stream1 = useSSEStream<AIEvents>(
   "/api/ai/chat",
   { prompt: "Hello" },
   {
-    token: (data) => setAiResponse(prev => prev + data.text),
-  }
+    token: (data) => setAiResponse((prev) => prev + data.text),
+  },
 );
 
 // 스트림 2: 알림
@@ -567,7 +581,7 @@ const stream2 = useSSEStream<NotificationEvents>(
   {},
   {
     notification: (data) => showNotification(data),
-  }
+  },
 );
 ```
 
@@ -586,18 +600,26 @@ const stream2 = useSSEStream<NotificationEvents>(
 // ❌ 나쁜 예: 메모리 무한 증가
 const [logs, setLogs] = useState<string[]>([]);
 
-useSSEStream("/api/logs", {}, {
-  log: (data) => {
-    setLogs(prev => [...prev, data.message]);  // 계속 증가
+useSSEStream(
+  "/api/logs",
+  {},
+  {
+    log: (data) => {
+      setLogs((prev) => [...prev, data.message]); // 계속 증가
+    },
   },
-});
+);
 
 // ✅ 좋은 예: 최근 N개만 유지
-useSSEStream("/api/logs", {}, {
-  log: (data) => {
-    setLogs(prev => [...prev, data.message].slice(-100));  // 최근 100개만
+useSSEStream(
+  "/api/logs",
+  {},
+  {
+    log: (data) => {
+      setLogs((prev) => [...prev, data.message].slice(-100)); // 최근 100개만
+    },
   },
-});
+);
 ```
 
 ### 3. 에러 처리
@@ -636,6 +658,7 @@ useEffect(() => {
 **원인**: CORS 설정 또는 엔드포인트 오류
 
 **해결**:
+
 ```typescript
 // 백엔드: sonamu.config.ts
 export default {

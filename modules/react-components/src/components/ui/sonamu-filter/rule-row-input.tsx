@@ -1,10 +1,12 @@
-import { useSonamuBaseContext } from "@/contexts";
 import TrashIcon from "~icons/lucide/trash-2";
-import type { FilterOperator } from "../../../lib/types";
-import { operatorsByPropType } from "../../../lib/types";
+
+import { useSonamuBaseContext } from "@/contexts";
+
 import { Button, Input, Select } from "../..";
+import { type FilterOperator } from "../../../lib/types";
+import { operatorsByPropType } from "../../../lib/types";
 import { operatorLabels } from "./constants";
-import type { RuleRowProps } from "./types";
+import { type RuleRowProps } from "./types";
 import { ValueInput } from "./value-input";
 
 /**

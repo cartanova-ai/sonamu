@@ -1,8 +1,10 @@
 import assert from "assert";
+
 import inflection from "inflection";
 import { unique } from "radashi";
+
 import { Sonamu } from "../../api";
-import type { Entity } from "../../entity/entity";
+import { type Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
 import {
   isBelongsToOneRelationProp,
@@ -10,7 +12,7 @@ import {
   isOneToOneRelationProp,
 } from "../../types/types";
 import { Template } from "../template";
-import type { SourceCode } from "./generated.template";
+import { type SourceCode } from "./generated.template";
 
 /**
  * better-auth additionalFields의 type 값을 TypeScript 타입 문자열로 변환합니다.
@@ -291,7 +293,7 @@ export class Template__generated_sso extends Template {
       return null;
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: additionalFields 타입이 동적임
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- additionalFields 타입이 동적임
     const additionalFields = (authConfig as any)?.user?.additionalFields;
     if (!additionalFields || Object.keys(additionalFields).length === 0) {
       // additionalFields가 없으면 기본 User 타입만 사용
@@ -306,7 +308,7 @@ export class Template__generated_sso extends Template {
 
     // additionalFields를 TypeScript 타입으로 변환
     const fieldLines = Object.entries(additionalFields).map(([key, value]) => {
-      // biome-ignore lint/suspicious/noExplicitAny: better-auth additionalFields 구조
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- better-auth additionalFields 구조
       const fieldConfig = value as any;
       const isRequired = fieldConfig.required !== false;
 

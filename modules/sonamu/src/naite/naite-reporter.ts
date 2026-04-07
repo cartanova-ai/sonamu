@@ -8,14 +8,16 @@
  *
  * fs mock 충돌을 피하기 위해 net 모듈만 사용합니다.
  */
-/** biome-ignore-all lint/suspicious/noExplicitAny: Naite는 expect와 호응하도록 any를 허용함 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Naite는 expect와 호응하도록 any를 허용함
 
 import { createHash } from "crypto";
-import { connect, type Socket } from "net";
+import { connect } from "net";
+import { type Socket } from "net";
 import { homedir } from "os";
 import { join } from "path";
+
 import { findApiRootPath } from "../utils/utils";
-import type { NaiteMessagingTypes } from "./messaging-types";
+import { type NaiteMessagingTypes } from "./messaging-types";
 
 /**
  * sonamu.config.ts 경로를 받아서 프로젝트별 고유 해시를 생성합니다.

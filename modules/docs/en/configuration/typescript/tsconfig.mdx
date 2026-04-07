@@ -1,6 +1,6 @@
 ---
-title: 'tsconfig.json'
-description: 'Configuring TypeScript'
+title: "tsconfig.json"
+description: "Configuring TypeScript"
 ---
 
 Sonamu projects are written in TypeScript, with API and Web each having independent `tsconfig.json` files. They use configurations optimized for their respective environments.
@@ -8,19 +8,12 @@ Sonamu projects are written in TypeScript, with API and Web each having independ
 ## Project Structure
 
 <FileTree>
-- my-project/
-  - api/
-    - tsconfig.json          # API server configuration
-    - tsconfig.schemas.json  # Schema generation
-    - tsconfig.types.json    # Type generation
-  - web/
-    - tsconfig.json          # React app configuration
-    - tsconfig.node.json     # Vite configuration
+  - my-project/ - api/ - tsconfig.json # API server configuration - tsconfig.schemas.json # Schema
+  generation - tsconfig.types.json # Type generation - web/ - tsconfig.json # React app
+  configuration - tsconfig.node.json # Vite configuration
 </FileTree>
 
-<Info>
-API and Web are independent TypeScript projects. Their configurations are separate.
-</Info>
+<Info>API and Web are independent TypeScript projects. Their configurations are separate.</Info>
 
 ## API Server Configuration
 
@@ -100,6 +93,7 @@ API and Web are independent TypeScript projects. Their configurations are separa
     <Warning>
     Using `moduleResolution: "node"` may conflict with Vite.
     </Warning>
+
   </Tab>
 
   <Tab title="Decorators" icon="sparkles">
@@ -144,6 +138,7 @@ API and Web are independent TypeScript projects. Their configurations are separa
     <Info>
     Entities are defined in `entity.json` files and do not use TypeScript decorators. See [Defining Entities](/en/core-concepts/entity/defining-entities) for details.
     </Info>
+
   </Tab>
 
   <Tab title="Strict Mode" icon="shield-check">
@@ -166,6 +161,7 @@ API and Web are independent TypeScript projects. Their configurations are separa
     - Improve code quality
 
     See [Type Checking](/en/configuration/typescript/type-checking) for details.
+
   </Tab>
 
   <Tab title="Additional Checks" icon="list-check">
@@ -185,6 +181,7 @@ API and Web are independent TypeScript projects. Their configurations are separa
     - `noUnusedParameters`: Warn about unused parameters
     - `noImplicitReturns`: Require return in all paths
     - `noUncheckedIndexedAccess`: Check for undefined when accessing arrays/objects
+
   </Tab>
 </Tabs>
 
@@ -201,16 +198,19 @@ Sonamu API uses additional tsconfig files for code generation.
   }
   ```
 
-  **Purpose:**
-  - Generate `sonamu.generated.ts` file
-  - Generate Entity schema types
-  - Convert DB schema → TypeScript types
+**Purpose:**
 
-  **When Used:**
-  ```bash
-  # Automatically used by Sonamu
-  pnpm sonamu entity:load
-  ```
+- Generate `sonamu.generated.ts` file
+- Generate Entity schema types
+- Convert DB schema → TypeScript types
+
+**When Used:**
+
+```bash
+# Automatically used by Sonamu
+pnpm sonamu entity:load
+```
+
 </Accordion>
 
 <Accordion title="tsconfig.types.json - Type Generation" icon="code">
@@ -222,16 +222,19 @@ Sonamu API uses additional tsconfig files for code generation.
   }
   ```
 
-  **Purpose:**
-  - Generate API response types
-  - Define Request/Response types
-  - Share types with frontend
+**Purpose:**
 
-  **When Used:**
-  ```bash
-  # Sync types to Web
-  pnpm sonamu sync:types
-  ```
+- Generate API response types
+- Define Request/Response types
+- Share types with frontend
+
+**When Used:**
+
+```bash
+# Sync types to Web
+pnpm sonamu sync:types
+```
+
 </Accordion>
 
 ## Web (React) Configuration
@@ -266,16 +269,17 @@ Sonamu API uses additional tsconfig files for code generation.
 
 ### Differences from API
 
-| Option | API | Web | Reason |
-|------|-----|-----|------|
-| `moduleResolution` | `bundler` | `Bundler` | Vite uses bundler mode |
-| `jsx` | - | `react-jsx` | React 17+ JSX Transform |
-| `noEmit` | `false` | `true` | Vite handles build |
-| `isolatedModules` | - | `true` | Required by Vite's esbuild |
-| `paths` | - | `@/*` | Absolute path imports |
+| Option             | API       | Web         | Reason                     |
+| ------------------ | --------- | ----------- | -------------------------- |
+| `moduleResolution` | `bundler` | `Bundler`   | Vite uses bundler mode     |
+| `jsx`              | -         | `react-jsx` | React 17+ JSX Transform    |
+| `noEmit`           | `false`   | `true`      | Vite handles build         |
+| `isolatedModules`  | -         | `true`      | Required by Vite's esbuild |
+| `paths`            | -         | `@/*`       | Absolute path imports      |
 
 <Info>
-API uses `moduleResolution: "bundler"` (lowercase), Web uses `moduleResolution: "Bundler"` (uppercase). Both make Vite resolve modules in bundler mode.
+  API uses `moduleResolution: "bundler"` (lowercase), Web uses `moduleResolution: "Bundler"`
+  (uppercase). Both make Vite resolve modules in bundler mode.
 </Info>
 
 ### Path Mapping
@@ -313,6 +317,7 @@ See [Path Mapping](/en/configuration/typescript/path-mappings) for details.
     # Watch mode
     pnpm tsc --noEmit --watch
     ```
+
   </Tab>
 
   <Tab title="Web" icon="browser">
@@ -325,6 +330,7 @@ See [Path Mapping](/en/configuration/typescript/path-mappings) for details.
     # Watch mode
     pnpm tsc --noEmit --watch
     ```
+
   </Tab>
 
   <Tab title="All" icon="folder">
@@ -334,12 +340,11 @@ See [Path Mapping](/en/configuration/typescript/path-mappings) for details.
 
     # Check API and Web simultaneously
     ```
+
   </Tab>
 </Tabs>
 
-<Tip>
-During development, `--watch` mode is recommended for real-time type checking.
-</Tip>
+<Tip>During development, `--watch` mode is recommended for real-time type checking.</Tip>
 
 ## Common Troubleshooting
 
@@ -349,18 +354,21 @@ During development, `--watch` mode is recommended for real-time type checking.
   Cannot find module 'sonamu' or its corresponding type declarations.
   ```
 
-  **Cause:**
-  - `node_modules` not installed
-  - Incorrect import path
+**Cause:**
 
-  **Solution:**
-  ```bash
-  # Reinstall dependencies
-  pnpm install
+- `node_modules` not installed
+- Incorrect import path
 
-  # Check type definitions
-  ls node_modules/sonamu/dist/*.d.ts
-  ```
+**Solution:**
+
+```bash
+# Reinstall dependencies
+pnpm install
+
+# Check type definitions
+ls node_modules/sonamu/dist/*.d.ts
+```
+
 </Accordion>
 
 <Accordion title="Decorator Error" icon="sparkles">
@@ -369,18 +377,21 @@ During development, `--watch` mode is recommended for real-time type checking.
   Experimental support for decorators is a feature that is subject to change
   ```
 
-  **Cause:**
-  - `experimentalDecorators` is disabled
+**Cause:**
 
-  **Solution:**
-  ```json
-  {
-    "compilerOptions": {
-      "experimentalDecorators": true,
-      "emitDecoratorMetadata": true
-    }
+- `experimentalDecorators` is disabled
+
+**Solution:**
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   }
-  ```
+}
+```
+
 </Accordion>
 
 <Accordion title="JSX Error (Web)" icon="react">
@@ -389,19 +400,22 @@ During development, `--watch` mode is recommended for real-time type checking.
   Cannot use JSX unless the '--jsx' flag is provided.
   ```
 
-  **Cause:**
-  - `jsx` option not configured
+**Cause:**
 
-  **Solution:**
-  ```json
-  {
-    "compilerOptions": {
-      "jsx": "react-jsx"
-    }
+- `jsx` option not configured
+
+**Solution:**
+
+```json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx"
   }
-  ```
+}
+```
 
-  **Required for React 17+**
+**Required for React 17+**
+
 </Accordion>
 
 <Accordion title="Path Mapping Not Working" icon="route">
@@ -410,34 +424,38 @@ During development, `--watch` mode is recommended for real-time type checking.
   Cannot find module '@/components/Button'
   ```
 
-  **Cause:**
-  - `paths` configuration missing
-  - `baseUrl` configuration needed
+**Cause:**
 
-  **Solution:**
-  ```json
-  {
-    "compilerOptions": {
-      "baseUrl": ".",
-      "paths": {
-        "@/*": ["./src/*"]
-      }
+- `paths` configuration missing
+- `baseUrl` configuration needed
+
+**Solution:**
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
     }
   }
-  ```
+}
+```
 
-  **Vite configuration also needed:**
-  ```typescript title="vite.config.ts"
-  import path from "path";
+**Vite configuration also needed:**
 
-  export default {
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
+```typescript title="vite.config.ts"
+import path from "path";
+
+export default {
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
     },
-  };
-  ```
+  },
+};
+```
+
 </Accordion>
 
 ## Customization
@@ -464,26 +482,14 @@ During development, `--watch` mode is recommended for real-time type checking.
 }
 ```
 
-<Warning>
-These options may cause compatibility issues with existing code.
-</Warning>
+<Warning>These options may cause compatibility issues with existing code.</Warning>
 
 ### include/exclude Patterns
 
 ```json
 {
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "src/**/*.json"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "**/__mocks__/**"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "**/__mocks__/**"]
 }
 ```
 
@@ -498,21 +504,13 @@ These options may cause compatibility issues with existing code.
     Learn about Strict mode and type check options
   </Card>
 
-  <Card
-    title="Path Mapping"
-    icon="route"
-    href="/en/configuration/typescript/path-mappings"
-  >
-    Configure absolute path imports
-  </Card>
+<Card title="Path Mapping" icon="route" href="/en/configuration/typescript/path-mappings">
+  Configure absolute path imports
+</Card>
 
-  <Card
-    title="Defining Entities"
-    icon="database"
-    href="/en/core-concepts/entity/defining-entities"
-  >
-    Define Entities
-  </Card>
+<Card title="Defining Entities" icon="database" href="/en/core-concepts/entity/defining-entities">
+  Define Entities
+</Card>
 
   <Card
     title="API Types"

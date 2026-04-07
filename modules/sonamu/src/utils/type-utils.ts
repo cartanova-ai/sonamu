@@ -31,7 +31,7 @@ export function withProp<T extends object, P extends string, V>(
   if (keys.length === 0) throw new Error("Path cannot be empty");
   const result = structuredClone(obj);
 
-  // biome-ignore lint/suspicious/noExplicitAny: 범용 배열 요소 타입
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 범용 배열 요소 타입
   const setDeep = (current: any, keys: string[], value: V): void => {
     if (keys.length === 0) return;
     const [key, ...rest] = keys;
@@ -49,7 +49,7 @@ export function withProp<T extends object, P extends string, V>(
         current[key] = {};
       }
       if (Array.isArray(current[key])) {
-        // biome-ignore lint/suspicious/noExplicitAny: 범용 배열 요소 타입
+        // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 범용 배열 요소 타입
         current[key].forEach((item: any) => {
           setDeep(item, rest, value);
         });
@@ -78,7 +78,7 @@ export function withProps<T extends object>(obj: T): ChainWrapper<T> {
   return {
     set: <P extends string, V>(path: P, value: V) => {
       const nextObj = withProp(obj, path, value);
-      return withProps(nextObj) as ChainWrapper<SetPath<T, P, V>>;
+      return withProps(nextObj);
     },
     value: () => obj,
   };

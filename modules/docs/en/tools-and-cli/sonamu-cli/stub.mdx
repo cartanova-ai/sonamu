@@ -16,6 +16,7 @@ pnpm stub practice <name>
 ```
 
 **Example**:
+
 ```bash
 pnpm stub practice test-api
 
@@ -26,6 +27,7 @@ pnpm stub practice test-api
 ```
 
 **Generated file**:
+
 ```typescript title="src/practices/p1-test-api.ts"
 import { Sonamu } from "sonamu";
 
@@ -38,6 +40,7 @@ Sonamu.runScript(async () => {
 ```
 
 **Run**:
+
 ```bash
 # Paste from clipboard (Cmd+V)
 pnpm node -r dotenv/config --enable-source-maps dist/practices/p1-test-api.js
@@ -53,13 +56,14 @@ pnpm stub entity <entityId> [options]
 
 **Options**:
 
-| Option | Description | Example |
-|--------|-------------|---------|
-| (none) | Generate Entity with template cones (default behavior) | `pnpm stub entity Product` |
-| `--ai` | Generate Entity with LLM-powered cones (`ANTHROPIC_API_KEY` required) | `pnpm stub entity Product --ai` |
-| `--no-cones` | Generate Entity only, skip cone generation | `pnpm stub entity Product --no-cones` |
+| Option       | Description                                                           | Example                               |
+| ------------ | --------------------------------------------------------------------- | ------------------------------------- |
+| (none)       | Generate Entity with template cones (default behavior)                | `pnpm stub entity Product`            |
+| `--ai`       | Generate Entity with LLM-powered cones (`ANTHROPIC_API_KEY` required) | `pnpm stub entity Product --ai`       |
+| `--no-cones` | Generate Entity only, skip cone generation                            | `pnpm stub entity Product --no-cones` |
 
 **Examples**:
+
 ```bash
 # Default: Generate Entity with template cones
 pnpm stub entity Product
@@ -78,10 +82,12 @@ pnpm stub entity Product --no-cones
 ```
 
 <Note>
-Template cones can be generated without `ANTHROPIC_API_KEY`. You can later upgrade them using the `cone gen` command with AI.
+  Template cones can be generated without `ANTHROPIC_API_KEY`. You can later upgrade them using the
+  `cone gen` command with AI.
 </Note>
 
 **Generated file**:
+
 ```typescript title="src/entities/Product.entity.ts"
 import type { EntityType } from "sonamu";
 
@@ -113,13 +119,13 @@ export const ProductEntity = {
 
 Practice scripts are useful for these tasks:
 
-| Purpose | Description | Example |
-|---------|-------------|---------|
-| API Testing | Test external API calls | `p1-test-payment-api.ts` |
-| Data Migration | One-time data transformation | `p2-migrate-user-data.ts` |
-| Debugging | Validate specific logic | `p3-debug-cache-issue.ts` |
-| Data Generation | Create test data | `p4-create-sample-posts.ts` |
-| Analysis | Check data statistics | `p5-analyze-user-activity.ts` |
+| Purpose         | Description                  | Example                       |
+| --------------- | ---------------------------- | ----------------------------- |
+| API Testing     | Test external API calls      | `p1-test-payment-api.ts`      |
+| Data Migration  | One-time data transformation | `p2-migrate-user-data.ts`     |
+| Debugging       | Validate specific logic      | `p3-debug-cache-issue.ts`     |
+| Data Generation | Create test data             | `p4-create-sample-posts.ts`   |
+| Analysis        | Check data statistics        | `p5-analyze-user-activity.ts` |
 
 ### Automatic Numbering
 
@@ -255,14 +261,9 @@ export const ProductEntity = {
     { name: "updated_at", type: "datetime", onUpdate: "CURRENT_TIMESTAMP" },
   ],
 
-  indexes: [
-    { fields: ["category_id"] },
-    { fields: ["title"], type: "fulltext" },
-  ],
+  indexes: [{ fields: ["category_id"] }, { fields: ["title"], type: "fulltext" }],
 
-  belongsTo: [
-    { entityId: "Category", as: "category" },
-  ],
+  belongsTo: [{ entityId: "Category", as: "category" }],
 } satisfies EntityType;
 ```
 
@@ -335,7 +336,7 @@ Sonamu.runScript(async () => {
     await riskyOperation();
   } catch (error) {
     console.error("Error occurred:", error);
-    process.exit(1);  // Exit on failure
+    process.exit(1); // Exit on failure
   }
 });
 ```
@@ -376,7 +377,7 @@ mv src/practices/p1-*.ts src/practices/archived/
 2. **Backup**: Always backup before important data operations.
 3. **Transactions**: Use transactions when modifying data.
 4. **Testing**: Test in development environment before production run.
-</Warning>
+   </Warning>
 
 ## Next Steps
 

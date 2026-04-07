@@ -27,19 +27,14 @@
   "lastModified": "2026-03-09",
   "status": "implementing",
   "sources": [],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "AuditLogModel": "감사 로그 단건 상세 조회(findById)를 담당한다"
   },
   "interfaces": {
     "AuditLogModel.findById()": "감사 로그 단건 상세 조회 (old_value, new_value JSON 포함)"
   },
-  "dataFlow": [
-    "1. id로 audit_logs 조회",
-    "2. 존재하지 않으면 NotFoundException"
-  ],
+  "dataFlow": ["1. id로 audit_logs 조회", "2. 존재하지 않으면 NotFoundException"],
   "errorHandling": {
     "NotFoundException": "존재하지 않는 감사 로그 ID 조회"
   },

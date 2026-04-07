@@ -479,7 +479,7 @@ export const UserSaveParams = z
     {
       message: "새 사용자는 비밀번호가 필요합니다",
       path: ["password"],
-    }
+    },
   );
 ```
 
@@ -527,7 +527,7 @@ const payment = z
     {
       message: "할인 금액은 결제 금액보다 클 수 없습니다",
       path: ["discount"],
-    }
+    },
   );
 ```
 
@@ -558,14 +558,10 @@ function UserForm() {
   return (
     <form onSubmit={onSubmit}>
       <input {...form.register("email")} />
-      {form.formState.errors.email && (
-        <span>{form.formState.errors.email.message}</span>
-      )}
+      {form.formState.errors.email && <span>{form.formState.errors.email.message}</span>}
 
       <input {...form.register("username")} />
-      {form.formState.errors.username && (
-        <span>{form.formState.errors.username.message}</span>
-      )}
+      {form.formState.errors.username && <span>{form.formState.errors.username.message}</span>}
 
       <button type="submit">저장</button>
     </form>
@@ -710,18 +706,10 @@ const profileOnly = user.pick({ profile: true });
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card
-    title="E2E Type Safety"
-    icon="link"
-    href="/ko/core-concepts/type-system/e2e-type-safety"
-  >
+  <Card title="E2E Type Safety" icon="link" href="/ko/core-concepts/type-system/e2e-type-safety">
     엔드투엔드 타입 안전성
   </Card>
-  <Card
-    title="Entity Types"
-    icon="database"
-    href="/ko/core-concepts/type-system/entity-types"
-  >
+  <Card title="Entity Types" icon="database" href="/ko/core-concepts/type-system/entity-types">
     Entity 타입 변환
   </Card>
   <Card
@@ -731,11 +719,7 @@ const profileOnly = user.pick({ profile: true });
   >
     생성 타입 활용
   </Card>
-  <Card
-    title="Model Testing"
-    icon="flask"
-    href="/ko/testing/model-testing/unit-tests"
-  >
+  <Card title="Model Testing" icon="flask" href="/ko/testing/model-testing/unit-tests">
     Zod 검증 테스트하기
   </Card>
 </CardGroup>

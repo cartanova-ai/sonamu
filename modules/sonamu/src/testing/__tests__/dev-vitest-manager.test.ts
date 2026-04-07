@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // vitest/node 모킹 - createVitest가 mock Vitest 인스턴스를 반환하도록 설정
 const mockVitest = {
+  standalone: vi.fn().mockResolvedValue(undefined),
   onFilterWatchedSpecification: vi.fn(),
   setGlobalTestNamePattern: vi.fn(),
   resetGlobalTestNamePattern: vi.fn(),

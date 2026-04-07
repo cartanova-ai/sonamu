@@ -1,6 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 import dotenv from "dotenv";
 import path from "path";
 import Icons from "unplugin-icons/vite";
@@ -39,13 +39,14 @@ export default defineConfig(({ command, isSsrBuild }) => ({
   build: {
     outDir: "dist/client",
     emptyOutDir: true,
-    rollupOptions: {
+    rolldownOptions: {
       output: isSsrBuild
         ? {}
         : {
-            manualChunks: {
-              "vendor-react": ["react", "react-dom"],
-              "vendor-tanstack": ["@tanstack/react-query", "@tanstack/react-router"],
+            manualChunks: (id) => {
+              if (id.includes("react-dom") || id.includes("react/")) return "vendor-react";
+              if (id.includes("@tanstack/react-query") || id.includes("@tanstack/react-router"))
+                return "vendor-tanstack";
             },
           },
     },

@@ -8,61 +8,61 @@
           "inlayHints": {
             "parameterNames": {
               "enabled": "all",
-              "suppressWhenArgumentMatchesName": false,
+              "suppressWhenArgumentMatchesName": false
             },
             "parameterTypes": {
-              "enabled": true,
+              "enabled": true
             },
             "variableTypes": {
               "enabled": true,
-              "suppressWhenTypeMatchesName": true,
+              "suppressWhenTypeMatchesName": true
             },
             "propertyDeclarationTypes": {
-              "enabled": true,
+              "enabled": true
             },
             "functionLikeReturnTypes": {
-              "enabled": true,
+              "enabled": true
             },
             "enumMemberValues": {
-              "enabled": true,
-            },
-          },
+              "enabled": true
+            }
+          }
         },
         "javascript": {
           "tsserver": { "maxTsServerMemory": 16184 },
           "inlayHints": {
             "parameterNames": {
               "enabled": "all",
-              "suppressWhenArgumentMatchesName": false,
+              "suppressWhenArgumentMatchesName": false
             },
             "parameterTypes": {
-              "enabled": true,
+              "enabled": true
             },
             "variableTypes": {
               "enabled": true,
-              "suppressWhenTypeMatchesName": true,
+              "suppressWhenTypeMatchesName": true
             },
             "propertyDeclarationTypes": {
-              "enabled": true,
+              "enabled": true
             },
             "functionLikeReturnTypes": {
-              "enabled": true,
+              "enabled": true
             },
             "enumMemberValues": {
-              "enabled": true,
-            },
-          },
+              "enabled": true
+            }
+          }
         },
         "vtsls": {
           "experimental": {
             "maxInlayHintLength": 25
           }
         }
-      },
+      }
     },
     "tailwindcss-language-server": {
-      "settings": {},
-    },
+      "settings": {}
+    }
   },
   "file_scan_exclusions": [
     ".git/",
@@ -76,62 +76,59 @@
     "**/.DS_Store",
     "**/Thumbs.db",
     "**/.classpath",
-    "**/.setting",
+    "**/.setting"
   ],
   "read_only_files": ["examples/**/web/src/services/**/*"],
   "languages": {
     "JavaScript": {
       "format_on_save": "on",
       "code_actions_on_format": {
-        "source.organizeImports.biome": true,
-        "source.fixAll.biome": true,
+        "source.organizeImports.oxc": true,
+        "source.fixAll.oxc": true
       },
       "prettier": { "allowed": false },
       "formatter": {
         "language_server": {
-          "name": "biome",
-        },
+          "name": "oxc"
+        }
       },
-      "language_servers": ["!typescript-language-server", "vtsls", "biome"],
+      "language_servers": ["!typescript-language-server", "vtsls", "oxc"]
     },
     "TypeScript": {
       "format_on_save": "on",
       "code_actions_on_format": {
-        "source.organizeImports.biome": true,
-        "source.fixAll.biome": true,
+        "source.organizeImports.oxc": true,
+        "source.fixAll.oxc": true
       },
       "prettier": { "allowed": false },
       "formatter": {
         "language_server": {
-          "name": "biome",
-        },
+          "name": "oxc"
+        }
       },
-      "language_servers": ["!typescript-language-server", "vtsls", "biome"],
+      "language_servers": ["!typescript-language-server", "vtsls", "oxc"]
     },
     "TSX": {
       "format_on_save": "on",
       "code_actions_on_format": {
-        "source.organizeImports.biome": true,
-        "source.fixAll.biome": true,
+        "source.organizeImports.oxc": true,
+        "source.fixAll.oxc": true
       },
       "prettier": { "allowed": false },
       "formatter": {
         "language_server": {
-          "name": "biome",
-        },
+          "name": "oxc"
+        }
       },
       "language_servers": [
         "!typescript-language-server",
         "vtsls",
-        "biome",
-        "tailwindcss-language-server",
-      ],
+        "oxc",
+        "tailwindcss-language-server"
+      ]
     },
     "CSS": {
-      "language_servers": [
-        "tailwindcss-intellisense-css",
-        "!vscode-css-language-server",
-      ],
-    },
-  },
+      "language_servers": ["tailwindcss-intellisense-css", "!vscode-css-language-server"]
+    }
+  }
 }

@@ -1,6 +1,7 @@
 import path from "path";
-import type { EntityNamesRecord } from "../entity/entity-manager";
-import type { TemplateKey, TemplateOptions } from "../types/types";
+
+import { type EntityNamesRecord } from "../entity/entity-manager";
+import { type TemplateKey, type TemplateOptions } from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
 
@@ -37,7 +38,7 @@ export abstract class Template {
     );
 
     for (const templateFile of templateFiles) {
-      // biome-ignore lint/suspicious/noExplicitAny: importMembers의 반환 타입을 명시적으로 지정할 수 없음
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- importMembers의 반환 타입을 명시적으로 지정할 수 없음
       const templates = await importMembers<any>(templateFile);
       if (
         templates.length === 1 &&

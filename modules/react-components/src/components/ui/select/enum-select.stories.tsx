@@ -1,5 +1,6 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
+import { type Meta, type StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+
 import { EnumSelect } from "./enum-select";
 
 const fruitEnum = { options: ["apple", "banana", "cherry", "grape"] as const };
@@ -26,7 +27,7 @@ type MetaArgs = typeof meta.args;
 
 export const Single: StoryObj<MetaArgs> = {
   render: function Render(args) {
-    const [value, setValue] = useState<string>("");
+    const [value, setValue] = useState("");
     return <EnumSelect {...args} value={value} onValueChange={(v) => setValue(v as string)} />;
   },
 };

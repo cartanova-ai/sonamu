@@ -1,16 +1,16 @@
 {
   "name": "@sonamu-kit/react-components",
   "version": "0.2.5",
-  "type": "module",
+  "license": "MIT",
   "author": "CartaNova <dev@cartanova.ai>",
   "repository": {
     "type": "git",
     "url": "https://github.com/cartanova-ai/sonamu.git"
   },
-  "license": "MIT",
   "files": [
     "dist"
   ],
+  "type": "module",
   "main": "./dist/react-components.es.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -43,7 +43,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint src",
+    "lint": "oxlint src",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
@@ -98,36 +98,36 @@
     "vaul": "catalog:",
     "zod": "catalog:"
   },
+  "devDependencies": {
+    "@iconify/json": "catalog:",
+    "@storybook/addon-a11y": "catalog:",
+    "@storybook/addon-docs": "catalog:",
+    "@storybook/react-vite": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
+    "@types/inflection": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "agentation": "catalog:",
+    "autoprefixer": "catalog:",
+    "better-auth": "catalog:",
+    "postcss": "catalog:",
+    "storybook": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "unplugin-icons": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vite-tsconfig-paths": "catalog:"
+  },
   "peerDependencies": {
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "better-auth": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
-  },
-  "devDependencies": {
-    "@iconify/json": "catalog:",
-    "@tailwindcss/vite": "catalog:",
-    "@tanstack/react-query": "catalog:",
-    "@tanstack/react-router": "catalog:",
-    "better-auth": "catalog:",
-    "@types/inflection": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "catalog:",
-    "autoprefixer": "catalog:",
-    "postcss": "catalog:",
-    "tailwindcss": "catalog:",
-    "typescript": "catalog:",
-    "unplugin-icons": "catalog:",
-    "vite": "catalog:",
-    "vite-plugin-dts": "catalog:",
-    "vite-tsconfig-paths": "catalog:",
-    "@tanstack/router-plugin": "catalog:",
-    "@storybook/addon-a11y": "catalog:",
-    "@storybook/addon-docs": "catalog:",
-    "@storybook/react-vite": "catalog:",
-    "agentation": "catalog:",
-    "storybook": "catalog:"
   }
 }

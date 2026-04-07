@@ -4,16 +4,16 @@ import {
   BadRequestException,
   BaseModelClass,
   exhaustive,
-  type ListResult,
   NotFoundException,
   Sonamu,
-  type SonamuFile,
   upload,
 } from "sonamu";
+import { type ListResult, type SonamuFile } from "sonamu";
+
 import { SD } from "../../i18n/sd.generated";
-import type { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
+import { type FileSubsetKey, type FileSubsetMapping } from "../sonamu.generated";
 import { fileLoaderQueries, fileSubsetQueries } from "../sonamu.generated.sso";
-import type { FileListParams, FileSaveParams } from "./file.types";
+import { type FileListParams, type FileSaveParams } from "./file.types";
 
 /*
   File Model

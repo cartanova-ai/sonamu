@@ -12,21 +12,25 @@ description: "테이블 다중 선택 및 벌크 작업 관리"
     개별/전체 선택 관리
 
     Set 기반 효율적 상태
+
   </Card>
   <Card title="범위 선택" icon="hand-pointer">
     Shift+클릭 지원
 
     연속된 항목 한번에 선택
+
   </Card>
   <Card title="자동 검증" icon="shield-check">
     페이지 변경 시 자동 정리
 
     존재하는 항목만 유지
+
   </Card>
   <Card title="타입 안전" icon="code">
     제네릭 타입 지원
 
     any 타입 키 사용 가능
+
   </Card>
 </CardGroup>
 
@@ -39,24 +43,25 @@ import { useSelection } from "@sonamu-kit/react-components";
 
 export function UserListPage() {
   const { data } = UserService.useUsers("A", listParams);
-  const allIds = data?.rows.map(row => row.id) ?? [];
+  const allIds = data?.rows.map((row) => row.id) ?? [];
 
   // useSelection 초기화
   const {
-    selectedKeys,      // 선택된 키 배열
-    getSelected,       // 특정 키가 선택되었는지 확인
-    toggle,            // 개별 항목 선택/해제 토글
-    selectAll,         // 전체 선택
-    deselectAll,       // 전체 해제
-    isAllSelected,     // 전체 선택 여부
+    selectedKeys, // 선택된 키 배열
+    getSelected, // 특정 키가 선택되었는지 확인
+    toggle, // 개별 항목 선택/해제 토글
+    selectAll, // 전체 선택
+    deselectAll, // 전체 해제
+    isAllSelected, // 전체 선택 여부
     handleCheckboxClick, // Shift+클릭 범위 선택
-  } = useSelection(allIds, []);  // allIds: 전체 키, []: 초기 선택
+  } = useSelection(allIds, []); // allIds: 전체 키, []: 초기 선택
 
   // ...
 }
 ```
 
 **파라미터 설명**:
+
 - `allIds`: 현재 페이지의 모든 키 배열 (예: `[1, 2, 3, 4, 5]`)
 - `defaultSelectedKeys`: 초기 선택 상태 (선택 사항, 기본값: `[]`)
 
@@ -74,6 +79,7 @@ const { getSelected, toggle } = useSelection(allIds, []);
 ```
 
 **동작**:
+
 - `getSelected(key)`: 해당 키가 선택되었으면 `true`, 아니면 `false`
 - `toggle(key)`: 선택 상태를 반대로 변경
 
@@ -95,6 +101,7 @@ const { isAllSelected, selectAll, deselectAll } = useSelection(allIds, []);
 ```
 
 **동작**:
+
 - `isAllSelected`: 현재 페이지의 모든 항목이 선택되었는지
 - `selectAll()`: 현재 페이지의 모든 항목 선택
 - `deselectAll()`: 모든 선택 해제
@@ -118,6 +125,7 @@ const { handleCheckboxClick } = useSelection(allIds, []);
 ```
 
 **동작**:
+
 1. 일반 클릭: 개별 항목 선택/해제
 2. Shift+클릭: 마지막 선택 위치부터 현재 위치까지 모두 선택
 
@@ -131,6 +139,7 @@ const { handleCheckboxClick } = useSelection(allIds, []);
 1. A 클릭 → A 선택
 2. D에 Shift+클릭 → A, B, C, D 모두 선택
 ```
+
 </Info>
 
 ## 실전 예제
@@ -232,8 +241,8 @@ export function UserListPage() {
 ```typescript
 // 1페이지: rows = [1, 2, 3]
 const selection1 = useSelection([1, 2, 3], []);
-selection1.toggle(1);  // 1 선택
-selection1.toggle(2);  // 2 선택
+selection1.toggle(1); // 1 선택
+selection1.toggle(2); // 2 선택
 // selectedKeys = [1, 2]
 
 // 2페이지로 이동: rows = [4, 5, 6]
@@ -242,6 +251,7 @@ const selection2 = useSelection([4, 5, 6], []);
 ```
 
 **검증 로직**:
+
 ```typescript
 // useSelection 내부 (list-helpers.ts:84-91)
 useEffect(() => {
@@ -250,7 +260,7 @@ useEffect(() => {
 
   // 변경이 필요한 경우에만 상태 업데이트
   if (validKeys.length !== selectionKeys.length) {
-    setSelection(new Map(validKeys.map(key => [key, true])));
+    setSelection(new Map(validKeys.map((key) => [key, true])));
   }
 }, [allKeys, selection]);
 ```
@@ -259,6 +269,7 @@ useEffect(() => {
 **왜 자동 검증이 필요한가요?**
 
 페이지를 넘기거나 필터를 변경하면 `rows`가 바뀝니다. 이전 페이지에서 선택한 항목이 새 페이지에 없을 수 있으므로, 자동으로 유효하지 않은 선택을 제거합니다.
+
 </Info>
 
 ### 선택된 항목으로 작업
@@ -267,23 +278,21 @@ useEffect(() => {
 const { selectedKeys } = useSelection(allIds, []);
 
 // 선택된 항목의 정보 가져오기
-const selectedRows = rows?.filter(row => selectedKeys.includes(row.id)) ?? [];
+const selectedRows = rows?.filter((row) => selectedKeys.includes(row.id)) ?? [];
 
 // 벌크 수정
 const handleBulkUpdate = async () => {
   await UserService.save({
-    params: selectedRows.map(row => ({
+    params: selectedRows.map((row) => ({
       id: row.id,
       status: "active",
-    }))
+    })),
   });
 };
 
 // 벌크 내보내기
 const handleBulkExport = () => {
-  const csv = selectedRows.map(row =>
-    `${row.id},${row.username},${row.email}`
-  ).join("\n");
+  const csv = selectedRows.map((row) => `${row.id},${row.username},${row.email}`).join("\n");
 
   // CSV 다운로드
   const blob = new Blob([csv], { type: "text/csv" });
@@ -351,10 +360,10 @@ const handleToggle = (row: UserRow) => {
 // 내부 상태 (단순화)
 const [selection, setSelection] = useState<Map<number, boolean>>(
   new Map([
-    [1, true],   // ID 1 선택됨
-    [2, false],  // ID 2 선택 안 됨
-    [3, true],   // ID 3 선택됨
-  ])
+    [1, true], // ID 1 선택됨
+    [2, false], // ID 2 선택 안 됨
+    [3, true], // ID 3 선택됨
+  ]),
 );
 
 // selectedKeys 추출
@@ -365,6 +374,7 @@ const selectedKeys = Array.from(selection)
 ```
 
 **Map을 사용하는 이유**:
+
 - O(1) 시간 복잡도로 빠른 조회
 - 키의 타입 제약 없음 (number, string, object 모두 가능)
 - Set보다 확장성 높음 (추가 메타데이터 저장 가능)
@@ -376,13 +386,13 @@ const selectedKeys = Array.from(selection)
 ```typescript
 // number 타입
 const selection1 = useSelection<number>([1, 2, 3], []);
-selection1.toggle(1);  // ✅ OK
-selection1.toggle("1");  // ❌ 타입 에러
+selection1.toggle(1); // ✅ OK
+selection1.toggle("1"); // ❌ 타입 에러
 
 // string 타입
 const selection2 = useSelection<string>(["a", "b", "c"], []);
-selection2.toggle("a");  // ✅ OK
-selection2.toggle(1);  // ❌ 타입 에러
+selection2.toggle("a"); // ✅ OK
+selection2.toggle(1); // ❌ 타입 에러
 
 // 복잡한 객체 타입
 type UserKey = { id: number; email: string };
@@ -399,10 +409,10 @@ const selection3 = useSelection<UserKey>(keys, []);
 
 ```typescript
 // ❌ 잘못된 사용
-const { selectedKeys } = useSelection([], []);  // 빈 배열
+const { selectedKeys } = useSelection([], []); // 빈 배열
 
 // ✅ 올바른 사용
-const allIds = rows?.map(row => row.id) ?? [];
+const allIds = rows?.map((row) => row.id) ?? [];
 const { selectedKeys } = useSelection(allIds, []);
 ```
 
@@ -416,7 +426,7 @@ const [globalSelectedIds, setGlobalSelectedIds] = useState<Set<number>>(new Set(
 
 // 현재 페이지 선택과 동기화
 useEffect(() => {
-  const currentPageSelected = allIds.filter(id => globalSelectedIds.has(id));
+  const currentPageSelected = allIds.filter((id) => globalSelectedIds.has(id));
   // useSelection의 상태와 동기화
 }, [allIds, globalSelectedIds]);
 ```

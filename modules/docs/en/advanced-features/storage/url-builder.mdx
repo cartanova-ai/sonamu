@@ -12,12 +12,13 @@ A **URL builder** is a function that converts a file key to a URL.
 ```typescript
 {
   urlBuilder: {
-    generateURL: (key: string) => string
+    generateURL: (key: string) => string;
   }
 }
 ```
 
 **Example**:
+
 ```typescript
 key: 'uploads/avatar.png'
 → '/uploads/avatar.png'  (fs)
@@ -48,6 +49,7 @@ storage: {
 ```
 
 **Result**:
+
 ```typescript
 // key: 'avatars/user-1.png'
 // location: './uploads'
@@ -73,6 +75,7 @@ storage: {
 ```
 
 **Result**:
+
 ```typescript
 // key: 'avatars/user-1.png'
 // URL: https://files.example.com/uploads/avatars/user-1.png
@@ -93,28 +96,29 @@ export const config: SonamuConfig = {
     // Static file serving
     plugins: {
       static: {
-        root: path.join(process.cwd(), 'uploads'),
-        prefix: '/uploads/',
-      }
+        root: path.join(process.cwd(), "uploads"),
+        prefix: "/uploads/",
+      },
     },
 
     // Storage configuration
     storage: {
-      default: 'fs',
+      default: "fs",
       drivers: {
         fs: drivers.fs({
-          location: './uploads',
+          location: "./uploads",
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
-          }
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **Effect**:
+
 ```
 http://localhost:3000/uploads/avatars/user-1.png
 → Serves ./uploads/avatars/user-1.png file
@@ -141,6 +145,7 @@ storage: {
 ```
 
 **Result**:
+
 ```typescript
 // key: 'uploads/avatar.png'
 // URL: https://my-bucket.s3.ap-northeast-2.amazonaws.com/uploads/avatar.png
@@ -172,6 +177,7 @@ CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
 ```
 
 **Benefits**:
+
 - Fast transfer speed (edge locations)
 - Reduced bandwidth costs
 - Caching
@@ -196,6 +202,7 @@ storage: {
 ```
 
 **Configuration steps**:
+
 1. Create CloudFront distribution
 2. Origin: S3 bucket
 3. CNAME: cdn.example.com
@@ -226,6 +233,7 @@ storage: {
 ```
 
 **Result**:
+
 ```typescript
 // Development: http://localhost:3000/uploads/avatar.png
 // Production: https://cdn.example.com/avatar.png
@@ -270,6 +278,7 @@ storage: {
 ```
 
 **Result**:
+
 ```typescript
 // URL: /uploads/v1/avatars/user-1.png
 ```
@@ -297,11 +306,13 @@ async getPrivateFileUrl(key: string) {
 ```
 
 **Result**:
+
 ```
 https://bucket.s3.amazonaws.com/private/doc.pdf?X-Amz-Algorithm=...&X-Amz-Expires=3600
 ```
 
 **Use cases**:
+
 - Temporary sharing of private files
 - Secure downloads
 - Time-limited access
@@ -334,28 +345,27 @@ async uploadPrivateFile() {
 
 ```typescript
 const cdnDomain = process.env.CDN_DOMAIN;
-const version = process.env.ASSET_VERSION || 'v1';
+const version = process.env.ASSET_VERSION || "v1";
 
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 's3',
+      default: "s3",
       drivers: {
         s3: drivers.s3({
           credentials: {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
           },
-          region: 'ap-northeast-2',
-          bucket: 'my-bucket',
+          region: "ap-northeast-2",
+          bucket: "my-bucket",
           urlBuilder: {
-            generateURL: (key) =>
-              `https://${cdnDomain}/${version}/${key}`,
-          }
+            generateURL: (key) => `https://${cdnDomain}/${version}/${key}`,
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -365,6 +375,7 @@ ASSET_VERSION=v2
 ```
 
 **Result**:
+
 ```typescript
 // key: 'images/logo.png'
 // URL: https://d111111abcdef8.cloudfront.net/v2/images/logo.png
@@ -376,43 +387,46 @@ ASSET_VERSION=v2
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 's3',
+      default: "s3",
       drivers: {
         // CDN for images
         images: drivers.s3({
-          credentials: { /* ... */ },
-          region: 'ap-northeast-2',
-          bucket: 'images-bucket',
+          credentials: {
+            /* ... */
+          },
+          region: "ap-northeast-2",
+          bucket: "images-bucket",
           urlBuilder: {
-            generateURL: (key) =>
-              `https://images.cdn.example.com/${key}`,
-          }
+            generateURL: (key) => `https://images.cdn.example.com/${key}`,
+          },
         }),
 
         // CDN for videos
         videos: drivers.s3({
-          credentials: { /* ... */ },
-          region: 'ap-northeast-2',
-          bucket: 'videos-bucket',
+          credentials: {
+            /* ... */
+          },
+          region: "ap-northeast-2",
+          bucket: "videos-bucket",
           urlBuilder: {
-            generateURL: (key) =>
-              `https://videos.cdn.example.com/${key}`,
-          }
+            generateURL: (key) => `https://videos.cdn.example.com/${key}`,
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **Usage**:
+
 ```typescript
 // Images
-await file.saveToDisk('images', 'photo.jpg');
+await file.saveToDisk("images", "photo.jpg");
 // URL: https://images.cdn.example.com/photo.jpg
 
 // Videos
-await file.saveToDisk('videos', 'video.mp4');
+await file.saveToDisk("videos", "video.mp4");
 // URL: https://videos.cdn.example.com/video.mp4
 ```
 
@@ -445,6 +459,7 @@ storage: {
 ```
 
 **Result**:
+
 ```typescript
 // key: 'images/logo.png'
 // URL: https://cdn.example.com/images/logo.png?v=5d41402a
@@ -507,11 +522,12 @@ Sonamu Storage provides two types of URLs.
 **Regular public URL**
 
 ```typescript
-const url = await disk.getUrl('uploads/avatar.png');
+const url = await disk.getUrl("uploads/avatar.png");
 // => https://bucket.s3.amazonaws.com/uploads/avatar.png
 ```
 
 **Characteristics**:
+
 - Permanent
 - No expiration
 - For public files
@@ -521,23 +537,33 @@ const url = await disk.getUrl('uploads/avatar.png');
 **Signed temporary URL**
 
 ```typescript
-const signedUrl = await disk.getSignedUrl('private/doc.pdf', {
-  expiresIn: '1h'  // Expires in 1 hour
+const signedUrl = await disk.getSignedUrl("private/doc.pdf", {
+  expiresIn: "1h", // Expires in 1 hour
 });
 // => https://bucket.s3.amazonaws.com/private/doc.pdf?X-Amz-Algorithm=...
 ```
 
 **Characteristics**:
+
 - Temporary (with expiration time)
 - Protected by signature
 - For private files
 
 **Expiration time options**:
+
 ```typescript
-{ expiresIn: '1h' }    // 1 hour
-{ expiresIn: '30m' }   // 30 minutes
-{ expiresIn: '1d' }    // 1 day
-{ expiresIn: '7d' }    // 7 days
+{
+  expiresIn: "1h";
+} // 1 hour
+{
+  expiresIn: "30m";
+} // 30 minutes
+{
+  expiresIn: "1d";
+} // 1 day
+{
+  expiresIn: "7d";
+} // 7 days
 ```
 
 ## Cautions
@@ -546,22 +572,24 @@ const signedUrl = await disk.getSignedUrl('private/doc.pdf', {
 **Cautions when using URL builders**:
 
 1. **fs requires urlBuilder**: fs driver requires urlBuilder configuration
+
    ```typescript
    // ❌ No urlBuilder
    fs: drivers.fs({
-     location: './uploads',
-   })
+     location: "./uploads",
+   });
 
    // ✅ urlBuilder configured
    fs: drivers.fs({
-     location: './uploads',
+     location: "./uploads",
      urlBuilder: {
        generateURL: (key) => `/uploads/${key}`,
-     }
-   })
+     },
+   });
    ```
 
 2. **Static file serving**: static plugin required when using fs
+
    ```typescript
    plugins: {
      static: {
@@ -572,30 +600,31 @@ const signedUrl = await disk.getSignedUrl('private/doc.pdf', {
    ```
 
 3. **Use HTTPS**: Use HTTPS URLs in production
+
    ```typescript
    // ❌ HTTP
-   generateURL: (key) => `http://cdn.example.com/${key}`
+   generateURL: (key) => `http://cdn.example.com/${key}`;
 
    // ✅ HTTPS
-   generateURL: (key) => `https://cdn.example.com/${key}`
+   generateURL: (key) => `https://cdn.example.com/${key}`;
    ```
 
 4. **Path encoding**: Handle special characters
+
    ```typescript
    // ✅ Safe handling
    generateURL: (key) => {
      const encoded = encodeURIComponent(key);
      return `/uploads/${encoded}`;
-   }
+   };
    ```
 
 5. **Cache invalidation**: Consider CDN cache when changing URLs
    ```typescript
    // Add version parameter for cache invalidation
-   generateURL: (key) =>
-     `/uploads/${key}?v=${Date.now()}`
+   generateURL: (key) => `/uploads/${key}?v=${Date.now()}`;
    ```
-</Warning>
+   </Warning>
 
 ## CloudFront Configuration
 
@@ -616,6 +645,7 @@ How to use CloudFront with URL builders.
 ### 2. Check Domain
 
 After creating the distribution, check the Domain Name:
+
 ```
 d111111abcdef8.cloudfront.net
 ```
@@ -642,6 +672,7 @@ storage: {
 ### 4. Custom Domain (Optional)
 
 1. Create CNAME record in Route 53:
+
    ```
    cdn.example.com → d111111abcdef8.cloudfront.net
    ```
@@ -661,10 +692,18 @@ storage: {
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Storage Manager" icon="database" href="/en/advanced-features/storage/storage-manager">
+  <Card
+    title="Storage Manager"
+    icon="database"
+    href="/en/advanced-features/storage/storage-manager"
+  >
     Managing multiple disks
   </Card>
-  <Card title="Storage Drivers" icon="hard-drive" href="/en/advanced-features/storage/storage-drivers">
+  <Card
+    title="Storage Drivers"
+    icon="hard-drive"
+    href="/en/advanced-features/storage/storage-drivers"
+  >
     fs, S3 driver configuration
   </Card>
   <Card title="File Operations" icon="upload" href="/en/advanced-features/storage/file-operations">

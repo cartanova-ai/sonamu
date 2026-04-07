@@ -9,9 +9,7 @@ The Sonamu Extension integrates with the Naite test framework to provide various
 
 When typing `Naite.t("`, `Naite.del("`, `Naite.get("`, all Naite keys in the project are autocompleted.
 
-<Frame caption="Naite Key Autocomplete">
-  {/* Autocomplete action screen */}
-</Frame>
+<Frame caption="Naite Key Autocomplete">{/* Autocomplete action screen */}</Frame>
 
 ### How It Works
 
@@ -66,9 +64,7 @@ Cmd+Click behavior depends on VS Code settings and jumps to definition or refere
 
 Applies visual decoration to Naite key strings for easy identification in code.
 
-<Frame caption="Key Highlighting">
-  {/* Decorated Naite keys */}
-</Frame>
+<Frame caption="Key Highlighting">{/* Decorated Naite keys */}</Frame>
 
 ### Settings
 
@@ -94,7 +90,7 @@ Hover over a Naite key to display usage information for that key.
 After running tests, displays recorded values inline next to `Naite.t()` calls.
 
 ```typescript
-Naite.t("result", data);  // → { id: 1, name: "test" }
+Naite.t("result", data); // → { id: 1, name: "test" }
 ```
 
 <Frame caption="Inline Value Display">
@@ -143,12 +139,17 @@ Run `Sonamu: Open Naite Trace Viewer` from the Command Palette, or it opens auto
 Traces are displayed grouped by test suite and case.
 
 <Frame caption="Grouping by Test">
-  <img src="/images/vscode-extension11.png" alt="Grouping by Test" style={{ width: '70%', borderRadius: '8px' }} />
+  <img
+    src="/images/vscode-extension11.png"
+    alt="Grouping by Test"
+    style={{ width: "70%", borderRadius: "8px" }}
+  />
 </Frame>
 
 **Trace Information Display**
 
 Each trace includes the following information:
+
 - Key name
 - Recorded value (JSON format)
 - File path and line number
@@ -226,7 +227,11 @@ Search for Naite keys in Workspace Symbol Search.
 Displays warnings when `Naite.get()` or `Naite.del()` references a key that hasn't been defined with `Naite.t()`. Warnings can be viewed in the VS Code Problems panel (Cmd+Shift+M).
 
 <Frame caption="Undefined Key Warnings">
-  <img src="/images/vscode-extension15.png" alt="Undefined Key Warnings" style={{ width: '70%', borderRadius: '8px' }} />
+  <img
+    src="/images/vscode-extension15.png"
+    alt="Undefined Key Warnings"
+    style={{ width: "70%", borderRadius: "8px" }}
+  />
 </Frame>
 
 This feature is useful for quickly finding typos or missing keys.
@@ -236,7 +241,11 @@ This feature is useful for quickly finding typos or missing keys.
 The Extension adds a "Naite" View Container to the panel area.
 
 <Frame caption="Naite View Container">
-  <img src="/images/vscode-extension16.png" alt="Naite View Container" style={{ width: '70%', borderRadius: '8px' }} />
+  <img
+    src="/images/vscode-extension16.png"
+    alt="Naite View Container"
+    style={{ width: "70%", borderRadius: "8px" }}
+  />
 </Frame>
 
 You can quickly check Trace information from this panel.

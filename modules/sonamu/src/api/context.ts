@@ -1,18 +1,25 @@
-import type { Session, User } from "better-auth";
-import type { FastifyReply, FastifyRequest } from "fastify";
-import type { RouteGenericInterface } from "fastify/types/route";
-import type { IncomingHttpHeaders, IncomingMessage, Server, ServerResponse } from "http";
-import type { ZodObject } from "zod";
-import type { NaiteStore } from "../naite/naite";
-import type { BufferedFile } from "../storage/buffered-file";
-import type { UploadedFile } from "../storage/uploaded-file";
-import type { createSSEFactory } from "../stream/sse";
+import {
+  type IncomingHttpHeaders,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "http";
 
-// biome-ignore lint/suspicious/noEmptyInterface: Context 확장 타입
+import { type Session, type User } from "better-auth";
+import { type FastifyReply, type FastifyRequest } from "fastify";
+import { type RouteGenericInterface } from "fastify/types/route";
+import { type ZodObject } from "zod";
+
+import { type NaiteStore } from "../naite/naite";
+import { type BufferedFile } from "../storage/buffered-file";
+import { type UploadedFile } from "../storage/uploaded-file";
+import { type createSSEFactory } from "../stream/sse";
+
+// oxlint-disable-next-line @typescript-eslint/no-empty-interface -- Context 확장 타입
 export interface ContextExtend {}
 export type Context = {
   request: FastifyRequest;
-  reply: FastifyReply<Server, IncomingMessage, ServerResponse, RouteGenericInterface, unknown>;
+  reply: FastifyReply<Server, IncomingMessage, ServerResponse, RouteGenericInterface>;
   headers: IncomingHttpHeaders;
   createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>;
   naiteStore: NaiteStore;

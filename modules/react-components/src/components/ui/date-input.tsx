@@ -1,4 +1,4 @@
-import type { Override } from "../../lib/types";
+import { type Override } from "../../lib/types";
 import { Input } from "./input";
 
 type DateInputProps = Override<

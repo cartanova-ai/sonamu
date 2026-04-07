@@ -1,13 +1,15 @@
 import assert from "assert";
-import chalk from "chalk";
 import { mkdir, writeFile } from "fs/promises";
 import path, { dirname } from "path";
+
+import chalk from "chalk";
+
 import { Sonamu } from "../api/sonamu";
-import type { EntityNamesRecord } from "../entity/entity-manager";
+import { type EntityNamesRecord } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
 import { isTest } from "../utils/controller";
 import { copyFileWithReplaceCoreToShared, exists } from "../utils/fs-utils";
-import type { AbsolutePath } from "../utils/path-utils";
+import { type AbsolutePath } from "../utils/path-utils";
 import { generateTemplate } from "./code-generator";
 
 // web/.sonamu.env 에 현재 설정값 저장

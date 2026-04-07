@@ -11,24 +11,16 @@ Sonamu는 4가지 Relation 타입을 지원합니다:
 
 <CardGroup cols={2}>
   <Card title="BelongsToOne" icon="arrow-right">
-    N:1 관계 - 다수가 하나를 참조
-    
-    예: Post → User (여러 게시글이 한 사용자에게 속함)
+    N:1 관계 - 다수가 하나를 참조 예: Post → User (여러 게시글이 한 사용자에게 속함)
   </Card>
   <Card title="OneToOne" icon="arrows-left-right">
-    1:1 관계 - 서로 하나씩만 참조
-    
-    예: User ↔ Employee (사용자와 직원 정보가 1:1 매칭)
+    1:1 관계 - 서로 하나씩만 참조 예: User ↔ Employee (사용자와 직원 정보가 1:1 매칭)
   </Card>
   <Card title="HasMany" icon="arrow-right-arrow-left">
-    1:N 관계 - 하나가 여럿을 소유
-    
-    예: User → Posts (한 사용자가 여러 게시글 소유)
+    1:N 관계 - 하나가 여럿을 소유 예: User → Posts (한 사용자가 여러 게시글 소유)
   </Card>
   <Card title="ManyToMany" icon="arrows-split-up-and-left">
-    N:M 관계 - 다대다 관계
-    
-    예: Post ↔ Tag (게시글과 태그의 다대다 관계)
+    N:M 관계 - 다대다 관계 예: Post ↔ Tag (게시글과 태그의 다대다 관계)
   </Card>
 </CardGroup>
 
@@ -73,23 +65,23 @@ Sonamu는 4가지 Relation 타입을 지원합니다:
 
 ### 옵션
 
-| 옵션 | 타입 | 설명 | 기본값 |
-|------|------|------|--------|
-| `nullable` | boolean | NULL 허용 여부 | `false` |
-| `useConstraint` | boolean | Foreign Key 제약 조건 사용 | `true` |
-| `onUpdate` | RelationOn | 참조 레코드 수정 시 동작 | `RESTRICT` |
-| `onDelete` | RelationOn | 참조 레코드 삭제 시 동작 | `RESTRICT` |
-| `customJoinClause` | string | 커스텀 JOIN 조건 | - |
+| 옵션               | 타입       | 설명                       | 기본값     |
+| ------------------ | ---------- | -------------------------- | ---------- |
+| `nullable`         | boolean    | NULL 허용 여부             | `false`    |
+| `useConstraint`    | boolean    | Foreign Key 제약 조건 사용 | `true`     |
+| `onUpdate`         | RelationOn | 참조 레코드 수정 시 동작   | `RESTRICT` |
+| `onDelete`         | RelationOn | 참조 레코드 삭제 시 동작   | `RESTRICT` |
+| `customJoinClause` | string     | 커스텀 JOIN 조건           | -          |
 
 ### RelationOn 옵션
 
-| 값 | 설명 | 사용 예시 |
-|----|----|-----------|
-| `CASCADE` | 부모 변경 시 자식도 같이 변경/삭제 | 사용자 삭제 시 게시글도 삭제 |
-| `SET NULL` | 부모 삭제 시 자식의 FK를 NULL로 설정 | 부서 삭제 시 직원의 부서를 NULL로 |
-| `RESTRICT` | 자식이 있으면 부모 변경/삭제 불가 | 게시글이 있으면 사용자 삭제 불가 |
-| `NO ACTION` | RESTRICT와 유사, 체크 시점만 다름 | - |
-| `SET DEFAULT` | 부모 삭제 시 기본값으로 설정 | - |
+| 값            | 설명                                 | 사용 예시                         |
+| ------------- | ------------------------------------ | --------------------------------- |
+| `CASCADE`     | 부모 변경 시 자식도 같이 변경/삭제   | 사용자 삭제 시 게시글도 삭제      |
+| `SET NULL`    | 부모 삭제 시 자식의 FK를 NULL로 설정 | 부서 삭제 시 직원의 부서를 NULL로 |
+| `RESTRICT`    | 자식이 있으면 부모 변경/삭제 불가    | 게시글이 있으면 사용자 삭제 불가  |
+| `NO ACTION`   | RESTRICT와 유사, 체크 시점만 다름    | -                                 |
+| `SET DEFAULT` | 부모 삭제 시 기본값으로 설정         | -                                 |
 
 ### 예제: nullable과 CASCADE
 
@@ -106,6 +98,7 @@ Sonamu는 4가지 Relation 타입을 지원합니다:
 ```
 
 **동작**:
+
 - `department_id`가 `NULL` 허용
 - 부서가 삭제되면 직원의 `department_id`가 `NULL`로 설정됨
 
@@ -119,7 +112,8 @@ const posts = await this.puri()
   .many();
 
 // posts[0].user.username 접근 가능
-```
+
+````
 
 ```typescript title="타입 (자동 생성)"
 type PostSubsetA = {
@@ -130,7 +124,8 @@ type PostSubsetA = {
     username: string;
   };
 };
-```
+````
+
 </CodeGroup>
 
 ## OneToOne
@@ -197,14 +192,14 @@ OneToOne은 두 가지 방식으로 정의할 수 있습니다:
 
 ### 옵션
 
-| 옵션 | 타입 | 설명 | 기본값 |
-|------|------|------|--------|
-| `hasJoinColumn` | boolean | FK 컬럼 생성 여부 | *필수* |
-| `nullable` | boolean | NULL 허용 (hasJoinColumn: true 시) | `false` |
-| `useConstraint` | boolean | FK 제약 (hasJoinColumn: true 시) | `true` |
-| `onUpdate` | RelationOn | 수정 시 동작 (hasJoinColumn: true 시) | `RESTRICT` |
-| `onDelete` | RelationOn | 삭제 시 동작 (hasJoinColumn: true 시) | `RESTRICT` |
-| `customJoinClause` | string | 커스텀 JOIN 조건 | - |
+| 옵션               | 타입       | 설명                                  | 기본값     |
+| ------------------ | ---------- | ------------------------------------- | ---------- |
+| `hasJoinColumn`    | boolean    | FK 컬럼 생성 여부                     | _필수_     |
+| `nullable`         | boolean    | NULL 허용 (hasJoinColumn: true 시)    | `false`    |
+| `useConstraint`    | boolean    | FK 제약 (hasJoinColumn: true 시)      | `true`     |
+| `onUpdate`         | RelationOn | 수정 시 동작 (hasJoinColumn: true 시) | `RESTRICT` |
+| `onDelete`         | RelationOn | 삭제 시 동작 (hasJoinColumn: true 시) | `RESTRICT` |
+| `customJoinClause` | string     | 커스텀 JOIN 조건                      | -          |
 
 ### 예제: 양방향 OneToOne
 
@@ -230,9 +225,11 @@ OneToOne은 두 가지 방식으로 정의할 수 있습니다:
   "onDelete": "CASCADE"
 }
 ```
+
 </CodeGroup>
 
 **관계 설명**:
+
 - User는 Employee를 선택적으로 가질 수 있음 (nullable)
 - Employee는 반드시 User를 가져야 함 (not null)
 - User가 삭제되면 Employee도 함께 삭제됨 (CASCADE)
@@ -260,16 +257,17 @@ OneToOne은 두 가지 방식으로 정의할 수 있습니다:
 ```
 
 **조건**:
+
 - `Post` Entity에 `user_id` 컬럼이 있어야 함
 - 보통 `Post`에서 `BelongsToOne`으로 역방향 정의
 
 ### 옵션
 
-| 옵션 | 타입 | 설명 | 기본값 |
-|------|------|------|--------|
-| `joinColumn` | string | 상대 테이블의 FK 컬럼명 | *필수* |
-| `fromColumn` | string | 현재 테이블의 참조 컬럼명 | `id` |
-| `nullable` | boolean | 관계 자체의 nullable (옵션) | `false` |
+| 옵션         | 타입    | 설명                        | 기본값  |
+| ------------ | ------- | --------------------------- | ------- |
+| `joinColumn` | string  | 상대 테이블의 FK 컬럼명     | _필수_  |
+| `fromColumn` | string  | 현재 테이블의 참조 컬럼명   | `id`    |
+| `nullable`   | boolean | 관계 자체의 nullable (옵션) | `false` |
 
 ### 예제: fromColumn 사용
 
@@ -286,6 +284,7 @@ OneToOne은 두 가지 방식으로 정의할 수 있습니다:
 ```
 
 **JOIN 쿼리**:
+
 ```sql
 SELECT * FROM posts
 WHERE posts.parent_post_id = {user.id}
@@ -321,18 +320,15 @@ type UserSubsetA = {
 ```
 
 ```typescript title="쿼리"
-const users = await this.puri()
-  .select<UserSubsetA>("A")
-  .many();
+const users = await this.puri().select<UserSubsetA>("A").many();
 
 // users[0].posts는 배열
 console.log(users[0].posts.length);
 ```
+
 </CodeGroup>
 
-<Info>
-HasMany는 **DataLoader 패턴**으로 자동 최적화됩니다. N+1 쿼리 문제가 발생하지 않습니다.
-</Info>
+<Info>HasMany는 **DataLoader 패턴**으로 자동 최적화됩니다. N+1 쿼리 문제가 발생하지 않습니다.</Info>
 
 ## ManyToMany
 
@@ -371,17 +367,16 @@ CREATE TABLE posts__tags (
 
 ### 옵션
 
-| 옵션 | 타입 | 설명 | 기본값 |
-|------|------|------|--------|
-| `joinTable` | string | 중간 테이블명 (`{table1}\_\_${table2}`) | *필수* |
-| `onUpdate` | RelationOn | 참조 레코드 수정 시 동작 | *필수* |
-| `onDelete` | RelationOn | 참조 레코드 삭제 시 동작 | *필수* |
-| `nullable` | boolean | 관계 자체의 nullable (옵션) | `false` |
+| 옵션        | 타입       | 설명                                    | 기본값  |
+| ----------- | ---------- | --------------------------------------- | ------- |
+| `joinTable` | string     | 중간 테이블명 (`{table1}\_\_${table2}`) | _필수_  |
+| `onUpdate`  | RelationOn | 참조 레코드 수정 시 동작                | _필수_  |
+| `onDelete`  | RelationOn | 참조 레코드 삭제 시 동작                | _필수_  |
+| `nullable`  | boolean    | 관계 자체의 nullable (옵션)             | `false` |
 
 <Warning>
-**Join Table 네이밍 규칙**: 두 테이블명을 알파벳 순으로 정렬하여 `__`로 연결합니다.
-- 올바른 예: `posts__tags`
-- 잘못된 예: `tags__posts` (알파벳 순 아님)
+  **Join Table 네이밍 규칙**: 두 테이블명을 알파벳 순으로 정렬하여 `__`로 연결합니다. - 올바른 예:
+  `posts__tags` - 잘못된 예: `tags__posts` (알파벳 순 아님)
 </Warning>
 
 ### 양방향 정의
@@ -410,6 +405,7 @@ CREATE TABLE posts__tags (
   "onDelete": "CASCADE"
 }
 ```
+
 </CodeGroup>
 
 ### TypeScript 사용
@@ -440,15 +436,14 @@ type PostSubsetA = {
 ```
 
 ```typescript title="쿼리"
-const posts = await this.puri()
-  .select<PostSubsetA>("A")
-  .many();
+const posts = await this.puri().select<PostSubsetA>("A").many();
 
 // posts[0].tags는 배열
-posts[0].tags.forEach(tag => {
+posts[0].tags.forEach((tag) => {
   console.log(tag.name);
 });
 ```
+
 </CodeGroup>
 
 ## Custom Join Clause
@@ -467,9 +462,7 @@ posts[0].tags.forEach(tag => {
 }
 ```
 
-<Warning>
-`customJoinClause`는 고급 기능입니다. 가능하면 표준 Relation을 사용하세요.
-</Warning>
+<Warning>`customJoinClause`는 고급 기능입니다. 가능하면 표준 Relation을 사용하세요.</Warning>
 
 ## Relation 활용 패턴
 
@@ -478,18 +471,13 @@ posts[0].tags.forEach(tag => {
 ```json
 {
   "subsets": {
-    "A": [
-      "id",
-      "title",
-      "user.username",
-      "user.email",
-      "tags.name"
-    ]
+    "A": ["id", "title", "user.username", "user.email", "tags.name"]
   }
 }
 ```
 
 **자동 생성되는 쿼리**:
+
 - `user`: LEFT JOIN
 - `tags`: DataLoader로 별도 쿼리
 
@@ -498,18 +486,13 @@ posts[0].tags.forEach(tag => {
 ```json
 {
   "subsets": {
-    "A": [
-      "id",
-      "title",
-      "user.id",
-      "user.username",
-      "user.employee.department.name"
-    ]
+    "A": ["id", "title", "user.id", "user.username", "user.employee.department.name"]
   }
 }
 ```
 
 Sonamu가 자동으로 필요한 JOIN을 생성합니다:
+
 ```sql
 FROM posts
 LEFT JOIN users ON posts.user_id = users.id
@@ -535,41 +518,40 @@ const activePosts = await PostModel.puri()
   .where("status", "active")
   .many();
 ```
+
 </CodeGroup>
 
 ### 4. Relation 정렬
 
 ```typescript
-const posts = await this.puri()
-  .orderBy("user.username", "asc")
-  .many();
+const posts = await this.puri().orderBy("user.username", "asc").many();
 ```
 
 ## Relation 설계 가이드
 
 ### BelongsToOne vs OneToOne
 
-| 상황 | 권장 타입 | 이유 |
-|------|-----------|------|
+| 상황            | 권장 타입      | 이유                           |
+| --------------- | -------------- | ------------------------------ |
 | 게시글 → 작성자 | `BelongsToOne` | 여러 게시글이 한 사용자에 속함 |
-| 사용자 ↔ 프로필 | `OneToOne` | 1:1 매칭 관계 |
-| 주문 → 고객 | `BelongsToOne` | 여러 주문이 한 고객에 속함 |
+| 사용자 ↔ 프로필 | `OneToOne`     | 1:1 매칭 관계                  |
+| 주문 → 고객     | `BelongsToOne` | 여러 주문이 한 고객에 속함     |
 
 ### CASCADE vs RESTRICT
 
-| 상황 | 권장 동작 | 이유 |
-|------|-----------|------|
-| 사용자 삭제 → 게시글 | `CASCADE` | 함께 삭제 |
+| 상황                   | 권장 동작  | 이유                      |
+| ---------------------- | ---------- | ------------------------- |
+| 사용자 삭제 → 게시글   | `CASCADE`  | 함께 삭제                 |
 | 카테고리 삭제 → 게시글 | `RESTRICT` | 게시글이 있으면 삭제 불가 |
-| 부서 삭제 → 직원 | `SET NULL` | 직원은 유지, 부서만 NULL |
+| 부서 삭제 → 직원       | `SET NULL` | 직원은 유지, 부서만 NULL  |
 
 ### nullable 설정
 
-| 상황 | nullable | 이유 |
-|------|----------|------|
-| 필수 관계 | `false` | 항상 참조 필요 |
-| 선택 관계 | `true` | 없을 수도 있음 |
-| 임시 상태 | `true` | 나중에 설정 |
+| 상황      | nullable | 이유           |
+| --------- | -------- | -------------- |
+| 필수 관계 | `false`  | 항상 참조 필요 |
+| 선택 관계 | `true`   | 없을 수도 있음 |
+| 임시 상태 | `true`   | 나중에 설정    |
 
 ## 주의사항
 
@@ -577,18 +559,21 @@ const posts = await this.puri()
 **순환 참조 방지**
 
 A → B → C → A 같은 순환 참조는 피하세요. 데이터 생성 시 문제가 발생할 수 있습니다.
+
 </Warning>
 
 <Warning>
 **JOIN 깊이 제한**
 
 너무 깊은 중첩 Relation (3단계 이상)은 성능 문제를 일으킬 수 있습니다. 필요한 경우 별도 쿼리로 분리하세요.
+
 </Warning>
 
 <Tip>
 **ManyToMany Join Table**
 
 Join Table은 Sonamu가 자동으로 관리하므로 별도의 Entity를 만들 필요가 없습니다. 추가 컬럼이 필요한 경우에만 별도 Entity로 분리하세요.
+
 </Tip>
 
 ## 다음 단계

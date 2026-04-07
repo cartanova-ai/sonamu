@@ -9,24 +9,16 @@ Sonamu가 백엔드 API로부터 타입 안전한 클라이언트 Service를 자
 
 <CardGroup cols={2}>
   <Card title="타입 안전성" icon="shield-check">
-    백엔드와 동기화
-    
-    컴파일 타임 검증
+    백엔드와 동기화 컴파일 타임 검증
   </Card>
   <Card title="Namespace 기반" icon="cube">
-    정적 함수
-    
-    간결한 호출
+    정적 함수 간결한 호출
   </Card>
   <Card title="TanStack Query" icon="arrows-rotate">
-    React Hook 자동 생성
-    
-    캐싱과 재검증
+    React Hook 자동 생성 캐싱과 재검증
   </Card>
   <Card title="Subset 지원" icon="layer-group">
-    필요한 필드만
-    
-    성능 최적화
+    필요한 필드만 성능 최적화
   </Card>
 </CardGroup>
 
@@ -37,6 +29,7 @@ Sonamu가 백엔드 API로부터 타입 안전한 클라이언트 Service를 자
 전통적인 프론트엔드 개발에서는 백엔드 API를 호출하기 위해 **수동으로 클라이언트 코드**를 작성합니다.
 
 **수동 클라이언트 예시**:
+
 ```typescript
 // ❌ 수동 작성 - 문제가 많음
 async function getUser(userId: number) {
@@ -51,6 +44,7 @@ async function updateUser(userId: number, data: any) {
 ```
 
 **이 방식의 문제점**:
+
 1. **타입 안전성 부재**: `any` 타입 남발, 런타임 에러 발생
 2. **백엔드 변경 추적 불가**: API가 변경되어도 프론트엔드는 모름
 3. **중복 코드**: 모든 API마다 비슷한 코드 반복
@@ -62,23 +56,24 @@ async function updateUser(userId: number, data: any) {
 Sonamu는 백엔드의 `@api` 데코레이터를 분석하여 **타입 안전한 클라이언트를 자동 생성**합니다.
 
 **자동 생성 클라이언트 예시**:
+
 ```typescript
 // ✅ 자동 생성 - 타입 안전 (Namespace 기반)
 export namespace UserService {
   // Subset으로 필요한 필드만 조회
   export async function getUser<T extends UserSubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<UserSubsetMapping[T]> {
     return fetch({
       method: "GET",
       url: `/api/user/findById?${qs.stringify({ subset, id })}`,
     });
   }
-  
+
   export async function updateUser(
     id: number,
-    params: { username?: string; email?: string }
+    params: { username?: string; email?: string },
   ): Promise<User> {
     return fetch({
       method: "PUT",
@@ -90,6 +85,7 @@ export namespace UserService {
 ```
 
 **장점**:
+
 1. ✨ **완전한 타입 안전성**: 백엔드 타입이 프론트엔드에 그대로 반영
 2. ✨ **즉각적인 에러 발견**: 컴파일 타임에 API 변경 감지
 3. ✨ **자동 완성**: IDE가 API 파라미터와 응답 타입 자동 제안
@@ -97,7 +93,9 @@ export namespace UserService {
 5. ✨ **단일 진실 공급원**: 백엔드가 API 명세의 유일한 소스
 
 <Info>
-**단일 진실 공급원 (Single Source of Truth)**이란 시스템의 모든 정보가 하나의 소스에서 파생되는 원칙입니다. Sonamu에서는 백엔드의 `@api` 데코레이터가 유일한 API 명세이며, 프론트엔드는 이를 따라갑니다.
+  **단일 진실 공급원 (Single Source of Truth)**이란 시스템의 모든 정보가 하나의 소스에서 파생되는
+  원칙입니다. Sonamu에서는 백엔드의 `@api` 데코레이터가 유일한 API 명세이며, 프론트엔드는 이를
+  따라갑니다.
 </Info>
 
 ## Service 생성 과정
@@ -121,7 +119,7 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   /**
    * 사용자 프로필 조회
    */
@@ -135,22 +133,16 @@ class UserModelClass extends BaseModelClass<
     };
   }> {
     const rdb = this.getPuri("r");
-    const user = await rdb
-      .table("users")
-      .where("id", userId)
-      .first();
-    
+    const user = await rdb.table("users").where("id", userId).first();
+
     return { user };
   }
-  
+
   /**
    * 사용자 프로필 수정
    */
   @api({ httpMethod: "PUT", guards: ["user"] })
-  async updateProfile(params: {
-    username?: string;
-    bio?: string;
-  }): Promise<{
+  async updateProfile(params: { username?: string; bio?: string }): Promise<{
     user: {
       id: number;
       username: string;
@@ -169,32 +161,30 @@ class UserModelClass extends BaseModelClass<
 Sonamu는 TypeScript 컴파일러 API를 사용하여 코드를 분석합니다.
 
 **분석 과정**:
+
 ```typescript
 // Sonamu의 내부 동작 (의사 코드)
-const sourceFile = ts.createSourceFile(
-  "user.model.ts",
-  fileContent,
-  ts.ScriptTarget.Latest
-);
+const sourceFile = ts.createSourceFile("user.model.ts", fileContent, ts.ScriptTarget.Latest);
 
 // @api 데코레이터가 있는 메서드 찾기
 const apiMethods = findDecorators(sourceFile, "api");
 
 for (const method of apiMethods) {
   const apiInfo = {
-    name: method.name.text,                    // "getProfile"
+    name: method.name.text, // "getProfile"
     httpMethod: getDecoratorOption("httpMethod"), // "GET"
-    path: `/api/user/${method.name.text}`,    // "/api/user/getProfile"
-    parameters: extractParameters(method),     // [{ name: "userId", type: "number" }]
-    returnType: extractReturnType(method),     // Promise<{ user: User }>
+    path: `/api/user/${method.name.text}`, // "/api/user/getProfile"
+    parameters: extractParameters(method), // [{ name: "userId", type: "number" }]
+    returnType: extractReturnType(method), // Promise<{ user: User }>
   };
-  
+
   // Service 코드 생성
   generateServiceMethod(apiInfo);
 }
 ```
 
 **핵심 개념**:
+
 - **AST (Abstract Syntax Tree)**: 코드를 트리 구조로 표현한 것
 - **타입 추출**: TypeScript의 타입 시스템에서 정확한 타입 정보 획득
 - **메타데이터 수집**: 데코레이터 옵션, Guards, 주석 등 모든 정보 수집
@@ -204,6 +194,7 @@ for (const method of apiMethods) {
 수집된 정보를 바탕으로 **Namespace 기반 Service**를 생성합니다.
 
 **생성되는 코드 (services.generated.ts)**:
+
 ```typescript
 import qs from "qs";
 
@@ -212,27 +203,27 @@ export type UserSubsetKey = "A" | "B" | "C";
 
 // Subset 별 타입 매핑
 export type UserSubsetMapping = {
-  A: { id: number; email: string; username: string };           // 기본 필드
+  A: { id: number; email: string; username: string }; // 기본 필드
   B: { id: number; email: string; username: string; bio: string }; // + bio
   C: User; // 전체 필드 (createdAt, updatedAt 등 포함)
 };
 
 /**
  * User Service Namespace
- * 
+ *
  * 모든 User 관련 API 호출을 담당하는 namespace입니다.
  */
 export namespace UserService {
   /**
    * 사용자 조회 (Subset 지원)
-   * 
+   *
    * @param subset - 조회할 필드 범위 ("A" | "B" | "C")
    * @param id - 사용자 ID
    * @returns Subset에 따른 타입 안전한 사용자 정보
    */
   export async function getUser<T extends UserSubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<UserSubsetMapping[T]> {
     // qs.stringify로 쿼리 파라미터 직렬화
     return fetch({
@@ -240,17 +231,14 @@ export namespace UserService {
       url: `/api/user/findById?${qs.stringify({ subset, id })}`,
     });
   }
-  
+
   /**
    * 사용자 프로필 수정
-   * 
+   *
    * @param params - 수정할 필드
    * @returns 수정된 사용자 정보
    */
-  export async function updateProfile(params: {
-    username?: string;
-    bio?: string;
-  }): Promise<{
+  export async function updateProfile(params: { username?: string; bio?: string }): Promise<{
     user: {
       id: number;
       username: string;
@@ -267,6 +255,7 @@ export namespace UserService {
 ```
 
 **Namespace 구조의 장점**:
+
 - **간결함**: 클래스보다 간단 (new 불필요)
 - **정적 메서드**: 상태 관리 불필요
 - **Tree-shaking**: 사용하지 않는 함수는 번들에서 제외
@@ -282,30 +271,27 @@ import { useQuery, queryOptions } from "@tanstack/react-query";
 
 export namespace UserService {
   // ... 위의 함수들
-  
+
   /**
    * TanStack Query Options
-   * 
+   *
    * queryKey와 queryFn을 포함한 재사용 가능한 옵션입니다.
    */
-  export const getUserQueryOptions = <T extends UserSubsetKey>(
-    subset: T,
-    id: number
-  ) =>
+  export const getUserQueryOptions = <T extends UserSubsetKey>(subset: T, id: number) =>
     queryOptions({
       queryKey: ["User", "getUser", subset, id],
       queryFn: () => getUser(subset, id),
     });
-  
+
   /**
    * React Hook (TanStack Query)
-   * 
+   *
    * 자동 캐싱, 재검증, 로딩 상태를 제공하는 Hook입니다.
    */
   export const useUser = <T extends UserSubsetKey>(
     subset: T,
     id: number,
-    options?: { enabled?: boolean }
+    options?: { enabled?: boolean },
   ) =>
     useQuery({
       ...getUserQueryOptions(subset, id),
@@ -315,6 +301,7 @@ export namespace UserService {
 ```
 
 **TanStack Query 통합의 장점**:
+
 - 자동 캐싱
 - 자동 재검증
 - 로딩/에러 상태 자동 관리
@@ -334,7 +321,7 @@ import { z } from "zod";
 
 /**
  * 공통 fetch 함수
- * 
+ *
  * 모든 API 호출이 이 함수를 통해 이루어집니다.
  * Axios를 래핑하여 에러 처리와 응답 변환을 담당합니다.
  */
@@ -359,16 +346,16 @@ export async function fetch(options: AxiosRequestConfig) {
 
 /**
  * Sonamu 에러 클래스
- * 
+ *
  * HTTP 상태 코드와 Zod 유효성 검사 이슈를 포함합니다.
  */
 export class SonamuError extends Error {
   isSonamuError: boolean;
 
   constructor(
-    public code: number,        // HTTP 상태 코드 (401, 403, 422 등)
-    public message: string,     // 에러 메시지
-    public issues: z.ZodIssue[] // Zod 유효성 검사 이슈
+    public code: number, // HTTP 상태 코드 (401, 403, 422 등)
+    public message: string, // 에러 메시지
+    public issues: z.ZodIssue[], // Zod 유효성 검사 이슈
   ) {
     super(message);
     this.isSonamuError = true;
@@ -384,12 +371,14 @@ export function isSonamuError(e: any): e is SonamuError {
 ```
 
 **fetch 함수의 역할**:
+
 - **Axios 호출 래핑**: `options`를 Axios에 전달
 - **자동 응답 추출**: `res.data`를 바로 반환
 - **에러 변환**: Axios 에러 → `SonamuError`
 - **Zod 이슈 처리**: 유효성 검사 에러를 타입 안전하게 처리
 
 **AxiosRequestConfig 파라미터**:
+
 ```typescript
 {
   method: "GET" | "POST" | "PUT" | "DELETE",
@@ -413,26 +402,28 @@ Sonamu의 독특한 기능인 Subset 시스템입니다.
 export type UserSubsetKey = "A" | "B" | "C";
 
 export type UserSubsetMapping = {
-  A: { id: number; email: string; username: string },           // 기본 정보
-  B: { id: number; email: string; username: string; bio: string }, // + bio
-  C: User, // 전체 필드 (createdAt, updatedAt, deletedAt 등 포함)
+  A: { id: number; email: string; username: string }; // 기본 정보
+  B: { id: number; email: string; username: string; bio: string }; // + bio
+  C: User; // 전체 필드 (createdAt, updatedAt, deletedAt 등 포함)
 };
 
 // 사용 예시
-const basicUser = await UserService.getUser("A", 123);  
+const basicUser = await UserService.getUser("A", 123);
 // 타입: { id: number; email: string; username: string }
 
-const fullUser = await UserService.getUser("C", 123);   
+const fullUser = await UserService.getUser("C", 123);
 // 타입: User (전체 필드)
 ```
 
 **Subset의 장점**:
+
 1. **성능**: 필요한 필드만 조회하여 네트워크 비용 절감
 2. **타입 안전**: 각 Subset마다 정확한 타입 반환
 3. **명시성**: 어떤 데이터가 필요한지 코드에서 명확히 표현
 4. **데이터베이스 최적화**: SELECT 절에 필요한 컬럼만 포함
 
 **Subset 네이밍 규칙**:
+
 - **A**: 기본 필드 (id, 핵심 정보)
 - **B**: 중간 필드 (A + 추가 정보)
 - **C**: 전체 필드 (모든 컬럼, 타임스탬프 포함)
@@ -444,6 +435,7 @@ const fullUser = await UserService.getUser("C", 123);
 백엔드 API가 변경되면 **컴파일 타임에 즉시 에러**가 발생합니다.
 
 **백엔드 변경**:
+
 ```typescript
 // 백엔드에서 username -> displayName으로 변경
 @api({ httpMethod: "PUT" })
@@ -456,17 +448,18 @@ async updateProfile(params: {
 ```
 
 **프론트엔드 에러**:
+
 ```typescript
 // pnpm generate 후 자동으로 Service 타입 업데이트됨
 
 // ❌ 컴파일 에러 발생!
 await UserService.updateProfile({
-  username: "newname",  // Error: 'username' does not exist in type
+  username: "newname", // Error: 'username' does not exist in type
 });
 
 // ✅ 수정 후 정상 동작
 await UserService.updateProfile({
-  displayName: "newname",  // OK
+  displayName: "newname", // OK
 });
 ```
 
@@ -478,7 +471,7 @@ await UserService.updateProfile({
 
 ```typescript
 // 타입을 입력하면...
-UserService.up  // IDE가 "updateProfile" 자동 제안
+UserService.up; // IDE가 "updateProfile" 자동 제안
 
 // 파라미터를 입력하면...
 await UserService.updateProfile({
@@ -489,8 +482,8 @@ await UserService.updateProfile({
 
 // Subset도 자동 완성
 await UserService.getUser(
-  "A" // IDE가 "A" | "B" | "C" 제안
-  , 123
+  "A", // IDE가 "A" | "B" | "C" 제안
+  123,
 );
 ```
 
@@ -511,7 +504,7 @@ flowchart TD
     E -->|Yes| A
     E -->|No| F["개발 계속"]
     F --> E
-    
+
     style A fill:#e1f5ff
     style B fill:#fff4e1
     style C fill:#e8f5e8
@@ -519,6 +512,7 @@ flowchart TD
 ```
 
 **장점**:
+
 - 백엔드와 프론트엔드의 계약(Contract)이 명확
 - 타입 불일치로 인한 버그 원천 차단
 - API 문서 자동 생성 (Service가 곧 문서)
@@ -537,12 +531,9 @@ pnpm generate:watch
 ```
 
 <Warning>
-**주의사항**:
-- 생성된 Service 파일(`services.generated.ts`)은 **절대 수동 수정 금지**
-- 수정이 필요하면 백엔드에서 수정 후 재생성
-- 생성 파일을 `.gitignore`에 추가할지 팀에서 결정
-  - 추가하면: 각자 로컬에서 생성
-  - 추가 안하면: Git으로 공유 (빌드 시간 단축)
+  **주의사항**: - 생성된 Service 파일(`services.generated.ts`)은 **절대 수동 수정 금지** - 수정이
+  필요하면 백엔드에서 수정 후 재생성 - 생성 파일을 `.gitignore`에 추가할지 팀에서 결정 - 추가하면:
+  각자 로컬에서 생성 - 추가 안하면: Git으로 공유 (빌드 시간 단축)
 </Warning>
 
 ## 실제 사용 예시
@@ -576,11 +567,11 @@ import { UserService } from "@/services/services.generated";
 function UserProfile({ userId }: { userId: number }) {
   // 자동 생성된 Hook 사용
   const { data: user, isLoading, error } = UserService.useUser("A", userId);
-  
+
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
   if (!user) return <div>User not found</div>;
-  
+
   return (
     <div>
       <h1>{user.username}</h1>
@@ -595,13 +586,13 @@ function UserProfile({ userId }: { userId: number }) {
 ```typescript
 function UserProfile({ userId }: { userId: number | null }) {
   const { data: user } = UserService.useUser(
-    "A", 
+    "A",
     userId!, // TypeScript non-null assertion
     { enabled: userId !== null } // userId가 null이면 호출 안함
   );
-  
+
   if (!userId) return <div>Please select a user</div>;
-  
+
   return <div>{user?.username}</div>;
 }
 ```
@@ -616,17 +607,17 @@ GET 요청의 쿼리 파라미터를 직렬화할 때 `qs` 라이브러리를 �
 import qs from "qs";
 
 // 복잡한 객체도 쿼리 스트링으로 변환
-const queryString = qs.stringify({ 
-  subset: "A", 
+const queryString = qs.stringify({
+  subset: "A",
   id: 123,
-  filters: { status: "active" } 
+  filters: { status: "active" },
 });
 // "subset=A&id=123&filters[status]=active"
 
 // Service에서 사용
 export async function getUser<T extends UserSubsetKey>(
   subset: T,
-  id: number
+  id: number,
 ): Promise<UserSubsetMapping[T]> {
   return fetch({
     method: "GET",
@@ -636,6 +627,7 @@ export async function getUser<T extends UserSubsetKey>(
 ```
 
 **qs를 사용하는 이유**:
+
 - 중첩 객체 지원 (`filters[status]=active`)
 - 배열 직렬화 지원 (`ids[]=1&ids[]=2`)
 - 백엔드의 파싱 방식과 일치
@@ -658,7 +650,7 @@ try {
     console.log("Status:", error.code);
     console.log("Message:", error.message);
     console.log("Validation Issues:", error.issues);
-    
+
     // Zod 유효성 검사 에러 처리
     error.issues.forEach((issue) => {
       console.log(`${issue.path.join(".")}: ${issue.message}`);
@@ -678,15 +670,13 @@ import { useQueryClient } from "@tanstack/react-query";
 
 function SomeComponent() {
   const queryClient = useQueryClient();
-  
+
   async function handleUpdate() {
     // 수정 후 캐시 무효화
     await UserService.updateProfile({ username: "newname" });
-    
+
     // Query Options로 특정 쿼리 무효화
-    queryClient.invalidateQueries(
-      UserService.getUserQueryOptions("A", 123)
-    );
+    queryClient.invalidateQueries(UserService.getUserQueryOptions("A", 123));
   }
 }
 ```
@@ -699,14 +689,14 @@ import { useQueryClient } from "@tanstack/react-query";
 
 function UserList({ userIds }: { userIds: number[] }) {
   const queryClient = useQueryClient();
-  
+
   // 호버 시 미리 로드
   function handleMouseEnter(userId: number) {
     queryClient.prefetchQuery(
       UserService.getUserQueryOptions("A", userId)
     );
   }
-  
+
   return (
     <ul>
       {userIds.map((id) => (
@@ -725,28 +715,38 @@ function UserList({ userIds }: { userIds: number[] }) {
 ## 주의사항
 
 <Warning>
-**Service 사용 시 주의사항**:
-1. 생성된 Service 파일(`services.generated.ts`)은 **절대 수동 수정 금지**
-2. **Subset 파라미터 필수**: `getUser("A", id)` 처럼 subset 지정 필요
-3. Namespace이므로 **new 불필요**: `UserService.getUser()` 직접 호출
-4. TanStack Query Hook은 **컴포넌트 내부**에서만 호출
-5. 에러 처리 시 `isSonamuError()` 타입 가드 사용
-6. `qs.stringify()`는 복잡한 객체 직렬화 시 사용
+  **Service 사용 시 주의사항**: 1. 생성된 Service 파일(`services.generated.ts`)은 **절대 수동 수정
+  금지** 2. **Subset 파라미터 필수**: `getUser("A", id)` 처럼 subset 지정 필요 3. Namespace이므로
+  **new 불필요**: `UserService.getUser()` 직접 호출 4. TanStack Query Hook은 **컴포넌트 내부**에서만
+  호출 5. 에러 처리 시 `isSonamuError()` 타입 가드 사용 6. `qs.stringify()`는 복잡한 객체 직렬화 시
+  사용
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="Service 사용하기" icon="code" href="/ko/frontend-integration/generated-services/using-services">
+  <Card
+    title="Service 사용하기"
+    icon="code"
+    href="/ko/frontend-integration/generated-services/using-services"
+  >
     생성된 Service 활용법
   </Card>
-  <Card title="TanStack Query Hook" icon="arrows-rotate" href="/ko/frontend-integration/generated-services/tanstack-query">
+  <Card
+    title="TanStack Query Hook"
+    icon="arrows-rotate"
+    href="/ko/frontend-integration/generated-services/tanstack-query"
+  >
     React에서 사용하기
   </Card>
   <Card title="Creating APIs" icon="at" href="/ko/api-development/creating-apis/api-decorator">
     @api 데코레이터
   </Card>
-  <Card title="Subset System" icon="layer-group" href="/ko/core-concepts/entity-system/subset-system">
+  <Card
+    title="Subset System"
+    icon="layer-group"
+    href="/ko/core-concepts/entity-system/subset-system"
+  >
     Subset 시스템
   </Card>
 </CardGroup>

@@ -1,6 +1,6 @@
 ---
-title: 'select'
-description: 'Specify fields to query with SELECT clause'
+title: "select"
+description: "Specify fields to query with SELECT clause"
 ---
 
 `select` is a method for specifying which fields to query. You can select fields in a type-safe manner and use SQL aggregate functions and expressions.
@@ -21,7 +21,7 @@ const users = await puri.table("users").selectAll();
 const users = await puri.table("users").select({
   id: "users.id",
   email: "users.email",
-  name: "users.name"
+  name: "users.name",
 });
 
 // SELECT users.id, users.email, users.name FROM users
@@ -32,7 +32,7 @@ const users = await puri.table("users").select({
 ```typescript
 const users = await puri.table("users").select({
   userId: "users.id",
-  userName: "users.name"
+  userName: "users.name",
 });
 
 // SELECT users.id as userId, users.name as userName FROM users
@@ -45,18 +45,20 @@ Puri provides type-safe SQL functions.
 ### COUNT
 
 ```typescript
-const result = await puri.table("users")
+const result = await puri
+  .table("users")
   .select({
-    total: Puri.count()  // COUNT(*)
+    total: Puri.count(), // COUNT(*)
   })
   .first();
 
-console.log(result.total);  // number
+console.log(result.total); // number
 
 // Count specific column
-const result = await puri.table("posts")
+const result = await puri
+  .table("posts")
   .select({
-    published: Puri.count("posts.published")
+    published: Puri.count("posts.published"),
   })
   .first();
 ```
@@ -64,17 +66,18 @@ const result = await puri.table("posts")
 ### SUM, AVG, MAX, MIN
 
 ```typescript
-const stats = await puri.table("orders")
+const stats = await puri
+  .table("orders")
   .select({
     total: Puri.sum("orders.amount"),
     average: Puri.avg("orders.amount"),
     max: Puri.max("orders.amount"),
-    min: Puri.min("orders.amount")
+    min: Puri.min("orders.amount"),
   })
   .first();
 
-console.log(stats.total);    // number
-console.log(stats.average);  // number
+console.log(stats.total); // number
+console.log(stats.average); // number
 ```
 
 ### String Functions
@@ -84,7 +87,7 @@ const users = await puri.table("users").select({
   id: "users.id",
   full_name: Puri.concat("users.first_name", "' '", "users.last_name"),
   email_upper: Puri.upper("users.email"),
-  email_lower: Puri.lower("users.email")
+  email_lower: Puri.lower("users.email"),
 });
 ```
 
@@ -111,15 +114,15 @@ const result = await puri.table("users").select({
   signup_date: Puri.rawDate("DATE(users.created_at)"),
 
   // Return string array
-  tags: Puri.rawStringArray("ARRAY_AGG(tags.name)")
+  tags: Puri.rawStringArray("ARRAY_AGG(tags.name)"),
 });
 
 // Types are automatically inferred
-result[0].display_name;  // string
-result[0].age;           // number
-result[0].is_adult;      // boolean
-result[0].signup_date;   // Date
-result[0].tags;          // string[]
+result[0].display_name; // string
+result[0].age; // number
+result[0].is_adult; // boolean
+result[0].signup_date; // Date
+result[0].tags; // string[]
 ```
 
 ## Nested Object Selection
@@ -127,15 +130,16 @@ result[0].tags;          // string[]
 You can write SELECT statements with nested object structures.
 
 ```typescript
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .leftJoin("posts", "users.id", "posts.user_id")
   .select({
     id: "users.id",
     email: "users.email",
     post: {
       id: "posts.id",
-      title: "posts.title"
-    }
+      title: "posts.title",
+    },
   });
 
 // Automatically flattened:
@@ -157,20 +161,20 @@ Adds fields to existing SELECT.
 ```typescript
 let query = puri.table("users").select({
   id: "users.id",
-  email: "users.email"
+  email: "users.email",
 });
 
 // Add fields
 query = query.appendSelect({
   name: "users.name",
-  created_at: "users.created_at"
+  created_at: "users.created_at",
 });
 
 // SELECT users.id, users.email, users.name, users.created_at FROM users
 ```
 
 <Warning>
-`select()` **overwrites** existing SELECT, while `appendSelect()` **appends** to it.
+  `select()` **overwrites** existing SELECT, while `appendSelect()` **appends** to it.
 </Warning>
 
 ## Full-Text Search Functions
@@ -180,7 +184,8 @@ query = query.appendSelect({
 Highlighting using PostgreSQL's tsvector.
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .whereTsSearch("posts.content_tsv", "typescript")
   .select({
     id: "posts.id",
@@ -189,12 +194,13 @@ const posts = await puri.table("posts")
       startSel: "<mark>",
       stopSel: "</mark>",
       maxFragments: 3,
-      maxWords: 50
-    })
+      maxWords: 50,
+    }),
   });
 ```
 
 **Options:**
+
 - `parser`: Query parser (default: `"websearch_to_tsquery"`)
 - `config`: Text search configuration (default: `"simple"`)
 - `startSel`: Start tag (default: `"<b>"`)
@@ -208,7 +214,8 @@ const posts = await puri.table("posts")
 Calculates search relevance score.
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .whereTsSearch("posts.content_tsv", "typescript")
   .select({
     id: "posts.id",
@@ -219,17 +226,18 @@ const posts = await puri.table("posts")
 
     // With weights
     weighted_rank: Puri.tsRank("posts.content_tsv", "typescript", {
-      weights: [0.1, 0.2, 0.4, 1.0],  // D, C, B, A weights
-      normalization: 1  // Length normalization
+      weights: [0.1, 0.2, 0.4, 1.0], // D, C, B, A weights
+      normalization: 1, // Length normalization
     }),
 
     // Cover Density rank
-    rank_cd: Puri.tsRankCd("posts.content_tsv", "typescript")
+    rank_cd: Puri.tsRankCd("posts.content_tsv", "typescript"),
   })
   .orderBy("rank", "desc");
 ```
 
 **Options:**
+
 - `parser`: Query parser (default: `"websearch_to_tsquery"`)
 - `config`: Text search configuration (default: `"simple"`)
 - `weights`: [D, C, B, A] weight array
@@ -240,7 +248,8 @@ const posts = await puri.table("posts")
 Full-text search using PGroonga extension.
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .whereSearch("posts.title", "타입스크립트")
   .select({
     id: "posts.id",
@@ -252,20 +261,17 @@ const posts = await puri.table("posts")
     content: Puri.highlight("posts.content", ["타입스크립트", "자바스크립트"]),
 
     // Multiple column highlighting (returns array)
-    highlights: Puri.highlight(
-      ["posts.title", "posts.content"],
-      ["타입스크립트", "Node.js"]
-    ),
+    highlights: Puri.highlight(["posts.title", "posts.content"], ["타입스크립트", "Node.js"]),
 
     // Search score
-    score: Puri.score()
+    score: Puri.score(),
   })
   .orderBy("score", "desc");
 
 // Types are automatically inferred
-console.log(posts[0].title);       // string
-console.log(posts[0].highlights);  // string[]
-console.log(posts[0].score);       // number
+console.log(posts[0].title); // string
+console.log(posts[0].highlights); // string[]
+console.log(posts[0].score); // number
 ```
 
 ### pg_trgm Similarity Functions
@@ -273,7 +279,8 @@ console.log(posts[0].score);       // number
 Calculates similarity scores provided by PostgreSQL's `pg_trgm` extension in SELECT. After filtering candidates with `whereFuzzy`, these functions can be used to compute per-column weighted scores.
 
 ```typescript
-const results = await puri.table("items")
+const results = await puri
+  .table("items")
   .whereFuzzy("items.search_text", query)
   .select({
     id: "items.id",
@@ -292,9 +299,9 @@ const results = await puri.table("items")
   .orderBy("title_score", "desc");
 
 // Types are automatically inferred
-results[0].title_score;   // number
-results[0].full_score;    // number
-results[0].strict_score;  // number
+results[0].title_score; // number
+results[0].full_score; // number
+results[0].strict_score; // number
 ```
 
 **Weighted score example:**
@@ -302,7 +309,8 @@ results[0].strict_score;  // number
 The return values of similarity functions (`SqlExpression<"number">`) can be combined with `rawNumber` to compute per-column weighted scores.
 
 ```typescript
-const results = await puri.table("items")
+const results = await puri
+  .table("items")
   .whereFuzzy("items.search_text", query)
   .select({
     id: "items.id",
@@ -317,11 +325,11 @@ const results = await puri.table("items")
 
 **Function comparison:**
 
-| Function | PostgreSQL function | Purpose |
-|----------|---------------------|---------|
-| `Puri.wordSimilarity(column, query)` | `word_similarity(query, column)` | Substring similarity between query and column |
-| `Puri.similarity(column, query)` | `similarity(column, query)` | Overall string similarity |
-| `Puri.strictWordSimilarity(column, query)` | `strict_word_similarity(query, column)` | Strict substring similarity |
+| Function                                   | PostgreSQL function                     | Purpose                                       |
+| ------------------------------------------ | --------------------------------------- | --------------------------------------------- |
+| `Puri.wordSimilarity(column, query)`       | `word_similarity(query, column)`        | Substring similarity between query and column |
+| `Puri.similarity(column, query)`           | `similarity(column, query)`             | Overall string similarity                     |
+| `Puri.strictWordSimilarity(column, query)` | `strict_word_similarity(query, column)` | Strict substring similarity                   |
 
 <Info>
 These functions return `SqlExpression<"number">` and can be used within `select`. The `pg_trgm` extension must be installed.
@@ -353,6 +361,7 @@ These functions return `SqlExpression<"number">` and can be used within `select`
     //   youngest: 18
     // }
     ```
+
   </Tab>
 
   <Tab title="Order Summary" icon="cart-shopping">
@@ -371,6 +380,7 @@ These functions return `SqlExpression<"number">` and can be used within `select`
       })
       .first();
     ```
+
   </Tab>
 
   <Tab title="Users + Posts" icon="user-pen">
@@ -402,6 +412,7 @@ These functions return `SqlExpression<"number">` and can be used within `select`
     // Returned as nested object
     console.log(users[0].post.title);
     ```
+
   </Tab>
 
   <Tab title="Search + Highlighting" icon="magnifying-glass">
@@ -437,6 +448,7 @@ These functions return `SqlExpression<"number">` and can be used within `select`
     console.log(searchResults[0].title);
     // "Introduction to <mark>TypeScript</mark> <mark>Programming</mark>"
     ```
+
   </Tab>
 </Tabs>
 
@@ -445,22 +457,23 @@ These functions return `SqlExpression<"number">` and can be used within `select`
 SELECT return types are automatically inferred.
 
 ```typescript
-const result = await puri.table("users")
+const result = await puri
+  .table("users")
   .select({
     id: "users.id",
     email: "users.email",
     count: Puri.count(),
-    upper_name: Puri.upper("users.name")
+    upper_name: Puri.upper("users.name"),
   })
   .first();
 
 // Types are automatically inferred
-result.id;         // number
-result.email;      // string
-result.count;      // number
+result.id; // number
+result.email; // string
+result.count; // number
 result.upper_name; // string
 
-result.unknown;    // ❌ Type error
+result.unknown; // ❌ Type error
 ```
 
 ## Cautions
@@ -469,12 +482,10 @@ result.unknown;    // ❌ Type error
 
 ```typescript
 // ❌ Bad: Previous select is overwritten
-query.select({ id: "users.id" })
-     .select({ name: "users.name" });  // id is lost!
+query.select({ id: "users.id" }).select({ name: "users.name" }); // id is lost!
 
 // ✅ Good: Add with appendSelect
-query.select({ id: "users.id" })
-     .appendSelect({ name: "users.name" });
+query.select({ id: "users.id" }).appendSelect({ name: "users.name" });
 ```
 
 ### 2. Table Prefix Required
@@ -482,12 +493,12 @@ query.select({ id: "users.id" })
 ```typescript
 // ❌ Wrong
 puri.table("users").select({
-  id: "id"  // Unclear which table's id
+  id: "id", // Unclear which table's id
 });
 
 // ✅ Correct
 puri.table("users").select({
-  id: "users.id"  // Explicit table specification
+  id: "users.id", // Explicit table specification
 });
 ```
 
@@ -500,7 +511,7 @@ const result = await puri.table("users").select({
   age: Puri.rawNumber("YEAR(CURRENT_DATE) - YEAR(birth_date)"),
 
   // ❌ No type (any)
-  unknown: puri.raw("SOME_COMPLEX_SQL")
+  unknown: puri.raw("SOME_COMPLEX_SQL"),
 });
 ```
 
@@ -515,21 +526,13 @@ const result = await puri.table("users").select({
     Filter with conditions
   </Card>
 
-  <Card
-    title="join"
-    icon="link"
-    href="/en/api-reference/puri-methods/join"
-  >
-    Join tables
-  </Card>
+<Card title="join" icon="link" href="/en/api-reference/puri-methods/join">
+  Join tables
+</Card>
 
-  <Card
-    title="order-by"
-    icon="arrow-down-1-9"
-    href="/en/api-reference/puri-methods/order-by"
-  >
-    Sort results
-  </Card>
+<Card title="order-by" icon="arrow-down-1-9" href="/en/api-reference/puri-methods/order-by">
+  Sort results
+</Card>
 
   <Card
     title="advanced-methods"

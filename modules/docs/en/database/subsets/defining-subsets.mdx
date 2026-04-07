@@ -27,7 +27,10 @@ Subsets are defined in the `subsets` object within Entity JSON files.
 ```
 
 <Frame>
-  <img src="/images/subsets/subset-definition-example.png" alt="Subset definition example in Entity" />
+  <img
+    src="/images/subsets/subset-definition-example.png"
+    alt="Subset definition example in Entity"
+  />
 </Frame>
 
 ### Subset Definition Rules
@@ -50,13 +53,7 @@ Subsets are defined in the `subsets` object within Entity JSON files.
 ```json title="Relation Fields (Dot Notation)"
 {
   "subsets": {
-    "P": [
-      "id",
-      "username",
-      "employee.id",
-      "employee.salary",
-      "employee.department.name"
-    ]
+    "P": ["id", "username", "employee.id", "employee.salary", "employee.department.name"]
   }
 }
 ```
@@ -70,6 +67,7 @@ Subsets are defined in the `subsets` object within Entity JSON files.
   }
 }
 ```
+
 </CodeGroup>
 
 ## Selecting Relation Fields
@@ -89,20 +87,14 @@ Subsets are defined in the `subsets` object within Entity JSON files.
     }
   ],
   "subsets": {
-    "P": [
-      "id",
-      "username",
-      "employee.id",
-      "employee.employee_number",
-      "employee.salary"
-    ]
+    "P": ["id", "username", "employee.id", "employee.employee_number", "employee.salary"]
   }
 }
 ```
 
 <Info>
-OneToOne relations are **automatically LEFT JOINed**.
-Selecting `employee.id` will join the `employees` table.
+  OneToOne relations are **automatically LEFT JOINed**. Selecting `employee.id` will join the
+  `employees` table.
 </Info>
 
 ### Nested Relations (2+ Levels)
@@ -122,6 +114,7 @@ Selecting `employee.id` will join the `employees` table.
 ```
 
 **SQL Result**:
+
 ```sql
 SELECT
   users.id,
@@ -136,6 +129,7 @@ LEFT JOIN companies ON departments.company_id = companies.id
 ```
 
 **Hydrate Result**:
+
 ```typescript
 {
   id: 1,
@@ -156,11 +150,11 @@ LEFT JOIN companies ON departments.company_id = companies.id
 flowchart LR
     A[SQL Result<br/>Flat Data] --> B{Hydrate Transform}
     B --> C[Nested Object<br/>employee.department.company]
-    
+
     A1["employee__salary
     employee__department__name
     employee__department__company__name"] -.-> A
-    
+
     C1["employee: {
       salary,
       department: {
@@ -168,7 +162,7 @@ flowchart LR
         company: { name }
       }
     }"] -.-> C
-    
+
     style A fill:#fff9c4
     style B fill:#e8f5e9
     style C fill:#e3f2fd
@@ -207,10 +201,8 @@ flowchart LR
 ```
 
 <Tip>
-**Naming Tips**:
-- Use short, clear names (A, L, P, etc.)
-- Maintain consistent conventions within your team
-- Can use meaningful domain-specific names
+  **Naming Tips**: - Use short, clear names (A, L, P, etc.) - Maintain consistent conventions within
+  your team - Can use meaningful domain-specific names
 </Tip>
 
 ## Subset Design Principles
@@ -245,14 +237,10 @@ flowchart LR
   "subsets": {
     // For list views
     "L": ["id", "username", "role", "created_at"],
-    
+
     // For detail views (with relations)
-    "P": [
-      "id", "username", "email", "bio",
-      "employee.salary",
-      "employee.department.name"
-    ],
-    
+    "P": ["id", "username", "email", "bio", "employee.salary", "employee.department.name"],
+
     // For dropdowns
     "SS": ["id", "username"]
   }
@@ -284,14 +272,15 @@ flowchart LR
 ```
 
 <Info>
-**Performance Tips**:
-- Minimize JOINs (only needed relations)
-- Use L Subset for list views (exclude relations)
-- Use P Subset only for detail views (include relations)
+  **Performance Tips**: - Minimize JOINs (only needed relations) - Use L Subset for list views
+  (exclude relations) - Use P Subset only for detail views (include relations)
 </Info>
 
 <Frame>
-  <img src="/images/subsets/subset-performance-comparison.png" alt="Subset performance comparison" />
+  <img
+    src="/images/subsets/subset-performance-comparison.png"
+    alt="Subset performance comparison"
+  />
 </Frame>
 
 ## Practical Example
@@ -318,21 +307,10 @@ flowchart LR
     }
   ],
   "subsets": {
-    "A": [
-      "id", "created_at", "username", "email",
-      "role", "bio"
-    ],
-    "L": [
-      "id", "username", "role", "created_at"
-    ],
-    "P": [
-      "id", "username", "email", "bio",
-      "employee.salary",
-      "employee.department.name"
-    ],
-    "SS": [
-      "id", "username"
-    ]
+    "A": ["id", "created_at", "username", "email", "role", "bio"],
+    "L": ["id", "username", "role", "created_at"],
+    "P": ["id", "username", "email", "bio", "employee.salary", "employee.department.name"],
+    "SS": ["id", "username"]
   }
 }
 ```
@@ -347,8 +325,7 @@ pnpm sonamu generate
 ```
 
 <Warning>
-After changing Subsets, you **must run Code Generation**.
-This updates the TypeScript types.
+  After changing Subsets, you **must run Code Generation**. This updates the TypeScript types.
 </Warning>
 
 **Generated Types**:
@@ -402,13 +379,21 @@ export type UserSubsetMapping = {
   <Card title="Using Subsets" icon="code" href="/en/database/subsets/using-subsets">
     Use Subsets in Model
   </Card>
-  <Card title="Nested Relations" icon="diagram-project" href="/en/database/subsets/nested-relations">
+  <Card
+    title="Nested Relations"
+    icon="diagram-project"
+    href="/en/database/subsets/nested-relations"
+  >
     Load 1:N with LoaderQuery
   </Card>
   <Card title="Entity Definition" icon="cube" href="/en/core-concepts/entity/defining-entities">
     Understanding Entity structure
   </Card>
-  <Card title="Code Generation" icon="wand-magic-sparkles" href="/en/auto-generation/code-generation">
+  <Card
+    title="Code Generation"
+    icon="wand-magic-sparkles"
+    href="/en/auto-generation/code-generation"
+  >
     Automatic code generation
   </Card>
 </CardGroup>

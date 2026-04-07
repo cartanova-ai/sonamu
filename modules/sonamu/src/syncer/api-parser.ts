@@ -1,11 +1,14 @@
 import assert from "assert";
 import { readFile } from "fs/promises";
+
 import inflection from "inflection";
 import ts from "typescript";
-import { type ExtendedApi, registeredApis } from "../api/decorators";
+
+import { registeredApis } from "../api/decorators";
+import { type ExtendedApi } from "../api/decorators";
 import { validateMethodName } from "../api/validator";
-import type { ApiParam, ApiParamType } from "../types/types";
-import type { AbsolutePath } from "../utils/path-utils";
+import { type ApiParam, type ApiParamType } from "../types/types";
+import { type AbsolutePath } from "../utils/path-utils";
 
 /**
  * TypeScript 파일을 파싱하여 API 메소드 정보를 추출합니다.
@@ -43,7 +46,7 @@ export async function readApisFromFile(filePath: AbsolutePath): Promise<Extended
 
       const typeParameters: ApiParamType.TypeParam[] = (node.typeParameters ?? []).map(
         (typeParam) => {
-          const tp = typeParam as ts.TypeParameterDeclaration;
+          const tp = typeParam;
 
           return {
             t: "type-param",
@@ -186,7 +189,7 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
               name: {
                 escapedText: `[${res.name}${res.optional ? "?" : ""}: ${res.type}]`,
               } as ts.Identifier,
-              type: member.type as ts.TypeNode,
+              type: member.type,
             });
           } else {
             return resolveParamDec({

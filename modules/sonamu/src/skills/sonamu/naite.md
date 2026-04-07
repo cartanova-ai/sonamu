@@ -10,6 +10,7 @@ Naite is a tracing system for recording values in source code and verifying them
 **Source code:** `modules/sonamu/src/naite/naite.ts`
 
 **How it works:**
+
 1. **Source code**: Record values with `Naite.t("key", value)`
 2. **Test code**: Retrieve recorded values with `Naite.get("key")`
 
@@ -49,19 +50,19 @@ expect(trace).toMatchObject({ tableName: "users", rowCount: 3 });
 
 ## Built-in Naite Keys (Sonamu)
 
-| Key | Description | Data |
-|-----|-------------|------|
-| `esq-query` | Executed SQL query | Query string |
-| `puri:executed-query` | Query executed by Puri | Query string |
-| `puri:ub-register` | UpsertBuilder register call | `{ tableName, uuid, isUuidReused, row }` |
-| `puri:ub-upserted` | UpsertBuilder upsert complete | `{ tableName, mode, rowCount, returnedIds }` |
-| `puri:ub-ref-resolved` | UBRef → actual ID substitution | `{ tableName, field, from, to }` |
-| `puri:ub-batch-updated` | updateBatch complete | `{ tableName, rowCount, whereColumns }` |
-| `puri:ub-clean-orphans` | cleanOrphans executed | `{ tableName, cleanOrphans, deletedCount }` |
-| `puri:ub-inherit` | inherit option applied | `{ tableName, inheritColumns, excludedFromUpdate }` |
-| `mock:fs/promises:virtualFileSystem` | Virtual file system path | File path string |
-| `fs/promises:writeFile` | writeFile call | `{ path, data }` |
-| `fs/promises:rm` | rm call | `{ path, options }` |
+| Key                                  | Description                    | Data                                                |
+| ------------------------------------ | ------------------------------ | --------------------------------------------------- |
+| `esq-query`                          | Executed SQL query             | Query string                                        |
+| `puri:executed-query`                | Query executed by Puri         | Query string                                        |
+| `puri:ub-register`                   | UpsertBuilder register call    | `{ tableName, uuid, isUuidReused, row }`            |
+| `puri:ub-upserted`                   | UpsertBuilder upsert complete  | `{ tableName, mode, rowCount, returnedIds }`        |
+| `puri:ub-ref-resolved`               | UBRef → actual ID substitution | `{ tableName, field, from, to }`                    |
+| `puri:ub-batch-updated`              | updateBatch complete           | `{ tableName, rowCount, whereColumns }`             |
+| `puri:ub-clean-orphans`              | cleanOrphans executed          | `{ tableName, cleanOrphans, deletedCount }`         |
+| `puri:ub-inherit`                    | inherit option applied         | `{ tableName, inheritColumns, excludedFromUpdate }` |
+| `mock:fs/promises:virtualFileSystem` | Virtual file system path       | File path string                                    |
+| `fs/promises:writeFile`              | writeFile call                 | `{ path, data }`                                    |
+| `fs/promises:rm`                     | rm call                        | `{ path, options }`                                 |
 
 ---
 
@@ -81,15 +82,15 @@ Naite.t("mock:fs/promises:virtualFileSystem", "/path/to/virtual/file.ts");
 
 ```typescript
 // Basic retrieval
-Naite.get("key").first()     // first entry
-Naite.get("key").last()      // last entry
-Naite.get("key").at(2)       // nth entry
-Naite.get("key").result()    // all entries as an array
-Naite.get("key").getTraces() // raw trace array (includes call stack)
+Naite.get("key").first(); // first entry
+Naite.get("key").last(); // last entry
+Naite.get("key").at(2); // nth entry
+Naite.get("key").result(); // all entries as an array
+Naite.get("key").getTraces(); // raw trace array (includes call stack)
 
 // Wildcard patterns
-Naite.get("puri:*").result()           // all with puri: prefix
-Naite.get("syncer:*:user").result()    // syncer:XXX:user pattern
+Naite.get("puri:*").result(); // all with puri: prefix
+Naite.get("syncer:*:user").result(); // syncer:XXX:user pattern
 ```
 
 ---
@@ -99,29 +100,29 @@ Naite.get("syncer:*:user").result()    // syncer:XXX:user pattern
 ```typescript
 // Filter by file name
 Naite.get("esq-query")
-  .fromFile("user.model.ts")  // only entries recorded from this file
+  .fromFile("user.model.ts") // only entries recorded from this file
   .result();
 
 // Filter by function name
 Naite.get("puri:executed-query")
-  .fromFunction("findById")                    // only entries called from this function
+  .fromFunction("findById") // only entries called from this function
   .result();
 
 // fromFunction options
 Naite.get("key")
-  .fromFunction("save", { from: "direct" })    // direct calls only (stack[0])
-  .fromFunction("save", { from: "indirect" })  // indirect calls only (stack[1+])
-  .fromFunction("save", { from: "both" })      // both (default)
+  .fromFunction("save", { from: "direct" }) // direct calls only (stack[0])
+  .fromFunction("save", { from: "indirect" }) // indirect calls only (stack[1+])
+  .fromFunction("save", { from: "both" }); // both (default)
 
 // Filter by data path (radash get path)
 Naite.get("puri:ub-register")
-  .where("data.tableName", "=", "users")    // only where tableName is "users"
-  .where("data.rowCount", ">", 5)           // rowCount > 5
+  .where("data.tableName", "=", "users") // only where tableName is "users"
+  .where("data.rowCount", ">", 5) // rowCount > 5
   .result();
 
 // where operators: ">", "<", ">=", "<=", "=", "!=", "includes"
 Naite.get("key")
-  .where("data.query", "includes", "WHERE")  // check if string includes substring
+  .where("data.query", "includes", "WHERE") // check if string includes substring
   .result();
 
 // Combining filters
@@ -167,7 +168,7 @@ test("trace UpsertBuilder register", async () => {
 
 test("trace upsert completion", async () => {
   // ... run upsert ...
-  
+
   const trace = Naite.get("puri:ub-upserted").first();
   expect(trace).toMatchObject({
     tableName: "users",
@@ -189,6 +190,7 @@ sonamu test user.model -t
 ```
 
 Example output:
+
 ```
 Tests: 5 passed, 0 failed, 5 total
 Duration: 791ms
@@ -221,14 +223,14 @@ type NaiteStore = Map<string, NaiteTrace[]>;
 interface NaiteTrace {
   key: string;
   data: any;
-  stack: StackFrame[];  // call stack information
+  stack: StackFrame[]; // call stack information
   at: Date;
 }
 
 interface StackFrame {
   functionName: string | null;
-  filePath: string;     // path relative to TS file
-  lineNumber: number;   // line number in TS file
+  filePath: string; // path relative to TS file
+  lineNumber: number; // line number in TS file
 }
 ```
 

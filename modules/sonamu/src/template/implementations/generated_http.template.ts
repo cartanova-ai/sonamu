@@ -1,7 +1,8 @@
 import qs from "qs";
 import { z } from "zod";
+
 import { getZodObjectFromApi } from "../../api/code-converters";
-import type { ExtendedApi } from "../../api/decorators";
+import { type ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
 import { Template } from "../template";
 
@@ -66,7 +67,7 @@ export class Template__generated_http extends Template {
     };
   }
 
-  zodTypeToReqDefault(zodType: z.ZodType<unknown>, name: string): unknown {
+  zodTypeToReqDefault(zodType: z.ZodType, name: string): unknown {
     if (zodType instanceof z.ZodObject) {
       return Object.fromEntries(
         Object.keys(zodType.shape).map((key) => [
@@ -103,16 +104,16 @@ export class Template__generated_http extends Template {
     } else if (zodType instanceof z.ZodUnknown) {
       return "unknown";
     } else if (zodType instanceof z.ZodTuple) {
-      /** biome-ignore lint/suspicious/noExplicitAny: ZodTuple 타입 사용 */
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- ZodTuple 타입 사용
       return zodType.def.items.map((item: any) => this.zodTypeToReqDefault(item, name));
     } else if (zodType instanceof z.ZodDate) {
       return "2000-01-01";
     } else if (zodType instanceof z.ZodLiteral) {
       return zodType.value;
     } else if (zodType instanceof z.ZodRecord || zodType instanceof z.ZodMap) {
-      // biome-ignore lint/suspicious/noExplicitAny: ZodRecord 타입 사용
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- ZodRecord 타입 사용
       const kvDef = (zodType as z.ZodRecord<any, z.ZodType> | z.ZodMap<z.ZodType, z.ZodType>).def;
-      // biome-ignore lint/suspicious/noExplicitAny: ZodIntersection 타입 사용
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- ZodIntersection 타입 사용
       const key = this.zodTypeToReqDefault(kvDef.keyType, name) as any;
       const value = this.zodTypeToReqDefault(kvDef.valueType, name);
       return { [key]: value };
@@ -143,7 +144,9 @@ export class Template__generated_http extends Template {
       return def;
     } catch (error) {
       console.error(error);
-      throw new Error(`Invalid zod type detected on ${api.modelName}:${api.methodName}`);
+      throw new Error(`Invalid zod type detected on ${api.modelName}:${api.methodName}`, {
+        cause: error,
+      });
     }
   }
 }

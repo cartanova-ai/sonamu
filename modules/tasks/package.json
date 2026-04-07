@@ -1,8 +1,13 @@
 {
   "name": "@sonamu-kit/tasks",
   "version": "0.2.0",
-  "type": "module",
   "description": "Sonamu Task - Simple & Distributed Task Queue",
+  "author": "CartaNova <dev@cartanova.ai>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cartanova-ai/sonamu.git"
+  },
+  "type": "module",
   "main": "./dist/index.js",
   "exports": {
     ".": {
@@ -18,21 +23,17 @@
   },
   "scripts": {
     "dev": "nodemon exec",
-    "build": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
-    "check": "tsc --noEmit && biome format --write ./src/**/*.ts",
+    "build": "tsdown",
+    "check": "tsc --noEmit && oxlint src && oxfmt --check src",
     "check:type": "tsc --noEmit",
-    "check:format": "biome format --write ./src/**/*.ts",
+    "check:format": "oxfmt src",
     "pretest": "tsx scripts/migrate.ts",
     "test": "vitest run",
     "test:watch": "vitest watch --standalone",
     "test:coverage": "vitest run --coverage"
   },
-  "author": "CartaNova <dev@cartanova.ai>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/cartanova-ai/sonamu.git"
-  },
   "dependencies": {
+    "c12": "catalog:",
     "date-fns": "catalog:",
     "date-fns-tz": "catalog:",
     "inflection": "catalog:",
@@ -41,23 +42,20 @@
     "pg": "catalog:",
     "rou3": "catalog:",
     "uuid": "catalog:",
-    "zod": "catalog:",
-    "c12": "catalog:"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/inflection": "catalog:",
-    "@biomejs/biome": "catalog:",
-    "@swc/cli": "catalog:",
-    "@swc/core": "catalog:",
     "@types/node": "catalog:",
     "nodemon": "catalog:",
+    "tsdown": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "knex": "catalog:",
-    "@logtape/logtape": "catalog:"
+    "@logtape/logtape": "catalog:",
+    "knex": "catalog:"
   },
   "optionalDependencies": {
     "pg-native": "catalog:"

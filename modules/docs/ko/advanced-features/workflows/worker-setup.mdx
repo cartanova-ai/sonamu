@@ -14,11 +14,11 @@ import { defineConfig } from "sonamu";
 export default defineConfig({
   // ...
   tasks: {
-    enableWorker: true,  // Worker 활성화
+    enableWorker: true, // Worker 활성화
     workerOptions: {
-      concurrency: 4,      // 동시 실행 수
-      usePubSub: true,     // Pub/Sub 사용
-      listenDelay: 500,    // 수신 지연 (ms)
+      concurrency: 4, // 동시 실행 수
+      usePubSub: true, // Pub/Sub 사용
+      listenDelay: 500, // 수신 지연 (ms)
     },
     contextProvider: async (baseContext) => {
       // Workflow에서 사용할 Context 설정
@@ -32,6 +32,7 @@ export default defineConfig({
 ```
 
 **옵션**:
+
 - `enableWorker`: Worker 활성화 여부 (기본: daemon 모드에서만 true)
 - `workerOptions.concurrency`: 동시 실행 작업 수 (기본: 1)
 - `workerOptions.usePubSub`: PostgreSQL LISTEN/NOTIFY 사용 (기본: true)
@@ -52,7 +53,7 @@ const handle = await workflowManager.run(
     name: "send_email",
     version: null,
   },
-  { email: "user@example.com" }
+  { email: "user@example.com" },
 );
 
 // 결과 대기
@@ -78,18 +79,18 @@ import { Sonamu } from "sonamu";
 
 async function startWorker() {
   await Sonamu.init(true, false);
-  
+
   await Sonamu.workflows.startWorker();
-  
+
   console.log("Worker started");
-  
+
   // Graceful shutdown
   const shutdown = async () => {
     console.log("Stopping worker...");
     await Sonamu.workflows.stopWorker();
     process.exit(0);
   };
-  
+
   process.on("SIGTERM", shutdown);
   process.on("SIGINT", shutdown);
 }
@@ -118,9 +119,9 @@ pnpm worker
 // sonamu.config.ts
 export default defineConfig({
   tasks: {
-    enableWorker: true,  // API 서버에서도 Worker 실행
+    enableWorker: true, // API 서버에서도 Worker 실행
     workerOptions: {
-      concurrency: 2,  // API 서버는 적은 concurrency
+      concurrency: 2, // API 서버는 적은 concurrency
     },
     contextProvider: async (baseContext) => baseContext,
   },
@@ -157,7 +158,7 @@ tasks: {
     const systemUser = await UserModel.findOne({
       wq: [['email', '=', 'system@example.com']],
     });
-    
+
     return {
       ...baseContext,
       user: systemUser,
@@ -173,13 +174,10 @@ Workflow 함수 내에서 `Sonamu.getContext()`로 접근:
 import { workflow } from "sonamu";
 import { Sonamu } from "sonamu";
 
-export const myWorkflow = workflow(
-  { name: "my_workflow" },
-  async ({ input, step }) => {
-    const context = Sonamu.getContext();
-    console.log(context.user);  // systemUser
-  }
-);
+export const myWorkflow = workflow({ name: "my_workflow" }, async ({ input, step }) => {
+  const context = Sonamu.getContext();
+  console.log(context.user); // systemUser
+});
 ```
 
 ## 테이블 구조
@@ -226,27 +224,26 @@ CREATE TABLE workflow_steps (
 import { DB } from "sonamu";
 
 const knex = DB.getDB();
-const runs = await knex('workflow_runs')
-  .where('status', 'running')
-  .select('*');
+const runs = await knex("workflow_runs").where("status", "running").select("*");
 ```
 
 ### 로그
 
 ```typescript
-export const myWorkflow = workflow(
-  { name: "my_workflow" },
-  async ({ logger, input }) => {
-    logger.info("Workflow started", { input });
-    logger.error("Error occurred", { error });
-  }
-);
+export const myWorkflow = workflow({ name: "my_workflow" }, async ({ logger, input }) => {
+  logger.info("Workflow started", { input });
+  logger.error("Error occurred", { error });
+});
 ```
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="@workflow 데코레이터" icon="code" href="/ko/advanced-features/workflows/workflow-decorator">
+  <Card
+    title="@workflow 데코레이터"
+    icon="code"
+    href="/ko/advanced-features/workflows/workflow-decorator"
+  >
     Workflow 정의하기
   </Card>
   <Card title="Step" icon="list" href="/ko/advanced-features/workflows/steps">

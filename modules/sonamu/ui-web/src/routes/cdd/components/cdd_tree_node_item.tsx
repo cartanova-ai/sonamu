@@ -5,9 +5,10 @@ import ChevronRightIcon from "~icons/lucide/chevron-right";
 import FolderIcon from "~icons/lucide/folder";
 import FolderOpenIcon from "~icons/lucide/folder-open";
 import PencilIcon from "~icons/lucide/pencil";
+
 import { defaultCatch } from "../../../services/sonamu.shared";
 import { CddService } from "../service";
-import type { CddTreeNode } from "../types";
+import { type CddTreeNode } from "../types";
 import { CddFileIcon } from "./cdd_file_icon";
 
 export function CddTreeNodeItem({

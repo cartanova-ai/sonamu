@@ -1,7 +1,9 @@
 import { unique } from "radashi";
 import { z } from "zod";
-import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
-import type { RenderingNode, TemplateOptions } from "../../types/types";
+
+import { EntityManager } from "../../entity/entity-manager";
+import { type EntityNamesRecord } from "../../entity/entity-manager";
+import { type RenderingNode, type TemplateOptions } from "../../types/types";
 import {
   getEnumInfoFromColName,
   getRelationNameFromColumnName,
@@ -207,7 +209,7 @@ export class Template__view_form extends Template {
     const { zodTypeToRenderingNode } = await import("../zod-converter");
     const saveParamsNode = zodTypeToRenderingNode(SaveParamsZodType);
 
-    const columns = ((saveParamsNode?.children ?? []) as RenderingNode[])
+    const columns = (saveParamsNode?.children ?? [])
       .filter((col) => col.name !== "id")
       .map((col) => {
         const propCandidate = entity.props.find((prop) => prop.name === col.name);

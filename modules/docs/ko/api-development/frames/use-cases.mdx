@@ -9,24 +9,16 @@ Frame을 활용한 실전 사용 사례를 알아봅니다.
 
 <CardGroup cols={2}>
   <Card title="헬스체크" icon="heart-pulse">
-    서버 상태 모니터링
-    
-    DB, 메모리, 업타임
+    서버 상태 모니터링 DB, 메모리, 업타임
   </Card>
   <Card title="유틸리티" icon="wrench">
-    해시, 암호화, UUID
-    
-    문자열 처리
+    해시, 암호화, UUID 문자열 처리
   </Card>
   <Card title="외부 API" icon="cloud">
-    날씨, 지도, 결제
-    
-    API 프록시
+    날씨, 지도, 결제 API 프록시
   </Card>
   <Card title="통계/집계" icon="chart-line">
-    대시보드 데이터
-    
-    다중 테이블 집계
+    대시보드 데이터 다중 테이블 집계
   </Card>
 </CardGroup>
 
@@ -40,7 +32,7 @@ import { BaseFrameClass, api } from "sonamu";
 
 class HealthFrame extends BaseFrameClass {
   frameName = "Health";
-  
+
   @api({ httpMethod: "GET" })
   async check(): Promise<{
     status: "ok" | "error";
@@ -53,7 +45,7 @@ class HealthFrame extends BaseFrameClass {
       uptime: process.uptime(),
     };
   }
-  
+
   @api({ httpMethod: "GET" })
   async ping(): Promise<{ pong: string }> {
     return { pong: "pong" };
@@ -64,6 +56,7 @@ export const HealthFrameInstance = new HealthFrame();
 ```
 
 **사용**:
+
 ```bash
 # Kubernetes liveness probe
 curl http://api.example.com/api/health/ping
@@ -106,15 +99,15 @@ interface HealthDetailResponse {
 
 class HealthFrame extends BaseFrameClass {
   frameName = "Health";
-  
+
   @api({ httpMethod: "GET" })
   async detail(): Promise<HealthDetailResponse> {
     const startTime = Date.now();
-    
+
     // DB 연결 체크
     let dbStatus: "connected" | "disconnected" = "disconnected";
     let dbResponseTime: number | undefined;
-    
+
     try {
       const rdb = this.getPuri("r");
       const dbStart = Date.now();
@@ -124,28 +117,28 @@ class HealthFrame extends BaseFrameClass {
     } catch (error) {
       console.error("Database health check failed:", error);
     }
-    
+
     // 메모리 정보
     const memoryUsage = process.memoryUsage();
     const totalMemory = memoryUsage.heapTotal;
     const usedMemory = memoryUsage.heapUsed;
     const freeMemory = totalMemory - usedMemory;
-    
+
     // CPU 정보
     const os = require("os");
     const cpus = os.cpus();
-    
+
     // 전체 상태 결정
     let overallStatus: "healthy" | "degraded" | "unhealthy";
-    
+
     if (dbStatus === "disconnected") {
       overallStatus = "unhealthy";
-    } else if ((usedMemory / totalMemory) > 0.9) {
+    } else if (usedMemory / totalMemory > 0.9) {
       overallStatus = "degraded";
     } else {
       overallStatus = "healthy";
     }
-    
+
     return {
       status: overallStatus,
       timestamp: new Date(),
@@ -202,7 +195,7 @@ interface DecryptParams {
 
 class CryptoFrame extends BaseFrameClass {
   frameName = "Crypto";
-  
+
   // 해시 생성
   @api({ httpMethod: "POST" })
   async hash(params: HashParams): Promise<{ hash: string }> {
@@ -211,25 +204,19 @@ class CryptoFrame extends BaseFrameClass {
       const hash = await bcrypt.hash(params.text, saltRounds);
       return { hash };
     }
-    
-    const hash = crypto
-      .createHash(params.algorithm)
-      .update(params.text)
-      .digest("hex");
-    
+
+    const hash = crypto.createHash(params.algorithm).update(params.text).digest("hex");
+
     return { hash };
   }
-  
+
   // bcrypt 검증
   @api({ httpMethod: "POST" })
-  async verifyHash(params: {
-    text: string;
-    hash: string;
-  }): Promise<{ valid: boolean }> {
+  async verifyHash(params: { text: string; hash: string }): Promise<{ valid: boolean }> {
     const valid = await bcrypt.compare(params.text, params.hash);
     return { valid };
   }
-  
+
   // AES 암호화
   @api({ httpMethod: "POST" })
   async encrypt(params: EncryptParams): Promise<{
@@ -239,41 +226,40 @@ class CryptoFrame extends BaseFrameClass {
     const algorithm = "aes-256-cbc";
     const key = crypto.scryptSync(params.secret, "salt", 32);
     const iv = crypto.randomBytes(16);
-    
+
     const cipher = crypto.createCipheriv(algorithm, key, iv);
-    
+
     let encrypted = cipher.update(params.plaintext, "utf8", "hex");
     encrypted += cipher.final("hex");
-    
+
     return {
       ciphertext: encrypted,
       iv: iv.toString("hex"),
     };
   }
-  
+
   // AES 복호화
   @api({ httpMethod: "POST" })
-  async decrypt(params: DecryptParams & {
-    iv: string;
-  }): Promise<{ plaintext: string }> {
+  async decrypt(
+    params: DecryptParams & {
+      iv: string;
+    },
+  ): Promise<{ plaintext: string }> {
     const algorithm = "aes-256-cbc";
     const key = crypto.scryptSync(params.secret, "salt", 32);
     const iv = Buffer.from(params.iv, "hex");
-    
+
     const decipher = crypto.createDecipheriv(algorithm, key, iv);
-    
+
     let decrypted = decipher.update(params.ciphertext, "hex", "utf8");
     decrypted += decipher.final("utf8");
-    
+
     return { plaintext: decrypted };
   }
-  
+
   // JWT 토큰 검증 (간단 버전)
   @api({ httpMethod: "POST" })
-  async verifyToken(params: {
-    token: string;
-    secret: string;
-  }): Promise<{
+  async verifyToken(params: { token: string; secret: string }): Promise<{
     valid: boolean;
     payload?: any;
     error?: string;
@@ -281,7 +267,7 @@ class CryptoFrame extends BaseFrameClass {
     try {
       const jwt = require("jsonwebtoken");
       const payload = jwt.verify(params.token, params.secret);
-      
+
       return {
         valid: true,
         payload,
@@ -293,13 +279,13 @@ class CryptoFrame extends BaseFrameClass {
       };
     }
   }
-  
+
   // UUID 생성
   @api({ httpMethod: "POST" })
   async uuid(): Promise<{ uuid: string }> {
     return { uuid: crypto.randomUUID() };
   }
-  
+
   // 랜덤 문자열 생성
   @api({ httpMethod: "POST" })
   async randomString(params: {
@@ -308,17 +294,19 @@ class CryptoFrame extends BaseFrameClass {
   }): Promise<{ random: string }> {
     const length = Math.min(params.length, 1024);
     const charset = params.charset || "alphanumeric";
-    
+
     let random: string;
-    
+
     switch (charset) {
       case "hex":
-        random = crypto.randomBytes(Math.ceil(length / 2))
+        random = crypto
+          .randomBytes(Math.ceil(length / 2))
           .toString("hex")
           .slice(0, length);
         break;
       case "base64":
-        random = crypto.randomBytes(Math.ceil(length * 3 / 4))
+        random = crypto
+          .randomBytes(Math.ceil((length * 3) / 4))
           .toString("base64")
           .slice(0, length);
         break;
@@ -330,7 +318,7 @@ class CryptoFrame extends BaseFrameClass {
           .join("");
         break;
     }
-    
+
     return { random };
   }
 }
@@ -349,10 +337,10 @@ import axios from "axios";
 
 class WeatherFrame extends BaseFrameClass {
   frameName = "Weather";
-  
+
   private apiKey = process.env.OPENWEATHER_API_KEY || "";
   private baseUrl = "https://api.openweathermap.org/data/2.5";
-  
+
   @api({ httpMethod: "GET" })
   async current(params: {
     city: string;
@@ -371,10 +359,8 @@ class WeatherFrame extends BaseFrameClass {
     visibility: number;
     timestamp: Date;
   }> {
-    const query = params.country
-      ? `${params.city},${params.country}`
-      : params.city;
-    
+    const query = params.country ? `${params.city},${params.country}` : params.city;
+
     try {
       const response = await axios.get(`${this.baseUrl}/weather`, {
         params: {
@@ -384,9 +370,9 @@ class WeatherFrame extends BaseFrameClass {
         },
         timeout: 5000,
       });
-      
+
       const data = response.data;
-      
+
       return {
         city: data.name,
         country: data.sys.country,
@@ -407,13 +393,9 @@ class WeatherFrame extends BaseFrameClass {
       throw new Error("Failed to fetch weather data");
     }
   }
-  
+
   @api({ httpMethod: "GET" })
-  async forecast(params: {
-    city: string;
-    country?: string;
-    days?: number;
-  }): Promise<{
+  async forecast(params: { city: string; country?: string; days?: number }): Promise<{
     city: string;
     forecast: Array<{
       date: string;
@@ -427,12 +409,10 @@ class WeatherFrame extends BaseFrameClass {
       windSpeed: number;
     }>;
   }> {
-    const query = params.country
-      ? `${params.city},${params.country}`
-      : params.city;
-    
+    const query = params.country ? `${params.city},${params.country}` : params.city;
+
     const days = Math.min(params.days || 5, 7);
-    
+
     try {
       const response = await axios.get(`${this.baseUrl}/forecast`, {
         params: {
@@ -443,12 +423,12 @@ class WeatherFrame extends BaseFrameClass {
         },
         timeout: 5000,
       });
-      
+
       const data = response.data;
-      
+
       // 일별로 그룹화
       const dailyData = new Map<string, any[]>();
-      
+
       data.list.forEach((item: any) => {
         const date = item.dt_txt.split(" ")[0];
         if (!dailyData.has(date)) {
@@ -456,11 +436,11 @@ class WeatherFrame extends BaseFrameClass {
         }
         dailyData.get(date)!.push(item);
       });
-      
+
       const forecast = Array.from(dailyData.entries()).map(([date, items]) => {
         const temps = items.map((i) => i.main.temp);
         const conditions = items.map((i) => i.weather[0].main);
-        
+
         return {
           date,
           temperature: {
@@ -473,7 +453,7 @@ class WeatherFrame extends BaseFrameClass {
           windSpeed: items[0].wind.speed,
         };
       });
-      
+
       return {
         city: data.city.name,
         forecast,
@@ -496,10 +476,10 @@ import axios from "axios";
 
 class PaymentFrame extends BaseFrameClass {
   frameName = "Payment";
-  
+
   private stripeApiKey = process.env.STRIPE_SECRET_KEY || "";
   private stripeBaseUrl = "https://api.stripe.com/v1";
-  
+
   @api({ httpMethod: "POST" })
   async createPaymentIntent(params: {
     amount: number; // 센트 단위
@@ -522,9 +502,9 @@ class PaymentFrame extends BaseFrameClass {
             Authorization: `Bearer ${this.stripeApiKey}`,
             "Content-Type": "application/x-www-form-urlencoded",
           },
-        }
+        },
       );
-      
+
       return {
         clientSecret: response.data.client_secret,
         paymentIntentId: response.data.id,
@@ -533,11 +513,9 @@ class PaymentFrame extends BaseFrameClass {
       throw new Error("Failed to create payment intent");
     }
   }
-  
+
   @api({ httpMethod: "POST" })
-  async verifyPayment(params: {
-    paymentIntentId: string;
-  }): Promise<{
+  async verifyPayment(params: { paymentIntentId: string }): Promise<{
     status: string;
     amount: number;
     currency: string;
@@ -550,9 +528,9 @@ class PaymentFrame extends BaseFrameClass {
           headers: {
             Authorization: `Bearer ${this.stripeApiKey}`,
           },
-        }
+        },
       );
-      
+
       return {
         status: response.data.status,
         amount: response.data.amount,
@@ -613,87 +591,77 @@ interface DashboardStats {
 
 class AdminStatsFrame extends BaseFrameClass {
   frameName = "AdminStats";
-  
+
   @api({ httpMethod: "GET" })
   async dashboard(): Promise<DashboardStats> {
     const rdb = this.getPuri("r");
-    
+
     // 날짜 계산
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
-    
+
     const monthAgo = new Date(today);
     monthAgo.setMonth(monthAgo.getMonth() - 1);
-    
+
     // 사용자 통계
-    const [{ totalUsers }] = await rdb
-      .table("users")
-      .count({ totalUsers: "*" });
-    
+    const [{ totalUsers }] = await rdb.table("users").count({ totalUsers: "*" });
+
     const [{ activeUsers }] = await rdb
       .table("users")
       .where("is_active", true)
       .count({ activeUsers: "*" });
-    
+
     const [{ newToday }] = await rdb
       .table("users")
       .where("created_at", ">=", today)
       .count({ newToday: "*" });
-    
+
     const [{ newThisWeek }] = await rdb
       .table("users")
       .where("created_at", ">=", weekAgo)
       .count({ newThisWeek: "*" });
-    
+
     const [{ newThisMonth }] = await rdb
       .table("users")
       .where("created_at", ">=", monthAgo)
       .count({ newThisMonth: "*" });
-    
+
     // 역할별 통계
     const roleStats = await rdb
       .table("users")
       .select({ role: "role" })
       .count({ count: "*" })
       .groupBy("role");
-    
+
     const byRole = {
       admin: roleStats.find((s) => s.role === "admin")?.count || 0,
       manager: roleStats.find((s) => s.role === "manager")?.count || 0,
       normal: roleStats.find((s) => s.role === "normal")?.count || 0,
     };
-    
+
     // 콘텐츠 통계
-    const [{ totalPosts }] = await rdb
-      .table("posts")
-      .count({ totalPosts: "*" });
-    
-    const [{ totalComments }] = await rdb
-      .table("comments")
-      .count({ totalComments: "*" });
-    
+    const [{ totalPosts }] = await rdb.table("posts").count({ totalPosts: "*" });
+
+    const [{ totalComments }] = await rdb.table("comments").count({ totalComments: "*" });
+
     const [{ postsToday }] = await rdb
       .table("posts")
       .where("created_at", ">=", today)
       .count({ postsToday: "*" });
-    
+
     const [{ commentsToday }] = await rdb
       .table("comments")
       .where("created_at", ">=", today)
       .count({ commentsToday: "*" });
-    
+
     // 참여도 통계
-    const averagePostsPerUser = totalUsers > 0
-      ? totalPosts / totalUsers
-      : 0;
-    
-    const averageCommentsPerPost = totalPosts > 0
-      ? totalComments / totalPosts
-      : 0;
-    
+    const averagePostsPerUser = totalUsers > 0 ? totalPosts / totalUsers : 0;
+
+    const averageCommentsPerPost = totalPosts > 0 ? totalComments / totalPosts : 0;
+
     // 가장 활동적인 사용자
     const mostActiveUsers = await rdb
       .table("posts")
@@ -706,7 +674,7 @@ class AdminStatsFrame extends BaseFrameClass {
       .groupBy("posts.user_id", "users.username")
       .orderBy("postCount", "desc")
       .limit(5);
-    
+
     return {
       users: {
         total: totalUsers,
@@ -748,13 +716,10 @@ import dns from "dns/promises";
 
 class ValidationFrame extends BaseFrameClass {
   frameName = "Validation";
-  
+
   // 이메일 검증
   @api({ httpMethod: "POST" })
-  async validateEmail(params: {
-    email: string;
-    checkDns?: boolean;
-  }): Promise<{
+  async validateEmail(params: { email: string; checkDns?: boolean }): Promise<{
     valid: boolean;
     format: boolean;
     domain: boolean;
@@ -763,7 +728,7 @@ class ValidationFrame extends BaseFrameClass {
     // 형식 검증
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const formatValid = emailRegex.test(params.email);
-    
+
     if (!formatValid) {
       return {
         valid: false,
@@ -772,11 +737,11 @@ class ValidationFrame extends BaseFrameClass {
         message: "Invalid email format",
       };
     }
-    
+
     // 도메인 검증
     let domainValid = true;
     const domain = params.email.split("@")[1];
-    
+
     if (params.checkDns) {
       try {
         await dns.resolveMx(domain);
@@ -784,7 +749,7 @@ class ValidationFrame extends BaseFrameClass {
         domainValid = false;
       }
     }
-    
+
     return {
       valid: formatValid && domainValid,
       format: formatValid,
@@ -792,13 +757,10 @@ class ValidationFrame extends BaseFrameClass {
       message: !domainValid ? "Domain does not exist or has no MX records" : undefined,
     };
   }
-  
+
   // URL 검증
   @api({ httpMethod: "POST" })
-  async validateUrl(params: {
-    url: string;
-    checkReachable?: boolean;
-  }): Promise<{
+  async validateUrl(params: { url: string; checkReachable?: boolean }): Promise<{
     valid: boolean;
     format: boolean;
     reachable?: boolean;
@@ -816,7 +778,7 @@ class ValidationFrame extends BaseFrameClass {
         message: "Invalid URL format",
       };
     }
-    
+
     // HTTP/HTTPS만 허용
     if (!["http:", "https:"].includes(urlObj.protocol)) {
       return {
@@ -825,11 +787,11 @@ class ValidationFrame extends BaseFrameClass {
         message: "Only HTTP/HTTPS protocols are supported",
       };
     }
-    
+
     // 도달 가능 여부 확인
     let reachable: boolean | undefined;
     let statusCode: number | undefined;
-    
+
     if (params.checkReachable) {
       try {
         const axios = require("axios");
@@ -837,27 +799,25 @@ class ValidationFrame extends BaseFrameClass {
           timeout: 5000,
           validateStatus: () => true, // 모든 상태 코드 허용
         });
-        
+
         statusCode = response.status;
         reachable = statusCode >= 200 && statusCode < 400;
       } catch (error) {
         reachable = false;
       }
     }
-    
+
     return {
-      valid: true && (reachable !== false),
+      valid: true && reachable !== false,
       format: true,
       reachable,
       statusCode,
     };
   }
-  
+
   // 전화번호 검증 (한국)
   @api({ httpMethod: "POST" })
-  async validatePhoneKR(params: {
-    phone: string;
-  }): Promise<{
+  async validatePhoneKR(params: { phone: string }): Promise<{
     valid: boolean;
     formatted: string;
     type: "mobile" | "landline" | "unknown";
@@ -865,7 +825,7 @@ class ValidationFrame extends BaseFrameClass {
   }> {
     // 숫자만 추출
     const digits = params.phone.replace(/\D/g, "");
-    
+
     // 길이 체크 (10-11자리)
     if (digits.length < 10 || digits.length > 11) {
       return {
@@ -875,11 +835,11 @@ class ValidationFrame extends BaseFrameClass {
         message: "Phone number must be 10-11 digits",
       };
     }
-    
+
     // 유형 판단
     let type: "mobile" | "landline" | "unknown" = "unknown";
     let formatted: string;
-    
+
     if (digits.startsWith("010") && digits.length === 11) {
       // 휴대폰
       type = "mobile";
@@ -891,7 +851,7 @@ class ValidationFrame extends BaseFrameClass {
     } else {
       formatted = params.phone;
     }
-    
+
     return {
       valid: type !== "unknown",
       formatted,
@@ -911,23 +871,23 @@ flowchart TD
     A --> C[유틸리티]
     A --> D[외부 API]
     A --> E[통계/집계]
-    
+
     B --> B1[서버 상태]
     B --> B2[DB 연결]
     B --> B3[메모리/CPU]
-    
+
     C --> C1[암호화]
     C --> C2[해시]
     C --> C3[검증]
-    
+
     D --> D1[날씨]
     D --> D2[결제]
     D --> D3[지도]
-    
+
     E --> E1[대시보드]
     E --> E2[리포트]
     E --> E3[분석]
-    
+
     style A fill:#e3f2fd
     style B fill:#e8f5e9
     style C fill:#fff9c4

@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+
 import chalk from "chalk";
-import type { OutputResult } from "../utils/output.js";
+
+import { type OutputResult } from "../utils/output.js";
 
 export interface AcAddOptions {
   describe?: string;

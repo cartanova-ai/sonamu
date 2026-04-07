@@ -1,6 +1,6 @@
 ---
-title: 'orderBy'
-description: '결과 정렬하기'
+title: "orderBy"
+description: "결과 정렬하기"
 ---
 
 `orderBy`는 쿼리 결과를 특정 컬럼 기준으로 정렬하는 메서드입니다. 오름차순(ASC) 또는 내림차순(DESC)으로 정렬할 수 있으며, 여러 컬럼으로 정렬할 수 있습니다.
@@ -10,7 +10,8 @@ description: '결과 정렬하기'
 ### 오름차순 (ASC)
 
 ```typescript
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .select({ id: "users.id", name: "users.name" })
   .orderBy("users.name", "asc");
 
@@ -20,7 +21,8 @@ const users = await puri.table("users")
 ### 내림차순 (DESC)
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .select({ id: "posts.id", title: "posts.title", created_at: "posts.created_at" })
   .orderBy("posts.created_at", "desc");
 
@@ -32,15 +34,17 @@ const posts = await puri.table("posts")
 `orderBy`를 체이닝하여 여러 컬럼으로 정렬할 수 있습니다.
 
 ```typescript
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .select({ id: "users.id", role: "users.role", name: "users.name" })
-  .orderBy("users.role", "asc")      // 첫 번째: role 오름차순
-  .orderBy("users.name", "asc");     // 두 번째: name 오름차순
+  .orderBy("users.role", "asc") // 첫 번째: role 오름차순
+  .orderBy("users.name", "asc"); // 두 번째: name 오름차순
 
 // ORDER BY users.role ASC, users.name ASC
 ```
 
 **정렬 우선순위:**
+
 1. 첫 번째 `orderBy` - 주 정렬
 2. 두 번째 `orderBy` - 부 정렬 (주 정렬이 같을 때)
 3. 세 번째 `orderBy` - 삼차 정렬 (부 정렬도 같을 때)
@@ -69,6 +73,7 @@ const users = await puri.table("users")
       })
       .orderBy("users.updated_at", "desc");
     ```
+
   </Tab>
 
   <Tab title="알파벳순" icon="arrow-down-a-z">
@@ -89,6 +94,7 @@ const users = await puri.table("users")
       })
       .orderBy("products.name", "desc");
     ```
+
   </Tab>
 
   <Tab title="복합 정렬" icon="layer-group">
@@ -116,6 +122,7 @@ const users = await puri.table("users")
       .orderBy("products.rating", "desc")    // 높은 평점
       .orderBy("products.sales", "desc");    // 많이 팔린 것
     ```
+
   </Tab>
 
   <Tab title="숫자 정렬" icon="arrow-down-1-9">
@@ -140,6 +147,7 @@ const users = await puri.table("users")
       .orderBy("posts.views", "desc")
       .limit(10);
     ```
+
   </Tab>
 
   <Tab title="NULL 처리" icon="ban">
@@ -162,6 +170,7 @@ const users = await puri.table("users")
       })
       .orderBy("posts.deleted_at", "asc");  // NULL이 먼저 옴
     ```
+
   </Tab>
 </Tabs>
 
@@ -170,15 +179,16 @@ const users = await puri.table("users")
 조인한 테이블의 컬럼으로도 정렬할 수 있습니다.
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .join("users", "posts.user_id", "users.id")
   .select({
     post_id: "posts.id",
     title: "posts.title",
-    author_name: "users.name"
+    author_name: "users.name",
   })
-  .orderBy("users.name", "asc")          // 작성자 이름순
-  .orderBy("posts.created_at", "desc");  // 같은 작성자는 최신순
+  .orderBy("users.name", "asc") // 작성자 이름순
+  .orderBy("posts.created_at", "desc"); // 같은 작성자는 최신순
 
 // ORDER BY users.name ASC, posts.created_at DESC
 ```
@@ -188,13 +198,14 @@ const posts = await puri.table("posts")
 SELECT에서 지정한 별칭으로도 정렬할 수 있습니다.
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .select({
     id: "posts.id",
     title: "posts.title",
-    view_count: "posts.views"  // 별칭 지정
+    view_count: "posts.views", // 별칭 지정
   })
-  .orderBy("view_count", "desc");  // 별칭 사용
+  .orderBy("view_count", "desc"); // 별칭 사용
 
 // SELECT posts.views as view_count
 // ORDER BY view_count DESC
@@ -205,13 +216,14 @@ const posts = await puri.table("posts")
 GROUP BY와 함께 집계 함수 결과로 정렬할 수 있습니다.
 
 ```typescript
-const userStats = await puri.table("posts")
+const userStats = await puri
+  .table("posts")
   .select({
     user_id: "posts.user_id",
-    post_count: Puri.count()
+    post_count: Puri.count(),
   })
   .groupBy("posts.user_id")
-  .orderBy("post_count", "desc")  // 게시물 많은 순
+  .orderBy("post_count", "desc") // 게시물 많은 순
   .limit(10);
 
 // SELECT user_id, COUNT(*) as post_count
@@ -229,11 +241,12 @@ const userStats = await puri.table("posts")
 
 ```typescript
 // ts_rank로 전문 검색 결과를 관련도 순으로 정렬
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .select({
     id: "posts.id",
     title: "posts.title",
-    rank: Puri.tsRank("posts.content_tsv", "typescript")
+    rank: Puri.tsRank("posts.content_tsv", "typescript"),
   })
   .orderBy(Puri.tsRank("posts.content_tsv", "typescript"), "desc");
 
@@ -244,11 +257,12 @@ const posts = await puri.table("posts")
 
 ```typescript
 // pg_trgm similarity로 유사도 높은 순 정렬
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .select({
     id: "users.id",
     name: "users.name",
-    score: Puri.similarity("users.name", "홍길동")
+    score: Puri.similarity("users.name", "홍길동"),
   })
   .orderBy(Puri.similarity("users.name", "홍길동"), "desc");
 
@@ -259,11 +273,12 @@ const users = await puri.table("users")
 
 ```typescript
 // 커스텀 SQL 표현식으로 정렬
-const products = await puri.table("products")
+const products = await puri
+  .table("products")
   .select({
     id: "products.id",
     name: "products.name",
-    weighted: Puri.rawNumber("(products.views * 0.3 + products.likes * 0.7)")
+    weighted: Puri.rawNumber("(products.views * 0.3 + products.likes * 0.7)"),
   })
   .orderBy(Puri.rawNumber("(products.views * 0.3 + products.likes * 0.7)"), "desc");
 
@@ -271,7 +286,8 @@ const products = await puri.table("products")
 ```
 
 <Info>
-SQL 표현식을 사용할 때는 내부적으로 `orderByRaw`가 실행되며, 파라미터 바인딩이 자동으로 적용됩니다.
+  SQL 표현식을 사용할 때는 내부적으로 `orderByRaw`가 실행되며, 파라미터 바인딩이 자동으로
+  적용됩니다.
 </Info>
 
 ## 정렬 방향
@@ -300,9 +316,7 @@ SQL 표현식을 사용할 때는 내부적으로 `orderByRaw`가 실행되며, 
 // 40, 35, 30, 25, 18, NULL
 ```
 
-<Info>
-**기본값은 ASC**입니다. 방향을 지정하지 않으면 오름차순으로 정렬됩니다.
-</Info>
+<Info>**기본값은 ASC**입니다. 방향을 지정하지 않으면 오름차순으로 정렬됩니다.</Info>
 
 ## 성능 최적화
 
@@ -317,6 +331,7 @@ SQL 표현식을 사용할 때는 내부적으로 `orderByRaw`가 실행되며, 
 ```
 
 **권장 인덱스:**
+
 ```sql
 CREATE INDEX idx_users_created_at ON users(created_at DESC);
 CREATE INDEX idx_posts_published_created ON posts(published, created_at DESC);
@@ -390,13 +405,10 @@ CREATE INDEX idx_products_category_price ON products(category, price);
 
 ```typescript
 // ❌ 나쁨: 대용량 데이터 전체 정렬
-const allUsers = await puri.table("users")
-  .orderBy("users.created_at", "desc");  // 수백만 행 정렬
+const allUsers = await puri.table("users").orderBy("users.created_at", "desc"); // 수백만 행 정렬
 
 // ✅ 좋음: LIMIT으로 제한
-const recentUsers = await puri.table("users")
-  .orderBy("users.created_at", "desc")
-  .limit(100);  // 상위 100개만
+const recentUsers = await puri.table("users").orderBy("users.created_at", "desc").limit(100); // 상위 100개만
 ```
 
 ## 타입 안정성
@@ -405,50 +417,31 @@ const recentUsers = await puri.table("users")
 
 ```typescript
 // ✅ 올바른 컬럼
-await puri.table("users")
-  .orderBy("users.created_at", "desc");
+await puri.table("users").orderBy("users.created_at", "desc");
 
 // ❌ 타입 에러: 존재하지 않는 컬럼
-await puri.table("users")
-  .orderBy("users.unknown_field", "desc");
+await puri.table("users").orderBy("users.unknown_field", "desc");
 
 // ❌ 타입 에러: 잘못된 방향
-await puri.table("users")
-  .orderBy("users.name", "invalid");  // "asc" 또는 "desc"만 가능
+await puri.table("users").orderBy("users.name", "invalid"); // "asc" 또는 "desc"만 가능
 ```
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="limit" 
-    icon="hashtag" 
-    href="/ko/api-reference/puri-methods/limit"
-  >
+  <Card title="limit" icon="hashtag" href="/ko/api-reference/puri-methods/limit">
     결과 개수 제한하기
   </Card>
-  
-  <Card 
-    title="where" 
-    icon="filter" 
-    href="/ko/api-reference/puri-methods/where"
-  >
-    조건 필터링하기
-  </Card>
-  
-  <Card 
-    title="select" 
-    icon="list-check" 
-    href="/ko/api-reference/puri-methods/select"
-  >
-    조회할 필드 선택하기
-  </Card>
-  
-  <Card 
-    title="join" 
-    icon="link" 
-    href="/ko/api-reference/puri-methods/join"
-  >
+
+<Card title="where" icon="filter" href="/ko/api-reference/puri-methods/where">
+  조건 필터링하기
+</Card>
+
+<Card title="select" icon="list-check" href="/ko/api-reference/puri-methods/select">
+  조회할 필드 선택하기
+</Card>
+
+  <Card title="join" icon="link" href="/ko/api-reference/puri-methods/join">
     테이블 조인하기
   </Card>
 </CardGroup>

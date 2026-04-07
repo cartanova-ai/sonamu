@@ -1,6 +1,7 @@
 import { Sonamu } from "sonamu";
 import { bootstrap, runWithContext, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+
 import { DashboardFrame } from "./dashboard.frame";
 
 bootstrap(vi);

@@ -9,6 +9,7 @@ The main agent reads this document and assumes the orchestrator role. This is NO
 The orchestrator never edits code or tests directly. All implementation work is delegated to workers.
 
 What the orchestrator CAN do:
+
 - Run CLI commands (`pnpm cdd ac add/list`, `pnpm sonamu test`, `pnpm build`, `pnpm check`)
 - Run Sonamu setup commands needed to support Claim execution (`pnpm sonamu sync`, `pnpm sonamu migrate generate`, `pnpm sonamu migrate run`, `pnpm sonamu scaffold ...`)
 - Delegate planning to `cdd-planner`
@@ -52,7 +53,7 @@ bootstrap_context:
   affected_rules:
     - "contract/rules/api.rules.json"
   execution_mode: "team|sub-agent"
-  unresolved_questions: []  # must be empty before proceeding
+  unresolved_questions: [] # must be empty before proceeding
 ```
 
 ## 1. Planner handoff
@@ -93,12 +94,12 @@ bootstrap_context:
 
 Worker mapping (same for both modes):
 
-| work kind | worker | agent definition |
-|---|---|---|
-| `planning` | `cdd-planner` | `agents/cdd-planner.md` |
-| `surface` | `cdd-surface-scaffolder` | `agents/cdd-surface-scaffolder.md` |
-| `test` | `cdd-test-writer` | `agents/cdd-test-writer.md` |
-| `implement` | `cdd-implementer` | `agents/cdd-implementer.md` |
+| work kind   | worker                   | agent definition                   |
+| ----------- | ------------------------ | ---------------------------------- |
+| `planning`  | `cdd-planner`            | `agents/cdd-planner.md`            |
+| `surface`   | `cdd-surface-scaffolder` | `agents/cdd-surface-scaffolder.md` |
+| `test`      | `cdd-test-writer`        | `agents/cdd-test-writer.md`        |
+| `implement` | `cdd-implementer`        | `agents/cdd-implementer.md`        |
 
 ### Sub-agent mode execution
 

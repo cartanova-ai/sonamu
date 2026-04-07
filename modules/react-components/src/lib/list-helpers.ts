@@ -1,11 +1,11 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 파싱 결과이므로 any 허용
 
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import equal from "fast-deep-equal";
 import { unique } from "radashi";
 import type React from "react";
 import { useEffect, useState } from "react";
-import type { z } from "zod";
+import { type z } from "zod";
 
 // radashi에 intersection이 없으므로 직접 구현
 function intersection<T>(arr1: T[], arr2: T[]): T[] {
@@ -35,7 +35,7 @@ export function useListParams<U extends z.ZodType<any>, T extends Partial<z.infe
       return { ...defaultValue, ...parsed.data };
     }
     return defaultValue;
-  })() as T;
+  })();
 
   const setListParams = (newParams: T) => {
     if (equal(listParams, newParams)) {
@@ -75,10 +75,10 @@ export function useListParams<U extends z.ZodType<any>, T extends Partial<z.infe
 }
 
 export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
-  const [selection, setSelection] = useState<Map<T, boolean>>(
+  const [selection, setSelection] = useState(
     new Map(allKeys.map((key) => [key, defaultSelectedKeys.includes(key)])),
   );
-  const [lastIndex, setLastIndex] = useState<number>(0);
+  const [lastIndex, setLastIndex] = useState(0);
 
   // 전체 키가 바뀔 때마다 validation하여 갱신된 전체 키에 포함된 키만 유지
   useEffect(() => {
@@ -91,7 +91,7 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
   }, [allKeys, selection]);
 
   const selectedKeys = Array.from(selection)
-    .filter(([key, value]) => allKeys.includes(key) && value === true)
+    .filter(([key, value]) => allKeys.includes(key) && value)
     .map(([key]) => key);
 
   return {
@@ -105,9 +105,9 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
     deselectAll: () => setSelection(new Map(allKeys.map((key) => [key, false]))),
     selectAll: () => setSelection(new Map(allKeys.map((key) => [key, true]))),
     isAllSelected: selectedKeys.length === allKeys.length,
-    handleCheckboxClick: (e: React.MouseEvent<HTMLInputElement, MouseEvent>, index: number) => {
+    handleCheckboxClick: (e: React.MouseEvent<HTMLInputElement>, index: number) => {
       const input = e.currentTarget.getElementsByTagName("input");
-      if (e.shiftKey && input[0]?.checked === false) {
+      if (e.shiftKey && !input[0]?.checked) {
         const [begin, end] = (() => {
           if (lastIndex < index) {
             return [lastIndex, index];

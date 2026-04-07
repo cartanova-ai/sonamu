@@ -10,9 +10,10 @@ import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import z from "zod";
+import UploadIcon from "~icons/mdi/upload";
+
 import { ApiLogViewer } from "@/admin-common/ApiLogViewer";
 import { FileService } from "@/services/services.generated";
-import UploadIcon from "~icons/mdi/upload";
 
 export const Route = createFileRoute("/admin/files/upload-test")({
   head: () => ({

@@ -17,20 +17,25 @@ import {
   extractFieldMetaFromSchema,
   Input,
   Pagination,
-  type Rule,
   SonamuFilterModal,
   SonamuFilterPopover,
   Table,
   TableBody,
   TableCell,
-  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
+import { type Rule, type TableCol } from "@sonamu-kit/react-components/components";
 import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
+import EditIcon from "~icons/lucide/square-pen";
+import TrashIcon from "~icons/lucide/trash-2";
+import FilterIcon from "~icons/mdi/filter-variant";
+import ListIcon from "~icons/mdi/format-list-bulleted";
+import SearchIcon from "~icons/mdi/magnify";
+
 import { SD } from "@/i18n/sd.generated";
 import { TagService } from "@/services/services.generated";
 import {
@@ -41,11 +46,6 @@ import {
   TagSearchFieldLabel,
 } from "@/services/sonamu.generated";
 import { TagListParams } from "@/services/tag/tag.types";
-import EditIcon from "~icons/lucide/square-pen";
-import TrashIcon from "~icons/lucide/trash-2";
-import FilterIcon from "~icons/mdi/filter-variant";
-import ListIcon from "~icons/mdi/format-list-bulleted";
-import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/tags/")({
   head: () => ({
@@ -60,7 +60,7 @@ function TagList({}: TagListProps) {
   const navigate = useNavigate();
 
   // 상태 관리
-  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const [selectedItems, setSelectedItems] = useState(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
   const [filterModalOpen, setFilterModalOpen] = useState(false);

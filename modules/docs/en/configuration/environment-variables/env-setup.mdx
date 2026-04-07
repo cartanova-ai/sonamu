@@ -1,12 +1,12 @@
 ---
-title: '.env Setup'
-description: 'Creating and managing environment variable files'
+title: ".env Setup"
+description: "Creating and managing environment variable files"
 ---
 
 Sonamu uses `.env` files to apply different settings for each environment. Sensitive information such as database connection details, API keys, and session secrets should be stored in `.env` files and referenced from `sonamu.config.ts`.
 
 <Warning>
-Never commit `.env` files to Git! Make sure `.env` is included in your `.gitignore`.
+  Never commit `.env` files to Git! Make sure `.env` is included in your `.gitignore`.
 </Warning>
 
 ## Quick Start
@@ -20,17 +20,10 @@ Never commit `.env` files to Git! Make sure `.env` is included in your `.gitigno
     ```
   </Step>
 
-  <Step title="Set Environment Variables" icon="pen">
-    Open the `.env` file and modify it with actual values.
-    
-    ```bash
-    # Example
-    DB_HOST=localhost
-    DB_PORT=5432
-    DB_USER=postgres
-    DB_PASSWORD=your-db-password
-    ```
-  </Step>
+<Step title="Set Environment Variables" icon="pen">
+  Open the `.env` file and modify it with actual values. ```bash # Example DB_HOST=localhost
+  DB_PORT=5432 DB_USER=postgres DB_PASSWORD=your-db-password ```
+</Step>
 
   <Step title="Reference in Config File" icon="code">
     Read environment variables using `process.env` in `sonamu.config.ts`.
@@ -82,9 +75,7 @@ OPENAI_API_KEY=your-openai-api-key
 DISABLE_WORKER=false
 ```
 
-<Info>
-Comments start with `#`. Blank lines are ignored.
-</Info>
+<Info>Comments start with `#`. Blank lines are ignored.</Info>
 
 ## Environment-Specific Settings
 
@@ -117,36 +108,16 @@ Comments start with `#`. Blank lines are ignored.
     - Simple secret keys (security not required)
   </Tab>
 
-  <Tab title="Staging" icon="flask">
-    ```bash title=".env.staging"
-    # Test server settings
-    PROJECT_NAME=MyProject-Staging
-    
-    DB_HOST=staging-db.example.com
-    DB_PORT=5432
-    DB_USER=myproject_user
-    DB_PASSWORD=your-staging-password  # Minimum 32 characters
-    DATABASE_NAME=myproject_staging
-    
-    SESSION_SECRET=your-staging-session-secret  # Minimum 64 characters
-    SESSION_SALT=your-staging-session-salt
-    
-    DRIVE_DISK=s3
-    AWS_ACCESS_KEY_ID=your-staging-aws-key-id
-    AWS_SECRET_ACCESS_KEY=your-staging-aws-secret-key
-    S3_REGION=ap-northeast-2
-    S3_BUCKET=myproject-staging
-    
-    OPENAI_API_KEY=your-staging-openai-key
-    
-    DISABLE_WORKER=false
-    ```
-    
-    **Characteristics:**
-    - Remote database
-    - S3 storage
-    - Production-like environment
-  </Tab>
+<Tab title="Staging" icon="flask">
+  ```bash title=".env.staging" # Test server settings PROJECT_NAME=MyProject-Staging
+  DB_HOST=staging-db.example.com DB_PORT=5432 DB_USER=myproject_user
+  DB_PASSWORD=your-staging-password # Minimum 32 characters DATABASE_NAME=myproject_staging
+  SESSION_SECRET=your-staging-session-secret # Minimum 64 characters
+  SESSION_SALT=your-staging-session-salt DRIVE_DISK=s3 AWS_ACCESS_KEY_ID=your-staging-aws-key-id
+  AWS_SECRET_ACCESS_KEY=your-staging-aws-secret-key S3_REGION=ap-northeast-2
+  S3_BUCKET=myproject-staging OPENAI_API_KEY=your-staging-openai-key DISABLE_WORKER=false ```
+  **Characteristics:** - Remote database - S3 storage - Production-like environment
+</Tab>
 
   <Tab title="Production" icon="server">
     ```bash title=".env.production"
@@ -191,7 +162,7 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   projectName: process.env.PROJECT_NAME ?? "DefaultName",
-  
+
   database: {
     name: process.env.DATABASE_NAME ?? "database_name",
     defaultOptions: {
@@ -203,7 +174,7 @@ export default defineConfig({
       },
     },
   },
-  
+
   // ...
 });
 ```
@@ -218,7 +189,8 @@ const name = process.env.PROJECT_NAME ?? "DefaultName";
 // undefined, null → "DefaultName"
 // ""(empty string) → "" preserved
 // 0 → 0 preserved
-```
+
+````
 
 ```typescript Logical OR (||)
 // Caution: Replaces all falsy values
@@ -226,34 +198,36 @@ const name = process.env.PROJECT_NAME || "DefaultName";
 
 // undefined, null, "", 0, false → "DefaultName"
 // Empty strings are also replaced with default
-```
+````
+
 </CodeGroup>
 
 <Tip>
-Use `??` when you only want to use the default value if the environment variable is not set. `||` treats empty strings as falsy.
+  Use `??` when you only want to use the default value if the environment variable is not set. `||`
+  treats empty strings as falsy.
 </Tip>
 
 ### Number Conversion
 
 ```typescript
 // ✅ Correct method
-port: Number(process.env.DB_PORT) || 5432
+port: Number(process.env.DB_PORT) || 5432;
 
 // ❌ Incorrect method
-port: process.env.DB_PORT || 5432  // Can become string "5432"
+port: process.env.DB_PORT || 5432; // Can become string "5432"
 ```
 
 ### Boolean Conversion
 
 ```typescript
 // ✅ Correct method
-enableWorker: !["true", "1"].includes(process.env.DISABLE_WORKER ?? "false")
+enableWorker: !["true", "1"].includes(process.env.DISABLE_WORKER ?? "false");
 
 // Or
-enableCache: process.env.ENABLE_CACHE === "true"
+enableCache: process.env.ENABLE_CACHE === "true";
 
 // ❌ Incorrect method
-enableCache: process.env.ENABLE_CACHE || false  // "false" is also truthy
+enableCache: process.env.ENABLE_CACHE || false; // "false" is also truthy
 ```
 
 ## Security Best Practices
@@ -261,55 +235,57 @@ enableCache: process.env.ENABLE_CACHE || false  // "false" is also truthy
 <Accordion title="Secret Key Generation" icon="key">
   ### Generating Strong Secret Keys
 
-  ```bash
-  # Generate 64-character random string
-  openssl rand -base64 48
-  
-  # Or
-  node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
-  ```
+```bash
+# Generate 64-character random string
+openssl rand -base64 48
 
-  **SESSION_SECRET example:**
-  ```bash
-  SESSION_SECRET=your-64-character-random-session-secret-change-in-production
-  ```
+# Or
+node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+```
 
-  **Minimum lengths:**
-  - SESSION_SECRET: 64+ characters
-  - SESSION_SALT: 16+ characters
-  - DB_PASSWORD: 32+ characters (production)
-</Accordion>
+**SESSION_SECRET example:**
+
+```bash
+SESSION_SECRET=your-64-character-random-session-secret-change-in-production
+```
+
+**Minimum lengths:**
+
+- SESSION_SECRET: 64+ characters
+- SESSION_SALT: 16+ characters
+- DB_PASSWORD: 32+ characters (production)
+  </Accordion>
 
 <Accordion title="Git Security" icon="git-alt">
   ### .gitignore Configuration
 
-  ```bash title=".gitignore"
-  # Environment variables
-  .env
-  .env.local
-  .env.*.local
-  
-  # Never commit production environment variables
-  .env.production
-  
-  # Test environments may be allowed (if no sensitive info)
-  # .env.test
-  ```
+```bash title=".gitignore"
+# Environment variables
+.env
+.env.local
+.env.*.local
 
-  ### Maintaining .env.example
+# Never commit production environment variables
+.env.production
 
-  ```bash title=".env.example"
-  # List keys only without actual values
-  PROJECT_NAME=
-  
-  DB_HOST=localhost
-  DB_PORT=5432
-  DB_USER=
-  DB_PASSWORD=
-  
-  SESSION_SECRET=
-  SESSION_SALT=
-  ```
+# Test environments may be allowed (if no sensitive info)
+# .env.test
+```
+
+### Maintaining .env.example
+
+```bash title=".env.example"
+# List keys only without actual values
+PROJECT_NAME=
+
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=
+DB_PASSWORD=
+
+SESSION_SECRET=
+SESSION_SALT=
+```
 
   <Info>
   Commit `.env.example` to Git so team members can reference it.
@@ -319,50 +295,51 @@ enableCache: process.env.ENABLE_CACHE || false  // "false" is also truthy
 <Accordion title="Permission Management" icon="shield">
   ### File Permission Settings
 
-  ```bash
-  # Set .env file permissions to owner read/write only
-  chmod 600 .env
-  
-  # Verify
-  ls -la .env
-  # -rw------- 1 user user 512 Jan 09 10:00 .env
-  ```
+```bash
+# Set .env file permissions to owner read/write only
+chmod 600 .env
 
-  ### Restricting Environment Variable Access
+# Verify
+ls -la .env
+# -rw------- 1 user user 512 Jan 09 10:00 .env
+```
 
-  ```typescript
-  // ✅ Access only where needed
-  const dbPassword = process.env.DB_PASSWORD;
-  
-  // ❌ Never output to logs
-  console.log("Password:", process.env.DB_PASSWORD);
-  
-  // ❌ Never expose to client
-  res.send({ secret: process.env.SESSION_SECRET });
-  ```
+### Restricting Environment Variable Access
+
+```typescript
+// ✅ Access only where needed
+const dbPassword = process.env.DB_PASSWORD;
+
+// ❌ Never output to logs
+console.log("Password:", process.env.DB_PASSWORD);
+
+// ❌ Never expose to client
+res.send({ secret: process.env.SESSION_SECRET });
+```
+
 </Accordion>
 
 <Accordion title="CI/CD Environment Variables" icon="gears">
   ### GitHub Actions
 
-  ```yaml title=".github/workflows/deploy.yml"
-  jobs:
-    deploy:
-      steps:
-        - name: Deploy
-          env:
-            DB_HOST: ${{ secrets.DB_HOST }}
-            DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-            SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-          run: |
-            npm run deploy
-  ```
+```yaml title=".github/workflows/deploy.yml"
+jobs:
+  deploy:
+    steps:
+      - name: Deploy
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        run: |
+          npm run deploy
+```
 
-  ### Vercel/Netlify
+### Vercel/Netlify
 
-  1. Project Settings → Environment Variables
-  2. Add each variable individually
-  3. Set different values per environment (Production/Preview/Development)
+1. Project Settings → Environment Variables
+2. Add each variable individually
+3. Set different values per environment (Production/Preview/Development)
 
   <Warning>
   Never use production secrets in development/staging environments!
@@ -374,38 +351,43 @@ enableCache: process.env.ENABLE_CACHE || false  // "false" is also truthy
 <Accordion title="Environment Variable is undefined" icon="circle-question">
   **Symptom:** `process.env.DB_PASSWORD` is `undefined`
 
-  **Causes:**
-  1. `.env` file doesn't exist
-  2. `.env` file is in wrong location
-  3. Typo in variable name
-  4. Server not restarted
+**Causes:**
 
-  **Solution:**
-  ```bash
-  # 1. Check .env file
-  cat .env | grep DB_PASSWORD
-  
-  # 2. Verify .env file location (project root)
-  ls -la .env
-  
-  # 3. Restart server
-  npm run dev
-  ```
+1. `.env` file doesn't exist
+2. `.env` file is in wrong location
+3. Typo in variable name
+4. Server not restarted
+
+**Solution:**
+
+```bash
+# 1. Check .env file
+cat .env | grep DB_PASSWORD
+
+# 2. Verify .env file location (project root)
+ls -la .env
+
+# 3. Restart server
+npm run dev
+```
+
 </Accordion>
 
 <Accordion title="Environment Variable Changes Not Applied" icon="rotate">
   **Symptom:** Changed environment variable but still using old value
 
-  **Cause:**
-  - Node.js only reads `.env` file when the process starts
-  - Server restart required after file changes
+**Cause:**
 
-  **Solution:**
-  ```bash
-  # Restart development server
-  # Stop with Ctrl+C then
-  npm run dev
-  ```
+- Node.js only reads `.env` file when the process starts
+- Server restart required after file changes
+
+**Solution:**
+
+```bash
+# Restart development server
+# Stop with Ctrl+C then
+npm run dev
+```
 
   <Info>
   HMR (Hot Module Replacement) only auto-reloads code; environment variables require a restart to apply.
@@ -415,58 +397,49 @@ enableCache: process.env.ENABLE_CACHE || false  // "false" is also truthy
 <Accordion title="Environment Variables Fail to Load in Production" icon="server">
   **Symptom:** Works locally but `undefined` in production
 
-  **Causes:**
-  - `.env` file doesn't exist on production server
-  - Hosting platform environment variables not configured
+**Causes:**
 
-  **Solutions:**
+- `.env` file doesn't exist on production server
+- Hosting platform environment variables not configured
 
-  **Method 1: Deploy .env file to server**
-  ```bash
-  # After SSH connection
-  cd /path/to/app
-  nano .env
-  # Paste content and save
-  ```
+**Solutions:**
 
-  **Method 2: Use hosting platform environment variables**
-  - Vercel: Project Settings → Environment Variables
-  - AWS EC2: `/etc/environment` or `~/.bashrc`
-  - Docker: `docker run -e DB_HOST=... -e DB_PASSWORD=...`
-</Accordion>
+**Method 1: Deploy .env file to server**
+
+```bash
+# After SSH connection
+cd /path/to/app
+nano .env
+# Paste content and save
+```
+
+**Method 2: Use hosting platform environment variables**
+
+- Vercel: Project Settings → Environment Variables
+- AWS EC2: `/etc/environment` or `~/.bashrc`
+- Docker: `docker run -e DB_HOST=... -e DB_PASSWORD=...`
+  </Accordion>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="Database Credentials" 
-    icon="database" 
+  <Card
+    title="Database Credentials"
+    icon="database"
     href="/en/configuration/environment-variables/database-credentials"
   >
     Set up DB connection information securely
   </Card>
-  
-  <Card 
-    title="API Key Management" 
-    icon="key" 
-    href="/en/configuration/environment-variables/api-keys"
-  >
-    Manage external service API keys securely
-  </Card>
-  
-  <Card 
-    title="sonamu.config.ts" 
-    icon="gear" 
-    href="/en/configuration/sonamu-config"
-  >
-    Configure your entire project settings
-  </Card>
-  
-  <Card 
-    title="Authentication Setup" 
-    icon="shield" 
-    href="/en/api-development/authentication/setup"
-  >
+
+<Card title="API Key Management" icon="key" href="/en/configuration/environment-variables/api-keys">
+  Manage external service API keys securely
+</Card>
+
+<Card title="sonamu.config.ts" icon="gear" href="/en/configuration/sonamu-config">
+  Configure your entire project settings
+</Card>
+
+  <Card title="Authentication Setup" icon="shield" href="/en/api-development/authentication/setup">
     Set up authentication and session security
   </Card>
 </CardGroup>

@@ -1,5 +1,12 @@
-import { type FakerMappingConfig, fakerMappings } from "../testing/faker-mappings";
-import type { Cone, EntityJson, EntityProp, OneToOneRelationProp, SubsetDef } from "../types/types";
+import { fakerMappings } from "../testing/faker-mappings";
+import { type FakerMappingConfig } from "../testing/faker-mappings";
+import {
+  type Cone,
+  type EntityJson,
+  type EntityProp,
+  type OneToOneRelationProp,
+  type SubsetDef,
+} from "../types/types";
 import {
   isBelongsToOneRelationProp,
   isEnumDefWithCone,
@@ -181,7 +188,7 @@ function shouldHaveDataSource(prop: EntityProp): boolean {
 
   // OneToOne은 hasJoinColumn: true인 경우에만 dataSource 필요
   if (isOneToOneRelationProp(prop)) {
-    return (prop as OneToOneRelationProp).hasJoinColumn === true;
+    return (prop as OneToOneRelationProp).hasJoinColumn;
   }
 
   return false;

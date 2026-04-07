@@ -1,5 +1,6 @@
-import type { DriverContract } from "flydrive/types";
-import type { DriverKey } from "./drivers";
+import { type DriverContract } from "flydrive/types";
+
+import { type DriverKey } from "./drivers";
 
 /**
  * Stream 모드에서 파일 키 생성 함수 타입

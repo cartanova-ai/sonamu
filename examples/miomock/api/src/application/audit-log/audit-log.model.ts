@@ -1,17 +1,19 @@
 import assert from "assert";
+
 import {
   api,
   asArray,
   BadRequestException,
   BaseModelClass,
   exhaustive,
-  type ListResult,
   NotFoundException,
 } from "sonamu";
+import { type ListResult } from "sonamu";
+
 import { SD } from "../../i18n/sd.generated";
-import type { AuditLogSubsetKey, AuditLogSubsetMapping } from "../sonamu.generated";
+import { type AuditLogSubsetKey, type AuditLogSubsetMapping } from "../sonamu.generated";
 import { auditLogLoaderQueries, auditLogSubsetQueries } from "../sonamu.generated.sso";
-import type { AuditLogListParams, AuditLogValue } from "./audit-log.types";
+import { type AuditLogListParams, type AuditLogValue } from "./audit-log.types";
 
 // log() 메서드 파라미터 타입
 interface AuditLogParams {

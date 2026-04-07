@@ -9,24 +9,16 @@ Sonamu에서 TanStack Query의 클라이언트 캐싱과 SSR 응답의 HTTP 캐�
 
 <CardGroup cols={2}>
   <Card title="TanStack Query" icon="arrows-rotate">
-    클라이언트 메모리 캐싱
-    
-    staleTime/gcTime
+    클라이언트 메모리 캐싱 staleTime/gcTime
   </Card>
   <Card title="HTTP 캐시" icon="server">
-    Cache-Control 헤더
-    
-    CDN/브라우저 캐싱
+    Cache-Control 헤더 CDN/브라우저 캐싱
   </Card>
   <Card title="재검증" icon="refresh">
-    자동/수동 갱신
-    
-    최신 데이터 유지
+    자동/수동 갱신 최신 데이터 유지
   </Card>
   <Card title="성능 최적화" icon="gauge-high">
-    빠른 응답
-    
-    서버 부하 감소
+    빠른 응답 서버 부하 감소
   </Card>
 </CardGroup>
 
@@ -40,16 +32,16 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // 캐시 관련 설정
-      staleTime: 5000,             // 5초 (데이터가 fresh한 시간)
-      gcTime: 5 * 60 * 1000,       // 5분 (가비지 컬렉션 시간)
-      
+      staleTime: 5000, // 5초 (데이터가 fresh한 시간)
+      gcTime: 5 * 60 * 1000, // 5분 (가비지 컬렉션 시간)
+
       // 재검증 설정
       refetchOnWindowFocus: false, // 윈도우 포커스 시 재검증 안 함
-      refetchOnMount: true,        // 마운트 시 재검증
-      refetchOnReconnect: true,    // 재연결 시 재검증
-      
+      refetchOnMount: true, // 마운트 시 재검증
+      refetchOnReconnect: true, // 재연결 시 재검증
+
       // 재시도 설정
-      retry: false,                // 실패 시 재시도 안 함
+      retry: false, // 실패 시 재시도 안 함
     },
   },
 });
@@ -69,7 +61,7 @@ const queryClient = new QueryClient({
 const { data } = useQuery({
   queryKey: ["user", userId],
   queryFn: fetchUser,
-  staleTime: 5000,        // 5초간 fresh
+  staleTime: 5000, // 5초간 fresh
   gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
 });
 
@@ -107,15 +99,15 @@ function UserProfile({ userId }: { userId: number }) {
 const { data } = useQuery({
   queryKey: ["stock", symbol],
   queryFn: fetchStock,
-  staleTime: 0,             // 항상 stale
-  refetchInterval: 5000,    // 5초마다 자동 refetch
+  staleTime: 0, // 항상 stale
+  refetchInterval: 5000, // 5초마다 자동 refetch
 });
 
 // 2. 자주 변경되는 데이터 (피드, 알림 등)
 const { data } = useQuery({
   queryKey: ["feed"],
   queryFn: fetchFeed,
-  staleTime: 60 * 1000,     // 1분 fresh
+  staleTime: 60 * 1000, // 1분 fresh
   refetchOnWindowFocus: true,
 });
 
@@ -131,8 +123,8 @@ const { data } = useQuery({
 const { data } = useQuery({
   queryKey: ["categories"],
   queryFn: fetchCategories,
-  staleTime: Infinity,      // 영원히 fresh
-  gcTime: Infinity,         // 영원히 캐시 유지
+  staleTime: Infinity, // 영원히 fresh
+  gcTime: Infinity, // 영원히 캐시 유지
 });
 ```
 
@@ -217,8 +209,7 @@ const userData = queryClient.getQueryData(["User", "getUser", "C", 123]);
 const allQueries = queryClient.getQueryCache().getAll();
 
 // 특정 패턴 쿼리 조회
-const postQueries = queryClient.getQueryCache()
-  .findAll({ queryKey: ["Post"] });
+const postQueries = queryClient.getQueryCache().findAll({ queryKey: ["Post"] });
 ```
 
 ## SSR Cache-Control
@@ -233,17 +224,20 @@ import { registerSSR } from "sonamu";
 
 registerSSR({
   path: "/posts/:id",
-  preload: (params) => [/* ... */],
+  preload: (params) => [
+    /* ... */
+  ],
   cacheControl: {
-    maxAge: 3600,                // 1시간 (브라우저 캐시)
-    sMaxAge: 7200,               // 2시간 (CDN 캐시)
+    maxAge: 3600, // 1시간 (브라우저 캐시)
+    sMaxAge: 7200, // 2시간 (CDN 캐시)
     staleWhileRevalidate: 86400, // 1일간 stale 컨텐츠 제공 가능
-    public: true,                // 공개 캐시 허용
+    public: true, // 공개 캐시 허용
   },
 });
 ```
 
 **생성되는 헤더**:
+
 ```
 Cache-Control: public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400
 ```
@@ -255,8 +249,8 @@ Cache-Control: public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400
 registerSSR({
   path: "/about",
   cacheControl: {
-    maxAge: 86400,    // 1일
-    sMaxAge: 604800,  // 7일 (CDN)
+    maxAge: 86400, // 1일
+    sMaxAge: 604800, // 7일 (CDN)
     public: true,
   },
 });
@@ -265,8 +259,8 @@ registerSSR({
 registerSSR({
   path: "/posts/:id",
   cacheControl: {
-    maxAge: 300,      // 5분
-    sMaxAge: 600,     // 10분 (CDN)
+    maxAge: 300, // 5분
+    sMaxAge: 600, // 10분 (CDN)
     staleWhileRevalidate: 3600,
     public: true,
   },
@@ -276,8 +270,8 @@ registerSSR({
 registerSSR({
   path: "/dashboard",
   cacheControl: {
-    noStore: true,    // 캐시 완전 비활성화
-    private: true,    // 개인 전용
+    noStore: true, // 캐시 완전 비활성화
+    private: true, // 개인 전용
   },
 });
 
@@ -285,7 +279,7 @@ registerSSR({
 registerSSR({
   path: "/live-feed",
   cacheControl: {
-    noCache: true,    // 재검증 필수
+    noCache: true, // 재검증 필수
   },
 });
 ```
@@ -294,16 +288,16 @@ registerSSR({
 
 ```typescript
 type CacheControlConfig = {
-  maxAge?: number;              // 브라우저 캐시 시간 (초)
-  sMaxAge?: number;             // CDN 캐시 시간 (초)
+  maxAge?: number; // 브라우저 캐시 시간 (초)
+  sMaxAge?: number; // CDN 캐시 시간 (초)
   staleWhileRevalidate?: number; // stale 컨텐츠 제공 시간 (초)
-  staleIfError?: number;        // 에러 시 stale 컨텐츠 제공 시간 (초)
-  public?: boolean;             // 공개 캐시 허용
-  private?: boolean;            // 개인 전용 (CDN 캐시 안 함)
-  noCache?: boolean;            // 재검증 필수
-  noStore?: boolean;            // 캐시 완전 비활성화
-  mustRevalidate?: boolean;     // 재검증 강제
-  immutable?: boolean;          // 불변 리소스
+  staleIfError?: number; // 에러 시 stale 컨텐츠 제공 시간 (초)
+  public?: boolean; // 공개 캐시 허용
+  private?: boolean; // 개인 전용 (CDN 캐시 안 함)
+  noCache?: boolean; // 재검증 필수
+  noStore?: boolean; // 캐시 완전 비활성화
+  mustRevalidate?: boolean; // 재검증 강제
+  immutable?: boolean; // 불변 리소스
 };
 ```
 
@@ -323,7 +317,7 @@ const config: SonamuFastifyConfig = {
     // 정적 페이지
     if (path === "/about" || path === "/terms") {
       return {
-        maxAge: 86400,    // 1일
+        maxAge: 86400, // 1일
         public: true,
       };
     }
@@ -331,7 +325,7 @@ const config: SonamuFastifyConfig = {
     // 동적 페이지
     if (path.startsWith("/posts/")) {
       return {
-        maxAge: 300,      // 5분
+        maxAge: 300, // 5분
         staleWhileRevalidate: 3600,
         public: true,
       };
@@ -365,11 +359,13 @@ const { data } = PostService.usePost("C", postId, {
 ```
 
 **캐싱 레이어**:
+
 1. **브라우저 HTTP 캐시**: 1시간 (max-age=3600)
 2. **TanStack Query 메모리**: 5분 (staleTime)
 3. **서버 SSR 렌더링**: 캐시 미스 시 렌더링
 
 **흐름**:
+
 1. 첫 방문: SSR → HTML + 데이터 → 브라우저 캐시 저장
 2. 5분 이내 재방문: TanStack Query 메모리 캐시 사용
 3. 5분~1시간: 브라우저 HTTP 캐시 사용
@@ -497,12 +493,9 @@ function prefetchPost(postId: number) {
 ## 주의사항
 
 <Warning>
-**캐시 사용 시 주의사항**:
-1. **staleTime 설정 필수**: 기본값 0은 항상 refetch
-2. **개인 데이터는 private**: public 캐시 금지
-3. **민감한 데이터**: noStore로 캐싱 비활성화
-4. **SSR cacheControl**: 개별 설정이 전역 핸들러보다 우선
-5. **메모리 관리**: gcTime으로 불필요한 캐시 제거
+  **캐시 사용 시 주의사항**: 1. **staleTime 설정 필수**: 기본값 0은 항상 refetch 2. **개인 데이터는
+  private**: public 캐시 금지 3. **민감한 데이터**: noStore로 캐싱 비활성화 4. **SSR cacheControl**:
+  개별 설정이 전역 핸들러보다 우선 5. **메모리 관리**: gcTime으로 불필요한 캐시 제거
 </Warning>
 
 ## 다음 단계
@@ -514,7 +507,11 @@ function prefetchPost(postId: number) {
   <Card title="데이터 프리로딩" icon="bolt" href="/ko/frontend-integration/ssr/preloading-data">
     registerSSR 사용법
   </Card>
-  <Card title="Hydration 전략" icon="droplet" href="/ko/frontend-integration/ssr/hydration-strategies">
+  <Card
+    title="Hydration 전략"
+    icon="droplet"
+    href="/ko/frontend-integration/ssr/hydration-strategies"
+  >
     하이드레이션 최적화
   </Card>
   <Card title="TanStack Query 공식 문서" icon="external-link" href="https://tanstack.com/query">

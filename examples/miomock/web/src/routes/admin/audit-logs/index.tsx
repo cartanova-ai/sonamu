@@ -11,14 +11,18 @@ import {
   Table,
   TableBody,
   TableCell,
-  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
+import { type TableCol } from "@sonamu-kit/react-components/components";
 import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
+import EyeIcon from "~icons/lucide/eye";
+import ListIcon from "~icons/mdi/format-list-bulleted";
+import SearchIcon from "~icons/mdi/magnify";
+
 import { SD } from "@/i18n/sd.generated";
 import { AuditLogListParams } from "@/services/audit-log/audit-log.types";
 import { AuditLogService } from "@/services/services.generated";
@@ -30,9 +34,6 @@ import {
   AuditLogSearchField,
   AuditLogSearchFieldLabel,
 } from "@/services/sonamu.generated";
-import EyeIcon from "~icons/lucide/eye";
-import ListIcon from "~icons/mdi/format-list-bulleted";
-import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/audit-logs/")({
   head: () => ({
@@ -52,8 +53,8 @@ const actionBadgeVariant: Record<string, "default" | "secondary" | "destructive"
 function AuditLogList() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailId, setDetailId] = useState<number | null>(null);
-  const [entityTypeFilter, setEntityTypeFilter] = useState<string>("");
-  const [actionFilter, setActionFilter] = useState<string>("");
+  const [entityTypeFilter, setEntityTypeFilter] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
   const [dateFrom, setDateFrom] = useState<Date | null>(null);
   const [dateTo, setDateTo] = useState<Date | null>(null);
 

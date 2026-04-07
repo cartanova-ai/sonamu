@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
-import type { Backend } from "./backend";
-import type { WorkflowRun } from "./core/workflow";
+
+import { type Backend } from "./backend";
+import { type WorkflowRun } from "./core/workflow";
 import { executeWorkflow } from "./execution";
-import type { WorkflowRegistry } from "./registry";
-import type { Workflow } from "./workflow";
+import { type WorkflowRegistry } from "./registry";
+import { type Workflow } from "./workflow";
 
 const DEFAULT_LEASE_DURATION_MS = 30 * 1000; // 30s
 const DEFAULT_POLL_INTERVAL_MS = 100; // 100ms

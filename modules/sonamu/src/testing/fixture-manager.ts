@@ -1,18 +1,29 @@
 import assert from "assert";
-import chalk from "chalk";
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
-import inflection from "inflection";
-import type { Knex } from "knex";
-import { unique } from "radashi";
 import { inspect } from "util";
-import { Sonamu } from "../api";
+
+import chalk from "chalk";
+import inflection from "inflection";
+import { type Knex } from "knex";
+import { unique } from "radashi";
+
+import { Sonamu } from "../api/sonamu";
 import { BaseModel } from "../database/base-model";
-import type { SonamuDBConfig } from "../database/db";
+import { type SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";
-import { type UBRef, UpsertBuilder } from "../database/upsert-builder";
-import type { Entity } from "../entity/entity";
+import { UpsertBuilder } from "../database/upsert-builder";
+import { type UBRef } from "../database/upsert-builder";
+import { type Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
+import {
+  isBelongsToOneRelationProp,
+  isHasManyRelationProp,
+  isManyToManyRelationProp,
+  isOneToOneRelationProp,
+  isRelationProp,
+  isVirtualProp,
+} from "../types/types";
 import {
   type BelongsToOneRelationProp,
   type DatabaseSchemaExtend,
@@ -20,13 +31,6 @@ import {
   type FixtureImportResult,
   type FixtureRecord,
   type FixtureSearchOptions,
-  isBelongsToOneRelationProp,
-  isHasManyRelationProp,
-  isManyToManyRelationProp,
-  isOneToOneRelationProp,
-  isRelationProp,
-  isVirtualProp,
-  type ManyToManyRelationProp,
   type OneToOneRelationProp,
 } from "../types/types";
 import { isTest } from "../utils/controller";
@@ -275,7 +279,7 @@ export class FixtureManagerClass {
       }),
     );
 
-    return [...unique(relQueries.reverse().flat()), selfQuery];
+    return [...unique(relQueries.toReversed().flat()), selfQuery];
   }
 
   async destroy() {
@@ -869,12 +873,12 @@ export class FixtureManagerClass {
         if (isManyToManyRelationProp(prop) && Array.isArray(column.value)) {
           // 선택되지 않은 ManyToMany 관계는 저장하지 않음
           const targetTable = EntityManager.get(prop.with);
-          if (this.builder.hasTable(targetTable.table) === false) continue;
+          if (!this.builder.hasTable(targetTable.table)) continue;
 
           const relatedIds = column.value as number[];
           if (relatedIds.length === 0) continue;
 
-          const joinTable = (prop as ManyToManyRelationProp).joinTable;
+          const joinTable = prop.joinTable;
           const relatedEntity = EntityManager.get(prop.with);
 
           const sourceColumn = `${inflection.singularize(entity.table)}_id`;

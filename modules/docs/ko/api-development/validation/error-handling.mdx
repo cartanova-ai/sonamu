@@ -9,24 +9,16 @@ API에서 발생하는 에러를 일관되게 처리하고 명확한 응답을 �
 
 <CardGroup cols={2}>
   <Card title="일관된 응답" icon="equals">
-    표준화된 에러 형식
-    
-    클라이언트 친화적
+    표준화된 에러 형식 클라이언트 친화적
   </Card>
   <Card title="상태 코드" icon="hashtag">
-    HTTP 상태 코드
-    
-    RESTful 표준
+    HTTP 상태 코드 RESTful 표준
   </Card>
   <Card title="명확한 메시지" icon="message">
-    개발자 친화적
-    
-    사용자 친화적
+    개발자 친화적 사용자 친화적
   </Card>
   <Card title="로깅" icon="file-lines">
-    에러 추적
-    
-    디버깅 지원
+    에러 추적 디버깅 지원
   </Card>
 </CardGroup>
 
@@ -39,17 +31,14 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<User> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       // 기본 에러 (HTTP 500)
       throw new Error("User not found");
     }
-    
+
     return user;
   }
 }
@@ -63,18 +52,15 @@ class UserModel extends BaseModelClass {
   async get(id: number): Promise<User> {
     const context = Sonamu.getContext();
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       // 404 Not Found
       context.reply.status(404);
       throw new Error("User not found");
     }
-    
+
     return user;
   }
 }
@@ -89,52 +75,52 @@ class ApiModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async handleRequest(params: any): Promise<any> {
     const context = Sonamu.getContext();
-    
+
     // 400 Bad Request - 잘못된 요청
     if (!params.required) {
       context.reply.status(400);
       throw new Error("Required field missing");
     }
-    
+
     // 401 Unauthorized - 인증 필요
     if (!context.user) {
       context.reply.status(401);
       throw new Error("Authentication required");
     }
-    
+
     // 403 Forbidden - 권한 없음
     if (context.user.role !== "admin") {
       context.reply.status(403);
       throw new Error("Admin permission required");
     }
-    
+
     // 404 Not Found - 리소스 없음
     const resource = await this.findResource(params.id);
     if (!resource) {
       context.reply.status(404);
       throw new Error("Resource not found");
     }
-    
+
     // 409 Conflict - 충돌
     const existing = await this.checkDuplicate(params.email);
     if (existing) {
       context.reply.status(409);
       throw new Error("Email already exists");
     }
-    
+
     // 429 Too Many Requests - 속도 제한
     if (await this.isRateLimited(context.user.id)) {
       context.reply.status(429);
       throw new Error("Too many requests");
     }
-    
+
     // 422 Unprocessable Entity - 검증 실패
     const validationError = this.validate(params);
     if (validationError) {
       context.reply.status(422);
       throw new Error(`Validation failed: ${validationError}`);
     }
-    
+
     // 500 Internal Server Error - 서버 에러 (기본값)
     try {
       return await this.process(params);
@@ -148,19 +134,19 @@ class ApiModel extends BaseModelClass {
 
 ### 상태 코드 참조표
 
-| 코드 | 이름 | 사용 시기 |
-|------|------|-----------|
-| 200 | OK | 성공 (GET, PUT) |
-| 201 | Created | 리소스 생성 성공 (POST) |
-| 204 | No Content | 성공, 응답 없음 (DELETE) |
-| 400 | Bad Request | 잘못된 요청 형식 |
-| 401 | Unauthorized | 인증 필요 |
-| 403 | Forbidden | 권한 없음 |
-| 404 | Not Found | 리소스 없음 |
-| 409 | Conflict | 중복, 충돌 |
-| 422 | Unprocessable Entity | 검증 실패 |
-| 429 | Too Many Requests | 속도 제한 |
-| 500 | Internal Server Error | 서버 내부 에러 |
+| 코드 | 이름                  | 사용 시기                |
+| ---- | --------------------- | ------------------------ |
+| 200  | OK                    | 성공 (GET, PUT)          |
+| 201  | Created               | 리소스 생성 성공 (POST)  |
+| 204  | No Content            | 성공, 응답 없음 (DELETE) |
+| 400  | Bad Request           | 잘못된 요청 형식         |
+| 401  | Unauthorized          | 인증 필요                |
+| 403  | Forbidden             | 권한 없음                |
+| 404  | Not Found             | 리소스 없음              |
+| 409  | Conflict              | 중복, 충돌               |
+| 422  | Unprocessable Entity  | 검증 실패                |
+| 429  | Too Many Requests     | 속도 제한                |
+| 500  | Internal Server Error | 서버 내부 에러           |
 
 ## 구조화된 에러 응답
 
@@ -187,12 +173,12 @@ export class ApiError extends Error {
     public statusCode: number,
     public code: string,
     message: string,
-    public details?: any
+    public details?: any,
   ) {
     super(message);
     this.name = "ApiError";
   }
-  
+
   toJSON(): ErrorResponse {
     return {
       error: {
@@ -258,48 +244,42 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<User> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new NotFoundError("User");
     }
-    
+
     return user;
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     const context = Sonamu.getContext();
-    
+
     // 인증 확인
     if (!context.user) {
       throw new UnauthorizedError();
     }
-    
+
     // 권한 확인
     if (context.user.role !== "admin") {
       throw new ForbiddenError("Admin permission required");
     }
-    
+
     const rdb = this.getPuri("r");
-    
+
     // 중복 확인
-    const existing = await rdb
-      .table("users")
-      .where("email", params.email)
-      .first();
-    
+    const existing = await rdb.table("users").where("email", params.email).first();
+
     if (existing) {
       throw new ConflictError("Email already exists", {
         field: "email",
         value: params.email,
       });
     }
-    
+
     // 검증
     if (params.password.length < 8) {
       throw new ValidationError("Password too short", {
@@ -307,13 +287,10 @@ class UserModel extends BaseModelClass {
         minLength: 8,
       });
     }
-    
+
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(params)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
+
     return { userId: user.id };
   }
 }
@@ -333,11 +310,8 @@ function handleZodError(error: z.ZodError): never {
     message: e.message,
     code: e.code,
   }));
-  
-  throw new ValidationError(
-    "Validation failed",
-    details
-  );
+
+  throw new ValidationError("Validation failed", details);
 }
 
 // 사용
@@ -346,7 +320,7 @@ class UserModel extends BaseModelClass {
   async create(params: unknown): Promise<{ userId: number }> {
     try {
       const validated = CreateUserSchema.parse(params);
-      
+
       // 생성 로직
       // ...
     } catch (error) {
@@ -366,18 +340,18 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async create(params: unknown): Promise<{ userId: number }> {
     const result = CreateUserSchema.safeParse(params);
-    
+
     if (!result.success) {
       const details = result.error.errors.map((e) => ({
         field: e.path.join("."),
         message: e.message,
       }));
-      
+
       throw new ValidationError("Validation failed", details);
     }
-    
+
     const validated = result.data;
-    
+
     // 생성 로직
     // ...
   }
@@ -397,22 +371,22 @@ import { ZodError } from "zod";
 export async function errorHandler(
   error: FastifyError | Error,
   request: FastifyRequest,
-  reply: FastifyReply
+  reply: FastifyReply,
 ) {
   console.error("Error:", error);
-  
+
   // ApiError
   if (error instanceof ApiError) {
     return reply.status(error.statusCode).send(error.toJSON());
   }
-  
+
   // Zod Validation Error
   if (error instanceof ZodError) {
     const details = error.errors.map((e) => ({
       field: e.path.join("."),
       message: e.message,
     }));
-    
+
     return reply.status(422).send({
       error: {
         code: "VALIDATION_ERROR",
@@ -422,7 +396,7 @@ export async function errorHandler(
       timestamp: new Date(),
     });
   }
-  
+
   // Database Error
   if (error.message.includes("violates foreign key constraint")) {
     return reply.status(400).send({
@@ -433,7 +407,7 @@ export async function errorHandler(
       timestamp: new Date(),
     });
   }
-  
+
   if (error.message.includes("duplicate key value")) {
     return reply.status(409).send({
       error: {
@@ -443,17 +417,14 @@ export async function errorHandler(
       timestamp: new Date(),
     });
   }
-  
+
   // 기본 에러
   const statusCode = (error as any).statusCode || 500;
-  
+
   return reply.status(statusCode).send({
     error: {
       code: "INTERNAL_ERROR",
-      message:
-        process.env.NODE_ENV === "production"
-          ? "Internal server error"
-          : error.message,
+      message: process.env.NODE_ENV === "production" ? "Internal server error" : error.message,
     },
     timestamp: new Date(),
   });
@@ -482,7 +453,7 @@ export class Logger {
       requestId?: string;
       endpoint?: string;
       params?: any;
-    }
+    },
   ): void {
     console.error({
       timestamp: new Date(),
@@ -491,11 +462,11 @@ export class Logger {
       stack: error.stack,
       context,
     });
-    
+
     // 외부 로깅 서비스로 전송 (선택)
     // Sentry, CloudWatch, etc.
   }
-  
+
   static warn(message: string, context?: any): void {
     console.warn({
       timestamp: new Date(),
@@ -504,7 +475,7 @@ export class Logger {
       context,
     });
   }
-  
+
   static info(message: string, context?: any): void {
     console.log({
       timestamp: new Date(),
@@ -521,24 +492,21 @@ class UserModel extends BaseModelClass {
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     try {
       const wdb = this.getPuri("w");
-      const [user] = await wdb
-        .table("users")
-        .insert(params)
-        .returning({ id: "id" });
-      
+      const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
+
       Logger.info("User created", { userId: user.id });
-      
+
       return { userId: user.id };
     } catch (error) {
       const context = Sonamu.getContext();
-      
+
       Logger.error(error as Error, {
         userId: context.user?.id,
         requestId: context.requestId,
         endpoint: context.request.url,
         params,
       });
-      
+
       throw error;
     }
   }
@@ -549,7 +517,10 @@ class UserModel extends BaseModelClass {
 
 ```typescript
 export class RetryableError extends ApiError {
-  constructor(message: string, public retryAfter?: number) {
+  constructor(
+    message: string,
+    public retryAfter?: number,
+  ) {
     super(503, "SERVICE_UNAVAILABLE", message);
   }
 }
@@ -561,27 +532,21 @@ class ExternalApiModel extends BaseModelClass {
       const response = await axios.get("https://external-api.com/data", {
         timeout: 5000,
       });
-      
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.code === "ECONNABORTED") {
           throw new RetryableError("Request timeout", 10);
         }
-        
+
         if (error.response?.status === 429) {
-          const retryAfter = parseInt(
-            error.response.headers["retry-after"] || "60"
-          );
+          const retryAfter = parseInt(error.response.headers["retry-after"] || "60");
           throw new RetryableError("Rate limited", retryAfter);
         }
       }
-      
-      throw new ApiError(
-        502,
-        "BAD_GATEWAY",
-        "External service unavailable"
-      );
+
+      throw new ApiError(502, "BAD_GATEWAY", "External service unavailable");
     }
   }
 }
@@ -616,16 +581,14 @@ class UserModel extends BaseModelClass {
   async get(id: number): Promise<User> {
     const context = Sonamu.getContext();
     const rdb = this.getPuri("r");
-    
+
     const user = await rdb.table("users").where("id", id).first();
-    
+
     if (!user) {
       const locale = context.locale || "ko";
-      throw new NotFoundError(
-        getErrorMessage("USER_NOT_FOUND", locale)
-      );
+      throw new NotFoundError(getErrorMessage("USER_NOT_FOUND", locale));
     }
-    
+
     return user;
   }
 }
@@ -638,13 +601,13 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async create(params: unknown): Promise<{ userId: number }> {
     const context = Sonamu.getContext();
-    
+
     try {
       // 1. 인증 확인
       if (!context.user) {
         throw new UnauthorizedError();
       }
-      
+
       // 2. Zod 검증
       const validated = CreateUserSchema.safeParse(params);
       if (!validated.success) {
@@ -654,35 +617,29 @@ class UserModel extends BaseModelClass {
         }));
         throw new ValidationError("Validation failed", details);
       }
-      
+
       const data = validated.data;
-      
+
       // 3. 비즈니스 규칙 검증
       const rdb = this.getPuri("r");
-      const existing = await rdb
-        .table("users")
-        .where("email", data.email)
-        .first();
-      
+      const existing = await rdb.table("users").where("email", data.email).first();
+
       if (existing) {
         throw new ConflictError("Email already exists", {
           field: "email",
         });
       }
-      
+
       // 4. 생성
       const wdb = this.getPuri("w");
-      const [user] = await wdb
-        .table("users")
-        .insert(data)
-        .returning({ id: "id" });
-      
+      const [user] = await wdb.table("users").insert(data).returning({ id: "id" });
+
       // 5. 로깅
       Logger.info("User created", {
         userId: user.id,
         email: data.email,
       });
-      
+
       return { userId: user.id };
     } catch (error) {
       // 에러 로깅
@@ -690,7 +647,7 @@ class UserModel extends BaseModelClass {
         userId: context.user?.id,
         endpoint: context.request.url,
       });
-      
+
       throw error;
     }
   }
@@ -700,18 +657,18 @@ class UserModel extends BaseModelClass {
 ## 주의사항
 
 <Warning>
-**에러 처리 시 주의사항**:
-1. 민감한 정보 노출 금지 (스택 트레이스, DB 에러 등)
-2. 적절한 HTTP 상태 코드 사용
-3. 명확하고 일관된 에러 메시지
-4. 에러는 항상 로깅
-5. 프로덕션에서는 상세 정보 제한
+  **에러 처리 시 주의사항**: 1. 민감한 정보 노출 금지 (스택 트레이스, DB 에러 등) 2. 적절한 HTTP
+  상태 코드 사용 3. 명확하고 일관된 에러 메시지 4. 에러는 항상 로깅 5. 프로덕션에서는 상세 정보 제한
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="자동 검증" icon="wand-magic-sparkles" href="/ko/api-development/validation/automatic-validation">
+  <Card
+    title="자동 검증"
+    icon="wand-magic-sparkles"
+    href="/ko/api-development/validation/automatic-validation"
+  >
     Zod 기반 검증
   </Card>
   <Card title="커스텀 검증" icon="code" href="/ko/api-development/validation/custom-validation">

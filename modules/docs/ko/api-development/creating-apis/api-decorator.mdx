@@ -9,24 +9,16 @@ description: "메서드를 API 엔드포인트로 변환하기"
 
 <CardGroup cols={2}>
   <Card title="자동 라우팅" icon="route">
-    메서드를 API로 변환
-    
-    URL 자동 생성
+    메서드를 API로 변환 URL 자동 생성
   </Card>
   <Card title="타입 안전성" icon="shield">
-    파라미터 타입 검증
-    
-    컴파일 타임 체크
+    파라미터 타입 검증 컴파일 타임 체크
   </Card>
   <Card title="HTTP 메서드" icon="globe">
-    GET, POST, PUT, DELETE
-    
-    RESTful API 지원
+    GET, POST, PUT, DELETE RESTful API 지원
   </Card>
   <Card title="에러 처리" icon="triangle-exclamation">
-    자동 에러 변환
-    
-    일관된 응답 형식
+    자동 에러 변환 일관된 응답 형식
   </Card>
 </CardGroup>
 
@@ -48,20 +40,17 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   @api({ httpMethod: "GET" })
   async getUser(id: number): Promise<User> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     return user;
   }
 }
@@ -70,6 +59,7 @@ export const UserModel = new UserModelClass();
 ```
 
 **생성되는 엔드포인트**:
+
 - URL: `GET /api/user/getUser`
 - 파라미터: `{ id: number }`
 - 응답: `User` 객체
@@ -86,33 +76,30 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   // GET 요청
   @api({ httpMethod: "GET" })
   async list(): Promise<User[]> {
     const rdb = this.getPuri("r");
     return rdb.table("users").select("*");
   }
-  
+
   // POST 요청
   @api({ httpMethod: "POST" })
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    const [userId] = await wdb
-      .table("users")
-      .insert(params)
-      .returning({ id: "id" });
-    
+    const [userId] = await wdb.table("users").insert(params).returning({ id: "id" });
+
     return { userId: userId.id };
   }
-  
+
   // PUT 요청
   @api({ httpMethod: "PUT" })
   async update(id: number, params: Partial<UserSaveParams>): Promise<void> {
     const wdb = this.getPuri("w");
     await wdb.table("users").where("id", id).update(params);
   }
-  
+
   // DELETE 요청
   @api({ httpMethod: "DELETE" })
   async remove(id: number): Promise<void> {
@@ -138,13 +125,13 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries); // ← 모델명이 URL에 사용됨
   }
-  
+
   @api({ httpMethod: "GET" })
   async getProfile(userId: number) {
     // URL: GET /api/user/getProfile
     // ...
   }
-  
+
   @api({ httpMethod: "POST" })
   async register(params: RegisterParams) {
     // URL: POST /api/user/register
@@ -160,12 +147,12 @@ flowchart LR
     A[Model Class] --> B[modelName: User]
     C[Method] --> D[getProfile]
     E[httpMethod] --> F[GET]
-    
+
     B --> G[/api/user]
     D --> G
     F --> H[GET /api/user/getProfile]
     G --> H
-    
+
     style A fill:#e3f2fd
     style C fill:#e8f5e9
     style E fill:#fff9c4
@@ -173,10 +160,8 @@ flowchart LR
 ```
 
 <Info>
-**URL 규칙**:
-- 기본 경로: `/api/{modelName}/{methodName}`
-- modelName은 소문자로 변환
-- 예: `UserModel.getProfile` → `/api/user/getProfile`
+  **URL 규칙**: - 기본 경로: `/api/{modelName}/{methodName}` - modelName은 소문자로 변환 - 예:
+  `UserModel.getProfile` → `/api/user/getProfile`
 </Info>
 
 ## 파라미터 처리
@@ -200,14 +185,14 @@ class UserModelClass extends BaseModelClass<
     // GET /api/user/getUser?id=1
     // ...
   }
-  
+
   // 문자열 파라미터
   @api({ httpMethod: "GET" })
   async findByEmail(email: string): Promise<User | null> {
     // GET /api/user/findByEmail?email=test@example.com
     // ...
   }
-  
+
   // 불리언 파라미터
   @api({ httpMethod: "GET" })
   async listActive(active: boolean): Promise<User[]> {
@@ -245,27 +230,27 @@ class UserModelClass extends BaseModelClass<
     total: number;
   }> {
     const rdb = this.getPuri("r");
-    
+
     let query = rdb.table("users");
-    
+
     if (params.search) {
       query = query.where("username", "like", `%${params.search}%`);
     }
-    
+
     if (params.role) {
       query = query.where("role", params.role);
     }
-    
+
     const page = params.page || 1;
     const pageSize = params.pageSize || 20;
-    
+
     const users = await query
       .limit(pageSize)
       .offset((page - 1) * pageSize)
       .select("*");
-    
+
     const [{ count }] = await rdb.table("users").count({ count: "*" });
-    
+
     return { users, total: count };
   }
 }
@@ -290,13 +275,13 @@ class OrderModelClass extends BaseModelClass<
   async createOrder(
     userId: number,
     items: OrderItem[],
-    shippingAddress: string
+    shippingAddress: string,
   ): Promise<{ orderId: number }> {
     // POST /api/order/createOrder
     // Body: { userId: 1, items: [...], shippingAddress: "..." }
-    
+
     const wdb = this.getPuri("w");
-    
+
     const [order] = await wdb
       .table("orders")
       .insert({
@@ -305,7 +290,7 @@ class OrderModelClass extends BaseModelClass<
         status: "pending",
       })
       .returning({ id: "id" });
-    
+
     // 주문 아이템 저장
     for (const item of items) {
       await wdb.table("order_items").insert({
@@ -314,7 +299,7 @@ class OrderModelClass extends BaseModelClass<
         quantity: item.quantity,
       });
     }
-    
+
     return { orderId: order.id };
   }
 }
@@ -341,21 +326,21 @@ class UserModelClass extends BaseModelClass<
     // ...
     return user;
   }
-  
+
   // 배열 반환
   @api({ httpMethod: "GET" })
   async list(): Promise<User[]> {
     // ...
     return users;
   }
-  
+
   // void (응답 없음)
   @api({ httpMethod: "DELETE" })
   async remove(id: number): Promise<void> {
     // ...
     // 성공 시 빈 응답
   }
-  
+
   // 숫자 반환
   @api({ httpMethod: "GET" })
   async count(): Promise<number> {
@@ -389,18 +374,18 @@ class UserModelClass extends BaseModelClass<
     };
   }> {
     const rdb = this.getPuri("r");
-    
+
     const page = params.page || 1;
     const pageSize = params.pageSize || 20;
-    
+
     const users = await rdb
       .table("users")
       .limit(pageSize)
       .offset((page - 1) * pageSize)
       .select("*");
-    
+
     const [{ count }] = await rdb.table("users").count({ count: "*" });
-    
+
     return {
       data: users,
       pagination: {
@@ -434,17 +419,14 @@ class UserModelClass extends BaseModelClass<
   @transactional()
   async register(params: RegisterParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    
+
     // 중복 체크
-    const existing = await wdb
-      .table("users")
-      .where("email", params.email)
-      .first();
-    
+    const existing = await wdb.table("users").where("email", params.email).first();
+
     if (existing) {
       throw new Error("Email already exists");
     }
-    
+
     // User 생성
     wdb.ubRegister("users", {
       email: params.email,
@@ -452,28 +434,22 @@ class UserModelClass extends BaseModelClass<
       password: params.password,
       role: "normal",
     });
-    
+
     const [userId] = await wdb.ubUpsert("users");
-    
+
     return { userId };
   }
-  
+
   // 반대 순서도 가능
   @transactional()
   @api({ httpMethod: "PUT" })
-  async updateProfile(
-    userId: number,
-    params: ProfileParams
-  ): Promise<void> {
+  async updateProfile(userId: number, params: ProfileParams): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    await wdb
-      .table("users")
-      .where("id", userId)
-      .update({
-        bio: params.bio,
-        avatar_url: params.avatarUrl,
-      });
+
+    await wdb.table("users").where("id", userId).update({
+      bio: params.bio,
+      avatar_url: params.avatarUrl,
+    });
   }
 }
 ```
@@ -499,9 +475,9 @@ class PostModelClass extends BaseModelClass<
   @api({
     httpMethod: "GET",
     cacheControl: {
-      maxAge: 3600,        // 브라우저 캐시: 1시간
-      sMaxAge: 7200,       // CDN 캐시: 2시간
-      staleWhileRevalidate: 86400,  // 24시간 동안 stale 상태 허용
+      maxAge: 3600, // 브라우저 캐시: 1시간
+      sMaxAge: 7200, // CDN 캐시: 2시간
+      staleWhileRevalidate: 86400, // 24시간 동안 stale 상태 허용
     },
   })
   async getPublicPosts(): Promise<Post[]> {
@@ -512,7 +488,7 @@ class PostModelClass extends BaseModelClass<
   // 캐시 프리셋 사용
   @api({
     httpMethod: "GET",
-    cacheControl: "5m",  // 5분 캐시
+    cacheControl: "5m", // 5분 캐시
   })
   async getTrendingPosts(): Promise<Post[]> {
     // ...
@@ -521,6 +497,7 @@ class PostModelClass extends BaseModelClass<
 ```
 
 **Cache-Control 옵션**:
+
 - `maxAge`: 브라우저 캐시 시간 (초)
 - `sMaxAge`: CDN/프록시 캐시 시간 (초)
 - `staleWhileRevalidate`: Stale 상태 허용 시간 (초)
@@ -528,6 +505,7 @@ class PostModelClass extends BaseModelClass<
 - `private`: 비공개 캐시 (사용자별)
 
 **프리셋 문자열**:
+
 - `"1m"`, `"5m"`, `"1h"`, `"1d"` 등 시간 단위 문자열 사용 가능
 
 #### 압축 설정
@@ -546,7 +524,7 @@ class DataModelClass extends BaseModelClass<
   // 큰 데이터셋 - 압축 활성화
   @api({
     httpMethod: "GET",
-    compress: true,  // gzip/deflate 압축 활성화
+    compress: true, // gzip/deflate 압축 활성화
   })
   async getLargeDataset(): Promise<DataPoint[]> {
     const rdb = this.getPuri("r");
@@ -556,7 +534,7 @@ class DataModelClass extends BaseModelClass<
   // 이미 압축된 데이터 - 압축 비활성화
   @api({
     httpMethod: "GET",
-    compress: false,  // 압축 비활성화
+    compress: false, // 압축 비활성화
   })
   async getCompressedFile(): Promise<Buffer> {
     // 이미 압축된 파일 반환
@@ -566,6 +544,7 @@ class DataModelClass extends BaseModelClass<
 ```
 
 **압축 옵션**:
+
 - `true`: 응답을 gzip/deflate로 압축
 - `false`: 압축 비활성화 (기본값)
 
@@ -592,10 +571,7 @@ class ApiModelClass extends BaseModelClass<
     const rdb = this.getPuri("r");
 
     // 대용량 리포트 데이터
-    const report = await rdb
-      .table("reports")
-      .where("id", reportId)
-      .first();
+    const report = await rdb.table("reports").where("id", reportId).first();
 
     if (!report) {
       throw new Error("Report not found");
@@ -667,10 +643,8 @@ class OptimizedApiModelClass extends BaseModelClass<
 </Info>
 
 <Warning>
-**주의사항**:
-- `compress: true`는 CPU 사용량 증가 (작은 응답에는 비효율적)
-- 캐시 시간이 너무 길면 업데이트 반영 지연
-- `private: true`는 CDN 캐싱 불가
+  **주의사항**: - `compress: true`는 CPU 사용량 증가 (작은 응답에는 비효율적) - 캐시 시간이 너무
+  길면 업데이트 반영 지연 - `private: true`는 CDN 캐싱 불가
 </Warning>
 
 ## 에러 처리
@@ -691,30 +665,24 @@ class UserModelClass extends BaseModelClass<
   @api({ httpMethod: "GET" })
   async getUser(id: number): Promise<User> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       // Error 객체 → HTTP 500
       throw new Error("User not found");
     }
-    
+
     return user;
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    
+
     try {
-      const [userId] = await wdb
-        .table("users")
-        .insert(params)
-        .returning({ id: "id" });
-      
+      const [userId] = await wdb.table("users").insert(params).returning({ id: "id" });
+
       return { userId: userId.id };
     } catch (error) {
       // DB 에러 → HTTP 500
@@ -725,8 +693,8 @@ class UserModelClass extends BaseModelClass<
 ```
 
 <Warning>
-기본적으로 모든 에러는 HTTP 500으로 변환됩니다.
-커스텀 에러 처리가 필요하면 별도 에러 핸들러를 구현해야 합니다.
+  기본적으로 모든 에러는 HTTP 500으로 변환됩니다. 커스텀 에러 처리가 필요하면 별도 에러 핸들러를
+  구현해야 합니다.
 </Warning>
 
 ## 실전 예제
@@ -756,36 +724,33 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   // Create
   @api({ httpMethod: "POST" })
   @transactional()
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    
+
     wdb.ubRegister("users", params);
     const [userId] = await wdb.ubUpsert("users");
-    
+
     return { userId };
   }
-  
+
   // Read (단일)
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<User> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     return user;
   }
-  
+
   // Read (목록)
   @api({ httpMethod: "GET" })
   async list(params: UserListParams): Promise<{
@@ -793,51 +758,42 @@ class UserModelClass extends BaseModelClass<
     total: number;
   }> {
     const rdb = this.getPuri("r");
-    
+
     let query = rdb.table("users");
-    
+
     if (params.search) {
       query = query.where("username", "like", `%${params.search}%`);
     }
-    
+
     const page = params.page || 1;
     const pageSize = params.pageSize || 20;
-    
+
     const users = await query
       .limit(pageSize)
       .offset((page - 1) * pageSize)
       .select("*");
-    
+
     const [{ count }] = await rdb.table("users").count({ count: "*" });
-    
+
     return { users, total: count };
   }
-  
+
   // Update
   @api({ httpMethod: "PUT" })
   @transactional()
-  async update(
-    id: number,
-    params: Partial<UserSaveParams>
-  ): Promise<void> {
+  async update(id: number, params: Partial<UserSaveParams>): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    await wdb
-      .table("users")
-      .where("id", id)
-      .update(params);
+
+    await wdb.table("users").where("id", id).update(params);
   }
-  
+
   // Delete
   @api({ httpMethod: "DELETE" })
   @transactional()
   async remove(id: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    await wdb
-      .table("users")
-      .where("id", id)
-      .delete();
+
+    await wdb.table("users").where("id", id).delete();
   }
 }
 ```
@@ -854,7 +810,7 @@ class OrderModelClass extends BaseModelClass<
   constructor() {
     super("Order", orderSubsetQueries, orderLoaderQueries);
   }
-  
+
   @api({ httpMethod: "POST" })
   @transactional()
   async placeOrder(params: {
@@ -867,30 +823,24 @@ class OrderModelClass extends BaseModelClass<
     totalAmount: number;
   }> {
     const wdb = this.getPuri("w");
-    
+
     // 1. 재고 확인
     for (const item of params.items) {
-      const product = await wdb
-        .table("products")
-        .where("id", item.productId)
-        .first();
-      
+      const product = await wdb.table("products").where("id", item.productId).first();
+
       if (!product || product.stock < item.quantity) {
         throw new Error(`Insufficient stock for product ${item.productId}`);
       }
     }
-    
+
     // 2. 총액 계산
     let totalAmount = 0;
     for (const item of params.items) {
-      const product = await wdb
-        .table("products")
-        .where("id", item.productId)
-        .first();
-      
+      const product = await wdb.table("products").where("id", item.productId).first();
+
       totalAmount += product.price * item.quantity;
     }
-    
+
     // 3. 주문 생성
     const [order] = await wdb
       .table("orders")
@@ -902,7 +852,7 @@ class OrderModelClass extends BaseModelClass<
         status: "pending",
       })
       .returning({ id: "id" });
-    
+
     // 4. 주문 아이템 생성
     for (const item of params.items) {
       await wdb.table("order_items").insert({
@@ -910,14 +860,11 @@ class OrderModelClass extends BaseModelClass<
         product_id: item.productId,
         quantity: item.quantity,
       });
-      
+
       // 재고 차감
-      await wdb
-        .table("products")
-        .where("id", item.productId)
-        .decrement("stock", item.quantity);
+      await wdb.table("products").where("id", item.productId).decrement("stock", item.quantity);
     }
-    
+
     return {
       orderId: order.id,
       totalAmount,
@@ -952,9 +899,9 @@ class UserModelClass extends BaseModelClass<
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     // TypeScript가 params 타입을 검증
     // params.email, params.username 등은 자동완성됨
-    
+
     const wdb = this.getPuri("w");
-    
+
     // ✅ 타입이 맞으면 OK
     const [userId] = await wdb
       .table("users")
@@ -965,7 +912,7 @@ class UserModelClass extends BaseModelClass<
         role: params.role,
       })
       .returning({ id: "id" });
-    
+
     return { userId: userId.id };
   }
 }
@@ -1000,21 +947,15 @@ class UserModelClass extends BaseModelClass<
     profile: Profile | null;
   }> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
-    const profile = await rdb
-      .table("profiles")
-      .where("user_id", id)
-      .first();
-    
+
+    const profile = await rdb.table("profiles").where("user_id", id).first();
+
     // ✅ 반환 타입이 명시한 구조와 일치해야 함
     return {
       user,
@@ -1027,12 +968,8 @@ class UserModelClass extends BaseModelClass<
 ## 주의사항
 
 <Warning>
-**@api 사용 시 주의사항**:
-1. Model 클래스에서만 사용 가능
-2. 메서드는 `async` 함수여야 함
-3. `modelName` 속성 필수
-4. 파라미터/반환 타입 명시 권장
-5. 에러는 throw로 전파
+  **@api 사용 시 주의사항**: 1. Model 클래스에서만 사용 가능 2. 메서드는 `async` 함수여야 함 3.
+  `modelName` 속성 필수 4. 파라미터/반환 타입 명시 권장 5. 에러는 throw로 전파
 </Warning>
 
 ### 흔한 실수
@@ -1090,12 +1027,12 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   @api({ httpMethod: "GET" })
   async getUser(id: number): Promise<User> {
     // ...
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     // ...
@@ -1114,7 +1051,11 @@ export const UserModel = new UserModelClass();
   <Card title="파라미터" icon="sliders" href="/ko/api-development/creating-apis/parameters">
     타입 정의 및 검증
   </Card>
-  <Card title="반환 타입" icon="arrow-turn-down-left" href="/ko/api-development/creating-apis/return-types">
+  <Card
+    title="반환 타입"
+    icon="arrow-turn-down-left"
+    href="/ko/api-development/creating-apis/return-types"
+  >
     응답 타입 정의하기
   </Card>
   <Card title="에러 처리" icon="triangle-exclamation" href="/ko/api-development/error-handling">

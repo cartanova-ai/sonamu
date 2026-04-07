@@ -46,7 +46,8 @@ SLACK_CHANNEL_ID=C01234567
 ```
 
 <Info>
-Commenting out the `slackConfirm` block will restore the original behavior (immediate execution without approval).
+  Commenting out the `slackConfirm` block will restore the original behavior (immediate execution
+  without approval).
 </Info>
 
 ## Slack App Setup
@@ -62,11 +63,11 @@ Commenting out the `slackConfirm` block will restore the original behavior (imme
 
 Go to OAuth & Permissions → Scopes → Bot Token Scopes and add:
 
-| Scope | Purpose |
-|-------|---------|
-| `chat:write` | Send messages, post reasons in threads |
-| `reactions:read` | Check emojis |
-| `reactions:write` | Add ✅ on force |
+| Scope             | Purpose                                |
+| ----------------- | -------------------------------------- |
+| `chat:write`      | Send messages, post reasons in threads |
+| `reactions:read`  | Check emojis                           |
+| `reactions:write` | Add ✅ on force                        |
 
 ### 3. Install and Configure
 
@@ -130,7 +131,8 @@ When you need to proceed without waiting for approval:
 3. Migration executes (force reason logged to Slack)
 
 <Warning>
-Force proceeding logs the reason to the Slack thread. This can be tracked later for audit purposes.
+  Force proceeding logs the reason to the Slack thread. This can be tracked later for audit
+  purposes.
 </Warning>
 
 ### Rejection Handling
@@ -164,12 +166,12 @@ Example: `C01234567:1705412345.000100`
 
 ### APIs Used
 
-| API | Purpose |
-|-----|---------|
-| `chat.postMessage` | Send approval request message |
-| `reactions.get` | Check emojis (Tier 3, 50+/min) |
-| `reactions.add` | Add ✅ on force |
-| `chat.postMessage` (thread_ts) | Log to thread |
+| API                            | Purpose                        |
+| ------------------------------ | ------------------------------ |
+| `chat.postMessage`             | Send approval request message  |
+| `reactions.get`                | Check emojis (Tier 3, 50+/min) |
+| `reactions.add`                | Add ✅ on force                |
+| `chat.postMessage` (thread_ts) | Log to thread                  |
 
 ### Rate Limit
 
@@ -179,14 +181,14 @@ Example: `C01234567:1705412345.000100`
 
 ## Test Scenarios
 
-| Scenario | Behavior |
-|----------|----------|
-| Normal flow | Apply → Slack message → Wait → ✅ → Execute |
+| Scenario          | Behavior                                                    |
+| ----------------- | ----------------------------------------------------------- |
+| Normal flow       | Apply → Slack message → Wait → ✅ → Execute                 |
 | Existing approval | Apply → Check existing ts → ✅ exists → Execute immediately |
-| Rejection | Apply → Wait → ❌ → Rejection message |
-| Force | Apply → Wait → Force → Enter reason → Execute |
-| No config | Same as original behavior (immediate execution) |
-| Non-target DB | DBs not in targets execute without approval |
+| Rejection         | Apply → Wait → ❌ → Rejection message                       |
+| Force             | Apply → Wait → Force → Enter reason → Execute               |
+| No config         | Same as original behavior (immediate execution)             |
+| Non-target DB     | DBs not in targets execute without approval                 |
 
 ## Next Steps
 

@@ -3,21 +3,20 @@ import {
   asArray,
   BadRequestException,
   BaseModelClass,
-  type ExtractTTables,
   exhaustive,
-  type ListResult,
   NotFoundException,
-  type VectorColumns,
 } from "sonamu";
+import { type ExtractTTables, type ListResult, type VectorColumns } from "sonamu";
 import { Embedding } from "sonamu/vector";
+
 import { SD } from "../../i18n/sd.generated";
 import { AuditLogModel } from "../audit-log/audit-log.model";
-import type { DocumentSubsetKey, DocumentSubsetMapping } from "../sonamu.generated";
+import { type DocumentSubsetKey, type DocumentSubsetMapping } from "../sonamu.generated";
 import { documentLoaderQueries, documentSubsetQueries } from "../sonamu.generated.sso";
-import type {
-  DocumentListParams,
-  DocumentSaveParams,
-  DocumentSemanticParams,
+import {
+  type DocumentListParams,
+  type DocumentSaveParams,
+  type DocumentSemanticParams,
 } from "./document.types";
 
 /*

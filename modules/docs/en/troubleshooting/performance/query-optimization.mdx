@@ -1,6 +1,6 @@
 ---
-title: 'Query Optimization'
-description: 'Optimizing database queries'
+title: "Query Optimization"
+description: "Optimizing database queries"
 ---
 
 This guide covers effective query optimization methods using the Puri query builder.
@@ -18,6 +18,7 @@ const users = await UserModel.getPuri().select("id", "email", "name");
 ```
 
 **Performance Benefits:**
+
 - Reduced network transfer
 - Reduced memory usage
 - Index-only scans possible
@@ -26,14 +27,12 @@ const users = await UserModel.getPuri().select("id", "email", "name");
 
 ```typescript
 // Query utilizing indexes
-const activeUsers = await UserModel.getPuri()
-  .select("id", "email")
-  .where({ status: "active" });  // Index needed on status column
+const activeUsers = await UserModel.getPuri().select("id", "email").where({ status: "active" }); // Index needed on status column
 
 // Query that cannot use indexes - avoid
 const users = await UserModel.getPuri()
   .select("id", "email")
-  .whereRaw("LOWER(email) = ?", ["test@example.com"]);  // Function usage
+  .whereRaw("LOWER(email) = ?", ["test@example.com"]); // Function usage
 ```
 
 ### 3. Using LIMIT
@@ -43,7 +42,7 @@ const users = await UserModel.getPuri()
 const recentUsers = await UserModel.getPuri()
   .select("id", "name", "created_at")
   .orderBy("created_at", "desc")
-  .limit(10);  // Top 10 only
+  .limit(10); // Top 10 only
 ```
 
 ## Index Utilization
@@ -73,7 +72,7 @@ const recentUsers = await UserModel.getPuri()
 // Query utilizing index
 const user = await UserModel.getPuri()
   .select("id", "name")
-  .where({ email: "test@example.com" })  // Uses email index
+  .where({ email: "test@example.com" }) // Uses email index
   .first();
 ```
 
@@ -104,22 +103,17 @@ const user = await UserModel.getPuri()
 
 ```typescript
 // Utilizing composite index
-const userOrders = await OrderModel.getPuri()
-  .select("id", "total")
-  .where({
-    user_id: 1,
-    status: "completed"  // Uses user_id + status composite index
-  });
+const userOrders = await OrderModel.getPuri().select("id", "total").where({
+  user_id: 1,
+  status: "completed", // Uses user_id + status composite index
+});
 ```
 
 ### Verifying Index Effectiveness
 
 ```typescript
 // Check execution plan with PostgreSQL EXPLAIN
-const query = UserModel.getPuri()
-  .select("id", "email")
-  .where({ status: "active" })
-  .toQuery();
+const query = UserModel.getPuri().select("id", "email").where({ status: "active" }).toQuery();
 
 console.log(query);
 
@@ -135,12 +129,12 @@ console.log(query);
 // INNER JOIN - only data with relationships
 const ordersWithUser = await OrderModel.getPuri()
   .select("orders.id", "orders.total", "users.name")
-  .join("users", "users.id", "orders.user_id");  // INNER JOIN
+  .join("users", "users.id", "orders.user_id"); // INNER JOIN
 
 // LEFT JOIN - include even without relationships
 const usersWithOrders = await UserModel.getPuri()
   .select("users.id", "users.name", "orders.total")
-  .leftJoin("orders", "orders.user_id", "users.id");  // LEFT JOIN
+  .leftJoin("orders", "orders.user_id", "users.id"); // LEFT JOIN
 ```
 
 ### JOIN Condition Optimization
@@ -150,14 +144,12 @@ const usersWithOrders = await UserModel.getPuri()
 const result = await OrderModel.getPuri()
   .select("orders.*", "users.name")
   .join("users", "users.id", "orders.user_id")
-  .where({ "users.status": "active" });  // Filtering after join
+  .where({ "users.status": "active" }); // Filtering after join
 
 // Good example - filtering before join
 const result = await OrderModel.getPuri()
   .select("orders.*", "users.name")
-  .join(
-    knex.raw("users ON users.id = orders.user_id AND users.status = ?", ["active"])
-  );  // Include in join condition
+  .join(knex.raw("users ON users.id = orders.user_id AND users.status = ?", ["active"])); // Include in join condition
 ```
 
 ## Aggregation Query Optimization
@@ -181,14 +173,10 @@ const count = result[0].count;
 ```typescript
 // Order statistics
 const orderStats = await OrderModel.getPuri()
-  .select(
-    "user_id",
-    knex.raw("COUNT(*) as order_count"),
-    knex.raw("SUM(total) as total_amount")
-  )
+  .select("user_id", knex.raw("COUNT(*) as order_count"), knex.raw("SUM(total) as total_amount"))
   .where({ status: "completed" })
   .groupBy("user_id")
-  .having(knex.raw("COUNT(*) > ?", [10]));  // More than 10 orders
+  .having(knex.raw("COUNT(*) > ?", [10])); // More than 10 orders
 ```
 
 ## Pagination Optimization
@@ -219,7 +207,7 @@ async function getUsersCursor(lastId?: number, limit: number = 20) {
     .limit(limit);
 
   if (lastId) {
-    query.where("id", "<", lastId);  // After last ID
+    query.where("id", "<", lastId); // After last ID
   }
 
   return query;
@@ -231,6 +219,7 @@ const secondPage = await getUsersCursor(firstPage[firstPage.length - 1].id, 20);
 ```
 
 **Advantages:**
+
 - Consistent performance regardless of offset size
 - Uses index scan only
 - Stable with real-time data changes
@@ -243,37 +232,29 @@ const secondPage = await getUsersCursor(firstPage[firstPage.length - 1].id, 20);
 // IN - loads subquery results into memory
 const usersWithOrders = await UserModel.getPuri()
   .select("id", "name")
-  .whereIn("id",
-    knex.select("user_id").from("orders").where({ status: "completed" })
-  );
+  .whereIn("id", knex.select("user_id").from("orders").where({ status: "completed" }));
 
 // EXISTS - only checks existence (faster)
 const usersWithOrders = await UserModel.getPuri()
   .select("id", "name")
-  .whereRaw(
-    "EXISTS (SELECT 1 FROM orders WHERE orders.user_id = users.id AND orders.status = ?)",
-    ["completed"]
-  );
+  .whereRaw("EXISTS (SELECT 1 FROM orders WHERE orders.user_id = users.id AND orders.status = ?)", [
+    "completed",
+  ]);
 ```
 
 ### JOIN Instead of Subquery
 
 ```typescript
 // Subquery - avoid
-const users = await UserModel.getPuri()
-  .select(
-    "id",
-    "name",
-    knex.raw("(SELECT COUNT(*) FROM orders WHERE orders.user_id = users.id) as order_count")
-  );
+const users = await UserModel.getPuri().select(
+  "id",
+  "name",
+  knex.raw("(SELECT COUNT(*) FROM orders WHERE orders.user_id = users.id) as order_count"),
+);
 
 // LEFT JOIN + GROUP BY (faster)
 const users = await UserModel.getPuri()
-  .select(
-    "users.id",
-    "users.name",
-    knex.raw("COUNT(orders.id) as order_count")
-  )
+  .select("users.id", "users.name", knex.raw("COUNT(orders.id) as order_count"))
   .leftJoin("orders", "orders.user_id", "users.id")
   .groupBy("users.id");
 ```
@@ -295,9 +276,7 @@ async function getUsersWithDetails(userIds: number[]) {
 
 // Good - query all at once with whereIn
 async function getUsersWithDetails(userIds: number[]) {
-  return UserModel.getPuri()
-    .select("*")
-    .whereIn("id", userIds);
+  return UserModel.getPuri().select("*").whereIn("id", userIds);
 }
 ```
 
@@ -310,10 +289,7 @@ async function processAllUsers() {
   let offset = 0;
 
   while (true) {
-    const users = await UserModel.getPuri()
-      .select("id", "email")
-      .offset(offset)
-      .limit(chunkSize);
+    const users = await UserModel.getPuri().select("id", "email").offset(offset).limit(chunkSize);
 
     if (users.length === 0) break;
 
@@ -333,11 +309,9 @@ async function processAllUsers() {
 import { cache } from "sonamu";
 
 class UserModelClass extends BaseModelClass {
-  @cache({ ttl: '5m' })  // 5 minute cache
+  @cache({ ttl: "5m" }) // 5 minute cache
   async getActiveUsersCount(): Promise<number> {
-    const result = await this.getPuri()
-      .select({ count: Puri.count() })
-      .where({ status: "active" });
+    const result = await this.getPuri().select({ count: Puri.count() }).where({ status: "active" });
     return result[0].count;
   }
 }
@@ -356,12 +330,10 @@ async function getCachedUsers() {
   if (cached) return cached;
 
   // Cache miss - query DB
-  const users = await UserModel.getPuri()
-    .select("id", "name")
-    .where({ status: "active" });
+  const users = await UserModel.getPuri().select("id", "name").where({ status: "active" });
 
   // Store in cache (5 minutes)
-  await Sonamu.cache.set(cacheKey, users, { ttl: '5m' });
+  await Sonamu.cache.set(cacheKey, users, { ttl: "5m" });
 
   return users;
 }
@@ -386,6 +358,7 @@ console.log("SQL:", query);
 ```
 
 **Key Things to Check:**
+
 - Seq Scan vs Index Scan
 - Estimated rows vs actual rows
 - Execution Time
@@ -400,9 +373,9 @@ console.log("SQL:", query);
 export default {
   database: {
     defaultOptions: {
-      debug: process.env.NODE_ENV === "development"  // Query logging
-    }
-  }
+      debug: process.env.NODE_ENV === "development", // Query logging
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -413,16 +386,14 @@ class UserModelClass extends BaseModelClass {
   async findActiveUsers() {
     const start = Date.now();
 
-    const users = await this.getPuri()
-      .select("*")
-      .where({ status: "active" });
+    const users = await this.getPuri().select("*").where({ status: "active" });
 
     const duration = Date.now() - start;
 
     if (duration > 1000) {
       this.logger.warn("Slow query detected", {
         method: "findActiveUsers",
-        duration: `${duration}ms`
+        duration: `${duration}ms`,
       });
     }
 

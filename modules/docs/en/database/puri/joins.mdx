@@ -9,24 +9,16 @@ Puri can join multiple tables to query related data together. This document expl
 
 <CardGroup cols={2}>
   <Card title="INNER JOIN" icon="link">
-    Data existing in both tables
-    
-    join()
+    Data existing in both tables join()
   </Card>
   <Card title="LEFT JOIN" icon="arrow-left">
-    Left table based, right is Optional
-    
-    leftJoin()
+    Left table based, right is Optional leftJoin()
   </Card>
   <Card title="Self JOIN" icon="repeat">
-    Join same table
-    
-    Using alias
+    Join same table Using alias
   </Card>
   <Card title="M:N JOIN" icon="diagram-project">
-    Many-to-many relationship join
-    
-    Using junction table
+    Many-to-many relationship join Using junction table
   </Card>
 </CardGroup>
 
@@ -37,15 +29,12 @@ Queries only data that **exists in both** tables.
 ### Basic JOIN
 
 ```typescript
-const results = await db
-  .table("employees")
-  .join("users", "employees.user_id", "users.id")
-  .select({
-    employeeId: "employees.id",
-    employeeNumber: "employees.employee_number",
-    userName: "users.username",
-    userEmail: "users.email",
-  });
+const results = await db.table("employees").join("users", "employees.user_id", "users.id").select({
+  employeeId: "employees.id",
+  employeeNumber: "employees.employee_number",
+  userName: "users.username",
+  userEmail: "users.email",
+});
 
 // SQL:
 // SELECT ...
@@ -54,10 +43,9 @@ const results = await db
 ```
 
 <Info>
-**When to use INNER JOIN**: 
-- When the relationship is **required** (NOT NULL foreign key)
-- When data must exist in both tables
-- Example: employees → users (all employees must have a user account)
+  **When to use INNER JOIN**: - When the relationship is **required** (NOT NULL foreign key) - When
+  data must exist in both tables - Example: employees → users (all employees must have a user
+  account)
 </Info>
 
 ### Multiple Table JOIN
@@ -102,10 +90,9 @@ const results = await db
 ```
 
 <Info>
-**When to use LEFT JOIN**:
-- When the relationship is **optional** (NULLABLE foreign key)
-- When all data from the left table is needed
-- Example: employees → departments (some employees may not have a department)
+  **When to use LEFT JOIN**: - When the relationship is **optional** (NULLABLE foreign key) - When
+  all data from the left table is needed - Example: employees → departments (some employees may not
+  have a department)
 </Info>
 
 ### INNER JOIN vs LEFT JOIN Comparison
@@ -121,7 +108,8 @@ const results = await db
   });
 
 // Only employees with departments (excludes employees without department)
-```
+
+````
 
 ```typescript title="LEFT JOIN - All left + right if exists"
 const results = await db
@@ -133,7 +121,8 @@ const results = await db
   });
 
 // All employees (includes those without department, department_name is null)
-```
+````
+
 </CodeGroup>
 
 ### Complex LEFT JOIN
@@ -146,8 +135,8 @@ const results = await db
   .select({
     employeeId: "employees.id",
     employeeNumber: "employees.employee_number",
-    departmentName: "departments.name",  // Can be null
-    companyName: "companies.name",       // Can be null
+    departmentName: "departments.name", // Can be null
+    companyName: "companies.name", // Can be null
   });
 
 // employees (required)
@@ -162,20 +151,17 @@ Use INNER JOIN for required relationships, LEFT JOIN for optional ones.
 ```typescript
 const results = await db
   .table("employees")
-  .join("users", "employees.user_id", "users.id")              // Required: all employees have users
+  .join("users", "employees.user_id", "users.id") // Required: all employees have users
   .leftJoin("departments", "employees.department_id", "departments.id") // Optional: may not have department
   .select({
-    employeeName: "users.username",           // Always exists
-    departmentName: "departments.name",       // Can be null
+    employeeName: "users.username", // Always exists
+    departmentName: "departments.name", // Can be null
   });
 ```
 
 <Tip>
-**Join type selection guide**:
-1. Check database schema (NOT NULL vs NULLABLE)
-2. NOT NULL foreign key → INNER JOIN
-3. NULLABLE foreign key → LEFT JOIN
-4. Consider business requirements
+  **Join type selection guide**: 1. Check database schema (NOT NULL vs NULLABLE) 2. NOT NULL foreign
+  key → INNER JOIN 3. NULLABLE foreign key → LEFT JOIN 4. Consider business requirements
 </Tip>
 
 ## Self JOIN - Self Reference
@@ -187,11 +173,7 @@ Use **aliases** when joining the same table.
 ```typescript
 const results = await db
   .table({ child: "departments" })
-  .leftJoin(
-    { parent: "departments" },
-    "child.parent_id",
-    "parent.id"
-  )
+  .leftJoin({ parent: "departments" }, "child.parent_id", "parent.id")
   .select({
     childId: "child.id",
     childName: "child.name",
@@ -216,11 +198,7 @@ const results = await db
 ```typescript
 const results = await db
   .table({ user: "users" })
-  .leftJoin(
-    { referrer: "users" },
-    "user.referrer_id",
-    "referrer.id"
-  )
+  .leftJoin({ referrer: "users" }, "user.referrer_id", "referrer.id")
   .select({
     userId: "user.id",
     userName: "user.username",
@@ -257,14 +235,13 @@ const results = await db
 ```
 
 **Result characteristics**:
+
 - 1 project with N employees → N rows
 - Projects without employees → 1 row (employee fields are null)
 
 <Warning>
-**M:N join considerations**:
-1. Results are duplicated (rows created per employee per project)
-2. Be careful with aggregations (use `COUNT(DISTINCT ...)`)
-3. Pagination becomes complex
+  **M:N join considerations**: 1. Results are duplicated (rows created per employee per project) 2.
+  Be careful with aggregations (use `COUNT(DISTINCT ...)`) 3. Pagination becomes complex
 </Warning>
 
 ### M:N Grouped by Employee
@@ -306,11 +283,7 @@ const empStats = db
 // Join departments + statistics
 const results = await db
   .table("departments")
-  .leftJoin(
-    { stats: empStats },
-    "departments.id",
-    "stats.department_id"
-  )
+  .leftJoin({ stats: empStats }, "departments.id", "stats.department_id")
   .select({
     deptId: "departments.id",
     deptName: "departments.name",
@@ -334,11 +307,7 @@ const latestLogins = db
 // Join users + latest login
 const results = await db
   .table("users")
-  .leftJoin(
-    { latest: latestLogins },
-    "users.id",
-    "latest.user_id"
-  )
+  .leftJoin({ latest: latestLogins }, "users.id", "latest.user_id")
   .select({
     userId: "users.id",
     userName: "users.username",
@@ -360,8 +329,8 @@ const results = await db
     userName: "users.username",
     deptName: "departments.name",
   })
-  .where("users.is_active", true)          // users filter
-  .where("employees.salary", ">=", 50000)  // employees filter
+  .where("users.is_active", true) // users filter
+  .where("employees.salary", ">=", 50000) // employees filter
   .where("departments.name", "like", "%dev%"); // departments filter
 ```
 
@@ -497,23 +466,21 @@ const results = await db
   .join("users", "employees.user_id", "users.id")
   .leftJoin("departments", "employees.department_id", "departments.id")
   .select({
-    employeeId: "employees.id",        // number
-    userName: "users.username",         // string
+    employeeId: "employees.id", // number
+    userName: "users.username", // string
     departmentName: "departments.name", // string | null (LEFT JOIN)
   });
 
 // Types are automatically inferred
 const first = results[0];
-first.employeeId;     // number
-first.userName;        // string
-first.departmentName;  // string | null
+first.employeeId; // number
+first.userName; // string
+first.departmentName; // string | null
 ```
 
 <Info>
-**LEFT JOIN and types**:
-- Columns from LEFT JOIN tables are `T | null` type
-- Columns from INNER JOIN tables are `T` type
-- TypeScript automatically enforces null checks
+  **LEFT JOIN and types**: - Columns from LEFT JOIN tables are `T | null` type - Columns from INNER
+  JOIN tables are `T` type - TypeScript automatically enforces null checks
 </Info>
 
 ## Performance Optimization
@@ -530,19 +497,13 @@ CREATE INDEX idx_employees_department_id ON employees(department_id);
 
 ```typescript
 // ❌ Bad: Query all columns
-await db
-  .table("employees")
-  .join("users", "employees.user_id", "users.id")
-  .selectAll();
+await db.table("employees").join("users", "employees.user_id", "users.id").selectAll();
 
 // ✅ Good: Select only needed columns
-await db
-  .table("employees")
-  .join("users", "employees.user_id", "users.id")
-  .select({
-    id: "employees.id",
-    name: "users.username",
-  });
+await db.table("employees").join("users", "employees.user_id", "users.id").select({
+  id: "employees.id",
+  name: "users.username",
+});
 ```
 
 ### Optimize JOIN Order
@@ -561,7 +522,11 @@ await db
   <Card title="Aggregations" icon="calculator" href="/en/database/puri/aggregations">
     Analyze data with aggregate functions
   </Card>
-  <Card title="Advanced Patterns" icon="wand-magic-sparkles" href="/en/database/puri/advanced-patterns">
+  <Card
+    title="Advanced Patterns"
+    icon="wand-magic-sparkles"
+    href="/en/database/puri/advanced-patterns"
+  >
     Subqueries and complex patterns
   </Card>
   <Card title="Type Safety" icon="shield" href="/en/database/puri/type-safety">

@@ -9,56 +9,56 @@ description: Sonamu frontend integration. Auto-generated Service, TanStack Query
 
 ### Hooks
 
-| Hook            | Purpose                              | Key Return Values                                        |
-| --------------- | ------------------------------------ | -------------------------------------------------------- |
-| `useTypeForm`   | Form state management (Zod-based)    | form, setForm, register, submit, addError, reset |
-| `useListParams` | URL-synced list parameters           | listParams, setListParams, register              |
-| `useSelection`  | Checkbox multi-selection             | selectedKeys, toggle, selectAll, deselectAll     |
-| `useModal`      | Modal state management               | open, modal                                      |
-| `useToast`      | Toast notifications                  | toast                                            |
+| Hook            | Purpose                           | Key Return Values                                |
+| --------------- | --------------------------------- | ------------------------------------------------ |
+| `useTypeForm`   | Form state management (Zod-based) | form, setForm, register, submit, addError, reset |
+| `useListParams` | URL-synced list parameters        | listParams, setListParams, register              |
+| `useSelection`  | Checkbox multi-selection          | selectedKeys, toggle, selectAll, deselectAll     |
+| `useModal`      | Modal state management            | open, modal                                      |
+| `useToast`      | Toast notifications               | toast                                            |
 
 ### Components
 
-| Component     | Purpose              | Key Props                                           |
-| ------------- | -------------------- | --------------------------------------------------- |
-| `Input`       | Text input           | value, onValueChange                                |
-| `Textarea`    | Multi-line input     | value, onValueChange                                |
-| `Checkbox`    | Checkbox             | value (boolean), onValueChange, label               |
-| `Select`      | Single select        | items, value, onValueChange, placeholder, clearable |
-| `MultiSelect` | Multi-select         | options, value (array), onValueChange, maxCount     |
-| `EnumSelect`  | Enum select          | enum, labels, value, onValueChange                  |
-| `FileInput`   | File upload          | uploadMode, viewMode, multiple, maxFiles            |
+| Component     | Purpose          | Key Props                                           |
+| ------------- | ---------------- | --------------------------------------------------- |
+| `Input`       | Text input       | value, onValueChange                                |
+| `Textarea`    | Multi-line input | value, onValueChange                                |
+| `Checkbox`    | Checkbox         | value (boolean), onValueChange, label               |
+| `Select`      | Single select    | items, value, onValueChange, placeholder, clearable |
+| `MultiSelect` | Multi-select     | options, value (array), onValueChange, maxCount     |
+| `EnumSelect`  | Enum select      | enum, labels, value, onValueChange                  |
+| `FileInput`   | File upload      | uploadMode, viewMode, multiple, maxFiles            |
 
 ### Service (Auto-generated)
 
-| Method            | Purpose                  | Example                                |
-| ----------------- | ------------------------ | -------------------------------------- |
-| `get{Entity}`     | Fetch single record      | `UserService.getUser("A", 123)`        |
-| `get{Entities}`   | Fetch list               | `UserService.getUsers("P", params)`    |
-| `save`            | Save (create/update)     | `UserService.save([data])`             |
-| `del`             | Delete                   | `UserService.del([1, 2, 3])`           |
-| `use{Entity}`     | Single fetch hook        | `UserService.useUser("A", id)`         |
-| `use{Entities}`   | List fetch hook          | `UserService.useUsers("P", params)`    |
-| `useSaveMutation` | Save mutation            | `UserService.useSaveMutation()`        |
+| Method            | Purpose              | Example                             |
+| ----------------- | -------------------- | ----------------------------------- |
+| `get{Entity}`     | Fetch single record  | `UserService.getUser("A", 123)`     |
+| `get{Entities}`   | Fetch list           | `UserService.getUsers("P", params)` |
+| `save`            | Save (create/update) | `UserService.save([data])`          |
+| `del`             | Delete               | `UserService.del([1, 2, 3])`        |
+| `use{Entity}`     | Single fetch hook    | `UserService.useUser("A", id)`      |
+| `use{Entities}`   | List fetch hook      | `UserService.useUsers("P", params)` |
+| `useSaveMutation` | Save mutation        | `UserService.useSaveMutation()`     |
 
 ### Utilities
 
-| Function           | Purpose                      | Example                                              |
-| ------------------ | ---------------------------- | ---------------------------------------------------- |
-| `dateF`            | Date formatting              | `dateF(new Date())` → `"2024-01-15"`              |
-| `datetimeF`        | Datetime formatting          | `datetimeF(new Date())` → `"2024-01-15 10:30:00"` |
-| `numF`             | Number formatting            | `numF(1234567)` → `"1,234,567"`                   |
-| `hidden`           | Conditional hidden class     | `hidden(true)` → `"hidden"`                       |
-| `arrayableToArray` | Convert to array             | `arrayableToArray("a")` → `["a"]`                 |
+| Function           | Purpose                  | Example                                           |
+| ------------------ | ------------------------ | ------------------------------------------------- |
+| `dateF`            | Date formatting          | `dateF(new Date())` → `"2024-01-15"`              |
+| `datetimeF`        | Datetime formatting      | `datetimeF(new Date())` → `"2024-01-15 10:30:00"` |
+| `numF`             | Number formatting        | `numF(1234567)` → `"1,234,567"`                   |
+| `hidden`           | Conditional hidden class | `hidden(true)` → `"hidden"`                       |
+| `arrayableToArray` | Convert to array         | `arrayableToArray("a")` → `["a"]`                 |
 
 ### Configuration
 
-| Item             | Description                                      | Required                                  |
-| ---------------- | ------------------------------------------------ | ----------------------------------------- |
+| Item             | Description                                        | Required                                   |
+| ---------------- | -------------------------------------------------- | ------------------------------------------ |
 | `SonamuProvider` | Global configuration Provider (uploader, auth, SD) | Required (uploader required for FileInput) |
-| `uploader`       | File upload function                             | Required when using FileInput             |
-| `auth`           | Authentication state and functions               | Optional                                  |
-| `SD`             | Internationalization function                    | Optional                                  |
+| `uploader`       | File upload function                               | Required when using FileInput              |
+| `auth`           | Authentication state and functions                 | Optional                                   |
+| `SD`             | Internationalization function                      | Optional                                   |
 
 ---
 
@@ -76,9 +76,7 @@ const user = await UserService.getUser("A", 123);
 const { rows, total } = await UserService.getUsers("P", { num: 20, page: 1 });
 
 // Save
-const [userId] = await UserService.save([
-  { email: "new@test.com", username: "newuser" },
-]);
+const [userId] = await UserService.save([{ email: "new@test.com", username: "newuser" }]);
 
 // Delete
 const count = await UserService.del([1, 2, 3]);
@@ -139,28 +137,22 @@ Type-safe form management based on Zod schemas (react-components v0.1.8+)
 ### Return Values
 
 ```typescript
-const {
-  form,
-  setForm,
-  register,
-  submit,
-  addError,
-  removeError,
-  clearError,
-  reset,
-} = useTypeForm(Schema, defaultValue);
+const { form, setForm, register, submit, addError, removeError, clearError, reset } = useTypeForm(
+  Schema,
+  defaultValue,
+);
 ```
 
-| Return Value  | Type                                                | Description                              |
-| ------------- | --------------------------------------------------- | ---------------------------------------- |
-| `form`        | `z.infer<Schema>`                                   | Current form data                        |
-| `setForm`     | `React.Dispatch<SetStateAction<...>>`               | Form state update function               |
-| `register`    | `(field: string) => RegisterReturn`                 | Field registration function              |
-| `submit`      | `(callback) => () => Promise<R>`                    | Submit handler factory                   |
-| `addError`    | `(path: string, error: string \| ErrorObj) => void` | Manually add an error                    |
-| `removeError` | `(path: string) => void`                            | Remove error for a specific field        |
-| `clearError`  | `() => void`                                        | Clear all errors                         |
-| `reset`       | `() => void`                                        | Reset form to defaultValue               |
+| Return Value  | Type                                                | Description                       |
+| ------------- | --------------------------------------------------- | --------------------------------- |
+| `form`        | `z.infer<Schema>`                                   | Current form data                 |
+| `setForm`     | `React.Dispatch<SetStateAction<...>>`               | Form state update function        |
+| `register`    | `(field: string) => RegisterReturn`                 | Field registration function       |
+| `submit`      | `(callback) => () => Promise<R>`                    | Submit handler factory            |
+| `addError`    | `(path: string, error: string \| ErrorObj) => void` | Manually add an error             |
+| `removeError` | `(path: string) => void`                            | Remove error for a specific field |
+| `clearError`  | `() => void`                                        | Clear all errors                  |
+| `reset`       | `() => void`                                        | Reset form to defaultValue        |
 
 ### register Return Object
 
@@ -197,9 +189,7 @@ function RegisterForm() {
   return (
     <form>
       <Input {...emailProps} />
-      {emailProps.error && (
-        <span className="error">{emailProps.error.content}</span>
-      )}
+      {emailProps.error && <span className="error">{emailProps.error.content}</span>}
 
       {/* Method 2: inline (for short cases) */}
       <Input {...register("username")} />
@@ -258,14 +248,14 @@ import { Input, Checkbox, Select, Textarea } from "@sonamu-kit/react-components/
 
 Fields defined as required in SaveParams **must be included** in the form initial values:
 
-| Type              | Initial Value          |
-| ----------------- | ---------------------- |
-| string (required) | `""`                   |
-| number (required) | `0`                    |
-| Date (required)   | `new Date()`           |
+| Type              | Initial Value                  |
+| ----------------- | ------------------------------ |
+| string (required) | `""`                           |
+| number (required) | `0`                            |
+| Date (required)   | `new Date()`                   |
 | enum (required)   | Default value (e.g. `"draft"`) |
-| FK (required)     | `0`                    |
-| nullable          | `null`                 |
+| FK (required)     | `0`                            |
+| nullable          | `null`                         |
 
 ```typescript
 const { form, setForm, register } = useTypeForm(TaskSaveParams, {
@@ -286,14 +276,7 @@ If a scaffolded form accesses relation objects like `row.collection?.id`, that r
 
 ```json
 // question.entity.json > subsets > A
-[
-  "id",
-  "content",
-  "collection.id",
-  "collection.title",
-  "parent.id",
-  "answer_group.id"
-]
+["id", "content", "collection.id", "collection.title", "parent.id", "answer_group.id"]
 ```
 
 **Alternative**: If the FK is already on `row`, using `...row` alone is sufficient without accessing the relation (no subset modification needed)
@@ -542,11 +525,13 @@ function UserForm() {
 ```
 
 **Notes**:
+
 - You must explicitly reset lower values to `null` when a higher-level value changes. IdAsyncSelect does not reset automatically.
 - Using the `disabled` prop to disable lower levels when the parent is not selected improves UX.
 - If `baseListParams` is `undefined`, IdAsyncSelect stays in enabled=false state and does not fetch.
 
 **Items to specify in Spec** (recommended to add to acceptanceCriteria in spec.json when cascade is present):
+
 ```json
 "acceptanceCriteria": [
   "When a department is selected, only divisions belonging to that department appear in the dropdown",
@@ -850,10 +835,7 @@ import { registerSSR } from "sonamu/ssr";
 
 registerSSR({
   path: "/companies/:companyId",
-  preload: (params) => [
-    UserService.me(),
-    CompanyService.findById("A", Number(params.companyId)),
-  ],
+  preload: (params) => [UserService.me(), CompanyService.findById("A", Number(params.companyId))],
 });
 ```
 

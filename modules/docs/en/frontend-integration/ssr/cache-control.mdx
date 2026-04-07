@@ -9,24 +9,16 @@ Learn how to configure TanStack Query's client caching and HTTP caching for SSR 
 
 <CardGroup cols={2}>
   <Card title="TanStack Query" icon="arrows-rotate">
-    Client memory caching
-    
-    staleTime/gcTime
+    Client memory caching staleTime/gcTime
   </Card>
   <Card title="HTTP Cache" icon="server">
-    Cache-Control headers
-    
-    CDN/Browser caching
+    Cache-Control headers CDN/Browser caching
   </Card>
   <Card title="Revalidation" icon="refresh">
-    Auto/manual refresh
-    
-    Keep data fresh
+    Auto/manual refresh Keep data fresh
   </Card>
   <Card title="Performance" icon="gauge-high">
-    Fast response
-    
-    Reduced server load
+    Fast response Reduced server load
   </Card>
 </CardGroup>
 
@@ -40,16 +32,16 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // Cache settings
-      staleTime: 5000,             // 5 seconds (time data is fresh)
-      gcTime: 5 * 60 * 1000,       // 5 minutes (garbage collection time)
-      
+      staleTime: 5000, // 5 seconds (time data is fresh)
+      gcTime: 5 * 60 * 1000, // 5 minutes (garbage collection time)
+
       // Revalidation settings
       refetchOnWindowFocus: false, // Don't revalidate on window focus
-      refetchOnMount: true,        // Revalidate on mount
-      refetchOnReconnect: true,    // Revalidate on reconnect
-      
+      refetchOnMount: true, // Revalidate on mount
+      refetchOnReconnect: true, // Revalidate on reconnect
+
       // Retry settings
-      retry: false,                // Don't retry on failure
+      retry: false, // Don't retry on failure
     },
   },
 });
@@ -69,7 +61,7 @@ const queryClient = new QueryClient({
 const { data } = useQuery({
   queryKey: ["user", userId],
   queryFn: fetchUser,
-  staleTime: 5000,        // Fresh for 5 seconds
+  staleTime: 5000, // Fresh for 5 seconds
   gcTime: 10 * 60 * 1000, // Keep cache for 10 minutes
 });
 
@@ -107,15 +99,15 @@ function UserProfile({ userId }: { userId: number }) {
 const { data } = useQuery({
   queryKey: ["stock", symbol],
   queryFn: fetchStock,
-  staleTime: 0,             // Always stale
-  refetchInterval: 5000,    // Auto refetch every 5 seconds
+  staleTime: 0, // Always stale
+  refetchInterval: 5000, // Auto refetch every 5 seconds
 });
 
 // 2. Frequently changing data (feed, notifications, etc.)
 const { data } = useQuery({
   queryKey: ["feed"],
   queryFn: fetchFeed,
-  staleTime: 60 * 1000,     // 1 min fresh
+  staleTime: 60 * 1000, // 1 min fresh
   refetchOnWindowFocus: true,
 });
 
@@ -131,8 +123,8 @@ const { data } = useQuery({
 const { data } = useQuery({
   queryKey: ["categories"],
   queryFn: fetchCategories,
-  staleTime: Infinity,      // Forever fresh
-  gcTime: Infinity,         // Forever cached
+  staleTime: Infinity, // Forever fresh
+  gcTime: Infinity, // Forever cached
 });
 ```
 
@@ -217,8 +209,7 @@ const userData = queryClient.getQueryData(["User", "getUser", "C", 123]);
 const allQueries = queryClient.getQueryCache().getAll();
 
 // Query specific pattern caches
-const postQueries = queryClient.getQueryCache()
-  .findAll({ queryKey: ["Post"] });
+const postQueries = queryClient.getQueryCache().findAll({ queryKey: ["Post"] });
 ```
 
 ## SSR Cache-Control
@@ -233,17 +224,20 @@ import { registerSSR } from "sonamu";
 
 registerSSR({
   path: "/posts/:id",
-  preload: (params) => [/* ... */],
+  preload: (params) => [
+    /* ... */
+  ],
   cacheControl: {
-    maxAge: 3600,                // 1 hour (browser cache)
-    sMaxAge: 7200,               // 2 hours (CDN cache)
+    maxAge: 3600, // 1 hour (browser cache)
+    sMaxAge: 7200, // 2 hours (CDN cache)
     staleWhileRevalidate: 86400, // Serve stale content for 1 day
-    public: true,                // Allow public cache
+    public: true, // Allow public cache
   },
 });
 ```
 
 **Generated header**:
+
 ```
 Cache-Control: public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400
 ```
@@ -255,8 +249,8 @@ Cache-Control: public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400
 registerSSR({
   path: "/about",
   cacheControl: {
-    maxAge: 86400,    // 1 day
-    sMaxAge: 604800,  // 7 days (CDN)
+    maxAge: 86400, // 1 day
+    sMaxAge: 604800, // 7 days (CDN)
     public: true,
   },
 });
@@ -265,8 +259,8 @@ registerSSR({
 registerSSR({
   path: "/posts/:id",
   cacheControl: {
-    maxAge: 300,      // 5 minutes
-    sMaxAge: 600,     // 10 minutes (CDN)
+    maxAge: 300, // 5 minutes
+    sMaxAge: 600, // 10 minutes (CDN)
     staleWhileRevalidate: 3600,
     public: true,
   },
@@ -276,8 +270,8 @@ registerSSR({
 registerSSR({
   path: "/dashboard",
   cacheControl: {
-    noStore: true,    // Completely disable cache
-    private: true,    // Private only
+    noStore: true, // Completely disable cache
+    private: true, // Private only
   },
 });
 
@@ -285,7 +279,7 @@ registerSSR({
 registerSSR({
   path: "/live-feed",
   cacheControl: {
-    noCache: true,    // Revalidation required
+    noCache: true, // Revalidation required
   },
 });
 ```
@@ -294,16 +288,16 @@ registerSSR({
 
 ```typescript
 type CacheControlConfig = {
-  maxAge?: number;              // Browser cache time (seconds)
-  sMaxAge?: number;             // CDN cache time (seconds)
+  maxAge?: number; // Browser cache time (seconds)
+  sMaxAge?: number; // CDN cache time (seconds)
   staleWhileRevalidate?: number; // Stale content serve time (seconds)
-  staleIfError?: number;        // Stale content serve time on error (seconds)
-  public?: boolean;             // Allow public cache
-  private?: boolean;            // Private only (no CDN cache)
-  noCache?: boolean;            // Revalidation required
-  noStore?: boolean;            // Completely disable cache
-  mustRevalidate?: boolean;     // Force revalidation
-  immutable?: boolean;          // Immutable resource
+  staleIfError?: number; // Stale content serve time on error (seconds)
+  public?: boolean; // Allow public cache
+  private?: boolean; // Private only (no CDN cache)
+  noCache?: boolean; // Revalidation required
+  noStore?: boolean; // Completely disable cache
+  mustRevalidate?: boolean; // Force revalidation
+  immutable?: boolean; // Immutable resource
 };
 ```
 
@@ -323,7 +317,7 @@ const config: SonamuFastifyConfig = {
     // Static pages
     if (path === "/about" || path === "/terms") {
       return {
-        maxAge: 86400,    // 1 day
+        maxAge: 86400, // 1 day
         public: true,
       };
     }
@@ -331,7 +325,7 @@ const config: SonamuFastifyConfig = {
     // Dynamic pages
     if (path.startsWith("/posts/")) {
       return {
-        maxAge: 300,      // 5 minutes
+        maxAge: 300, // 5 minutes
         staleWhileRevalidate: 3600,
         public: true,
       };
@@ -365,11 +359,13 @@ const { data } = PostService.usePost("C", postId, {
 ```
 
 **Caching layers**:
+
 1. **Browser HTTP cache**: 1 hour (max-age=3600)
 2. **TanStack Query memory**: 5 minutes (staleTime)
 3. **Server SSR rendering**: Render on cache miss
 
 **Flow**:
+
 1. First visit: SSR → HTML + data → Store in browser cache
 2. Re-visit within 5 min: Use TanStack Query memory cache
 3. 5 min ~ 1 hour: Use browser HTTP cache
@@ -497,12 +493,10 @@ function prefetchPost(postId: number) {
 ## Cautions
 
 <Warning>
-**Cautions when using cache**:
-1. **staleTime setting required**: Default 0 always refetches
-2. **Private for personal data**: No public caching
-3. **Sensitive data**: Disable caching with noStore
-4. **SSR cacheControl**: Individual settings take precedence over global handler
-5. **Memory management**: Remove unnecessary cache with gcTime
+  **Cautions when using cache**: 1. **staleTime setting required**: Default 0 always refetches 2.
+  **Private for personal data**: No public caching 3. **Sensitive data**: Disable caching with
+  noStore 4. **SSR cacheControl**: Individual settings take precedence over global handler 5.
+  **Memory management**: Remove unnecessary cache with gcTime
 </Warning>
 
 ## Next Steps
@@ -514,7 +508,11 @@ function prefetchPost(postId: number) {
   <Card title="Data Preloading" icon="bolt" href="/en/frontend-integration/ssr/preloading-data">
     How to use registerSSR
   </Card>
-  <Card title="Hydration Strategies" icon="droplet" href="/en/frontend-integration/ssr/hydration-strategies">
+  <Card
+    title="Hydration Strategies"
+    icon="droplet"
+    href="/en/frontend-integration/ssr/hydration-strategies"
+  >
     Hydration optimization
   </Card>
   <Card title="TanStack Query Docs" icon="external-link" href="https://tanstack.com/query">

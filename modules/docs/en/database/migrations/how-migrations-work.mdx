@@ -9,24 +9,16 @@ Sonamu **automatically generates** database migrations based on Entity definitio
 
 <CardGroup cols={2}>
   <Card title="Auto Generation" icon="wand-magic-sparkles">
-    Entity → Migration
-    
-    No manual writing needed
+    Entity → Migration No manual writing needed
   </Card>
   <Card title="Version Control" icon="code-branch">
-    Timestamp-based
-    
-    Sequential execution guaranteed
+    Timestamp-based Sequential execution guaranteed
   </Card>
   <Card title="Up/Down" icon="arrows-up-down">
-    Apply and rollback
-    
-    Bidirectional support
+    Apply and rollback Bidirectional support
   </Card>
   <Card title="Knex-based" icon="database">
-    Standard Knex API
-    
-    Compatibility guaranteed
+    Standard Knex API Compatibility guaranteed
   </Card>
 </CardGroup>
 
@@ -72,7 +64,7 @@ export async function up(knex: Knex): Promise<void> {
     table.string("email", 255).notNullable();
     table.string("username", 255).notNullable();
     table.text("role").notNullable();
-    
+
     table.unique(["email"], "users_email_unique");
   });
 }
@@ -83,10 +75,8 @@ export async function down(knex: Knex): Promise<void> {
 ```
 
 <Info>
-Migration filename: `{timestamp}_{action}_{table_name}.ts`
-- Timestamp: `YYYYMMDDHHmmss` format
-- Action: `create`, `alter`, `foreign`, `drop`, etc.
-- Table name: underscore-separated
+  Migration filename: `{timestamp}_{action}_{table_name}.ts` - Timestamp: `YYYYMMDDHHmmss` format -
+  Action: `create`, `alter`, `foreign`, `drop`, etc. - Table name: underscore-separated
 </Info>
 
 ## Migration File Structure
@@ -115,6 +105,7 @@ export async function down(knex: Knex): Promise<void> {
 **The down function is required!**
 
 You must define the reverse operation of up for rollbacks.
+
 </Warning>
 
 ## Generated Migration Types
@@ -178,12 +169,8 @@ export async function down(knex: Knex): Promise<void> {
 // 20251209160751_foreign__employees__user_id_department_id.ts
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.alterTable("employees", (table) => {
-    table
-      .foreign("user_id")
-      .references("users.id")
-      .onUpdate("CASCADE")
-      .onDelete("CASCADE");
-    
+    table.foreign("user_id").references("users.id").onUpdate("CASCADE").onDelete("CASCADE");
+
     table
       .foreign("department_id")
       .references("departments.id")
@@ -275,6 +262,7 @@ Detected}
 
 CREATE TABLE only creates columns;
 foreign key constraints are added later in separate migrations.
+
 </Warning>
 
 ## Execution Tracking
@@ -287,11 +275,11 @@ Knex tracks executed migrations:
 SELECT * FROM knex_migrations;
 ```
 
-| id | name | batch | migration_time |
-|----|------|-------|----------------|
-| 1 | 20251209160740_create__companies.ts | 1 | 2025-12-09 16:10:00 |
-| 2 | 20251209160741_create__departments.ts | 1 | 2025-12-09 16:10:00 |
-| 3 | 20251209160742_create__employees.ts | 1 | 2025-12-09 16:10:00 |
+| id  | name                                    | batch | migration_time      |
+| --- | --------------------------------------- | ----- | ------------------- |
+| 1   | 20251209160740_create\_\_companies.ts   | 1     | 2025-12-09 16:10:00 |
+| 2   | 20251209160741_create\_\_departments.ts | 1     | 2025-12-09 16:10:00 |
+| 3   | 20251209160742_create\_\_employees.ts   | 1     | 2025-12-09 16:10:00 |
 
 - **batch**: Group executed together (rollback unit)
 - **migration_time**: Execution time
@@ -300,14 +288,14 @@ SELECT * FROM knex_migrations;
 
 ### Basic Types
 
-| Entity Type | DB Type | Migration |
-|-------------|---------|-----------|
-| `string` | `varchar(n)` | `table.string(name, length)` |
-| `integer` | `integer` | `table.integer(name)` |
-| `boolean` | `boolean` | `table.boolean(name)` |
-| `date` | `timestamptz` | `table.timestamp(name, { useTz: true })` |
-| `json` | `jsonb` | `table.jsonb(name)` |
-| `uuid` | `uuid` | `table.uuid(name)` |
+| Entity Type | DB Type       | Migration                                |
+| ----------- | ------------- | ---------------------------------------- |
+| `string`    | `varchar(n)`  | `table.string(name, length)`             |
+| `integer`   | `integer`     | `table.integer(name)`                    |
+| `boolean`   | `boolean`     | `table.boolean(name)`                    |
+| `date`      | `timestamptz` | `table.timestamp(name, { useTz: true })` |
+| `json`      | `jsonb`       | `table.jsonb(name)`                      |
+| `uuid`      | `uuid`        | `table.uuid(name)`                       |
 
 ### Relation Types
 
@@ -357,7 +345,7 @@ export async function up(knex: Knex): Promise<void> {
     `ALTER TABLE "departments" 
      ADD COLUMN "code" varchar(10) 
      GENERATED ALWAYS AS ('DEP-' || LPAD(id::text, 3, '0')) 
-     STORED NOT NULL`
+     STORED NOT NULL`,
   );
 }
 ```
@@ -371,13 +359,13 @@ export async function up(knex: Knex): Promise<void> {
     `ALTER TABLE "posts" 
      ADD COLUMN "search_vector" tsvector 
      GENERATED ALWAYS AS (to_tsvector('english', title || ' ' || content)) 
-     STORED`
+     STORED`,
   );
-  
+
   // GIN index
   await knex.raw(
     `CREATE INDEX posts_search_vector_idx 
-     ON posts USING GIN(search_vector)`
+     ON posts USING GIN(search_vector)`,
   );
 }
 ```
@@ -388,11 +376,11 @@ export async function up(knex: Knex): Promise<void> {
 export async function up(knex: Knex): Promise<void> {
   // vector column
   await knex.raw(`ALTER TABLE "documents" ADD COLUMN "embedding" vector(1536)`);
-  
+
   // HNSW index
   await knex.raw(
     `CREATE INDEX documents_embedding_hnsw_idx 
-     ON documents USING hnsw (embedding vector_cosine_ops)`
+     ON documents USING hnsw (embedding vector_cosine_ops)`,
   );
 }
 ```

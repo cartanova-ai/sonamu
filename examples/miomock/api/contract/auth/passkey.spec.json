@@ -34,12 +34,8 @@
   ],
   "lastModified": "2026-03-09",
   "status": "done",
-  "sources": [
-    "src/application/passkey/passkey.types.ts"
-  ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "sources": ["src/application/passkey/passkey.types.ts"],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "Passkey": "WebAuthn/FIDO2 패스키 인증 엔티티"
   },
@@ -54,8 +50,5 @@
   "errorHandling": {
     "InvalidCredential": "Better-Auth 프레임워크가 잘못된 자격증명에 대한 에러를 처리"
   },
-  "constraints": [
-    "Passkey credential_id 인덱스",
-    "사용자 삭제 시 Passkey CASCADE 삭제"
-  ]
+  "constraints": ["Passkey credential_id 인덱스", "사용자 삭제 시 Passkey CASCADE 삭제"]
 }

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+
 import { wrapIf } from "../../../../../modules/sonamu/dist/utils/lodash-able";
 
 describe("lodash-able", () => {
@@ -24,7 +25,7 @@ describe("lodash-able", () => {
     describe("실제 사용 패턴: 상대 경로 정규화", () => {
       test(".으로 시작하지 않는 경로에 ./ 접두사를 추가함", () => {
         const path = "utils/helper";
-        const result = wrapIf(path, (p) => [p.startsWith(".") === false, `./${p}`]);
+        const result = wrapIf(path, (p) => [!p.startsWith("."), `./${p}`]);
 
         // 조건이 true이므로 ./ 접두사가 추가됨
         expect(result).toBe("./utils/helper");
@@ -32,7 +33,7 @@ describe("lodash-able", () => {
 
       test("이미 ./로 시작하는 경로는 변경하지 않음", () => {
         const path = "./utils/helper";
-        const result = wrapIf(path, (p) => [p.startsWith(".") === false, `./${p}`]);
+        const result = wrapIf(path, (p) => [!p.startsWith("."), `./${p}`]);
 
         // 조건이 false이므로 원본 그대로 반환됨
         expect(result).toBe("./utils/helper");
@@ -40,7 +41,7 @@ describe("lodash-able", () => {
 
       test("../로 시작하는 경로는 변경하지 않음", () => {
         const path = "../utils/helper";
-        const result = wrapIf(path, (p) => [p.startsWith(".") === false, `./${p}`]);
+        const result = wrapIf(path, (p) => [!p.startsWith("."), `./${p}`]);
 
         // 조건이 false이므로 원본 그대로 반환됨
         expect(result).toBe("../utils/helper");
@@ -48,7 +49,7 @@ describe("lodash-able", () => {
 
       test("빈 문자열은 ./ 접두사를 추가함", () => {
         const path = "";
-        const result = wrapIf(path, (p) => [p.startsWith(".") === false, `./${p}`]);
+        const result = wrapIf(path, (p) => [!p.startsWith("."), `./${p}`]);
 
         // 조건이 true이므로 ./ 접두사가 추가됨
         expect(result).toBe("./");
@@ -56,7 +57,7 @@ describe("lodash-able", () => {
 
       test("단일 파일명에 ./ 접두사를 추가함", () => {
         const path = "helper";
-        const result = wrapIf(path, (p) => [p.startsWith(".") === false, `./${p}`]);
+        const result = wrapIf(path, (p) => [!p.startsWith("."), `./${p}`]);
 
         // 조건이 true이므로 ./ 접두사가 추가됨
         expect(result).toBe("./helper");

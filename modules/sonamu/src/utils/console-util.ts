@@ -1,5 +1,7 @@
+import { spawn } from "child_process";
+import { type ChildProcess } from "child_process";
+
 import chalk from "chalk";
-import { type ChildProcess, spawn } from "child_process";
 
 const DEFAULT_LINE_PREFIX = "  │    ";
 

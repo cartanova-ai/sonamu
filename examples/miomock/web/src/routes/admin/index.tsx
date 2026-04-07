@@ -9,16 +9,17 @@ import {
 import { dateF } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import ArrowRightIcon from "~icons/lucide/arrow-right";
+
 import { SD } from "@/i18n/sd.generated";
-import type {
-  ActiveProjectItem,
-  ActivityGroup,
-  ActivityPeriod,
-  DocumentStats,
+import {
+  type ActiveProjectItem,
+  type ActivityGroup,
+  type ActivityPeriod,
+  type DocumentStats,
 } from "@/services/dashboard/dashboard.types";
 import { DashboardService } from "@/services/services.generated";
 import { AuditLogActionLabel } from "@/services/sonamu.generated";
-import ArrowRightIcon from "~icons/lucide/arrow-right";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminIndexPage,

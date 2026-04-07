@@ -1,15 +1,15 @@
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 import {
   EntityManager,
   getAlterIndexesTo,
   getMigrationSetFromEntity,
-  type MigrationIndex,
-  type PgColumn,
   PostgreSQLSchemaReader,
   setMigrationIndexDefaults,
 } from "sonamu";
+import { type MigrationIndex, type PgColumn } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeEach, describe, expect, vi } from "vitest";
+
 import { UserModel } from "../application/user/user.model";
 import {
   CompanyMigrationTestEntity,

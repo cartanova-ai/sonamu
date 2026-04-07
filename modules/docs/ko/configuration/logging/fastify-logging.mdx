@@ -1,6 +1,6 @@
 ---
-title: 'Fastify 로깅'
-description: 'HTTP 요청/응답 로깅 커스터마이징'
+title: "Fastify 로깅"
+description: "HTTP 요청/응답 로깅 커스터마이징"
 ---
 
 Sonamu는 Fastify의 HTTP 요청과 응답을 자동으로 로깅합니다. `@logtape/fastify` 패키지를 통해 LogTape와 통합되어 있습니다.
@@ -12,6 +12,7 @@ HTTP 로그는 웹 서비스 운영의 핵심입니다.
 ### 1. 문제 해결
 
 **에러 추적:**
+
 ```
 [ERROR] POST /api/order → 500
 → 어떤 API가 실패했는가?
@@ -20,6 +21,7 @@ HTTP 로그는 웹 서비스 운영의 핵심입니다.
 ```
 
 **버그 재현:**
+
 ```
 사용자 보고: "결제가 안 돼요"
 → 로그 확인: POST /api/payment → 500
@@ -30,6 +32,7 @@ HTTP 로그는 웹 서비스 운영의 핵심입니다.
 ### 2. 성능 모니터링
 
 **느린 요청 발견:**
+
 ```
 [WARN] GET /api/user/list → 200 (3500ms)
 → 3.5초 걸림, 너무 느림!
@@ -37,6 +40,7 @@ HTTP 로그는 웹 서비스 운영의 핵심입니다.
 ```
 
 **병목 현상 감지:**
+
 ```
 [INFO] GET /api/product/123 → 200 (100ms)
 [INFO] GET /api/product/123 → 200 (100ms)
@@ -48,6 +52,7 @@ HTTP 로그는 웹 서비스 운영의 핵심입니다.
 ### 3. 보안 모니터링
 
 **비정상적인 접근 감지:**
+
 ```
 [WARN] GET /api/admin/users → 403 (from 192.168.1.100)
 [WARN] GET /api/admin/users → 403 (from 192.168.1.100)
@@ -57,6 +62,7 @@ HTTP 로그는 웹 서비스 운영의 핵심입니다.
 ```
 
 **공격 패턴 발견:**
+
 ```
 [ERROR] POST /api/login → 401
 [ERROR] POST /api/login → 401
@@ -67,6 +73,7 @@ HTTP 로그는 웹 서비스 운영의 핵심입니다.
 ### 4. 비즈니스 분석
 
 **사용 패턴 분석:**
+
 ```
 오늘의 로그:
 GET /api/product/* → 1,000건
@@ -82,6 +89,7 @@ POST /api/order → 200건
 ### 필수 로깅 항목
 
 **1. 요청 정보**
+
 - HTTP 메서드 (GET, POST, PUT, DELETE)
 - URL 경로
 - 타임스탬프
@@ -92,6 +100,7 @@ POST /api/order → 200건
 ```
 
 **2. 응답 정보**
+
 - 상태 코드 (200, 404, 500)
 - 응답 시간
 
@@ -101,6 +110,7 @@ POST /api/order → 200건
 ```
 
 **3. 에러 정보**
+
 - 에러 메시지
 - 스택 트레이스
 
@@ -114,17 +124,23 @@ Error: Card declined
 ### 로깅하면 안 되는 것
 
 **보안 정보:**
+
 ```typescript
 // ❌ 절대 로깅 금지
-POST /api/login
-{ password: "user-password-123" }  // 비밀번호!
+POST / api / login;
+{
+  password: "user-password-123";
+} // 비밀번호!
 
 // ✅ 안전하게
-POST /api/login
-{ userId: "user@example.com" }  // 비밀번호 제외
+POST / api / login;
+{
+  userId: "user@example.com";
+} // 비밀번호 제외
 ```
 
 **개인정보:**
+
 ```typescript
 // ❌ 민감 정보 노출
 [INFO] 주민번호: 123456-1234567
@@ -138,27 +154,33 @@ POST /api/login
 ### 로그 레벨 선택
 
 **info - 정상 요청**
+
 ```typescript
 [INFO] GET /api/user/list → 200 (100ms)
 [INFO] POST /api/order → 201 (200ms)
 ```
+
 - 2xx, 3xx 상태 코드
 - 정상적인 비즈니스 흐름
 
 **warning - 주의 필요**
+
 ```typescript
 [WARN] GET /api/user/list → 200 (3500ms)  // 느림
 [WARN] POST /api/order → 429 (50ms)      // Rate limit
 ```
+
 - 느린 응답 (>1초)
 - 4xx 상태 코드 (클라이언트 오류)
 - Rate limiting
 
 **error - 서버 오류**
+
 ```typescript
 [ERROR] POST /api/payment → 500
 [ERROR] GET /api/user/123 → 500
 ```
+
 - 5xx 상태 코드
 - 예외 발생
 - DB 연결 실패
@@ -169,12 +191,12 @@ POST /api/login
 
 ### 성능 기준
 
-| 시간 | 평가 | 조치 |
-|------|------|------|
-| < 100ms | 매우 빠름 | 유지 |
-| 100-500ms | 적절 | 모니터링 |
-| 500ms-1s | 느림 | 최적화 검토 |
-| > 1s | 매우 느림 | 즉시 최적화 |
+| 시간      | 평가      | 조치        |
+| --------- | --------- | ----------- |
+| < 100ms   | 매우 빠름 | 유지        |
+| 100-500ms | 적절      | 모니터링    |
+| 500ms-1s  | 느림      | 최적화 검토 |
+| > 1s      | 매우 느림 | 즉시 최적화 |
 
 ### 성능 모니터링 설정
 
@@ -182,16 +204,16 @@ POST /api/login
 export default defineConfig({
   logging: {
     filters: {
-      "fast": (record) => {
+      fast: (record) => {
         const time = record.properties.responseTime as number | undefined;
         return time ? time < 100 : false;
       },
-      "slow": (record) => {
+      slow: (record) => {
         const time = record.properties.responseTime as number | undefined;
         return time ? time > 1000 : false;
       },
     },
-    
+
     loggers: [
       // 빠른 요청: debug 레벨
       {
@@ -209,7 +231,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -227,7 +249,7 @@ export default defineConfig({
 
 /api/order/create
 - 평균: 800ms
-- 최소: 300ms  
+- 최소: 300ms
 - 최대: 2000ms  // 문제!
 
 → order/create API 최적화 필요
@@ -248,6 +270,7 @@ export default defineConfig({
 ```
 
 **자동으로 로깅되는 정보:**
+
 - HTTP 메서드 (GET, POST, PUT, DELETE 등)
 - 요청 URL
 - 응답 코드 (200, 404, 500 등)
@@ -263,6 +286,7 @@ export default defineConfig({
 ```
 
 **형식 구조:**
+
 ```
 [타임스탬프] [카테고리] 레벨: [메서드:코드] URL - 메시지
 ```
@@ -275,14 +299,16 @@ export default defineConfig({
 
 ```typescript
 // ✅ 로깅됨
-GET /api/user/list
-POST /api/order
-PUT /api/company/123
+GET / api / user / list;
+POST / api / order;
+PUT / api / company / 123;
 
 // ❌ 로깅 안 됨
-GET /                      // API가 아님
-GET /assets/logo.png       // 정적 파일
-GET /api/healthcheck       // 헬스체크는 제외
+GET / // API가 아님
+  GET /
+  assets /
+  logo.png; // 정적 파일
+GET / api / healthcheck; // 헬스체크는 제외
 ```
 
 ### 2. 기본 sink
@@ -290,6 +316,7 @@ GET /api/healthcheck       // 헬스체크는 제외
 Sonamu는 자동으로 `"fastify-console"` sink를 생성합니다.
 
 **특징:**
+
 - 콘솔 출력
 - 예쁜 형식 (pretty formatter)
 - HTTP 메서드와 응답 코드 표시
@@ -300,6 +327,7 @@ Sonamu는 자동으로 `"fastify-console"` sink를 생성합니다.
 `"fastify-console"` filter가 자동 생성됩니다.
 
 **조건:**
+
 - URL이 `/api`로 시작
 - `/api/healthcheck` 제외
 
@@ -323,7 +351,7 @@ export default defineConfig({
   logging: {
     fastifyCategory: ["app", "server", "http"],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -331,6 +359,7 @@ export default defineConfig({
 ```
 
 **로그 출력:**
+
 ```
 [2025-01-09 12:34:56] [app.server.http] INFO: [GET:200] /api/user/list - Request completed
 ```
@@ -342,9 +371,9 @@ Fastify 로그는 특별한 프로퍼티를 포함합니다.
 ```typescript
 type FastifyLogRecord = LogRecord & {
   properties: {
-    req?: FastifyRequest;      // 요청 정보
-    res?: FastifyReply;         // 응답 정보
-    responseTime?: number;      // 응답 시간 (ms)
+    req?: FastifyRequest; // 요청 정보
+    res?: FastifyReply; // 응답 정보
+    responseTime?: number; // 응답 시간 (ms)
   };
 };
 ```
@@ -376,7 +405,7 @@ type FastifyLogRecord = LogRecord & {
 
 ```typescript
 {
-  responseTime: 123  // 밀리초 (ms)
+  responseTime: 123; // 밀리초 (ms)
 }
 ```
 
@@ -398,17 +427,17 @@ export default defineConfig({
         return url?.startsWith("/api/admin") ?? false;
       },
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
         sinks: ["fastify-console"],
-        filters: ["admin-only"],  // /api/admin/* 만
+        filters: ["admin-only"], // /api/admin/* 만
         lowestLevel: "info",
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -426,17 +455,17 @@ export default defineConfig({
         return res ? res.statusCode >= 400 : false;
       },
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
         sinks: ["fastify-console"],
-        filters: ["errors-only"],  // 4xx, 5xx만
+        filters: ["errors-only"], // 4xx, 5xx만
         lowestLevel: "info",
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -451,10 +480,10 @@ export default defineConfig({
     filters: {
       "slow-requests": (record: LogRecord) => {
         const responseTime = record.properties.responseTime as number | undefined;
-        return responseTime ? responseTime > 1000 : false;  // 1초 이상
+        return responseTime ? responseTime > 1000 : false; // 1초 이상
       },
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -464,7 +493,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -482,15 +511,15 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 const simpleFormatter = (record: LogRecord): string => {
   const req = record.properties.req as FastifyRequest | undefined;
   const res = record.properties.res as FastifyReply | undefined;
-  
+
   if (req) {
     return `${req.method} ${req.url}`;
   }
-  
+
   if (res) {
     return `${res.request.method} ${res.request.url} → ${res.statusCode}`;
   }
-  
+
   return record.message.join(" ");
 };
 
@@ -499,7 +528,7 @@ export default defineConfig({
     sinks: {
       simple: getConsoleSink({ formatter: simpleFormatter }),
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -508,7 +537,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -516,6 +545,7 @@ export default defineConfig({
 ```
 
 **출력:**
+
 ```
 GET /api/user/list
 POST /api/user → 201
@@ -532,20 +562,20 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 const detailedFormatter = (record: LogRecord): string => {
   const timestamp = record.timestamp.toISOString();
   const level = record.level.toUpperCase();
-  
+
   const req = record.properties.req as FastifyRequest | undefined;
   const res = record.properties.res as FastifyReply | undefined;
   const responseTime = record.properties.responseTime as number | undefined;
-  
+
   if (res) {
     const time = responseTime ? ` (${responseTime}ms)` : "";
     return `[${timestamp}] ${level}: ${res.request.method} ${res.request.url} → ${res.statusCode}${time}`;
   }
-  
+
   if (req) {
     return `[${timestamp}] ${level}: ${req.method} ${req.url}`;
   }
-  
+
   return `[${timestamp}] ${level}: ${record.message.join(" ")}`;
 };
 
@@ -554,7 +584,7 @@ export default defineConfig({
     sinks: {
       detailed: getConsoleSink({ formatter: detailedFormatter }),
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -563,7 +593,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -571,6 +601,7 @@ export default defineConfig({
 ```
 
 **출력:**
+
 ```
 [2025-01-09T03:34:56.123Z] INFO: GET /api/user/list
 [2025-01-09T03:34:56.456Z] INFO: GET /api/user/list → 200 (123ms)
@@ -588,7 +619,7 @@ const jsonFormatter = (record: LogRecord): string => {
   const req = record.properties.req as FastifyRequest | undefined;
   const res = record.properties.res as FastifyReply | undefined;
   const responseTime = record.properties.responseTime as number | undefined;
-  
+
   const log = {
     timestamp: record.timestamp.toISOString(),
     level: record.level,
@@ -598,7 +629,7 @@ const jsonFormatter = (record: LogRecord): string => {
     statusCode: res?.statusCode,
     responseTime,
   };
-  
+
   return JSON.stringify(log);
 };
 
@@ -607,7 +638,7 @@ export default defineConfig({
     sinks: {
       json: getConsoleSink({ formatter: jsonFormatter }),
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -616,7 +647,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -624,8 +655,17 @@ export default defineConfig({
 ```
 
 **출력:**
+
 ```json
-{"timestamp":"2025-01-09T03:34:56.123Z","level":"info","category":["fastify"],"method":"GET","url":"/api/user/list","statusCode":200,"responseTime":123}
+{
+  "timestamp": "2025-01-09T03:34:56.123Z",
+  "level": "info",
+  "category": ["fastify"],
+  "method": "GET",
+  "url": "/api/user/list",
+  "statusCode": 200,
+  "responseTime": 123
+}
 ```
 
 ## 실전 예시
@@ -642,12 +682,12 @@ export default defineConfig({
       {
         category: ["fastify"],
         sinks: ["fastify-console"],
-        lowestLevel: "debug",  // 상세 로그
+        lowestLevel: "debug", // 상세 로그
         filters: ["fastify-console"],
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -667,14 +707,14 @@ export default defineConfig({
       accessLog: getFileSink("logs/access.log"),
       errorLog: getFileSink("logs/errors.log"),
     },
-    
+
     filters: {
-      "errors": (record) => {
+      errors: (record) => {
         const res = record.properties.res;
         return res ? res.statusCode >= 400 : false;
       },
     },
-    
+
     loggers: [
       // 콘솔: warning 이상
       {
@@ -697,7 +737,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -719,28 +759,28 @@ export default defineConfig({
       userLog: getFileSink("logs/user.log"),
       publicLog: getFileSink("logs/public.log"),
     },
-    
+
     filters: {
-      "admin": (record: LogRecord) => {
+      admin: (record: LogRecord) => {
         const req = record.properties.req as FastifyRequest | undefined;
         const res = record.properties.res as FastifyReply | undefined;
         const url = req?.url ?? res?.request.url;
         return url?.startsWith("/api/admin") ?? false;
       },
-      "user": (record: LogRecord) => {
+      user: (record: LogRecord) => {
         const req = record.properties.req as FastifyRequest | undefined;
         const res = record.properties.res as FastifyReply | undefined;
         const url = req?.url ?? res?.request.url;
         return url?.startsWith("/api/user") ?? false;
       },
-      "public": (record: LogRecord) => {
+      public: (record: LogRecord) => {
         const req = record.properties.req as FastifyRequest | undefined;
         const res = record.properties.res as FastifyReply | undefined;
         const url = req?.url ?? res?.request.url;
         return url?.startsWith("/api/public") ?? false;
       },
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -762,7 +802,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -782,14 +822,14 @@ export default defineConfig({
       console: getConsoleSink(),
       slowLog: getFileSink("logs/slow-requests.log"),
     },
-    
+
     filters: {
-      "slow": (record: LogRecord) => {
+      slow: (record: LogRecord) => {
         const responseTime = record.properties.responseTime as number | undefined;
         return responseTime ? responseTime > 1000 : false;
       },
     },
-    
+
     loggers: [
       // 일반 로그
       {
@@ -806,7 +846,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -819,8 +859,8 @@ export default defineConfig({
 
 ```typescript
 export default defineConfig({
-  logging: false,  // 모든 로깅 비활성화
-  
+  logging: false, // 모든 로깅 비활성화
+
   server: {
     listen: { port: 34900 },
   },
@@ -837,7 +877,7 @@ export default defineConfig({
       // → Fastify 로깅 비활성화
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -854,10 +894,10 @@ export default defineConfig({
         const req = record.properties.req;
         const res = record.properties.res;
         const url = req?.url ?? res?.request.url;
-        return url !== "/api/healthcheck";  // healthcheck 제외
+        return url !== "/api/healthcheck"; // healthcheck 제외
       },
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -867,7 +907,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -886,7 +926,7 @@ const url = req?.url ?? res?.request.url;
 
 // ❌ 하나만 체크하면 누락 가능
 const req = record.properties.req;
-const url = req.url;  // res만 있을 경우 에러
+const url = req.url; // res만 있을 경우 에러
 ```
 
 ### 2. responseTime은 res에만 있음
@@ -900,7 +940,7 @@ if (responseTime) {
 
 // ❌ req에서 찾으면 없음
 const req = record.properties.req;
-const responseTime = req?.responseTime;  // undefined
+const responseTime = req?.responseTime; // undefined
 ```
 
 ### 3. fastify-console 덮어쓰기 주의
@@ -940,35 +980,19 @@ server: {
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="카테고리 로깅" 
-    icon="folder-tree" 
-    href="/ko/configuration/logging/category-logging"
-  >
+  <Card title="카테고리 로깅" icon="folder-tree" href="/ko/configuration/logging/category-logging">
     카테고리 시스템으로 로그를 체계적으로 관리하세요
   </Card>
-  
-  <Card 
-    title="Sinks & Filters" 
-    icon="filter" 
-    href="/ko/configuration/logging/sinks-and-filters"
-  >
-    커스텀 Sink와 Filter로 로그 출력을 제어하세요
-  </Card>
-  
-  <Card 
-    title="LogTape 설정" 
-    icon="gear" 
-    href="/ko/configuration/logging/logtape-setup"
-  >
-    기본 로깅 설정과 개념을 학습하세요
-  </Card>
-  
-  <Card 
-    title="LogTape 공식 문서" 
-    icon="book-open" 
-    href="https://github.com/dahlia/logtape"
-  >
+
+<Card title="Sinks & Filters" icon="filter" href="/ko/configuration/logging/sinks-and-filters">
+  커스텀 Sink와 Filter로 로그 출력을 제어하세요
+</Card>
+
+<Card title="LogTape 설정" icon="gear" href="/ko/configuration/logging/logtape-setup">
+  기본 로깅 설정과 개념을 학습하세요
+</Card>
+
+  <Card title="LogTape 공식 문서" icon="book-open" href="https://github.com/dahlia/logtape">
     Fastify 통합을 포함한 고급 기능을 확인하세요
   </Card>
 </CardGroup>

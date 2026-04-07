@@ -1,15 +1,17 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용 */
-/** biome-ignore-all lint/correctness/useExhaustiveDependencies: 훅이므로 필요 시 사용 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 파싱 결과이므로 any 허용
+/* oxlint-disable react-hooks/exhaustive-deps */ // 훅이므로 필요 시 사용
 
 import { format } from "date-fns";
 import equal from "fast-deep-equal";
 import qs from "qs";
 import { get, isObject, set, unique } from "radashi";
 import type React from "react";
-import { type ReactElement, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { type ReactElement } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import type { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
+import { type PaginationProps, type SemanticWIDTHS } from "semantic-ui-react";
 import { z } from "zod";
+
 import { caster } from "./caster";
 
 export function hidden(condition: boolean | undefined): string {
@@ -28,7 +30,7 @@ export function paramsToSearchParams<T>(params: T): {
   [key in string]: string | string[];
 } {
   return Object.fromEntries(
-    // biome-ignore lint/complexity/useFlatMap: 여기는 flatMap 사용하면 깨짐
+    // oxlint-disable-next-line unicorn/prefer-array-flat-map -- 여기는 flatMap 사용하면 깨짐
     Object.entries(params as any)
       .filter(([, value]) => {
         return value !== undefined;
@@ -57,7 +59,7 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
   defaultValue: U,
 ) {
   const [form, setForm] = useState<z.infer<T>>(defaultValue);
-  const [errorObjs, setErrorObjs] = useState<Map<string, ErrorObj>>(new Map());
+  const [errorObjs, setErrorObjs] = useState(new Map());
 
   function getEmptyStringTo(zType: T, objPath: string): "normal" | "nullable" | "optional" {
     const zTypeObjPath = objPath
@@ -160,7 +162,7 @@ export function useListParams<U extends z.ZodType<any>, T extends z.infer<U>>(
   const query = searchParamsToParams(searchParams, zType);
 
   // 리스트 필터 state
-  const [listParams, setListParams] = useState<T>({
+  const [listParams, setListParams] = useState({
     ...defaultValue,
     ...(options?.disableSearchParams !== true ? query : {}),
   });
@@ -188,7 +190,7 @@ export function useListParams<U extends z.ZodType<any>, T extends z.infer<U>>(
         ...defaultValue,
         ...query,
       };
-      if (equal(newListParams, listParams) === false) {
+      if (!equal(newListParams, listParams)) {
         setListParams(newListParams);
       }
     }
@@ -201,10 +203,7 @@ export function useListParams<U extends z.ZodType<any>, T extends z.infer<U>>(
       if (name === "page") {
         return {
           activePage: listParams.page ?? 1,
-          onPageChange: (
-            _event: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
-            data: PaginationProps,
-          ) => {
+          onPageChange: (_event: React.MouseEvent<HTMLAnchorElement>, data: PaginationProps) => {
             setListParams({
               ...listParams,
               page: Number(data.activePage ?? 1),
@@ -243,10 +242,10 @@ export function useGoBack() {
 }
 
 export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
-  const [selection, setSelection] = useState<Map<T, boolean>>(
+  const [selection, setSelection] = useState(
     new Map(allKeys.map((key) => [key, defaultSelectedKeys.includes(key)])),
   );
-  const [lastIndex, setLastIndex] = useState<number>(0);
+  const [lastIndex, setLastIndex] = useState(0);
 
   // 전체 키가 바뀔 때마다 validation하여 갱신된 전체 키에 포함된 키만 유지
   useEffect(() => {
@@ -262,7 +261,7 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
   }, [allKeys, selection]);
 
   const selectedKeys = Array.from(selection)
-    .filter(([key, value]) => allKeys.includes(key) && value === true)
+    .filter(([key, value]) => allKeys.includes(key) && value)
     .map(([key]) => key);
 
   return {
@@ -276,9 +275,9 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
     deselectAll: () => setSelection(new Map(allKeys.map((key) => [key, false]))),
     selectAll: () => setSelection(new Map(allKeys.map((key) => [key, true]))),
     isAllSelected: selectedKeys.length === allKeys.length,
-    handleCheckboxClick: (e: React.MouseEvent<HTMLInputElement, MouseEvent>, index: number) => {
+    handleCheckboxClick: (e: React.MouseEvent<HTMLInputElement>, index: number) => {
       const input = e.currentTarget.getElementsByTagName("input");
-      if (e.shiftKey && input[0]?.checked === false) {
+      if (e.shiftKey && !input[0]?.checked) {
         const [begin, end] = (() => {
           if (lastIndex < index) {
             return [lastIndex, index];

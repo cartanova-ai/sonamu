@@ -1,16 +1,11 @@
-import {
-  api,
-  asArray,
-  BadRequestException,
-  BaseModelClass,
-  type ListResult,
-  NotFoundException,
-} from "sonamu";
+import { api, asArray, BadRequestException, BaseModelClass, NotFoundException } from "sonamu";
+import { type ListResult } from "sonamu";
+
 import { SD } from "../../i18n/sd.generated";
 import { AuditLogModel } from "../audit-log/audit-log.model";
-import type { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
+import { type EmployeeSubsetKey, type EmployeeSubsetMapping } from "../sonamu.generated";
 import { employeeLoaderQueries, employeeSubsetQueries } from "../sonamu.generated.sso";
-import type { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
+import { type EmployeeListParams, type EmployeeSaveParams } from "./employee.types";
 
 /*
   Employee Model

@@ -1,9 +1,7 @@
-/** biome-ignore-all lint/correctness/noChildrenProp: 여기는 다 허용 */
-/** biome-ignore-all lint/performance/noAccumulatingSpread: 여기는 다 허용 */
-/** biome-ignore-all lint/suspicious/noExplicitAny: 여기는 다 허용 */
-/** biome-ignore-all lint/a11y/useKeyWithClickEvents: 여기는 다 허용 */
-/** biome-ignore-all lint/a11y/noStaticElementInteractions: 여기는 다 허용 */
-/** biome-ignore-all lint/performance/noDynamicNamespaceImportAccess: 여기는 다 허용 */
+/* oxlint-disable react/no-children-prop */ // 여기는 다 허용
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 여기는 다 허용
+/* oxlint-disable jsx-a11y/click-events-have-key-events */ // 여기는 다 허용
+/* oxlint-disable jsx-a11y/no-static-element-interactions */ // 여기는 다 허용
 
 import { Button, Checkbox, Select } from "@sonamu-kit/react-components";
 import { camelize } from "inflection";
@@ -11,12 +9,14 @@ import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 // 진짜 얼탱이없는 이슈: https://github.com/react-syntax-highlighter/react-syntax-highlighter/issues/539#issuecomment-1869182939
 // 울며 겨자먹기 workaround입니다. 누가 고쳐주세요 ㅠㅡㅠ
-import { Prism, type SyntaxHighlighterProps } from "react-syntax-highlighter";
+import { Prism } from "react-syntax-highlighter";
+import { type SyntaxHighlighterProps } from "react-syntax-highlighter";
 import * as markdownTheme from "react-syntax-highlighter/dist/esm/styles/prism";
-import type { FixtureImportResult } from "sonamu";
+import { type FixtureImportResult } from "sonamu";
 import CheckCircleIcon from "~icons/lucide/check-circle";
 import ClipboardIcon from "~icons/lucide/clipboard";
-import type { ExtendedEntity } from "../../services/sonamu-ui.service";
+
+import { type ExtendedEntity } from "../../services/sonamu-ui.service";
 
 const SyntaxHighlighter = Prism as any as React.FC<SyntaxHighlighterProps>;
 
@@ -86,8 +86,8 @@ const FixtureCode = ({
   theme?: ThemeKey;
 }) => {
   const subsetKeys = Object.keys(entity.subsets);
-  const [selectedSubset, setSelectedSubset] = useState<string>(subsetKeys[0]);
-  const [codes, setCodes] = useState<Map<string, { fixture: string; test: string }>>(new Map());
+  const [selectedSubset, setSelectedSubset] = useState(subsetKeys[0]);
+  const [codes, setCodes] = useState(new Map());
 
   const getFixtureLoaderCode = (entityId: string, id: number, subset: string) => {
     return `${camelize(entityId, true)}${id

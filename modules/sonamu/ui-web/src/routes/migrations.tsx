@@ -15,7 +15,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import classNames from "classnames";
 import { diff, unique } from "radashi";
 import { Fragment, useState } from "react";
-import type { SonamuDBConfig } from "sonamu";
+import { type SonamuDBConfig } from "sonamu";
 import CheckIcon from "~icons/lucide/check";
 import CodeIcon from "~icons/lucide/code";
 import PlayIcon from "~icons/lucide/play";
@@ -23,9 +23,10 @@ import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import ToggleLeftIcon from "~icons/lucide/toggle-left";
 import ToggleRightIcon from "~icons/lucide/toggle-right";
 import TrashIcon from "~icons/lucide/trash";
+
 import { useSonamuContext } from "../contexts/sonamu-provider";
-import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
+import { defaultCatch } from "../services/sonamu.shared";
 import { MigrationActionModal } from "./migrations/_migration_action_modal";
 
 export const Route = createFileRoute("/migrations")({

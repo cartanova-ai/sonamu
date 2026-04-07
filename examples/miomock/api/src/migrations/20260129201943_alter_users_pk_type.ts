@@ -1,4 +1,4 @@
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   // employees.user_id FK 제약조건 삭제

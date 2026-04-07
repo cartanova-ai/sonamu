@@ -1,6 +1,6 @@
 ---
-title: 'Scaffolding 탭'
-description: '코드 자동 생성하기'
+title: "Scaffolding 탭"
+description: "코드 자동 생성하기"
 ---
 
 Scaffolding 탭에서는 **Entity를 기반으로 Model과 테스트 코드를 자동 생성**할 수 있습니다. CLI의 `pnpm scaffold` 명령어를 시각적 인터페이스로 제공합니다.
@@ -8,13 +8,21 @@ Scaffolding 탭에서는 **Entity를 기반으로 Model과 테스트 코드를 �
 ## Scaffolding 탭 구조
 
 <Columns cols={2}>
-<Frame><img src="/images/sonamuUI-scaffolding1.png" alt="Scaffolding 선택" /></Frame>
-<Frame><img src="/images/sonamuUI-scaffolding2.png" alt="Scaffolding 옵션" /></Frame>
+  <Frame>
+    <img src="/images/sonamuUI-scaffolding1.png" alt="Scaffolding 선택" />
+  </Frame>
+  <Frame>
+    <img src="/images/sonamuUI-scaffolding2.png" alt="Scaffolding 옵션" />
+  </Frame>
 </Columns>
 
 <Columns cols={2}>
-<Frame><img src="/images/sonamuUI-scaffolding3.png" alt="Scaffolding 생성 결과" /></Frame>
-<Frame><img src="/images/sonamuUI-scaffolding4.png" alt="Scaffolding 완료" /></Frame>
+  <Frame>
+    <img src="/images/sonamuUI-scaffolding3.png" alt="Scaffolding 생성 결과" />
+  </Frame>
+  <Frame>
+    <img src="/images/sonamuUI-scaffolding4.png" alt="Scaffolding 완료" />
+  </Frame>
 </Columns>
 
 Scaffolding 탭은 두 가지 주요 영역으로 구성됩니다:
@@ -24,16 +32,16 @@ Scaffolding 탭은 두 가지 주요 영역으로 구성됩니다:
 
 ## 생성 가능한 코드
 
-| 코드 타입 | 설명 | 상태 | CLI 명령어 |
-|----------|------|------|------------|
-| **Model Class** | Entity를 위한 Model 클래스 | ✅ 사용 가능 | `pnpm scaffold model` |
-| **Model Test** | Model 테스트 파일 | ✅ 사용 가능 | `pnpm scaffold model_test` |
-| **View List** | 목록 View 컴포넌트 | 🚧 개발 중 | - |
-| **View Form** | 폼 View 컴포넌트 | 🚧 개발 중 | - |
+| 코드 타입       | 설명                       | 상태         | CLI 명령어                 |
+| --------------- | -------------------------- | ------------ | -------------------------- |
+| **Model Class** | Entity를 위한 Model 클래스 | ✅ 사용 가능 | `pnpm scaffold model`      |
+| **Model Test**  | Model 테스트 파일          | ✅ 사용 가능 | `pnpm scaffold model_test` |
+| **View List**   | 목록 View 컴포넌트         | 🚧 개발 중   | -                          |
+| **View Form**   | 폼 View 컴포넌트           | 🚧 개발 중   | -                          |
 
 <Info>
-View 컴포넌트 생성 기능은 현재 개발 중입니다. 
-**Sonamu UI의 다른 기능**을 통해 React 컴포넌트를 생성할 수 있습니다.
+  View 컴포넌트 생성 기능은 현재 개발 중입니다. **Sonamu UI의 다른 기능**을 통해 React 컴포넌트를
+  생성할 수 있습니다.
 </Info>
 
 ## Model 클래스 생성
@@ -43,6 +51,7 @@ View 컴포넌트 생성 기능은 현재 개발 중입니다.
 왼쪽 Entity 목록에서 Model을 생성할 Entity를 선택합니다.
 
 **단일 선택**:
+
 ```
 ☑ User
 □ Post
@@ -50,6 +59,7 @@ View 컴포넌트 생성 기능은 현재 개발 중입니다.
 ```
 
 **다중 선택**:
+
 ```
 ☑ User
 ☑ Post
@@ -92,7 +102,7 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   // TODO: Model 메서드 추가
 }
 
@@ -100,6 +110,7 @@ export const UserModel = new UserModelClass();
 ```
 
 **자동 생성되는 기능**:
+
 - ✅ TypeScript 타입 정의
 - ✅ Entity 연결
 - ✅ BaseModel 상속
@@ -116,7 +127,7 @@ Model과 동일하게 Entity를 선택합니다.
 **☑ Model Test** 체크박스를 선택합니다.
 
 <Tip>
-**Model과 Test 동시 생성**: Model Class와 Model Test를 동시에 선택하여 한 번에 생성할 수 있습니다.
+  **Model과 Test 동시 생성**: Model Class와 Model Test를 동시에 선택하여 한 번에 생성할 수 있습니다.
 </Tip>
 
 ### 3. Generate 실행
@@ -161,6 +172,7 @@ describe("User Model", () => {
 ```
 
 **자동 생성되는 테스트**:
+
 - ✅ `findById`: ID로 단일 레코드 조회
 - ✅ `findMany`: 목록 조회 (페이지네이션)
 
@@ -173,6 +185,7 @@ describe("User Model", () => {
 3. **[Generate]** 클릭
 
 **결과**:
+
 ```
 ✓ User.model.ts created
 ✓ User.model.test.ts created
@@ -187,9 +200,10 @@ describe("User Model", () => {
 ### 특정 Entity만 선택
 
 프로젝트 초기 설정 시 모든 Entity에 대해:
+
 ```
 ☑ User
-☑ Post  
+☑ Post
 ☑ Comment
 ☑ Category
 ☑ Tag
@@ -198,6 +212,7 @@ describe("User Model", () => {
 ```
 
 새 Entity 추가 시 해당 Entity만:
+
 ```
 □ User (이미 생성됨)
 □ Post (이미 생성됨)
@@ -237,13 +252,14 @@ The following files will be overwritten:
 ```
 
 **선택 옵션**:
+
 - **Cancel**: 생성 취소
 - **Backup & Overwrite**: 기존 파일을 `.bak`로 백업 후 덮어쓰기
 - **Overwrite**: 바로 덮어쓰기 (주의!)
 
 <Warning>
-**코드 손실 주의**: 기존 파일을 덮어쓰면 작성한 비즈니스 로직이 삭제될 수 있습니다.
-커스터마이징한 Model은 백업하거나 덮어쓰기를 피하세요.
+  **코드 손실 주의**: 기존 파일을 덮어쓰면 작성한 비즈니스 로직이 삭제될 수 있습니다. 커스터마이징한
+  Model은 백업하거나 덮어쓰기를 피하세요.
 </Warning>
 
 ## View 생성 (개발 중)
@@ -258,9 +274,7 @@ View 컴포넌트 자동 생성 기능은 현재 개발 중입니다.
 2. **수동 작성**: React 컴포넌트를 직접 작성합니다
 3. **컴포넌트 라이브러리**: `@sonamu-kit/react-components` 활용
 
-<Info>
-View List와 View Form 생성 기능이 추가되면 이 문서가 업데이트됩니다.
-</Info>
+<Info>View List와 View Form 생성 기능이 추가되면 이 문서가 업데이트됩니다.</Info>
 
 ## 생성 후 워크플로우
 
@@ -278,19 +292,15 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   // 이메일로 사용자 찾기
   async findByEmail(email: string): Promise<User | null> {
-    return this.getPuri("r")
-      .where("email", email)
-      .first();
+    return this.getPuri("r").where("email", email).first();
   }
-  
+
   // 활성 사용자만 조회
   async findActiveUsers() {
-    return this.getPuri("r")
-      .where("is_active", true)
-      .where("deleted_at", null);
+    return this.getPuri("r").where("is_active", true).where("deleted_at", null);
   }
 }
 ```
@@ -309,7 +319,7 @@ describe("User Model - Extended", () => {
 
   test("findActiveUsers", async () => {
     const users = await UserModel.findActiveUsers();
-    users.forEach(user => {
+    users.forEach((user) => {
       expect(user.is_active).toBe(true);
     });
   });
@@ -335,7 +345,7 @@ class UserModelClass extends BaseModelClass<
   async findActiveUsers() {
     const { qb } = this.getSubsetQueries("A");
     qb.where("is_active", true);
-    
+
     return this.executeSubsetQuery({
       subset: "A",
       qb,

@@ -18,7 +18,7 @@ export const API_ARTIFACTS: BuildArtifact<{ configFilePath: string }>[] = [
     projectPath: "api",
     preBuildCommand: () => "rm -rf dist",
     buildCommand: ({ configFilePath }) =>
-      `tsc --noEmit && swc src -d dist --config-file ${configFilePath} --strip-leading-paths`,
+      `tsc --noEmit && pnpm exec tsdown --config ${JSON.stringify(configFilePath)}`,
   },
 ];
 
@@ -32,7 +32,7 @@ export const WEB_ARTIFACTS: BuildArtifact[] = [
     description: "Web 프로젝트 클라이언트 빌드 산출물",
     projectPath: "web",
     preBuildCommand: () => "rm -rf dist/client",
-    buildCommand: () => "tsc --noEmit && vite build --outDir dist/client",
+    buildCommand: () => "tsc --noEmit && vite build --config vite.config.ts --outDir dist/client",
   },
   {
     name: "Web Server",
@@ -40,7 +40,7 @@ export const WEB_ARTIFACTS: BuildArtifact[] = [
     projectPath: "web",
     preBuildCommand: () => "rm -rf dist/server",
     buildCommand: () =>
-      "tsc --noEmit && vite build --ssr src/entry-server.generated.tsx --outDir dist/server",
+      "tsc --noEmit && vite build --config vite.config.ts --ssr src/entry-server.generated.tsx --outDir dist/server",
     postBuildCommand: () =>
       "rm -rf ../api/web-dist && mkdir -p ../api/web-dist && cp -r dist/* ../api/web-dist",
   },

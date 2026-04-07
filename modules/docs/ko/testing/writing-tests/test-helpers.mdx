@@ -9,24 +9,16 @@ Sonamu의 Fixture 시스템을 사용하여 테스트 데이터를 효율적으�
 
 <CardGroup cols={2}>
   <Card title="Fixture Loader" icon="box">
-    테스트 데이터 재사용
-    
-    타입 안전한 로딩
+    테스트 데이터 재사용 타입 안전한 로딩
   </Card>
   <Card title="Fixture Manager" icon="database">
-    DB 간 데이터 복사
-    
-    관계 자동 처리
+    DB 간 데이터 복사 관계 자동 처리
   </Card>
   <Card title="간편한 설정" icon="wand-magic-sparkles">
-    한 번 정의
-    
-    여러 테스트 공유
+    한 번 정의 여러 테스트 공유
   </Card>
   <Card title="자동 정리" icon="broom">
-    Transaction 기반
-    
-    자동 롤백
+    Transaction 기반 자동 롤백
   </Card>
 </CardGroup>
 
@@ -53,7 +45,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   user02: async () => {
     const userModel = new UserModel();
     const { user } = await userModel.create({
@@ -63,7 +55,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   admin: async () => {
     const userModel = new UserModel();
     const { user } = await userModel.create({
@@ -74,7 +66,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   // 게시글 fixtures
   post01: async () => {
     const postModel = new PostModel();
@@ -102,11 +94,11 @@ bootstrap(vi);
 test("사용자의 게시글 조회", async () => {
   // Fixtures 로드
   const { user01, post01 } = await loadFixtures(["user01", "post01"]);
-  
+
   // 테스트
   const postModel = new PostModel();
   const { posts } = await postModel.getPostsByUser(user01.id);
-  
+
   expect(posts).toHaveLength(1);
   expect(posts[0].id).toBe(post01.id);
 });
@@ -114,7 +106,7 @@ test("사용자의 게시글 조회", async () => {
 test("관리자 권한 테스트", async () => {
   // 필요한 fixture만 로드
   const { admin } = await loadFixtures(["admin"]);
-  
+
   expect(admin.role).toBe("admin");
 });
 ```
@@ -122,6 +114,7 @@ test("관리자 권한 테스트", async () => {
 ### 장점
 
 **타입 안전성**:
+
 ```typescript
 // ✅ 타입 안전: IDE가 자동완성 제공
 const { user01 } = await loadFixtures(["user01"]);
@@ -132,6 +125,7 @@ const { user999 } = await loadFixtures(["user999"]); // 타입 에러!
 ```
 
 **재사용성**:
+
 ```typescript
 // 여러 테스트에서 동일한 fixture 사용
 test("테스트 1", async () => {
@@ -146,6 +140,7 @@ test("테스트 2", async () => {
 ```
 
 **선택적 로딩**:
+
 ```typescript
 // 필요한 것만 로드
 const { user01, user02 } = await loadFixtures(["user01", "user02"]);
@@ -169,11 +164,11 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   authorPost: async () => {
     // author fixture 먼저 로드
     const { author } = await loadFixtures(["author"]);
-    
+
     const postModel = new PostModel();
     const { post } = await postModel.create({
       title: "Author's Post",
@@ -189,7 +184,7 @@ export const loadFixtures = createFixtureLoader({
 // 테스트에서 사용
 test("작성자와 게시글 관계", async () => {
   const { author, authorPost } = await loadFixtures(["author", "authorPost"]);
-  
+
   expect(authorPost.author_id).toBe(author.id);
 });
 ```
@@ -209,12 +204,12 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   // 여러 데이터 생성
   users10: async () => {
     const userModel = new UserModel();
     const users = [];
-    
+
     for (let i = 1; i <= 10; i++) {
       const { user } = await userModel.create({
         username: `user${i}`,
@@ -223,7 +218,7 @@ export const loadFixtures = createFixtureLoader({
       });
       users.push(user);
     }
-    
+
     return users;
   },
 });
@@ -236,6 +231,7 @@ export const loadFixtures = createFixtureLoader({
 `FixtureManager`는 프로덕션 DB의 실제 데이터를 테스트 DB로 복사하는 기능을 제공합니다.
 
 **주요 기능**:
+
 - 프로덕션 → Fixture DB 데이터 추출
 - Fixture DB → 테스트 DB 동기화
 - 관계 자동 해결 (BelongsTo, HasMany, ManyToMany)
@@ -254,6 +250,7 @@ await FixtureManager.sync();
 ```
 
 **실행 과정**:
+
 1. 테스트 DB 초기화 (기존 데이터 삭제)
 2. Fixture DB 덤프 (`pg_dump`)
 3. 테스트 DB 복원 (`pg_restore`)
@@ -275,6 +272,7 @@ await FixtureManager.importFixture("User", [1, 2, 3]);
 ```
 
 **자동 관계 해결**:
+
 ```typescript
 // User ID 1만 요청했지만...
 await FixtureManager.importFixture("User", [1]);
@@ -309,7 +307,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   // 2. 여러 데이터
   testUsers: async () => {
     const userModel = new UserModel();
@@ -327,18 +325,18 @@ export const loadFixtures = createFixtureLoader({
     ]);
     return users.map(({ user }) => user);
   },
-  
+
   // 3. 관계가 있는 데이터
   userWithPosts: async () => {
     const userModel = new UserModel();
     const postModel = new PostModel();
-    
+
     const { user } = await userModel.create({
       username: "blogger",
       email: "blogger@example.com",
       password: "password",
     });
-    
+
     const posts = await Promise.all([
       postModel.create({
         title: "Post 1",
@@ -351,7 +349,7 @@ export const loadFixtures = createFixtureLoader({
         author_id: user.id,
       }),
     ]);
-    
+
     return {
       user,
       posts: posts.map(({ post }) => post),
@@ -375,19 +373,19 @@ test("댓글 작성 및 조회", async () => {
   // 필요한 fixtures 로드
   const { userWithPosts } = await loadFixtures(["userWithPosts"]);
   const { user, posts } = userWithPosts;
-  
+
   const commentModel = new CommentModel();
-  
+
   // 댓글 작성
   const { comment } = await commentModel.create({
     content: "Great post!",
     post_id: posts[0].id,
     author_id: user.id,
   });
-  
+
   // 댓글 조회
   const { comments } = await commentModel.getCommentsByPost(posts[0].id);
-  
+
   expect(comments).toHaveLength(1);
   expect(comments[0].content).toBe("Great post!");
   expect(comments[0].author_id).toBe(user.id);
@@ -401,17 +399,31 @@ test("댓글 작성 및 조회", async () => {
 ```typescript
 // ✅ 올바른 방법: 명확한 이름
 export const loadFixtures = createFixtureLoader({
-  adminUser: async () => { /* ... */ },
-  guestUser: async () => { /* ... */ },
-  publishedPost: async () => { /* ... */ },
-  draftPost: async () => { /* ... */ },
+  adminUser: async () => {
+    /* ... */
+  },
+  guestUser: async () => {
+    /* ... */
+  },
+  publishedPost: async () => {
+    /* ... */
+  },
+  draftPost: async () => {
+    /* ... */
+  },
 });
 
 // ❌ 잘못된 방법: 불명확한 이름
 export const loadFixtures = createFixtureLoader({
-  user1: async () => { /* ... */ },
-  user2: async () => { /* ... */ },
-  post1: async () => { /* ... */ },
+  user1: async () => {
+    /* ... */
+  },
+  user2: async () => {
+    /* ... */
+  },
+  post1: async () => {
+    /* ... */
+  },
 });
 ```
 
@@ -441,7 +453,9 @@ export const loadFixtures = createFixtureLoader({
       password: "password",
       bio: "Long bio...",
       avatar: "https://...",
-      preferences: { /* ... */ },
+      preferences: {
+        /* ... */
+      },
       // ... 너무 많은 필드
     });
     return user;
@@ -463,7 +477,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   userPost: async () => {
     const { user } = await loadFixtures(["user"]);
     const postModel = new PostModel();
@@ -493,14 +507,10 @@ bootstrap(vi);
 describe("PostModel with error handling", () => {
   test("fixture 로딩 실패 처리", async () => {
     // 잘못된 fixture 키 사용
-    await expect(
-      loadFixtures(["nonexistent"])
-    ).rejects.toThrow();
+    await expect(loadFixtures(["nonexistent"])).rejects.toThrow();
 
     // 올바른 에러 메시지 확인
-    await expect(
-      loadFixtures(["nonexistent"])
-    ).rejects.toThrow("Fixture 'nonexistent' not found");
+    await expect(loadFixtures(["nonexistent"])).rejects.toThrow("Fixture 'nonexistent' not found");
   });
 
   test("DB 에러 처리", async () => {
@@ -569,16 +579,24 @@ Fixture 로딩이 오래 걸리는 경우 타임아웃을 설정할 수 있습�
 import { describe, test, vi } from "vitest";
 
 describe("PostModel", () => {
-  test("느린 fixture 로딩", async () => {
-    // 5초 타임아웃 설정
-    const { user } = await loadFixtures(["user01"]);
-    // 테스트 로직
-  }, { timeout: 5000 }); // Vitest 타임아웃 옵션
+  test(
+    "느린 fixture 로딩",
+    async () => {
+      // 5초 타임아웃 설정
+      const { user } = await loadFixtures(["user01"]);
+      // 테스트 로직
+    },
+    { timeout: 5000 },
+  ); // Vitest 타임아웃 옵션
 
-  test("매우 느린 작업", async () => {
-    const fixtures = await loadFixtures(["user01", "user02", "admin"]);
-    // 많은 fixture 로딩
-  }, { timeout: 10000 });
+  test(
+    "매우 느린 작업",
+    async () => {
+      const fixtures = await loadFixtures(["user01", "user02", "admin"]);
+      // 많은 fixture 로딩
+    },
+    { timeout: 10000 },
+  );
 });
 ```
 
@@ -630,37 +648,29 @@ export const loadFixtures = createFixtureLoader({
         console.warn(`Retry ${i + 1}/${maxRetries} failed:`, error);
 
         // 짧은 대기 후 재시도
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
 
     // 모든 재시도 실패
-    throw new Error(
-      `Failed to create user after ${maxRetries} retries: ${lastError.message}`
-    );
+    throw new Error(`Failed to create user after ${maxRetries} retries: ${lastError.message}`);
   },
 });
 ```
 
 <Info>
-**에러 처리 Best Practice**:
-- Fixture 생성 실패 시 명확한 에러 메시지 제공
-- 의존성 있는 fixture는 각 단계별로 에러 처리
-- 타임아웃 설정으로 무한 대기 방지
-- 재시도 로직은 신중하게 사용 (DB 상태 일관성 고려)
-- 에러 로깅으로 디버깅 용이성 확보
+  **에러 처리 Best Practice**: - Fixture 생성 실패 시 명확한 에러 메시지 제공 - 의존성 있는
+  fixture는 각 단계별로 에러 처리 - 타임아웃 설정으로 무한 대기 방지 - 재시도 로직은 신중하게 사용
+  (DB 상태 일관성 고려) - 에러 로깅으로 디버깅 용이성 확보
 </Info>
 
 ## 주의사항
 
 <Warning>
-**Fixture 사용 시 주의사항**:
-1. **Transaction 기반**: 각 테스트마다 자동 롤백됨
-2. **최소 데이터**: 테스트에 필요한 최소한의 데이터만 생성
-3. **독립성**: 각 테스트는 독립적으로 실행되어야 함
-4. **타입 안전**: createFixtureLoader로 타입 안전성 보장
-5. **명확한 이름**: fixture 이름은 용도를 명확하게 표현
-6. **에러 처리**: Fixture 로딩 실패에 대비한 에러 처리 필수
+  **Fixture 사용 시 주의사항**: 1. **Transaction 기반**: 각 테스트마다 자동 롤백됨 2. **최소
+  데이터**: 테스트에 필요한 최소한의 데이터만 생성 3. **독립성**: 각 테스트는 독립적으로 실행되어야
+  함 4. **타입 안전**: createFixtureLoader로 타입 안전성 보장 5. **명확한 이름**: fixture 이름은
+  용도를 명확하게 표현 6. **에러 처리**: Fixture 로딩 실패에 대비한 에러 처리 필수
 </Warning>
 
 ## 다음 단계
@@ -669,7 +679,11 @@ export const loadFixtures = createFixtureLoader({
   <Card title="테스트 구조" icon="sitemap" href="/ko/testing/writing-tests/test-structure">
     bootstrap, test, testAs
   </Card>
-  <Card title="테스트 Scaffolding" icon="wand-magic-sparkles" href="/ko/testing/writing-tests/scaffolding-tests">
+  <Card
+    title="테스트 Scaffolding"
+    icon="wand-magic-sparkles"
+    href="/ko/testing/writing-tests/scaffolding-tests"
+  >
     자동 테스트 생성
   </Card>
   <Card title="Model System" icon="cube" href="/ko/core-concepts/model-system/overview">

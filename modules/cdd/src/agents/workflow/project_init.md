@@ -101,9 +101,11 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 # {Domain} Business Logic
 
 ## Rules
+
 - Rule and decision rationale
 
 ## Workflow
+
 1. ...
 ```
 

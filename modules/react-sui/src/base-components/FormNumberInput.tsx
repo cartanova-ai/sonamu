@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Form, type FormInputProps } from "semantic-ui-react";
+import { Form } from "semantic-ui-react";
+import { type FormInputProps } from "semantic-ui-react";
 
 export function FormNumberInput({
   inputType,
@@ -9,7 +10,7 @@ export function FormNumberInput({
   inputType?: "text" | "number";
   onChange?: (event: React.ChangeEvent<HTMLInputElement>, data: { value: number | "" }) => void;
 }) {
-  const [str, setStr] = useState<string>("");
+  const [str, setStr] = useState("");
 
   useEffect(() => {
     if (Number((str ?? "").replace(/[.]/g, "")) !== props.value) {

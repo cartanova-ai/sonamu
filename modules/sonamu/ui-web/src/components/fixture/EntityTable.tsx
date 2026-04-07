@@ -11,8 +11,8 @@ import {
   TooltipTrigger,
 } from "@sonamu-kit/react-components";
 import classNames from "classnames";
-import type { SetStateAction } from "react";
-import type { FixtureRecord } from "sonamu";
+import { type SetStateAction } from "react";
+import { type FixtureRecord } from "sonamu";
 import InfoIcon from "~icons/lucide/info";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import TriangleAlertIcon from "~icons/lucide/triangle-alert";

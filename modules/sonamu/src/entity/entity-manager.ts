@@ -1,24 +1,25 @@
 import assert from "assert";
-import chalk from "chalk";
 import { glob, readFile } from "fs/promises";
-import inflection from "inflection";
 import path from "path";
+
+import chalk from "chalk";
+import inflection from "inflection";
 import { prettifyError, z } from "zod";
+
 import { Sonamu } from "../api/sonamu";
 import {
-  type EntityIndex,
-  type EntityJson,
   EntityJsonSchema,
   isSearchTextJsonSourceZodType,
   isSearchTextProp,
   SonamuFileArraySchema,
   SonamuFileSchema,
 } from "../types/types";
+import { type EntityIndex, type EntityJson } from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
-import type { AbsolutePath } from "../utils/path-utils";
+import { type AbsolutePath } from "../utils/path-utils";
 import { runtimePath } from "../utils/path-utils";
-import { Entity } from "./entity";
+import { type Entity } from "./entity";
 
 export type EntityNamesRecord = Record<
   "fs" | "fsPlural" | "camel" | "camelPlural" | "capital" | "capitalPlural" | "upper" | "constant",
@@ -82,6 +83,7 @@ class EntityManagerClass {
     json: EntityJson,
     options: { deferSearchTextJsonSourceValidation?: boolean } = {},
   ): Promise<void> {
+    const { Entity } = await import("./entity");
     const entity = new Entity(json);
     await entity.registerModulePaths();
     if (!options.deferSearchTextJsonSourceValidation) {
@@ -192,7 +194,7 @@ class EntityManagerClass {
   }
 
   getAllIds(): string[] {
-    return Array.from(EntityManager.entities.keys()).sort();
+    return Array.from(EntityManager.entities.keys()).toSorted();
   }
 
   getAllEntities(): Entity[] {

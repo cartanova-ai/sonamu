@@ -162,21 +162,20 @@ Entity를 한 곳에 정의하면, 시스템 전체가 동기화됩니다. 수�
 
 Sonamu는 Knex 기반의 타입 안전한 쿼리 빌더 Puri를 제공합니다. 테이블명, 칼럼명, 관계까지 모두 타입 체크됩니다.
 
-<Frame caption="🎬 필요: Puri로 타입 안전한 쿼리 작성 - 테이블명, 칼럼명 자동완성">
-</Frame>
+<Frame caption="🎬 필요: Puri로 타입 안전한 쿼리 작성 - 테이블명, 칼럼명 자동완성"></Frame>
 
 ```typescript
 // 타입 안전한 쿼리
 const users = await this.getPuri("r")
-  .table("users")           // ✅ 테이블명 자동완성
-  .select("id", "email")    // ✅ 칼럼명 타입 체크
-  .where("role", "admin")   // ✅ 칼럼명 + 값 타입 체크
+  .table("users") // ✅ 테이블명 자동완성
+  .select("id", "email") // ✅ 칼럼명 타입 체크
+  .where("role", "admin") // ✅ 칼럼명 + 값 타입 체크
   .orderBy("created_at", "desc");
 
 // Relation 조인
 const posts = await this.getPuri("r")
   .table("posts")
-  .join("users", "posts.author_id", "users.id")  // ✅ 관계 타입 체크
+  .join("users", "posts.author_id", "users.id") // ✅ 관계 타입 체크
   .select("posts.*", "users.username as author_name");
 ```
 
@@ -187,11 +186,7 @@ const posts = await this.getPuri("r")
 - ✅ 잘못된 칼럼명은 컴파일 에러
 - ✅ Knex의 모든 기능 지원
 
-<Card
-  title="Puri 가이드"
-  icon="database"
-  href="/ko/database/puri"
->
+<Card title="Puri 가이드" icon="database" href="/ko/database/puri">
   타입 안전한 쿼리 작성하기
 </Card>
 
@@ -287,11 +282,7 @@ registerSSR({
   >
     React Hook으로 데이터 페칭
   </Card>
-  <Card
-    title="SSR"
-    icon="server"
-    href="/ko/frontend-integration/ssr"
-  >
+  <Card title="SSR" icon="server" href="/ko/frontend-integration/ssr">
     서버 사이드 렌더링
   </Card>
 </CardGroup>
@@ -382,11 +373,7 @@ test("다음 테스트는 깨끗한 DB에서 시작", async () => {
 - ✅ Transaction 자동 롤백으로 격리된 테스트
 
 <CardGroup cols={2}>
-  <Card
-    title="Fixture 시스템"
-    icon="box"
-    href="/ko/testing/writing-tests/test-helpers"
-  >
+  <Card title="Fixture 시스템" icon="box" href="/ko/testing/writing-tests/test-helpers">
     테스트 데이터 관리
   </Card>
   <Card title="Naite 가이드" icon="chart-line" href="/ko/testing/naite">
@@ -567,25 +554,13 @@ Entity 변경 → 타입/스키마 자동 생성 → API 재등록 → 프론트
 - ✅ 변경 즉시 타입 에러 감지
 
 <CardGroup cols={3}>
-  <Card
-    title="자세히 보기"
-    icon="arrow-right"
-    href="/ko/getting-started/seamless-dx"
-  >
+  <Card title="자세히 보기" icon="arrow-right" href="/ko/getting-started/seamless-dx">
     Seamless DX 상세 페이지
   </Card>
-  <Card
-    title="HMR 동작 원리"
-    icon="bolt"
-    href="/ko/tools-and-cli/hmr/how-hmr-works"
-  >
+  <Card title="HMR 동작 원리" icon="bolt" href="/ko/tools-and-cli/hmr/how-hmr-works">
     HMR 시스템 이해하기
   </Card>
-  <Card
-    title="Sonamu UI"
-    icon="window"
-    href="/ko/tools-and-cli/sonamu-ui/getting-started"
-  >
+  <Card title="Sonamu UI" icon="window" href="/ko/tools-and-cli/sonamu-ui/getting-started">
     UI 사용법 가이드
   </Card>
 </CardGroup>
@@ -609,7 +584,7 @@ const user = await Sonamu.cache.getOrSet(
   async () => {
     return await UserModel.findById("C", userId);
   },
-  { ttl: "5m" } // 5분 캐싱
+  { ttl: "5m" }, // 5분 캐싱
 );
 ```
 
@@ -636,12 +611,12 @@ Entity의 title, prop.desc, enumLabels가 자동으로 딕셔너리에 추출됩
 ```typescript
 import { SD } from "../i18n/sd.generated";
 
-SD("common.save")         // "저장" (ko) / "Save" (en)
-SD("error.typo")          // ❌ 컴파일 에러: 키 없음
+SD("common.save"); // "저장" (ko) / "Save" (en)
+SD("error.typo"); // ❌ 컴파일 에러: 키 없음
 
-SD("entity.User")         // "사용자" - Entity title 자동 추출
-SD("entity.User.email")   // "이메일" - prop.desc 자동 추출
-SD.enumLabels("UserRole")["admin"]  // "관리자"
+SD("entity.User"); // "사용자" - Entity title 자동 추출
+SD("entity.User.email"); // "이메일" - prop.desc 자동 추출
+SD.enumLabels("UserRole")["admin"]; // "관리자"
 ```
 
 ### Workflow: 복잡한 비즈니스 로직 관리
@@ -658,29 +633,21 @@ export const processOrder = workflow(
   },
   async ({ input, step }) => {
     // Step 1: 검증
-    await step
-      .define({ name: "validate" }, async () => validateOrder(input))
-      .run();
+    await step.define({ name: "validate" }, async () => validateOrder(input)).run();
 
     // Step 2: 결제
-    const payment = await step
-      .define({ name: "charge" }, async () => chargePayment(input))
-      .run();
+    const payment = await step.define({ name: "charge" }, async () => chargePayment(input)).run();
 
     // Step 3: 주문 생성
     const order = await step
-      .define({ name: "create-order" }, async () =>
-        createOrderRecord(input, payment)
-      )
+      .define({ name: "create-order" }, async () => createOrderRecord(input, payment))
       .run();
 
     // Step 4: 이메일 전송
-    await step
-      .define({ name: "send-email" }, async () => sendConfirmationEmail(order))
-      .run();
+    await step.define({ name: "send-email" }, async () => sendConfirmationEmail(order)).run();
 
     return order;
-  }
+  },
 );
 
 // 실행
@@ -707,18 +674,10 @@ const posts = await PostModel.findMany("A", {
 - ✅ N+1 문제 자동 해결
 
 <CardGroup cols={2}>
-  <Card
-    title="BentoCache"
-    icon="layer-group"
-    href="/ko/advanced-features/caching/bentocache"
-  >
+  <Card title="BentoCache" icon="layer-group" href="/ko/advanced-features/caching/bentocache">
     다층 캐싱 전략
   </Card>
-  <Card
-    title="i18n"
-    icon="language"
-    href="/ko/advanced-features/i18n/overview"
-  >
+  <Card title="i18n" icon="language" href="/ko/advanced-features/i18n/overview">
     다국어 지원 시스템
   </Card>
 </CardGroup>
@@ -850,7 +809,6 @@ function RegisterForm() {
   ></video>
 </Frame>
 
-
 ## 시작하기
 
 3분이면 충분합니다.
@@ -897,11 +855,7 @@ open http://localhost:34900/sonamu-ui
 
 ## 커뮤니티
 
-<Card
-  title="GitHub"
-  icon="github"
-  href="https://github.com/cartanova-ai/sonamu"
->
+<Card title="GitHub" icon="github" href="https://github.com/cartanova-ai/sonamu">
   이슈 리포트와 기여
 </Card>
 

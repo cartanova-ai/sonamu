@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: axios 사용 시 타입 추론 어려우므로 허용 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // axios 사용 시 타입 추론 어려우므로 허용
 
 import { Button, Card, CardContent, CardHeader } from "@sonamu-kit/react-components/components";
 import axios from "axios";
@@ -47,7 +47,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
         }
 
         setApiLogs((prev) => [log, ...prev]);
-        (config as any).__logId = logId;
+        (config).__logId = logId;
 
         return config;
       },
@@ -58,7 +58,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
 
     const responseInterceptor = axios.interceptors.response.use(
       (response) => {
-        const logId = (response.config as any).__logId;
+        const logId = (response.config).__logId;
         const startTime = requestStartTimes.current.get(logId);
         const duration = startTime ? Date.now() - startTime : undefined;
         requestStartTimes.current.delete(logId);
@@ -80,7 +80,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
         return response;
       },
       (error) => {
-        const logId = (error.config as any)?.__logId;
+        const logId = (error.config)?.__logId;
         const startTime = logId ? requestStartTimes.current.get(logId) : undefined;
         const duration = startTime ? Date.now() - startTime : undefined;
         if (logId) {

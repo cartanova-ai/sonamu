@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+
 import fg from "fast-glob";
-import type { CddProject, RulesDocument, RulesNode } from "./types.js";
+
+import { type CddProject, type RulesDocument, type RulesNode } from "./types.js";
 
 const CONTRACT_DIR_NAME = "contract";
 
@@ -53,7 +55,7 @@ async function loadRules(contractDir: string): Promise<RulesNode[]> {
 
   const nodes: RulesNode[] = [];
 
-  for (const relPath of rulesFiles.sort()) {
+  for (const relPath of rulesFiles.toSorted()) {
     const absPath = path.resolve(rulesDir, relPath);
     const raw = fs.readFileSync(absPath, "utf-8");
     const parsed: unknown = JSON.parse(raw);

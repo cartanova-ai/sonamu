@@ -1,4 +1,4 @@
-import type { SonamuQueryMode } from "..";
+import { type SonamuQueryMode } from "../types/types";
 
 // semanticQuery가 있으면 similarity를 추가하는 조건부 타입
 type WithSimilarity<LP, T> = LP extends { semanticQuery: Record<string, unknown> }
@@ -20,7 +20,7 @@ export function asArray<T>(param: T | T[]): T[] {
   if (Array.isArray(param)) {
     return param;
   } else {
-    return [param as T] as T[];
+    return [param] as T[];
   }
 }
 

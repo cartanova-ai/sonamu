@@ -12,10 +12,11 @@ import {
   useTypeForm,
 } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
-import type { EntityIndex } from "sonamu";
+import { type EntityIndex } from "sonamu";
 import z from "zod";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronUpIcon from "~icons/lucide/chevron-up";
+
 import { TableColumnAsyncSelect } from "../../components/TableColumnAsyncSelect";
 
 type EntityIndexModalProps = {

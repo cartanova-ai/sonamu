@@ -2,20 +2,15 @@
   "name": "create-sonamu",
   "version": "0.1.18",
   "description": "Create a new Sonamu project",
-  "keywords": ["sonamu", "typescript", "fullstack", "framework", "cli", "scaffold"],
-  "license": "MIT",
-  "type": "module",
-  "bin": {
-    "create-sonamu": "index.js"
-  },
-  "files": [
-    "index.js",
-    "catalog.json",
-    "template"
+  "keywords": [
+    "cli",
+    "framework",
+    "fullstack",
+    "scaffold",
+    "sonamu",
+    "typescript"
   ],
-  "engines": {
-    "node": ">=22.0.0"
-  },
+  "license": "MIT",
   "author": {
     "name": "noasouth",
     "email": "noa@cartanova.ai"
@@ -24,6 +19,15 @@
     "type": "git",
     "url": "https://github.com/cartanova-ai/sonamu"
   },
+  "bin": {
+    "create-sonamu": "index.js"
+  },
+  "files": [
+    "index.js",
+    "catalog.json",
+    "template"
+  ],
+  "type": "module",
   "publishConfig": {
     "access": "public"
   },
@@ -34,19 +38,21 @@
     "postpublish": "zx ./scripts/postpublish.mjs",
     "clean": "rm index.js"
   },
-  "devDependencies": {
-    "@types/minimist": "^1.2.5",
-    "@types/node": "catalog:",
-    "@types/prompts": "^2",
-    "@biomejs/biome": "catalog:",
-    "typescript": "catalog:",
-    "zx": "catalog:"
-  },
-  "packageManager": "pnpm@10.32.0",
   "dependencies": {
     "chalk": "catalog:",
     "minimist": "catalog:",
     "ora": "^8.0.1",
     "prompts": "catalog:"
-  }
+  },
+  "devDependencies": {
+    "@types/minimist": "^1.2.5",
+    "@types/node": "catalog:",
+    "@types/prompts": "^2",
+    "typescript": "catalog:",
+    "zx": "catalog:"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "packageManager": "pnpm@10.32.0"
 }

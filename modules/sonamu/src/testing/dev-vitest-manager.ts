@@ -1,15 +1,16 @@
-import type { UserConfig as ViteUserConfig } from "vite";
-import type {
-  CliOptions,
-  Reporter,
-  TestCase,
-  TestModule,
-  TestRunResult,
-  TestSpecification,
-  TestSuite,
-  Vitest,
+import { type UserConfig as ViteUserConfig } from "vite";
+import {
+  type CliOptions,
+  type Reporter,
+  type TestCase,
+  type TestModule,
+  type TestRunResult,
+  type TestSpecification,
+  type TestSuite,
+  type Vitest,
 } from "vitest/node";
-import type { SerializedTrace } from "../naite/naite";
+
+import { type SerializedTrace } from "../naite/naite";
 
 // 테스트 한 건의 trace 모음
 export type TestNodeKind = "file" | "suite" | "test";
@@ -122,7 +123,7 @@ export class DevVitestManager {
 
     const vitest = await createVitest("test", cliOptions, viteOverrides);
     try {
-      await vitest.init();
+      await vitest.standalone();
     } catch (err) {
       await vitest.close();
       throw err;

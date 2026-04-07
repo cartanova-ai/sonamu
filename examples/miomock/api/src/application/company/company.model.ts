@@ -4,14 +4,15 @@ import {
   BadRequestException,
   BaseModelClass,
   exhaustive,
-  type ListResult,
   NotFoundException,
 } from "sonamu";
+import { type ListResult } from "sonamu";
+
 import { SD } from "../../i18n/sd.generated";
 import { AuditLogModel } from "../audit-log/audit-log.model";
-import type { CompanySubsetKey, CompanySubsetMapping } from "../sonamu.generated";
+import { type CompanySubsetKey, type CompanySubsetMapping } from "../sonamu.generated";
 import { companyLoaderQueries, companySubsetQueries } from "../sonamu.generated.sso";
-import type { CompanyListParams, CompanySaveParams } from "./company.types";
+import { type CompanyListParams, type CompanySaveParams } from "./company.types";
 
 /*
   Company Model

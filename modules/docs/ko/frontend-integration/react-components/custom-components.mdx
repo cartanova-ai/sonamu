@@ -9,24 +9,16 @@ Sonamu가 생성한 컴포넌트와 뷰를 프로젝트 요구사항에 맞게 �
 
 <CardGroup cols={2}>
   <Card title="생성 후 수정" icon="pen-to-square">
-    완전한 제어권
-    
-    자유로운 수정
+    완전한 제어권 자유로운 수정
   </Card>
   <Card title="Props 확장" icon="puzzle-piece">
-    새로운 기능 추가
-    
-    인터페이스 확장
+    새로운 기능 추가 인터페이스 확장
   </Card>
   <Card title="스타일링" icon="palette">
-    디자인 시스템
-    
-    테마 적용
+    디자인 시스템 테마 적용
   </Card>
   <Card title="로직 추가" icon="code">
-    비즈니스 로직
-    
-    유효성 검사
+    비즈니스 로직 유효성 검사
   </Card>
 </CardGroup>
 
@@ -37,6 +29,7 @@ Sonamu가 생성한 컴포넌트와 뷰를 프로젝트 요구사항에 맞게 �
 Sonamu는 **"80%는 자동으로, 20%는 커스터마이징"** 철학을 따릅니다.
 
 **생성 vs 커스터마이징**:
+
 ```
 생성 단계: 기본적인 CRUD 기능, 표준 UI 패턴
    ↓
@@ -44,6 +37,7 @@ Sonamu는 **"80%는 자동으로, 20%는 커스터마이징"** 철학을 따릅�
 ```
 
 **커스터마이징이 필요한 경우**:
+
 - 특별한 유효성 검사 규칙
 - 복잡한 관계 처리
 - 고유한 UI/UX 요구사항
@@ -51,6 +45,7 @@ Sonamu는 **"80%는 자동으로, 20%는 커스터마이징"** 철학을 따릅�
 - 워크플로우 통합
 
 **커스터마이징 vs 재생성**:
+
 - 생성된 파일은 **재생성하면 덮어씀**
 - 따라서 생성 후 **즉시 Git 커밋** 권장
 - 커스터마이징은 **생성된 코드를 직접 수정**
@@ -63,12 +58,13 @@ Sonamu는 **"80%는 자동으로, 20%는 커스터마이징"** 철학을 따릅�
 생성된 목록 페이지에 기능을 추가합니다.
 
 **원본 (자동 생성)**:
+
 ```typescript
 // pages/users/index.tsx
 export default function UsersPage() {
   const [page, setPage] = useState(1);
   const { users, total, isLoading } = useUsers({ page, pageSize: 20 });
-  
+
   return (
     <div>
       <h1>Users</h1>
@@ -80,6 +76,7 @@ export default function UsersPage() {
 ```
 
 **커스터마이징 (필터 추가)**:
+
 ```typescript
 // pages/users/index.tsx (수정)
 export default function UsersPage() {
@@ -89,13 +86,13 @@ export default function UsersPage() {
     isActive: true,
     search: "",
   });
-  
+
   const { users, total, isLoading } = useUsers({
     page,
     pageSize: 20,
     ...filters, // 필터 추가
   });
-  
+
   return (
     <div>
       <div className="header">
@@ -104,7 +101,7 @@ export default function UsersPage() {
           Create New User
         </button>
       </div>
-      
+
       {/* 추가: 필터 UI */}
       <div className="filters">
         <SearchInput
@@ -112,7 +109,7 @@ export default function UsersPage() {
           onChange={(search) => setFilters({ ...filters, search })}
           placeholder="Search users..."
         />
-        
+
         <select
           value={filters.role || ""}
           onChange={(e) => setFilters({ ...filters, role: e.target.value || null })}
@@ -122,7 +119,7 @@ export default function UsersPage() {
           <option value="user">User</option>
           <option value="guest">Guest</option>
         </select>
-        
+
         <label>
           <input
             type="checkbox"
@@ -132,7 +129,7 @@ export default function UsersPage() {
           Active Only
         </label>
       </div>
-      
+
       <UserTable users={users} isLoading={isLoading} />
       {/* 페이지네이션 */}
     </div>
@@ -141,6 +138,7 @@ export default function UsersPage() {
 ```
 
 **추가된 기능**:
+
 - 검색 필터
 - 역할 필터
 - 활성 상태 필터
@@ -150,13 +148,14 @@ export default function UsersPage() {
 생성/수정 폼에 비즈니스 로직을 추가합니다.
 
 **원본 (자동 생성)**:
+
 ```typescript
 // components/users/UserForm.tsx
 export function UserForm({ initialValues, onSubmit, isSubmitting }: UserFormProps) {
   const { register, handleSubmit, formState: { errors } } = useForm({
     defaultValues: initialValues,
   });
-  
+
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <input {...register("email", { required: true })} />
@@ -168,6 +167,7 @@ export function UserForm({ initialValues, onSubmit, isSubmitting }: UserFormProp
 ```
 
 **커스터마이징 (복잡한 유효성 검사)**:
+
 ```typescript
 // components/users/UserForm.tsx (수정)
 import { z } from "zod";
@@ -205,9 +205,9 @@ export function UserForm({ initialValues, onSubmit, isSubmitting }: UserFormProp
     resolver: zodResolver(userSchema),
     defaultValues: initialValues,
   });
-  
+
   const password = watch("password");
-  
+
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <div>
@@ -215,18 +215,18 @@ export function UserForm({ initialValues, onSubmit, isSubmitting }: UserFormProp
         <input {...register("email")} />
         {errors.email && <span className="error">{errors.email.message}</span>}
       </div>
-      
+
       <div>
         <label>Username *</label>
         <input {...register("username")} />
         {errors.username && <span className="error">{errors.username.message}</span>}
       </div>
-      
+
       <div>
         <label>Password *</label>
         <input type="password" {...register("password")} />
         {errors.password && <span className="error">{errors.password.message}</span>}
-        
+
         {/* 추가: 비밀번호 강도 표시 */}
         {password && (
           <div className="password-strength">
@@ -235,13 +235,13 @@ export function UserForm({ initialValues, onSubmit, isSubmitting }: UserFormProp
           </div>
         )}
       </div>
-      
+
       <div>
         <label>Confirm Password *</label>
         <input type="password" {...register("confirmPassword")} />
         {errors.confirmPassword && <span className="error">{errors.confirmPassword.message}</span>}
       </div>
-      
+
       <button type="submit" disabled={isSubmitting}>
         {isSubmitting ? "Saving..." : "Save"}
       </button>
@@ -251,6 +251,7 @@ export function UserForm({ initialValues, onSubmit, isSubmitting }: UserFormProp
 ```
 
 **추가된 기능**:
+
 - Zod 스키마 기반 유효성 검사
 - 이메일 중복 확인 (비동기)
 - 비밀번호 복잡도 규칙
@@ -317,23 +318,25 @@ export function UserFormSimple({ initialValues, onSubmit }: UserFormProps) {
 
 **useTypeForm vs react-hook-form 비교**:
 
-| 기능 | useTypeForm | react-hook-form + zodResolver |
-|------|-------------|-------------------------------|
-| 코드량 | ⭐️⭐️⭐️ 매우 적음 | ⭐️ 많음 |
-| 타입 안전 | ✅ 자동 추론 | ⚠️ 수동 설정 |
-| 유효성 검사 | ✅ Zod 통합 | ✅ Zod 통합 (수동) |
-| 에러 처리 | ✅ 자동 | ⚠️ 수동 |
-| Sonamu 통합 | ✅ SaveParams 직접 사용 | ❌ 별도 스키마 필요 |
-| 학습 곡선 | ⭐️⭐️⭐️ 낮음 | ⭐️ 높음 |
+| 기능        | useTypeForm             | react-hook-form + zodResolver |
+| ----------- | ----------------------- | ----------------------------- |
+| 코드량      | ⭐️⭐️⭐️ 매우 적음        | ⭐️ 많음                       |
+| 타입 안전   | ✅ 자동 추론            | ⚠️ 수동 설정                  |
+| 유효성 검사 | ✅ Zod 통합             | ✅ Zod 통합 (수동)            |
+| 에러 처리   | ✅ 자동                 | ⚠️ 수동                       |
+| Sonamu 통합 | ✅ SaveParams 직접 사용 | ❌ 별도 스키마 필요           |
+| 학습 곡선   | ⭐️⭐️⭐️ 낮음             | ⭐️ 높음                       |
 
 **useTypeForm의 주요 장점**:
+
 1. **자동 타입 추론**: `UserSaveParams`에서 폼 타입이 자동으로 결정됨
 2. **통합 유효성 검사**: 백엔드 SaveParams 스키마를 그대로 사용
 3. **간결한 코드**: `zodResolver`, `useForm` 설정 불필요
 4. **Sonamu 최적화**: Service와 완벽하게 통합됨
 
 <Info>
-**권장 사항**: 새로운 폼을 작성할 때는 `useTypeForm`을 먼저 고려하세요. 대부분의 경우 이것만으로 충분하며, 특별한 요구사항이 있을 때만 `react-hook-form`을 직접 사용하세요.
+  **권장 사항**: 새로운 폼을 작성할 때는 `useTypeForm`을 먼저 고려하세요. 대부분의 경우 이것만으로
+  충분하며, 특별한 요구사항이 있을 때만 `react-hook-form`을 직접 사용하세요.
 </Info>
 
 **고급 기능 예제**:
@@ -390,6 +393,7 @@ function UserFormAdvanced() {
 테이블에 기능을 추가합니다.
 
 **원본 (자동 생성)**:
+
 ```typescript
 // components/users/UserTable.tsx
 export function UserTable({ users, isLoading }: UserTableProps) {
@@ -417,6 +421,7 @@ export function UserTable({ users, isLoading }: UserTableProps) {
 ```
 
 **커스터마이징 (정렬, 선택, 액션)**:
+
 ```typescript
 // components/users/UserTable.tsx (수정)
 interface UserTableProps {
@@ -428,18 +433,18 @@ interface UserTableProps {
   onSelectionChange?: (selectedIds: number[]) => void;
 }
 
-export function UserTable({ 
-  users, 
+export function UserTable({
+  users,
   isLoading,
   onRowClick,
   onDelete,
   selectable,
-  onSelectionChange 
+  onSelectionChange
 }: UserTableProps) {
   const [sortField, setSortField] = useState<keyof User>("id");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  
+
   // 정렬 로직
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
@@ -449,7 +454,7 @@ export function UserTable({
       return aVal > bVal ? order : -order;
     });
   }, [users, sortField, sortOrder]);
-  
+
   // 정렬 핸들러
   function handleSort(field: keyof User) {
     if (sortField === field) {
@@ -459,7 +464,7 @@ export function UserTable({
       setSortOrder("asc");
     }
   }
-  
+
   // 선택 핸들러
   function handleSelect(userId: number) {
     const newSelection = selectedIds.includes(userId)
@@ -468,7 +473,7 @@ export function UserTable({
     setSelectedIds(newSelection);
     onSelectionChange?.(newSelection);
   }
-  
+
   function handleSelectAll() {
     const newSelection = selectedIds.length === users.length
       ? []
@@ -476,9 +481,9 @@ export function UserTable({
     setSelectedIds(newSelection);
     onSelectionChange?.(newSelection);
   }
-  
+
   if (isLoading) return <div>Loading...</div>;
-  
+
   return (
     <table>
       <thead>
@@ -492,19 +497,19 @@ export function UserTable({
               />
             </th>
           )}
-          
+
           <th onClick={() => handleSort("id")} className="sortable">
             ID {sortField === "id" && (sortOrder === "asc" ? "↑" : "↓")}
           </th>
-          
+
           <th onClick={() => handleSort("email")} className="sortable">
             Email {sortField === "email" && (sortOrder === "asc" ? "↑" : "↓")}
           </th>
-          
+
           <th onClick={() => handleSort("username")} className="sortable">
             Username {sortField === "username" && (sortOrder === "asc" ? "↑" : "↓")}
           </th>
-          
+
           <th>Actions</th>
         </tr>
       </thead>
@@ -520,11 +525,11 @@ export function UserTable({
                 />
               </td>
             )}
-            
+
             <td onClick={() => onRowClick?.(user)}>{user.id}</td>
             <td onClick={() => onRowClick?.(user)}>{user.email}</td>
             <td onClick={() => onRowClick?.(user)}>{user.username}</td>
-            
+
             <td>
               <button onClick={() => onRowClick?.(user)}>View</button>
               <button onClick={() => onDelete?.(user.id)}>Delete</button>
@@ -538,6 +543,7 @@ export function UserTable({
 ```
 
 **추가된 기능**:
+
 - 컬럼 클릭으로 정렬
 - 체크박스로 다중 선택
 - 전체 선택/해제
@@ -641,7 +647,7 @@ export const Table = styled.table`
 `;
 
 export const TableHead = styled.thead`
-  background-color: ${props => props.theme.colors.gray[100]};
+  background-color: ${(props) => props.theme.colors.gray[100]};
 `;
 
 export const TableHeader = styled.th`
@@ -652,13 +658,13 @@ export const TableHeader = styled.th`
 
 export const TableRow = styled.tr`
   &:hover {
-    background-color: ${props => props.theme.colors.gray[50]};
+    background-color: ${(props) => props.theme.colors.gray[50]};
   }
 `;
 
 export const TableCell = styled.td`
   padding: 12px;
-  border-top: 1px solid ${props => props.theme.colors.gray[200]};
+  border-top: 1px solid ${(props) => props.theme.colors.gray[200]};
 `;
 ```
 
@@ -778,7 +784,7 @@ export function UserTable({ users }: UserTableProps) {
 function CategorizedSearch() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
-  
+
   return (
     <div className="search-container">
       <select
@@ -790,7 +796,7 @@ function CategorizedSearch() {
         <option value="users">Users</option>
         <option value="comments">Comments</option>
       </select>
-      
+
       <SearchInput
         value={query}
         onChange={setQuery}
@@ -824,15 +830,15 @@ export function UserManagement() {
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [filters, setFilters] = useState({ search: "", role: null });
-  
+
   const { users, isLoading, refresh } = useUsers(filters);
-  
+
   async function handleCreate(data: CreateUserInput) {
     await userService.create(data);
     setMode("list");
     refresh();
   }
-  
+
   async function handleUpdate(data: UpdateUserInput) {
     if (selectedUser) {
       await userService.update(selectedUser.id, data);
@@ -841,7 +847,7 @@ export function UserManagement() {
       refresh();
     }
   }
-  
+
   return (
     <div className="user-management">
       {mode === "list" && (
@@ -852,13 +858,13 @@ export function UserManagement() {
               Create New User
             </button>
           </div>
-          
+
           <SearchInput
             value={filters.search}
             onChange={(search) => setFilters({ ...filters, search })}
             placeholder="Search users..."
           />
-          
+
           <UserTable
             users={users}
             isLoading={isLoading}
@@ -869,7 +875,7 @@ export function UserManagement() {
           />
         </>
       )}
-      
+
       {mode === "create" && (
         <div className="form-container">
           <h2>Create New User</h2>
@@ -877,7 +883,7 @@ export function UserManagement() {
           <button onClick={() => setMode("list")}>Cancel</button>
         </div>
       )}
-      
+
       {mode === "edit" && selectedUser && (
         <div className="form-container">
           <h2>Edit User</h2>
@@ -913,11 +919,11 @@ export function useEntityCRUD<T>(entityName: string, service: any) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   async function create(data: Partial<T>) {
     setSaving(true);
     setError(null);
-    
+
     try {
       const result = await service.create(data);
       router.push(`/${entityName}/${result.id}`);
@@ -927,7 +933,7 @@ export function useEntityCRUD<T>(entityName: string, service: any) {
       setSaving(false);
     }
   }
-  
+
   return { create, saving, error };
 }
 ```
@@ -936,9 +942,12 @@ export function useEntityCRUD<T>(entityName: string, service: any) {
 
 ```css
 /* styles/components.css */
-.entity-table { }
-.entity-form { }
-.entity-detail { }
+.entity-table {
+}
+.entity-form {
+}
+.entity-detail {
+}
 ```
 
 ### 4. 타입은 확장
@@ -964,27 +973,39 @@ export interface UserWithStats extends User {
 ## 주의사항
 
 <Warning>
-**커스터마이징 시 주의사항**:
-1. **재생성하면 덮어씀** - Git 커밋 필수
-2. 타입 변경은 백엔드에서 먼저
-3. 복잡한 로직은 Hook으로 분리
-4. Props 인터페이스는 확장 가능하게
-5. 스타일은 일관성 유지
+  **커스터마이징 시 주의사항**: 1. **재생성하면 덮어씀** - Git 커밋 필수 2. 타입 변경은 백엔드에서
+  먼저 3. 복잡한 로직은 Hook으로 분리 4. Props 인터페이스는 확장 가능하게 5. 스타일은 일관성 유지
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="View Scaffolding" icon="wand-magic-sparkles" href="/ko/frontend-integration/react-components/scaffolding-views">
+  <Card
+    title="View Scaffolding"
+    icon="wand-magic-sparkles"
+    href="/ko/frontend-integration/react-components/scaffolding-views"
+  >
     자동 뷰 생성
   </Card>
-  <Card title="ID Async Select" icon="list-dropdown" href="/ko/frontend-integration/react-components/id-async-select">
+  <Card
+    title="ID Async Select"
+    icon="list-dropdown"
+    href="/ko/frontend-integration/react-components/id-async-select"
+  >
     관계 데이터 선택
   </Card>
-  <Card title="Search Input" icon="magnifying-glass" href="/ko/frontend-integration/react-components/search-input">
+  <Card
+    title="Search Input"
+    icon="magnifying-glass"
+    href="/ko/frontend-integration/react-components/search-input"
+  >
     검색 컴포넌트
   </Card>
-  <Card title="Service 사용하기" icon="code" href="/ko/frontend-integration/generated-services/using-services">
+  <Card
+    title="Service 사용하기"
+    icon="code"
+    href="/ko/frontend-integration/generated-services/using-services"
+  >
     Service 통합
   </Card>
 </CardGroup>

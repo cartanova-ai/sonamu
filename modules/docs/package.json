@@ -2,18 +2,18 @@
   "name": "sonamu-docs",
   "version": "1.0.0",
   "description": "Sonamu Framework Documentation",
+  "keywords": [
+    "documentation",
+    "fullstack",
+    "sonamu",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "CartaNova",
   "scripts": {
     "dev": "mint dev",
     "migrate": "node migrate-docs.js",
     "upload-videos": "node scripts/upload-videos.mjs",
     "upload-videos:dry": "node scripts/upload-videos.mjs --dry-run"
-  },
-  "keywords": [
-    "sonamu",
-    "documentation",
-    "typescript",
-    "fullstack"
-  ],
-  "author": "CartaNova",
-  "license": "MIT"
+  }
 }

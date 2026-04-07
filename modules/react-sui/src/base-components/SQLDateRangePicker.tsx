@@ -1,15 +1,16 @@
 import { DateTime } from "luxon";
 import type React from "react";
-import type { ReactNode } from "react";
+import { type ReactNode } from "react";
 import SemanticDatepicker from "react-semantic-ui-datepickers";
+
 import "react-semantic-ui-datepickers/dist/react-semantic-ui-datepickers.css";
-import type { SQLDateTimeString } from "../helpers/shared";
+import { type SQLDateTimeString } from "../helpers/shared";
 
 export type SQLDateRangePickerProps = {
   label?: string | ReactNode;
   value?: SQLDateTimeString[];
   onChange?: (
-    e: React.SyntheticEvent<Element, Event> | undefined,
+    e: React.SyntheticEvent<Element> | undefined,
     data: { value: SQLDateTimeString[] },
   ) => void;
 };

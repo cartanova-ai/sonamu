@@ -9,24 +9,16 @@ Sonamu가 백엔드 API의 타입을 프론트엔드에서 자동으로 추론�
 
 <CardGroup cols={2}>
   <Card title="자동 타입 생성" icon="wand-magic-sparkles">
-    백엔드 → 프론트엔드
-    
-    수동 작업 불필요
+    백엔드 → 프론트엔드 수동 작업 불필요
   </Card>
   <Card title="완전한 추론" icon="shield-check">
-    파라미터부터 응답까지
-    
-    모든 타입 보장
+    파라미터부터 응답까지 모든 타입 보장
   </Card>
   <Card title="실시간 동기화" icon="arrows-rotate">
-    API 변경 시
-    
-    자동 업데이트
+    API 변경 시 자동 업데이트
   </Card>
   <Card title="IDE 지원" icon="code">
-    자동 완성
-    
-    타입 힌트
+    자동 완성 타입 힌트
   </Card>
 </CardGroup>
 
@@ -58,6 +50,7 @@ async function getUser(id: number): Promise<{ user: User }> {
 ```
 
 **문제점**:
+
 1. **중복 작업**: 백엔드와 프론트엔드에서 같은 타입 두 번 정의
 2. **동기화 누락**: 백엔드 변경 시 프론트엔드 타입 업데이트 누락
 3. **런타임 에러**: 타입 불일치를 런타임에만 발견
@@ -101,6 +94,7 @@ export namespace UserService {
 ```
 
 **장점**:
+
 - 백엔드 타입이 프론트엔드에 **자동으로 복사**됨
 - API 변경 시 **자동으로 동기화**됨
 - **단일 진실 공급원** (백엔드가 유일한 타입 소스)
@@ -126,7 +120,7 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   @api({ httpMethod: "GET" })
   async getProfile(userId: number): Promise<{
     user: {
@@ -143,13 +137,14 @@ class UserModelClass extends BaseModelClass<
   }> {
     const user = await this.findById(userId);
     const stats = await this.getStats(userId);
-    
+
     return { user, stats };
   }
 }
 ```
 
 **TypeScript 타입 시스템 활용**:
+
 - 반환 타입을 명시적으로 선언
 - 중첩 객체, 유니온 타입, 리터럴 타입 모두 지원
 - TypeScript의 모든 타입 기능 활용 가능
@@ -165,16 +160,16 @@ import * as ts from "typescript";
 function extractApiType(methodNode: ts.MethodDeclaration) {
   // 1. 반환 타입 추출
   const returnType = typeChecker.getTypeAtLocation(methodNode.type);
-  
+
   // 2. 타입 정보를 TypeScript 코드로 변환
   const typeString = typeChecker.typeToString(returnType);
-  
+
   // 3. 파라미터 타입 추출
-  const parameters = methodNode.parameters.map(param => ({
+  const parameters = methodNode.parameters.map((param) => ({
     name: param.name.getText(),
     type: typeChecker.getTypeAtLocation(param.type),
   }));
-  
+
   return {
     returnType: typeString,
     parameters,
@@ -183,6 +178,7 @@ function extractApiType(methodNode: ts.MethodDeclaration) {
 ```
 
 **AST (Abstract Syntax Tree)**:
+
 - TypeScript 코드를 트리 구조로 표현
 - 타입 정보를 프로그래밍 방식으로 추출 가능
 - 100% 정확한 타입 정보 획득
@@ -196,13 +192,13 @@ function extractApiType(methodNode: ts.MethodDeclaration) {
 export namespace UserService {
   // 파라미터 타입도 정확히 추론
   export async function getProfile(
-    userId: number  // ← 백엔드와 동일한 타입
+    userId: number, // ← 백엔드와 동일한 타입
   ): Promise<{
     user: {
       id: number;
       username: string;
       email: string;
-      role: "admin" | "user";  // ← 리터럴 타입도 보존
+      role: "admin" | "user"; // ← 리터럴 타입도 보존
       createdAt: Date;
     };
     stats: {
@@ -219,6 +215,7 @@ export namespace UserService {
 ```
 
 **타입 보존**:
+
 - 유니온 타입 (`"admin" | "user"`)
 - 중첩 객체
 - 배열 타입
@@ -236,11 +233,8 @@ export namespace UserService {
       queryKey: ["User", "getProfile", userId],
       queryFn: () => getProfile(userId),
     });
-  
-  export const useProfile = (
-    userId: number,
-    options?: { enabled?: boolean }
-  ) =>
+
+  export const useProfile = (userId: number, options?: { enabled?: boolean }) =>
     useQuery({
       ...getProfileQueryOptions(userId),
       ...options,
@@ -249,6 +243,7 @@ export namespace UserService {
 ```
 
 **타입 체인**:
+
 ```
 Backend Method
   → TypeScript AST
@@ -314,7 +309,7 @@ export type UserSubsetMapping = {
 export namespace UserService {
   export async function getUser<T extends UserSubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<UserSubsetMapping[T]> {
     return fetch({
       method: "GET",
@@ -332,6 +327,7 @@ const fullUser = await UserService.getUser("C", 123);
 ```
 
 **Mapped Types**:
+
 - `UserSubsetMapping[T]`로 Subset에 따른 정확한 타입 반환
 - TypeScript의 조건부 타입 활용
 
@@ -413,9 +409,9 @@ import { UserService } from "@/services/services.generated";
 
 function UserProfile({ userId }: { userId: number }) {
   const { data, isLoading } = UserService.useProfile(userId);
-  
+
   if (isLoading) return <div>Loading...</div>;
-  
+
   // data의 타입이 자동으로 추론됨
   return (
     <div>
@@ -429,6 +425,7 @@ function UserProfile({ userId }: { userId: number }) {
 ```
 
 **IDE 자동 완성**:
+
 - `data.` 입력 시 `user`, `stats` 자동 제안
 - `data.user.` 입력 시 모든 필드 자동 제안
 - 잘못된 필드 접근 시 즉시 에러 표시
@@ -486,7 +483,7 @@ export namespace PostService {
 function CreatePostForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
+
     await PostService.createPost({
       title: "Hello",
       content: "World",
@@ -547,27 +544,40 @@ console.log(user.bio?.length); // ✅ 옵셔널 체이닝 필수
 ## 주의사항
 
 <Warning>
-**API 타입 추론 사용 시 주의사항**:
-1. 백엔드 API에 **명시적 타입 선언 필수**
-2. `any` 타입 사용 금지 (타입 추론 불가)
-3. `pnpm generate` 실행해야 타입 업데이트
-4. 생성된 타입 파일 **수동 수정 금지**
-5. 복잡한 타입은 **별도 interface로 분리** 권장
+  **API 타입 추론 사용 시 주의사항**: 1. 백엔드 API에 **명시적 타입 선언 필수** 2. `any` 타입 사용
+  금지 (타입 추론 불가) 3. `pnpm generate` 실행해야 타입 업데이트 4. 생성된 타입 파일 **수동 수정
+  금지** 5. 복잡한 타입은 **별도 interface로 분리** 권장
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="컴파일 타임 에러" icon="triangle-exclamation" href="/ko/frontend-integration/type-safety/compile-time-errors">
+  <Card
+    title="컴파일 타임 에러"
+    icon="triangle-exclamation"
+    href="/ko/frontend-integration/type-safety/compile-time-errors"
+  >
     API 변경 감지
   </Card>
-  <Card title="공유 타입" icon="share-nodes" href="/ko/frontend-integration/type-safety/shared-types">
+  <Card
+    title="공유 타입"
+    icon="share-nodes"
+    href="/ko/frontend-integration/type-safety/shared-types"
+  >
     타입 파일 구조
   </Card>
-  <Card title="Service 동작 원리" icon="diagram-project" href="/ko/frontend-integration/generated-services/how-services-work">
+  <Card
+    title="Service 동작 원리"
+    icon="diagram-project"
+    href="/ko/frontend-integration/generated-services/how-services-work"
+  >
     자동 생성 이해
   </Card>
-  <Card title="Service 사용하기" icon="code" href="/ko/frontend-integration/generated-services/using-services">
+  <Card
+    title="Service 사용하기"
+    icon="code"
+    href="/ko/frontend-integration/generated-services/using-services"
+  >
     Service 활용법
   </Card>
 </CardGroup>

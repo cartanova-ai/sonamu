@@ -65,7 +65,8 @@ const result = await UserModel.executeSubsetQuery({
 ```
 
 <Info>
-`getSubsetQueries("P")` returns a query builder (`qb`) with the JOIN and SELECT defined in Subset P automatically applied.
+  `getSubsetQueries("P")` returns a query builder (`qb`) with the JOIN and SELECT defined in Subset
+  P automatically applied.
 </Info>
 
 ## Extending Subset Queries
@@ -75,8 +76,7 @@ const result = await UserModel.executeSubsetQuery({
 ```typescript
 const { qb } = UserModel.getSubsetQueries("L");
 
-qb.where("users.role", "admin")
-  .where("users.is_verified", true);
+qb.where("users.role", "admin").where("users.is_verified", true);
 
 const result = await UserModel.executeSubsetQuery({
   subset: "L",
@@ -105,8 +105,7 @@ const result = await UserModel.executeSubsetQuery({
 ```typescript
 const { qb, onSubset } = UserModel.getSubsetQueries("P");
 
-qb.where("users.role", "normal")
-  .orderBy("employee.salary", "desc");
+qb.where("users.role", "normal").orderBy("employee.salary", "desc");
 
 // Access Subset-specific tables with onSubset
 onSubset("P").where("employee__department.name", "Engineering");
@@ -137,12 +136,12 @@ onSubsetL("L").where("employee__department.name", "Engineering");
 const user = await UserModel.findById(1, ["P"]);
 
 // TypeScript automatically infers types
-user.id;        // number
-user.username;  // string
-user.employee;  // { salary: string; department: { name: string } } | null
+user.id; // number
+user.username; // string
+user.employee; // { salary: string; department: { name: string } } | null
 
 // ❌ Compile Error
-user.password;  // Property 'password' does not exist
+user.password; // Property 'password' does not exist
 ```
 
 ## Practical Examples
@@ -257,7 +256,7 @@ async getUser(userId: number, detailed: boolean) {
 ```typescript
 async getUserData(userId: number, role: UserRole) {
   const subsets = role === "admin" ? ["A"] : ["P"];
-  
+
   return await UserModel.findById(userId, subsets);
   // Type: UserSubsetMapping["A"] | UserSubsetMapping["P"] | undefined
 }
@@ -271,13 +270,13 @@ async getUserData(userId: number, role: UserRole) {
 // ❌ Bad: Using Subset A for lists (excessive data)
 const users = await UserModel.findMany({
   listParams: { page: 1, pageSize: 20 },
-  subsetKey: "A",  // Loading all fields
+  subsetKey: "A", // Loading all fields
 });
 
 // ✅ Good: Use Subset L for lists
 const users = await UserModel.findMany({
   listParams: { page: 1, pageSize: 20 },
-  subsetKey: "L",  // Only needed fields
+  subsetKey: "L", // Only needed fields
 });
 ```
 
@@ -347,17 +346,18 @@ const users = await puri
 ```
 
 <Tip>
-**Use Subsets!**
-- Guaranteed type safety
-- Improved code reusability
-- Easy maintenance
-- Query consistency
+  **Use Subsets!** - Guaranteed type safety - Improved code reusability - Easy maintenance - Query
+  consistency
 </Tip>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Nested Relations" icon="diagram-project" href="/en/database/subsets/nested-relations">
+  <Card
+    title="Nested Relations"
+    icon="diagram-project"
+    href="/en/database/subsets/nested-relations"
+  >
     Load 1:N, N:M with LoaderQuery
   </Card>
   <Card title="Defining Subsets" icon="pen" href="/en/database/subsets/defining-subsets">

@@ -1,5 +1,6 @@
-import chalk from "chalk";
 import { setTimeout as setTimeoutPromises } from "timers/promises";
+
+import chalk from "chalk";
 
 /**
  * 주어진 작업을 실행합니다.

@@ -14,11 +14,11 @@ import { defineConfig } from "sonamu";
 export default defineConfig({
   // ...
   tasks: {
-    enableWorker: true,  // Enable Worker
+    enableWorker: true, // Enable Worker
     workerOptions: {
-      concurrency: 4,      // Concurrent execution count
-      usePubSub: true,     // Use Pub/Sub
-      listenDelay: 500,    // Listen delay (ms)
+      concurrency: 4, // Concurrent execution count
+      usePubSub: true, // Use Pub/Sub
+      listenDelay: 500, // Listen delay (ms)
     },
     contextProvider: async (baseContext) => {
       // Configure Context used in Workflows
@@ -32,6 +32,7 @@ export default defineConfig({
 ```
 
 **Options**:
+
 - `enableWorker`: Whether to enable Worker (default: true only in daemon mode)
 - `workerOptions.concurrency`: Number of concurrent tasks (default: 1)
 - `workerOptions.usePubSub`: Use PostgreSQL LISTEN/NOTIFY (default: true)
@@ -52,7 +53,7 @@ const handle = await workflowManager.run(
     name: "send_email",
     version: null,
   },
-  { email: "user@example.com" }
+  { email: "user@example.com" },
 );
 
 // Wait for result
@@ -118,9 +119,9 @@ pnpm worker
 // sonamu.config.ts
 export default defineConfig({
   tasks: {
-    enableWorker: true,  // Run Worker in API server too
+    enableWorker: true, // Run Worker in API server too
     workerOptions: {
-      concurrency: 2,  // Lower concurrency for API server
+      concurrency: 2, // Lower concurrency for API server
     },
     contextProvider: async (baseContext) => baseContext,
   },
@@ -173,13 +174,10 @@ Access via `Sonamu.getContext()` within a Workflow function:
 import { workflow } from "sonamu";
 import { Sonamu } from "sonamu";
 
-export const myWorkflow = workflow(
-  { name: "my_workflow" },
-  async ({ input, step }) => {
-    const context = Sonamu.getContext();
-    console.log(context.user);  // systemUser
-  }
-);
+export const myWorkflow = workflow({ name: "my_workflow" }, async ({ input, step }) => {
+  const context = Sonamu.getContext();
+  console.log(context.user); // systemUser
+});
 ```
 
 ## Table Structure
@@ -226,27 +224,26 @@ CREATE TABLE workflow_steps (
 import { DB } from "sonamu";
 
 const knex = DB.getDB();
-const runs = await knex('workflow_runs')
-  .where('status', 'running')
-  .select('*');
+const runs = await knex("workflow_runs").where("status", "running").select("*");
 ```
 
 ### Logging
 
 ```typescript
-export const myWorkflow = workflow(
-  { name: "my_workflow" },
-  async ({ logger, input }) => {
-    logger.info("Workflow started", { input });
-    logger.error("Error occurred", { error });
-  }
-);
+export const myWorkflow = workflow({ name: "my_workflow" }, async ({ logger, input }) => {
+  logger.info("Workflow started", { input });
+  logger.error("Error occurred", { error });
+});
 ```
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="@workflow Decorator" icon="code" href="/en/advanced-features/workflows/workflow-decorator">
+  <Card
+    title="@workflow Decorator"
+    icon="code"
+    href="/en/advanced-features/workflows/workflow-decorator"
+  >
     Define Workflows
   </Card>
   <Card title="Step" icon="list" href="/en/advanced-features/workflows/steps">

@@ -1,6 +1,6 @@
 ---
-title: '데이터베이스'
-description: 'PostgreSQL 연결 및 환경별 설정'
+title: "데이터베이스"
+description: "PostgreSQL 연결 및 환경별 설정"
 ---
 
 데이터베이스 연결 설정을 다룹니다. Sonamu는 PostgreSQL을 기본 데이터베이스로 사용하며, 환경별로 다른 데이터베이스 설정을 지원합니다.
@@ -23,8 +23,12 @@ export default defineConfig({
       },
     },
     environments: {
-      development: { /* ... */ },
-      production: { /* ... */ },
+      development: {
+        /* ... */
+      },
+      production: {
+        /* ... */
+      },
     },
   },
   // ...
@@ -42,7 +46,7 @@ export default defineConfig({
 ```typescript
 export default defineConfig({
   database: {
-    database: "pg",  // 기본 pg 모듈 사용
+    database: "pg", // 기본 pg 모듈 사용
     // ...
   },
 });
@@ -62,9 +66,7 @@ export default defineConfig({
   - 컴파일 필요, 플랫폼 의존성
   - Sonamu가 자동으로 connection 객체를 libpq 연결 문자열로 변환하며, TCP keepAlive 파라미터(`keepalives=1`, `keepalives_idle=10`, `keepalives_interval=10`, `keepalives_count=5`)를 포함합니다
 
-<Tip>
-특별한 성능 요구사항이 없다면 `"pg"`를 사용하세요. 설치와 배포가 간단합니다.
-</Tip>
+<Tip>특별한 성능 요구사항이 없다면 `"pg"`를 사용하세요. 설치와 배포가 간단합니다.</Tip>
 
 ## name
 
@@ -76,7 +78,7 @@ export default defineConfig({
 export default defineConfig({
   database: {
     database: "pg",
-    name: "ecommerce",  // 연결할 데이터베이스 이름
+    name: "ecommerce", // 연결할 데이터베이스 이름
     // ...
   },
 });
@@ -117,10 +119,10 @@ export default defineConfig({
     name: "mydb",
     defaultOptions: {
       connection: {
-        host: "localhost",       // 데이터베이스 호스트
-        port: 5432,             // PostgreSQL 포트
-        user: "postgres",       // 사용자 이름
-        password: "password",   // 비밀번호
+        host: "localhost", // 데이터베이스 호스트
+        port: 5432, // PostgreSQL 포트
+        user: "postgres", // 사용자 이름
+        password: "password", // 비밀번호
       },
     },
   },
@@ -147,7 +149,7 @@ export default defineConfig({
 ```
 
 <Warning>
-데이터베이스 비밀번호는 반드시 환경 변수로 관리하세요. 코드에 직접 작성하지 마세요!
+  데이터베이스 비밀번호는 반드시 환경 변수로 관리하세요. 코드에 직접 작성하지 마세요!
 </Warning>
 
 ### 추가 Knex 옵션
@@ -160,7 +162,9 @@ export default defineConfig({
     database: "pg",
     name: "mydb",
     defaultOptions: {
-      connection: { /* ... */ },
+      connection: {
+        /* ... */
+      },
 
       // 커넥션 풀 설정
       pool: {
@@ -180,13 +184,13 @@ export default defineConfig({
 
 Sonamu는 내부적으로 다음 pool 옵션을 자동 설정합니다. 사용자가 별도로 지정하지 않아도 적용되며, 사용자 설정이 있을 경우 아래 값으로 덮어씁니다:
 
-| 옵션 | 기본값 | 설명 |
-|------|--------|------|
+| 옵션                   | 기본값  | 설명                                           |
+| ---------------------- | ------- | ---------------------------------------------- |
 | `propagateCreateError` | `false` | 커넥션 생성 에러를 풀 전체로 전파하지 않습니다 |
-| `idleTimeoutMillis` | `10000` | 유휴 커넥션이 10초 후 자동으로 해제됩니다 |
-| `reapIntervalMillis` | `1000` | 유휴 커넥션 정리 주기를 1초로 설정합니다 |
-| `acquireTimeoutMillis` | `30000` | 커넥션 획득 대기 시간을 30초로 제한합니다 |
-| `createTimeoutMillis` | `30000` | 커넥션 생성 대기 시간을 30초로 제한합니다 |
+| `idleTimeoutMillis`    | `10000` | 유휴 커넥션이 10초 후 자동으로 해제됩니다      |
+| `reapIntervalMillis`   | `1000`  | 유휴 커넥션 정리 주기를 1초로 설정합니다       |
+| `acquireTimeoutMillis` | `30000` | 커넥션 획득 대기 시간을 30초로 제한합니다      |
+| `createTimeoutMillis`  | `30000` | 커넥션 생성 대기 시간을 30초로 제한합니다      |
 
 또한 pool의 `afterCreate` 콜백에서 각 커넥션에 대해 소켓 레벨 keepAlive 설정과 에러 핸들러를 등록합니다. 에러가 발생한 커넥션은 자동으로 풀에서 제외됩니다.
 
@@ -232,7 +236,7 @@ export default defineConfig({
           password: "dev_password",
         },
       },
-      
+
       // 프로덕션 환경
       production: {
         connection: {
@@ -243,10 +247,10 @@ export default defineConfig({
         },
         pool: {
           min: 5,
-          max: 30,  // 프로덕션에서는 더 큰 풀
+          max: 30, // 프로덕션에서는 더 큰 풀
         },
       },
-      
+
       // 테스트 환경
       test: {
         connection: {
@@ -254,7 +258,7 @@ export default defineConfig({
           port: 5432,
           user: "test_user",
           password: "test_password",
-          database: "mydb_test",  // 별도의 테스트 DB
+          database: "mydb_test", // 별도의 테스트 DB
         },
       },
     },
@@ -289,7 +293,9 @@ export default defineConfig({
   database: {
     database: "pg",
     name: "mydb",
-    defaultOptions: { /* ... */ },
+    defaultOptions: {
+      /* ... */
+    },
     environments: {
       production: {
         connection: {
@@ -312,9 +318,7 @@ export default defineConfig({
 });
 ```
 
-<Note>
-Slave DB는 읽기 전용 쿼리에 사용되어 마스터 DB의 부하를 분산시킵니다.
-</Note>
+<Note>Slave DB는 읽기 전용 쿼리에 사용되어 마스터 DB의 부하를 분산시킵니다.</Note>
 
 ## 실전 예시
 
@@ -411,7 +415,7 @@ export default defineConfig({
           max: 10,
         },
       },
-      
+
       production: {
         connection: {
           host: process.env.PROD_DB_HOST,
@@ -426,7 +430,7 @@ export default defineConfig({
         },
         acquireConnectionTimeout: 60000,
       },
-      
+
       production_slave: {
         connection: {
           host: process.env.PROD_SLAVE_DB_HOST,
@@ -440,7 +444,7 @@ export default defineConfig({
           max: 20,
         },
       },
-      
+
       test: {
         connection: {
           host: "localhost",
@@ -454,7 +458,7 @@ export default defineConfig({
           max: 5,
         },
       },
-      
+
       fixture: {
         connection: {
           host: "localhost",
@@ -505,11 +509,11 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
-  
+
   api:
     build: .
     environment:
-      DB_HOST: postgres  # 서비스 이름
+      DB_HOST: postgres # 서비스 이름
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: postgres
@@ -548,11 +552,14 @@ pnpm dev
 brew services list
 
 # Linux
+
 systemctl status postgresql
 
 # Docker
+
 docker ps
-```
+
+````
 </Tip>
 
 ## 주의사항
@@ -581,7 +588,7 @@ export default defineConfig({
     },
   },
 });
-```
+````
 
 ### 2. 포트 번호 타입
 

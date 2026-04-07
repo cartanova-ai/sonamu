@@ -22,12 +22,9 @@ When the API server is running, Sonamu UI is automatically served:
 http://localhost:34900/sonamu-ui
 ```
 
-<Info>
-Sonamu UI is served at the `/sonamu-ui` path of the API server without a separate port.
-</Info>
+<Info>Sonamu UI is served at the `/sonamu-ui` path of the API server without a separate port.</Info>
 
-<Frame caption="📸 Needed: Sonamu UI main screen - with Entities tab open">
-</Frame>
+<Frame caption="📸 Needed: Sonamu UI main screen - with Entities tab open"></Frame>
 
 ## Main Tab Structure
 
@@ -35,24 +32,17 @@ Sonamu UI consists of 4 main tabs:
 
 <Tabs>
   <Tab title="Entities">
-    Entity definition and management
-    - Create, edit, delete Entities
-    - Configure Props, Indexes, Subsets, Enums
+    Entity definition and management - Create, edit, delete Entities - Configure Props, Indexes,
+    Subsets, Enums
   </Tab>
   <Tab title="Migrations">
-    Database migration management
-    - Run and rollback migrations
-    - View migration history
+    Database migration management - Run and rollback migrations - View migration history
   </Tab>
   <Tab title="Scaffolding">
-    Auto code generation
-    - Generate Model, Types, Services files
-    - Template-based code generation
+    Auto code generation - Generate Model, Types, Services files - Template-based code generation
   </Tab>
   <Tab title="Fixture">
-    Test data management
-    - Create and manage fixture data
-    - Data Import/Export
+    Test data management - Create and manage fixture data - Data Import/Export
   </Tab>
 </Tabs>
 
@@ -62,10 +52,10 @@ Sonamu UI consists of 4 main tabs:
 
 Click the **Entities** tab to see all Entities in the project.
 
-<Frame caption="📸 Needed: Entity list screen - multiple Entities displayed as cards">
-</Frame>
+<Frame caption="📸 Needed: Entity list screen - multiple Entities displayed as cards"></Frame>
 
 **Displayed Information**:
+
 - Entity ID and Title
 - Table name
 - Number of Props
@@ -98,8 +88,7 @@ Click the **"Create"** button to:
 </Step>
 </Steps>
 
-<Frame caption="📸 Needed: Entity creation dialog - input form screen">
-</Frame>
+<Frame caption="📸 Needed: Entity creation dialog - input form screen"></Frame>
 
 ## Editing an Entity
 
@@ -109,8 +98,7 @@ Click an Entity to open the detail editing page. It consists of 4 sheets:
 
 The main sheet for managing Entity properties (columns).
 
-<Frame caption="📸 Needed: Props sheet screen - property list displayed as table">
-</Frame>
+<Frame caption="📸 Needed: Props sheet screen - property list displayed as table"></Frame>
 
 #### Adding Props
 
@@ -130,44 +118,34 @@ Click the **"Add Property"** button in the top right or use shortcut `Ctrl+Cmd+S
 **Type-specific Options**:
 
 <Accordion title="string / string[]">
-- `length`: String length (default: TEXT)
-- Example: `length: 255` → `VARCHAR(255)`
+  - `length`: String length (default: TEXT) - Example: `length: 255` → `VARCHAR(255)`
 </Accordion>
 
 <Accordion title="number / number[]">
-- `precision`: Total digits
-- `scale`: Decimal places  
-- `numberType`: `real` | `double precision` | `numeric` (default: numeric)
-- Example: `precision: 10, scale: 2` → `NUMERIC(10, 2)`
+  - `precision`: Total digits - `scale`: Decimal places - `numberType`: `real` | `double precision`
+  | `numeric` (default: numeric) - Example: `precision: 10, scale: 2` → `NUMERIC(10, 2)`
 </Accordion>
 
 <Accordion title="numeric / numeric[]">
-- `precision`: Total digits
-- `scale`: Decimal places
-- Note: Processed as `string` type in TypeScript (maintains precision)
+  - `precision`: Total digits - `scale`: Decimal places - Note: Processed as `string` type in
+  TypeScript (maintains precision)
 </Accordion>
 
 <Accordion title="enum / enum[]">
-- `id`: Enum type ID (e.g., `UserRole`)
-- Enums are defined in a separate **Enums** section
+  - `id`: Enum type ID (e.g., `UserRole`) - Enums are defined in a separate **Enums** section
 </Accordion>
 
 <Accordion title="json">
-- `id`: JSON schema type ID
-- Define TypeScript type in `{entity}.types.ts`
+  - `id`: JSON schema type ID - Define TypeScript type in `{entity}.types.ts`
 </Accordion>
 
 <Accordion title="vector / vector[]">
-- `dimensions`: Vector dimensions (e.g., 1536)
-- Requires pgvector extension
+  - `dimensions`: Vector dimensions (e.g., 1536) - Requires pgvector extension
 </Accordion>
 
 <Accordion title="virtual">
-- `id`: Virtual type ID
-- `virtualType`: `code` | `query`
-  - `code`: Calculated with TypeScript code (default)
-  - `query`: Calculated with SQL query
-- Computed field not stored in database
+  - `id`: Virtual type ID - `virtualType`: `code` | `query` - `code`: Calculated with TypeScript
+  code (default) - `query`: Calculated with SQL query - Computed field not stored in database
 </Accordion>
 
 <Accordion title="relation">
@@ -185,32 +163,28 @@ Click **"Save"** button after completing input
 
 <Tabs>
   <Tab title="Edit">
-    - **Double-click** the row to edit in Props list or press `Enter`
-    - Or select row and click **"Edit"** button on the right
-    - Edit values in form and save
+    - **Double-click** the row to edit in Props list or press `Enter` - Or select row and click
+    **"Edit"** button on the right - Edit values in form and save
   </Tab>
   <Tab title="Delete">
-    - Select the row to delete in Props list
-    - Use `Cmd+Backspace` shortcut
-    - Or click **"Delete"** button on the right
-    - Confirm deletion in confirmation dialog
+    - Select the row to delete in Props list - Use `Cmd+Backspace` shortcut - Or click **"Delete"**
+    button on the right - Confirm deletion in confirmation dialog
   </Tab>
   <Tab title="Reorder">
-    - **Drag and drop** rows in Props list to change order
-    - Changed order is saved immediately
+    - **Drag and drop** rows in Props list to change order - Changed order is saved immediately
   </Tab>
 </Tabs>
 
 <Warning>
-When you delete Props, the column is automatically removed from all Subsets. This cannot be undone, so be careful.
+  When you delete Props, the column is automatically removed from all Subsets. This cannot be
+  undone, so be careful.
 </Warning>
 
 ### Indexes Sheet
 
 Manages database indexes.
 
-<Frame caption="📸 Needed: Indexes sheet screen">
-</Frame>
+<Frame caption="📸 Needed: Indexes sheet screen"></Frame>
 
 #### Adding an Index
 
@@ -237,6 +211,7 @@ Click **"Add Index"** button or use `Ctrl+Cmd+Shift+N` in Indexes sheet
   - `gist`
 
 **Additional Vector Index Options**:
+
 - `vectorOps`: Distance operator
   - `vector_cosine_ops`: Cosine distance (recommended)
   - `vector_ip_ops`: Inner product distance
@@ -244,22 +219,19 @@ Click **"Add Index"** button or use `Ctrl+Cmd+Shift+N` in Indexes sheet
 - `m`: HNSW graph connections (default: 16)
 - `efConstruction`: HNSW construction quality (default: 64)
 - `lists`: IVFFlat cluster count (default: 100)
-</Step>
-</Steps>
+  </Step>
+  </Steps>
 
 <Tip>
-**Index Naming Convention**:
-- Regular index: `{table}_{columns}_idx`
-- Unique index: `{table}_{columns}_unique`
-- Example: `users_email_unique`, `posts_created_at_idx`
+  **Index Naming Convention**: - Regular index: `{table}_{columns}_idx` - Unique index: `{table}_
+  {columns}_unique` - Example: `users_email_unique`, `posts_created_at_idx`
 </Tip>
 
 ### Subsets Sheet
 
 Defines field combinations for API responses.
 
-<Frame caption="📸 Needed: Subsets sheet screen - selecting fields in tree structure">
-</Frame>
+<Frame caption="📸 Needed: Subsets sheet screen - selecting fields in tree structure"></Frame>
 
 #### Adding Subset Keys
 
@@ -281,36 +253,29 @@ Click **"Add Subset"** button to add new subset key
 
 <Tabs>
   <Tab title="Regular Fields">
-    - Click checkboxes to include/exclude fields
-    - Same field can be selected in multiple subsets
+    - Click checkboxes to include/exclude fields - Same field can be selected in multiple subsets
   </Tab>
   <Tab title="Relation Fields">
-    - Relation fields are displayed as **tree structure**
-    - Click arrow icon to expand/collapse
-    - Child Entity fields can also be selected
-    - Example: `employee.department.name`
-    
-    <Info>
-    When you select Relation fields, Sonamu automatically generates JOIN queries.
-    </Info>
+    - Relation fields are displayed as **tree structure** - Click arrow icon to expand/collapse -
+    Child Entity fields can also be selected - Example: `employee.department.name`
+    <Info>When you select Relation fields, Sonamu automatically generates JOIN queries.</Info>
   </Tab>
   <Tab title="Internal Fields">
-    - Right-click a field and select **"Mark as Internal"**
-    - Internal fields are included in types but excluded from regular queries
-    - Used for fields only needed by Loaders or special cases
+    - Right-click a field and select **"Mark as Internal"** - Internal fields are included in types
+    but excluded from regular queries - Used for fields only needed by Loaders or special cases
   </Tab>
 </Tabs>
 
 <Warning>
-If you select the parent Relation, you cannot individually select child fields. Select either all or specific fields only.
+  If you select the parent Relation, you cannot individually select child fields. Select either all
+  or specific fields only.
 </Warning>
 
 ### Enums Section
 
 Defines Enum type keys and labels.
 
-<Frame caption="📸 Needed: Enums section screen - multiple Enums separated by tabs">
-</Frame>
+<Frame caption="📸 Needed: Enums section screen - multiple Enums separated by tabs"></Frame>
 
 #### Adding an Enum
 
@@ -350,9 +315,11 @@ Each Enum is displayed as a separate tab, composed of key-label pairs.
   }
 }
 ```
+
 </CodeGroup>
 
 **How to Add Enum Values**:
+
 - Click **"Add Row"** button
 - Or use `Ctrl+Cmd+Shift+N` in Enum tab
 - Enter Key and Label
@@ -360,10 +327,9 @@ Each Enum is displayed as a separate tab, composed of key-label pairs.
   - Label: Display text
 
 <Tip>
-**Common Enum Patterns**:
-- `{Entity}OrderBy`: Sort options (e.g., `id-desc`, `created_at-desc`)
-- `{Entity}SearchField`: Search fields (e.g., `email`, `username`)
-- `{Entity}Status`: Status (e.g., `active`, `inactive`, `deleted`)
+  **Common Enum Patterns**: - `{Entity}OrderBy`: Sort options (e.g., `id-desc`, `created_at-desc`) -
+  `{Entity}SearchField`: Search fields (e.g., `email`, `username`) - `{Entity}Status`: Status (e.g.,
+  `active`, `inactive`, `deleted`)
 </Tip>
 
 ## Keyboard Shortcuts
@@ -372,42 +338,41 @@ Sonamu UI provides various shortcuts for efficient work.
 
 ### Global Shortcuts
 
-| Shortcut | Function |
-|----------|----------|
-| `Cmd+S` | Save current Entity |
-| `Cmd+K` | Enter search mode |
-| `Tab` | Move to next sheet |
-| `Shift+Tab` | Move to previous sheet |
-| `Esc` | Close dialog / Deselect |
+| Shortcut    | Function                |
+| ----------- | ----------------------- |
+| `Cmd+S`     | Save current Entity     |
+| `Cmd+K`     | Enter search mode       |
+| `Tab`       | Move to next sheet      |
+| `Shift+Tab` | Move to previous sheet  |
+| `Esc`       | Close dialog / Deselect |
 
 ### Props/Indexes Sheet
 
-| Shortcut | Function |
-|----------|----------|
-| `Ctrl+Cmd+Shift+N` | Add new item |
-| `Enter` | Edit selected item |
-| `Cmd+Backspace` | Delete selected item |
-| `↑` `↓` | Move selection |
-| `Cmd+↑` `Cmd+↓` | Change item order |
+| Shortcut           | Function             |
+| ------------------ | -------------------- |
+| `Ctrl+Cmd+Shift+N` | Add new item         |
+| `Enter`            | Edit selected item   |
+| `Cmd+Backspace`    | Delete selected item |
+| `↑` `↓`            | Move selection       |
+| `Cmd+↑` `Cmd+↓`    | Change item order    |
 
 ### Search Mode
 
-| Shortcut | Function |
-|----------|----------|
-| `Cmd+K` | Start search |
-| Typing | Auto-move to matching item |
-| `Enter` | Complete search |
-| `Esc` | Cancel search |
+| Shortcut | Function                   |
+| -------- | -------------------------- |
+| `Cmd+K`  | Start search               |
+| Typing   | Auto-move to matching item |
+| `Enter`  | Complete search            |
+| `Esc`    | Cancel search              |
 
 <Tip>
-In search mode, the cursor immediately moves to matching items as you type. Use it for quick navigation!
+  In search mode, the cursor immediately moves to matching items as you type. Use it for quick
+  navigation!
 </Tip>
 
 ## Deleting an Entity
 
-<Warning>
-Entity deletion **cannot be undone**. Always backup before proceeding.
-</Warning>
+<Warning>Entity deletion **cannot be undone**. Always backup before proceeding.</Warning>
 
 <Steps>
 <Step title="Select Entity">
@@ -415,7 +380,7 @@ Navigate to the detail page of the Entity to delete
 </Step>
 
 <Step title="Click Delete Entity Button">
-Click the **"Delete Entity"** button in the top right
+  Click the **"Delete Entity"** button in the top right
 </Step>
 
 <Step title="Confirm">
@@ -424,6 +389,7 @@ Enter the exact Entity ID in the confirmation dialog to confirm deletion
 </Steps>
 
 **Impact of Deletion**:
+
 - `{entity}.entity.json` file deleted
 - Related Model, Types files need to be deleted manually
 - Database table should be deleted separately through migration
@@ -447,9 +413,7 @@ When you save an Entity, the following files are generated:
   </FileTree.Folder>
 </FileTree>
 
-<Note>
-Highlighted files are auto-generated by Sonamu.
-</Note>
+<Note>Highlighted files are auto-generated by Sonamu.</Note>
 
 ## Real-time Validation
 
@@ -457,29 +421,21 @@ Sonamu UI validates input immediately:
 
 <Tabs>
   <Tab title="Props">
-    - Reserved word check (JavaScript/TypeScript keywords)
-    - Type-specific required option check
-    - Duplicate name check
+    - Reserved word check (JavaScript/TypeScript keywords) - Type-specific required option check -
+    Duplicate name check
   </Tab>
   <Tab title="Indexes">
-    - Index name length check (max 63 chars)
-    - Duplicate index check
-    - Column existence check
+    - Index name length check (max 63 chars) - Duplicate index check - Column existence check
   </Tab>
-  <Tab title="Subsets">
-    - Invalid field reference check
-    - Relation depth check
-  </Tab>
+  <Tab title="Subsets">- Invalid field reference check - Relation depth check</Tab>
   <Tab title="Enums">
-    - Key format check (lowercase, numbers, underscores)
-    - Duplicate key check
+    - Key format check (lowercase, numbers, underscores) - Duplicate key check
   </Tab>
 </Tabs>
 
 Errors are displayed with a **red border** and error message.
 
-<Frame caption="📸 Needed: Validation error display example">
-</Frame>
+<Frame caption="📸 Needed: Validation error display example"></Frame>
 
 ## Auto-Completion Features
 
@@ -487,21 +443,19 @@ Sonamu UI provides context-appropriate auto-completion:
 
 <AccordionGroup>
   <Accordion title="When Entering Entity ID">
-    - Existing Entity list suggested
-    - Filtered as you type
+    - Existing Entity list suggested - Filtered as you type
   </Accordion>
-  
-  <Accordion title="When Configuring Relations">
-    - Auto-complete available Entity list in `with` field
-  </Accordion>
-  
-  <Accordion title="When Entering Type ID">
-    - Type suggestions in `id` field for JSON, Virtual types
-  </Accordion>
-  
+
+<Accordion title="When Configuring Relations">
+  - Auto-complete available Entity list in `with` field
+</Accordion>
+
+<Accordion title="When Entering Type ID">
+  - Type suggestions in `id` field for JSON, Virtual types
+</Accordion>
+
   <Accordion title="When Entering Enum ID">
-    - Defined Enum list suggested
-    - New Enum creation option provided
+    - Defined Enum list suggested - New Enum creation option provided
   </Accordion>
 </AccordionGroup>
 
@@ -519,7 +473,11 @@ After learning the basics of Sonamu UI, learn the following topics:
   <Card title="Migrations" icon="database" href="/en/database/migrations/running-migrations">
     Running generated migrations
   </Card>
-  <Card title="Scaffolding" icon="wand-magic-sparkles" href="/en/tools-and-cli/scaffolding/generate-code">
+  <Card
+    title="Scaffolding"
+    icon="wand-magic-sparkles"
+    href="/en/tools-and-cli/scaffolding/generate-code"
+  >
     Auto-generating Model and Types files
   </Card>
 </CardGroup>

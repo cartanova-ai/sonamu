@@ -9,24 +9,16 @@ Learn how to efficiently manage test data using Sonamu's Fixture system.
 
 <CardGroup cols={2}>
   <Card title="Fixture Loader" icon="box">
-    Test data reuse
-    
-    Type-safe loading
+    Test data reuse Type-safe loading
   </Card>
   <Card title="Fixture Manager" icon="database">
-    Copy data between DBs
-    
-    Auto relationship handling
+    Copy data between DBs Auto relationship handling
   </Card>
   <Card title="Easy Setup" icon="wand-magic-sparkles">
-    Define once
-    
-    Share across tests
+    Define once Share across tests
   </Card>
   <Card title="Auto Cleanup" icon="broom">
-    Transaction based
-    
-    Auto rollback
+    Transaction based Auto rollback
   </Card>
 </CardGroup>
 
@@ -53,7 +45,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   user02: async () => {
     const userModel = new UserModel();
     const { user } = await userModel.create({
@@ -63,7 +55,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   admin: async () => {
     const userModel = new UserModel();
     const { user } = await userModel.create({
@@ -74,7 +66,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   // Post fixtures
   post01: async () => {
     const postModel = new PostModel();
@@ -102,11 +94,11 @@ bootstrap(vi);
 test("Get user's posts", async () => {
   // Load fixtures
   const { user01, post01 } = await loadFixtures(["user01", "post01"]);
-  
+
   // Test
   const postModel = new PostModel();
   const { posts } = await postModel.getPostsByUser(user01.id);
-  
+
   expect(posts).toHaveLength(1);
   expect(posts[0].id).toBe(post01.id);
 });
@@ -114,7 +106,7 @@ test("Get user's posts", async () => {
 test("Admin permission test", async () => {
   // Load only needed fixtures
   const { admin } = await loadFixtures(["admin"]);
-  
+
   expect(admin.role).toBe("admin");
 });
 ```
@@ -122,6 +114,7 @@ test("Admin permission test", async () => {
 ### Benefits
 
 **Type safety**:
+
 ```typescript
 // ✅ Type safe: IDE provides auto-completion
 const { user01 } = await loadFixtures(["user01"]);
@@ -132,6 +125,7 @@ const { user999 } = await loadFixtures(["user999"]); // Type error!
 ```
 
 **Reusability**:
+
 ```typescript
 // Use same fixture in multiple tests
 test("Test 1", async () => {
@@ -146,6 +140,7 @@ test("Test 2", async () => {
 ```
 
 **Selective loading**:
+
 ```typescript
 // Load only what's needed
 const { user01, user02 } = await loadFixtures(["user01", "user02"]);
@@ -169,11 +164,11 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   authorPost: async () => {
     // Load author fixture first
     const { author } = await loadFixtures(["author"]);
-    
+
     const postModel = new PostModel();
     const { post } = await postModel.create({
       title: "Author's Post",
@@ -189,7 +184,7 @@ export const loadFixtures = createFixtureLoader({
 // Using in test
 test("Author and post relationship", async () => {
   const { author, authorPost } = await loadFixtures(["author", "authorPost"]);
-  
+
   expect(authorPost.author_id).toBe(author.id);
 });
 ```
@@ -209,12 +204,12 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   // Create multiple data
   users10: async () => {
     const userModel = new UserModel();
     const users = [];
-    
+
     for (let i = 1; i <= 10; i++) {
       const { user } = await userModel.create({
         username: `user${i}`,
@@ -223,7 +218,7 @@ export const loadFixtures = createFixtureLoader({
       });
       users.push(user);
     }
-    
+
     return users;
   },
 });
@@ -236,6 +231,7 @@ export const loadFixtures = createFixtureLoader({
 `FixtureManager` provides functionality to copy real data from production DB to test DB.
 
 **Key features**:
+
 - Extract data from Production → Fixture DB
 - Sync Fixture DB → Test DB
 - Auto relationship resolution (BelongsTo, HasMany, ManyToMany)
@@ -254,6 +250,7 @@ await FixtureManager.sync();
 ```
 
 **Execution process**:
+
 1. Initialize Test DB (delete existing data)
 2. Fixture DB dump (`pg_dump`)
 3. Restore to Test DB (`pg_restore`)
@@ -275,6 +272,7 @@ await FixtureManager.importFixture("User", [1, 2, 3]);
 ```
 
 **Auto relationship resolution**:
+
 ```typescript
 // Even if only User ID 1 requested...
 await FixtureManager.importFixture("User", [1]);
@@ -309,7 +307,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   // 2. Multiple data
   testUsers: async () => {
     const userModel = new UserModel();
@@ -327,18 +325,18 @@ export const loadFixtures = createFixtureLoader({
     ]);
     return users.map(({ user }) => user);
   },
-  
+
   // 3. Data with relationships
   userWithPosts: async () => {
     const userModel = new UserModel();
     const postModel = new PostModel();
-    
+
     const { user } = await userModel.create({
       username: "blogger",
       email: "blogger@example.com",
       password: "password",
     });
-    
+
     const posts = await Promise.all([
       postModel.create({
         title: "Post 1",
@@ -351,7 +349,7 @@ export const loadFixtures = createFixtureLoader({
         author_id: user.id,
       }),
     ]);
-    
+
     return {
       user,
       posts: posts.map(({ post }) => post),
@@ -375,19 +373,19 @@ test("Create and retrieve comments", async () => {
   // Load needed fixtures
   const { userWithPosts } = await loadFixtures(["userWithPosts"]);
   const { user, posts } = userWithPosts;
-  
+
   const commentModel = new CommentModel();
-  
+
   // Create comment
   const { comment } = await commentModel.create({
     content: "Great post!",
     post_id: posts[0].id,
     author_id: user.id,
   });
-  
+
   // Get comments
   const { comments } = await commentModel.getCommentsByPost(posts[0].id);
-  
+
   expect(comments).toHaveLength(1);
   expect(comments[0].content).toBe("Great post!");
   expect(comments[0].author_id).toBe(user.id);
@@ -401,17 +399,31 @@ test("Create and retrieve comments", async () => {
 ```typescript
 // ✅ Correct: Clear names
 export const loadFixtures = createFixtureLoader({
-  adminUser: async () => { /* ... */ },
-  guestUser: async () => { /* ... */ },
-  publishedPost: async () => { /* ... */ },
-  draftPost: async () => { /* ... */ },
+  adminUser: async () => {
+    /* ... */
+  },
+  guestUser: async () => {
+    /* ... */
+  },
+  publishedPost: async () => {
+    /* ... */
+  },
+  draftPost: async () => {
+    /* ... */
+  },
 });
 
 // ❌ Wrong: Unclear names
 export const loadFixtures = createFixtureLoader({
-  user1: async () => { /* ... */ },
-  user2: async () => { /* ... */ },
-  post1: async () => { /* ... */ },
+  user1: async () => {
+    /* ... */
+  },
+  user2: async () => {
+    /* ... */
+  },
+  post1: async () => {
+    /* ... */
+  },
 });
 ```
 
@@ -441,7 +453,9 @@ export const loadFixtures = createFixtureLoader({
       password: "password",
       bio: "Long bio...",
       avatar: "https://...",
-      preferences: { /* ... */ },
+      preferences: {
+        /* ... */
+      },
       // ... too many fields
     });
     return user;
@@ -463,7 +477,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   userPost: async () => {
     const { user } = await loadFixtures(["user"]);
     const postModel = new PostModel();
@@ -480,12 +494,10 @@ export const loadFixtures = createFixtureLoader({
 ## Cautions
 
 <Warning>
-**Cautions when using Fixtures**:
-1. **Transaction based**: Auto rollback for each test
-2. **Minimal data**: Create only minimum data needed for tests
-3. **Independence**: Each test should run independently
-4. **Type safety**: Ensure type safety with createFixtureLoader
-5. **Clear names**: Fixture names should clearly express purpose
+  **Cautions when using Fixtures**: 1. **Transaction based**: Auto rollback for each test 2.
+  **Minimal data**: Create only minimum data needed for tests 3. **Independence**: Each test should
+  run independently 4. **Type safety**: Ensure type safety with createFixtureLoader 5. **Clear
+  names**: Fixture names should clearly express purpose
 </Warning>
 
 ## Next Steps
@@ -494,7 +506,11 @@ export const loadFixtures = createFixtureLoader({
   <Card title="Test Structure" icon="sitemap" href="/en/testing/writing-tests/test-structure">
     bootstrap, test, testAs
   </Card>
-  <Card title="Test Scaffolding" icon="wand-magic-sparkles" href="/en/testing/writing-tests/scaffolding-tests">
+  <Card
+    title="Test Scaffolding"
+    icon="wand-magic-sparkles"
+    href="/en/testing/writing-tests/scaffolding-tests"
+  >
     Auto test generation
   </Card>
   <Card title="Model System" icon="cube" href="/en/core-concepts/model-system/overview">

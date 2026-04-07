@@ -11,24 +11,16 @@ Business logic is the core rules and processes of an application:
 
 <CardGroup cols={2}>
   <Card title="Data Validation" icon="circle-check">
-    Input value validation
-    
-    Duplicate checks, format validation
+    Input value validation Duplicate checks, format validation
   </Card>
   <Card title="Data Transformation" icon="arrows-rotate">
-    Data processing and calculation
-    
-    Encryption, format conversion
+    Data processing and calculation Encryption, format conversion
   </Card>
   <Card title="Domain Rules" icon="scale-balanced">
-    Business constraints
-    
-    Permissions, state transition rules
+    Business constraints Permissions, state transition rules
   </Card>
   <Card title="Workflows" icon="diagram-project">
-    Complex processes
-    
-    Orchestrating multi-step operations
+    Complex processes Orchestrating multi-step operations
   </Card>
 </CardGroup>
 
@@ -66,16 +58,17 @@ class UserModelClass extends BaseModelClass {
 // ❌ Don't write business logic in API layer
 app.post("/user/save", async (req, res) => {
   const params = req.body;
-  
+
   // ❌ Validation logic here cannot be reused
   if (params.age < 18) {
     return res.status(400).json({ error: "..." });
   }
-  
+
   // ❌ Same logic needs to be repeated in other APIs
   await UserModel.save(params);
 });
 ```
+
 </CodeGroup>
 
 ### 2. Type Safety
@@ -86,14 +79,17 @@ Validate types with Zod schemas.
 export const UserSaveParams = z.object({
   id: z.number().optional(),
   email: z.string().email("Invalid email format"),
-  username: z.string()
+  username: z
+    .string()
     .min(2, "Name must be at least 2 characters")
     .max(50, "Name can be up to 50 characters"),
-  age: z.number()
+  age: z
+    .number()
     .int("Age must be an integer")
     .min(0, "Age must be 0 or greater")
     .max(150, "Invalid age"),
-  password: z.string()
+  password: z
+    .string()
     .min(8, "Password must be at least 8 characters")
     .regex(/[A-Z]/, "Must contain uppercase letter")
     .regex(/[0-9]/, "Must contain number"),
@@ -122,7 +118,7 @@ async createUserWithProfile(
   const [profileId] = await ProfileModel.save([
     { ...profileData, user_id: userId }
   ]);
-  
+
   // Auto commit on success
   // Auto rollback on failure
   return { userId, profileId };
@@ -141,14 +137,14 @@ async save(params: UserSaveParams[]): Promise<number[]> {
       .where("email", param.email)
       .whereNot("id", param.id ?? 0)  // Exclude self when updating
       .first();
-      
+
     if (existing) {
       throw new BadRequestException(
         `Email already in use: ${param.email}`
       );
     }
   }
-  
+
   // Save...
 }
 ```
@@ -164,7 +160,7 @@ async save(params: UserSaveParams[]): Promise<number[]> {
         "Email verification required"
       );
     }
-    
+
     // Only admins can change other users' roles
     if (param.role && param.role !== "normal") {
       const context = Sonamu.getContext();
@@ -175,7 +171,7 @@ async save(params: UserSaveParams[]): Promise<number[]> {
       }
     }
   }
-  
+
   // Save...
 }
 ```
@@ -189,17 +185,17 @@ async save(params: ProductSaveParams[]): Promise<number[]> {
     if (param.price < 0) {
       throw new BadRequestException("Price must be 0 or greater");
     }
-    
+
     if (param.price > 1000000) {
       throw new BadRequestException("Price must be 1,000,000 or less");
     }
-    
+
     // Discount rate validation
     if (param.discount_rate && (param.discount_rate < 0 || param.discount_rate > 100)) {
       throw new BadRequestException("Discount rate must be between 0-100");
     }
   }
-  
+
   // Save...
 }
 ```
@@ -215,10 +211,10 @@ async save(params: UserSaveParams[]): Promise<number[]> {
     ...p,
     password: bcrypt.hashSync(p.password, 10),
   }));
-  
+
   const wdb = this.getPuri("w");
   hashedParams.forEach(p => wdb.ubRegister("users", p));
-  
+
   return wdb.transaction(async (trx) => {
     return trx.ubUpsert("users");
   });
@@ -236,7 +232,7 @@ async save(params: UserSaveParams[]): Promise<number[]> {
     username: p.username.trim(),           // Trim whitespace
     phone: p.phone?.replace(/[^0-9]/g, ""), // Numbers only for phone
   }));
-  
+
   // Save...
 }
 ```
@@ -251,7 +247,7 @@ async save(params: ProductSaveParams[]): Promise<number[]> {
     discounted_price: p.price * (1 - (p.discount_rate ?? 0) / 100),
     final_price: Math.floor(p.price * (1 - (p.discount_rate ?? 0) / 100)),
   }));
-  
+
   // Save...
 }
 ```
@@ -275,7 +271,7 @@ async updateStatus(
   newStatus: OrderStatus
 ): Promise<void> {
   const order = await this.findById("A", orderId);
-  
+
   // Validate state transition
   const allowedTransitions = OrderStatusTransitions[order.status];
   if (!allowedTransitions.includes(newStatus)) {
@@ -283,7 +279,7 @@ async updateStatus(
       `Cannot change from ${order.status} to ${newStatus}`
     );
   }
-  
+
   // Change status
   await this.getPuri("w")
     .table("orders")
@@ -301,7 +297,7 @@ async updateStatus(
 ): Promise<void> {
   const context = Sonamu.getContext();
   const order = await this.findById("A", orderId);
-  
+
   // Permission validation
   if (newStatus === "cancelled") {
     // Users can only cancel pending orders
@@ -311,7 +307,7 @@ async updateStatus(
       );
     }
   }
-  
+
   if (newStatus === "delivered") {
     // Only delivery staff can mark as delivered
     if (context.user?.role !== "delivery") {
@@ -320,7 +316,7 @@ async updateStatus(
       );
     }
   }
-  
+
   // Change status...
 }
 ```
@@ -335,20 +331,20 @@ async findMany<T extends UserSubsetKey>(
   params: UserListParams
 ): Promise<ListResult<UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
-  
+
   // Conditional filtering
   if (params.role) {
     qb.whereIn("users.role", asArray(params.role));
   }
-  
+
   if (params.is_active !== undefined) {
     qb.where("users.is_active", params.is_active);
   }
-  
+
   if (params.created_after) {
     qb.where("users.created_at", ">=", params.created_after);
   }
-  
+
   if (params.keyword) {
     qb.where((builder) => {
       builder
@@ -356,7 +352,7 @@ async findMany<T extends UserSubsetKey>(
         .orWhereLike("users.username", `%${params.keyword}%`);
     });
   }
-  
+
   // Execute...
   return this.executeSubsetQuery({ subset, qb, params });
 }
@@ -367,7 +363,7 @@ async findMany<T extends UserSubsetKey>(
 ```typescript
 async findUsersWithStats(): Promise<UserWithStats[]> {
   const rdb = this.getDB("r");
-  
+
   return rdb("users")
     .select([
       "users.*",
@@ -386,7 +382,7 @@ async findUsersWithStats(): Promise<UserWithStats[]> {
 ```typescript
 async findTopUsers(limit: number): Promise<User[]> {
   const rdb = this.getDB("r");
-  
+
   const subquery = rdb("orders")
     .select("user_id")
     .sum("total_price as total_spent")
@@ -394,7 +390,7 @@ async findTopUsers(limit: number): Promise<User[]> {
     .orderBy("total_spent", "desc")
     .limit(limit)
     .as("top_users");
-  
+
   return rdb("users")
     .select("users.*", "top_users.total_spent")
     .joinRaw("JOIN ? ON users.id = top_users.user_id", [subquery]);
@@ -417,18 +413,18 @@ async transferPoints(
   if (fromUser.points < points) {
     throw new BadRequestException("Insufficient points");
   }
-  
+
   await this.getPuri("w")
     .table("users")
     .where("id", fromUserId)
     .decrement("points", points);
-  
+
   // Add points
   await this.getPuri("w")
     .table("users")
     .where("id", toUserId)
     .increment("points", points);
-  
+
   // Both succeed or both rollback
 }
 ```
@@ -438,23 +434,23 @@ async transferPoints(
 ```typescript
 async complexOperation(): Promise<void> {
   const wdb = this.getPuri("w");
-  
+
   await wdb.transaction(async (trx) => {
     // Step 1
     const [userId] = await trx
       .table("users")
       .insert({ email: "test@test.com" });
-    
+
     // Step 2
     await trx
       .table("profiles")
       .insert({ user_id: userId, bio: "Hello" });
-    
+
     // Step 3
     await trx
       .table("settings")
       .insert({ user_id: userId, theme: "dark" });
-    
+
     // Commit if all succeed
     // Rollback entire transaction if any fails
   });
@@ -468,7 +464,7 @@ async complexOperation(): Promise<void> {
 async outerTransaction(): Promise<void> {
   // Outer transaction
   await this.save([{ email: "user1@test.com" }]);
-  
+
   // Inner transaction (reuses same transaction)
   await this.innerTransaction();
 }
@@ -489,26 +485,26 @@ async login(params: LoginParams): Promise<{ user: User }> {
   const user = await this.puri()
     .where("email", params.email)
     .first();
-  
+
   if (!user) {
     throw new UnauthorizedException(
       "Email or password does not match"
     );
   }
-  
+
   const isValid = await bcrypt.compare(params.password, user.password);
   if (!isValid) {
     throw new UnauthorizedException(
       "Email or password does not match"
     );
   }
-  
+
   if (!user.is_verified) {
     throw new ForbiddenException(
       "Email verification not complete. Please check your verification email."
     );
   }
-  
+
   return { user };
 }
 ```
@@ -525,11 +521,11 @@ class InsufficientPointsException extends BadRequestException {
 async purchaseItem(userId: number, itemId: number): Promise<void> {
   const user = await this.findById("A", userId);
   const item = await ItemModel.findById("A", itemId);
-  
+
   if (user.points < item.price) {
     throw new InsufficientPointsException(item.price, user.points);
   }
-  
+
   // Process purchase...
 }
 ```
@@ -547,7 +543,7 @@ async getUserDashboard(userId: number): Promise<Dashboard> {
     CommentModel.findMany("SS", { user_id: userId, num: 10 }),
     FollowerModel.countFollowers(userId),
   ]);
-  
+
   return {
     user,
     posts: posts.rows,
@@ -563,16 +559,16 @@ async getUserDashboard(userId: number): Promise<Dashboard> {
 async processOrder(orderId: number): Promise<void> {
   // Execute sequentially
   const order = await this.findById("A", orderId);
-  
+
   // Check inventory
   await InventoryModel.checkStock(order.product_id, order.quantity);
-  
+
   // Process payment
   await PaymentModel.charge(order.user_id, order.total_price);
-  
+
   // Confirm order
   await this.updateStatus(orderId, "confirmed");
-  
+
   // Start shipping
   await DeliveryModel.startShipping(orderId);
 }
@@ -587,7 +583,11 @@ async processOrder(orderId: number): Promise<void> {
   <Card title="Puri Query Builder" icon="database" href="/en/database/puri/basic-queries">
     Writing type-safe queries
   </Card>
-  <Card title="Transactions" icon="arrows-rotate" href="/en/database/transactions/using-transactions">
+  <Card
+    title="Transactions"
+    icon="arrows-rotate"
+    href="/en/database/transactions/using-transactions"
+  >
     Detailed transaction guide
   </Card>
   <Card title="Testing" icon="flask" href="/en/testing/model-testing/unit-tests">

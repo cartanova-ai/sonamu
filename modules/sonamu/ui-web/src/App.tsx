@@ -1,11 +1,13 @@
 import { CommonModal } from "@sonamu-kit/react-components";
 import { Link, useLocation } from "@tanstack/react-router";
 import classNames from "classnames";
-import type { ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useEffect, useState } from "react";
+
 import SearchModal from "./components/SearchModal";
 import { useSonamuContext } from "./contexts/sonamu-provider";
-import { type Locale, SUPPORTED_LOCALES, useLocale, useSetLocale } from "./i18n";
+import { SUPPORTED_LOCALES, useLocale, useSetLocale } from "./i18n";
+import { type Locale } from "./i18n";
 import { SonamuUIService } from "./services/sonamu-ui.service";
 
 interface AppProps {
@@ -32,7 +34,7 @@ function App({ children }: AppProps) {
   const [showSearch, setShowSearch] = useState(false);
   const [projectName, setProjectName] = useState<string | null>(null);
 
-  // biome-ignore lint/suspicious/noExplicitAny: 키보드 이벤트 호환되지 않아 any 처리
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 키보드 이벤트 호환되지 않아 any 처리
   const handleKeyDown = (event: any) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "k") {
       event.preventDefault();

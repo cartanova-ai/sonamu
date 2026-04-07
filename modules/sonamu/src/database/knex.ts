@@ -1,4 +1,4 @@
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 import knex from "knex";
 
 export function createKnexInstance(config: Knex.Config): Knex {
@@ -12,7 +12,7 @@ export function createKnexInstance(config: Knex.Config): Knex {
   }
 
   config.pool = {
-    ...(config.pool ?? {}),
+    ...config.pool,
     propagateCreateError: false,
     idleTimeoutMillis: 10000,
     reapIntervalMillis: 1000,

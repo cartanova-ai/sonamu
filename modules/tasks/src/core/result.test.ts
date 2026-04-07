@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+
 import { err, ok } from "./result";
 
 describe("Result helpers", () => {

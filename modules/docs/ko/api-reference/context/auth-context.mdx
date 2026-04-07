@@ -1,6 +1,6 @@
 ---
-title: 'AuthContext'
-description: 'Sonamu 인증 컨텍스트 레퍼런스'
+title: "AuthContext"
+description: "Sonamu 인증 컨텍스트 레퍼런스"
 ---
 
 AuthContext는 Context의 일부로, 사용자 인증 상태와 세션 정보를 제공합니다. [better-auth](https://www.better-auth.com/)를 기반으로 구현되어 있습니다.
@@ -23,7 +23,7 @@ type AuthContext = {
 ### user
 
 ```typescript
-user: User | null
+user: User | null;
 ```
 
 현재 인증된 사용자 정보입니다. 로그인하지 않은 경우 `null`입니다.
@@ -68,7 +68,7 @@ class UserModelClass extends BaseModelClass {
 ### session
 
 ```typescript
-session: Session | null
+session: Session | null;
 ```
 
 현재 세션 정보입니다. 로그인하지 않은 경우 `null`입니다.
@@ -191,7 +191,8 @@ export default {
 ```
 
 <Info>
-`guardHandler`는 AsyncLocalStorage 내부에서 실행되므로 `Sonamu.getContext()`를 통해 현재 요청의 Context에 접근할 수 있습니다.
+  `guardHandler`는 AsyncLocalStorage 내부에서 실행되므로 `Sonamu.getContext()`를 통해 현재 요청의
+  Context에 접근할 수 있습니다.
 </Info>
 
 ## User 타입 확장

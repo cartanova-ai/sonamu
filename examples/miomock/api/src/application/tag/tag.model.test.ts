@@ -1,7 +1,9 @@
 import assert from "assert";
+
 import { DB } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+
 import { ProjectModel } from "../project/project.model";
 import { TagModel } from "./tag.model";
 

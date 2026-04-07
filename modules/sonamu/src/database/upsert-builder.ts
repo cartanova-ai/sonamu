@@ -1,13 +1,20 @@
-import { getLogger } from "@logtape/logtape";
 import { randomUUID } from "crypto";
-import type { Knex } from "knex";
+
+import { getLogger } from "@logtape/logtape";
+import { type Knex } from "knex";
 import { cluster, isArray, unique } from "radashi";
+
 import { EntityManager } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
-import type { DatabaseForeignKeys, DatabaseSchemaExtend, EntityIndex } from "../types/types";
+import {
+  type DatabaseForeignKeys,
+  type DatabaseSchemaExtend,
+  type EntityIndex,
+} from "../types/types";
 import { assertDefined, nonNullable } from "../utils/utils";
-import { batchUpdate, type RowWithId } from "./_batch_update";
-import type { ColumnKeys, ForeignKeyColumns, IdType, TableName } from "./puri.types";
+import { batchUpdate } from "./_batch_update";
+import { type RowWithId } from "./_batch_update";
+import { type ColumnKeys, type ForeignKeyColumns, type IdType, type TableName } from "./puri.types";
 
 const logger = getLogger(["sonamu", "internal", "upsert-builder"]);
 
@@ -207,7 +214,7 @@ export class UpsertBuilder {
     mode: "upsert" | "insert",
     options?: UpsertOptions<TTable>,
   ): Promise<IdType<DatabaseSchemaExtend, TTable>[]> {
-    if (this.hasTable(tableName) === false) {
+    if (!this.hasTable(tableName)) {
       return [];
     }
 
@@ -496,7 +503,7 @@ export class UpsertBuilder {
       where: options?.where ?? "id",
     };
 
-    if (this.hasTable(tableName) === false) {
+    if (!this.hasTable(tableName)) {
       return;
     }
     const table = this.tables.get(tableName);

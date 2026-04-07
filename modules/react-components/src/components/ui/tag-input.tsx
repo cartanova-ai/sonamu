@@ -1,5 +1,6 @@
 import { useState } from "react";
 import XIcon from "~icons/lucide/x";
+
 import { Badge } from "./badge";
 
 export type TagInputProps = {

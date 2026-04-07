@@ -1,6 +1,6 @@
 ---
-title: '@stream'
-description: 'SSE Streaming API Creation Decorator'
+title: "@stream"
+description: "SSE Streaming API Creation Decorator"
 ---
 
 The `@stream` decorator creates real-time streaming APIs using Server-Sent Events (SSE).
@@ -15,18 +15,18 @@ const NotificationEventsSchema = z.object({
   message: z.object({
     id: z.number(),
     text: z.string(),
-    timestamp: z.date()
+    timestamp: z.date(),
   }),
   status: z.object({
     type: z.enum(["connected", "disconnected"]),
-    userId: z.number()
-  })
+    userId: z.number(),
+  }),
 });
 
 class NotificationModelClass extends BaseModelClass {
   @stream({
     type: "sse",
-    events: NotificationEventsSchema
+    events: NotificationEventsSchema,
   })
   async subscribe(userId: number) {
     const sse = Sonamu.getContext().createSSE(NotificationEventsSchema);
@@ -34,7 +34,7 @@ class NotificationModelClass extends BaseModelClass {
     // Connection started
     sse.publish("status", {
       type: "connected",
-      userId
+      userId,
     });
 
     // Send events periodically
@@ -42,7 +42,7 @@ class NotificationModelClass extends BaseModelClass {
       sse.publish("message", {
         id: Date.now(),
         text: "New notification",
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     }, 5000);
 
@@ -51,7 +51,7 @@ class NotificationModelClass extends BaseModelClass {
       clearInterval(interval);
       sse.publish("status", {
         type: "disconnected",
-        userId
+        userId,
       });
       await sse.end();
     }, 300000);
@@ -70,12 +70,10 @@ Specifies the streaming type.
 **Required option**
 
 ```typescript
-type: "sse"  // Server-Sent Events (currently the only option)
+type: "sse"; // Server-Sent Events (currently the only option)
 ```
 
-<Info>
-WebSocket support may be added in the future.
-</Info>
+<Info>WebSocket support may be added in the future.</Info>
 
 ### events
 
@@ -204,14 +202,15 @@ sse.publish("eventName", data);
 ```
 
 **Type safety:**
+
 - Event names must be defined in the schema
 - Data is automatically validated against the schema
 
 ```typescript
 const EventsSchema = z.object({
   message: z.object({
-    text: z.string()
-  })
+    text: z.string(),
+  }),
 });
 
 const sse = context.createSSE(EventsSchema);
@@ -220,8 +219,8 @@ const sse = context.createSSE(EventsSchema);
 sse.publish("message", { text: "Hello" });
 
 // ❌ Type error
-sse.publish("unknown", { text: "Hello" });  // 'unknown' not in schema
-sse.publish("message", { text: 123 });      // text must be string
+sse.publish("unknown", { text: "Hello" }); // 'unknown' not in schema
+sse.publish("message", { text: 123 }); // text must be string
 ```
 
 ### end
@@ -233,7 +232,7 @@ await sse.end();
 ```
 
 <Info>
-`end()` sends an "end" event to the client and closes the connection after waiting 200ms.
+  `end()` sends an "end" event to the client and closes the connection after waiting 200ms.
 </Info>
 
 ## Complete Example
@@ -246,16 +245,16 @@ const LogEventsSchema = z.object({
   log: z.object({
     level: z.enum(["info", "warn", "error"]),
     message: z.string(),
-    timestamp: z.string()
+    timestamp: z.string(),
   }),
   progress: z.object({
     current: z.number(),
-    total: z.number()
+    total: z.number(),
   }),
   complete: z.object({
     success: z.boolean(),
-    duration: z.number()
-  })
+    duration: z.number(),
+  }),
 });
 
 class TaskModelClass extends BaseModelClass {
@@ -264,7 +263,7 @@ class TaskModelClass extends BaseModelClass {
     events: LogEventsSchema,
     path: "/tasks/logs",
     guards: ["admin"],
-    description: "Streams task execution logs in real-time."
+    description: "Streams task execution logs in real-time.",
   })
   async streamLogs(taskId: number) {
     const sse = Sonamu.getContext().createSSE(LogEventsSchema);
@@ -274,7 +273,7 @@ class TaskModelClass extends BaseModelClass {
     sse.publish("log", {
       level: "info",
       message: "Task started",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // Execute task
@@ -285,7 +284,7 @@ class TaskModelClass extends BaseModelClass {
       // Send progress
       sse.publish("progress", {
         current: i,
-        total
+        total,
       });
 
       // Send logs
@@ -293,7 +292,7 @@ class TaskModelClass extends BaseModelClass {
         sse.publish("log", {
           level: "info",
           message: `Processed ${i}/${total} items`,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       }
     }
@@ -301,7 +300,7 @@ class TaskModelClass extends BaseModelClass {
     // Task complete
     sse.publish("complete", {
       success: true,
-      duration: Date.now() - startTime
+      duration: Date.now() - startTime,
     });
 
     // Close connection
@@ -312,7 +311,7 @@ class TaskModelClass extends BaseModelClass {
 
   private async processItem(index: number) {
     // Process task
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 }
 ```
@@ -336,9 +335,7 @@ async process() {
 }
 ```
 
-<Warning>
-Write `@stream` first, then `@transactional`.
-</Warning>
+<Warning>Write `@stream` first, then `@transactional`.</Warning>
 
 ## Constraints
 
@@ -352,6 +349,7 @@ async subscribe() {}
 ```
 
 **Error message:**
+
 ```
 @stream decorator can only be used once on NotificationModel.subscribe.
 You can use only one of @api or @stream decorator on the same method.
@@ -523,6 +521,7 @@ async subscribe() {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Progress Monitoring" icon="chart-line">
@@ -595,6 +594,7 @@ async subscribe() {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Real-time Data" icon="chart-candlestick">
@@ -654,6 +654,7 @@ async subscribe() {
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -668,21 +669,13 @@ async subscribe() {
     Create general API endpoints
   </Card>
 
-  <Card
-    title="@transactional"
-    icon="arrows-rotate"
-    href="/en/api-reference/decorators/transactional"
-  >
-    Ensure data consistency with transactions
-  </Card>
+<Card title="@transactional" icon="arrows-rotate" href="/en/api-reference/decorators/transactional">
+  Ensure data consistency with transactions
+</Card>
 
-  <Card
-    title="@cache"
-    icon="database"
-    href="/en/api-reference/decorators/cache"
-  >
-    Improve performance with result caching
-  </Card>
+<Card title="@cache" icon="database" href="/en/api-reference/decorators/cache">
+  Improve performance with result caching
+</Card>
 
   <Card
     title="SSE Guide"

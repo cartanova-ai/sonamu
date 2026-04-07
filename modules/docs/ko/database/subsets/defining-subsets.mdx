@@ -50,13 +50,7 @@ Subset은 Entity JSON 파일의 `subsets` 객체에서 정의합니다.
 ```json title="관계 필드 (점 표기법)"
 {
   "subsets": {
-    "P": [
-      "id",
-      "username",
-      "employee.id",
-      "employee.salary",
-      "employee.department.name"
-    ]
+    "P": ["id", "username", "employee.id", "employee.salary", "employee.department.name"]
   }
 }
 ```
@@ -70,6 +64,7 @@ Subset은 Entity JSON 파일의 `subsets` 객체에서 정의합니다.
   }
 }
 ```
+
 </CodeGroup>
 
 ## 관계 필드 선택
@@ -89,20 +84,14 @@ Subset은 Entity JSON 파일의 `subsets` 객체에서 정의합니다.
     }
   ],
   "subsets": {
-    "P": [
-      "id",
-      "username",
-      "employee.id",
-      "employee.employee_number",
-      "employee.salary"
-    ]
+    "P": ["id", "username", "employee.id", "employee.employee_number", "employee.salary"]
   }
 }
 ```
 
 <Info>
-OneToOne 관계는 **자동으로 LEFT JOIN**됩니다. 
-`employee.id`를 선택하면 `employees` 테이블이 조인됩니다.
+  OneToOne 관계는 **자동으로 LEFT JOIN**됩니다. `employee.id`를 선택하면 `employees` 테이블이
+  조인됩니다.
 </Info>
 
 ### 중첩 관계 (2단계 이상)
@@ -122,6 +111,7 @@ OneToOne 관계는 **자동으로 LEFT JOIN**됩니다.
 ```
 
 **SQL 결과**:
+
 ```sql
 SELECT
   users.id,
@@ -136,6 +126,7 @@ LEFT JOIN companies ON departments.company_id = companies.id
 ```
 
 **Hydrate 결과**:
+
 ```typescript
 {
   id: 1,
@@ -156,11 +147,11 @@ LEFT JOIN companies ON departments.company_id = companies.id
 flowchart LR
     A[SQL 결과<br/>Flat 데이터] --> B{Hydrate 변환}
     B --> C[중첩 객체<br/>employee.department.company]
-    
+
     A1["employee__salary
     employee__department__name
     employee__department__company__name"] -.-> A
-    
+
     C1["employee: {
       salary,
       department: {
@@ -168,7 +159,7 @@ flowchart LR
         company: { name }
       }
     }"] -.-> C
-    
+
     style A fill:#fff9c4
     style B fill:#e8f5e9
     style C fill:#e3f2fd
@@ -207,10 +198,8 @@ flowchart LR
 ```
 
 <Tip>
-**명명 팁**:
-- 짧고 명확한 이름 사용 (A, L, P 등)
-- 팀 내에서 일관된 규칙 유지
-- 도메인별로 의미 있는 이름 사용 가능
+  **명명 팁**: - 짧고 명확한 이름 사용 (A, L, P 등) - 팀 내에서 일관된 규칙 유지 - 도메인별로 의미
+  있는 이름 사용 가능
 </Tip>
 
 ## Subset 설계 원칙
@@ -245,14 +234,10 @@ flowchart LR
   "subsets": {
     // 목록 조회용
     "L": ["id", "username", "role", "created_at"],
-    
+
     // 상세 조회용 (관계 포함)
-    "P": [
-      "id", "username", "email", "bio",
-      "employee.salary",
-      "employee.department.name"
-    ],
-    
+    "P": ["id", "username", "email", "bio", "employee.salary", "employee.department.name"],
+
     // 드롭다운용
     "SS": ["id", "username"]
   }
@@ -284,10 +269,8 @@ flowchart LR
 ```
 
 <Info>
-**성능 팁**:
-- JOIN은 최소한으로 (필요한 관계만)
-- 목록 조회는 L Subset 사용 (관계 제외)
-- 상세 조회만 P Subset 사용 (관계 포함)
+  **성능 팁**: - JOIN은 최소한으로 (필요한 관계만) - 목록 조회는 L Subset 사용 (관계 제외) - 상세
+  조회만 P Subset 사용 (관계 포함)
 </Info>
 
 <Frame>
@@ -318,21 +301,10 @@ flowchart LR
     }
   ],
   "subsets": {
-    "A": [
-      "id", "created_at", "username", "email",
-      "role", "bio"
-    ],
-    "L": [
-      "id", "username", "role", "created_at"
-    ],
-    "P": [
-      "id", "username", "email", "bio",
-      "employee.salary",
-      "employee.department.name"
-    ],
-    "SS": [
-      "id", "username"
-    ]
+    "A": ["id", "created_at", "username", "email", "role", "bio"],
+    "L": ["id", "username", "role", "created_at"],
+    "P": ["id", "username", "email", "bio", "employee.salary", "employee.department.name"],
+    "SS": ["id", "username"]
   }
 }
 ```
@@ -347,8 +319,8 @@ pnpm sonamu generate
 ```
 
 <Warning>
-Subset을 변경하면 **반드시 Code Generation**을 실행해야 합니다.
-그래야 TypeScript 타입이 업데이트됩니다.
+  Subset을 변경하면 **반드시 Code Generation**을 실행해야 합니다. 그래야 TypeScript 타입이
+  업데이트됩니다.
 </Warning>
 
 **생성되는 타입**:
@@ -408,7 +380,11 @@ export type UserSubsetMapping = {
   <Card title="Entity 정의" icon="cube" href="/ko/core-concepts/entity/defining-entities">
     Entity 구조 이해하기
   </Card>
-  <Card title="Code Generation" icon="wand-magic-sparkles" href="/ko/auto-generation/code-generation">
+  <Card
+    title="Code Generation"
+    icon="wand-magic-sparkles"
+    href="/ko/auto-generation/code-generation"
+  >
     코드 자동 생성
   </Card>
 </CardGroup>

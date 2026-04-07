@@ -195,9 +195,7 @@ import { saveUser } from "@/services/services.generated";
 import type { UserSaveParams } from "@/services/user/user.types";
 
 // ✅ Type safe
-const params: UserSaveParams[] = [
-  { email: "john@test.com", age: 30, role: "admin" },
-];
+const params: UserSaveParams[] = [{ email: "john@test.com", age: 30, role: "admin" }];
 await saveUser(params);
 
 // ❌ Compile error
@@ -340,7 +338,7 @@ function UserForm() {
           // ids: number[]
           console.log("Created user IDs:", ids);
         },
-      }
+      },
     );
   };
 
@@ -427,15 +425,16 @@ import { useSaveUser } from "@/services/services.generated";
 import { UserSaveParams } from "@/services/user/user.types";
 
 function UserForm() {
-  const { mutate } = useSaveUser();
+const { mutate } = useSaveUser();
 
-  const handleSubmit = (values: UserSaveParams) => {
-    mutate([values]); // ✅ Type checked
-  };
+const handleSubmit = (values: UserSaveParams) => {
+mutate([values]); // ✅ Type checked
+};
 
-  return <form>...</form>;
+return <form>...</form>;
 }
-```
+
+````
 
 **Validation**: Compile time (TypeScript) + Runtime (Zod)
 </Step>
@@ -452,7 +451,7 @@ POST /user/save
 
 // Auto Zod validation
 const params = UserSaveParams.array().parse(request.body.params);
-```
+````
 
 **Validation**: Runtime validation with Zod schema
 
@@ -469,7 +468,8 @@ RETURNING id;
 -- - email: VARCHAR(100) NOT NULL
 -- - age: INTEGER NOT NULL
 -- - role: CHECK (role IN ('admin', 'normal'))
-```
+
+````
 
 **Validation**: PostgreSQL constraints
 </Step>
@@ -482,7 +482,7 @@ RETURNING id;
 // Type inference in frontend
 const ids = await saveUser([...]);
 // ids: number[]
-```
+````
 
 **Type inference**: API client guarantees return type
 
@@ -631,11 +631,7 @@ describe("User type validation", () => {
   >
     Detailed Zod validation guide
   </Card>
-  <Card
-    title="Entity Types"
-    icon="database"
-    href="/en/core-concepts/type-system/entity-types"
-  >
+  <Card title="Entity Types" icon="database" href="/en/core-concepts/type-system/entity-types">
     Understanding Entity type conversion
   </Card>
   <Card

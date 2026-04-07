@@ -10,9 +10,10 @@ import {
 } from "@sonamu-kit/react-components";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useSonamuContext } from "@/contexts/sonamu-provider";
 import KeyIcon from "~icons/lucide/key";
 import ShieldCheckIcon from "~icons/lucide/shield-check";
+
+import { useSonamuContext } from "@/contexts/sonamu-provider";
 
 export const Route = createFileRoute("/admin/2fa-verify")({ component: TwoFactorVerifyPage });
 
@@ -85,7 +86,6 @@ function TwoFactorVerifyPage() {
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
               onKeyDown={handleKeyDown}
-              autoFocus
             />
           </div>
 

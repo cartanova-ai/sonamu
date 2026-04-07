@@ -1,6 +1,7 @@
 import { Sonamu } from "../../api";
-import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
-import type { TemplateOptions } from "../../types/types";
+import { EntityManager } from "../../entity/entity-manager";
+import { type EntityNamesRecord } from "../../entity/entity-manager";
+import { type TemplateOptions } from "../../types/types";
 import { Template } from "../template";
 
 export class Template__entity extends Template {
@@ -64,15 +65,16 @@ export class Template__entity extends Template {
               },
             ],
         indexes: [...(options.indexes ?? [])],
-        subsets: options.subsets ?? {
-          ...(parentId
+        subsets:
+          options.subsets ??
+          (parentId
             ? {}
             : {
                 A: ["id", "created_at"],
               }),
-        },
-        enums: options.enums ?? {
-          ...(parentId
+        enums:
+          options.enums ??
+          (parentId
             ? {}
             : {
                 [`${names.capital}OrderBy`]: {
@@ -80,7 +82,6 @@ export class Template__entity extends Template {
                 },
                 [`${names.capital}SearchField`]: { id: "ID" },
               }),
-        },
       }).trim(),
       importKeys: [],
     };

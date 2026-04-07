@@ -1,6 +1,6 @@
 ---
-title: 'Authentication'
-description: 'better-auth based authentication settings'
+title: "Authentication"
+description: "better-auth based authentication settings"
 ---
 
 Sonamu provides an authentication system based on [better-auth](https://www.better-auth.com/). It supports various authentication methods including email/password authentication and social login, with authentication APIs automatically registered at `/api/auth/*`.
@@ -114,7 +114,7 @@ The default path is `/api/auth`. To change it:
 export default defineConfig({
   server: {
     auth: {
-      basePath: "/auth",  // Change to /auth/*
+      basePath: "/auth", // Change to /auth/*
       emailAndPassword: {
         enabled: true,
       },
@@ -135,15 +135,15 @@ pnpm sonamu better-auth
 
 This command generates the following entities:
 
-| Entity | Table | Description |
-|--------|-------|-------------|
-| User | users | User information |
-| Session | sessions | Session information |
-| Account | accounts | OAuth account linking |
+| Entity       | Table         | Description              |
+| ------------ | ------------- | ------------------------ |
+| User         | users         | User information         |
+| Session      | sessions      | Session information      |
+| Account      | accounts      | OAuth account linking    |
 | Verification | verifications | Email verification, etc. |
 
 <Note>
-If a User entity already exists, only missing fields will be added when running the command.
+  If a User entity already exists, only missing fields will be added when running the command.
 </Note>
 
 ### Generate Entities with Plugins
@@ -160,21 +160,22 @@ pnpm sonamu better-auth --plugins=2fa,admin,username
 
 Supported plugins:
 
-| Plugin ID | Description | Added Fields/Tables |
-|-----------|-------------|---------------------|
-| `2fa` | Two-Factor Authentication (TOTP) | TwoFactor table, User.two_factor_enabled |
-| `admin` | Admin features | User.role, User.banned, User.ban_reason, User.ban_expires, Session.impersonated_by |
-| `username` | Username login | User.username (unique), User.display_username |
-| `phone-number` | Phone number verification | User.phone_number (unique), User.phone_number_verified |
-| `passkey` | WebAuthn passkey authentication | Passkey table |
-| `sso` | SSO login (OIDC/SAML) | SsoProvider table |
-| `api-key` | API key authentication | ApiKey table |
-| `jwt` | JWT token issuance | Jwks table |
-| `organization` | Organization/team management | Organization, Member, Invitation, Team, TeamMember tables, Session.active_organization_id, Session.active_team_id |
-| `anonymous` | Anonymous users | User.is_anonymous |
+| Plugin ID      | Description                      | Added Fields/Tables                                                                                               |
+| -------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `2fa`          | Two-Factor Authentication (TOTP) | TwoFactor table, User.two_factor_enabled                                                                          |
+| `admin`        | Admin features                   | User.role, User.banned, User.ban_reason, User.ban_expires, Session.impersonated_by                                |
+| `username`     | Username login                   | User.username (unique), User.display_username                                                                     |
+| `phone-number` | Phone number verification        | User.phone_number (unique), User.phone_number_verified                                                            |
+| `passkey`      | WebAuthn passkey authentication  | Passkey table                                                                                                     |
+| `sso`          | SSO login (OIDC/SAML)            | SsoProvider table                                                                                                 |
+| `api-key`      | API key authentication           | ApiKey table                                                                                                      |
+| `jwt`          | JWT token issuance               | Jwks table                                                                                                        |
+| `organization` | Organization/team management     | Organization, Member, Invitation, Team, TeamMember tables, Session.active_organization_id, Session.active_team_id |
+| `anonymous`    | Anonymous users                  | User.is_anonymous                                                                                                 |
 
 <Tip>
-When using plugins, you also need to enable them in `sonamu.config.ts`. See the [Plugin Configuration](#plugin-configuration) section below for details.
+  When using plugins, you also need to enable them in `sonamu.config.ts`. See the [Plugin
+  Configuration](#plugin-configuration) section below for details.
 </Tip>
 
 ### Field Mapping
@@ -240,7 +241,8 @@ GET /api/auth/sign-in/social?provider=google
 ```
 
 <Tip>
-For the complete API list, refer to the [better-auth documentation](https://www.better-auth.com/docs/api-reference).
+  For the complete API list, refer to the [better-auth
+  documentation](https://www.better-auth.com/docs/api-reference).
 </Tip>
 
 ## Accessing User Information from Context
@@ -256,10 +258,10 @@ export class MyModel {
     const ctx = Sonamu.getContext();
 
     // Currently logged-in user
-    const user = ctx.user;  // User | null
+    const user = ctx.user; // User | null
 
     // Current session information
-    const session = ctx.session;  // Session | null
+    const session = ctx.session; // Session | null
 
     if (!user) {
       throw new UnauthorizedError("Login required");
@@ -396,11 +398,7 @@ export function GoogleLoginButton() {
     });
   };
 
-  return (
-    <button onClick={handleGoogleLogin}>
-      Sign in with Google
-    </button>
-  );
+  return <button onClick={handleGoogleLogin}>Sign in with Google</button>;
 }
 ```
 
@@ -409,7 +407,8 @@ export function GoogleLoginButton() {
 To use better-auth plugins, add them to the `auth.plugins` array in `sonamu.config.ts`.
 
 <Warning>
-Before configuring plugins, you must first generate the required entities and fields using `pnpm sonamu better-auth --plugins=...`.
+  Before configuring plugins, you must first generate the required entities and fields using `pnpm
+  sonamu better-auth --plugins=...`.
 </Warning>
 
 ### Two-Factor Authentication (2FA)
@@ -426,7 +425,7 @@ export default defineConfig({
       emailAndPassword: { enabled: true },
       plugins: [
         twoFactor({
-          issuer: "My App",  // Name displayed in OTP apps
+          issuer: "My App", // Name displayed in OTP apps
           schema: TWO_FACTOR_SCHEMA,
         }),
       ],
@@ -436,6 +435,7 @@ export default defineConfig({
 ```
 
 2FA-related APIs:
+
 - `POST /api/auth/two-factor/enable` - Start 2FA setup
 - `POST /api/auth/two-factor/verify` - Verify 2FA code
 - `POST /api/auth/two-factor/disable` - Disable 2FA
@@ -463,6 +463,7 @@ export default defineConfig({
 ```
 
 Fields added to User table by Admin plugin:
+
 - `role` - User role (default: "user")
 - `banned` - Ban status
 - `ban_reason` - Ban reason
@@ -490,6 +491,7 @@ export default defineConfig({
 ```
 
 Fields added to User table by Username plugin:
+
 - `username` - Normalized username (lowercase, unique index)
 - `display_username` - Display username (preserves original case)
 
@@ -515,6 +517,7 @@ export default defineConfig({
 ```
 
 Fields added to User table by Phone Number plugin:
+
 - `phone_number` - Phone number (unique index)
 - `phone_number_verified` - Phone number verification status
 
@@ -541,17 +544,17 @@ export default defineConfig({
 ```
 
 Tables created by Passkey plugin:
+
 - `passkeys` - User passkey information (public key, credential ID, etc.)
 
 Passkey-related APIs:
+
 - `POST /api/auth/passkey/generate-register-options` - Generate passkey registration options
 - `POST /api/auth/passkey/verify-registration` - Verify passkey registration
 - `POST /api/auth/passkey/generate-authentication-options` - Generate passkey authentication options
 - `POST /api/auth/passkey/verify-authentication` - Verify passkey authentication
 
-<Note>
-The `@better-auth/passkey` package is required to use the Passkey plugin.
-</Note>
+<Note>The `@better-auth/passkey` package is required to use the Passkey plugin.</Note>
 
 ### SSO Plugin
 
@@ -575,11 +578,10 @@ export default defineConfig({
 ```
 
 Tables created by SSO plugin:
+
 - `sso_providers` - SSO provider settings (including OIDC/SAML configuration)
 
-<Note>
-The `@better-auth/sso` package is required to use the SSO plugin.
-</Note>
+<Note>The `@better-auth/sso` package is required to use the SSO plugin.</Note>
 
 ### API Key Plugin
 
@@ -603,9 +605,11 @@ export default defineConfig({
 ```
 
 Tables created by API Key plugin:
+
 - `api_keys` - API key information (hashed key, rate limit settings, etc.)
 
 API Key-related APIs:
+
 - `POST /api/auth/api-key/create` - Create API key
 - `POST /api/auth/api-key/revoke` - Revoke API key
 - `GET /api/auth/api-key/list` - List API keys
@@ -632,9 +636,11 @@ export default defineConfig({
 ```
 
 Tables created by JWT plugin:
+
 - `jwks` - JSON Web Key Set information (public key, private key)
 
 JWT-related APIs:
+
 - `GET /api/auth/.well-known/jwks.json` - JWKS endpoint
 - `POST /api/auth/jwt/generate` - Generate JWT token
 
@@ -660,6 +666,7 @@ export default defineConfig({
 ```
 
 Tables created by Organization plugin:
+
 - `organizations` - Organization information
 - `members` - Organization members
 - `invitations` - Organization invitations
@@ -667,10 +674,12 @@ Tables created by Organization plugin:
 - `team_members` - Team members
 
 Fields added to Session table by Organization plugin:
+
 - `active_organization_id` - Current active organization ID
 - `active_team_id` - Current active team ID
 
 Organization-related APIs:
+
 - `POST /api/auth/organization/create` - Create organization
 - `POST /api/auth/organization/invite` - Invite member
 - `POST /api/auth/organization/accept-invitation` - Accept invitation
@@ -698,9 +707,11 @@ export default defineConfig({
 ```
 
 Fields added to User table by Anonymous plugin:
+
 - `is_anonymous` - Whether the user is anonymous
 
 Anonymous-related APIs:
+
 - `POST /api/auth/sign-in/anonymous` - Anonymous login
 - `POST /api/auth/anonymous/link` - Link anonymous account to a regular account
 
@@ -741,7 +752,8 @@ export default defineConfig({
 ```
 
 <Note>
-Each plugin's schema (`*_SCHEMA`) maps Sonamu's snake_case column names to better-auth's camelCase field names. It must be passed along with the corresponding plugin.
+  Each plugin's schema (`*_SCHEMA`) maps Sonamu's snake_case column names to better-auth's camelCase
+  field names. It must be passed along with the corresponding plugin.
 </Note>
 
 ## Practical Examples

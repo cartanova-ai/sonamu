@@ -13,6 +13,7 @@
 그런데 `hmr-hook`과의 사용에 특화되어 있습니다. `hmr-hook`이 *이건 HMR 못하겠다*라고 할 때 이를 듣고서 앱을 재시작해줍니다.
 
 이런 식으로 씁니다:
+
 ```bash
 hmr-runner --node-args=--import=@sonamu-kit/hmr-hook/register index.js
 ```
@@ -25,6 +26,6 @@ hmr-runner --node-args=--import=@sonamu-kit/hmr-hook/register index.js
 
 ### 1. `SIGUSR2`에 반응하게 함
 
-원본은 애플리케이션이 보내는 `SIGUSR2`에 반응하지 않습니다. 
+원본은 애플리케이션이 보내는 `SIGUSR2`에 반응하지 않습니다.
 
 이에 반응하여 재시작하도록 바꾸었습니다.

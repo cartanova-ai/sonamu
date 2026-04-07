@@ -1,6 +1,6 @@
-import type { RetryPolicy } from "./core/retry";
-import type { StandardSchemaV1 } from "./core/schema";
-import type { WorkflowFunction } from "./execution";
+import { type RetryPolicy } from "./core/retry";
+import { type StandardSchemaV1 } from "./core/schema";
+import { type WorkflowFunction } from "./execution";
 
 export interface WorkflowSpec<Input, Output, RawInput> {
   /** The name of the workflow. */

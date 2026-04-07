@@ -1,6 +1,6 @@
 ---
-title: 'limit / offset'
-description: 'Limit and paginate query results'
+title: "limit / offset"
+description: "Limit and paginate query results"
 ---
 
 `limit` and `offset` are methods for limiting the number of query results and implementing pagination. These are essential methods for performance optimization and implementing paging functionality.
@@ -12,9 +12,7 @@ description: 'Limit and paginate query results'
 Limits the maximum number of results to return.
 
 ```typescript
-const users = await puri.table("users")
-  .select({ id: "users.id", name: "users.name" })
-  .limit(10);
+const users = await puri.table("users").select({ id: "users.id", name: "users.name" }).limit(10);
 
 // SELECT users.id, users.name FROM users LIMIT 10
 ```
@@ -24,7 +22,8 @@ const users = await puri.table("users")
 Skips a specified number of results.
 
 ```typescript
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .select({ id: "users.id", name: "users.name" })
   .offset(20)
   .limit(10);
@@ -32,9 +31,7 @@ const users = await puri.table("users")
 // SELECT users.id, users.name FROM users LIMIT 10 OFFSET 20
 ```
 
-<Info>
-`offset` is typically used with `limit` for pagination.
-</Info>
+<Info>`offset` is typically used with `limit` for pagination.</Info>
 
 ## Pagination
 
@@ -42,21 +39,24 @@ const users = await puri.table("users")
 
 ```typescript
 // Page 1: Items 1-10
-const page1 = await puri.table("posts")
+const page1 = await puri
+  .table("posts")
   .select({ id: "posts.id", title: "posts.title" })
   .orderBy("posts.created_at", "desc")
   .limit(10)
   .offset(0);
 
 // Page 2: Items 11-20
-const page2 = await puri.table("posts")
+const page2 = await puri
+  .table("posts")
   .select({ id: "posts.id", title: "posts.title" })
   .orderBy("posts.created_at", "desc")
   .limit(10)
   .offset(10);
 
 // Page 3: Items 21-30
-const page3 = await puri.table("posts")
+const page3 = await puri
+  .table("posts")
   .select({ id: "posts.id", title: "posts.title" })
   .orderBy("posts.created_at", "desc")
   .limit(10)
@@ -69,14 +69,15 @@ const page3 = await puri.table("posts")
 function paginate(page: number, perPage: number) {
   return {
     limit: perPage,
-    offset: (page - 1) * perPage
+    offset: (page - 1) * perPage,
   };
 }
 
 // Get page 3 with 20 items per page
 const { limit, offset } = paginate(3, 20);
 
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .select({ id: "posts.id", title: "posts.title" })
   .orderBy("posts.created_at", "desc")
   .limit(limit)
@@ -93,7 +94,8 @@ Cursor-based pagination is more efficient for large datasets than offset-based p
 
 ```typescript
 // First page: Latest 10 posts
-const firstPage = await puri.table("posts")
+const firstPage = await puri
+  .table("posts")
   .select({ id: "posts.id", title: "posts.title", created_at: "posts.created_at" })
   .orderBy("posts.created_at", "desc")
   .limit(10);
@@ -103,7 +105,8 @@ const lastPost = firstPage[firstPage.length - 1];
 const cursor = lastPost.created_at;
 
 // Next page: 10 items after cursor
-const nextPage = await puri.table("posts")
+const nextPage = await puri
+  .table("posts")
   .select({ id: "posts.id", title: "posts.title", created_at: "posts.created_at" })
   .where("posts.created_at", "<", cursor)
   .orderBy("posts.created_at", "desc")
@@ -114,7 +117,8 @@ const nextPage = await puri.table("posts")
 
 ```typescript
 // First page
-const firstPage = await puri.table("users")
+const firstPage = await puri
+  .table("users")
   .select({ id: "users.id", name: "users.name" })
   .orderBy("users.id", "asc")
   .limit(20);
@@ -123,7 +127,8 @@ const firstPage = await puri.table("users")
 const lastUserId = firstPage[firstPage.length - 1].id;
 
 // Next page
-const nextPage = await puri.table("users")
+const nextPage = await puri
+  .table("users")
   .select({ id: "users.id", name: "users.name" })
   .where("users.id", ">", lastUserId)
   .orderBy("users.id", "asc")
@@ -173,6 +178,7 @@ const nextPage = await puri.table("users")
       }
     });
     ```
+
   </Tab>
 
   <Tab title="Data Table" icon="table">
@@ -222,6 +228,7 @@ const nextPage = await puri.table("users")
     //   pagination: { page: 2, perPage: 25, total: 1000, totalPages: 40 }
     // }
     ```
+
   </Tab>
 
   <Tab title="Batch Processing" icon="layer-group">
@@ -273,6 +280,7 @@ const nextPage = await puri.table("users")
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Latest Items" icon="clock">
@@ -307,6 +315,7 @@ const nextPage = await puri.table("users")
       .orderBy("users.last_active", "desc")
       .limit(20);
     ```
+
   </Tab>
 </Tabs>
 
@@ -316,47 +325,34 @@ const nextPage = await puri.table("users")
 
 ```typescript
 // ❌ Bad: Offset scans all skipped rows
-await puri.table("posts")
-  .limit(10)
-  .offset(10000);  // Scans 10,000 rows then skips them
+await puri.table("posts").limit(10).offset(10000); // Scans 10,000 rows then skips them
 
 // ✅ Good: Use cursor-based pagination
-await puri.table("posts")
-  .where("posts.id", ">", lastId)
-  .limit(10);  // Directly finds target rows
+await puri.table("posts").where("posts.id", ">", lastId).limit(10); // Directly finds target rows
 ```
 
 ### 2. Use with orderBy
 
 ```typescript
 // ⚠️ Caution: Results may be inconsistent without ordering
-await puri.table("users")
-  .limit(10)
-  .offset(20);
+await puri.table("users").limit(10).offset(20);
 
 // ✅ Good: Guarantee consistent ordering
-await puri.table("users")
-  .orderBy("users.id", "asc")
-  .limit(10)
-  .offset(20);
+await puri.table("users").orderBy("users.id", "asc").limit(10).offset(20);
 ```
 
 ### 3. Optimize COUNT Queries
 
 ```typescript
 // ❌ Bad: Separate queries for data and count
-const users = await puri.table("users")
-  .limit(10)
-  .offset(20);
+const users = await puri.table("users").limit(10).offset(20);
 
-const { count } = await puri.table("users")
-  .select({ count: Puri.count() })
-  .first();
+const { count } = await puri.table("users").select({ count: Puri.count() }).first();
 
 // ✅ Good: Use findMany that combines both
 const { rows, total } = await UserModel.findMany("A", {
   page: 3,
-  num: 10
+  num: 10,
 });
 // One query returns both data and total
 ```
@@ -366,11 +362,13 @@ const { rows, total } = await UserModel.findMany("A", {
 ### offset Method
 
 **Advantages:**
+
 - Simple implementation
 - Can jump to any page
 - Suitable for numbered pages
 
 **Disadvantages:**
+
 - Slow for large offsets
 - Inconsistent results when data changes
 - Always scans from beginning
@@ -383,11 +381,13 @@ const { rows, total } = await UserModel.findMany("A", {
 ### Cursor Method
 
 **Advantages:**
+
 - Fast regardless of position
 - Consistent results
 - Efficient memory usage
 
 **Disadvantages:**
+
 - Cannot jump to arbitrary pages
 - Slightly complex implementation
 - Cursor management needed
@@ -403,27 +403,20 @@ const { rows, total } = await UserModel.findMany("A", {
 
 ```typescript
 // ❌ Dangerous: Inconsistent order
-await puri.table("users")
-  .limit(10);
+await puri.table("users").limit(10);
 
 // ✅ Safe: Explicit ordering
-await puri.table("users")
-  .orderBy("users.id", "asc")
-  .limit(10);
+await puri.table("users").orderBy("users.id", "asc").limit(10);
 ```
 
 ### 2. Large offset
 
 ```typescript
 // ❌ Very slow
-await puri.table("posts")
-  .limit(10)
-  .offset(1000000);
+await puri.table("posts").limit(10).offset(1000000);
 
 // ✅ Fast
-await puri.table("posts")
-  .where("posts.id", ">", lastId)
-  .limit(10);
+await puri.table("posts").where("posts.id", ">", lastId).limit(10);
 ```
 
 ### 3. limit Without WHERE
@@ -433,9 +426,7 @@ await puri.table("posts")
 const allUsers = await puri.table("users").selectAll();
 
 // ✅ Safe: Always use limit
-const users = await puri.table("users")
-  .selectAll()
-  .limit(1000);
+const users = await puri.table("users").selectAll().limit(1000);
 ```
 
 ### 4. Pagination and Data Changes
@@ -445,15 +436,10 @@ const users = await puri.table("users")
 // when data changes between page loads
 
 // Solution 1: Use cursor pagination
-await puri.table("posts")
-  .where("posts.id", ">", lastId)
-  .limit(10);
+await puri.table("posts").where("posts.id", ">", lastId).limit(10);
 
 // Solution 2: Use timestamp
-await puri.table("posts")
-  .where("posts.created_at", "<=", snapshotTime)
-  .limit(10)
-  .offset(20);
+await puri.table("posts").where("posts.created_at", "<=", snapshotTime).limit(10).offset(20);
 ```
 
 ## Type Safety
@@ -461,14 +447,15 @@ await puri.table("posts")
 Type safety is maintained when using limit and offset.
 
 ```typescript
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .select({ id: "users.id", name: "users.name" })
   .limit(10)
   .offset(20);
 
 // Type: Array<{ id: number; name: string }>
-users[0].id;    // number
-users[0].name;  // string
+users[0].id; // number
+users[0].name; // string
 ```
 
 ## Next Steps
@@ -482,21 +469,13 @@ users[0].name;  // string
     Sort results
   </Card>
 
-  <Card
-    title="where"
-    icon="filter"
-    href="/en/api-reference/puri-methods/where"
-  >
-    Filter with conditions
-  </Card>
+<Card title="where" icon="filter" href="/en/api-reference/puri-methods/where">
+  Filter with conditions
+</Card>
 
-  <Card
-    title="select"
-    icon="list-check"
-    href="/en/api-reference/puri-methods/select"
-  >
-    Select fields to query
-  </Card>
+<Card title="select" icon="list-check" href="/en/api-reference/puri-methods/select">
+  Select fields to query
+</Card>
 
   <Card
     title="advanced-methods"

@@ -1,9 +1,10 @@
 import { openai } from "@ai-sdk/openai";
-import type { Agent, ToolSet } from "ai";
+import { type Agent, type ToolSet } from "ai";
 import { dedent } from "radashi";
 import { Naite } from "sonamu";
 import { BaseAgentClass, tools } from "sonamu/ai";
 import { z } from "zod";
+
 import { ProjectSubsetP } from "../sonamu.generated";
 
 type ProjectAgentContext = {};

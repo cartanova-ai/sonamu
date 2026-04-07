@@ -1,6 +1,6 @@
 ---
-title: 'Path Mapping'
-description: 'Setting up module path aliases'
+title: "Path Mapping"
+description: "Setting up module path aliases"
 ---
 
 Path Mapping allows you to import modules using absolute paths instead of relative paths. This improves code readability and eliminates the need to update import paths when files are moved.
@@ -42,7 +42,8 @@ export default defineConfig({
 ```
 
 <Warning>
-You must configure both TypeScript and Vite. If only one is configured, type checking or builds will fail.
+  You must configure both TypeScript and Vite. If only one is configured, type checking or builds
+  will fail.
 </Warning>
 
 ### Usage Examples
@@ -76,6 +77,7 @@ You must configure both TypeScript and Vite. If only one is configured, type che
     - Need to update all imports when file location changes
     - Complex paths like `../../../`
     - Poor readability
+
   </Tab>
 
   <Tab title="After (Absolute Paths)" icon="check">
@@ -91,6 +93,7 @@ You must configure both TypeScript and Vite. If only one is configured, type che
     - Import paths remain the same when file location changes
     - Same import method from anywhere
     - Improved readability
+
   </Tab>
 </Tabs>
 
@@ -143,9 +146,7 @@ import { useAuth } from "@hooks/useAuth";
 import type { User } from "@types/user";
 ```
 
-<Tip>
-We recommend using only `@/*`. Too many mappings can cause confusion.
-</Tip>
+<Tip>We recommend using only `@/*`. Too many mappings can cause confusion.</Tip>
 
 ## Module Resolution in API Server
 
@@ -156,7 +157,7 @@ The API server typically does not use path mapping.
 ```json title="api/tsconfig.json"
 {
   "compilerOptions": {
-    "moduleResolution": "bundler",  // Vite resolves modules
+    "moduleResolution": "bundler", // Vite resolves modules
     "target": "esnext",
     "module": "esnext"
   }
@@ -164,6 +165,7 @@ The API server typically does not use path mapping.
 ```
 
 **Vite resolves all modules**
+
 - API is built with Vite, so separate path mapping is unnecessary
 - Packages like `sonamu` are automatically resolved by Vite
 - Relative paths are clearer and simpler
@@ -173,15 +175,8 @@ The API server typically does not use path mapping.
 API has a relatively simple structure.
 
 <FileTree>
-- api/
-  - src/
-    - application/
-      - controllers/
-      - services/
-    - domain/
-      - entities/
-      - models/
-    - sonamu.config.ts
+  - api/ - src/ - application/ - controllers/ - services/ - domain/ - entities/ - models/ -
+  sonamu.config.ts
 </FileTree>
 
 ```typescript title="api/src/application/controllers/UserController.ts"
@@ -190,9 +185,7 @@ import { UserService } from "../services/UserService";
 import { User } from "../../domain/entities/User";
 ```
 
-<Info>
-You can add path mapping to API if needed, but it's generally unnecessary.
-</Info>
+<Info>You can add path mapping to API if needed, but it's generally unnecessary.</Info>
 
 ## Importing Sonamu Packages
 
@@ -210,13 +203,12 @@ import type { Context, SonamuConfig } from "sonamu";
 ```
 
 **Sonamu package structure:**
+
 - `sonamu` - Main package
 - `sonamu/storage` - Storage drivers
 - `sonamu/cache` - Cache drivers
 
-<Info>
-Sonamu provides subpackages through the `exports` field in `package.json`.
-</Info>
+<Info>Sonamu provides subpackages through the `exports` field in `package.json`.</Info>
 
 ## Type Imports
 
@@ -234,9 +226,7 @@ import { DB, type Context } from "sonamu";
 import { User } from "@/types/user";
 ```
 
-<Tip>
-`type` imports are removed after compilation, reducing bundle size.
-</Tip>
+<Tip>`type` imports are removed after compilation, reducing bundle size.</Tip>
 
 ## IDE Auto-completion
 
@@ -261,37 +251,40 @@ Automatically reads `tsconfig.json` and recognizes path mapping.
   - `@/...` paths show red underline
   - Auto-completion doesn't work
 
-  **Solutions:**
+**Solutions:**
 
-  1. **Restart TypeScript server**
-     ```
-     VS Code: Cmd/Ctrl + Shift + P → "TypeScript: Restart TS Server"
-     ```
+1. **Restart TypeScript server**
 
-  2. **Check tsconfig.json**
-     ```json
-     {
-       "compilerOptions": {
-         "baseUrl": ".",  // Required!
-         "paths": {
-           "@/*": ["./src/*"]
-         }
+   ```
+   VS Code: Cmd/Ctrl + Shift + P → "TypeScript: Restart TS Server"
+   ```
+
+2. **Check tsconfig.json**
+
+   ```json
+   {
+     "compilerOptions": {
+       "baseUrl": ".", // Required!
+       "paths": {
+         "@/*": ["./src/*"]
        }
      }
-     ```
+   }
+   ```
 
-  3. **Restart Vite dev server**
-     ```bash
-     # Restart Vite
-     pnpm dev
-     ```
+3. **Restart Vite dev server**
 
-  4. **Reinstall node_modules**
-     ```bash
-     rm -rf node_modules
-     pnpm install
-     ```
-</Accordion>
+   ```bash
+   # Restart Vite
+   pnpm dev
+   ```
+
+4. **Reinstall node_modules**
+   `bash
+rm -rf node_modules
+pnpm install
+`
+   </Accordion>
 
 ## Jest Test Configuration
 
@@ -329,42 +322,47 @@ describe("Button", () => {
   Cannot find module '@/components/Button' or its corresponding type declarations.
   ```
 
-  **Causes:**
-  1. `baseUrl` is not set
-  2. Vite alias is not configured
-  3. Path typo
+**Causes:**
 
-  **Solutions:**
+1. `baseUrl` is not set
+2. Vite alias is not configured
+3. Path typo
 
-  **1. Check tsconfig.json**
-  ```json
-  {
-    "compilerOptions": {
-      "baseUrl": ".",  // Required!
-      "paths": {
-        "@/*": ["./src/*"]
-      }
+**Solutions:**
+
+**1. Check tsconfig.json**
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".", // Required!
+    "paths": {
+      "@/*": ["./src/*"]
     }
   }
-  ```
+}
+```
 
-  **2. Check vite.config.ts**
-  ```typescript
-  import path from "path";
+**2. Check vite.config.ts**
 
-  export default defineConfig({
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
+```typescript
+import path from "path";
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
     },
-  });
-  ```
+  },
+});
+```
 
-  **3. Verify file exists**
-  ```bash
-  ls -la src/components/Button.tsx
-  ```
+**3. Verify file exists**
+
+```bash
+ls -la src/components/Button.tsx
+```
+
 </Accordion>
 
 <Accordion title="Build succeeds but type check fails" icon="code">
@@ -374,22 +372,25 @@ describe("Button", () => {
   pnpm tsc    # ❌ Type error
   ```
 
-  **Cause:**
-  - Vite recognizes the alias but TypeScript doesn't
+**Cause:**
 
-  **Solution:**
+- Vite recognizes the alias but TypeScript doesn't
 
-  Add `baseUrl` and `paths` to `tsconfig.json`:
-  ```json
-  {
-    "compilerOptions": {
-      "baseUrl": ".",
-      "paths": {
-        "@/*": ["./src/*"]
-      }
+**Solution:**
+
+Add `baseUrl` and `paths` to `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
     }
   }
-  ```
+}
+```
+
 </Accordion>
 
 <Accordion title="Type check succeeds but build fails" icon="hammer">
@@ -399,23 +400,26 @@ describe("Button", () => {
   pnpm build  # ❌ Build error
   ```
 
-  **Cause:**
-  - TypeScript recognizes the alias but Vite doesn't
+**Cause:**
 
-  **Solution:**
+- TypeScript recognizes the alias but Vite doesn't
 
-  Add alias to `vite.config.ts`:
-  ```typescript
-  import path from "path";
+**Solution:**
 
-  export default defineConfig({
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
+Add alias to `vite.config.ts`:
+
+```typescript
+import path from "path";
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
     },
-  });
-  ```
+  },
+});
+```
+
 </Accordion>
 
 ## Recommendations
@@ -445,6 +449,7 @@ describe("Button", () => {
     **Avoid:**
     - Too many aliases (adds confusion)
     - Alias for every subdirectory (unnecessary)
+
   </Tab>
 
   <Tab title="API" icon="server">
@@ -465,6 +470,7 @@ describe("Button", () => {
     ```
 
     However, Vite config is not needed (moduleResolution: bundler)
+
   </Tab>
 
   <Tab title="Consistency" icon="check">
@@ -491,6 +497,7 @@ describe("Button", () => {
     import { Button } from "@/components/Button";  // Project B
     import { Button } from "#/components/Button";  // Project C
     ```
+
   </Tab>
 </Tabs>
 
@@ -505,21 +512,17 @@ describe("Button", () => {
     Check the complete TypeScript configuration
   </Card>
 
-  <Card
-    title="Type Checking"
-    icon="shield-check"
-    href="/en/configuration/typescript/type-checking"
-  >
-    Learn about type check options
-  </Card>
+<Card title="Type Checking" icon="shield-check" href="/en/configuration/typescript/type-checking">
+  Learn about type check options
+</Card>
 
-  <Card
-    title="Writing Components"
-    icon="cube"
-    href="/en/frontend-integration/react-components/generated-components"
-  >
-    Write React components
-  </Card>
+<Card
+  title="Writing Components"
+  icon="cube"
+  href="/en/frontend-integration/react-components/generated-components"
+>
+  Write React components
+</Card>
 
   <Card
     title="Project Structure"

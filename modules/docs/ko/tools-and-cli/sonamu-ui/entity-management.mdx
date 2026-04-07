@@ -1,6 +1,6 @@
 ---
-title: 'Entity 관리'
-description: 'Entity 생성, 수정, 삭제하기'
+title: "Entity 관리"
+description: "Entity 생성, 수정, 삭제하기"
 ---
 
 Sonamu UI의 Entity 관리 기능을 사용하면 **시각적 인터페이스로 Entity를 쉽게 생성하고 편집**할 수 있습니다. CLI로 파일을 직접 수정하는 것보다 훨씬 빠르고 직관적입니다.
@@ -26,14 +26,14 @@ Entity 탭은 두 가지 주요 영역으로 구성됩니다:
 
 모달이 열리면 다음 정보를 입력합니다:
 
-| 필드 | 설명 | 예시 |
-|------|------|------|
-| **Entity ID** | Entity 식별자 (PascalCase) | `Product`, `OrderItem` |
-| **Title** | 한글 제목 | `상품`, `주문 항목` |
-| **Parent Entity** | 부모 Entity (선택) | `Order` |
+| 필드              | 설명                       | 예시                   |
+| ----------------- | -------------------------- | ---------------------- |
+| **Entity ID**     | Entity 식별자 (PascalCase) | `Product`, `OrderItem` |
+| **Title**         | 한글 제목                  | `상품`, `주문 항목`    |
+| **Parent Entity** | 부모 Entity (선택)         | `Order`                |
 
 <Info>
-**Parent Entity**를 지정하면 부모 Entity의 하위 Entity가 됩니다. 예: `Order` → `OrderItem`
+  **Parent Entity**를 지정하면 부모 Entity의 하위 Entity가 됩니다. 예: `Order` → `OrderItem`
 </Info>
 
 ### 3. 기본 Properties 추가
@@ -46,7 +46,7 @@ Entity 탭은 두 가지 주요 영역으로 구성됩니다:
     { name: "id", type: "int", primaryKey: true, autoIncrement: true },
     { name: "title", type: "string", length: 255 },
     { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
-  ]
+  ];
 }
 ```
 
@@ -57,16 +57,17 @@ Entity 탭은 두 가지 주요 영역으로 구성됩니다:
 1. **[+ Add Property]** 버튼 클릭
 2. Property 정보 입력:
 
-| 필드 | 필수 | 설명 | 예시 |
-|------|------|------|------|
-| **Name** | ✅ | 필드명 (snake_case) | `email`, `phone_number` |
-| **Type** | ✅ | 데이터 타입 | `string`, `int`, `decimal` |
-| **Length** | 조건부 | 문자열 길이 | `255` |
-| **Nullable** | | NULL 허용 여부 | `true` |
-| **Default** | | 기본값 | `0`, `CURRENT_TIMESTAMP` |
-| **Comment** | | 설명 | `사용자 이메일` |
+| 필드         | 필수   | 설명                | 예시                       |
+| ------------ | ------ | ------------------- | -------------------------- |
+| **Name**     | ✅     | 필드명 (snake_case) | `email`, `phone_number`    |
+| **Type**     | ✅     | 데이터 타입         | `string`, `int`, `decimal` |
+| **Length**   | 조건부 | 문자열 길이         | `255`                      |
+| **Nullable** |        | NULL 허용 여부      | `true`                     |
+| **Default**  |        | 기본값              | `0`, `CURRENT_TIMESTAMP`   |
+| **Comment**  |        | 설명                | `사용자 이메일`            |
 
 **지원하는 데이터 타입**:
+
 - **문자열**: `string`, `text`, `mediumtext`, `longtext`
 - **숫자**: `int`, `bigint`, `float`, `double`, `decimal`
 - **날짜**: `date`, `datetime`, `timestamp`
@@ -83,8 +84,8 @@ Entity 탭은 두 가지 주요 영역으로 구성됩니다:
 Property 행의 **[×]** 버튼을 클릭합니다.
 
 <Warning>
-**데이터 손실 주의**: Property를 삭제하면 해당 컬럼의 모든 데이터가 삭제됩니다.
-마이그레이션을 실행하기 전에 반드시 데이터를 백업하세요.
+  **데이터 손실 주의**: Property를 삭제하면 해당 컬럼의 모든 데이터가 삭제됩니다. 마이그레이션을
+  실행하기 전에 반드시 데이터를 백업하세요.
 </Warning>
 
 ## Indexes 관리
@@ -95,12 +96,13 @@ Property 행의 **[×]** 버튼을 클릭합니다.
 2. **[+ Add Index]** 버튼 클릭
 3. Index 정보 입력:
 
-| 필드 | 설명 | 예시 |
-|------|------|------|
-| **Fields** | 인덱스 대상 필드 (복수 선택 가능) | `email`, `created_at` |
-| **Type** | 인덱스 타입 | `index`, `unique`, `fulltext` |
+| 필드       | 설명                              | 예시                          |
+| ---------- | --------------------------------- | ----------------------------- |
+| **Fields** | 인덱스 대상 필드 (복수 선택 가능) | `email`, `created_at`         |
+| **Type**   | 인덱스 타입                       | `index`, `unique`, `fulltext` |
 
 **Index 타입**:
+
 - **index**: 일반 인덱스 (검색 성능 향상)
 - **unique**: 유니크 인덱스 (중복 방지)
 - **fulltext**: 전문 검색 인덱스 (텍스트 검색)
@@ -113,7 +115,7 @@ Property 행의 **[×]** 버튼을 클릭합니다.
 indexes: [
   { fields: ["user_id", "created_at"], type: "index" },
   { fields: ["email"], type: "unique" },
-]
+];
 ```
 
 ## Relations 관리
@@ -127,17 +129,16 @@ indexes: [
 1. **belongsTo** 섹션의 **[+ Add]** 버튼 클릭
 2. 정보 입력:
 
-| 필드 | 설명 | 예시 |
-|------|------|------|
-| **Entity** | 참조할 Entity | `User` |
-| **As** | 관계 별칭 | `author` |
+| 필드            | 설명                 | 예시        |
+| --------------- | -------------------- | ----------- |
+| **Entity**      | 참조할 Entity        | `User`      |
+| **As**          | 관계 별칭            | `author`    |
 | **Foreign Key** | 외래키 필드명 (선택) | `author_id` |
 
 생성되는 코드:
+
 ```typescript
-belongsTo: [
-  { entityId: "User", as: "author" }
-]
+belongsTo: [{ entityId: "User", as: "author" }];
 ```
 
 ### hasMany (1:N 관계)
@@ -149,16 +150,15 @@ belongsTo: [
 1. **hasMany** 섹션의 **[+ Add]** 버튼 클릭
 2. 정보 입력:
 
-| 필드 | 설명 | 예시 |
-|------|------|------|
-| **Entity** | 대상 Entity | `Post` |
-| **As** | 관계 별칭 | `posts` |
+| 필드       | 설명        | 예시    |
+| ---------- | ----------- | ------- |
+| **Entity** | 대상 Entity | `Post`  |
+| **As**     | 관계 별칭   | `posts` |
 
 생성되는 코드:
+
 ```typescript
-hasMany: [
-  { entityId: "Post", as: "posts" }
-]
+hasMany: [{ entityId: "Post", as: "posts" }];
 ```
 
 ## Enums 관리
@@ -170,22 +170,24 @@ hasMany: [
 1. **Enums** 섹션의 **[+ Add Enum]** 버튼 클릭
 2. Enum 정보 입력:
 
-| 필드 | 설명 | 예시 |
-|------|------|------|
-| **Name** | Enum 이름 | `UserRole` |
+| 필드       | 설명                  | 예시                 |
+| ---------- | --------------------- | -------------------- |
+| **Name**   | Enum 이름             | `UserRole`           |
 | **Values** | 값 목록 (쉼표로 구분) | `admin, user, guest` |
 
 생성되는 코드:
+
 ```typescript
 enums: [
   {
     name: "UserRole",
-    values: ["admin", "user", "guest"]
-  }
-]
+    values: ["admin", "user", "guest"],
+  },
+];
 ```
 
 Property에서 사용:
+
 ```typescript
 {
   name: "role",
@@ -202,6 +204,7 @@ Property에서 사용:
 ### AI로 Entity 생성
 
 **예시 프롬프트**:
+
 ```
 블로그 게시글을 위한 Post Entity를 만들어줘.
 제목, 내용, 작성자, 작성일, 조회수가 필요해.
@@ -212,6 +215,7 @@ AI가 Entity 정의를 생성하고 자동으로 추가해줍니다.
 ### AI로 Entity 수정
 
 **예시 프롬프트**:
+
 ```
 User Entity에 프로필 이미지 필드를 추가해줘.
 ```
@@ -219,7 +223,8 @@ User Entity에 프로필 이미지 필드를 추가해줘.
 AI가 기존 Entity를 분석하고 수정 사항을 적용합니다.
 
 <Tip>
-**구체적으로 요청하세요**: 필드 타입, 제약 조건, 관계 등을 명확히 설명할수록 더 정확한 결과를 얻을 수 있습니다.
+  **구체적으로 요청하세요**: 필드 타입, 제약 조건, 관계 등을 명확히 설명할수록 더 정확한 결과를 얻을
+  수 있습니다.
 </Tip>
 
 ## 실전 예제
@@ -239,26 +244,22 @@ export const ProductEntity = {
     { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
     { name: "updated_at", type: "datetime", onUpdate: "CURRENT_TIMESTAMP" },
   ],
-  
+
   indexes: [
     { fields: ["category_id"] },
     { fields: ["title"], type: "fulltext" },
     { fields: ["status", "created_at"] },
   ],
-  
-  belongsTo: [
-    { entityId: "Category", as: "category" }
-  ],
-  
-  hasMany: [
-    { entityId: "Review", as: "reviews" }
-  ],
-  
+
+  belongsTo: [{ entityId: "Category", as: "category" }],
+
+  hasMany: [{ entityId: "Review", as: "reviews" }],
+
   enums: [
     {
       name: "ProductStatus",
-      values: ["active", "inactive", "soldout"]
-    }
+      values: ["active", "inactive", "soldout"],
+    },
   ],
 } satisfies EntityType;
 ```
@@ -274,9 +275,7 @@ Entity를 수정한 후에는 **마이그레이션을 생성하고 실행**해�
 3. **Migration 실행**: 마이그레이션 실행하여 DB 반영
 4. **Scaffolding**: Model과 테스트 코드 생성
 
-<Info>
-Entity 파일(`.entity.ts`)은 UI에서 수정 시 **자동으로 저장**됩니다.
-</Info>
+<Info>Entity 파일(`.entity.ts`)은 UI에서 수정 시 **자동으로 저장**됩니다.</Info>
 
 ## 다음 단계
 
@@ -284,7 +283,11 @@ Entity 파일(`.entity.ts`)은 UI에서 수정 시 **자동으로 저장**됩니
   <Card title="Migration 탭" icon="database" href="/ko/tools-and-cli/sonamu-ui/migration-tab">
     마이그레이션 생성 및 실행
   </Card>
-  <Card title="Scaffolding 탭" icon="wand-magic-sparkles" href="/ko/tools-and-cli/sonamu-ui/scaffolding-tab">
+  <Card
+    title="Scaffolding 탭"
+    icon="wand-magic-sparkles"
+    href="/ko/tools-and-cli/sonamu-ui/scaffolding-tab"
+  >
     Model 코드 자동 생성
   </Card>
 </CardGroup>

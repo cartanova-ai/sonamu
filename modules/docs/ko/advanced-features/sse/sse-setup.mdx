@@ -19,14 +19,14 @@ sequenceDiagram
     Note over C,S: HTTP (단방향, 요청-응답)
     C->>S: GET /api/data
     S-->>C: Response
-    
+
     Note over C,S: SSE (서버→클라이언트 스트리밍)
     C->>S: GET /stream/updates
     S-->>C: event: message
     S-->>C: event: message
     S-->>C: event: message
     S-->>C: event: end
-    
+
     Note over C,S: WebSocket (양방향)
     C->>S: connect
     C->>S: message
@@ -37,13 +37,13 @@ sequenceDiagram
 
 ### 비교표
 
-| 특징 | HTTP | SSE | WebSocket |
-|------|------|-----|-----------|
-| 방향 | 요청→응답 | 서버→클라이언트 | 양방향 |
-| 프로토콜 | HTTP | HTTP | WebSocket |
-| 재연결 | X | 자동 | 수동 |
-| 복잡도 | 낮음 | 중간 | 높음 |
-| 용도 | 일반 API | 실시간 푸시 | 실시간 채팅 |
+| 특징     | HTTP      | SSE             | WebSocket   |
+| -------- | --------- | --------------- | ----------- |
+| 방향     | 요청→응답 | 서버→클라이언트 | 양방향      |
+| 프로토콜 | HTTP      | HTTP            | WebSocket   |
+| 재연결   | X         | 자동            | 수동        |
+| 복잡도   | 낮음      | 중간            | 높음        |
+| 용도     | 일반 API  | 실시간 푸시     | 실시간 채팅 |
 
 ### SSE 사용 사례
 
@@ -72,13 +72,14 @@ import { type SonamuConfig } from "sonamu";
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      sse: true,  // SSE 플러그인 활성화
-    }
-  }
+      sse: true, // SSE 플러그인 활성화
+    },
+  },
 };
 ```
 
 **기본 동작**:
+
 - SSE 엔드포인트 자동 등록
 - 자동 재연결 지원
 - Keep-alive 자동 전송
@@ -109,8 +110,9 @@ export const config: SonamuConfig = {
       } as SsePluginOptions
     }
     ```
-    
+
     **참고**: 대부분의 경우 기본 설정으로 충분합니다.
+
   </Tab>
 </Tabs>
 
@@ -126,12 +128,12 @@ sequenceDiagram
     Browser->>Server: GET /stream/updates
     Note over Server: SSE 연결 수립
     Server->>Browser: Headers (text/event-stream)
-    
+
     loop 이벤트 발생 시
         Server->>Browser: event: notification<br/>data: {"message": "New"}
         Server->>Browser: event: update<br/>data: {"count": 5}
     end
-    
+
     Server->>Browser: event: end<br/>data: END
     Note over Browser: 연결 종료
 ```
@@ -147,6 +149,7 @@ Connection: keep-alive
 ```
 
 **특징**:
+
 - `text/event-stream`: SSE 전용 Content-Type
 - `no-cache`: 캐싱 방지
 - `keep-alive`: 연결 유지
@@ -159,23 +162,23 @@ Connection: keep-alive
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      sse: true,  // 간단하게 활성화
-    }
-  }
+      sse: true, // 간단하게 활성화
+    },
+  },
 };
 ```
 
 ### 2. 개발/프로덕션 분리
 
 ```typescript
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.NODE_ENV === "development";
 
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      sse: !isDevelopment,  // 프로덕션에서만 활성화
-    }
-  }
+      sse: !isDevelopment, // 프로덕션에서만 활성화
+    },
+  },
 };
 ```
 
@@ -187,9 +190,9 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      sse: process.env.ENABLE_SSE === 'true',
-    }
-  }
+      sse: process.env.ENABLE_SSE === "true",
+    },
+  },
 };
 ```
 
@@ -207,16 +210,17 @@ export const config: SonamuConfig = {
     plugins: {
       sse: true,
       compress: {
-        global: true,  // 전역 압축 활성화
+        global: true, // 전역 압축 활성화
         threshold: 1024,
         encodings: ["gzip"],
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **@stream 데코레이터에서 자동 처리**:
+
 ```typescript
 @stream({
   type: 'sse',
@@ -240,11 +244,11 @@ export const config: SonamuConfig = {
     plugins: {
       sse: true,
       cors: {
-        origin: ['https://example.com', 'https://app.example.com'],
+        origin: ["https://example.com", "https://app.example.com"],
         credentials: true,
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -260,11 +264,11 @@ export const config: SonamuConfig = {
     plugins: {
       sse: true,
       cors: {
-        origin: 'http://localhost:5173',  // Vite 개발 서버
+        origin: "http://localhost:5173", // Vite 개발 서버
         credentials: true,
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -278,9 +282,9 @@ export const config: SonamuConfig = {
       cors: {
         origin: process.env.FRONTEND_URL,
         credentials: true,
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -296,17 +300,18 @@ SSE 연결은 장시간 유지되므로 타임아웃 설정이 중요합니다.
 export const config: SonamuConfig = {
   server: {
     fastify: {
-      connectionTimeout: 0,  // 타임아웃 비활성화
-      keepAliveTimeout: 5000,  // Keep-alive: 5초
+      connectionTimeout: 0, // 타임아웃 비활성화
+      keepAliveTimeout: 5000, // Keep-alive: 5초
     },
     plugins: {
       sse: true,
-    }
-  }
+    },
+  },
 };
 ```
 
 **설정 값**:
+
 - `connectionTimeout: 0`: 연결 타임아웃 비활성화 (SSE는 장시간 유지)
 - `keepAliveTimeout`: Keep-alive 간격 (기본값: 5초)
 
@@ -321,16 +326,16 @@ server {
 
     location /stream/ {
         proxy_pass http://localhost:3000;
-        
+
         # SSE 필수 설정
         proxy_set_header Connection '';
         proxy_http_version 1.1;
         chunked_transfer_encoding off;
-        
+
         # 버퍼링 비활성화
         proxy_buffering off;
         proxy_cache off;
-        
+
         # 타임아웃
         proxy_read_timeout 24h;
         proxy_send_timeout 24h;
@@ -339,6 +344,7 @@ server {
 ```
 
 **핵심 설정**:
+
 - `proxy_buffering off`: 버퍼링 비활성화 (즉시 전송)
 - `proxy_cache off`: 캐싱 비활성화
 - `proxy_read_timeout 24h`: 읽기 타임아웃 (장시간)
@@ -352,7 +358,7 @@ Network 탭 → 스트림 요청 선택 → Headers 탭
 
 Request Headers:
   Accept: text/event-stream
-  
+
 Response Headers:
   Content-Type: text/event-stream
   Cache-Control: no-cache
@@ -361,7 +367,7 @@ Response Headers:
 EventStream 탭:
   event: message
   data: {"text": "Hello"}
-  
+
   event: update
   data: {"count": 5}
 ```
@@ -384,6 +390,7 @@ curl -N http://localhost:3000/stream/updates
 ```
 
 **옵션**:
+
 - `-N`: 버퍼링 비활성화 (즉시 출력)
 
 ## 주의사항
@@ -392,12 +399,14 @@ curl -N http://localhost:3000/stream/updates
 **SSE 설정 시 주의사항**:
 
 1. **압축 비활성화**: SSE는 스트리밍이므로 압축 금지 (@stream 데코레이터가 자동 처리)
+
    ```typescript
    @stream({ type: 'sse', events: z.object({ message: z.string() }) })
    async streamData(ctx: Context): Promise<void> { ... }
    ```
 
 2. **타임아웃 설정**: 장시간 연결 유지
+
    ```typescript
    fastify: {
      connectionTimeout: 0,
@@ -405,6 +414,7 @@ curl -N http://localhost:3000/stream/updates
    ```
 
 3. **CORS 설정**: 다른 도메인에서 사용 시 필요
+
    ```typescript
    cors: {
      origin: 'https://example.com',
@@ -413,9 +423,10 @@ curl -N http://localhost:3000/stream/updates
    ```
 
 4. **재연결 처리**: 클라이언트는 자동 재연결 구현 필요
+
    ```typescript
    // EventSource가 자동으로 처리
-   const source = new EventSource('/stream/updates');
+   const source = new EventSource("/stream/updates");
    ```
 
 5. **브라우저 제한**: 동시 SSE 연결 수 제한 (도메인당 6개)
@@ -425,26 +436,30 @@ curl -N http://localhost:3000/stream/updates
    ```nginx
    proxy_buffering off;
    ```
-</Warning>
+   </Warning>
 
 ## 브라우저 지원
 
 SSE는 모든 모던 브라우저에서 지원됩니다:
 
-| 브라우저 | 지원 |
-|---------|------|
-| Chrome | ✅ |
-| Firefox | ✅ |
-| Safari | ✅ |
-| Edge | ✅ |
-| IE 11 | ❌ (polyfill 필요) |
+| 브라우저 | 지원               |
+| -------- | ------------------ |
+| Chrome   | ✅                 |
+| Firefox  | ✅                 |
+| Safari   | ✅                 |
+| Edge     | ✅                 |
+| IE 11    | ❌ (polyfill 필요) |
 
 **IE 11 지원**: [event-source-polyfill](https://www.npmjs.com/package/event-source-polyfill)
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="SSE 엔드포인트 만들기" icon="code" href="/ko/advanced-features/sse/creating-sse-endpoints">
+  <Card
+    title="SSE 엔드포인트 만들기"
+    icon="code"
+    href="/ko/advanced-features/sse/creating-sse-endpoints"
+  >
     @stream 데코레이터로 SSE API 구축
   </Card>
   <Card title="클라이언트 통합" icon="browser" href="/ko/advanced-features/sse/client-integration">

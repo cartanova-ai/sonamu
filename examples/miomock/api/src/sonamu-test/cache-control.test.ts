@@ -1,14 +1,6 @@
 import fastify from "fastify";
-import {
-  applyCacheHeaders,
-  buildCacheControl,
-  type CacheControlHandler,
-  CachePresets,
-  type Context,
-  Sonamu,
-  type SonamuFastifyConfig,
-} from "sonamu";
-
+import { applyCacheHeaders, buildCacheControl, CachePresets, Sonamu } from "sonamu";
+import { type CacheControlHandler, type Context, type SonamuFastifyConfig } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, describe, expect, vi } from "vitest";
 

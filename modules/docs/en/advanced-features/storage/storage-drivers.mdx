@@ -28,17 +28,17 @@ import { drivers, type SonamuConfig } from "sonamu";
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 'fs',
+      default: "fs",
       drivers: {
         fs: drivers.fs({
-          location: './uploads',  // File storage location
+          location: "./uploads", // File storage location
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
-          }
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -59,6 +59,7 @@ export const config: SonamuConfig = {
     ```
 
     **Recommended**: Relative path from project root
+
   </Tab>
 
   <Tab title="urlBuilder" icon="link">
@@ -80,6 +81,7 @@ export const config: SonamuConfig = {
     // key: 'avatars/user-1.png'
     // URL: '/uploads/avatars/user-1.png'
     ```
+
   </Tab>
 
   <Tab title="visibility" icon="eye">
@@ -98,6 +100,7 @@ export const config: SonamuConfig = {
     **Default**: `public` (0644)
     - `public`: Readable by all users
     - `private`: Readable only by owner (0600)
+
   </Tab>
 </Tabs>
 
@@ -109,23 +112,24 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 'fs',
+      default: "fs",
       drivers: {
         fs: drivers.fs({
-          location: './uploads',
+          location: "./uploads",
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
-          }
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **Usage**:
+
 ```typescript
-await disk.put('avatars/user-1.png', buffer);
+await disk.put("avatars/user-1.png", buffer);
 // File location: ./uploads/avatars/user-1.png
 // URL: /uploads/avatars/user-1.png
 ```
@@ -142,26 +146,27 @@ export const config: SonamuConfig = {
   server: {
     plugins: {
       static: {
-        root: path.join(process.cwd(), 'uploads'),
-        prefix: '/uploads/',
-      }
+        root: path.join(process.cwd(), "uploads"),
+        prefix: "/uploads/",
+      },
     },
     storage: {
-      default: 'fs',
+      default: "fs",
       drivers: {
         fs: drivers.fs({
-          location: './uploads',
+          location: "./uploads",
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
-          }
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **Result**:
+
 ```
 http://localhost:3000/uploads/avatars/user-1.png
 → Serves ./uploads/avatars/user-1.png file
@@ -179,7 +184,7 @@ import { drivers, type SonamuConfig } from "sonamu";
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 's3',
+      default: "s3",
       drivers: {
         s3: drivers.s3({
           credentials: {
@@ -189,9 +194,9 @@ export const config: SonamuConfig = {
           region: process.env.AWS_REGION!,
           bucket: process.env.AWS_BUCKET!,
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -225,6 +230,7 @@ AWS_BUCKET=my-app-uploads
     2. Create user
     3. Grant S3 permissions (`AmazonS3FullAccess`)
     4. Create Access Key
+
   </Tab>
 
   <Tab title="region" icon="globe">
@@ -242,6 +248,7 @@ AWS_BUCKET=my-app-uploads
     - `ap-northeast-1`: Tokyo
     - `us-east-1`: N. Virginia
     - `us-west-2`: Oregon
+
   </Tab>
 
   <Tab title="bucket" icon="bucket">
@@ -260,6 +267,7 @@ AWS_BUCKET=my-app-uploads
     3. Enter a unique name
     4. Select region
     5. Configure public access blocking
+
   </Tab>
 
   <Tab title="urlBuilder" icon="link">
@@ -287,6 +295,7 @@ AWS_BUCKET=my-app-uploads
         `https://d111111abcdef8.cloudfront.net/${key}`,
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -298,25 +307,26 @@ AWS_BUCKET=my-app-uploads
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 's3',
+      default: "s3",
       drivers: {
         s3: drivers.s3({
           credentials: {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
           },
-          region: 'ap-northeast-2',
-          bucket: 'my-app-uploads',
+          region: "ap-northeast-2",
+          bucket: "my-app-uploads",
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **Usage**:
+
 ```typescript
-await disk.put('avatars/user-1.png', buffer);
+await disk.put("avatars/user-1.png", buffer);
 // S3 location: s3://my-app-uploads/avatars/user-1.png
 // URL: https://my-app-uploads.s3.ap-northeast-2.amazonaws.com/avatars/user-1.png
 ```
@@ -327,23 +337,22 @@ await disk.put('avatars/user-1.png', buffer);
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 's3',
+      default: "s3",
       drivers: {
         s3: drivers.s3({
           credentials: {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
           },
-          region: 'ap-northeast-2',
-          bucket: 'my-app-uploads',
+          region: "ap-northeast-2",
+          bucket: "my-app-uploads",
           urlBuilder: {
-            generateURL: (key) =>
-              `https://${process.env.CLOUDFRONT_DOMAIN}/${key}`,
-          }
+            generateURL: (key) => `https://${process.env.CLOUDFRONT_DOMAIN}/${key}`,
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -352,6 +361,7 @@ CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
 ```
 
 **Benefits**:
+
 - Fast transfer speed (edge locations)
 - Reduced bandwidth costs
 - Caching
@@ -386,7 +396,7 @@ To make an S3 bucket public:
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 'r2',
+      default: "r2",
       drivers: {
         r2: drivers.s3({
           credentials: {
@@ -394,20 +404,20 @@ export const config: SonamuConfig = {
             secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
           },
           endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-          region: 'auto',
+          region: "auto",
           bucket: process.env.R2_BUCKET!,
           urlBuilder: {
-            generateURL: (key) =>
-              `https://${process.env.R2_PUBLIC_DOMAIN}/${key}`,
-          }
+            generateURL: (key) => `https://${process.env.R2_PUBLIC_DOMAIN}/${key}`,
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **Features**:
+
 - Free egress (no transfer costs)
 - S3 API compatible
 - Cloudflare network
@@ -418,53 +428,53 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 'minio',
+      default: "minio",
       drivers: {
         minio: drivers.s3({
           credentials: {
             accessKeyId: process.env.MINIO_ACCESS_KEY!,
             secretAccessKey: process.env.MINIO_SECRET_KEY!,
           },
-          endpoint: 'http://localhost:9000',
-          region: 'us-east-1',
-          bucket: 'uploads',
-          forcePathStyle: true,  // Required for MinIO
+          endpoint: "http://localhost:9000",
+          region: "us-east-1",
+          bucket: "uploads",
+          forcePathStyle: true, // Required for MinIO
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 ## Driver Comparison
 
-| Feature | fs | S3 |
-|---------|----|----|
-| Cost | Free (disk space) | Paid (storage + transfer) |
-| Scalability | Limited (server disk) | Unlimited |
-| Speed | Very fast | Fast (network) |
-| Backup | Manual | Automatic (versioning) |
-| CDN | Requires separate setup | CloudFront integration |
-| Use case | Development, small scale | Production, large scale |
+| Feature     | fs                       | S3                        |
+| ----------- | ------------------------ | ------------------------- |
+| Cost        | Free (disk space)        | Paid (storage + transfer) |
+| Scalability | Limited (server disk)    | Unlimited                 |
+| Speed       | Very fast                | Fast (network)            |
+| Backup      | Manual                   | Automatic (versioning)    |
+| CDN         | Requires separate setup  | CloudFront integration    |
+| Use case    | Development, small scale | Production, large scale   |
 
 ## Practical Strategies
 
 ### Development/Production Separation
 
 ```typescript
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.NODE_ENV === "development";
 
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: isDevelopment ? 'fs' : 's3',
+      default: isDevelopment ? "fs" : "s3",
       drivers: {
         // Development: Local
         fs: drivers.fs({
-          location: './uploads',
+          location: "./uploads",
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
-          }
+          },
         }),
 
         // Production: S3
@@ -476,9 +486,9 @@ export const config: SonamuConfig = {
           region: process.env.AWS_REGION!,
           bucket: process.env.AWS_BUCKET!,
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -488,44 +498,51 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 'private',
+      default: "private",
       drivers: {
         // Private documents
         private: drivers.s3({
-          credentials: { /* ... */ },
-          region: 'ap-northeast-2',
-          bucket: 'my-app-private',
+          credentials: {
+            /* ... */
+          },
+          region: "ap-northeast-2",
+          bucket: "my-app-private",
         }),
 
         // Public files
         public: drivers.s3({
-          credentials: { /* ... */ },
-          region: 'ap-northeast-2',
-          bucket: 'my-app-public',
+          credentials: {
+            /* ... */
+          },
+          region: "ap-northeast-2",
+          bucket: "my-app-public",
         }),
 
         // Backup
         backup: drivers.s3({
-          credentials: { /* ... */ },
-          region: 'ap-northeast-2',
-          bucket: 'my-app-backup',
+          credentials: {
+            /* ... */
+          },
+          region: "ap-northeast-2",
+          bucket: "my-app-backup",
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **Usage**:
+
 ```typescript
 // Profile photos → public
-await file.saveToDisk('avatars/user-1.png', 'public');
+await file.saveToDisk("avatars/user-1.png", "public");
 
 // Private documents → private (default)
-await file.saveToDisk('documents/user-1/doc.pdf');
+await file.saveToDisk("documents/user-1/doc.pdf");
 
 // Backup → backup
-await Sonamu.storage.use('backup').put('backup.json', data);
+await Sonamu.storage.use("backup").put("backup.json", data);
 ```
 
 ## Cautions
@@ -534,6 +551,7 @@ await Sonamu.storage.use('backup').put('backup.json', data);
 **Cautions when configuring drivers**:
 
 1. **Environment variable management**: Never hardcode
+
    ```typescript
    // ❌ Hardcoded
    credentials: {
@@ -549,22 +567,24 @@ await Sonamu.storage.use('backup').put('backup.json', data);
    ```
 
 2. **fs urlBuilder required**: fs driver requires urlBuilder
+
    ```typescript
    // ❌ No urlBuilder
    fs: drivers.fs({
-     location: './uploads',
-   })
+     location: "./uploads",
+   });
 
    // ✅ urlBuilder configured
    fs: drivers.fs({
-     location: './uploads',
+     location: "./uploads",
      urlBuilder: {
        generateURL: (key) => `/uploads/${key}`,
-     }
-   })
+     },
+   });
    ```
 
 3. **S3 permissions check**: Grant S3 permissions to IAM user
+
    ```json
    // Minimum permissions
    {
@@ -572,11 +592,7 @@ await Sonamu.storage.use('backup').put('backup.json', data);
      "Statement": [
        {
          "Effect": "Allow",
-         "Action": [
-           "s3:PutObject",
-           "s3:GetObject",
-           "s3:DeleteObject"
-         ],
+         "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
          "Resource": "arn:aws:s3:::my-bucket/*"
        }
      ]
@@ -584,15 +600,17 @@ await Sonamu.storage.use('backup').put('backup.json', data);
    ```
 
 4. **Bucket name uniqueness**: S3 bucket names must be globally unique
+
    ```typescript
    // ❌ Name already in use
-   bucket: 'uploads'  // Error!
+   bucket: "uploads"; // Error!
 
    // ✅ Unique name
-   bucket: 'my-app-uploads-prod-2024'
+   bucket: "my-app-uploads-prod-2024";
    ```
 
 5. **Region matching**: bucket and region must match
+
    ```typescript
    // ❌ Region mismatch
    region: 'us-east-1',
@@ -602,12 +620,17 @@ await Sonamu.storage.use('backup').put('backup.json', data);
    region: 'ap-northeast-2',
    bucket: 'my-bucket'  // Created in ap-northeast-2
    ```
-</Warning>
+
+   </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Storage Manager" icon="database" href="/en/advanced-features/storage/storage-manager">
+  <Card
+    title="Storage Manager"
+    icon="database"
+    href="/en/advanced-features/storage/storage-manager"
+  >
     Managing multiple disks
   </Card>
   <Card title="File Operations" icon="upload" href="/en/advanced-features/storage/file-operations">

@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: Puri Subset 타입 시스템에서 any를 허용함 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Puri Subset 타입 시스템에서 any를 허용함
 
 /**
  * Puri Subset 타입 시스템
@@ -10,10 +10,9 @@
  * - Hydrate: flat한 결과를 중첩 객체로 변환 (예: user__name → { user: { name } })
  */
 
-import type { DatabaseSchemaExtend } from "../types/types";
-import type { Puri } from "./puri";
-import type { Expand } from "./puri.types";
-import type { PuriWrapper } from "./puri-wrapper";
+import { type Puri } from "./puri";
+import { type PuriWrapper } from "./puri-wrapper";
+import { type Expand } from "./puri.types";
 
 // ============================================================================
 // 기본 타입 정의
@@ -23,7 +22,7 @@ import type { PuriWrapper } from "./puri-wrapper";
  * SubsetQuery 함수 시그니처
  * PuriWrapper를 받아 Puri 쿼리 빌더를 반환
  */
-export type PuriSubsetFn = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => Puri<any, any, any>;
+export type PuriSubsetFn = (qbWrapper: PuriWrapper) => Puri<any, any, any>;
 
 /**
  * Puri 인스턴스에서 TResult 타입 추출
@@ -40,7 +39,7 @@ export type ExtractPuriResult<T> = T extends Puri<any, any, infer R> ? R : never
  * @param fromIds - 부모 레코드 ID 배열
  */
 export type PuriLoaderQbFn = (
-  qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+  qbWrapper: PuriWrapper,
   fromIds: number[] | string[],
 ) => Puri<any, any, any>;
 

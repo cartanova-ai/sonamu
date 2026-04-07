@@ -9,24 +9,16 @@ Learn how to implement real-time search and autocomplete functionality with Sona
 
 <CardGroup cols={2}>
   <Card title="Real-time Search" icon="bolt">
-    Search while typing
-    
-    Immediate results
+    Search while typing Immediate results
   </Card>
   <Card title="Autocomplete" icon="wand-magic-sparkles">
-    Suggested search terms
-    
-    Quick selection
+    Suggested search terms Quick selection
   </Card>
   <Card title="Debounce" icon="clock">
-    API call optimization
-    
-    Remove unnecessary requests
+    API call optimization Remove unnecessary requests
   </Card>
   <Card title="Highlighting" icon="highlighter">
-    Search term emphasis
-    
-    Improved readability
+    Search term emphasis Improved readability
   </Card>
 </CardGroup>
 
@@ -41,13 +33,13 @@ The basic HTML `<input type="search">` requires clicking a search button to exec
 function SearchPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
-  
+
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const { results } = await searchService.search({ query });
     setResults(results);
   }
-  
+
   return (
     <form onSubmit={handleSearch}>
       <input
@@ -61,6 +53,7 @@ function SearchPage() {
 ```
 
 **Problems**:
+
 1. **Button click required**: Need to press enter or button to search
 2. **Delayed feedback**: Need to execute search to see results
 3. **No autocomplete**: User has to type everything
@@ -82,6 +75,7 @@ Sonamu's Search Input provides **real-time search while typing** and **autocompl
 ```
 
 **Benefits**:
+
 1. ✨ **Immediate feedback**: See results while typing
 2. ✨ **Autocomplete**: Quick input with suggested search terms
 3. ✨ **Debounce**: Minimize unnecessary API calls
@@ -99,7 +93,7 @@ import { useState } from "react";
 
 function SearchPage() {
   const [query, setQuery] = useState("");
-  
+
   return (
     <div>
       <SearchInput
@@ -107,7 +101,7 @@ function SearchPage() {
         onChange={setQuery}
         placeholder="Search posts..."
       />
-      
+
       {query && (
         <div>Searching for: {query}</div>
       )}
@@ -124,7 +118,7 @@ Display suggestion items.
 function SearchWithSuggestions() {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  
+
   // Load suggestions on query change
   useEffect(() => {
     if (query) {
@@ -135,7 +129,7 @@ function SearchWithSuggestions() {
       setSuggestions([]);
     }
   }, [query]);
-  
+
   return (
     <SearchInput
       value={query}
@@ -163,7 +157,7 @@ function SearchPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const debouncedQuery = useDebounce(query, 300);
-  
+
   // Search with debounced query
   useEffect(() => {
     if (debouncedQuery) {
@@ -174,7 +168,7 @@ function SearchPage() {
       setResults([]);
     }
   }, [debouncedQuery]);
-  
+
   return (
     <div>
       <SearchInput
@@ -182,7 +176,7 @@ function SearchPage() {
         onChange={setQuery}
         placeholder="Search..."
       />
-      
+
       <div className="results">
         {results.map((result) => (
           <div key={result.id}>{result.title}</div>
@@ -204,7 +198,7 @@ function EntitySearch() {
   const [entityType, setEntityType] = useState<"users" | "posts">("users");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
-  
+
   useEffect(() => {
     if (query) {
       const service = entityType === "users" ? userService : postService;
@@ -213,7 +207,7 @@ function EntitySearch() {
       });
     }
   }, [query, entityType]);
-  
+
   return (
     <div>
       <div className="entity-selector">
@@ -230,18 +224,18 @@ function EntitySearch() {
           Posts
         </button>
       </div>
-      
+
       <SearchInput
         value={query}
         onChange={setQuery}
         placeholder={`Search ${entityType}...`}
       />
-      
+
       <div className="results">
         {results.map((result) => (
           <div key={result.id}>
-            {entityType === "users" 
-              ? result.username 
+            {entityType === "users"
+              ? result.username
               : result.title
             }
           </div>
@@ -264,12 +258,12 @@ function AdvancedSearch() {
     dateRange: null,
     author: null,
   });
-  
+
   const { results, isLoading } = useSearch({
     query,
     ...filters,
   });
-  
+
   return (
     <div>
       <div className="search-bar">
@@ -279,7 +273,7 @@ function AdvancedSearch() {
           placeholder="Search posts..."
         />
       </div>
-      
+
       <div className="filters">
         <select
           value={filters.category || ""}
@@ -290,7 +284,7 @@ function AdvancedSearch() {
           <option value="news">News</option>
         </select>
       </div>
-      
+
       <div className="results">
         {isLoading ? (
           <div>Loading...</div>
@@ -313,7 +307,7 @@ Save and display recent search terms.
 function SearchWithHistory() {
   const [query, setQuery] = useState("");
   const [history, setHistory] = useState<string[]>([]);
-  
+
   // Load history from local storage
   useEffect(() => {
     const saved = localStorage.getItem("search-history");
@@ -321,17 +315,17 @@ function SearchWithHistory() {
       setHistory(JSON.parse(saved));
     }
   }, []);
-  
+
   function handleSearch(searchQuery: string) {
     // Add to history
     const newHistory = [searchQuery, ...history.filter(h => h !== searchQuery)].slice(0, 10);
     setHistory(newHistory);
     localStorage.setItem("search-history", JSON.stringify(newHistory));
-    
+
     // Execute search
     setQuery(searchQuery);
   }
-  
+
   return (
     <SearchInput
       value={query}
@@ -349,15 +343,15 @@ function SearchWithHistory() {
 Highlight search terms in results.
 
 ```typescript
-function SearchResults({ results, query }: { 
-  results: any[]; 
+function SearchResults({ results, query }: {
+  results: any[];
   query: string;
 }) {
   function highlightText(text: string, highlight: string) {
     if (!highlight) return text;
-    
+
     const parts = text.split(new RegExp(`(${highlight})`, "gi"));
-    return parts.map((part, i) => 
+    return parts.map((part, i) =>
       part.toLowerCase() === highlight.toLowerCase() ? (
         <mark key={i}>{part}</mark>
       ) : (
@@ -365,7 +359,7 @@ function SearchResults({ results, query }: {
       )
     );
   }
-  
+
   return (
     <div>
       {results.map((result) => (
@@ -390,32 +384,29 @@ Abstract search logic into a reusable Hook.
 import { useState, useEffect } from "react";
 import { useDebounce } from "./useDebounce";
 
-export function useSearch<T>(
-  searchFn: (query: string) => Promise<T[]>,
-  debounceMs: number = 300
-) {
+export function useSearch<T>(searchFn: (query: string) => Promise<T[]>, debounceMs: number = 300) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<T[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const debouncedQuery = useDebounce(query, debounceMs);
-  
+
   useEffect(() => {
     if (!debouncedQuery) {
       setResults([]);
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     searchFn(debouncedQuery)
       .then(setResults)
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
   }, [debouncedQuery]);
-  
+
   return {
     query,
     setQuery,
@@ -433,7 +424,7 @@ function SearchPage() {
   const { query, setQuery, results, isLoading } = useSearch(
     (q) => postService.search({ query: q }).then(r => r.posts)
   );
-  
+
   return (
     <div>
       <SearchInput
@@ -441,7 +432,7 @@ function SearchPage() {
         onChange={setQuery}
         placeholder="Search posts..."
       />
-      
+
       {isLoading ? (
         <div>Searching...</div>
       ) : (
@@ -467,22 +458,22 @@ import { useDebounce } from "./useDebounce";
 
 export function useSearchSuggestions(
   getSuggestionsFn: (query: string) => Promise<string[]>,
-  minLength: number = 2
+  minLength: number = 2,
 ) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  
+
   const debouncedQuery = useDebounce(query, 200);
-  
+
   useEffect(() => {
     if (debouncedQuery.length < minLength) {
       setSuggestions([]);
       return;
     }
-    
+
     getSuggestionsFn(debouncedQuery).then(setSuggestions);
   }, [debouncedQuery]);
-  
+
   return {
     query,
     setQuery,
@@ -509,9 +500,9 @@ function GlobalSearch() {
     posts: [],
     comments: [],
   });
-  
+
   const debouncedQuery = useDebounce(query, 300);
-  
+
   useEffect(() => {
     if (debouncedQuery) {
       // Search multiple entities simultaneously
@@ -528,7 +519,7 @@ function GlobalSearch() {
       });
     }
   }, [debouncedQuery]);
-  
+
   return (
     <div className="global-search">
       <SearchInput
@@ -536,7 +527,7 @@ function GlobalSearch() {
         onChange={setQuery}
         placeholder="Search everything..."
       />
-      
+
       {query && (
         <div className="results">
           {results.users.length > 0 && (
@@ -547,7 +538,7 @@ function GlobalSearch() {
               ))}
             </div>
           )}
-          
+
           {results.posts.length > 0 && (
             <div className="result-section">
               <h3>Posts ({results.posts.length})</h3>
@@ -556,7 +547,7 @@ function GlobalSearch() {
               ))}
             </div>
           )}
-          
+
           {results.comments.length > 0 && (
             <div className="result-section">
               <h3>Comments ({results.comments.length})</h3>
@@ -582,17 +573,17 @@ function Header() {
   const { query, setQuery, results, isLoading } = useSearch(
     (q) => searchService.globalSearch({ query: q })
   );
-  
+
   return (
     <header>
       <div className="logo">My App</div>
-      
+
       <div className="search-container">
         {/* Search icon */}
         <button onClick={() => setIsSearchOpen(!isSearchOpen)}>
           🔍
         </button>
-        
+
         {/* Search modal */}
         {isSearchOpen && (
           <div className="search-modal">
@@ -602,9 +593,9 @@ function Header() {
               placeholder="Search..."
               autoFocus
             />
-            
+
             {isLoading && <div>Loading...</div>}
-            
+
             {results.length > 0 && (
               <div className="quick-results">
                 {results.slice(0, 5).map((result) => (
@@ -621,7 +612,7 @@ function Header() {
           </div>
         )}
       </div>
-      
+
       <nav>{/* Navigation menu */}</nav>
     </header>
   );
@@ -654,7 +645,7 @@ import { useQuery } from "@tanstack/react-query";
 
 function useSearchWithCache(query: string) {
   const debouncedQuery = useDebounce(query, 300);
-  
+
   const { data, error, isLoading } = useQuery({
     queryKey: ["search", debouncedQuery],
     queryFn: () => searchService.search({ query: debouncedQuery }),
@@ -662,7 +653,7 @@ function useSearchWithCache(query: string) {
     staleTime: 5000, // Stay fresh for 5 seconds
     refetchOnWindowFocus: false, // Don't revalidate on focus
   });
-  
+
   return {
     results: data?.results || [],
     isLoading,
@@ -678,14 +669,13 @@ Cancel ongoing requests when component unmounts.
 ```typescript
 useEffect(() => {
   const abortController = new AbortController();
-  
+
   if (debouncedQuery) {
-    searchService.search(
-      { query: debouncedQuery },
-      { signal: abortController.signal }
-    ).then(setResults);
+    searchService
+      .search({ query: debouncedQuery }, { signal: abortController.signal })
+      .then(setResults);
   }
-  
+
   return () => {
     abortController.abort();
   };
@@ -695,28 +685,41 @@ useEffect(() => {
 ## Cautions
 
 <Warning>
-**Cautions when using Search Input**:
-1. **Debounce required**: 300~500ms recommended
-2. Set minimum search length (usually 2-3 characters)
-3. **Handle empty string**: Prevent returning all results
-4. Support **keyboard navigation** (accessibility)
-5. Search API requires **index optimization**
-6. Consider **pagination** for many results
+  **Cautions when using Search Input**: 1. **Debounce required**: 300~500ms recommended 2. Set
+  minimum search length (usually 2-3 characters) 3. **Handle empty string**: Prevent returning all
+  results 4. Support **keyboard navigation** (accessibility) 5. Search API requires **index
+  optimization** 6. Consider **pagination** for many results
 </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="ID Async Select" icon="list-dropdown" href="/en/frontend-integration/react-components/id-async-select">
+  <Card
+    title="ID Async Select"
+    icon="list-dropdown"
+    href="/en/frontend-integration/react-components/id-async-select"
+  >
     Relational data selection
   </Card>
-  <Card title="Custom Components" icon="sliders" href="/en/frontend-integration/react-components/custom-components">
+  <Card
+    title="Custom Components"
+    icon="sliders"
+    href="/en/frontend-integration/react-components/custom-components"
+  >
     Component customization
   </Card>
-  <Card title="View Scaffolding" icon="wand-magic-sparkles" href="/en/frontend-integration/react-components/scaffolding-views">
+  <Card
+    title="View Scaffolding"
+    icon="wand-magic-sparkles"
+    href="/en/frontend-integration/react-components/scaffolding-views"
+  >
     Auto view generation
   </Card>
-  <Card title="TanStack Query Hook" icon="arrows-rotate" href="/en/frontend-integration/generated-services/tanstack-query">
+  <Card
+    title="TanStack Query Hook"
+    icon="arrows-rotate"
+    href="/en/frontend-integration/generated-services/tanstack-query"
+  >
     Data caching
   </Card>
 </CardGroup>

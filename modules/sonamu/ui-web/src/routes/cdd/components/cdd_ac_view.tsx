@@ -5,8 +5,9 @@ import ChevronRightIcon from "~icons/lucide/chevron-right";
 import FileCodeIcon from "~icons/lucide/file-code";
 import ListChecksIcon from "~icons/lucide/list-checks";
 import SearchIcon from "~icons/lucide/search";
+
 import { CddService } from "../service";
-import type { CddAcFile } from "../types";
+import { type CddAcFile } from "../types";
 
 export function CddAcView() {
   const { data, isLoading, error } = CddService.useCddAc();

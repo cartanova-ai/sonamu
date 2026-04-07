@@ -11,9 +11,9 @@ The reference object returned by `ubRegister()`:
 
 ```typescript
 type UBRef = {
-  uuid: string;   // unique identifier
-  of: string;     // table name
-  use?: string;   // field to reference (default: "id")
+  uuid: string; // unique identifier
+  of: string; // table name
+  use?: string; // field to reference (default: "id")
 };
 ```
 
@@ -30,8 +30,8 @@ wdb.ubRegister("employees", { user_id: userRef, department_id: deptId });
 
 // Save in order inside a transaction
 return wdb.transaction(async (trx) => {
-  await trx.ubUpsert("users");       // Save first (referenced by FK)
-  return trx.ubUpsert("employees");  // Save after (uses FK)
+  await trx.ubUpsert("users"); // Save first (referenced by FK)
+  return trx.ubUpsert("employees"); // Save after (uses FK)
 });
 ```
 
@@ -54,12 +54,13 @@ wdb.ubRegister("posts", {
 wdb.ubRegister("posts", {
   id: 1,
   title: "Updated Title",
-  content: "Updated Content",  // required field included!
-  author_id: 1,                // FK also included if required!
+  content: "Updated Content", // required field included!
+  author_id: 1, // FK also included if required!
 });
 ```
 
 **How to identify required fields**:
+
 1. Check props in entity.json
 2. Fields without `nullable: true` = required fields
 3. `id`, `created_at`, fields with `dbDefault` can be omitted
@@ -68,11 +69,11 @@ wdb.ubRegister("posts", {
 // entity.json example
 {
   "props": [
-    { "name": "id", "type": "integer" },  // can be omitted
-    { "name": "title", "type": "string" },  // required! (no nullable)
-    { "name": "content", "type": "string" },  // required! (no nullable)
-    { "name": "category", "type": "string", "nullable": true },  // optional
-    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP" }  // can be omitted
+    { "name": "id", "type": "integer" }, // can be omitted
+    { "name": "title", "type": "string" }, // required! (no nullable)
+    { "name": "content", "type": "string" }, // required! (no nullable)
+    { "name": "category", "type": "string", "nullable": true }, // optional
+    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP" } // can be omitted
   ]
 }
 ```
@@ -82,10 +83,10 @@ wdb.ubRegister("posts", {
 Save the table referenced by FK first:
 
 ```typescript
-await trx.ubUpsert("companies");   // 1. No dependencies
+await trx.ubUpsert("companies"); // 1. No dependencies
 await trx.ubUpsert("departments"); // 2. Needs company_id
-await trx.ubUpsert("users");       // 3. No dependencies
-await trx.ubUpsert("employees");   // 4. Needs user_id, department_id
+await trx.ubUpsert("users"); // 3. No dependencies
+await trx.ubUpsert("employees"); // 4. Needs user_id, department_id
 ```
 
 ## Model save Pattern
@@ -165,10 +166,10 @@ In hierarchical structures (e.g. categories, org charts), self-referential relat
 await wdb.transaction(async (trx) => {
   // Root category
   const rootRef = trx.ubRegister("categories", { name: "Root", parent_id: null });
-  
+
   // Child category (references rootRef)
   const childRef = trx.ubRegister("categories", { name: "Child", parent_id: rootRef });
-  
+
   // Grandchild category (references childRef)
   trx.ubRegister("categories", { name: "Grandchild", parent_id: childRef });
 
@@ -197,8 +198,8 @@ wdb.ubRegister("users", { id: 3, status: "inactive" });
 
 await wdb.transaction(async (trx) => {
   await trx.updateBatch("users", {
-    chunkSize: 500,      // batch size (default: 500)
-    where: "id",         // WHERE condition column (default: "id")
+    chunkSize: 500, // batch size (default: 500)
+    where: "id", // WHERE condition column (default: "id")
   });
 });
 
@@ -214,9 +215,9 @@ Options for `ubUpsert()`:
 
 ```typescript
 type UpsertOptions = {
-  chunkSize?: number;      // batch size
-  cleanOrphans?: string | string[];  // FK column(s) to use as basis for deleting orphan records
-  inherit?: string[];      // columns to preserve existing values on UPDATE
+  chunkSize?: number; // batch size
+  cleanOrphans?: string | string[]; // FK column(s) to use as basis for deleting orphan records
+  inherit?: string[]; // columns to preserve existing values on UPDATE
 };
 ```
 
@@ -235,7 +236,7 @@ Automatically delete orphan records based on FK:
 ```typescript
 // Single FK
 await trx.ubUpsert("order_items", {
-  cleanOrphans: "order_id",  // delete records with the same order_id that were not upserted this time
+  cleanOrphans: "order_id", // delete records with the same order_id that were not upserted this time
 });
 
 // Composite FK
@@ -250,7 +251,7 @@ Preserve existing values for specific columns on UPDATE:
 
 ```typescript
 await trx.ubUpsert("users", {
-  inherit: ["created_at", "password"],  // these columns are excluded from UPDATE
+  inherit: ["created_at", "password"], // these columns are excluded from UPDATE
 });
 ```
 
@@ -259,16 +260,16 @@ await trx.ubUpsert("users", {
 Select upsert or insert mode at runtime.
 
 ```typescript
-await trx.ubUpsertOrInsert("logs", "insert");   // INSERT only
-await trx.ubUpsertOrInsert("users", "upsert");  // UPSERT (default)
+await trx.ubUpsertOrInsert("logs", "insert"); // INSERT only
+await trx.ubUpsertOrInsert("users", "upsert"); // UPSERT (default)
 await trx.ubUpsertOrInsert("users", "upsert", { cleanOrphans: "team_id" });
 ```
 
-| Parameter | Type | Description |
-|----------|------|------|
-| `tableName` | string | table name |
-| `mode` | `"upsert"` \| `"insert"` | operation mode |
-| `options` | `UpsertOptions` | chunkSize, cleanOrphans, inherit (same as ubUpsert) |
+| Parameter   | Type                     | Description                                         |
+| ----------- | ------------------------ | --------------------------------------------------- |
+| `tableName` | string                   | table name                                          |
+| `mode`      | `"upsert"` \| `"insert"` | operation mode                                      |
+| `options`   | `UpsertOptions`          | chunkSize, cleanOrphans, inherit (same as ubUpsert) |
 
 When `mode: "insert"`, unlike `insertOnly`, `UpsertOptions` (cleanOrphans, inherit) can be used.
 

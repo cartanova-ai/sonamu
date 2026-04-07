@@ -18,22 +18,16 @@ import {
   Table,
   TableBody,
   TableCell,
-  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
+import { type TableCol } from "@sonamu-kit/react-components/components";
 import { dateF, datetimeF, useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import { z } from "zod";
-import { SD } from "@/i18n/sd.generated";
-import { MilestoneSaveParams } from "@/services/milestone/milestone.types";
-import { MilestoneService, ProjectService } from "@/services/services.generated";
-import { ProjectStatusLabel } from "@/services/sonamu.generated";
-import { defaultCatch, isSonamuError } from "@/services/sonamu.shared";
-
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import CheckCircleIcon from "~icons/lucide/check-circle";
 import CircleIcon from "~icons/lucide/circle";
@@ -42,6 +36,12 @@ import PlusIcon from "~icons/lucide/plus";
 import SaveIcon from "~icons/lucide/save";
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
+
+import { SD } from "@/i18n/sd.generated";
+import { MilestoneSaveParams } from "@/services/milestone/milestone.types";
+import { MilestoneService, ProjectService } from "@/services/services.generated";
+import { ProjectStatusLabel } from "@/services/sonamu.generated";
+import { defaultCatch, isSonamuError } from "@/services/sonamu.shared";
 
 export const Route = createFileRoute("/admin/projects/$projectId")({
   loader: async ({ params, context }) => {

@@ -1,45 +1,39 @@
-import { hot } from "@sonamu-kit/hmr-hook";
 import assert from "assert";
-import chalk from "chalk";
 import { EventEmitter } from "events";
 import { mkdir, readFile, writeFile } from "fs/promises";
+import path from "path";
+
+import { hot } from "@sonamu-kit/hmr-hook";
+import chalk from "chalk";
 import inflection from "inflection";
 import { minimatch } from "minimatch";
-import path from "path";
 import { group, unique } from "radashi";
-import type { z } from "zod";
-import type { WorkflowMetadata } from "..";
+import { type z } from "zod";
+
 import { registeredApis } from "../api/decorators";
 import { Sonamu } from "../api/sonamu";
-import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
+import { EntityManager } from "../entity/entity-manager";
+import { type EntityNamesRecord } from "../entity/entity-manager";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
+import { type WorkflowMetadata } from "../tasks/decorator";
 import { TemplateManager } from "../template/template-manager";
-import type { GenerateOptions, PathAndCode } from "../types/types";
-import { TemplateKey, type TemplateOptions } from "../types/types";
+import { type GenerateOptions, type PathAndCode } from "../types/types";
+import { TemplateKey } from "../types/types";
+import { type TemplateOptions } from "../types/types";
 import { mapAsync, reduceAsync } from "../utils/async-utils";
 import { centerText } from "../utils/console-util";
 import { isTest } from "../utils/controller";
 import { copyFileWithReplaceCoreToShared, exists } from "../utils/fs-utils";
-import type { AbsolutePath } from "../utils/path-utils";
+import { type AbsolutePath } from "../utils/path-utils";
 import { runWithGracefulShutdown } from "../utils/process-utils";
 import { findChangedFilesUsingChecksums, renewChecksums } from "./checksum";
 import { generateTemplate, renderTemplate } from "./code-generator";
 import { createEntity, delEntity } from "./entity-operations";
-import {
-  checksumPatternGroup,
-  type FileType,
-  getChecksumPatternGroupInAbsolutePath,
-} from "./file-patterns";
-import {
-  type LoadedApis,
-  type LoadedModels,
-  type LoadedTypes,
-  loadApis,
-  loadModels,
-  loadTypes,
-  loadWorkflows,
-} from "./module-loader";
+import { checksumPatternGroup, getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
+import { type FileType } from "./file-patterns";
+import { loadApis, loadModels, loadTypes, loadWorkflows } from "./module-loader";
+import { type LoadedApis, type LoadedModels, type LoadedTypes } from "./module-loader";
 import * as SyncerActions from "./syncer-actions";
 
 type DiffGroups = {
@@ -517,7 +511,7 @@ export class Syncer {
   async checkExists(
     entityId: string,
     enums: {
-      [name: string]: z.ZodEnum<Readonly<Record<string, string | number>>>;
+      [name: string]: z.ZodEnum;
     },
   ): Promise<Record<`${TemplateKey}${string}`, boolean>> {
     const keys: TemplateKey[] = TemplateKey.options;

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
-import type { SerializedError } from "./error";
-import type { DynamicRetryPolicy, StaticRetryPolicy } from "./retry";
+
+import { type SerializedError } from "./error";
+import { type DynamicRetryPolicy, type StaticRetryPolicy } from "./retry";
 import {
   calculateRetryDelayMs,
   DEFAULT_RETRY_POLICY,

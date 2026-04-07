@@ -1,42 +1,44 @@
-/** biome-ignore-all lint/suspicious/noThenProperty: Puri는 thenable 인터페이스를 구현하고 있습니다. */
-/** biome-ignore-all lint/suspicious/noExplicitAny: Puri는 다양한 타입을 사용하고 있습니다. */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Puri는 다양한 타입을 사용하고 있습니다.
 
 import assert from "assert";
+
 import chalk from "chalk";
 import inflection from "inflection";
-import type { Knex } from "knex";
-import { EntityManager, type TableSpec } from "../entity/entity-manager";
+import { type Knex } from "knex";
+
+import { EntityManager } from "../entity/entity-manager";
+import { type TableSpec } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
-import type {
-  AvailableColumns,
-  ColumnKeys,
-  ComparisonOperator,
-  Expand,
-  ExtractColumnType,
-  FulltextColumns,
-  FuzzyOperator,
-  InsertData,
-  InsertResult,
-  LeftJoinedMarker,
-  LeftJoinMarkerFor,
-  NumericColumns,
-  OnConflictAction,
-  ParseSelectObject,
-  ResultAvailableColumns,
-  SelectAllResult,
-  SelectObject,
-  SingleTableValue,
-  SqlExpression,
-  TsHighlightOptions,
-  TsQueryConfig,
-  TsQueryOptions,
-  TsRankOptions,
-  VectorColumns,
-  WhereCondition,
-  WhereOperator,
+import { type ClearStatements } from "./puri-subset.types";
+import {
+  type AvailableColumns,
+  type ColumnKeys,
+  type ComparisonOperator,
+  type Expand,
+  type ExtractColumnType,
+  type FulltextColumns,
+  type FuzzyOperator,
+  type InsertData,
+  type InsertResult,
+  type LeftJoinedMarker,
+  type LeftJoinMarkerFor,
+  type NumericColumns,
+  type OnConflictAction,
+  type ParseSelectObject,
+  type ResultAvailableColumns,
+  type SelectAllResult,
+  type SelectObject,
+  type SingleTableValue,
+  type SqlExpression,
+  type TsHighlightOptions,
+  type TsQueryConfig,
+  type TsQueryOptions,
+  type TsRankOptions,
+  type VectorColumns,
+  type WhereCondition,
+  type WhereOperator,
 } from "./puri.types";
 import { FUZZY_OPERATORS } from "./puri.types";
-import type { ClearStatements } from "./puri-subset.types";
 
 function normalizeFuzzyOperator(operator?: string): FuzzyOperator {
   const normalized = operator?.trim() ?? "<%";
@@ -481,7 +483,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // DISTINCT
   distinct<TColumns extends AvailableColumns<TTables>>(...columns: TColumns[]): this;
   distinct(...columns: string[]): this {
-    this.knexQuery.distinct(...(columns as string[]));
+    this.knexQuery.distinct(...columns);
     return this;
   }
 
@@ -988,7 +990,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // GROUP BY
   groupBy<TColumns extends ResultAvailableColumns<TTables, TResult>>(...columns: TColumns[]): this;
   groupBy(...columns: string[]): this {
-    this.knexQuery.groupBy(...(columns as string[]));
+    this.knexQuery.groupBy(...columns);
     return this;
   }
 

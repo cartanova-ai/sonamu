@@ -21,11 +21,11 @@ type NonSerializable =
   | Promise<unknown>
   | RegExp
   | symbol
-  // biome-ignore lint/suspicious/noExplicitAny: WeakMap의 제네릭 파라미터
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- WeakMap의 제네릭 파라미터
   | WeakMap<any, any>
-  // biome-ignore lint/suspicious/noExplicitAny: WeakSet의 제네릭 파라미터
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- WeakSet의 제네릭 파라미터
   | WeakSet<any>
-  // biome-ignore lint/suspicious/noExplicitAny: WeakRef의 제네릭 파라미터
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- WeakRef의 제네릭 파라미터
   | WeakRef<any>;
 
 /** 재귀적 직렬화 가능 타입 */

@@ -12,12 +12,13 @@ Storage 드라이버는 저장된 파일의 **URL을 생성**하는 방법을 �
 ```typescript
 {
   urlBuilder: {
-    generateURL: (key: string) => string
+    generateURL: (key: string) => string;
   }
 }
 ```
 
 **예시**:
+
 ```typescript
 key: 'uploads/avatar.png'
 → '/uploads/avatar.png'  (fs)
@@ -48,6 +49,7 @@ storage: {
 ```
 
 **결과**:
+
 ```typescript
 // key: 'avatars/user-1.png'
 // location: './uploads'
@@ -64,7 +66,7 @@ storage: {
     fs: drivers.fs({
       location: './uploads',
       urlBuilder: {
-        generateURL: (key) => 
+        generateURL: (key) =>
           `https://files.example.com/uploads/${key}`,
       }
     }),
@@ -73,6 +75,7 @@ storage: {
 ```
 
 **결과**:
+
 ```typescript
 // key: 'avatars/user-1.png'
 // URL: https://files.example.com/uploads/avatars/user-1.png
@@ -93,28 +96,29 @@ export const config: SonamuConfig = {
     // 정적 파일 서빙
     plugins: {
       static: {
-        root: path.join(process.cwd(), 'uploads'),
-        prefix: '/uploads/',
-      }
+        root: path.join(process.cwd(), "uploads"),
+        prefix: "/uploads/",
+      },
     },
-    
+
     // Storage 설정
     storage: {
-      default: 'fs',
+      default: "fs",
       drivers: {
         fs: drivers.fs({
-          location: './uploads',
+          location: "./uploads",
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
-          }
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **효과**:
+
 ```
 http://localhost:3000/uploads/avatars/user-1.png
 → ./uploads/avatars/user-1.png 파일 서빙
@@ -141,6 +145,7 @@ storage: {
 ```
 
 **결과**:
+
 ```typescript
 // key: 'uploads/avatar.png'
 // URL: https://my-bucket.s3.ap-northeast-2.amazonaws.com/uploads/avatar.png
@@ -159,7 +164,7 @@ storage: {
       region: 'ap-northeast-2',
       bucket: 'my-bucket',
       urlBuilder: {
-        generateURL: (key) => 
+        generateURL: (key) =>
           `https://d111111abcdef8.cloudfront.net/${key}`,
       }
     }),
@@ -172,6 +177,7 @@ CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
 ```
 
 **장점**:
+
 - 빠른 전송 속도 (엣지 로케이션)
 - 대역폭 비용 절감
 - 캐싱
@@ -187,7 +193,7 @@ storage: {
       region: 'ap-northeast-2',
       bucket: 'my-bucket',
       urlBuilder: {
-        generateURL: (key) => 
+        generateURL: (key) =>
           `https://cdn.example.com/${key}`,
       }
     }),
@@ -196,6 +202,7 @@ storage: {
 ```
 
 **설정 방법**:
+
 1. CloudFront 배포 생성
 2. Origin: S3 버킷
 3. CNAME: cdn.example.com
@@ -226,6 +233,7 @@ storage: {
 ```
 
 **결과**:
+
 ```typescript
 // 개발: http://localhost:3000/uploads/avatar.png
 // 프로덕션: https://cdn.example.com/avatar.png
@@ -270,6 +278,7 @@ storage: {
 ```
 
 **결과**:
+
 ```typescript
 // URL: /uploads/v1/avatars/user-1.png
 ```
@@ -286,22 +295,24 @@ import { Sonamu } from "sonamu";
 @api({ httpMethod: 'GET' })
 async getPrivateFileUrl(key: string) {
   const disk = Sonamu.storage.use('s3');
-  
+
   // Signed URL 생성 (1시간 유효)
   const signedUrl = await disk.getSignedUrl(key, {
     expiresIn: '1h'
   });
-  
+
   return { url: signedUrl };
 }
 ```
 
 **결과**:
+
 ```
 https://bucket.s3.amazonaws.com/private/doc.pdf?X-Amz-Algorithm=...&X-Amz-Expires=3600
 ```
 
 **용도**:
+
 - Private 파일 임시 공유
 - 보안이 필요한 다운로드
 - 시간 제한 액세스
@@ -334,28 +345,27 @@ async uploadPrivateFile() {
 
 ```typescript
 const cdnDomain = process.env.CDN_DOMAIN;
-const version = process.env.ASSET_VERSION || 'v1';
+const version = process.env.ASSET_VERSION || "v1";
 
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 's3',
+      default: "s3",
       drivers: {
         s3: drivers.s3({
           credentials: {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
           },
-          region: 'ap-northeast-2',
-          bucket: 'my-bucket',
+          region: "ap-northeast-2",
+          bucket: "my-bucket",
           urlBuilder: {
-            generateURL: (key) => 
-              `https://${cdnDomain}/${version}/${key}`,
-          }
+            generateURL: (key) => `https://${cdnDomain}/${version}/${key}`,
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -365,6 +375,7 @@ ASSET_VERSION=v2
 ```
 
 **결과**:
+
 ```typescript
 // key: 'images/logo.png'
 // URL: https://d111111abcdef8.cloudfront.net/v2/images/logo.png
@@ -376,43 +387,46 @@ ASSET_VERSION=v2
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 's3',
+      default: "s3",
       drivers: {
         // 이미지용 CDN
         images: drivers.s3({
-          credentials: { /* ... */ },
-          region: 'ap-northeast-2',
-          bucket: 'images-bucket',
+          credentials: {
+            /* ... */
+          },
+          region: "ap-northeast-2",
+          bucket: "images-bucket",
           urlBuilder: {
-            generateURL: (key) => 
-              `https://images.cdn.example.com/${key}`,
-          }
+            generateURL: (key) => `https://images.cdn.example.com/${key}`,
+          },
         }),
-        
+
         // 비디오용 CDN
         videos: drivers.s3({
-          credentials: { /* ... */ },
-          region: 'ap-northeast-2',
-          bucket: 'videos-bucket',
+          credentials: {
+            /* ... */
+          },
+          region: "ap-northeast-2",
+          bucket: "videos-bucket",
           urlBuilder: {
-            generateURL: (key) => 
-              `https://videos.cdn.example.com/${key}`,
-          }
+            generateURL: (key) => `https://videos.cdn.example.com/${key}`,
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **사용**:
+
 ```typescript
 // 이미지
-await file.saveToDisk('images', 'photo.jpg');
+await file.saveToDisk("images", "photo.jpg");
 // URL: https://images.cdn.example.com/photo.jpg
 
 // 비디오
-await file.saveToDisk('videos', 'video.mp4');
+await file.saveToDisk("videos", "video.mp4");
 // URL: https://videos.cdn.example.com/video.mp4
 ```
 
@@ -435,7 +449,7 @@ storage: {
             .update(key)
             .digest('hex')
             .substring(0, 8);
-          
+
           return `https://cdn.example.com/${key}?v=${hash}`;
         }
       }
@@ -445,6 +459,7 @@ storage: {
 ```
 
 **결과**:
+
 ```typescript
 // key: 'images/logo.png'
 // URL: https://cdn.example.com/images/logo.png?v=5d41402a
@@ -507,11 +522,12 @@ Sonamu Storage는 두 가지 URL 타입을 제공합니다.
 **일반 공개 URL**
 
 ```typescript
-const url = await disk.getUrl('uploads/avatar.png');
+const url = await disk.getUrl("uploads/avatar.png");
 // => https://bucket.s3.amazonaws.com/uploads/avatar.png
 ```
 
 **특징**:
+
 - 영구적
 - 만료 없음
 - Public 파일용
@@ -521,23 +537,33 @@ const url = await disk.getUrl('uploads/avatar.png');
 **서명된 임시 URL**
 
 ```typescript
-const signedUrl = await disk.getSignedUrl('private/doc.pdf', {
-  expiresIn: '1h'  // 1시간 후 만료
+const signedUrl = await disk.getSignedUrl("private/doc.pdf", {
+  expiresIn: "1h", // 1시간 후 만료
 });
 // => https://bucket.s3.amazonaws.com/private/doc.pdf?X-Amz-Algorithm=...
 ```
 
 **특징**:
+
 - 임시적 (만료 시간 설정)
 - 서명으로 보호됨
 - Private 파일용
 
 **만료 시간 옵션**:
+
 ```typescript
-{ expiresIn: '1h' }    // 1시간
-{ expiresIn: '30m' }   // 30분
-{ expiresIn: '1d' }    // 1일
-{ expiresIn: '7d' }    // 7일
+{
+  expiresIn: "1h";
+} // 1시간
+{
+  expiresIn: "30m";
+} // 30분
+{
+  expiresIn: "1d";
+} // 1일
+{
+  expiresIn: "7d";
+} // 7일
 ```
 
 ## 주의사항
@@ -546,22 +572,24 @@ const signedUrl = await disk.getSignedUrl('private/doc.pdf', {
 **URL 빌더 사용 시 주의사항**:
 
 1. **fs는 urlBuilder 필수**: fs 드라이버는 반드시 urlBuilder 설정
+
    ```typescript
    // ❌ urlBuilder 없음
    fs: drivers.fs({
-     location: './uploads',
-   })
-   
+     location: "./uploads",
+   });
+
    // ✅ urlBuilder 설정
    fs: drivers.fs({
-     location: './uploads',
+     location: "./uploads",
      urlBuilder: {
        generateURL: (key) => `/uploads/${key}`,
-     }
-   })
+     },
+   });
    ```
 
 2. **정적 파일 서빙**: fs 사용 시 static 플러그인 필요
+
    ```typescript
    plugins: {
      static: {
@@ -572,30 +600,31 @@ const signedUrl = await disk.getSignedUrl('private/doc.pdf', {
    ```
 
 3. **HTTPS 사용**: 프로덕션에서는 HTTPS URL 사용
+
    ```typescript
    // ❌ HTTP
-   generateURL: (key) => `http://cdn.example.com/${key}`
-   
+   generateURL: (key) => `http://cdn.example.com/${key}`;
+
    // ✅ HTTPS
-   generateURL: (key) => `https://cdn.example.com/${key}`
+   generateURL: (key) => `https://cdn.example.com/${key}`;
    ```
 
 4. **경로 인코딩**: 특수 문자 처리
+
    ```typescript
    // ✅ 안전한 처리
    generateURL: (key) => {
      const encoded = encodeURIComponent(key);
      return `/uploads/${encoded}`;
-   }
+   };
    ```
 
 5. **캐시 무효화**: URL 변경 시 CDN 캐시 고려
    ```typescript
    // 버전 파라미터 추가로 캐시 무효화
-   generateURL: (key) => 
-     `/uploads/${key}?v=${Date.now()}`
+   generateURL: (key) => `/uploads/${key}?v=${Date.now()}`;
    ```
-</Warning>
+   </Warning>
 
 ## CloudFront 설정
 
@@ -616,6 +645,7 @@ CloudFront를 URL 빌더와 함께 사용하는 방법입니다.
 ### 2. Domain 확인
 
 배포 생성 후 Domain Name 확인:
+
 ```
 d111111abcdef8.cloudfront.net
 ```
@@ -631,7 +661,7 @@ storage: {
       region: 'ap-northeast-2',
       bucket: 'my-bucket',
       urlBuilder: {
-        generateURL: (key) => 
+        generateURL: (key) =>
           `https://d111111abcdef8.cloudfront.net/${key}`,
       }
     }),
@@ -642,6 +672,7 @@ storage: {
 ### 4. 커스텀 도메인 (선택)
 
 1. Route 53에서 CNAME 레코드 생성:
+
    ```
    cdn.example.com → d111111abcdef8.cloudfront.net
    ```
@@ -653,7 +684,7 @@ storage: {
 3. URL 빌더 수정:
    ```typescript
    urlBuilder: {
-     generateURL: (key) => 
+     generateURL: (key) =>
        `https://cdn.example.com/${key}`,
    }
    ```
@@ -661,13 +692,25 @@ storage: {
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="Storage Manager" icon="database" href="/ko/advanced-features/storage/storage-manager">
+  <Card
+    title="Storage Manager"
+    icon="database"
+    href="/ko/advanced-features/storage/storage-manager"
+  >
     여러 디스크 관리하기
   </Card>
-  <Card title="스토리지 드라이버" icon="hard-drive" href="/ko/advanced-features/storage/storage-drivers">
+  <Card
+    title="스토리지 드라이버"
+    icon="hard-drive"
+    href="/ko/advanced-features/storage/storage-drivers"
+  >
     fs, S3 드라이버 설정
   </Card>
-  <Card title="파일 저장 및 조회" icon="upload" href="/ko/advanced-features/storage/file-operations">
+  <Card
+    title="파일 저장 및 조회"
+    icon="upload"
+    href="/ko/advanced-features/storage/file-operations"
+  >
     파일 업로드 및 다운로드
   </Card>
 </CardGroup>

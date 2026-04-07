@@ -12,21 +12,25 @@ Learn how to record data during test execution using Naite.t().
     Two parameters
 
     Intuitive usage
+
   </Card>
   <Card title="Automatic Tracking" icon="route">
     Automatic callstack collection
 
     Call path identification
+
   </Card>
   <Card title="Any Type" icon="wand-magic-sparkles">
     All values allowed
 
     Flexible logging
+
   </Card>
   <Card title="Test-Only" icon="vial">
     NODE_ENV check
 
     No production impact
+
   </Card>
 </CardGroup>
 
@@ -42,6 +46,7 @@ Naite.t("user:create", { userId: 123, username: "john" });
 ```
 
 Data recorded this way:
+
 - Can be queried at any time during test execution with `Naite.get()`
 - Transmitted in real-time to VSCode Extension
 - Stored with callstack and time information
@@ -97,7 +102,8 @@ test("post update", async () => {
 </CodeGroup>
 
 <Tip>
-**Input/Output Pattern**: Using `:input`/`:output` or `:before`/`:after` patterns helps clearly track data transformation processes.
+  **Input/Output Pattern**: Using `:input`/`:output` or `:before`/`:after` patterns helps clearly
+  track data transformation processes.
 </Tip>
 
 ### Step-by-Step Logging
@@ -131,12 +137,14 @@ test("full order processing flow", async () => {
 ```
 
 **Benefits**:
+
 - Clearly identify which step failed
 - Measure time spent at each step
 - Filter specific steps with wildcard patterns (`order:payment:*`)
 
 <Info>
-**start/done Pattern**: Recording the start and completion of each operation with `:start`/`:done` makes it easier to calculate elapsed time or verify completion status later.
+  **start/done Pattern**: Recording the start and completion of each operation with `:start`/`:done`
+  makes it easier to calculate elapsed time or verify completion status later.
 </Info>
 
 ## Understanding Internal Behavior
@@ -156,12 +164,14 @@ t(name: string, value: any) {
 ```
 
 **Reasons**:
+
 - Safe even if `Naite.t()` exists in production code
 - Test-only feature
 - No runtime overhead
 
 <Tip>
-You don't need to remove `Naite.t()` calls before production deployment. It's automatically controlled by environment variables.
+  You don't need to remove `Naite.t()` calls before production deployment. It's automatically
+  controlled by environment variables.
 </Tip>
 
 ### 2. Context Check
@@ -183,6 +193,7 @@ try {
 ```
 
 **Role of Context**:
+
 - Provides independent `naiteStore` for each test
 - Ensures test isolation
 - Maintains Context in async operations with AsyncLocalStorage
@@ -226,23 +237,21 @@ function extractCallStack(): StackFrame[] {
   const stack = new Error().stack;
 
   // Exclude "Error", "extractCallStack", "Naite.t"
-  const frames = stack.split("\n")
+  const frames = stack
+    .split("\n")
     .slice(3)
     .map(parseStackFrame)
-    .filter(frame => frame !== null);
+    .filter((frame) => frame !== null);
 
   // Stop when runWithContext is found
-  const contextIndex = frames.findIndex(
-    f => f.functionName?.includes("runWithContext")
-  );
+  const contextIndex = frames.findIndex((f) => f.functionName?.includes("runWithContext"));
 
-  return contextIndex >= 0
-    ? frames.slice(0, contextIndex + 1)
-    : frames;
+  return contextIndex >= 0 ? frames.slice(0, contextIndex + 1) : frames;
 }
 ```
 
 **Collected Information**:
+
 - Function name (`createUser`)
 - File path (`/Users/.../user.model.ts`)
 - Line number (`123`)
@@ -298,6 +307,7 @@ store.set(name, [...existing, trace]);
 ```
 
 **Reason for Array Management**:
+
 - Same key can be called multiple times
 - Track in chronological order
 - Support for loop operation logging
@@ -310,6 +320,7 @@ store.set(name, [...existing, trace]);
     // Store:
     // "user:create" => [{ key, data: { userId: 1 }, ... }]
     ```
+
   </Tab>
 
   <Tab title="Multiple Calls">
@@ -325,6 +336,7 @@ store.set(name, [...existing, trace]);
     //   { key, data: { userId: 3 }, ... }
     // ]
     ```
+
   </Tab>
 </Tabs>
 
@@ -350,6 +362,7 @@ Separating hierarchies with colons (`:`) makes it easy to query later with wildc
     Naite.get("syncer:*").result();       // All syncer related
     Naite.get("*:create").result();       // All create operations
     ```
+
   </Tab>
 
   <Tab title="Wrong Way" icon="xmark">
@@ -362,6 +375,7 @@ Separating hierarchies with colons (`:`) makes it easy to query later with wildc
     // Can't use wildcards
     // "user*" won't match
     ```
+
   </Tab>
 </Tabs>
 
@@ -376,6 +390,7 @@ Separating hierarchies with colons (`:`) makes it easy to query later with wildc
     Naite.t("post:update", { /* ... */ });
     Naite.t("syncer:render", { /* ... */ });
     ```
+
   </Step>
 
   <Step title="module:function:action">
@@ -387,6 +402,7 @@ Separating hierarchies with colons (`:`) makes it easy to query later with wildc
     Naite.t("user:create:db", { /* ... */ });
     Naite.t("user:create:done", { /* ... */ });
     ```
+
   </Step>
 
   <Step title="module:function:action:detail">
@@ -398,11 +414,13 @@ Separating hierarchies with colons (`:`) makes it easy to query later with wildc
     Naite.t("order:payment:bank:transfer:start", { /* ... */ });
     Naite.t("order:payment:bank:transfer:done", { /* ... */ });
     ```
+
   </Step>
 </Steps>
 
 <Warning>
-Too deep hierarchies (5+ levels) actually reduce readability. In most cases, 3 levels are sufficient.
+  Too deep hierarchies (5+ levels) actually reduce readability. In most cases, 3 levels are
+  sufficient.
 </Warning>
 
 ## Practical Patterns
@@ -415,7 +433,7 @@ Clearly track business logic branches.
 async function processPayment(order: Order) {
   Naite.t("payment:start", {
     orderId: order.id,
-    method: order.payment_method
+    method: order.payment_method,
   });
 
   if (order.payment_method === "card") {
@@ -446,6 +464,7 @@ test("card payment", async () => {
 ```
 
 **Usage**:
+
 - A/B testing path verification
 - Permission branch verification
 - Error handling path tracking
@@ -501,7 +520,8 @@ test("invalid input handling", async () => {
 ```
 
 <Tip>
-**Error Tracking Pattern**: Calling `Naite.t()` in the catch block allows you to capture all context at the time of error. Combined with callstack storage, debugging becomes much easier.
+  **Error Tracking Pattern**: Calling `Naite.t()` in the catch block allows you to capture all
+  context at the time of error. Combined with callstack storage, debugging becomes much easier.
 </Tip>
 
 ### 3. Performance Measurement
@@ -517,7 +537,7 @@ test("data processing performance", async () => {
   const data = await fetchLargeData();
   Naite.t("process:fetch:done", {
     timestamp: Date.now(),
-    dataSize: data.length
+    dataSize: data.length,
   });
 
   // Step 2: Data processing
@@ -525,7 +545,7 @@ test("data processing performance", async () => {
   const processed = await transformData(data);
   Naite.t("process:transform:done", {
     timestamp: Date.now(),
-    processedCount: processed.length
+    processedCount: processed.length,
   });
 
   // Step 3: DB save
@@ -537,9 +557,9 @@ test("data processing performance", async () => {
 
   // Calculate time for each step
   const logs = Naite.get("process:*").result();
-  const start = logs.find(l => l.timestamp).timestamp;
-  const fetchDone = logs.find(l => l.timestamp && l.dataSize).timestamp;
-  const transformDone = logs.find(l => l.timestamp && l.processedCount).timestamp;
+  const start = logs.find((l) => l.timestamp).timestamp;
+  const fetchDone = logs.find((l) => l.timestamp && l.dataSize).timestamp;
+  const transformDone = logs.find((l) => l.timestamp && l.processedCount).timestamp;
   const saveDone = logs[logs.length - 2].timestamp;
 
   console.log(`Fetch: ${fetchDone - start}ms`);
@@ -582,6 +602,7 @@ For loops or batch operations, record only summary information.
       successCount: results.filter(r => r.success).length
     });
     ```
+
   </Tab>
 
   <Tab title="Conditional Logging" icon="toggle-on">
@@ -598,6 +619,7 @@ For loops or batch operations, record only summary information.
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -620,6 +642,7 @@ Naite.t("key", undefined);
 ```
 
 **Design Reasons**:
+
 - Ease of use prioritized over TypeScript type safety
 - No interruption from type errors while writing tests
 - Same philosophy as expect()
@@ -686,13 +709,12 @@ Even if `Naite.t()` exists in production code, there's no performance impact.
 ### 2. Avoid Excessive Logging
 
 <Warning>
-Calling `Naite.t()` inside loops creates thousands of traces, causing:
-- Increased memory usage
-- Slower test speed
-- Slower VSCode Extension
+  Calling `Naite.t()` inside loops creates thousands of traces, causing: - Increased memory usage -
+  Slower test speed - Slower VSCode Extension
 </Warning>
 
 **Recommendations**:
+
 - Record only loop start/end
 - Record only when problems occur
 - Use summary information
@@ -731,6 +753,7 @@ function processItem(item: any) {
     Naite.t("data2", { valid: true });
     Naite.t("data3", { query: "INSERT..." });
     ```
+
   </Step>
 
   <Step title="Consistent Structure">
@@ -744,6 +767,7 @@ function processItem(item: any) {
     Naite.t("post:update", { /* ... */ });
     Naite.t("post:delete", { /* ... */ });
     ```
+
   </Step>
 
   <Step title="Minimal Information">
@@ -761,6 +785,7 @@ function processItem(item: any) {
       ...context,           // Entire Context
     });
     ```
+
   </Step>
 
   <Step title="Log at Meaningful Locations">
@@ -780,6 +805,7 @@ function processItem(item: any) {
       Naite.t("user:process:done", { userId: user.id });
     }
     ```
+
   </Step>
 </Steps>
 
@@ -797,7 +823,7 @@ function processItem(item: any) {
 4. **No excessive logging**: Calling inside loops degrades performance.
 
 5. **Key convention**: The `module:function:action` format is recommended.
-</Warning>
+   </Warning>
 
 ## Next Steps
 

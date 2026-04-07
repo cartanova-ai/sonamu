@@ -34,13 +34,8 @@
   ],
   "lastModified": "2026-03-09",
   "status": "done",
-  "sources": [
-    "src/application/file/file.model.ts",
-    "src/application/file/file.types.ts"
-  ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "sources": ["src/application/file/file.model.ts", "src/application/file/file.types.ts"],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "FileModel": "파일 메타데이터 조회/수정/삭제를 담당한다",
     "File Types": "목록/단건 조회 파라미터를 정의한다"

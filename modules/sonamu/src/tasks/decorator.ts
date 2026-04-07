@@ -1,14 +1,16 @@
 import { randomUUID } from "node:crypto";
-import type {
-  RetryPolicy,
-  SchemaInput,
-  SchemaOutput,
-  StandardSchemaV1,
-  WorkflowSpec,
+
+import {
+  type RetryPolicy,
+  type SchemaInput,
+  type SchemaOutput,
+  type StandardSchemaV1,
+  type WorkflowSpec,
 } from "@sonamu-kit/tasks/internal";
 import inflection from "inflection";
-import type { Executable } from "../types/types";
-import type { WorkflowFunction } from "./workflow-manager";
+
+import { type Executable } from "../types/types";
+import { type WorkflowFunction } from "./workflow-manager";
 
 // 워크플로우의 메타데이터 객체
 export interface WorkflowMetadata {

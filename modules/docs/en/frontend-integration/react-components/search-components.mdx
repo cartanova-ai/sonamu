@@ -12,21 +12,25 @@ Learn how to implement dynamic field search by combining `SearchFieldSelect` wit
     Select field + keyword combination
 
     Flexible search conditions
+
   </Card>
   <Card title="Auto-generated" icon="wand-magic-sparkles">
     SearchField enum based
 
     Auto label mapping
+
   </Card>
   <Card title="useListParams Integration" icon="link">
     register pattern support
 
     Auto URL sync
+
   </Card>
   <Card title="Backend Pattern" icon="database">
     exhaustive pattern
 
     Type-safe implementation
+
   </Card>
 </CardGroup>
 
@@ -40,11 +44,7 @@ SearchFieldSelect is auto-generated when the `SearchField` enum is defined in th
 // user.types.ts (backend)
 import { z } from "zod";
 
-export const UserSearchField = z.enum([
-  "id",
-  "username",
-  "email",
-]);
+export const UserSearchField = z.enum(["id", "username", "email"]);
 
 export const UserListParams = UserBaseListParams.extend({
   search: UserSearchField.optional(),
@@ -57,6 +57,7 @@ export const UserListParams = UserBaseListParams.extend({
 **Component location**: `web/src/components/user/UserSearchFieldSelect.tsx`
 
 **Auto-generated labels**: `web/src/services/sonamu.generated.ts`
+
 ```typescript
 export const UserSearchFieldLabel = {
   id: "ID",
@@ -72,6 +73,7 @@ export const UserSearchFieldLabel = {
 - `keyword`: Actual search term input
 
 Both must be used together to implement search functionality.
+
 </Info>
 
 ## Basic Usage
@@ -114,6 +116,7 @@ export function UserListPage() {
 ```
 
 **How it works**:
+
 1. User selects search field (ID, name, email)
 2. User enters keyword
 3. `listParams` is updated and API is called
@@ -195,6 +198,7 @@ async findMany<T extends UserSubsetKey, LP extends UserListParams>(
 ```
 
 **Key Points**:
+
 1. **Check both `search` and `keyword`**: Search only when both exist
 2. **Different processing per field**:
    - ID: Exact match with number conversion
@@ -209,6 +213,7 @@ exhaustive(params.search);
 ```
 
 If a new option is added to SearchField enum, this line will cause a compile error, ensuring the developer doesn't forget to handle it.
+
 </Info>
 
 ## Real-world Examples
@@ -415,7 +420,7 @@ export const UserSearchField = z.enum([
   "id",
   "username",
   "email",
-  "all",  // Add "All" option
+  "all", // Add "All" option
 ]);
 ```
 
@@ -516,6 +521,7 @@ const icons = {
 **Cause**: `SearchField` enum not defined in backend
 
 **Solution**:
+
 ```typescript
 // Add to user.types.ts (backend)
 export const UserSearchField = z.enum(["id", "username", "email"]);
@@ -537,6 +543,7 @@ export const UserListParams = UserBaseListParams.extend({
 **Cause**: Keyword not converted to number
 
 **Solution**:
+
 ```typescript
 if (params.search === "id") {
   const idNum = Number(params.keyword);

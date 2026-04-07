@@ -35,9 +35,7 @@
   "lastModified": "2026-03-09",
   "status": "implementing",
   "sources": [],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "AuditLog": "audit_logs 테이블. actor_id(string, nullable), action(enum: create/update/delete), entity_type, entity_id, old_value(JSON), new_value(JSON), created_at",
     "AuditLogModel": "감사 로그 생성(log)을 담당한다"

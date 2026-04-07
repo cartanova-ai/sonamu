@@ -1,6 +1,6 @@
 ---
-title: '@workflow'
-description: 'Workflow Definition Decorator'
+title: "@workflow"
+description: "Workflow Definition Decorator"
 ---
 
 The `@workflow` decorator defines long-running tasks, background jobs, and scheduled tasks. Built on OpenWorkflow, it provides durable execution, retries, and monitoring.
@@ -13,41 +13,38 @@ import { workflow } from "sonamu";
 export const processOrder = workflow(
   {
     name: "process_order",
-    version: "1.0"
+    version: "1.0",
   },
   async ({ input, step, logger }) => {
     logger.info("Processing order", { orderId: input.orderId });
 
     // Step 1: Process payment
-    const payment = await step.define(
-      { name: "process-payment" },
-      async () => {
+    const payment = await step
+      .define({ name: "process-payment" }, async () => {
         return await PaymentService.charge(input.amount);
-      }
-    ).run();
+      })
+      .run();
 
     // Step 2: Update inventory
-    await step.define(
-      { name: "update-inventory" },
-      async () => {
+    await step
+      .define({ name: "update-inventory" }, async () => {
         return await InventoryModel.decrease(input.productId, input.quantity);
-      }
-    ).run();
+      })
+      .run();
 
     // Step 3: Start shipping
-    const shipping = await step.define(
-      { name: "start-shipping" },
-      async () => {
+    const shipping = await step
+      .define({ name: "start-shipping" }, async () => {
         return await ShippingService.ship(input.address);
-      }
-    ).run();
+      })
+      .run();
 
     return {
       orderId: input.orderId,
       paymentId: payment.id,
-      trackingNumber: shipping.trackingNumber
+      trackingNumber: shipping.trackingNumber,
     };
-  }
+  },
 );
 ```
 
@@ -67,15 +64,15 @@ export default defineConfig({
         port: 5432,
         database: process.env.DB_NAME,
         user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD
-      }
+        password: process.env.DB_PASSWORD,
+      },
     },
     worker: {
-      concurrency: 4,      // Concurrent execution count
-      usePubSub: true,     // Use Pub/Sub
-      listenDelay: 500     // Listen delay (ms)
-    }
-  }
+      concurrency: 4, // Concurrent execution count
+      usePubSub: true, // Use Pub/Sub
+      listenDelay: 500, // Listen delay (ms)
+    },
+  },
 });
 ```
 
@@ -89,15 +86,16 @@ Specifies the workflow name.
 
 ```typescript
 // Explicit name
-export const myTask = workflow(
-  { name: "process_order" },
-  async ({ input }) => { /* ... */ }
-);
+export const myTask = workflow({ name: "process_order" }, async ({ input }) => {
+  /* ... */
+});
 
 // Auto name (uses function name)
 export const processOrder = workflow(
-  {},  // name omitted → "process_order"
-  async ({ input }) => { /* ... */ }
+  {}, // name omitted → "process_order"
+  async ({ input }) => {
+    /* ... */
+  },
 );
 ```
 
@@ -111,24 +109,26 @@ Specifies the workflow version.
 export const processOrder = workflow(
   {
     name: "process_order",
-    version: "1.0"
+    version: "1.0",
   },
-  async ({ input }) => { /* ... */ }
+  async ({ input }) => {
+    /* ... */
+  },
 );
 
 // When updating version
 export const processOrderV2 = workflow(
   {
     name: "process_order",
-    version: "2.0"
+    version: "2.0",
   },
-  async ({ input }) => { /* ... */ }
+  async ({ input }) => {
+    /* ... */
+  },
 );
 ```
 
-<Info>
-You can run workflows with the same name but different versions in parallel.
-</Info>
+<Info>You can run workflows with the same name but different versions in parallel.</Info>
 
 ### schema
 
@@ -142,19 +142,19 @@ const OrderInputSchema = z.object({
   productId: z.number(),
   quantity: z.number(),
   amount: z.number(),
-  address: z.string()
+  address: z.string(),
 });
 
 export const processOrder = workflow(
   {
     name: "process_order",
-    schema: OrderInputSchema
+    schema: OrderInputSchema,
   },
   async ({ input }) => {
     // input is automatically type-validated
-    input.orderId;  // number
-    input.address;  // string
-  }
+    input.orderId; // number
+    input.address; // string
+  },
 );
 ```
 
@@ -169,15 +169,15 @@ export const dailyReport = workflow(
     schedules: [
       {
         name: "daily-at-midnight",
-        expression: "0 0 * * *",  // Daily at midnight
-        input: { date: new Date().toISOString().split('T')[0] }
-      }
-    ]
+        expression: "0 0 * * *", // Daily at midnight
+        input: { date: new Date().toISOString().split("T")[0] },
+      },
+    ],
   },
   async ({ input, logger }) => {
     logger.info("Generating daily report", { date: input.date });
     // Generate report
-  }
+  },
 );
 
 // Dynamic input
@@ -187,21 +187,22 @@ export const weeklyBackup = workflow(
     schedules: [
       {
         name: "weekly-sunday",
-        expression: "0 2 * * 0",  // Sundays at 2am
+        expression: "0 2 * * 0", // Sundays at 2am
         input: () => ({
           timestamp: new Date().toISOString(),
-          backupPath: `/backups/${Date.now()}`
-        })
-      }
-    ]
+          backupPath: `/backups/${Date.now()}`,
+        }),
+      },
+    ],
   },
   async ({ input }) => {
     // Perform backup
-  }
+  },
 );
 ```
 
 **Cron Expression Examples:**
+
 ```
 * * * * *    - Every minute
 0 * * * *    - Every hour
@@ -230,19 +231,13 @@ async function workflowFn({ input, step, logger, version }) {
 Input data passed when executing the workflow.
 
 ```typescript
-export const processOrder = workflow(
-  { name: "process_order" },
-  async ({ input }) => {
-    console.log("Order ID:", input.orderId);
-    console.log("Amount:", input.amount);
-  }
-);
+export const processOrder = workflow({ name: "process_order" }, async ({ input }) => {
+  console.log("Order ID:", input.orderId);
+  console.log("Amount:", input.amount);
+});
 
 // Execution
-await WorkflowManager.run(
-  { name: "process_order" },
-  { orderId: 123, amount: 50000 }
-);
+await WorkflowManager.run({ name: "process_order" }, { orderId: 123, amount: 50000 });
 ```
 
 ### step
@@ -250,42 +245,37 @@ await WorkflowManager.run(
 The Step API defines each stage of the workflow. Each step can be retried and recovered independently.
 
 ```typescript
-export const processOrder = workflow(
-  { name: "process_order" },
-  async ({ step }) => {
-    // Step 1
-    const payment = await step.define(
-      { name: "charge-payment" },
-      async () => {
-        return await PaymentService.charge(100);
-      }
-    ).run();
+export const processOrder = workflow({ name: "process_order" }, async ({ step }) => {
+  // Step 1
+  const payment = await step
+    .define({ name: "charge-payment" }, async () => {
+      return await PaymentService.charge(100);
+    })
+    .run();
 
-    // Step 2
-    const inventory = await step.define(
-      { name: "update-inventory" },
-      async () => {
-        return await InventoryModel.decrease(1);
-      }
-    ).run();
+  // Step 2
+  const inventory = await step
+    .define({ name: "update-inventory" }, async () => {
+      return await InventoryModel.decrease(1);
+    })
+    .run();
 
-    // Step 3
-    await step.define(
-      { name: "send-email" },
-      async () => {
-        return await EmailService.send({
-          to: "user@example.com",
-          subject: "Order confirmed"
-        });
-      }
-    ).run();
+  // Step 3
+  await step
+    .define({ name: "send-email" }, async () => {
+      return await EmailService.send({
+        to: "user@example.com",
+        subject: "Order confirmed",
+      });
+    })
+    .run();
 
-    return { success: true };
-  }
-);
+  return { success: true };
+});
 ```
 
 **Step Advantages:**
+
 - Each step runs only once (idempotent)
 - On failure, only that step is retried
 - Already completed steps are skipped
@@ -295,15 +285,12 @@ export const processOrder = workflow(
 LogTape Logger instance.
 
 ```typescript
-export const processData = workflow(
-  { name: "process_data" },
-  async ({ logger }) => {
-    logger.info("Starting workflow");
-    logger.debug("Processing item", { itemId: 123 });
-    logger.warn("High memory usage", { usage: "80%" });
-    logger.error("Failed to process", { error: "Connection timeout" });
-  }
-);
+export const processData = workflow({ name: "process_data" }, async ({ logger }) => {
+  logger.info("Starting workflow");
+  logger.debug("Processing item", { itemId: 123 });
+  logger.warn("High memory usage", { usage: "80%" });
+  logger.error("Failed to process", { error: "Connection timeout" });
+});
 ```
 
 ### version
@@ -314,11 +301,11 @@ Current workflow version.
 export const processOrder = workflow(
   {
     name: "process_order",
-    version: "2.0"
+    version: "2.0",
   },
   async ({ version }) => {
-    console.log("Running version:", version);  // "2.0"
-  }
+    console.log("Running version:", version); // "2.0"
+  },
 );
 ```
 
@@ -333,12 +320,12 @@ import { Sonamu } from "sonamu";
 const handle = await Sonamu.workflows.run(
   {
     name: "process_order",
-    version: "1.0"
+    version: "1.0",
   },
   {
     orderId: 123,
-    amount: 50000
-  }
+    amount: 50000,
+  },
 );
 
 // Wait for result
@@ -356,14 +343,14 @@ export const dailyReport = workflow(
       {
         name: "daily-at-midnight",
         expression: "0 0 * * *",
-        input: { date: new Date().toISOString().split('T')[0] }
-      }
-    ]
+        input: { date: new Date().toISOString().split("T")[0] },
+      },
+    ],
   },
   async ({ input, logger }) => {
     logger.info("Generating report", { date: input.date });
     // Automatically runs daily at midnight
-  }
+  },
 );
 ```
 
@@ -374,40 +361,34 @@ export const dailyReport = workflow(
 Wraps a function as a step and executes it.
 
 ```typescript
-const result = await step.define(
-  { name: "step-name" },
-  async () => {
+const result = await step
+  .define({ name: "step-name" }, async () => {
     // Perform task
     return { data: "result" };
-  }
-).run();
+  })
+  .run();
 ```
 
 **Usage Example:**
 
 ```typescript
-export const processOrder = workflow(
-  { name: "process_order" },
-  async ({ step }) => {
-    // Process payment
-    const payment = await step.define(
-      { name: "process-payment" },
-      async () => {
-        return await PaymentService.charge(100);
-      }
-    ).run();
+export const processOrder = workflow({ name: "process_order" }, async ({ step }) => {
+  // Process payment
+  const payment = await step
+    .define({ name: "process-payment" }, async () => {
+      return await PaymentService.charge(100);
+    })
+    .run();
 
-    // Update inventory
-    await step.define(
-      { name: "update-inventory" },
-      async () => {
-        return await InventoryModel.decrease(1);
-      }
-    ).run();
+  // Update inventory
+  await step
+    .define({ name: "update-inventory" }, async () => {
+      return await InventoryModel.decrease(1);
+    })
+    .run();
 
-    return { paymentId: payment.id };
-  }
-);
+  return { paymentId: payment.id };
+});
 ```
 
 ### step.get().run()
@@ -416,45 +397,30 @@ Executes a Model method as a step.
 
 ```typescript
 // Explicit name
-const result = await step.get(
-  { name: "fetch-users" },
-  UserModel,
-  "list"
-).run({ limit: 10 });
+const result = await step.get({ name: "fetch-users" }, UserModel, "list").run({ limit: 10 });
 
 // Name omitted (auto-uses method name: "list")
-const result = await step.get(
-  UserModel,
-  "list"
-).run({ limit: 10 });
+const result = await step.get(UserModel, "list").run({ limit: 10 });
 ```
 
 **Usage Example:**
 
 ```typescript
-export const processUsers = workflow(
-  { name: "process_users" },
-  async ({ step }) => {
-    // Execute Model method as step
-    const users = await step.get(
-      { name: "fetch-users" },
-      UserModel,
-      "list"
-    ).run({ limit: 100 });
+export const processUsers = workflow({ name: "process_users" }, async ({ step }) => {
+  // Execute Model method as step
+  const users = await step.get({ name: "fetch-users" }, UserModel, "list").run({ limit: 100 });
 
-    // Process each user
-    for (const user of users) {
-      await step.define(
-        { name: `process-user-${user.id}` },
-        async () => {
-          return await UserModel.updateStatus(user.id, "processed");
-        }
-      ).run();
-    }
-
-    return { processed: users.length };
+  // Process each user
+  for (const user of users) {
+    await step
+      .define({ name: `process-user-${user.id}` }, async () => {
+        return await UserModel.updateStatus(user.id, "processed");
+      })
+      .run();
   }
-);
+
+  return { processed: users.length };
+});
 ```
 
 ### step.sleep()
@@ -472,46 +438,40 @@ await step.sleep("wait-10-seconds", "10s");
 **Usage Example:**
 
 ```typescript
-export const delayedTask = workflow(
-  { name: "delayed_task" },
-  async ({ step, logger }) => {
-    logger.info("Starting task");
+export const delayedTask = workflow({ name: "delayed_task" }, async ({ step, logger }) => {
+  logger.info("Starting task");
 
-    // Wait 1 hour
-    await step.sleep("wait-1-hour", "1h");
+  // Wait 1 hour
+  await step.sleep("wait-1-hour", "1h");
 
-    logger.info("Continuing after 1 hour");
+  logger.info("Continuing after 1 hour");
 
-    // Wait 30 minutes
-    await step.sleep("wait-30-minutes", "30m");
+  // Wait 30 minutes
+  await step.sleep("wait-30-minutes", "30m");
 
-    logger.info("Task complete");
-  }
-);
+  logger.info("Task complete");
+});
 ```
 
 ### Retry Policy
 
 <Info>
-Step retries are automatically handled by the OpenWorkflow backend. No separate retry options need to be configured.
+  Step retries are automatically handled by the OpenWorkflow backend. No separate retry options need
+  to be configured.
 </Info>
 
 ```typescript
-export const resilientTask = workflow(
-  { name: "resilient_task" },
-  async ({ step }) => {
-    // Step is automatically retried on failure
-    const result = await step.define(
-      { name: "flaky-operation" },
-      async () => {
-        const response = await fetch("https://api.example.com");
-        return response.json();
-      }
-    ).run();
+export const resilientTask = workflow({ name: "resilient_task" }, async ({ step }) => {
+  // Step is automatically retried on failure
+  const result = await step
+    .define({ name: "flaky-operation" }, async () => {
+      const response = await fetch("https://api.example.com");
+      return response.json();
+    })
+    .run();
 
-    return result;
-  }
-);
+  return result;
+});
 ```
 
 ## Database Access
@@ -519,31 +479,23 @@ export const resilientTask = workflow(
 You can freely use Sonamu Models within workflows.
 
 ```typescript
-export const processUsers = workflow(
-  { name: "process_users" },
-  async ({ step, logger }) => {
-    // Step 1: Fetch users
-    const users = await step.get(
-      { name: "fetch-users" },
-      UserModel,
-      "list"
-    ).run({ limit: 100 });
+export const processUsers = workflow({ name: "process_users" }, async ({ step, logger }) => {
+  // Step 1: Fetch users
+  const users = await step.get({ name: "fetch-users" }, UserModel, "list").run({ limit: 100 });
 
-    logger.info("Found users", { count: users.length });
+  logger.info("Found users", { count: users.length });
 
-    // Step 2: Process each user
-    for (const user of users) {
-      await step.define(
-        { name: `process-user-${user.id}` },
-        async () => {
-          return await UserModel.processUser(user.id);
-        }
-      ).run();
-    }
-
-    return { processed: users.length };
+  // Step 2: Process each user
+  for (const user of users) {
+    await step
+      .define({ name: `process-user-${user.id}` }, async () => {
+        return await UserModel.processUser(user.id);
+      })
+      .run();
   }
-);
+
+  return { processed: users.length };
+});
 ```
 
 ## Error Handling
@@ -553,49 +505,40 @@ export const processUsers = workflow(
 Steps are automatically retried on failure.
 
 ```typescript
-export const resilientTask = workflow(
-  { name: "resilient_task" },
-  async ({ step }) => {
-    const result = await step.define(
-      { name: "flaky-operation" },
-      async () => {
-        // Task that may fail
-        const response = await fetch("https://api.example.com");
-        return response.json();
-      }
-    ).run();
+export const resilientTask = workflow({ name: "resilient_task" }, async ({ step }) => {
+  const result = await step
+    .define({ name: "flaky-operation" }, async () => {
+      // Task that may fail
+      const response = await fetch("https://api.example.com");
+      return response.json();
+    })
+    .run();
 
-    return result;
-  }
-);
+  return result;
+});
 ```
 
 ### Manual Error Handling
 
 ```typescript
-export const handleErrors = workflow(
-  { name: "handle_errors" },
-  async ({ step, logger }) => {
-    try {
-      await step.define(
-        { name: "risky-operation" },
-        async () => {
-          throw new Error("Something went wrong");
-        }
-      ).run();
-    } catch (error) {
-      logger.error("Operation failed", { error });
+export const handleErrors = workflow({ name: "handle_errors" }, async ({ step, logger }) => {
+  try {
+    await step
+      .define({ name: "risky-operation" }, async () => {
+        throw new Error("Something went wrong");
+      })
+      .run();
+  } catch (error) {
+    logger.error("Operation failed", { error });
 
-      // Fallback logic
-      await step.define(
-        { name: "fallback" },
-        async () => {
-          return await AlternativeService.process();
-        }
-      ).run();
-    }
+    // Fallback logic
+    await step
+      .define({ name: "fallback" }, async () => {
+        return await AlternativeService.process();
+      })
+      .run();
   }
-);
+});
 ```
 
 ## Decorator Style (TypeScript Decorator)
@@ -629,45 +572,41 @@ Steps must be idempotent. Running multiple times with the same input should guar
 
 ```typescript
 // ❌ Bad: Not idempotent
-await step.define(
-  { name: "increment-counter" },
-  async () => {
-    counter++;  // Duplicate increment on retry
-  }
-).run();
+await step
+  .define({ name: "increment-counter" }, async () => {
+    counter++; // Duplicate increment on retry
+  })
+  .run();
 
 // ✅ Good: Idempotent
-await step.define(
-  { name: "set-counter" },
-  async () => {
-    return await CounterModel.set(10);  // Always the same value
-  }
-).run();
+await step
+  .define({ name: "set-counter" }, async () => {
+    return await CounterModel.set(10); // Always the same value
+  })
+  .run();
 ```
 
 ### 2. Split Long Tasks into Steps
 
 ```typescript
 // ❌ Bad: Giant step
-await step.define(
-  { name: "process-all" },
-  async () => {
+await step
+  .define({ name: "process-all" }, async () => {
     // Task taking 1 hour
     for (let i = 0; i < 1000000; i++) {
       await processItem(i);
     }
-  }
-).run();
+  })
+  .run();
 
 // ✅ Good: Small steps
 for (let i = 0; i < 1000; i += 100) {
-  await step.define(
-    { name: `process-batch-${i}` },
-    async () => {
+  await step
+    .define({ name: `process-batch-${i}` }, async () => {
       const batch = items.slice(i, i + 100);
       await processBatch(batch);
-    }
-  ).run();
+    })
+    .run();
 }
 ```
 
@@ -677,12 +616,28 @@ Step names must be unique within a workflow.
 
 ```typescript
 // ❌ Bad: Duplicate names
-await step.define({ name: "process" }, async () => { /* ... */ }).run();
-await step.define({ name: "process" }, async () => { /* ... */ }).run();  // Error!
+await step
+  .define({ name: "process" }, async () => {
+    /* ... */
+  })
+  .run();
+await step
+  .define({ name: "process" }, async () => {
+    /* ... */
+  })
+  .run(); // Error!
 
 // ✅ Good: Unique names
-await step.define({ name: "process-payment" }, async () => { /* ... */ }).run();
-await step.define({ name: "process-shipping" }, async () => { /* ... */ }).run();
+await step
+  .define({ name: "process-payment" }, async () => {
+    /* ... */
+  })
+  .run();
+await step
+  .define({ name: "process-shipping" }, async () => {
+    /* ... */
+  })
+  .run();
 ```
 
 ## Monitoring
@@ -690,10 +645,7 @@ await step.define({ name: "process-shipping" }, async () => { /* ... */ }).run()
 ### Check Execution Status
 
 ```typescript
-const handle = await Sonamu.workflows.run(
-  { name: "process_order" },
-  { orderId: 123 }
-);
+const handle = await Sonamu.workflows.run({ name: "process_order" }, { orderId: 123 });
 
 // Check status
 console.log("Status:", handle.status);
@@ -819,6 +771,7 @@ Workflows automatically log through LogTape:
       }
     );
     ```
+
   </Tab>
 
   <Tab title="Data Sync" icon="arrows-rotate">
@@ -885,6 +838,7 @@ Workflows automatically log through LogTape:
       }
     );
     ```
+
   </Tab>
 
   <Tab title="Report Generation" icon="file-chart-line">
@@ -1005,6 +959,7 @@ Workflows automatically log through LogTape:
       }
     );
     ```
+
   </Tab>
 
   <Tab title="Reminders" icon="bell">
@@ -1072,6 +1027,7 @@ Workflows automatically log through LogTape:
       }
     );
     ```
+
   </Tab>
 </Tabs>
 
@@ -1086,21 +1042,13 @@ Workflows automatically log through LogTape:
     Create API endpoints
   </Card>
 
-  <Card
-    title="@transactional"
-    icon="arrows-rotate"
-    href="/en/api-reference/decorators/transactional"
-  >
-    Use transactions
-  </Card>
+<Card title="@transactional" icon="arrows-rotate" href="/en/api-reference/decorators/transactional">
+  Use transactions
+</Card>
 
-  <Card
-    title="Scheduling"
-    icon="clock"
-    href="/en/core-concepts/tasks/scheduling"
-  >
-    Task scheduling guide
-  </Card>
+<Card title="Scheduling" icon="clock" href="/en/core-concepts/tasks/scheduling">
+  Task scheduling guide
+</Card>
 
   <Card
     title="OpenWorkflow"

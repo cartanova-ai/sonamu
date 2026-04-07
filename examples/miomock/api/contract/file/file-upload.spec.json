@@ -34,13 +34,8 @@
   ],
   "lastModified": "2026-03-09",
   "status": "done",
-  "sources": [
-    "src/application/file/file.model.ts",
-    "src/application/file/file.types.ts"
-  ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "sources": ["src/application/file/file.model.ts", "src/application/file/file.types.ts"],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "FileModel": "업로드 엔드포인트와 스토리지 저장을 담당한다",
     "File Types": "파일 입력/출력 스키마와 메타데이터 타입을 정의한다"

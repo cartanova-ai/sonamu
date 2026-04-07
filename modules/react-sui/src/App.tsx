@@ -1,6 +1,8 @@
 import { Form, Header, Segment } from "semantic-ui-react";
 import { z } from "zod";
+
 import { NumberInput, useTypeForm } from ".";
+
 import "semantic-ui-css/semantic.min.css";
 
 export default function App() {

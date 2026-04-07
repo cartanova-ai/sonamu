@@ -1,8 +1,8 @@
 import inflection from "inflection";
-import type { Entity } from "../entity/entity";
+
+import { type Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
-  type EntityProp,
   isBelongsToOneRelationProp,
   isHasManyRelationProp,
   isManyToManyRelationProp,
@@ -13,6 +13,9 @@ import {
   isStringProp,
   isVectorProp,
   isVirtualProp,
+} from "../types/types";
+import {
+  type EntityProp,
   type MigrationColumn,
   type MigrationColumnType,
   type MigrationForeign,
@@ -103,21 +106,16 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
         const fields = [through.from, through.to];
         r.joinTables.push({
           table: through.from.split(".")[0],
-          indexes: [
-            // 조인 테이블에 걸린 인덱스 찾아와서 연결
-            ...entity.indexes
-              .filter((index) =>
-                index.columns.find((col) => col.name.includes(`${prop.joinTable}.`)),
-              )
-              .map((index) => ({
-                ...index,
-                columns: index.columns.map((col) => ({
-                  name: col.name.replace(`${prop.joinTable}.`, ""),
-                  nullsFirst: col.nullsFirst,
-                  sortOrder: col.sortOrder,
-                })),
+          indexes: entity.indexes
+            .filter((index) => index.columns.find((col) => col.name.includes(`${prop.joinTable}.`)))
+            .map((index) => ({
+              ...index,
+              columns: index.columns.map((col) => ({
+                name: col.name.replace(`${prop.joinTable}.`, ""),
+                nullsFirst: col.nullsFirst,
+                sortOrder: col.sortOrder,
               })),
-          ],
+            })),
           columns: [
             {
               name: "id",
@@ -187,7 +185,7 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
               length: pkProp.length,
             }),
         });
-        if ((prop.useConstraint ?? true) === true) {
+        if (prop.useConstraint ?? true) {
           r.foreigns.push({
             columns: [idColumnName],
             to: `${inflection.underscore(inflection.pluralize(prop.with)).toLowerCase()}.id`,
@@ -210,7 +208,7 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
 
   // indexes
   migrationSet.indexes = entity.indexes.filter((index) =>
-    index.columns.find((col) => col.name.includes(".") === false),
+    index.columns.find((col) => !col.name.includes(".")),
   );
 
   return migrationSet;

@@ -25,6 +25,7 @@ pnpm fixture init
 ```
 
 **Execution process**:
+
 ```
 DUMP...
   ✓ Schema dumped from development_master
@@ -41,12 +42,11 @@ Fixture initialization completed!
 ```
 
 **Databases created**:
+
 - **Fixture DB** (remote): Shared fixture storage
 - **Test DB** (local): Local testing DB
 
-<Info>
-`init` copies **schema only**. Data is not included.
-</Info>
+<Info>`init` copies **schema only**. Data is not included.</Info>
 
 ### import - Import Data
 
@@ -76,6 +76,7 @@ Fixture import completed!
 ```
 
 **Related data automatically included**:
+
 - Records referenced by foreign keys
 - Relationship table records
 - Reverse reference records (optional)
@@ -89,6 +90,7 @@ pnpm fixture sync
 ```
 
 **Execution process**:
+
 ```
 Syncing fixtures...
 
@@ -104,9 +106,7 @@ Applying fixtures...
 Fixture sync completed!
 ```
 
-<Tip>
-Calling `sync` before test execution ensures you always start with a clean state.
-</Tip>
+<Tip>Calling `sync` before test execution ensures you always start with a clean state.</Tip>
 
 ### gen - Auto Fixture Generation
 
@@ -117,6 +117,7 @@ pnpm fixture gen
 ```
 
 **Interactive mode**:
+
 ```
 ? Select entities to generate fixtures for: (Use arrow keys)
 ❯ ◯ User
@@ -136,17 +137,18 @@ pnpm fixture gen
 
 **CLI options**:
 
-| Option | Description | Example |
-|--------|-------------|---------|
-| `--all` | Generate for all Entities | `pnpm fixture gen --all` |
-| `--include` | Include specific Entities only | `pnpm fixture gen --include User,Post` |
-| `--exclude` | Exclude specific Entities (use with --all) | `pnpm fixture gen --all --exclude Comment` |
-| `--count` | Number of records to generate | `pnpm fixture gen --include User --count 10` |
-| `--save-to` | Specify save method | `pnpm fixture gen --save-to db` |
-| `--use-llm` | Generate realistic data with LLM (fixtureHint-based, requires `ANTHROPIC_API_KEY`) | `pnpm fixture gen --use-llm` |
-| `--no-cache` | Disable LLM cache (use with `--use-llm`) | `pnpm fixture gen --use-llm --no-cache` |
+| Option       | Description                                                                        | Example                                      |
+| ------------ | ---------------------------------------------------------------------------------- | -------------------------------------------- |
+| `--all`      | Generate for all Entities                                                          | `pnpm fixture gen --all`                     |
+| `--include`  | Include specific Entities only                                                     | `pnpm fixture gen --include User,Post`       |
+| `--exclude`  | Exclude specific Entities (use with --all)                                         | `pnpm fixture gen --all --exclude Comment`   |
+| `--count`    | Number of records to generate                                                      | `pnpm fixture gen --include User --count 10` |
+| `--save-to`  | Specify save method                                                                | `pnpm fixture gen --save-to db`              |
+| `--use-llm`  | Generate realistic data with LLM (fixtureHint-based, requires `ANTHROPIC_API_KEY`) | `pnpm fixture gen --use-llm`                 |
+| `--no-cache` | Disable LLM cache (use with `--use-llm`)                                           | `pnpm fixture gen --use-llm --no-cache`      |
 
 **Save methods**:
+
 - `db`: Save directly to Fixture DB (default)
 - `file`: Save to `test/fixtures/{entity_table}.json` file
 - `file:{filename}`: Save with specified filename
@@ -168,11 +170,14 @@ When generating a value for each field, the following strategies are applied in 
 5. **Type-based default generation** — If none of the above strategies apply, values are auto-generated based on the field type (string, number, date, etc.).
 
 <Info>
-When using `--use-llm`, LLM takes priority over `fixtureGenerator` for fields with cone.note. This allows generating more realistic, domain-appropriate data.
+  When using `--use-llm`, LLM takes priority over `fixtureGenerator` for fields with cone.note. This
+  allows generating more realistic, domain-appropriate data.
 </Info>
 
 <Info>
-If an LLM-generated string exceeds the field's `length` constraint, it is automatically truncated. For example, if LLM generates 120 characters for a `varchar(100)` field, only the first 100 characters are used.
+  If an LLM-generated string exceeds the field's `length` constraint, it is automatically truncated.
+  For example, if LLM generates 120 characters for a `varchar(100)` field, only the first 100
+  characters are used.
 </Info>
 
 **Automatic Companion Fixture Generation**:
@@ -201,11 +206,11 @@ When an Entity's cone has `fixtureCompanions` declared, companion Entity fixture
 }
 ```
 
-| Property | Description |
-|----------|-------------|
-| `entity` | Name of the companion Entity to create alongside |
+| Property    | Description                                                                                                                   |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `entity`    | Name of the companion Entity to create alongside                                                                              |
 | `overrides` | Fixed override values for the companion fixture. Use `{{fieldName}}` syntax to reference field values from the parent fixture |
-| `count` | Number of companions to create per parent (default: 1) |
+| `count`     | Number of companions to create per parent (default: 1)                                                                        |
 
 To retroactively add `fixtureCompanions` to existing better-auth projects:
 
@@ -238,12 +243,13 @@ To add conditions when querying parents, specify `fixtureParentOverrides` in the
 }
 ```
 
-| Property | Description |
-|----------|-------------|
+| Property                 | Description                                                                                                                                         |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `fixtureParentOverrides` | WHERE conditions applied when querying available parent records. For example, if there is a discriminator column for subtypes, filter by that value |
 
 <Warning>
-If there are not enough parent records without a subtype row, fixture generation for that entity is skipped. Make sure to generate sufficient parent entity fixtures beforehand.
+  If there are not enough parent records without a subtype row, fixture generation for that entity
+  is skipped. Make sure to generate sufficient parent entity fixtures beforehand.
 </Warning>
 
 ### fetch - Fetch Data from Production DB
@@ -255,6 +261,7 @@ pnpm fixture fetch
 ```
 
 **Interactive mode**:
+
 ```
 ? Select entities to import: (Use arrow keys)
 ❯ ◯ User
@@ -268,15 +275,16 @@ Importing User, Post...
 
 **CLI options**:
 
-| Option | Description | Example |
-|--------|-------------|---------|
-| `--all` | Fetch from all Entities | `pnpm fixture fetch --all` |
-| `--include` | Include specific Entities only | `pnpm fixture fetch --include User,Post` |
-| `--exclude` | Exclude specific Entities | `pnpm fixture fetch --all --exclude Log` |
-| `--strategy` | Data selection strategy | `pnpm fixture fetch --strategy recent` |
-| `--limit` | Number of records to fetch | `pnpm fixture fetch --limit 20` |
+| Option       | Description                    | Example                                  |
+| ------------ | ------------------------------ | ---------------------------------------- |
+| `--all`      | Fetch from all Entities        | `pnpm fixture fetch --all`               |
+| `--include`  | Include specific Entities only | `pnpm fixture fetch --include User,Post` |
+| `--exclude`  | Exclude specific Entities      | `pnpm fixture fetch --all --exclude Log` |
+| `--strategy` | Data selection strategy        | `pnpm fixture fetch --strategy recent`   |
+| `--limit`    | Number of records to fetch     | `pnpm fixture fetch --limit 20`          |
 
 **Data selection strategies**:
+
 - `recent` (default): Fetch most recent data first
 - `sample`: Random sampling
 
@@ -286,6 +294,7 @@ pnpm fixture fetch --include User --strategy recent --limit 20
 ```
 
 **Features**:
+
 - Related data is automatically fetched together (up to depth level 2)
 - Foreign key referential integrity maintained
 
@@ -298,6 +307,7 @@ pnpm fixture explore
 ```
 
 **Interactive mode**:
+
 ```
 ? Entity to explore: User
 
@@ -313,13 +323,14 @@ User 10 records retrieved:
 
 **CLI options**:
 
-| Option | Description | Example |
-|--------|-------------|---------|
-| `--include` | Entity to explore | `pnpm fixture explore --include User` |
-| `--strategy` | Data selection strategy | `pnpm fixture explore --strategy sample` |
-| `--limit` | Number of records to query | `pnpm fixture explore --limit 5` |
+| Option       | Description                | Example                                  |
+| ------------ | -------------------------- | ---------------------------------------- |
+| `--include`  | Entity to explore          | `pnpm fixture explore --include User`    |
+| `--strategy` | Data selection strategy    | `pnpm fixture explore --strategy sample` |
+| `--limit`    | Number of records to query | `pnpm fixture explore --limit 5`         |
 
 **Data selection strategies**:
+
 - `sample` (default): Random sample
 - `recent`: Most recent data
 - `random`: Completely random
@@ -417,6 +428,7 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 ```
 
 **Features**:
+
 - JSON format
 - Separate files per Entity
 - Related data automatically included
@@ -486,6 +498,7 @@ describe("User CRUD", () => {
 ```
 
 **Isolation effect**:
+
 - Each test is independent
 - Test order doesn't matter
 - Parallel execution possible
@@ -552,18 +565,20 @@ describe("Premium User Features", () => {
 ### Fixture DB Connection Failed
 
 **Problem**: Cannot access remote fixture DB
+
 ```
 Error: connect ECONNREFUSED
 ```
 
 **Solution**:
+
 ```typescript title="sonamu.config.ts"
 export default {
   database: {
     fixture: {
       client: "pg",
       connection: {
-        host: "fixture-db.example.com",  // Correct host
+        host: "fixture-db.example.com", // Correct host
         database: "myapp_fixture",
         user: "postgres",
         password: process.env.FIXTURE_DB_PASSWORD,
@@ -576,11 +591,13 @@ export default {
 ### Missing Relationship Data
 
 **Problem**: Foreign key error occurs
+
 ```
 Error: Foreign key constraint violation
 ```
 
 **Solution**:
+
 ```bash
 # Import related data first
 pnpm fixture import
@@ -595,11 +612,13 @@ pnpm fixture import
 ### Fixture Conflict
 
 **Problem**: ID duplication
+
 ```
 Error: Duplicate entry '1' for key 'PRIMARY'
 ```
 
 **Solution**:
+
 ```bash
 # Reinitialize Test DB
 pnpm fixture init

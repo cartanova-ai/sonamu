@@ -1,9 +1,10 @@
 import inflection from "inflection";
 import { diff, unique } from "radashi";
+
 import { apiParamToTsCode, apiParamTypeToTsType } from "../../api/code-converters";
-import type { ExtendedApi } from "../../api/decorators";
+import { type ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
-import type { TemplateOptions } from "../../types/types";
+import { type TemplateOptions } from "../../types/types";
 import { ApiParamType } from "../../types/types";
 import { Template } from "../template";
 
@@ -49,7 +50,7 @@ export class Template__queries extends Template {
           (param) =>
             !ApiParamType.isContext(param.type) &&
             !ApiParamType.isRefKnex(param.type) &&
-            !(param.optional === true && param.name.startsWith("_")),
+            !(param.optional && param.name.startsWith("_")),
         );
 
         // 타입 파라미터 이름 수집
@@ -105,8 +106,7 @@ ${functions.join("\n\n")}
             " * @generated",
             " * 직접 수정하지 마세요.",
             " */",
-            "/** biome-ignore-all lint: generated는 무시 */",
-            "/** biome-ignore-all assist: generated는 무시 */",
+            "/* oxlint-disable */",
             "",
             `import type { SSRQuery } from 'sonamu/ssr';`,
             "",
@@ -116,15 +116,7 @@ ${functions.join("\n\n")}
             `}`,
             "",
           ]
-        : [
-            "/**",
-            " * @generated",
-            " * 직접 수정하지 마세요.",
-            " */",
-            "/** biome-ignore-all lint: generated는 무시 */",
-            "/** biome-ignore-all assist: generated는 무시 */",
-            "",
-          ],
+        : ["/**", " * @generated", " * 직접 수정하지 마세요.", " */", "/* oxlint-disable */", ""],
     };
   }
 }

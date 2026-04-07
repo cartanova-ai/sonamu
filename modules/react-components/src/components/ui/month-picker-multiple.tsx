@@ -2,8 +2,10 @@
 
 import { format } from "date-fns";
 import * as React from "react";
-import type { DateRange } from "react-day-picker";
+import { type DateRange } from "react-day-picker";
+
 import { useSonamuBaseContext } from "@/contexts";
+
 import { Button } from "./button";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { Select } from "./select/select";
@@ -56,11 +58,9 @@ export function MonthPickerMultiple({
   const [tempIsRangeMode, setTempIsRangeMode] = React.useState(defaultRangeMode);
   const [tempDate, setTempDate] = React.useState<Date | undefined>();
   const [tempDateRange, setTempDateRange] = React.useState<DateRange | undefined>();
-  const [tempYear, setTempYear] = React.useState<number>(new Date().getFullYear());
-  const [tempRangeStartYear, setTempRangeStartYear] = React.useState<number>(
-    new Date().getFullYear(),
-  );
-  const [tempRangeEndYear, setTempRangeEndYear] = React.useState<number>(new Date().getFullYear());
+  const [tempYear, setTempYear] = React.useState(new Date().getFullYear());
+  const [tempRangeStartYear, setTempRangeStartYear] = React.useState(new Date().getFullYear());
+  const [tempRangeEndYear, setTempRangeEndYear] = React.useState(new Date().getFullYear());
 
   const years = React.useMemo(
     () =>

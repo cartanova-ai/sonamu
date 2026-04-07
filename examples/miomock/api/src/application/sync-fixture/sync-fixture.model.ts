@@ -4,13 +4,14 @@ import {
   BadRequestException,
   BaseModelClass,
   exhaustive,
-  type ListResult,
   NotFoundException,
 } from "sonamu";
+import { type ListResult } from "sonamu";
+
 import { SD } from "../../i18n/sd.generated";
-import type { SyncFixtureSubsetKey, SyncFixtureSubsetMapping } from "../sonamu.generated";
+import { type SyncFixtureSubsetKey, type SyncFixtureSubsetMapping } from "../sonamu.generated";
 import { syncFixtureLoaderQueries, syncFixtureSubsetQueries } from "../sonamu.generated.sso";
-import type { SyncFixtureListParams, SyncFixtureSaveParams } from "./sync-fixture.types";
+import { type SyncFixtureListParams, type SyncFixtureSaveParams } from "./sync-fixture.types";
 
 /*
   SyncFixture Model

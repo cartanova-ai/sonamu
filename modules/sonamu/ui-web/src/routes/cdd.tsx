@@ -7,13 +7,14 @@ import ListChecksIcon from "~icons/lucide/list-checks";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import ScaleIcon from "~icons/lucide/scale";
 import SearchIcon from "~icons/lucide/search";
+
 import { CddAcView } from "./cdd/components/cdd_ac_view";
 import { CddContractDetail } from "./cdd/components/cdd_contract_detail";
 import { CddRuleDetail } from "./cdd/components/cdd_rule_detail";
 import { CddRulesList } from "./cdd/components/cdd_rules_list";
 import { CddTreeNodeItem } from "./cdd/components/cdd_tree_node_item";
 import { CddService } from "./cdd/service";
-import type { CddMode, CddTreeNode } from "./cdd/types";
+import { type CddMode, type CddTreeNode } from "./cdd/types";
 import { countFiles, filterTree, findTreeNode, sortTree } from "./cdd/utils/tree";
 
 export const Route = createFileRoute("/cdd")({

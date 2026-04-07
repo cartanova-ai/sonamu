@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/style/noNonNullAssertion: 너무 많이 사용하고 있어서 일단 허용 */
+/* oxlint-disable @typescript-eslint/no-non-null-assertion */ // 너무 많이 사용하고 있어서 일단 허용
 
 import {
   Button,
@@ -19,7 +19,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import classNames from "classnames";
 import { unique } from "radashi";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EntityIndex, EntityProp, FlattenSubsetRow } from "sonamu";
+import { type EntityIndex, type EntityProp, type FlattenSubsetRow } from "sonamu";
 import CheckIcon from "~icons/lucide/check";
 import Loader2Icon from "~icons/lucide/loader-2";
 import PencilIcon from "~icons/lucide/pencil";
@@ -27,14 +27,15 @@ import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import SparklesIcon from "~icons/lucide/sparkles";
 import Trash2Icon from "~icons/lucide/trash-2";
+
 import { ConeButton } from "../../components/ConeButton";
 import { ConeModal } from "../../components/ConeModal";
 import { EditableInput } from "../../components/EditableInput";
 import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
 import { useSonamuContext } from "../../contexts/sonamu-provider";
-import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
+import { defaultCatch } from "../../services/sonamu.shared";
 import { EntityIndexModal } from "../entities/_entity_index_modal";
 import { EntityPropModal } from "../entities/_entity_prop_modal";
 import { EntitySelectorModal } from "../entities/_entity_selector_modal";
@@ -525,7 +526,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
         const toAppend = targetFields.filter((field) => !entity.subsets[subsetKey].includes(field));
         if (toAppend.length === 0) {
           // 모두 선택된 경우 전체 선택 해제
-          return oldSubset.filter((field) => targetFields.includes(field) === false);
+          return oldSubset.filter((field) => !targetFields.includes(field));
         } else {
           console.log({ toAppend });
           // 선택 추가
@@ -1286,7 +1287,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                           {Object.keys(entity.subsets).map((subsetKey) => (
                             <TableCell key={subsetKey}>
                               {subsetRow.relationEntity ? (
-                                // biome-ignore lint/complexity/noUselessFragments: 필요한데?
+                                // oxlint-disable-next-line react/jsx-no-useless-fragment -- 필요한데?
                                 <>
                                   {subsetRow.isOpen && (
                                     <Button

@@ -26,34 +26,40 @@ production/development master (actual DB)
 
 ### Role of Each DB
 
-| DB | Purpose | Data Source | Command |
-|----|---------|------------|---------|
-| `project` | Production/development actual DB | Real user data | Created directly |
+| DB                | Purpose                          | Data Source                                   | Command                         |
+| ----------------- | -------------------------------- | --------------------------------------------- | ------------------------------- |
+| `project`         | Production/development actual DB | Real user data                                | Created directly                |
 | `project_fixture` | Reference data store for testing | Fetched from production or generated with gen | `pnpm sonamu fixture gen/fetch` |
-| `project_test` | Test execution environment | Synced from fixture | `pnpm sonamu fixture sync` |
+| `project_test`    | Test execution environment       | Synced from fixture                           | `pnpm sonamu fixture sync`      |
 
 ### Data Flow
 
 **1. fixture fetch (fetch real data)**
+
 ```bash
 pnpm sonamu fixture fetch --include User --limit 10
 ```
+
 - production/development master → fixture DB
 - Copies actual production data for testing
 - Related data (FKs) is also fetched
 
 **2. fixture gen (generate dummy data)**
+
 ```bash
 pnpm sonamu fixture gen --include Department --count 5
 ```
+
 - Generated inside fixture DB using faker
 - Automatically resolves reference relationships (FKs)
 - Supports Korean data generation
 
 **3. fixture sync (sync test DB)**
+
 ```bash
 pnpm sonamu fixture sync
 ```
+
 - fixture DB → test DB
 - Sync to the latest state before running tests
 - Each test is isolated with a transaction that auto-rolls back
@@ -67,6 +73,7 @@ pnpm sonamu fixture sync
 - Incorrect configuration causes FK reference errors
 
 **Example (correct configuration)**:
+
 ```typescript
 // fixture gen: reference and save within fixture DB
 const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
@@ -90,10 +97,10 @@ Base data for testing (seed data) is managed by adding it to dump files.
 
 Seed data management proceeds in 2 phases:
 
-| Phase | Purpose | Target DB |
-|-------|---------|-----------|
+| Phase       | Purpose                              | Target DB                         |
+| ----------- | ------------------------------------ | --------------------------------- |
 | **Phase 1** | Prepare seed for development/testing | `project_test`, `project_fixture` |
-| **Phase 2** | Apply seed to the actual DB | `project` (actual DB) |
+| **Phase 2** | Apply seed to the actual DB          | `project` (actual DB)             |
 
 ---
 
@@ -108,6 +115,7 @@ pnpm dump
 ```
 
 The `database/scripts/dump.sql` generated at this point contains:
+
 - CREATE TABLE statements
 - CREATE SEQUENCE statements
 - ALTER TABLE ... PRIMARY KEY
@@ -119,6 +127,7 @@ The `database/scripts/dump.sql` generated at this point contains:
 Open `database/scripts/dump.sql` and add INSERT statements **before the FK CONSTRAINT** section.
 
 **Important: Write in order considering FK dependency order**
+
 ```sql
 -- Independent tables first
 INSERT INTO public.institutions (id, created_at, name, code) VALUES
@@ -140,6 +149,7 @@ pnpm seed
 ```
 
 `database/scripts/seed.sh` runs and:
+
 - `SOURCE_DB="${DATABASE_NAME}_test"` → applies dump.sql to the test DB
 
 #### 1-4. Sync to Fixture DB
@@ -155,11 +165,13 @@ Copies test DB data to the fixture DB.
 ### Phase 2: Apply Seed to Actual DB
 
 **⚠️ CRITICAL WARNING:**
+
 - This step inserts data into the actual DB (`project`)
 - Existing data may be overwritten
 - **You must confirm with the user before proceeding**
 
 **Claude Code Rules:**
+
 ```
 Before applying seed to the actual DB:
 1. Ask the user: "Would you like to apply seed data to the actual database (project)?"
@@ -225,13 +237,13 @@ FIXTURE_DB="${DATABASE_NAME}_fixture"  # restored
 
 ### Summary: Phase 1 vs Phase 2
 
-| Item | Phase 1 (Development/Testing) | Phase 2 (Actual DB) |
-|------|-------------------------------|---------------------|
-| **Timing** | Preparing test data during development | Preparing actual data after development is complete |
-| **Dump count** | 1 time (table structure) | 2 times (includes data) |
-| **Target DB** | `project_test` → `project_fixture` | `project` |
-| **seed.sh** | `FIXTURE_DB="${DATABASE_NAME}_fixture"` | `FIXTURE_DB="${DATABASE_NAME}"` |
-| **User approval** | Not required | **Required** |
+| Item              | Phase 1 (Development/Testing)           | Phase 2 (Actual DB)                                 |
+| ----------------- | --------------------------------------- | --------------------------------------------------- |
+| **Timing**        | Preparing test data during development  | Preparing actual data after development is complete |
+| **Dump count**    | 1 time (table structure)                | 2 times (includes data)                             |
+| **Target DB**     | `project_test` → `project_fixture`      | `project`                                           |
+| **seed.sh**       | `FIXTURE_DB="${DATABASE_NAME}_fixture"` | `FIXTURE_DB="${DATABASE_NAME}"`                     |
+| **User approval** | Not required                            | **Required**                                        |
 
 ---
 
@@ -288,7 +300,7 @@ ALTER TABLE ONLY public.companies ADD CONSTRAINT companies_pkey PRIMARY KEY (id)
 CREATE INDEX projects_name_description_pgroonga_index ON public.projects ...;
 
 -- 2024~: ALTER TABLE ... FOREIGN KEY (FK constraint - data must exist before this!)
-ALTER TABLE ONLY public.departments 
+ALTER TABLE ONLY public.departments
     ADD CONSTRAINT departments_company_id_foreign FOREIGN KEY (company_id) REFERENCES public.companies(id);
 ```
 
@@ -296,10 +308,10 @@ ALTER TABLE ONLY public.departments
 
 **Seed data must be added before FK CONSTRAINTs.**
 
-| Position | Result |
-|----------|--------|
-| Before FK CONSTRAINT | OK - FK check after data insertion |
-| After FK CONSTRAINT | FAIL - FK violation because referenced table has no data |
+| Position             | Result                                                   |
+| -------------------- | -------------------------------------------------------- |
+| Before FK CONSTRAINT | OK - FK check after data insertion                       |
+| After FK CONSTRAINT  | FAIL - FK violation because referenced table has no data |
 
 ### Table Dependency Order
 
@@ -330,11 +342,11 @@ SELECT pg_catalog.setval('public.departments_id_seq', 5, true);
 
 ```sql
 -- institutions (independent)
-INSERT INTO public.institutions (id, created_at, name, code) VALUES 
+INSERT INTO public.institutions (id, created_at, name, code) VALUES
   (1, '2024-01-01 00:00:00+09', 'Headquarters', 'HQ');
 
 -- departments (references institutions)
-INSERT INTO public.departments (id, created_at, name, code, institution_id, is_active) VALUES 
+INSERT INTO public.departments (id, created_at, name, code, institution_id, is_active) VALUES
   (1, '2024-01-01 00:00:00+09', 'Research', 'RND', 1, true);
 
 -- Set sequences
@@ -357,6 +369,7 @@ docker ps --format "table {{.Names}}\t{{.Ports}}"
 ### Step 2: Compare Container Names
 
 **Check the current project's container name:**
+
 ```bash
 # Check CONTAINER_NAME in packages/api/.env
 cat packages/api/.env | grep CONTAINER_NAME
@@ -381,6 +394,7 @@ Another project is using the same port. The new project's port must be changed.
 **Two files to modify:**
 
 1. `packages/api/.env`
+
 ```bash
 # Before
 DB_PORT=5432
@@ -390,6 +404,7 @@ DB_PORT=5433
 ```
 
 2. `packages/api/database/docker-compose.yml`
+
 ```yaml
 # Before
 ports:
@@ -401,6 +416,7 @@ ports:
 ```
 
 3. `packages/api/src/sonamu.config.ts`
+
 ```typescript
 // Before
 port: 5432,
@@ -410,6 +426,7 @@ port: 5433,
 ```
 
 **Port Selection Guide:**
+
 - PostgreSQL default port: 5432
 - Available range: 5433 ~ 5439
 - Check currently used ports with `docker ps` and choose a number that is not duplicated
@@ -422,11 +439,11 @@ pnpm docker:up
 
 ## DB Connection Configuration Files
 
-| File | Purpose |
-|------|---------|
-| `packages/api/.env` | Environment variables (DB_HOST, DB_PORT, DB_USER, etc.) |
-| `packages/api/database/docker-compose.yml` | Docker container configuration |
-| `packages/api/src/sonamu.config.ts` | Sonamu DB connection configuration |
+| File                                       | Purpose                                                 |
+| ------------------------------------------ | ------------------------------------------------------- |
+| `packages/api/.env`                        | Environment variables (DB_HOST, DB_PORT, DB_USER, etc.) |
+| `packages/api/database/docker-compose.yml` | Docker container configuration                          |
+| `packages/api/src/sonamu.config.ts`        | Sonamu DB connection configuration                      |
 
 ## .env Default Settings
 

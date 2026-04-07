@@ -1,9 +1,10 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: Naite는 expect와 호응하도록 any를 허용함 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Naite는 expect와 호응하도록 any를 허용함
 
 import { getLogger } from "@logtape/logtape";
 import { get } from "radashi";
+
 import { Sonamu } from "../api/sonamu";
-import type { ComparisonOperator } from "../database/puri.types";
+import { type ComparisonOperator } from "../database/puri.types";
 import { convertNaiteKeyToCategory } from "../logger/category";
 import { isSerializable } from "../utils/object-utils";
 
@@ -142,6 +143,10 @@ function matchesPattern(key: string, pattern: string): boolean {
 export class NaiteQuery {
   constructor(private traces: NaiteTrace[]) {}
 
+  private isComparableValue(value: unknown): value is number | string {
+    return typeof value === "number" || typeof value === "string";
+  }
+
   /**
    * 파일명으로 필터링
    * @param fileName 파일명 (예: "syncer.test.ts")
@@ -185,17 +190,17 @@ export class NaiteQuery {
    */
   where(path: string, operator: ComparisonOperator | "includes", value: any): NaiteQuery {
     const filtered = this.traces.filter((trace) => {
-      const actual = get(trace, path) as any;
+      const actual = get(trace, path);
 
       switch (operator) {
         case ">":
-          return actual > value;
+          return this.isComparableValue(actual) && this.isComparableValue(value) && actual > value;
         case "<":
-          return actual < value;
+          return this.isComparableValue(actual) && this.isComparableValue(value) && actual < value;
         case ">=":
-          return actual >= value;
+          return this.isComparableValue(actual) && this.isComparableValue(value) && actual >= value;
         case "<=":
-          return actual <= value;
+          return this.isComparableValue(actual) && this.isComparableValue(value) && actual <= value;
         case "=":
           return actual === value;
         case "!=":

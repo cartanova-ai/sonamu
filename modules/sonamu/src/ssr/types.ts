@@ -1,5 +1,5 @@
-import type { CacheControlConfig } from "../cache-control/types";
-import type { CompressConfig } from "../compress/types";
+import { type CacheControlConfig } from "../cache-control/types";
+import { type CompressConfig } from "../compress/types";
 
 // Branded type - 실수로 일반 객체 사용 방지
 export type SSRQuery = {

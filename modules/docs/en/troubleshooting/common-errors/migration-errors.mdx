@@ -1,6 +1,6 @@
 ---
-title: 'Migration Errors'
-description: 'Troubleshooting migration issues'
+title: "Migration Errors"
+description: "Troubleshooting migration issues"
 ---
 
 This covers common database migration-related problems in Sonamu and how to resolve them.
@@ -122,7 +122,7 @@ export async function up(knex: Knex): Promise<void> {
     // Recreate with new definition
     table.specificType(
       "full_name",
-      "TEXT GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED"
+      "TEXT GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED",
     );
   });
 }
@@ -134,10 +134,7 @@ export async function down(knex: Knex): Promise<void> {
 
   // Restore previous definition
   await knex.schema.alterTable("users", (table) => {
-    table.specificType(
-      "full_name",
-      "TEXT GENERATED ALWAYS AS (first_name || last_name) STORED"
-    );
+    table.specificType("full_name", "TEXT GENERATED ALWAYS AS (first_name || last_name) STORED");
   });
 }
 ```
@@ -197,9 +194,13 @@ Precision for PostgreSQL `timestamp` type is not specified, causing mismatch wit
 ```typescript
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
-    table.specificType("created_at", "TIMESTAMP(6)").notNullable()
+    table
+      .specificType("created_at", "TIMESTAMP(6)")
+      .notNullable()
       .defaultTo(knex.raw("CURRENT_TIMESTAMP(6)"));
-    table.specificType("updated_at", "TIMESTAMP(6)").notNullable()
+    table
+      .specificType("updated_at", "TIMESTAMP(6)")
+      .notNullable()
       .defaultTo(knex.raw("CURRENT_TIMESTAMP(6)"));
   });
 }
@@ -247,7 +248,8 @@ export async function up(knex: Knex): Promise<void> {
 
   // Recreate with CASCADE option
   await knex.schema.alterTable("posts", (table) => {
-    table.foreign("user_id")
+    table
+      .foreign("user_id")
       .references("id")
       .inTable("users")
       .onDelete("CASCADE")
@@ -393,7 +395,7 @@ Various errors when converting existing MySQL-based projects to PostgreSQL
 table.integer("status").unsigned();
 
 // PostgreSQL
-table.integer("status");  // PostgreSQL doesn't have unsigned
+table.integer("status"); // PostgreSQL doesn't have unsigned
 ```
 
 #### 2. Change Auto Increment
@@ -403,7 +405,7 @@ table.integer("status");  // PostgreSQL doesn't have unsigned
 table.increments("id");
 
 // PostgreSQL
-table.bigIncrements("id");  // BIGSERIAL recommended
+table.bigIncrements("id"); // BIGSERIAL recommended
 ```
 
 #### 3. String Types

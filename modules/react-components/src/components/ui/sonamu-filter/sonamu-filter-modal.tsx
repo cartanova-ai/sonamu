@@ -1,11 +1,12 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: Zod 타입 접근 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Zod 타입 접근
 
 import { useEffect, useState } from "react";
 import PlusIcon from "~icons/lucide/plus";
-import { useSonamuBaseContext } from "../../../contexts/sonamu-context";
+
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "../..";
+import { useSonamuBaseContext } from "../../../contexts/sonamu-context";
 import { RuleRowInput } from "./rule-row-input";
-import type { Rule, SonamuFilterModalProps } from "./types";
+import { type Rule, type SonamuFilterModalProps } from "./types";
 import { extractFieldMetaFromSchema } from "./utils";
 
 /**
@@ -23,7 +24,7 @@ export function SonamuFilterModal({
   const { SD } = useSonamuBaseContext();
 
   // Apply된 최종 상태
-  const [appliedRules, setAppliedRules] = useState<Rule[]>(initialRules);
+  const [appliedRules, setAppliedRules] = useState(initialRules);
   // 작업 중 상태
   const [rules, setRules] = useState<Rule[]>([]);
 

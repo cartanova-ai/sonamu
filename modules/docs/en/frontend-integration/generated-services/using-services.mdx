@@ -9,24 +9,16 @@ Learn how to call APIs type-safely using the generated Namespace Services.
 
 <CardGroup cols={2}>
   <Card title="Namespace Calls" icon="cube">
-    UserService.getUser()
-    
-    Concise syntax
+    UserService.getUser() Concise syntax
   </Card>
   <Card title="Type Safe" icon="shield-check">
-    Auto-completion
-    
-    Compile validation
+    Auto-completion Compile validation
   </Card>
   <Card title="Subset Support" icon="layer-group">
-    Only needed fields
-    
-    Performance optimization
+    Only needed fields Performance optimization
   </Card>
   <Card title="TanStack Query" icon="arrows-rotate">
-    useUser Hook
-    
-    Auto caching
+    useUser Hook Auto caching
   </Card>
 </CardGroup>
 
@@ -67,16 +59,15 @@ await UserService.updateProfile({
 ```
 
 **Features**:
+
 - Async call with `await`
 - Response is auto-parsed (handled inside fetch function)
 - Types fully guaranteed
 - **Subset parameter required** (for getUser, etc.)
 
 <Info>
-**Namespace-based structure**:
-- ❌ Class instance: No need for `new UserService()`
-- ✅ Static function: Call `UserService.getUser()` directly
-- All functions work independently
+  **Namespace-based structure**: - ❌ Class instance: No need for `new UserService()` - ✅ Static
+  function: Call `UserService.getUser()` directly - All functions work independently
 </Info>
 
 ### Understanding the Subset System
@@ -86,13 +77,13 @@ Sonamu's core feature, the Subset system.
 ```typescript
 // Subset "A": Basic info
 const basicUser = await UserService.getUser("A", 123);
-console.log(basicUser.id);       // ✅ OK
+console.log(basicUser.id); // ✅ OK
 console.log(basicUser.username); // ✅ OK
-console.log(basicUser.bio);      // ❌ Compile error (not in Subset A)
+console.log(basicUser.bio); // ❌ Compile error (not in Subset A)
 
 // Subset "B": Including bio
 const userWithBio = await UserService.getUser("B", 123);
-console.log(userWithBio.bio);    // ✅ OK
+console.log(userWithBio.bio); // ✅ OK
 
 // Subset "C": All fields
 const fullUser = await UserService.getUser("C", 123);
@@ -100,6 +91,7 @@ console.log(fullUser.createdAt); // ✅ OK
 ```
 
 **Why use Subset**:
+
 1. **Performance**: Query only needed fields to reduce network cost
 2. **Type safety**: Returns accurate type for each Subset
 3. **Explicitness**: Clearly express what data is needed in code
@@ -116,11 +108,11 @@ import { UserService } from "@/services/services.generated";
 function UserProfile({ userId }: { userId: number }) {
   // Use auto-generated Hook
   const { data: user, error, isLoading } = UserService.useUser("A", userId);
-  
+
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
   if (!user) return <div>User not found</div>;
-  
+
   return (
     <div>
       <h1>{user.username}</h1>
@@ -131,6 +123,7 @@ function UserProfile({ userId }: { userId: number }) {
 ```
 
 **Benefits of TanStack Query Hooks**:
+
 - Auto caching (reuses same userId)
 - Auto revalidation (on focus, reconnection)
 - Auto loading/error state management
@@ -149,7 +142,7 @@ function UserProfile({ userId }: { userId: number }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
     async function fetchUser() {
       try {
@@ -163,14 +156,14 @@ function UserProfile({ userId }: { userId: number }) {
         setLoading(false);
       }
     }
-    
+
     fetchUser();
   }, [userId]);
-  
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
   if (!user) return <div>User not found</div>;
-  
+
   return (
     <div>
       <h1>{user.username}</h1>
@@ -181,7 +174,8 @@ function UserProfile({ userId }: { userId: number }) {
 ```
 
 <Info>
-**Recommended**: Use TanStack Query Hooks when possible. They provide auto caching, revalidation, and state management, making code much more concise.
+  **Recommended**: Use TanStack Query Hooks when possible. They provide auto caching, revalidation,
+  and state management, making code much more concise.
 </Info>
 
 ### Event Handlers
@@ -196,18 +190,18 @@ function EditProfile({ userId }: { userId: number }) {
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [saving, setSaving] = useState(false);
-  
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
+
     try {
       setSaving(true);
-      
+
       await UserService.updateProfile({
         username,
         bio,
       });
-      
+
       alert("Profile updated!");
     } catch (error) {
       alert("Failed to update profile");
@@ -216,7 +210,7 @@ function EditProfile({ userId }: { userId: number }) {
       setSaving(false);
     }
   }
-  
+
   return (
     <form onSubmit={handleSubmit}>
       <input
@@ -225,13 +219,13 @@ function EditProfile({ userId }: { userId: number }) {
         onChange={(e) => setUsername(e.target.value)}
         placeholder="Username"
       />
-      
+
       <textarea
         value={bio}
         onChange={(e) => setBio(e.target.value)}
         placeholder="Bio"
       />
-      
+
       <button type="submit" disabled={saving}>
         {saving ? "Saving..." : "Save"}
       </button>
@@ -257,8 +251,7 @@ export namespace UserService {
   export const getUser = <T extends UserSubsetKey>(subset: T, id: number): SSRQuery =>
     createSSRQuery("UserModel", "findById", [subset, id], ["User", "getUser"]);
 
-  export const me = (): SSRQuery =>
-    createSSRQuery("UserModel", "me", [], ["User", "me"]);
+  export const me = (): SSRQuery => createSSRQuery("UserModel", "me", [], ["User", "me"]);
 }
 ```
 
@@ -284,24 +277,25 @@ registerSSR({
 
 ### Frontend Service vs SSR Service
 
-| Item | Frontend Service | SSR Service |
-|------|-----------------|-------------|
+| Item              | Frontend Service                         | SSR Service                                |
+| ----------------- | ---------------------------------------- | ------------------------------------------ |
 | **File Location** | `web/src/services/services.generated.ts` | `api/src/application/queries.generated.ts` |
-| **Return Value** | `Promise<Data>` (HTTP request) | `SSRQuery` (object) |
-| **Used In** | Browser (React components) | Backend (`registerSSR`) |
-| **HTTP Request** | ✅ Real API call | ❌ Direct backend Model execution |
+| **Return Value**  | `Promise<Data>` (HTTP request)           | `SSRQuery` (object)                        |
+| **Used In**       | Browser (React components)               | Backend (`registerSSR`)                    |
+| **HTTP Request**  | ✅ Real API call                         | ❌ Direct backend Model execution          |
 
 ```typescript
 // Frontend Service (browser)
-const user = await UserService.getUser("A", 123);  // HTTP GET /api/user/findById
+const user = await UserService.getUser("A", 123); // HTTP GET /api/user/findById
 
 // SSR Service (backend)
-const query = UserService.getUser("A", 123);  // Returns SSRQuery object
+const query = UserService.getUser("A", 123); // Returns SSRQuery object
 // → Sonamu directly executes UserModel.findById("A", 123)
 ```
 
 <Info>
-**Key Difference**: SSR Services execute backend Model methods directly without HTTP requests, eliminating network overhead.
+  **Key Difference**: SSR Services execute backend Model methods directly without HTTP requests,
+  eliminating network overhead.
 </Info>
 
 ### Learn More
@@ -337,12 +331,12 @@ async function updateUser() {
       // Sonamu error (type safe)
       console.log("Status:", error.code);
       console.log("Message:", error.message);
-      
+
       // Zod validation errors
       error.issues.forEach((issue) => {
         console.log(`${issue.path.join(".")}: ${issue.message}`);
       });
-      
+
       // Handle by HTTP status code
       if (error.code === 401) {
         // Auth error
@@ -370,17 +364,17 @@ import { isSonamuError } from "@/lib/sonamu.shared";
 function EditProfile({ userId }: { userId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  
+
   async function handleSubmit(data: any) {
     setError(null);
     setValidationErrors({});
-    
+
     try {
       await UserService.updateProfile(data);
     } catch (err) {
       if (isSonamuError(err)) {
         setError(err.message);
-        
+
         // Map Zod validation errors by field
         const fieldErrors: Record<string, string> = {};
         err.issues.forEach((issue) => {
@@ -393,11 +387,11 @@ function EditProfile({ userId }: { userId: number }) {
       }
     }
   }
-  
+
   return (
     <div>
       {error && <div className="error-message">{error}</div>}
-      
+
       <form onSubmit={(e) => {
         e.preventDefault();
         handleSubmit({/* data */});
@@ -428,7 +422,7 @@ async function loadUserDashboard(userId: number) {
   const user = await UserService.getUser("A", userId);
   const posts = await PostService.getPostsByUser(userId);
   const comments = await PostService.getCommentsByUser(userId);
-  
+
   return { user, posts, comments };
 }
 
@@ -439,12 +433,13 @@ async function loadUserDashboardFast(userId: number) {
     PostService.getPostsByUser(userId),
     PostService.getCommentsByUser(userId),
   ]);
-  
+
   return { user, posts, comments };
 }
 ```
 
 **Performance comparison**:
+
 - Sequential: 300ms + 200ms + 150ms = 650ms
 - Parallel: max(300ms, 200ms, 150ms) = 300ms
 
@@ -483,10 +478,10 @@ function UserProfile({ userId }: { userId: number | null }) {
     userId!,
     { enabled: userId !== null } // Don't call if userId is null
   );
-  
+
   if (!userId) return <div>Please select a user</div>;
   if (!user) return <div>Loading...</div>;
-  
+
   return <div>{user.username}</div>;
 }
 ```
@@ -499,15 +494,13 @@ import { UserService } from "@/services/services.generated";
 
 function EditProfile({ userId }: { userId: number }) {
   const queryClient = useQueryClient();
-  
+
   async function handleUpdate(data: any) {
     await UserService.updateProfile(data);
-    
+
     // Invalidate specific query
-    queryClient.invalidateQueries(
-      UserService.getUserQueryOptions("A", userId)
-    );
-    
+    queryClient.invalidateQueries(UserService.getUserQueryOptions("A", userId));
+
     // Or invalidate all User queries
     queryClient.invalidateQueries({
       queryKey: ["User"],
@@ -521,14 +514,14 @@ function EditProfile({ userId }: { userId: number }) {
 ```typescript
 function UserList({ userIds }: { userIds: number[] }) {
   const queryClient = useQueryClient();
-  
+
   // Preload on hover
   function handleMouseEnter(userId: number) {
     queryClient.prefetchQuery(
       UserService.getUserQueryOptions("A", userId)
     );
   }
-  
+
   return (
     <ul>
       {userIds.map((id) => (
@@ -556,7 +549,7 @@ import { isSonamuError } from "@/lib/sonamu.shared";
 function UserManagement() {
   // List query (Subset A)
   const { data: users, refetch } = UserService.useUsers("A");
-  
+
   // Create
   async function handleCreate(data: { username: string; email: string }) {
     try {
@@ -569,7 +562,7 @@ function UserManagement() {
       }
     }
   }
-  
+
   // Update
   async function handleUpdate(id: number, data: { username: string }) {
     try {
@@ -582,11 +575,11 @@ function UserManagement() {
       }
     }
   }
-  
+
   // Delete
   async function handleDelete(id: number) {
     if (!confirm("Are you sure?")) return;
-    
+
     try {
       await UserService.delete(id);
       refetch();
@@ -597,7 +590,7 @@ function UserManagement() {
       }
     }
   }
-  
+
   return (
     <div>
       <h1>Users</h1>
@@ -620,29 +613,39 @@ function UserManagement() {
 ## Cautions
 
 <Warning>
-**Cautions when using Services**:
-1. **Never manually modify** generated Service files (`services.generated.ts`)
-2. **Subset parameter required**: Must specify subset for getUser, etc.
-3. In Server Components, **call backend model directly** instead of Service
-4. Use `isSonamuError()` **type guard** for error handling
-5. TanStack Query Hooks should only be called **inside components**
-6. `await` keyword required (all Service functions are async)
-7. It's a Namespace so **no `new` needed**: Call `UserService.getUser()` directly
+  **Cautions when using Services**: 1. **Never manually modify** generated Service files
+  (`services.generated.ts`) 2. **Subset parameter required**: Must specify subset for getUser, etc.
+  3. In Server Components, **call backend model directly** instead of Service 4. Use
+  `isSonamuError()` **type guard** for error handling 5. TanStack Query Hooks should only be called
+  **inside components** 6. `await` keyword required (all Service functions are async) 7. It's a
+  Namespace so **no `new` needed**: Call `UserService.getUser()` directly
 </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="How Services Work" icon="diagram-project" href="/en/frontend-integration/generated-services/how-services-work">
+  <Card
+    title="How Services Work"
+    icon="diagram-project"
+    href="/en/frontend-integration/generated-services/how-services-work"
+  >
     Understanding auto-generation
   </Card>
-  <Card title="TanStack Query Hook" icon="arrows-rotate" href="/en/frontend-integration/generated-services/tanstack-query">
+  <Card
+    title="TanStack Query Hook"
+    icon="arrows-rotate"
+    href="/en/frontend-integration/generated-services/tanstack-query"
+  >
     Easier with React
   </Card>
   <Card title="Authentication" icon="shield-halved" href="/en/api-development/authentication/setup">
     Authentication system
   </Card>
-  <Card title="Error Handling" icon="triangle-exclamation" href="/en/api-development/validation/error-handling">
+  <Card
+    title="Error Handling"
+    icon="triangle-exclamation"
+    href="/en/api-development/validation/error-handling"
+  >
     Error handling patterns
   </Card>
 </CardGroup>

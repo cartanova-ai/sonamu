@@ -24,7 +24,11 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 </FileTree>
 
 <Frame caption="Complete directory structure of a Sonamu project opened in VS Code">
-  <img src="/images/projectStructure1.png" alt="Complete project structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/projectStructure1.png"
+    alt="Complete project structure"
+    style={{ maxWidth: "500px", width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 ### pnpm Workspace
@@ -60,13 +64,17 @@ catalog:
     <FileItem name="tsconfig.schemas.json" description="Schema generation config" />
     <FileItem name="tsconfig.types.json" description="Type generation config" />
     <FileItem name="custom-sequencer.ts" description="Test sequencer" />
-    <FileItem name=".swcrc" description="SWC compiler configuration" />
+    <FileItem name="tsdown.config.ts" description="Optional API build override for tsdown" />
     <FileItem name=".env" description="Environment variables (auto-generated)" />
   </FileItem>
 </FileTree>
 
 <Frame caption="Actual file structure of packages/api directory">
-  <img src="/images/projectStructure2.png" alt="packages/api directory structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/projectStructure2.png"
+    alt="packages/api directory structure"
+    style={{ maxWidth: "500px", width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 <Accordion title="Key File Descriptions">
@@ -109,10 +117,7 @@ catalog:
         <FileItem name="{entity}.types.ts" description="Types + Zod schemas" />
         <FileItem name="{entity}.model.test.ts" description="Tests (optional)" />
       </FileItem>
-      <FileItem
-        name="sonamu.generated.ts"
-        description="Base schemas (auto-generated)"
-      />
+      <FileItem name="sonamu.generated.ts" description="Base schemas (auto-generated)" />
     </FileItem>
     <FileItem name="i18n/" description="Internationalization">
       <FileItem name="ko.ts" description="Korean translations" />
@@ -135,7 +140,11 @@ catalog:
 </FileTree>
 
 <Frame caption="packages/api/src directory structure (with application folder expanded)">
-  <img src="/images/projectStructure3.png" alt="packages/api/src directory structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/projectStructure3.png"
+    alt="packages/api/src directory structure"
+    style={{ maxWidth: "500px", width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 <Note>
@@ -149,6 +158,7 @@ Files in the `application/{entity}/` folder are created when you create an entit
 - **{entity}.model.test.ts**: Generated via `pnpm scaffold model_test` or Sonamu UI's Scaffolding tab (optional)
 
 When you first create a project, the `application/` folder is empty. The folder is created when you create your first entity.
+
 </Note>
 
 <Accordion title="Key Directory Descriptions">
@@ -204,22 +214,18 @@ When you first create a project, the `application/` folder is empty. The folder 
 </Accordion>
 
 <Info>
-**Learn More - Entity Files**
-- [Defining Entities](/en/core-concepts/entity/defining-entities) - How to write entity.json
-- [Creating Models](/en/core-concepts/model/creating-models) - model.ts writing guide
-- [Type System](/en/core-concepts/type-system/entity-types) - Understanding types.ts
-- [What Gets Generated](/en/core-concepts/auto-generation/what-gets-generated) - Which files are auto-generated
-- [Writing Tests](/en/testing/writing-tests/test-structure) - Test file structure
+  **Learn More - Entity Files** - [Defining Entities](/en/core-concepts/entity/defining-entities) -
+  How to write entity.json - [Creating Models](/en/core-concepts/model/creating-models) - model.ts
+  writing guide - [Type System](/en/core-concepts/type-system/entity-types) - Understanding types.ts
+  - [What Gets Generated](/en/core-concepts/auto-generation/what-gets-generated) - Which files are
+  auto-generated - [Writing Tests](/en/testing/writing-tests/test-structure) - Test file structure
 </Info>
 
 ### database/ Directory
 
 <FileTree>
   <FileItem name="packages/api/database/">
-    <FileItem
-      name="docker-compose.yml"
-      description="PostgreSQL container configuration"
-    />
+    <FileItem name="docker-compose.yml" description="PostgreSQL container configuration" />
     <FileItem name="fixtures/">
       <FileItem name="init.sh" description="Database initialization script" />
     </FileItem>
@@ -259,12 +265,12 @@ When you first create a project, the `application/` folder is empty. The folder 
 </Accordion>
 
 <Info>
-**Learn More - Configuration Files**
-- [sonamu.config.ts Settings](/en/configuration/sonamu-config/project-settings) - Overall project configuration
-- [Database Configuration](/en/configuration/sonamu-config/database) - DB connection and settings
-- [Server Configuration](/en/configuration/sonamu-config/server) - Fastify server settings
-- [TypeScript Configuration](/en/configuration/typescript/tsconfig) - Compiler options
-- [Environment Variables](/en/configuration/environment-variables/env-setup) - .env file management
+  **Learn More - Configuration Files** - [sonamu.config.ts
+  Settings](/en/configuration/sonamu-config/project-settings) - Overall project configuration -
+  [Database Configuration](/en/configuration/sonamu-config/database) - DB connection and settings -
+  [Server Configuration](/en/configuration/sonamu-config/server) - Fastify server settings -
+  [TypeScript Configuration](/en/configuration/typescript/tsconfig) - Compiler options -
+  [Environment Variables](/en/configuration/environment-variables/env-setup) - .env file management
 </Info>
 
 ## Web Directory (Frontend)
@@ -285,7 +291,11 @@ When you first create a project, the `application/` folder is empty. The folder 
 </FileTree>
 
 <Frame caption="Actual file structure of packages/web directory">
-  <img src="/images/projectStructure4.png" alt="packages/web directory structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/projectStructure4.png"
+    alt="packages/web directory structure"
+    style={{ maxWidth: "500px", width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 <Accordion title="Key File Descriptions">
@@ -376,10 +386,11 @@ When you first create a project, the `application/` folder is empty. The folder 
 </Accordion>
 
 <Info>
-**Learn More - Frontend**
-- [How Services Work](/en/frontend-integration/generated-services/how-services-work) - Auto-generation mechanism
-- [Using Services](/en/frontend-integration/generated-services/using-services) - How to call APIs
-- [Shared Types](/en/frontend-integration/type-safety/shared-types) - Backend-frontend type synchronization
+  **Learn More - Frontend** - [How Services
+  Work](/en/frontend-integration/generated-services/how-services-work) - Auto-generation mechanism -
+  [Using Services](/en/frontend-integration/generated-services/using-services) - How to call APIs -
+  [Shared Types](/en/frontend-integration/type-safety/shared-types) - Backend-frontend type
+  synchronization
 </Info>
 
 ## Example File Structure After Creating an Entity
@@ -408,8 +419,16 @@ When you create a User entity, the following structure is created:
 
 <Frame caption="Actual file structure of packages/api/src/application/user folder after creating User entity">
   <div className="grid grid-cols-2 gap-4">
-    <img src="/images/projectStructure5.png" alt="user folder structure 1" style={{borderRadius: '0.75rem'}} />
-    <img src="/images/projectStructure6.png" alt="user folder structure 2" style={{borderRadius: '0.75rem'}} />
+    <img
+      src="/images/projectStructure5.png"
+      alt="user folder structure 1"
+      style={{ borderRadius: "0.75rem" }}
+    />
+    <img
+      src="/images/projectStructure6.png"
+      alt="user folder structure 2"
+      style={{ borderRadius: "0.75rem" }}
+    />
   </div>
 </Frame>
 
@@ -502,7 +521,11 @@ export class UserService {
 </CodeGroup>
 
 <Frame caption="VS Code screen with user.entity.json, user.model.ts, user.types.ts files open side by side (split view)">
-  <img src="/images/projectStructure7.png" alt="VS Code split view" style={{width: '100%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/projectStructure7.png"
+    alt="VS Code split view"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 <Note>
@@ -512,29 +535,30 @@ export class UserService {
 </Note>
 
 <Info>
-**Learn More - Per-File Guides**
-- [Defining Entities](/en/core-concepts/entity/defining-entities) - How to write entity.json
-- [@api Decorator](/en/core-concepts/model/api-decorator) - Defining APIs in model.ts
-- [Entity Types](/en/core-concepts/type-system/entity-types) - Using types.ts
-- [Generated Types](/en/core-concepts/type-system/generated-types) - Understanding sonamu.generated.ts
+  **Learn More - Per-File Guides** - [Defining Entities](/en/core-concepts/entity/defining-entities)
+  - How to write entity.json - [@api Decorator](/en/core-concepts/model/api-decorator) - Defining
+  APIs in model.ts - [Entity Types](/en/core-concepts/type-system/entity-types) - Using types.ts -
+  [Generated Types](/en/core-concepts/type-system/generated-types) - Understanding
+  sonamu.generated.ts
 </Info>
 
 ## Key Work Locations During Development
 
-| Task                | Location                                                        | Method         |
-| ------------------- | --------------------------------------------------------------- | -------------- |
-| Entity Definition   | `packages/api/src/application/{entity}/{entity}.entity.json`    | Sonamu UI      |
-| Business Logic      | `packages/api/src/application/{entity}/{entity}.model.ts`       | Manual writing |
-| Custom Types        | `packages/api/src/application/{entity}/{entity}.types.ts`       | Manual extension |
-| API Endpoints       | `@api` decorator in Model file                                  | Manual writing |
-| Database Config     | `packages/api/src/sonamu.config.ts`                             | Manual writing |
-| Server Config       | `packages/api/src/sonamu.config.ts`                             | Manual writing |
-| Writing Tests       | `packages/api/src/application/{entity}/{entity}.model.test.ts`  | Manual writing |
-| Page Components     | `packages/web/src/routes/`                                      | Manual writing |
-| Common Components   | `packages/web/src/admin-common/`                                | Manual writing |
+| Task              | Location                                                       | Method           |
+| ----------------- | -------------------------------------------------------------- | ---------------- |
+| Entity Definition | `packages/api/src/application/{entity}/{entity}.entity.json`   | Sonamu UI        |
+| Business Logic    | `packages/api/src/application/{entity}/{entity}.model.ts`      | Manual writing   |
+| Custom Types      | `packages/api/src/application/{entity}/{entity}.types.ts`      | Manual extension |
+| API Endpoints     | `@api` decorator in Model file                                 | Manual writing   |
+| Database Config   | `packages/api/src/sonamu.config.ts`                            | Manual writing   |
+| Server Config     | `packages/api/src/sonamu.config.ts`                            | Manual writing   |
+| Writing Tests     | `packages/api/src/application/{entity}/{entity}.model.test.ts` | Manual writing   |
+| Page Components   | `packages/web/src/routes/`                                     | Manual writing   |
+| Common Components | `packages/web/src/admin-common/`                               | Manual writing   |
 
 <Warning>
-  **Auto-generated File Cautions** - `sonamu.generated.ts`: Never modify - `{entity}.service.ts`: Never modify - `{entity}.types.ts`: Extension is possible but do not modify auto-generated parts
+  **Auto-generated File Cautions** - `sonamu.generated.ts`: Never modify - `{entity}.service.ts`:
+  Never modify - `{entity}.types.ts`: Extension is possible but do not modify auto-generated parts
 </Warning>
 
 ## Next Steps
@@ -542,11 +566,7 @@ export class UserService {
 Now that you understand the project structure, create your first entity:
 
 <CardGroup cols={2}>
-  <Card
-    title="Creating Your First Entity"
-    icon="database"
-    href="/en/getting-started/first-entity"
-  >
+  <Card title="Creating Your First Entity" icon="database" href="/en/getting-started/first-entity">
     Use Sonamu UI to create your first entity and define the database schema.
   </Card>
   <Card

@@ -124,9 +124,7 @@ export type UserSS = {
 import type { UserSubsetKey, UserSubsetMapping } from "./sonamu.generated";
 
 // 제네릭으로 Subset 타입 선택
-async function findMany<T extends UserSubsetKey>(
-  subset: T
-): Promise<UserSubsetMapping[T][]> {
+async function findMany<T extends UserSubsetKey>(subset: T): Promise<UserSubsetMapping[T][]> {
   // ...
 }
 
@@ -154,12 +152,7 @@ export const UserSearchField = z.enum(["id", "email", "username"]);
 export type UserSearchField = z.infer<typeof UserSearchField>;
 
 // OrderBy Enum
-export const UserOrderBy = z.enum([
-  "id-desc",
-  "id-asc",
-  "created_at-desc",
-  "created_at-asc",
-]);
+export const UserOrderBy = z.enum(["id-desc", "id-asc", "created_at-desc", "created_at-asc"]);
 export type UserOrderBy = z.infer<typeof UserOrderBy>;
 
 // ListParams
@@ -369,9 +362,7 @@ async register(params: UserRegisterParams): Promise<{ userId: number; token: str
 
 ```typescript
 // services.generated.ts
-export async function loginUser(
-  params: UserLoginParams
-): Promise<{ user: User; token: string }> {
+export async function loginUser(params: UserLoginParams): Promise<{ user: User; token: string }> {
   const { data } = await axios.post("/user/login", { params });
   return data;
 }
@@ -434,12 +425,12 @@ async updateStatus(params: UserStatusUpdateParams): Promise<void> {
 ```typescript title="sonamu.shared.ts"
 export type ListResult<
   LP extends { num?: number; page?: number; queryMode?: string },
-  T
+  T,
 > = LP["queryMode"] extends "list"
   ? { rows: T[] }
   : LP["queryMode"] extends "count"
-  ? { total: number }
-  : { rows: T[]; total: number };
+    ? { total: number }
+    : { rows: T[]; total: number };
 ```
 
 **사용 예시**:
@@ -461,8 +452,8 @@ const result = await findManyUsers({ queryMode: "count" });
 ```
 
 <Info>
-  **조건부 타입**: `ListResult`는 TypeScript의 조건부 타입을 활용하여
-  `queryMode`에 따라 다른 타입을 반환합니다.
+  **조건부 타입**: `ListResult`는 TypeScript의 조건부 타입을 활용하여 `queryMode`에 따라 다른 타입을
+  반환합니다.
 </Info>
 
 ## 타입 내보내기
@@ -484,12 +475,7 @@ export { PostModel } from "./post/post.model";
 
 ```typescript
 // 한 곳에서 import
-import {
-  User,
-  UserListParams,
-  UserSaveParams,
-  UserRole,
-} from "./sonamu.generated";
+import { User, UserListParams, UserSaveParams, UserRole } from "./sonamu.generated";
 
 // 또는 개별 import
 import type { User } from "./user/user.types";
@@ -528,9 +514,7 @@ const UserListParams = z.object({
 ```typescript
 import type { DistributiveOmit } from "sonamu";
 
-type UserOrAdmin =
-  | { type: "user"; userId: number }
-  | { type: "admin"; adminId: number };
+type UserOrAdmin = { type: "user"; userId: number } | { type: "admin"; adminId: number };
 
 // DistributiveOmit은 각 타입에 개별 적용
 type WithoutId = DistributiveOmit<UserOrAdmin, "userId" | "adminId">;
@@ -574,8 +558,8 @@ export type UserAWithStats = UserA & {
 export type UserByRole<T extends UserRole> = T extends "admin"
   ? UserA & { permissions: string[] }
   : T extends "normal"
-  ? UserSS
-  : User;
+    ? UserSS
+    : User;
 ```
 
 ## 실전 예시
@@ -657,11 +641,7 @@ export function UserList() {
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card
-    title="E2E Type Safety"
-    icon="link"
-    href="/ko/core-concepts/type-system/e2e-type-safety"
-  >
+  <Card title="E2E Type Safety" icon="link" href="/ko/core-concepts/type-system/e2e-type-safety">
     엔드투엔드 타입 안전성 이해하기
   </Card>
   <Card
@@ -671,11 +651,7 @@ export function UserList() {
   >
     Zod로 런타임 검증하기
   </Card>
-  <Card
-    title="Entity Types"
-    icon="database"
-    href="/ko/core-concepts/type-system/entity-types"
-  >
+  <Card title="Entity Types" icon="database" href="/ko/core-concepts/type-system/entity-types">
     Entity 타입 변환 자세히 보기
   </Card>
   <Card title="Model" icon="cube" href="/ko/core-concepts/model/what-is-model">

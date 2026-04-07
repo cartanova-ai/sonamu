@@ -1,5 +1,6 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
+import { type Meta, type StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+
 import { Select } from "./select";
 
 const fruitItems = ["사과", "바나나", "체리", "포도", "딸기", "수박", "오렌지"];

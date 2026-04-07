@@ -1,6 +1,5 @@
-/** biome-ignore-all lint/correctness/noUnusedImports: d.ts */
-
-import {} from "sonamu";
+// oxlint-disable-next-line
+import * as Sonamu from "sonamu";
 
 declare module "sonamu" {
   export interface ContextExtend {

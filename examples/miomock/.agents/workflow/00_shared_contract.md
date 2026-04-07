@@ -17,16 +17,16 @@ When documents conflict, earlier in this list takes precedence.
 
 Every stage consumes upstream artifacts and produces downstream artifacts. No stage may skip or redefine the artifact schema defined in its canonical location.
 
-| Artifact | Producer | Consumer | Schema location |
-|---|---|---|---|
-| `bootstrap_context` | orchestrator (bootstrap) | planner | `02_orchestrator.md#bootstrap` |
-| `plan_document` | planner | orchestrator + user | `03_planner.md#plan-document` |
-| `claim_blueprint` | planner | orchestrator | `03_planner.md#claim-blueprint` |
-| `execution_graph` | planner | orchestrator | `03_planner.md#execution-graph` |
-| `claim` (YAML) | orchestrator | worker | `01_cdd.md#claim-format` |
-| `worker_result` | worker | orchestrator | `04_worker_contract.md#return-format` |
-| `review_result` | reviewer | orchestrator | `05_reviewer.md#output-format` |
-| `handoff_bundle` | orchestrator | user | `06_handoff.md#bundle-format` |
+| Artifact            | Producer                 | Consumer            | Schema location                       |
+| ------------------- | ------------------------ | ------------------- | ------------------------------------- |
+| `bootstrap_context` | orchestrator (bootstrap) | planner             | `02_orchestrator.md#bootstrap`        |
+| `plan_document`     | planner                  | orchestrator + user | `03_planner.md#plan-document`         |
+| `claim_blueprint`   | planner                  | orchestrator        | `03_planner.md#claim-blueprint`       |
+| `execution_graph`   | planner                  | orchestrator        | `03_planner.md#execution-graph`       |
+| `claim` (YAML)      | orchestrator             | worker              | `01_cdd.md#claim-format`              |
+| `worker_result`     | worker                   | orchestrator        | `04_worker_contract.md#return-format` |
+| `review_result`     | reviewer                 | orchestrator        | `05_reviewer.md#output-format`        |
+| `handoff_bundle`    | orchestrator             | user                | `06_handoff.md#bundle-format`         |
 
 ## Common constraints
 

@@ -3,16 +3,17 @@
  * 최초 1회 생성되며, 이후에는 덮어쓰지 않습니다.
  * 필요시 직접 수정할 수 있습니다.
  */
-/** biome-ignore-all lint/correctness/useExhaustiveDependencies: shared */
-/** biome-ignore-all lint/suspicious/noExplicitAny: shared */
+/* oxlint-disable react-hooks/exhaustive-deps */ // shared
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // shared
 
 /*
   fetch
 */
-import type { AxiosRequestConfig } from "axios";
+import  { type AxiosRequestConfig } from "axios";
 import axios from "axios";
 import qs from "qs";
-import { type core, z } from "zod";
+import { z } from 'zod';
+import  { type core } from 'zod';
 import { EventSource } from "eventsource";
 import { getCurrentLocale } from "../i18n/sd.generated";
 

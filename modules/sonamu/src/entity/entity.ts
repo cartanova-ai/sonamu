@@ -1,17 +1,13 @@
 import assert from "assert";
 import { writeFile } from "fs/promises";
-import inflection from "inflection";
 import path from "path";
+
+import inflection from "inflection";
 import { group, unique } from "radashi";
 import { z } from "zod";
+
 import { Sonamu } from "../api/sonamu";
 import {
-  type Cone,
-  type EntityIndex,
-  type EntityJson,
-  type EntityProp,
-  type EntityPropNode,
-  type EntitySubsetRow,
   getEnumDefValues,
   getSubsetFields,
   isBelongsToOneRelationProp,
@@ -24,6 +20,14 @@ import {
   isVirtualCodeProp,
   isVirtualProp,
   normalizeSubsetField,
+} from "../types/types";
+import {
+  type Cone,
+  type EntityIndex,
+  type EntityJson,
+  type EntityProp,
+  type EntityPropNode,
+  type EntitySubsetRow,
   type RelationProp,
   type SubsetField,
   type SubsetQuery,
@@ -209,7 +213,7 @@ export class Entity {
    */
   private buildNestedSelectObject(
     selectItems: string[],
-    // biome-ignore lint/suspicious/noExplicitAny: 반환 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 반환 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
   ): Record<string, any> {
     const result: ReturnType<typeof this.buildNestedSelectObject> = {};
 
@@ -275,7 +279,7 @@ export class Entity {
    * @param withBraces true면 중괄호 포함, false면 내용만 반환
    */
   private stringifyNestedSelectObject(
-    // biome-ignore lint/suspicious/noExplicitAny: 중첩 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 중첩 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
     obj: Record<string, any>,
     indent: number = 0,
     withBraces: boolean = true,
@@ -498,7 +502,7 @@ export class Entity {
             }
 
             if (isOneToOneRelationProp(relation)) {
-              if (relation.hasJoinColumn === true && (relation.nullable ?? false) === false) {
+              if (relation.hasJoinColumn && !(relation.nullable ?? false)) {
                 return "inner";
               } else {
                 return "outer";
@@ -736,7 +740,7 @@ export class Entity {
         }
         return propName;
       })
-      .filter((f) => f !== null) as string[];
+      .filter((f) => f !== null);
   }
 
   /**
@@ -746,7 +750,7 @@ export class Entity {
   private hasForeignKey(prop: RelationProp): boolean {
     return (
       prop.relationType === "BelongsToOne" ||
-      (prop.relationType === "OneToOne" && prop.hasJoinColumn === true)
+      (prop.relationType === "OneToOne" && prop.hasJoinColumn)
     );
   }
 
@@ -939,7 +943,7 @@ export class Entity {
       `src/application/${this.names.parentFs}/${this.names.fs}.entity.json`,
     );
     const json = this.toJson();
-    await writeFile(jsonPath, formatCode(JSON.stringify(json), "json", jsonPath));
+    await writeFile(jsonPath, await formatCode(JSON.stringify(json), "json", jsonPath));
 
     // reload
     await EntityManager.register(json);
@@ -1093,12 +1097,12 @@ export class Entity {
           isOpen: children.length > 0,
           has: Object.fromEntries(
             subsetKeys.map((subsetKey) => {
-              return [subsetKey, children.every((child) => child.has[subsetKey] === true)];
+              return [subsetKey, children.every((child) => child.has[subsetKey])];
             }),
           ),
           isInternal: Object.fromEntries(
             subsetKeys.map((subsetKey) => {
-              return [subsetKey, children.every((child) => child.isInternal[subsetKey] === true)];
+              return [subsetKey, children.every((child) => child.isInternal[subsetKey])];
             }),
           ),
         };
@@ -1281,7 +1285,7 @@ export class Entity {
   }
 
   getEntityIdFromSubsetField(subsetField: string): string {
-    if (subsetField.includes(".") === false) {
+    if (!subsetField.includes(".")) {
       return this.id;
     }
 

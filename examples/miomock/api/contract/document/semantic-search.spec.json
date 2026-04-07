@@ -38,9 +38,7 @@
     "src/application/document/document.model.ts",
     "src/application/document/document.types.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "DocumentModel": "임베딩 생성 및 벡터 유사도 검색을 담당한다",
     "Document Types": "의미 검색 입력(semanticQuery/벡터) 파라미터를 정의한다"

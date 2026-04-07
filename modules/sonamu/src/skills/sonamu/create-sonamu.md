@@ -23,23 +23,23 @@ pnpm create sonamu [project-name] --yes
 
 ### General Options
 
-| Option | Description | Default |
-|------|------|--------|
-| `--yes`, `-y` | Use all options with default values | - |
-| `--skip-pnpm` | Skip pnpm install | false |
-| `--skip-docker` | Skip Docker setup | false |
-| `--pnpm y/n` | Whether to install pnpm | y |
-| `--docker y/n` | Whether to configure Docker | y |
+| Option          | Description                         | Default |
+| --------------- | ----------------------------------- | ------- |
+| `--yes`, `-y`   | Use all options with default values | -       |
+| `--skip-pnpm`   | Skip pnpm install                   | false   |
+| `--skip-docker` | Skip Docker setup                   | false   |
+| `--pnpm y/n`    | Whether to install pnpm             | y       |
+| `--docker y/n`  | Whether to configure Docker         | y       |
 
 ### Docker/DB Options
 
-| Option | Description | Default |
-|------|------|--------|
-| `--docker-project` | Docker project name | `[project-name]-docker` |
-| `--container-name` | Container name | `[project-name]-container` |
-| `--db-name` | Database name | `[project-name]` |
-| `--db-user` | DB user | `postgres` |
-| `--db-password` | DB password | `1234` |
+| Option             | Description         | Default                    |
+| ------------------ | ------------------- | -------------------------- |
+| `--docker-project` | Docker project name | `[project-name]-docker`    |
+| `--container-name` | Container name      | `[project-name]-container` |
+| `--db-name`        | Database name       | `[project-name]`           |
+| `--db-user`        | DB user             | `postgres`                 |
+| `--db-password`    | DB password         | `1234`                     |
 
 ## Usage Examples
 
@@ -97,20 +97,25 @@ pnpm create sonamu my_project \
 ## Next Steps After Creation
 
 1. Start the DB container (if Docker was configured)
+
    ```bash
    cd [project-name]/packages/api/
    pnpm docker:up
    ```
+
    > If a port conflict error occurs → see `database.md`
 
 2. Sync Skills
+
    ```bash
    cd [project-name]/packages/api
    pnpm sonamu skills sync
    ```
+
    > Will fail if sonamu is an npm version. See "Sonamu Link Setup" below.
 
 3. Start the dev server
+
    ```bash
    cd [project-name]/packages/api
    pnpm dev
@@ -137,6 +142,7 @@ Check the sonamu dependency in `packages/api/package.json`:
 ### How to change to a link
 
 1. Change the sonamu version to a link in `packages/api/package.json`:
+
    ```json
    "dependencies": {
      "sonamu": "link:/path/to/sonamu/modules/sonamu"
@@ -149,10 +155,10 @@ Check the sonamu dependency in `packages/api/package.json`:
 
 ### Link path examples
 
-| sonamu location | Link path |
-|------------|----------|
-| `~/Development/sonamu` | `link:~/Development/sonamu/modules/sonamu` |
-| Same directory as project | `link:../../sonamu/modules/sonamu` |
+| sonamu location           | Link path                                  |
+| ------------------------- | ------------------------------------------ |
+| `~/Development/sonamu`    | `link:~/Development/sonamu/modules/sonamu` |
+| Same directory as project | `link:../../sonamu/modules/sonamu`         |
 
 ## Renaming the Project (when creating a new project)
 
@@ -161,28 +167,34 @@ After generating the project, you need to replace the "Sonamu" text in the front
 **4 files to update:**
 
 1. **`packages/web/index.html`** - Browser tab title
+
 ```html
 <title>{project-name}</title>
 ```
 
 2. **`packages/web/src/routes/__root.tsx`** - TanStack Router head configuration (most important!)
+
 ```typescript
 head: () => ({
   meta: [{ title: "{project-name}" }],
 }),
 ```
+
 **Important:** If you don't update `__root.tsx`, the title will revert to "Sonamu" on HMR!
 
 3. **`packages/web/src/routes/index.tsx`** - Main page title
+
 ```tsx
-<h1 className="text-2xl font-bold mb-4">Welcome to {project-name}</h1>
+<h1 className="text-2xl font-bold mb-4">Welcome to {project - name}</h1>
 ```
 
 4. **`packages/web/src/components/Sidebar.tsx`** - Sidebar app name
+
 ```typescript
 const title = isAdmin ? "Admin" : "{project-name}";
 ```
 
 **How to verify:**
+
 - Check that the project name is shown in the browser tab
 - Confirm that the tab title does not change on file save via HMR (if it does, `__root.tsx` is missing)

@@ -8,7 +8,7 @@ import { dateReviver } from "./services/sonamu.shared";
 // SSR 데이터 타입
 declare global {
   interface Window {
-    // biome-ignore lint/suspicious/noExplicitAny: SSR 데이터를 any 타입으로 받아야 함
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- SSR 데이터를 any 타입으로 받아야 함
     __SONAMU_SSR__?: any;
     __SONAMU_SSR_CONFIG__?: {
       disableHydrate?: boolean;
@@ -53,7 +53,7 @@ declare module "@tanstack/react-router" {
 
 // async IIFE로 감싸서 top-level await 제거
 // (top-level await가 있으면 Vite 빌드 시 코드 스플릿 청크가 메인 엔트리를 import하면서 순환 의존성 데드락 발생)
-(async () => {
+void (async () => {
   await router.load();
 
   // SSR/CSR 모두 document 전체에 렌더링

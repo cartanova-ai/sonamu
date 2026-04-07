@@ -1,12 +1,14 @@
 import assert from "assert";
-import type { Knex } from "knex";
+
+import { type Knex } from "knex";
 import { group } from "radashi";
-import type {
-  MigrationColumn,
-  MigrationForeign,
-  MigrationIndex,
-  MigrationSet,
-  RelationOn,
+
+import {
+  type MigrationColumn,
+  type MigrationForeign,
+  type MigrationIndex,
+  type MigrationSet,
+  type RelationOn,
 } from "../types/types";
 
 /**
@@ -413,11 +415,9 @@ class PostgreSQLSchemaReaderClass {
     }
 
     if (type === "ivfflat") {
-      return {
-        ...(this.parseIntegerOption(withOptions.lists) !== undefined
-          ? { lists: this.parseIntegerOption(withOptions.lists) }
-          : {}),
-      };
+      return this.parseIntegerOption(withOptions.lists) !== undefined
+        ? { lists: this.parseIntegerOption(withOptions.lists) }
+        : {};
     }
 
     return {};

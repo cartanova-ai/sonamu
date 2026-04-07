@@ -9,24 +9,16 @@ HTTP 메서드는 API의 의도를 명확하게 표현하고 RESTful 원칙을 �
 
 <CardGroup cols={2}>
   <Card title="GET" icon="magnifying-glass">
-    데이터 조회
-    
-    안전하고 멱등성
+    데이터 조회 안전하고 멱등성
   </Card>
   <Card title="POST" icon="plus">
-    데이터 생성
-    
-    비멱등성
+    데이터 생성 비멱등성
   </Card>
   <Card title="PUT" icon="pen">
-    데이터 수정
-    
-    멱등성
+    데이터 수정 멱등성
   </Card>
   <Card title="DELETE" icon="trash">
-    데이터 삭제
-    
-    멱등성
+    데이터 삭제 멱등성
   </Card>
 </CardGroup>
 
@@ -41,16 +33,13 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<User> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     return user;
   }
 }
@@ -79,43 +68,44 @@ class UserModel extends BaseModelClass {
     pageSize: number;
   }> {
     const rdb = this.getPuri("r");
-    
+
     // 기본값 설정
     const page = params.page || 1;
     const pageSize = params.pageSize || 20;
     const sortBy = params.sortBy || "created_at";
     const sortOrder = params.sortOrder || "desc";
-    
+
     // 쿼리 빌드
     let query = rdb.table("users");
-    
+
     // 검색 조건
     if (params.search) {
       query = query.where((qb) => {
-        qb.where("username", "like", `%${params.search}%`)
-          .orWhere("email", "like", `%${params.search}%`);
+        qb.where("username", "like", `%${params.search}%`).orWhere(
+          "email",
+          "like",
+          `%${params.search}%`,
+        );
       });
     }
-    
+
     // 역할 필터
     if (params.role) {
       query = query.where("role", params.role);
     }
-    
+
     // 정렬
     query = query.orderBy(sortBy, sortOrder);
-    
+
     // 페이지네이션
     const users = await query
       .limit(pageSize)
       .offset((page - 1) * pageSize)
       .select("*");
-    
+
     // 전체 개수
-    const [{ count }] = await rdb
-      .table("users")
-      .count({ count: "*" });
-    
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+
     return {
       users,
       total: count,
@@ -139,30 +129,24 @@ class UserModel extends BaseModelClass {
     posts: Post[];
   }> {
     const rdb = this.getPuri("r");
-    
+
     // User 조회
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // Profile 조회 (1:1)
-    const profile = await rdb
-      .table("profiles")
-      .where("user_id", id)
-      .first();
-    
+    const profile = await rdb.table("profiles").where("user_id", id).first();
+
     // Posts 조회 (1:N)
     const posts = await rdb
       .table("posts")
       .where("user_id", id)
       .orderBy("created_at", "desc")
       .select("*");
-    
+
     return {
       user,
       profile: profile || null,
@@ -173,11 +157,9 @@ class UserModel extends BaseModelClass {
 ```
 
 <Info>
-**GET 메서드 특징**:
-- 안전함 (Safe): 서버 상태를 변경하지 않음
-- 멱등성 (Idempotent): 같은 요청을 여러 번 해도 결과 동일
-- 캐시 가능 (Cacheable): 브라우저/프록시에서 캐시 가능
-- 파라미터는 URL 쿼리 스트링으로 전달
+  **GET 메서드 특징**: - 안전함 (Safe): 서버 상태를 변경하지 않음 - 멱등성 (Idempotent): 같은 요청을
+  여러 번 해도 결과 동일 - 캐시 가능 (Cacheable): 브라우저/프록시에서 캐시 가능 - 파라미터는 URL
+  쿼리 스트링으로 전달
 </Info>
 
 ## POST - 생성
@@ -201,17 +183,14 @@ class UserModel extends BaseModelClass {
     userId: number;
   }> {
     const wdb = this.getPuri("w");
-    
+
     // 중복 체크
-    const existing = await wdb
-      .table("users")
-      .where("email", params.email)
-      .first();
-    
+    const existing = await wdb.table("users").where("email", params.email).first();
+
     if (existing) {
       throw new Error("Email already exists");
     }
-    
+
     // User 생성
     const [user] = await wdb
       .table("users")
@@ -222,7 +201,7 @@ class UserModel extends BaseModelClass {
         role: params.role,
       })
       .returning({ id: "id" });
-    
+
     return { userId: user.id };
   }
 }
@@ -252,7 +231,7 @@ class UserModel extends BaseModelClass {
     profileId: number;
   }> {
     const wdb = this.getPuri("w");
-    
+
     // User 생성
     const userRef = wdb.ubRegister("users", {
       email: params.email,
@@ -260,18 +239,18 @@ class UserModel extends BaseModelClass {
       password: params.password,
       role: "normal",
     });
-    
+
     // Profile 생성
     wdb.ubRegister("profiles", {
       user_id: userRef,
       bio: params.profile.bio,
       avatar_url: params.profile.avatarUrl || null,
     });
-    
+
     // 저장
     const [userId] = await wdb.ubUpsert("users");
     const [profileId] = await wdb.ubUpsert("profiles");
-    
+
     return { userId, profileId };
   }
 }
@@ -288,7 +267,7 @@ class UserModel extends BaseModelClass {
     count: number;
   }> {
     const wdb = this.getPuri("w");
-    
+
     // 모든 User 등록
     users.forEach((user) => {
       wdb.ubRegister("users", {
@@ -298,10 +277,10 @@ class UserModel extends BaseModelClass {
         role: user.role,
       });
     });
-    
+
     // 일괄 저장
     const userIds = await wdb.ubUpsert("users");
-    
+
     return {
       userIds,
       count: userIds.length,
@@ -317,12 +296,8 @@ class UserModel extends BaseModelClass {
 ```
 
 <Info>
-**POST 메서드 특징**:
-- 비안전함: 서버 상태를 변경함
-- 비멱등성: 같은 요청을 여러 번 하면 리소스가 중복 생성될 수 있음
-- 캐시 불가능
-- 파라미터는 Body로 전달
-- 일반적으로 생성된 리소스의 ID를 반환
+  **POST 메서드 특징**: - 비안전함: 서버 상태를 변경함 - 비멱등성: 같은 요청을 여러 번 하면 리소스가
+  중복 생성될 수 있음 - 캐시 불가능 - 파라미터는 Body로 전달 - 일반적으로 생성된 리소스의 ID를 반환
 </Info>
 
 ## PUT - 수정
@@ -342,32 +317,23 @@ interface UpdateUserParams {
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "PUT" })
   @transactional()
-  async update(
-    id: number,
-    params: UpdateUserParams
-  ): Promise<void> {
+  async update(id: number, params: UpdateUserParams): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // User 존재 확인
-    const user = await wdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+    const user = await wdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // 전체 필드 업데이트
-    await wdb
-      .table("users")
-      .where("id", id)
-      .update({
-        email: params.email,
-        username: params.username,
-        role: params.role,
-        bio: params.bio,
-      });
+    await wdb.table("users").where("id", id).update({
+      email: params.email,
+      username: params.username,
+      role: params.role,
+      bio: params.bio,
+    });
   }
 }
 
@@ -381,35 +347,26 @@ class UserModel extends BaseModelClass {
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "PUT" })
   @transactional()
-  async updatePartial(
-    id: number,
-    params: Partial<UpdateUserParams>
-  ): Promise<void> {
+  async updatePartial(id: number, params: Partial<UpdateUserParams>): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // User 존재 확인
-    const user = await wdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+    const user = await wdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // 전달된 필드만 업데이트
     const updateData: any = {};
-    
+
     if (params.email !== undefined) updateData.email = params.email;
     if (params.username !== undefined) updateData.username = params.username;
     if (params.role !== undefined) updateData.role = params.role;
     if (params.bio !== undefined) updateData.bio = params.bio;
-    
+
     if (Object.keys(updateData).length > 0) {
-      await wdb
-        .table("users")
-        .where("id", id)
-        .update(updateData);
+      await wdb.table("users").where("id", id).update(updateData);
     }
   }
 }
@@ -426,34 +383,25 @@ class OrderModel extends BaseModelClass {
   @transactional()
   async updateStatus(
     orderId: number,
-    status: "pending" | "paid" | "shipped" | "delivered" | "cancelled"
+    status: "pending" | "paid" | "shipped" | "delivered" | "cancelled",
   ): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    const order = await wdb
-      .table("orders")
-      .where("id", orderId)
-      .first();
-    
+
+    const order = await wdb.table("orders").where("id", orderId).first();
+
     if (!order) {
       throw new Error("Order not found");
     }
-    
+
     // 상태 전환 검증
     if (!this.isValidStatusTransition(order.status, status)) {
       throw new Error(`Cannot change status from ${order.status} to ${status}`);
     }
-    
-    await wdb
-      .table("orders")
-      .where("id", orderId)
-      .update({ status });
+
+    await wdb.table("orders").where("id", orderId).update({ status });
   }
-  
-  private isValidStatusTransition(
-    from: string,
-    to: string
-  ): boolean {
+
+  private isValidStatusTransition(from: string, to: string): boolean {
     const transitions: Record<string, string[]> = {
       pending: ["paid", "cancelled"],
       paid: ["shipped", "cancelled"],
@@ -461,19 +409,16 @@ class OrderModel extends BaseModelClass {
       delivered: [],
       cancelled: [],
     };
-    
+
     return transitions[from]?.includes(to) || false;
   }
 }
 ```
 
 <Info>
-**PUT 메서드 특징**:
-- 비안전함: 서버 상태를 변경함
-- 멱등성: 같은 요청을 여러 번 해도 결과 동일
-- 일반적으로 리소스 전체를 교체
-- 파라미터는 Body로 전달
-- 성공 시 빈 응답 또는 업데이트된 리소스 반환
+  **PUT 메서드 특징**: - 비안전함: 서버 상태를 변경함 - 멱등성: 같은 요청을 여러 번 해도 결과 동일 -
+  일반적으로 리소스 전체를 교체 - 파라미터는 Body로 전달 - 성공 시 빈 응답 또는 업데이트된 리소스
+  반환
 </Info>
 
 ## DELETE - 삭제
@@ -488,22 +433,16 @@ class UserModel extends BaseModelClass {
   @transactional()
   async remove(id: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // User 존재 확인
-    const user = await wdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+    const user = await wdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // 삭제
-    await wdb
-      .table("users")
-      .where("id", id)
-      .delete();
+    await wdb.table("users").where("id", id).delete();
   }
 }
 
@@ -518,48 +457,34 @@ class UserModel extends BaseModelClass {
   @transactional()
   async softDelete(id: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    const user = await wdb
-      .table("users")
-      .where("id", id)
-      .whereNull("deleted_at")
-      .first();
-    
+
+    const user = await wdb.table("users").where("id", id).whereNull("deleted_at").first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // deleted_at 설정 (실제 삭제 안 함)
-    await wdb
-      .table("users")
-      .where("id", id)
-      .update({
-        deleted_at: new Date(),
-      });
+    await wdb.table("users").where("id", id).update({
+      deleted_at: new Date(),
+    });
   }
-  
+
   // 소프트 삭제 복구
   @api({ httpMethod: "PUT" })
   @transactional()
   async restore(id: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    const user = await wdb
-      .table("users")
-      .where("id", id)
-      .whereNotNull("deleted_at")
-      .first();
-    
+
+    const user = await wdb.table("users").where("id", id).whereNotNull("deleted_at").first();
+
     if (!user) {
       throw new Error("User not found or not deleted");
     }
-    
-    await wdb
-      .table("users")
-      .where("id", id)
-      .update({
-        deleted_at: null,
-      });
+
+    await wdb.table("users").where("id", id).update({
+      deleted_at: null,
+    });
   }
 }
 ```
@@ -572,33 +497,21 @@ class UserModel extends BaseModelClass {
   @transactional()
   async removeWithRelations(id: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    const user = await wdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await wdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // 1. Profile 삭제
-    await wdb
-      .table("profiles")
-      .where("user_id", id)
-      .delete();
-    
+    await wdb.table("profiles").where("user_id", id).delete();
+
     // 2. Posts 삭제
-    await wdb
-      .table("posts")
-      .where("user_id", id)
-      .delete();
-    
+    await wdb.table("posts").where("user_id", id).delete();
+
     // 3. User 삭제
-    await wdb
-      .table("users")
-      .where("id", id)
-      .delete();
+    await wdb.table("users").where("id", id).delete();
   }
 }
 ```
@@ -613,12 +526,9 @@ class UserModel extends BaseModelClass {
     deletedCount: number;
   }> {
     const wdb = this.getPuri("w");
-    
-    const deletedCount = await wdb
-      .table("users")
-      .whereIn("id", ids)
-      .delete();
-    
+
+    const deletedCount = await wdb.table("users").whereIn("id", ids).delete();
+
     return { deletedCount };
   }
 }
@@ -628,11 +538,9 @@ class UserModel extends BaseModelClass {
 ```
 
 <Info>
-**DELETE 메서드 특징**:
-- 비안전함: 서버 상태를 변경함
-- 멱등성: 이미 삭제된 리소스를 다시 삭제해도 결과 동일
-- 성공 시 일반적으로 빈 응답 (204 No Content)
-- 소프트 삭제 고려 (deleted_at 컬럼 사용)
+  **DELETE 메서드 특징**: - 비안전함: 서버 상태를 변경함 - 멱등성: 이미 삭제된 리소스를 다시
+  삭제해도 결과 동일 - 성공 시 일반적으로 빈 응답 (204 No Content) - 소프트 삭제 고려 (deleted_at
+  컬럼 사용)
 </Info>
 
 ## 메서드 선택 가이드
@@ -643,21 +551,21 @@ flowchart TD
     A --> C[생성]
     A --> D[수정]
     A --> E[삭제]
-    
+
     B --> F[GET]
     C --> G[POST]
     D --> H{전체 교체?}
     E --> I[DELETE]
-    
+
     H -->|Yes| J[PUT]
     H -->|No| K[PUT with Partial]
-    
+
     F --> L[\uc548\uc804, \uba71\ub4f1\uc131]
     G --> M[\ube44\uc548\uc804, \ube44\uba71\ub4f1\uc131]
     J --> N[\ube44\uc548\uc804, \uba71\ub4f1\uc131]
     K --> N
     I --> N
-    
+
     style F fill:#e8f5e9
     style G fill:#fff9c4
     style J fill:#e3f2fd
@@ -667,14 +575,14 @@ flowchart TD
 
 ### 선택 기준
 
-| 작업 | 메서드 | 예시 |
-|------|--------|------|
-| 단일 조회 | GET | `/api/user/get?id=1` |
-| 목록 조회 | GET | `/api/user/list?page=1` |
-| 새로 생성 | POST | `/api/user/create` |
-| 전체 수정 | PUT | `/api/user/update?id=1` |
-| 부분 수정 | PUT | `/api/user/updatePartial?id=1` |
-| 삭제 | DELETE | `/api/user/remove?id=1` |
+| 작업      | 메서드 | 예시                           |
+| --------- | ------ | ------------------------------ |
+| 단일 조회 | GET    | `/api/user/get?id=1`           |
+| 목록 조회 | GET    | `/api/user/list?page=1`        |
+| 새로 생성 | POST   | `/api/user/create`             |
+| 전체 수정 | PUT    | `/api/user/update?id=1`        |
+| 부분 수정 | PUT    | `/api/user/updatePartial?id=1` |
+| 삭제      | DELETE | `/api/user/remove?id=1`        |
 
 ## RESTful 원칙
 
@@ -684,19 +592,27 @@ flowchart TD
 class UserModel extends BaseModelClass {
   // ✅ GET: 조회
   @api({ httpMethod: "GET" })
-  async list(): Promise<User[]> { /* ... */ }
-  
+  async list(): Promise<User[]> {
+    /* ... */
+  }
+
   // ✅ POST: 생성
   @api({ httpMethod: "POST" })
-  async create(params: CreateUserParams): Promise<{ userId: number }> { /* ... */ }
-  
+  async create(params: CreateUserParams): Promise<{ userId: number }> {
+    /* ... */
+  }
+
   // ✅ PUT: 수정
   @api({ httpMethod: "PUT" })
-  async update(id: number, params: UpdateUserParams): Promise<void> { /* ... */ }
-  
+  async update(id: number, params: UpdateUserParams): Promise<void> {
+    /* ... */
+  }
+
   // ✅ DELETE: 삭제
   @api({ httpMethod: "DELETE" })
-  async remove(id: number): Promise<void> { /* ... */ }
+  async remove(id: number): Promise<void> {
+    /* ... */
+  }
 }
 ```
 
@@ -709,13 +625,13 @@ class UserModel extends BaseModelClass {
   async deleteUser(id: number): Promise<void> {
     // GET은 안전해야 함 (상태 변경 X)
   }
-  
+
   // ❌ POST로 조회
   @api({ httpMethod: "POST" })
   async getUser(id: number): Promise<User> {
     // POST는 생성용
   }
-  
+
   // ❌ DELETE로 수정
   @api({ httpMethod: "DELETE" })
   async updateUser(id: number, params: any): Promise<void> {
@@ -730,7 +646,11 @@ class UserModel extends BaseModelClass {
   <Card title="파라미터" icon="sliders" href="/ko/api-development/creating-apis/parameters">
     타입 정의 및 검증
   </Card>
-  <Card title="반환 타입" icon="arrow-turn-down-left" href="/ko/api-development/creating-apis/return-types">
+  <Card
+    title="반환 타입"
+    icon="arrow-turn-down-left"
+    href="/ko/api-development/creating-apis/return-types"
+  >
     응답 타입 정의하기
   </Card>
   <Card title="@api 데코레이터" icon="at" href="/ko/api-development/creating-apis/api-decorator">

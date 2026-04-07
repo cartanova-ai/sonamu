@@ -1,6 +1,6 @@
 ---
-title: 'HMR 문제'
-description: 'HMR 문제 해결하기'
+title: "HMR 문제"
+description: "HMR 문제 해결하기"
 ---
 
 Sonamu의 Hot Module Replacement (HMR) 시스템에서 발생하는 문제와 해결 방법을 다룹니다.
@@ -41,7 +41,7 @@ if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
 
   await hot.init({
     rootDirectory: process.env.API_ROOT_PATH,
-    boundaries: [`./src/**/*.ts`],  // 모든 .ts 파일
+    boundaries: [`./src/**/*.ts`], // 모든 .ts 파일
   });
 
   console.log("🔥 HMR-hook initialized");
@@ -154,6 +154,7 @@ TypeScript 서버가 HMR 변경사항을 인식하지 못했습니다.
 #### 1. TypeScript 서버 재시작
 
 **VSCode:**
+
 ```
 Command Palette (Cmd+Shift+P 또는 Ctrl+Shift+P)
 > TypeScript: Restart TS Server
@@ -205,7 +206,7 @@ if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
     boundaries: [
       // 자주 변경되는 파일만 포함
       `./src/application/**/*.model.ts`,
-      `./src/application/**/*.helper.ts`
+      `./src/application/**/*.helper.ts`,
     ],
   });
 }
@@ -270,7 +271,7 @@ await hot.init({
     // ✅ 올바른 패턴 (상대 경로)
     `./src/application/**/*.model.ts`,
     `./src/application/**/*.helper.ts`,
-    
+
     // ❌ 잘못된 패턴
     // "/src/**/*.ts",  // 절대 경로는 작동하지 않음
     // "./src/**/*.{ts,js}",  // brace expansion 미지원
@@ -348,7 +349,7 @@ HMR 시스템이 ESM 모듈을 CommonJS로 로딩하려 했습니다.
 import { UserModel } from "./user.model";
 
 // ✅
-import { UserModel } from "./user.model.js";  // ESM에서는 .js 사용
+import { UserModel } from "./user.model.js"; // ESM에서는 .js 사용
 ```
 
 #### 3. tsconfig.json 설정

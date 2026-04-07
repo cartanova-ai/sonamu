@@ -110,10 +110,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-export function useTypeForm<T extends z.ZodType>(
-  schema: T,
-  defaultValues: z.infer<T>
-) {
+export function useTypeForm<T extends z.ZodType>(schema: T, defaultValues: z.infer<T>) {
   const form = useForm<z.infer<T>>({
     resolver: zodResolver(schema),
     defaultValues,
@@ -159,10 +156,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 import { useCallback } from "react";
 
-export function useListParams<T extends z.ZodType>(
-  schema: T,
-  defaultValues: z.infer<T>
-) {
+export function useListParams<T extends z.ZodType>(schema: T, defaultValues: z.infer<T>) {
   const navigate = useNavigate();
   const searchParams = useSearch({ strict: false });
 
@@ -179,7 +173,7 @@ export function useListParams<T extends z.ZodType>(
         search: (prev) => ({ ...prev, ...updates }),
       });
     },
-    [navigate]
+    [navigate],
   );
 
   // register 호환 함수
@@ -234,13 +228,11 @@ import { createRootRoute, createRoute } from "@tanstack/react-router";
 ### 우선순위
 
 1. **Form 관련 페이지** (가장 많이 사용)
-
    - `/admin/antimicrobials/form`
    - `/admin/patients/form`
    - 등등...
 
 2. **List 페이지**
-
    - `/admin/antimicrobials`
    - `/admin/patients`
    - 등등...
@@ -263,18 +255,15 @@ import { createRootRoute, createRoute } from "@tanstack/react-router";
 ### 준비 작업
 
 1. **패키지 독립성 검증**
-
    - web 프로젝트 특정 코드 제거
    - 순수한 UI 라이브러리로 정리
 
 2. **문서화**
-
    - README.md 완성
    - 컴포넌트별 사용 예제
    - Storybook 추가 고려
 
 3. **빌드 설정**
-
    - TypeScript 빌드
    - CSS 번들링
    - ESM/CJS 동시 지원

@@ -11,24 +11,16 @@ Enum은 제한된 값의 집합을 정의하여 다음을 제공합니다:
 
 <CardGroup cols={2}>
   <Card title="타입 안전성" icon="shield-check">
-    정의되지 않은 값 입력 방지
-    
-    TypeScript에서 Union 타입으로 자동 변환
+    정의되지 않은 값 입력 방지 TypeScript에서 Union 타입으로 자동 변환
   </Card>
   <Card title="UI 자동 생성" icon="list">
-    선택 목록 자동 구성
-    
-    Select, ButtonSet 컴포넌트에 즉시 사용
+    선택 목록 자동 구성 Select, ButtonSet 컴포넌트에 즉시 사용
   </Card>
   <Card title="레이블 관리" icon="tag">
-    키와 표시명 분리
-    
-    다국어 지원 용이
+    키와 표시명 분리 다국어 지원 용이
   </Card>
   <Card title="유지보수성" icon="wrench">
-    중앙 집중식 관리
-    
-    값 변경 시 한 곳만 수정
+    중앙 집중식 관리 값 변경 시 한 곳만 수정
   </Card>
 </CardGroup>
 
@@ -72,6 +64,7 @@ Entity의 `enums` 섹션에 키-레이블 쌍으로 정의합니다.
 ```
 
 **구조**:
+
 - **Enum ID**: PascalCase (예: `UserRole`, `PostStatus`)
 - **Key**: 소문자, 숫자, 언더스코어 (예: `admin`, `draft_saved`)
 - **Label**: 표시용 텍스트, 한글 가능 (예: "관리자", "임시저장")
@@ -83,33 +76,31 @@ Entity의 `enums` 섹션에 키-레이블 쌍으로 정의합니다.
 Sonamu UI에서 Entity를 선택합니다.
 </Step>
 
-<Step title="Enums 섹션으로 스크롤">
-Props, Indexes, Subsets 아래에 Enums 섹션이 있습니다.
-</Step>
+<Step title="Enums 섹션으로 스크롤">Props, Indexes, Subsets 아래에 Enums 섹션이 있습니다.</Step>
 
 <Step title="Add Enum 클릭">
 새 Enum을 추가합니다.
 
 **Enum ID 입력**:
+
 - PascalCase로 입력
 - Entity와 연관시키려면 `{Entity}` 패턴 사용
   - 예: `$ModelRole` → `UserRole` (자동 변환)
-</Step>
+    </Step>
 
 <Step title="Enum 값 추가">
 각 Enum은 별도 탭으로 표시되며, **"Add Row"** 버튼으로 키-레이블 쌍을 추가합니다.
 
 - **Key**: 영문 소문자, 숫자, 언더스코어
 - **Label**: 한글 또는 표시명
-</Step>
+  </Step>
 
 <Step title="저장">
 Entity를 저장하면 Enum이 함께 저장됩니다.
 </Step>
 </Steps>
 
-<Frame caption="📸 필요: Sonamu UI의 Enums 섹션 - 여러 Enum이 탭으로 구분되어 표시">
-</Frame>
+<Frame caption="📸 필요: Sonamu UI의 Enums 섹션 - 여러 Enum이 탭으로 구분되어 표시"></Frame>
 
 ## 자동 생성되는 코드
 
@@ -169,10 +160,12 @@ export function getUserRoleLabel(role: UserRole): string {
 ```
 
 **데이터베이스**:
+
 - 컬럼 타입: `text`
 - 저장 값: Key 값 (예: `"admin"`)
 
 **TypeScript**:
+
 ```typescript
 type User = {
   id: number;
@@ -209,6 +202,7 @@ export const UserUpdateParams = z.object({
 
 export type UserUpdateParams = z.infer<typeof UserUpdateParams>;
 ```
+
 </CodeGroup>
 
 ### 레이블 표시
@@ -220,7 +214,8 @@ import { getUserRoleLabel } from "./sonamu.generated";
 const user = await UserModel.findById(1);
 const roleLabel = getUserRoleLabel(user.role);
 // "관리자"
-```
+
+````
 
 ```typescript title="프론트엔드"
 import { UserRoleLabels } from "@/services/sonamu.generated";
@@ -229,7 +224,8 @@ function UserBadge({ role }: { role: UserRole }) {
   return <span>{UserRoleLabels[role]}</span>;
   // "관리자"
 }
-```
+````
+
 </CodeGroup>
 
 ## 자주 사용되는 Enum 패턴
@@ -253,6 +249,7 @@ function UserBadge({ role }: { role: UserRole }) {
 ```
 
 **활용**:
+
 ```typescript
 async findAll(orderBy: UserOrderBy = "id-desc") {
   const [field, direction] = orderBy.split("-");
@@ -279,6 +276,7 @@ async findAll(orderBy: UserOrderBy = "id-desc") {
 ```
 
 **활용**:
+
 ```typescript
 async search(field: UserSearchField, keyword: string) {
   return this.puri()
@@ -305,6 +303,7 @@ async search(field: UserSearchField, keyword: string) {
 ```
 
 **활용**:
+
 ```typescript
 async publish(postId: number) {
   await this.puri()
@@ -356,10 +355,12 @@ async publish(postId: number) {
 ```
 
 **데이터베이스**:
+
 - 컬럼 타입: `text[]`
 - 저장 값: `["read", "write"]`
 
 **TypeScript**:
+
 ```typescript
 type User = {
   id: number;
@@ -368,6 +369,7 @@ type User = {
 ```
 
 **활용**:
+
 ```typescript
 // 권한 체크
 function hasPermission(user: User, permission: Permission): boolean {
@@ -396,16 +398,18 @@ async grantPermission(userId: number, permission: Permission) {
 import { UserRoleSelect } from "@/components/UserRoleSelect";
 
 function UserForm() {
-  const [role, setRole] = useState<UserRole>("normal");
-  
-  return (
-    <UserRoleSelect
+const [role, setRole] = useState<UserRole>("normal");
+
+return (
+
+<UserRoleSelect
       value={role}
       onChange={setRole}
     />
-  );
+);
 }
-```
+
+````
 
 ```tsx title="수동 구현"
 import { UserRole, UserRoleLabels } from "@/services/sonamu.generated";
@@ -421,7 +425,8 @@ function UserForm() {
     </select>
   );
 }
-```
+````
+
 </CodeGroup>
 
 ### ButtonSet 컴포넌트
@@ -431,7 +436,7 @@ import { UserStatusButtonSet } from "@/components/UserStatusButtonSet";
 
 function StatusFilter() {
   const [status, setStatus] = useState<UserStatus | null>(null);
-  
+
   return (
     <UserStatusButtonSet
       value={status}
@@ -457,10 +462,11 @@ export const UpdateRoleParams = z.object({
 
 // 잘못된 값 입력 시
 UpdateRoleParams.parse({
-  userId: 1,
-  role: "invalid_role" // Error!
+userId: 1,
+role: "invalid_role" // Error!
 });
-```
+
+````
 
 ```typescript title="커스텀 검증"
 import { UserRole } from "./sonamu.generated";
@@ -472,22 +478,23 @@ export const AdminOnlyParams = z.object({
     { message: "관리자 권한이 필요합니다" }
   ),
 });
-```
+````
+
 </CodeGroup>
 
 ## Enum 네이밍 규칙
 
 ### 권장 패턴
 
-| 용도 | 패턴 | 예시 |
-|------|------|------|
-| Entity 상태 | `{Entity}Status` | `PostStatus`, `OrderStatus` |
-| Entity 타입 | `{Entity}Type` | `NotificationType`, `PaymentType` |
-| Entity 역할 | `{Entity}Role` | `UserRole`, `MemberRole` |
-| 정렬 옵션 | `{Entity}OrderBy` | `UserOrderBy`, `PostOrderBy` |
-| 검색 필드 | `{Entity}SearchField` | `UserSearchField` |
-| 카테고리 | `{Entity}Category` | `ProductCategory` |
-| 권한 | `{Entity}Permission` | `UserPermission` |
+| 용도        | 패턴                  | 예시                              |
+| ----------- | --------------------- | --------------------------------- |
+| Entity 상태 | `{Entity}Status`      | `PostStatus`, `OrderStatus`       |
+| Entity 타입 | `{Entity}Type`        | `NotificationType`, `PaymentType` |
+| Entity 역할 | `{Entity}Role`        | `UserRole`, `MemberRole`          |
+| 정렬 옵션   | `{Entity}OrderBy`     | `UserOrderBy`, `PostOrderBy`      |
+| 검색 필드   | `{Entity}SearchField` | `UserSearchField`                 |
+| 카테고리    | `{Entity}Category`    | `ProductCategory`                 |
+| 권한        | `{Entity}Permission`  | `UserPermission`                  |
 
 ### $Model 패턴
 
@@ -509,6 +516,7 @@ Entity 이름을 동적으로 포함하려면 `$Model`을 사용합니다:
 ```
 
 **변환 결과**:
+
 - `User` Entity → `UserRole`, `UserStatus`
 - `Post` Entity → `PostRole`, `PostStatus`
 
@@ -520,44 +528,50 @@ Entity 이름을 동적으로 포함하려면 `$Model`을 사용합니다:
 이미 데이터베이스에 저장된 Enum 키를 변경하면 기존 데이터와 불일치가 발생합니다.
 
 **변경 방법**:
+
 1. 새 키 추가
 2. 데이터 마이그레이션 (기존 키 → 새 키)
 3. 구 키 삭제
-</Warning>
+   </Warning>
 
 <Warning>
 **Key 네이밍 제한**
 
 Enum Key는 다음만 사용 가능합니다:
+
 - 소문자 (a-z)
 - 숫자 (0-9)
-- 언더스코어 (_)
+- 언더스코어 (\_)
 
 하이픈(-)은 사용 불가합니다.
+
 </Warning>
 
 <Tip>
 **레이블 변경은 자유롭게**
 
 Label은 표시용이므로 언제든지 변경 가능합니다. 데이터베이스에는 Key만 저장됩니다.
+
 </Tip>
 
 ## Enum vs 별도 테이블
 
-| 기준 | Enum | 별도 테이블 |
-|------|------|-------------|
-| 값 개수 | 적음 (< 20개) | 많음 (> 20개) |
-| 변경 빈도 | 거의 없음 | 자주 변경 |
-| 추가 정보 | 불필요 | 필요 (설명, 순서 등) |
-| 성능 | 빠름 (JOIN 불필요) | 느림 (JOIN 필요) |
-| 권장 사용 | 상태, 역할, 타입 | 카테고리, 코드 테이블 |
+| 기준      | Enum               | 별도 테이블           |
+| --------- | ------------------ | --------------------- |
+| 값 개수   | 적음 (< 20개)      | 많음 (> 20개)         |
+| 변경 빈도 | 거의 없음          | 자주 변경             |
+| 추가 정보 | 불필요             | 필요 (설명, 순서 등)  |
+| 성능      | 빠름 (JOIN 불필요) | 느림 (JOIN 필요)      |
+| 권장 사용 | 상태, 역할, 타입   | 카테고리, 코드 테이블 |
 
 **Enum 사용 예시**:
+
 - 사용자 역할 (admin, user, guest)
 - 게시글 상태 (draft, published, deleted)
 - 알림 타입 (email, sms, push)
 
 **별도 테이블 사용 예시**:
+
 - 지역 목록 (서울, 부산, ...)
 - 상품 카테고리 (계층 구조)
 - 국가 코드 (추가 정보 많음)
@@ -571,7 +585,11 @@ Label은 표시용이므로 언제든지 변경 가능합니다. 데이터베이
   <Card title="Validation" icon="shield-check" href="/ko/api-development/validation/zod-schemas">
     Zod로 데이터 검증하기
   </Card>
-  <Card title="Frontend Components" icon="browser" href="/ko/frontend-integration/generated-services/using-services">
+  <Card
+    title="Frontend Components"
+    icon="browser"
+    href="/ko/frontend-integration/generated-services/using-services"
+  >
     생성된 컴포넌트 사용하기
   </Card>
   <Card title="API Development" icon="code" href="/ko/api-development/creating-apis/basic-crud">

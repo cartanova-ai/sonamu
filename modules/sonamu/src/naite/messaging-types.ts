@@ -1,4 +1,4 @@
-// biome-ignore-all lint/suspicious/noExplicitAny: Naite는 expect와 호응하도록 any를 허용함
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Naite는 expect와 호응하도록 any를 허용함
 
 /**
  * Sonamu extension과 공유하는 Naite 메시징 관련 타입 정의들입니다.

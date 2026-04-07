@@ -1,5 +1,6 @@
 import * as assert from "node:assert/strict";
 import { describe, test } from "node:test";
+
 import { makeTestLoader } from "./__fixtures__/loader.js";
 
 await describe("outDir", async () => {
@@ -51,9 +52,9 @@ await describe("outDir", async () => {
     const { evaluate } = makeTestLoader({
       "tsconfig.json": JSON.stringify({
         compilerOptions: {
-          // biome-ignore lint/suspicious/noTemplateCurlyInString: tsconfig.json의 ${configDir} 테스트용 문자열
+          // oxlint-disable-next-line no-template-curly-in-string -- tsconfig.json의 ${configDir} 테스트용 문자열
           outDir: "${configDir}/dist",
-          // biome-ignore lint/suspicious/noTemplateCurlyInString: tsconfig.json의 ${configDir} 테스트용 문자열
+          // oxlint-disable-next-line no-template-curly-in-string -- tsconfig.json의 ${configDir} 테스트용 문자열
           rootDir: "${configDir}",
         },
       }),
@@ -168,6 +169,22 @@ await test("directory import", async () => {
   });
   const result = await evaluate("main.ts");
   assert.strictEqual(result.url, "file:///dir/index.js");
+});
+
+await test("extensionless import with dotted basename", async () => {
+  const { evaluate } = makeTestLoader({
+    "package.json": JSON.stringify({ type: "module" }),
+    "tsconfig.json": JSON.stringify({
+      compilerOptions: {
+        rootDir: "src",
+        outDir: "dist",
+      },
+    }),
+    "src/sonamu.generated.ts": "globalThis.url = import.meta.url;",
+    "src/child/main.ts": "import '../sonamu.generated';",
+  });
+  const result = await evaluate("src/child/main.ts");
+  assert.strictEqual(result.url, "file:///dist/sonamu.generated.js");
 });
 
 await test("do not resolve .ts file with outDir set", async () => {

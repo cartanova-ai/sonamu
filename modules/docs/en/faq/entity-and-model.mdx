@@ -1,6 +1,6 @@
 ---
-title: 'Entity and Model'
-description: 'Questions about Entity and Model definitions'
+title: "Entity and Model"
+description: "Questions about Entity and Model definitions"
 ---
 
 ## Entity Basics
@@ -72,6 +72,7 @@ When Entity is modified, migrations are **not auto-generated**. You must **manua
 **Migration generation targets (shown in Prepared Migration Codes):**
 
 **Props changes:**
+
 - Prop add/delete
 - Prop type change (`string` → `numeric`, etc.)
 - `StringProp` length change (`length`)
@@ -80,17 +81,20 @@ When Entity is modified, migrations are **not auto-generated**. You must **manua
 - `precision`, `scale` change when `NumberProp` has `numberType: "numeric"`
 
 **Relation changes:**
+
 - BelongsToOne add/delete (FK column create/delete)
 - OneToOne add/delete (when `hasJoinColumn: true`)
 - ManyToMany add/delete (join table create/delete)
 - onUpdate, onDelete changes
 
 **Index changes:**
+
 - Index add/delete
 - unique, index, fulltext type changes
 - Index column changes
 
 **Table changes:**
+
 - Table name change
 
 **Changes that don't generate migrations:**
@@ -112,23 +116,28 @@ When Entity is modified, migrations are **not auto-generated**. You must **manua
 <Accordion title="What order are files created when I create a new Entity in Sonamu UI?">
 
 **1. Entity JSON file created**
+
 - `{entity}.entity.json`
 - Location: `api/src/application/{entity}/{entity}.entity.json`
 
 **2. Type file auto-generated**
+
 - `{entity}.types.ts`
 - Location: `api/src/application/{entity}/{entity}.types.ts`
 
 **3. Generated files updated**
+
 - `sonamu.generated.sso.ts`
 - `sonamu.generated.ts`
 - Location: `api/src/application/`
 
 **4. Frontend files copied**
+
 - `user.types.ts` → `web/src/services/user/user.types.ts`
 - `sonamu.generated.ts` → `web/src/services/sonamu.generated.ts`
 
 **5. `sonamu.lock` updated**
+
 - Stores checksums of newly created files
 
 **Note:**
@@ -193,11 +202,13 @@ export const CompanyStatsType = z.object({
   totalDepartments: z.number(),
   totalEmployees: z.number(),
   avgSalary: z.number(),
-  departments: z.array(z.object({
-    id: z.number(),
-    name: z.string(),
-    employeeCount: z.number(),
-  })),
+  departments: z.array(
+    z.object({
+      id: z.number(),
+      name: z.string(),
+      employeeCount: z.number(),
+    }),
+  ),
 });
 
 export type CompanyStatsType = z.infer<typeof CompanyStatsType>;
@@ -209,7 +220,7 @@ export type CompanyStatsType = z.infer<typeof CompanyStatsType>;
 // company.model.ts
 const enhancers = this.createEnhancers({
   WithStats: async (row) => {
-    const departments = await DepartmentModel.findMany('P', {
+    const departments = await DepartmentModel.findMany("P", {
       company_id: row.id,
     });
 
@@ -219,7 +230,7 @@ const enhancers = this.createEnhancers({
         totalDepartments: departments.rows.length,
         totalEmployees: departments.rows.reduce((sum, d) => sum + d.employee_count, 0),
         avgSalary: calculateAvgSalary(departments.rows),
-        departments: departments.rows.map(d => ({
+        departments: departments.rows.map((d) => ({
           id: d.id,
           name: d.name,
           employeeCount: d.employee_count,
@@ -256,15 +267,19 @@ const enhancers = this.createEnhancers({
 Define with `relation` type fields:
 
 **OneToOne:** 1:1 relation
+
 - Specify FK owner with `hasJoinColumn`
 
 **BelongsToOne:** N:1 relation (Many-to-One)
+
 - Defined in Entity that has the FK
 
 **HasMany:** 1:N relation (One-to-Many)
+
 - virtual relation (FK is on the other side)
 
 **ManyToMany:** N:M relation
+
 - Requires `joinTable`
 
 Each relation can set referential integrity with `onUpdate`, `onDelete` options in the Entity that has the FK.
@@ -435,6 +450,7 @@ A singleton class that centrally manages all Entities.
 <Accordion title="How do I validate Entity schemas?">
 
 **Sonamu UI:**
+
 - Real-time error display when editing Entity
 
 **EntityManager:**
@@ -444,6 +460,7 @@ const errors = EntityManager.schemaValidate(entity);
 ```
 
 **Syncer:**
+
 - Auto-validates and outputs errors when running `pnpm dev`
 
 **Validation items:**

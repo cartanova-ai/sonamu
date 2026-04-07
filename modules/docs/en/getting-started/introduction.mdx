@@ -162,21 +162,20 @@ Typically, when building backend APIs and using them on the frontend, type synch
 
 Sonamu provides Puri, a type-safe query builder based on Knex. Table names, column names, and relationships are all type-checked.
 
-<Frame caption="🎬 Needed: Writing type-safe queries with Puri - table name, column name autocomplete">
-</Frame>
+<Frame caption="🎬 Needed: Writing type-safe queries with Puri - table name, column name autocomplete"></Frame>
 
 ```typescript
 // Type-safe query
 const users = await this.getPuri("r")
-  .table("users")           // ✅ Table name autocomplete
-  .select("id", "email")    // ✅ Column name type check
-  .where("role", "admin")   // ✅ Column name + value type check
+  .table("users") // ✅ Table name autocomplete
+  .select("id", "email") // ✅ Column name type check
+  .where("role", "admin") // ✅ Column name + value type check
   .orderBy("created_at", "desc");
 
 // Relation join
 const posts = await this.getPuri("r")
   .table("posts")
-  .join("users", "posts.author_id", "users.id")  // ✅ Relationship type check
+  .join("users", "posts.author_id", "users.id") // ✅ Relationship type check
   .select("posts.*", "users.username as author_name");
 ```
 
@@ -187,11 +186,7 @@ const posts = await this.getPuri("r")
 - ✅ Wrong column names cause compile errors
 - ✅ All Knex features supported
 
-<Card
-  title="Puri Guide"
-  icon="database"
-  href="/en/database/puri"
->
+<Card title="Puri Guide" icon="database" href="/en/database/puri">
   Write type-safe queries
 </Card>
 
@@ -287,11 +282,7 @@ Registered routes are rendered on the server and automatically hydrated on the c
   >
     Data fetching with React Hooks
   </Card>
-  <Card
-    title="SSR"
-    icon="server"
-    href="/en/frontend-integration/ssr"
-  >
+  <Card title="SSR" icon="server" href="/en/frontend-integration/ssr">
     Server-side rendering
   </Card>
 </CardGroup>
@@ -382,11 +373,7 @@ test("Next test starts with clean DB", async () => {
 - ✅ Isolated tests with automatic Transaction rollback
 
 <CardGroup cols={2}>
-  <Card
-    title="Fixture System"
-    icon="box"
-    href="/en/testing/writing-tests/test-helpers"
-  >
+  <Card title="Fixture System" icon="box" href="/en/testing/writing-tests/test-helpers">
     Test data management
   </Card>
   <Card title="Naite Guide" icon="chart-line" href="/en/testing/naite">
@@ -567,25 +554,13 @@ Entity change → Auto-generate types/schemas → Re-register APIs → Update fr
 - ✅ Detect type errors immediately on change
 
 <CardGroup cols={3}>
-  <Card
-    title="Learn More"
-    icon="arrow-right"
-    href="/en/getting-started/seamless-dx"
-  >
+  <Card title="Learn More" icon="arrow-right" href="/en/getting-started/seamless-dx">
     Seamless DX detail page
   </Card>
-  <Card
-    title="How HMR Works"
-    icon="bolt"
-    href="/en/tools-and-cli/hmr/how-hmr-works"
-  >
+  <Card title="How HMR Works" icon="bolt" href="/en/tools-and-cli/hmr/how-hmr-works">
     Understand the HMR system
   </Card>
-  <Card
-    title="Sonamu UI"
-    icon="window"
-    href="/en/tools-and-cli/sonamu-ui/getting-started"
-  >
+  <Card title="Sonamu UI" icon="window" href="/en/tools-and-cli/sonamu-ui/getting-started">
     UI usage guide
   </Card>
 </CardGroup>
@@ -609,7 +584,7 @@ const user = await Sonamu.cache.getOrSet(
   async () => {
     return await UserModel.findById("C", userId);
   },
-  { ttl: "5m" } // 5 minute cache
+  { ttl: "5m" }, // 5 minute cache
 );
 ```
 
@@ -636,12 +611,12 @@ Entity title, prop.desc, and enumLabels are automatically extracted to the dicti
 ```typescript
 import { SD } from "../i18n/sd.generated";
 
-SD("common.save")         // "저장" (ko) / "Save" (en)
-SD("error.typo")          // ❌ Compile error: key not found
+SD("common.save"); // "저장" (ko) / "Save" (en)
+SD("error.typo"); // ❌ Compile error: key not found
 
-SD("entity.User")         // "User" - Auto-extracted Entity title
-SD("entity.User.email")   // "Email" - Auto-extracted prop.desc
-SD.enumLabels("UserRole")["admin"]  // "Administrator"
+SD("entity.User"); // "User" - Auto-extracted Entity title
+SD("entity.User.email"); // "Email" - Auto-extracted prop.desc
+SD.enumLabels("UserRole")["admin"]; // "Administrator"
 ```
 
 ### Workflow: Complex Business Logic Management
@@ -658,29 +633,21 @@ export const processOrder = workflow(
   },
   async ({ input, step }) => {
     // Step 1: Validation
-    await step
-      .define({ name: "validate" }, async () => validateOrder(input))
-      .run();
+    await step.define({ name: "validate" }, async () => validateOrder(input)).run();
 
     // Step 2: Payment
-    const payment = await step
-      .define({ name: "charge" }, async () => chargePayment(input))
-      .run();
+    const payment = await step.define({ name: "charge" }, async () => chargePayment(input)).run();
 
     // Step 3: Create Order
     const order = await step
-      .define({ name: "create-order" }, async () =>
-        createOrderRecord(input, payment)
-      )
+      .define({ name: "create-order" }, async () => createOrderRecord(input, payment))
       .run();
 
     // Step 4: Send Email
-    await step
-      .define({ name: "send-email" }, async () => sendConfirmationEmail(order))
-      .run();
+    await step.define({ name: "send-email" }, async () => sendConfirmationEmail(order)).run();
 
     return order;
-  }
+  },
 );
 
 // Execute
@@ -707,18 +674,10 @@ const posts = await PostModel.findMany("A", {
 - ✅ N+1 problem auto-resolution
 
 <CardGroup cols={2}>
-  <Card
-    title="BentoCache"
-    icon="layer-group"
-    href="/en/advanced-features/caching/bentocache"
-  >
+  <Card title="BentoCache" icon="layer-group" href="/en/advanced-features/caching/bentocache">
     Multi-layer caching strategies
   </Card>
-  <Card
-    title="i18n"
-    icon="language"
-    href="/en/advanced-features/i18n/overview"
-  >
+  <Card title="i18n" icon="language" href="/en/advanced-features/i18n/overview">
     Internationalization system
   </Card>
 </CardGroup>
@@ -850,7 +809,6 @@ function RegisterForm() {
   ></video>
 </Frame>
 
-
 ## Getting Started
 
 3 minutes is all you need.
@@ -897,11 +855,7 @@ open http://localhost:34900/sonamu-ui
 
 ## Community
 
-<Card
-  title="GitHub"
-  icon="github"
-  href="https://github.com/cartanova-ai/sonamu"
->
+<Card title="GitHub" icon="github" href="https://github.com/cartanova-ai/sonamu">
   Issue reports and contributions
 </Card>
 

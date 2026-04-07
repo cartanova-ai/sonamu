@@ -1,6 +1,6 @@
 ---
-title: 'UnauthorizedException'
-description: '인증 및 권한 처리를 위한 401 예외'
+title: "UnauthorizedException"
+description: "인증 및 권한 처리를 위한 401 예외"
 ---
 
 `UnauthorizedException`은 인증이 필요하거나 권한이 부족한 경우 사용하는 예외입니다. HTTP 401 상태 코드를 반환하며, 로그인 필요, 세션 만료, 권한 부족 등의 상황에 사용됩니다.
@@ -9,10 +9,7 @@ description: '인증 및 권한 처리를 위한 401 예외'
 
 ```typescript
 class UnauthorizedException extends SoException {
-  constructor(
-    message: LocalizedString,
-    payload?: unknown,
-  );
+  constructor(message: LocalizedString, payload?: unknown);
 }
 ```
 
@@ -24,7 +21,7 @@ async getMyProfile(ctx: Context) {
   if (!ctx.user) {
     throw new UnauthorizedException("로그인이 필요합니다");
   }
-  
+
   return this.findById(ctx.user.id);
 }
 ```
@@ -85,7 +82,7 @@ async deletePost(ctx: Context, postId: number) {
   }
 
   const post = await this.findById(postId);
-  
+
   if (!post) {
     throw new NotFoundException("게시물을 찾을 수 없습니다");
   }
@@ -289,7 +286,7 @@ async accessRestrictedResource(ctx: Context, resourceId: number) {
 
   // 구독 플랜별 접근 제한
   const resource = await ResourceModel.findById(resourceId);
-  
+
   if (resource.requiredPlan === "premium" && subscription.plan === "basic") {
     throw new UnauthorizedException(
       "프리미엄 플랜이 필요한 리소스입니다",
@@ -347,11 +344,11 @@ guardHandler: (guard, request, api) => {
   if (guard === "user" && !request.user) {
     throw new UnauthorizedException("로그인이 필요합니다");
   }
-  
+
   if (guard === "admin" && !request.user?.isAdmin) {
     throw new UnauthorizedException("관리자 권한이 필요합니다");
   }
-  
+
   return true;
 }
 
@@ -379,7 +376,7 @@ async complexAuthEndpoint(ctx: Context, postId: number) {
   }
 
   const post = await PostModel.findById(postId);
-  
+
   // 복잡한 권한 로직: 작성자이거나, 편집자이거나, 같은 팀 멤버
   const isAuthor = post.authorId === ctx.user.id;
   const isEditor = ctx.user.role === "editor";
@@ -403,34 +400,28 @@ async complexAuthEndpoint(ctx: Context, postId: number) {
 ```typescript
 throw new UnauthorizedException("로그인이 필요합니다", {
   loginUrl: "/auth/login",
-  returnUrl: ctx.request.url
+  returnUrl: ctx.request.url,
 });
 ```
 
 ### 권한 업그레이드 유도
 
 ```typescript
-throw new UnauthorizedException(
-  "프리미엄 기능입니다",
-  {
-    requiredPlan: "premium",
-    currentPlan: "basic",
-    upgradeUrl: "/subscription/upgrade",
-    features: ["고급 분석", "무제한 프로젝트", "우선 지원"]
-  }
-);
+throw new UnauthorizedException("프리미엄 기능입니다", {
+  requiredPlan: "premium",
+  currentPlan: "basic",
+  upgradeUrl: "/subscription/upgrade",
+  features: ["고급 분석", "무제한 프로젝트", "우선 지원"],
+});
 ```
 
 ### 만료 정보
 
 ```typescript
-throw new UnauthorizedException(
-  "세션이 만료되었습니다",
-  {
-    expiredAt: session.expiresAt,
-    refreshUrl: "/auth/refresh"
-  }
-);
+throw new UnauthorizedException("세션이 만료되었습니다", {
+  expiredAt: session.expiresAt,
+  refreshUrl: "/auth/refresh",
+});
 ```
 
 ## 클라이언트 응답 예시

@@ -12,18 +12,17 @@ import {
   useTypeForm,
 } from "@sonamu-kit/react-components";
 import { useEffect, useMemo } from "react";
-import type { EntityProp } from "sonamu";
+import { type EntityProp } from "sonamu";
 import { z } from "zod";
 import CodeIcon from "~icons/lucide/code";
+
 import { EntityIdSelect } from "../../components/EntityIdSelect";
 import { FormNumberInput } from "../../components/FormNumberInput";
 import { FormTypeIdAsyncSelect } from "../../components/FormTypeIdAsyncSelect";
 import { InputWithSuggestion } from "../../components/InputWithSuggestion";
 import { EntityPropZodSchema } from "../../services/entity-prop-zod-schema";
-import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-
-type RelationOn = z.infer<typeof EntityPropZodSchema.RelationOn>;
+import { defaultCatch } from "../../services/sonamu.shared";
 
 type EntityPropModalProps = {
   entityId: string;
@@ -250,7 +249,7 @@ export function EntityPropModal({
                     {(() => {
                       if (form.dbDefault === undefined || form.dbDefault === "") {
                         return "undefined";
-                      } else if (Number.isNaN(Number(form.dbDefault)) === false) {
+                      } else if (!Number.isNaN(Number(form.dbDefault))) {
                         return "number";
                       } else if (form.dbDefault.startsWith('"') && form.dbDefault.endsWith('"')) {
                         return "string";
@@ -535,7 +534,7 @@ export function EntityPropModal({
                           onValueChange={(value) =>
                             setForm({
                               ...form,
-                              onUpdate: value as RelationOn | undefined,
+                              onUpdate: value,
                             })
                           }
                           items={[...EntityPropZodSchema.RelationOn.options]}
@@ -551,7 +550,7 @@ export function EntityPropModal({
                           onValueChange={(value) =>
                             setForm({
                               ...form,
-                              onDelete: value as RelationOn | undefined,
+                              onDelete: value,
                             })
                           }
                           items={[...EntityPropZodSchema.RelationOn.options]}

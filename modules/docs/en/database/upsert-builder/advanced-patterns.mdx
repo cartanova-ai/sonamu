@@ -9,24 +9,16 @@ UpsertBuilder's advanced features allow efficient handling of complex data struc
 
 <CardGroup cols={2}>
   <Card title="Conditional Registration" icon="code-branch">
-    Dynamic data creation
-    
-    if/else branching
+    Dynamic data creation if/else branching
   </Card>
   <Card title="Nested Relations" icon="diagram-nested">
-    3+ level relations
-    
-    Deep hierarchies
+    3+ level relations Deep hierarchies
   </Card>
   <Card title="Upsert Behavior" icon="code-merge">
-    Update on duplicate
-    
-    onConflict usage
+    Update on duplicate onConflict usage
   </Card>
   <Card title="Composite Keys" icon="key">
-    Multiple field combinations
-    
-    UNIQUE constraints
+    Multiple field combinations UNIQUE constraints
   </Card>
 </CardGroup>
 
@@ -48,7 +40,7 @@ async function createUserWithRole(data: {
       password: "password",
       role: data.role,
     });
-    
+
     // 2. Conditional Profile creation
     if (data.role === "admin") {
       // Create AdminProfile only for Admin
@@ -63,16 +55,16 @@ async function createUserWithRole(data: {
         bio: "",
       });
     }
-    
+
     // 3. Save
     const [userId] = await trx.ubUpsert("users");
-    
+
     if (data.role === "admin") {
       await trx.ubUpsert("admin_profiles");
     } else {
       await trx.ubUpsert("profiles");
     }
-    
+
     return userId;
   });
 }
@@ -95,7 +87,7 @@ async function createEmployee(data: {
       password: "pass",
       role: "normal",
     });
-    
+
     // Find Mentor (if provided)
     let mentorId: number | null = null;
     if (data.mentorEmail) {
@@ -105,10 +97,10 @@ async function createEmployee(data: {
         .select({ emp_id: "employees.id" })
         .where("users.email", data.mentorEmail)
         .first();
-      
+
       mentorId = mentor?.emp_id || null;
     }
-    
+
     // Employee
     trx.ubRegister("employees", {
       user_id: userRef,
@@ -116,10 +108,10 @@ async function createEmployee(data: {
       mentor_id: mentorId,
       employee_number: `E${Date.now()}`,
     });
-    
+
     await trx.ubUpsert("users");
     const [empId] = await trx.ubUpsert("employees");
-    
+
     return empId;
   });
 }
@@ -135,19 +127,19 @@ await db.transaction(async (trx) => {
   const companyRef = trx.ubRegister("companies", {
     name: "Tech Corp",
   });
-  
+
   // 2. Department (under Company)
   const deptRef = trx.ubRegister("departments", {
     name: "Engineering",
     company_id: companyRef,
   });
-  
+
   // 3. Team (under Department)
   const teamRef = trx.ubRegister("teams", {
     name: "Backend Team",
     department_id: deptRef,
   });
-  
+
   // 4. User
   const userRef = trx.ubRegister("users", {
     email: "dev@test.com",
@@ -155,14 +147,14 @@ await db.transaction(async (trx) => {
     password: "pass",
     role: "normal",
   });
-  
+
   // 5. Employee (under Team)
   trx.ubRegister("employees", {
     user_id: userRef,
     team_id: teamRef,
     employee_number: "E001",
   });
-  
+
   // 6. Save in order
   await trx.ubUpsert("companies");
   await trx.ubUpsert("departments");
@@ -196,9 +188,9 @@ await db.transaction(async (trx) => {
         columns: ["email"],
         update: ["username", "password"],
       },
-    }
+    },
   );
-  
+
   await trx.ubUpsert("users");
 });
 ```
@@ -220,9 +212,9 @@ await db.transaction(async (trx) => {
         columns: ["project_id", "employee_id"],
         update: ["role"],
       },
-    }
+    },
   );
-  
+
   await trx.ubUpsert("projects__employees");
 });
 ```
@@ -245,9 +237,9 @@ await db.transaction(async (trx) => {
         columns: ["email"],
         action: "nothing",
       },
-    }
+    },
   );
-  
+
   await trx.ubUpsert("users");
 });
 ```
@@ -262,7 +254,7 @@ await db.transaction(async (trx) => {
     name: "Project Alpha",
     status: "in_progress",
   });
-  
+
   const empRefs = ["John", "Jane"].map((name) => {
     const userRef = trx.ubRegister("users", {
       email: `${name.toLowerCase()}@test.com`,
@@ -270,13 +262,13 @@ await db.transaction(async (trx) => {
       password: "pass",
       role: "normal",
     });
-    
+
     return trx.ubRegister("employees", {
       user_id: userRef,
       employee_number: `E${name}`,
     });
   });
-  
+
   // Junction table with role, assigned_at fields
   empRefs.forEach((empRef, i) => {
     trx.ubRegister("projects__employees", {
@@ -286,7 +278,7 @@ await db.transaction(async (trx) => {
       assigned_at: new Date(),
     });
   });
-  
+
   await trx.ubUpsert("projects");
   await trx.ubUpsert("users");
   await trx.ubUpsert("employees");
@@ -299,10 +291,7 @@ await db.transaction(async (trx) => {
 ### Using Table Name as Variable
 
 ```typescript
-async function createRecordInTable(
-  tableName: string,
-  data: Record<string, any>
-) {
+async function createRecordInTable(tableName: string, data: Record<string, any>) {
   return await db.transaction(async (trx) => {
     trx.ubRegister(tableName as any, data);
     const [id] = await trx.ubUpsert(tableName as any);
@@ -330,12 +319,12 @@ await db.transaction(async (trx) => {
     name: "Dept A",
     parent_id: dept2Ref, // ← References dept2Ref first
   });
-  
+
   const dept2Ref = trx.ubRegister("departments", {
     name: "Dept B",
     parent_id: dept1Ref, // ← References dept1Ref first
   });
-  
+
   // Cannot save (circular reference)
 });
 ```
@@ -350,16 +339,14 @@ await db.transaction(async (trx) => {
     name: "Dept A",
     parent_id: null,
   });
-  
+
   const [deptAId] = await trx.ubUpsert("departments");
-  
+
   // 2. Set relationship with created ID
-  await trx
-    .table("departments")
-    .insert({
-      name: "Dept B",
-      parent_id: deptAId,
-    });
+  await trx.table("departments").insert({
+    name: "Dept B",
+    parent_id: deptAId,
+  });
 });
 ```
 
@@ -379,16 +366,16 @@ async function importUsers(csvData: any[]) {
         role: row.role === "1" ? "admin" : "normal",
         is_verified: row.verified === "true",
       };
-      
+
       // Validation
       if (!isValidEmail(userData.email)) {
         console.warn(`Invalid email: ${userData.email}`);
         continue;
       }
-      
+
       trx.ubRegister("users", userData);
     }
-    
+
     const userIds = await trx.ubUpsert("users");
     return { imported: userIds.length };
   });
@@ -400,17 +387,11 @@ async function importUsers(csvData: any[]) {
 ### Remove Existing + Add New Relationships
 
 ```typescript
-async function updateProjectMembers(
-  projectId: number,
-  newMemberIds: number[]
-) {
+async function updateProjectMembers(projectId: number, newMemberIds: number[]) {
   return await db.transaction(async (trx) => {
     // 1. Remove all existing relationships
-    await trx
-      .table("projects__employees")
-      .where("project_id", projectId)
-      .delete();
-    
+    await trx.table("projects__employees").where("project_id", projectId).delete();
+
     // 2. Register new relationships
     for (const empId of newMemberIds) {
       trx.ubRegister("projects__employees", {
@@ -419,10 +400,10 @@ async function updateProjectMembers(
         assigned_at: new Date(),
       });
     }
-    
+
     // 3. Save
     await trx.ubUpsert("projects__employees");
-    
+
     return { memberCount: newMemberIds.length };
   });
 }
@@ -444,7 +425,7 @@ async function migrateFromLegacySystem(legacyData: {
   return await db.transaction(async (trx) => {
     // 1. Legacy Company ID → UBRef mapping
     const companyRefMap = new Map<number, any>();
-    
+
     for (const company of legacyData.companies) {
       const ref = trx.ubRegister("companies", {
         name: company.name,
@@ -452,11 +433,11 @@ async function migrateFromLegacySystem(legacyData: {
       });
       companyRefMap.set(company.id, ref);
     }
-    
+
     // 2. Migrate Users
     for (const user of legacyData.users) {
       const companyRef = companyRefMap.get(user.companyId);
-      
+
       trx.ubRegister("users", {
         email: user.email,
         username: user.email.split("@")[0],
@@ -465,11 +446,11 @@ async function migrateFromLegacySystem(legacyData: {
         legacy_id: user.id,
       });
     }
-    
+
     // 3. Save
     const companyIds = await trx.ubUpsert("companies");
     const userIds = await trx.ubUpsert("users");
-    
+
     return {
       companies: companyIds.length,
       users: userIds.length,
@@ -481,11 +462,13 @@ async function migrateFromLegacySystem(legacyData: {
 ### Department Reorganization
 
 ```typescript
-async function reorganizeDepartments(changes: Array<{
-  departmentId: number;
-  newParentId: number | null;
-  newName?: string;
-}>) {
+async function reorganizeDepartments(
+  changes: Array<{
+    departmentId: number;
+    newParentId: number | null;
+    newName?: string;
+  }>,
+) {
   return await db.transaction(async (trx) => {
     for (const change of changes) {
       await trx
@@ -496,7 +479,7 @@ async function reorganizeDepartments(changes: Array<{
           ...(change.newName && { name: change.newName }),
         });
     }
-    
+
     return { updated: changes.length };
   });
 }
@@ -514,37 +497,37 @@ async function createInitialData() {
       password: "n/a",
       role: "admin",
     });
-    
+
     // 2. Default Company
     const companyRef = trx.ubRegister("companies", {
       name: "Default Company",
     });
-    
+
     // 3. Departments
     const depts = ["Engineering", "Sales", "HR"];
     const deptRefs = depts.map((name) =>
       trx.ubRegister("departments", {
         name,
         company_id: companyRef,
-      })
+      }),
     );
-    
+
     // 4. Default Projects
     const projects = [
       { name: "Onboarding", status: "active" },
       { name: "Training", status: "active" },
     ];
-    
+
     for (const project of projects) {
       trx.ubRegister("projects", project);
     }
-    
+
     // 5. Save
     await trx.ubUpsert("users");
     await trx.ubUpsert("companies");
     await trx.ubUpsert("departments");
     await trx.ubUpsert("projects");
-    
+
     console.log("✅ Initial data created");
   });
 }
@@ -564,7 +547,7 @@ async function createWithRetry<T>(
       return await fn();
     } catch (error) {
       if (i === maxRetries - 1) throw error;
-      
+
       console.warn(`Retry ${i + 1}/${maxRetries}:`, error.message);
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
@@ -589,7 +572,7 @@ async function importWithPartialSuccess(data: any[]) {
     success: [] as number[],
     failed: [] as { data: any; error: string }[],
   };
-  
+
   for (const item of data) {
     try {
       const id = await db.transaction(async (trx) => {
@@ -605,7 +588,7 @@ async function importWithPartialSuccess(data: any[]) {
       });
     }
   }
-  
+
   return results;
 }
 ```
@@ -619,7 +602,11 @@ async function importWithPartialSuccess(data: any[]) {
   <Card title="Relational Data" icon="link" href="/en/database/upsert-builder/relations">
     Handle relationships with UBRef
   </Card>
-  <Card title="Batch Operations" icon="layer-group" href="/en/database/upsert-builder/batch-operations">
+  <Card
+    title="Batch Operations"
+    icon="layer-group"
+    href="/en/database/upsert-builder/batch-operations"
+  >
     Bulk data registration
   </Card>
   <Card title="Transactions" icon="arrows-rotate" href="/en/database/transactions">

@@ -1,4 +1,5 @@
 import { z } from "zod";
+
 import { DepartmentBaseListParams, DepartmentBaseSchema } from "../sonamu.generated";
 
 // Department - ListParams

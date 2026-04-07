@@ -1,15 +1,15 @@
+import { configure, getConsoleSink } from "@logtape/logtape";
 import {
-  configure,
   type Filter,
   type FilterLike,
-  getConsoleSink,
   type LoggerConfig,
   type LogRecord,
   type Sink,
   type TextFormatter,
 } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
-import type { FastifyReply, FastifyRequest } from "fastify";
+import { type FastifyReply, type FastifyRequest } from "fastify";
+
 import { isSameCategory } from "./category";
 
 export type SonamuLoggingOptions<TSinkId extends string, TFilterId extends string> = {
@@ -102,12 +102,12 @@ export async function configureLogTape<TSinkId extends string, TFilterId extends
 
   const sinks = {
     "fastify-console": defaultFastifySink(fastifyCategory),
-    ...(options.sinks ?? {}),
+    ...options.sinks,
   } as Record<TSinkId | "fastify-console", Sink>;
 
   const filters = {
     "fastify-console": defaultFastifyFilter(fastifyCategory),
-    ...(options.filters ?? {}),
+    ...options.filters,
   } as Record<TFilterId | "fastify-console", FilterLike>;
 
   const loggers: Set<LoggerConfig<TSinkId | "fastify-console", TFilterId | "fastify-console">> =

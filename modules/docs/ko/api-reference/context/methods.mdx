@@ -1,6 +1,6 @@
 ---
-title: 'Context 메서드'
-description: 'Context 접근 메서드 레퍼런스'
+title: "Context 메서드"
+description: "Context 접근 메서드 레퍼런스"
 ---
 
 Sonamu는 Context에 접근할 수 있는 여러 메서드를 제공합니다. 이 메서드들은 API 메서드 외부에서 Context가 필요한 경우에 유용합니다.
@@ -55,11 +55,11 @@ class PostModelClass extends BaseModelClass {
   async createPost(title: string, content: string) {
     // Context를 직접 받지 않아도 헬퍼 함수를 통해 사용자 정보 접근
     const user = requireAuth();
-    
+
     return this.create({
       title,
       content,
-      authorId: user.id
+      authorId: user.id,
     });
   }
 }
@@ -74,10 +74,10 @@ import { Sonamu } from "sonamu";
 export class NotificationService {
   async sendNotification(userId: number, message: string) {
     const ctx = Sonamu.getContext();
-    
+
     // Context의 locale 정보를 사용하여 다국어 메시지 전송
     const localizedMessage = this.localize(message, ctx.locale);
-    
+
     // 알림 전송 로직
     await this.send(userId, localizedMessage);
   }
@@ -114,12 +114,12 @@ import { runWithMockContext } from "sonamu/test";
 it("should use context in test", async () => {
   await runWithMockContext(
     {
-      user: { id: 1, email: "test@example.com" }
+      user: { id: 1, email: "test@example.com" },
     },
     async () => {
       const ctx = Sonamu.getContext();
       expect(ctx.user?.id).toBe(1);
-    }
+    },
   );
 });
 ```
@@ -129,6 +129,7 @@ it("should use context in test", async () => {
 파일 업로드 요청에서 업로드된 파일 정보는 `Sonamu.getContext()`를 통해 접근합니다. `@upload` 데코레이터가 적용된 메서드에서만 사용할 수 있습니다.
 
 업로드 모드에 따라 두 가지 속성을 사용합니다:
+
 - **Buffer 모드 (기본)**: `bufferedFiles` - 메모리에 로드된 파일, MD5 계산/이미지 처리에 적합
 - **Stream 모드**: `uploadedFiles` - 저장소로 직접 스트리밍된 파일, 대용량 파일에 적합
 
@@ -174,10 +175,10 @@ class FileModelClass extends BaseModelClass {
     }
 
     // 파일 정보 확인
-    console.log(file.filename);    // "avatar.jpg"
-    console.log(file.mimetype);    // "image/jpeg"
-    console.log(file.size);        // 102400 (bytes)
-    console.log(file.extname);     // "jpg"
+    console.log(file.filename); // "avatar.jpg"
+    console.log(file.mimetype); // "image/jpeg"
+    console.log(file.size); // 102400 (bytes)
+    console.log(file.extname); // "jpg"
 
     // 파일 저장 (diskName, key 순서)
     const key = `avatars/${Date.now()}_${file.filename}`;
@@ -205,7 +206,7 @@ class FileModelClass extends BaseModelClass {
         const key = `documents/${Date.now()}_${i}_${file.filename}`;
         const url = await file.saveToDisk("fs", key);
         return { url, filename: file.filename, size: file.size };
-      })
+      }),
     );
 
     // 파일 메타데이터 DB 저장
@@ -214,8 +215,8 @@ class FileModelClass extends BaseModelClass {
         folderId,
         filename: file.filename,
         url: file.url,
-        size: file.size
-      }))
+        size: file.size,
+      })),
     );
 
     return { count: savedFiles.length, files: savedFiles };
@@ -265,9 +266,7 @@ export function validateFileTypes(allowedTypes: string[]) {
 
   for (const file of bufferedFiles) {
     if (!allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException(
-        `허용되지 않는 파일 형식입니다: ${file.mimetype}`
-      );
+      throw new BadRequestException(`허용되지 않는 파일 형식입니다: ${file.mimetype}`);
     }
   }
 }
@@ -279,12 +278,7 @@ class FileModelClass extends BaseModelClass {
   @upload()
   async uploadImages(ctx: Context) {
     // 이미지 파일만 허용
-    validateFileTypes([
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "image/webp"
-    ]);
+    validateFileTypes(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
     const files = getBufferedFiles();
 

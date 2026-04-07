@@ -39,9 +39,7 @@
     "src/application/user/user.types.ts",
     "src/application/user/user.model.test.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "UserModel": "사용자 단건/목록 조회와 프로필 수정을 담당한다",
     "User Types": "서브셋(A/P/SS)과 검색/정렬 파라미터를 정의한다"
@@ -61,8 +59,5 @@
     "NotFoundException": "존재하지 않는 사용자 조회",
     "BadRequestException": "유효하지 않은 검색 필드 지정"
   },
-  "constraints": [
-    "기본 페이지 크기는 24건이다",
-    "서브셋 A/P/SS를 통해 반환 필드를 제어한다"
-  ]
+  "constraints": ["기본 페이지 크기는 24건이다", "서브셋 A/P/SS를 통해 반환 필드를 제어한다"]
 }

@@ -12,14 +12,15 @@ import {
 } from "@sonamu-kit/react-components";
 import classNames from "classnames";
 import { useEffect, useRef, useState } from "react";
-import type { MigrationStatus, SonamuDBConfig } from "sonamu";
+import { type MigrationStatus, type SonamuDBConfig } from "sonamu";
 import { z } from "zod";
 import CheckIcon from "~icons/lucide/check";
 import Loader2Icon from "~icons/lucide/loader-2";
 import PlayIcon from "~icons/lucide/play";
 import XIcon from "~icons/lucide/x";
-import { defaultCatch } from "../../services/sonamu.shared";
+
 import { SonamuUIService } from "../../services/sonamu-ui.service";
+import { defaultCatch } from "../../services/sonamu.shared";
 
 type MigrationActionModalProps = {
   action: "apply" | "rollback" | "shadow";

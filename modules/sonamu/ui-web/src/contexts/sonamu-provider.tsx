@@ -1,10 +1,9 @@
-import {
-  type SonamuContextValue,
-  SonamuProvider,
-  useSonamuBaseContext,
-} from "@sonamu-kit/react-components";
-import type { ReactNode } from "react";
-import { type UiWebDictionary, useSD } from "../i18n";
+import { SonamuProvider, useSonamuBaseContext } from "@sonamu-kit/react-components";
+import { type SonamuContextValue } from "@sonamu-kit/react-components";
+import { type ReactNode } from "react";
+
+import { useSD } from "../i18n";
+import { type UiWebDictionary } from "../i18n";
 
 export function createSonamuConfig(): SonamuContextValue<UiWebDictionary> {
   return { SD: useSD() };

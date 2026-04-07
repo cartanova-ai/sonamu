@@ -9,24 +9,16 @@ Learn how to automatically generate list and form views for admin pages with Son
 
 <CardGroup cols={2}>
   <Card title="Auto Generation" icon="wand-magic-sparkles">
-    List/Form views
-    
-    Generate via web UI
+    List/Form views Generate via web UI
   </Card>
   <Card title="Type Safe" icon="shield-check">
-    Entity based
-    
-    Compile-time validation
+    Entity based Compile-time validation
   </Card>
   <Card title="Customizable" icon="sliders">
-    Modify after generation
-    
-    Full control
+    Modify after generation Full control
   </Card>
   <Card title="Consistency" icon="clone">
-    Unified UI/UX
-    
-    Best practices
+    Unified UI/UX Best practices
   </Card>
 </CardGroup>
 
@@ -37,6 +29,7 @@ Learn how to automatically generate list and form views for admin pages with Son
 In traditional development, you have to **manually write similar CRUD screens repeatedly** for each entity.
 
 **Problems with manual writing**:
+
 1. **Time waste**: Writing list, create, edit pages all by hand
 2. **Lack of consistency**: Different styles and structures per developer
 3. **Hard to maintain**: Need to modify all views when entity changes
@@ -44,6 +37,7 @@ In traditional development, you have to **manually write similar CRUD screens re
 5. **Boilerplate**: Repetitive code for tables, forms, buttons
 
 **Example**: Pages needed for a single User entity
+
 ```
 /admin/users        → List page (table, pagination, search)
 /admin/users/form   → Create/Edit page (form, validation)
@@ -56,6 +50,7 @@ Each page requires 100-200+ lines of code, and this must be repeated for every e
 Sonamu **automatically generates admin page views** based on Entity definitions.
 
 **Benefits**:
+
 1. ✨ **Instant generation**: Generate views with just clicks in web UI
 2. ✨ **Type safe**: Entity types directly reflected in components
 3. ✨ **Consistent UI**: Unified design system
@@ -63,6 +58,7 @@ Sonamu **automatically generates admin page views** based on Entity definitions.
 5. ✨ **Customizable**: Modify only necessary parts after generation
 
 **Sonamu's scaffolding philosophy**:
+
 > "80% automatic, 20% customization"
 
 Most CRUD functionality is auto-generated, and only special business logic needs additional implementation.
@@ -82,6 +78,7 @@ pnpm dev
 ```
 
 **Generating views in web UI**:
+
 1. Access Sonamu UI
 2. Select "Scaffold" menu
 3. Select Entity (e.g., User)
@@ -89,7 +86,8 @@ pnpm dev
 5. Click "Generate View Form" button → `form.tsx` generated
 
 <Info>
-**CLI commands are currently disabled**. View generation is only available through the Sonamu web UI.
+  **CLI commands are currently disabled**. View generation is only available through the Sonamu web
+  UI.
 </Info>
 
 ### Generated File Structure
@@ -102,14 +100,13 @@ web/src/routes/admin/
 ```
 
 **Actually generated files**:
+
 - **index.tsx**: Page with list table directly included
 - **form.tsx**: Create and edit combined into one form
 
 <Warning>
-**Note**: 
-- Separate component files (UserTable.tsx, UserForm.tsx) are not generated
-- Detail page ([id].tsx) is not auto-generated
-- All logic is integrated into two page files
+  **Note**: - Separate component files (UserTable.tsx, UserForm.tsx) are not generated - Detail page
+  ([id].tsx) is not auto-generated - All logic is integrated into two page files
 </Warning>
 
 ## Generated View Structure
@@ -128,14 +125,14 @@ export default function UsersPage() {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  
+
   // Using TanStack Query Hook
   const { data: users, isLoading } = UserService.useUsers("A", {
     page,
     pageSize: 20,
     search,
   });
-  
+
   return (
     <div className="admin-page">
       <div className="header">
@@ -144,7 +141,7 @@ export default function UsersPage() {
           Create New User
         </button>
       </div>
-      
+
       <div className="search">
         <input
           type="text"
@@ -153,7 +150,7 @@ export default function UsersPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-      
+
       {/* Table directly included */}
       <table className="data-table">
         <thead>
@@ -179,7 +176,7 @@ export default function UsersPage() {
           ))}
         </tbody>
       </table>
-      
+
       {/* Pagination */}
       <div className="pagination">
         <button disabled={page === 1} onClick={() => setPage(page - 1)}>
@@ -196,6 +193,7 @@ export default function UsersPage() {
 ```
 
 **Features**:
+
 - Pagination
 - Search filter
 - "Create New" button
@@ -216,15 +214,15 @@ export default function UserFormPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userId = searchParams.get("id");
-  
+
   const [formData, setFormData] = useState({
     email: "",
     username: "",
     bio: "",
   });
-  
+
   const [saving, setSaving] = useState(false);
-  
+
   // Edit mode: Load existing data
   useEffect(() => {
     if (userId) {
@@ -237,11 +235,11 @@ export default function UserFormPage() {
       });
     }
   }, [userId]);
-  
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    
+
     try {
       if (userId) {
         // Update
@@ -250,7 +248,7 @@ export default function UserFormPage() {
         // Create
         await UserService.create(formData);
       }
-      
+
       navigate("/admin/users");
     } catch (error) {
       alert("Failed to save");
@@ -258,7 +256,7 @@ export default function UserFormPage() {
       setSaving(false);
     }
   }
-  
+
   return (
     <div className="admin-page">
       <div className="header">
@@ -267,7 +265,7 @@ export default function UserFormPage() {
           Back to List
         </button>
       </div>
-      
+
       <form onSubmit={handleSubmit} className="entity-form">
         <div className="form-field">
           <label>Email *</label>
@@ -278,7 +276,7 @@ export default function UserFormPage() {
             required
           />
         </div>
-        
+
         <div className="form-field">
           <label>Username *</label>
           <input
@@ -288,7 +286,7 @@ export default function UserFormPage() {
             required
           />
         </div>
-        
+
         <div className="form-field">
           <label>Bio</label>
           <textarea
@@ -297,7 +295,7 @@ export default function UserFormPage() {
             rows={4}
           />
         </div>
-        
+
         <div className="form-actions">
           <button type="submit" disabled={saving}>
             {saving ? "Saving..." : "Save"}
@@ -310,6 +308,7 @@ export default function UserFormPage() {
 ```
 
 **Features**:
+
 - **Create/Edit integrated**: Mode distinguished by URL parameter (`?id=`)
 - Auto-loads existing data when editing
 - Validation
@@ -323,6 +322,7 @@ export default function UserFormPage() {
 Sonamu's scaffolding consists of **minimal files**:
 
 **Traditional structure** (complex):
+
 ```
 pages/users/
   ├── index.tsx
@@ -336,6 +336,7 @@ components/users/
 ```
 
 **Sonamu structure** (simple):
+
 ```
 admin/users/
   ├── index.tsx    # Includes table
@@ -343,6 +344,7 @@ admin/users/
 ```
 
 **Benefits of integrated structure**:
+
 - Minimized file count
 - Less navigation between files
 - Easy maintenance
@@ -369,14 +371,14 @@ Generated files are fully modifiable.
 export default function UsersPage() {
   // Added: Role filter
   const [role, setRole] = useState<string | null>(null);
-  
+
   const { data: users } = UserService.useUsers("A", {
     page,
     pageSize: 20,
     search,
     role, // Custom parameter
   });
-  
+
   return (
     <div>
       {/* Added: Role filter UI */}
@@ -385,7 +387,7 @@ export default function UsersPage() {
         <option value="admin">Admin</option>
         <option value="user">User</option>
       </select>
-      
+
       {/* Existing table... */}
     </div>
   );
@@ -411,7 +413,7 @@ import { UserTable } from "@/components/users/UserTable";
 
 export default function UsersPage() {
   const { data: users } = UserService.useUsers("A", { page, pageSize: 20 });
-  
+
   return (
     <div>
       <UserTable users={users || []} />
@@ -432,7 +434,7 @@ import { UserService } from "@/services/services.generated";
 export default function UserDetailPage() {
   const { id } = useParams();
   const { data: user } = UserService.useUser("C", parseInt(id!));
-  
+
   return (
     <div>
       <h1>{user?.username}</h1>
@@ -459,19 +461,16 @@ This allows tracking customization history.
 
 ```typescript
 // hooks/useEntityList.ts
-export function useEntityList<T>(
-  entityName: string,
-  useHook: any
-) {
+export function useEntityList<T>(entityName: string, useHook: any) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  
+
   const { data, isLoading } = useHook("A", {
     page,
     pageSize: 20,
     search,
   });
-  
+
   return { data, isLoading, page, setPage, search, setSearch };
 }
 ```
@@ -480,9 +479,12 @@ export function useEntityList<T>(
 
 ```css
 /* styles/admin.css */
-.admin-page { }
-.data-table { }
-.entity-form { }
+.admin-page {
+}
+.data-table {
+}
+.entity-form {
+}
 ```
 
 Use consistent styles across all admin pages.
@@ -490,27 +492,41 @@ Use consistent styles across all admin pages.
 ## Cautions
 
 <Warning>
-**Cautions when using View Scaffolding**:
-1. **Only available via web UI** (CLI commands disabled)
-2. **Only index.tsx, form.tsx generated** (no separate components)
-3. Detail page needs to be **added manually**
-4. Regenerating will **lose customizations** (Git commit required)
-5. **Consider separating components** as needed after generation
+  **Cautions when using View Scaffolding**: 1. **Only available via web UI** (CLI commands disabled)
+  2. **Only index.tsx, form.tsx generated** (no separate components) 3. Detail page needs to be
+  **added manually** 4. Regenerating will **lose customizations** (Git commit required) 5.
+  **Consider separating components** as needed after generation
 </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Custom Components" icon="sliders" href="/en/frontend-integration/react-components/custom-components">
+  <Card
+    title="Custom Components"
+    icon="sliders"
+    href="/en/frontend-integration/react-components/custom-components"
+  >
     Component customization
   </Card>
-  <Card title="ID Async Select" icon="list-dropdown" href="/en/frontend-integration/react-components/id-async-select">
+  <Card
+    title="ID Async Select"
+    icon="list-dropdown"
+    href="/en/frontend-integration/react-components/id-async-select"
+  >
     Relational data selection
   </Card>
-  <Card title="Search Input" icon="magnifying-glass" href="/en/frontend-integration/react-components/search-input">
+  <Card
+    title="Search Input"
+    icon="magnifying-glass"
+    href="/en/frontend-integration/react-components/search-input"
+  >
     Search component
   </Card>
-  <Card title="Using Services" icon="code" href="/en/frontend-integration/generated-services/using-services">
+  <Card
+    title="Using Services"
+    icon="code"
+    href="/en/frontend-integration/generated-services/using-services"
+  >
     Service integration
   </Card>
 </CardGroup>

@@ -28,17 +28,17 @@ import { drivers, type SonamuConfig } from "sonamu";
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 'fs',
+      default: "fs",
       drivers: {
         fs: drivers.fs({
-          location: './uploads',  // 파일 저장 위치
+          location: "./uploads", // 파일 저장 위치
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
-          }
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -109,23 +109,24 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 'fs',
+      default: "fs",
       drivers: {
         fs: drivers.fs({
-          location: './uploads',
+          location: "./uploads",
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
-          }
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **사용**:
+
 ```typescript
-await disk.put('avatars/user-1.png', buffer);
+await disk.put("avatars/user-1.png", buffer);
 // 파일 위치: ./uploads/avatars/user-1.png
 // URL: /uploads/avatars/user-1.png
 ```
@@ -142,26 +143,27 @@ export const config: SonamuConfig = {
   server: {
     plugins: {
       static: {
-        root: path.join(process.cwd(), 'uploads'),
-        prefix: '/uploads/',
-      }
+        root: path.join(process.cwd(), "uploads"),
+        prefix: "/uploads/",
+      },
     },
     storage: {
-      default: 'fs',
+      default: "fs",
       drivers: {
         fs: drivers.fs({
-          location: './uploads',
+          location: "./uploads",
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
-          }
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **결과**:
+
 ```
 http://localhost:3000/uploads/avatars/user-1.png
 → ./uploads/avatars/user-1.png 파일 서빙
@@ -179,7 +181,7 @@ import { drivers, type SonamuConfig } from "sonamu";
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 's3',
+      default: "s3",
       drivers: {
         s3: drivers.s3({
           credentials: {
@@ -189,9 +191,9 @@ export const config: SonamuConfig = {
           region: process.env.AWS_REGION!,
           bucket: process.env.AWS_BUCKET!,
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -298,25 +300,26 @@ AWS_BUCKET=my-app-uploads
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 's3',
+      default: "s3",
       drivers: {
         s3: drivers.s3({
           credentials: {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
           },
-          region: 'ap-northeast-2',
-          bucket: 'my-app-uploads',
+          region: "ap-northeast-2",
+          bucket: "my-app-uploads",
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **사용**:
+
 ```typescript
-await disk.put('avatars/user-1.png', buffer);
+await disk.put("avatars/user-1.png", buffer);
 // S3 위치: s3://my-app-uploads/avatars/user-1.png
 // URL: https://my-app-uploads.s3.ap-northeast-2.amazonaws.com/avatars/user-1.png
 ```
@@ -327,23 +330,22 @@ await disk.put('avatars/user-1.png', buffer);
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 's3',
+      default: "s3",
       drivers: {
         s3: drivers.s3({
           credentials: {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
           },
-          region: 'ap-northeast-2',
-          bucket: 'my-app-uploads',
+          region: "ap-northeast-2",
+          bucket: "my-app-uploads",
           urlBuilder: {
-            generateURL: (key) => 
-              `https://${process.env.CLOUDFRONT_DOMAIN}/${key}`,
-          }
+            generateURL: (key) => `https://${process.env.CLOUDFRONT_DOMAIN}/${key}`,
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -352,6 +354,7 @@ CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
 ```
 
 **장점**:
+
 - 빠른 전송 속도 (엣지 로케이션)
 - 대역폭 비용 절감
 - 캐싱
@@ -386,7 +389,7 @@ S3 버킷을 퍼블릭으로 설정하려면:
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 'r2',
+      default: "r2",
       drivers: {
         r2: drivers.s3({
           credentials: {
@@ -394,20 +397,20 @@ export const config: SonamuConfig = {
             secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
           },
           endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-          region: 'auto',
+          region: "auto",
           bucket: process.env.R2_BUCKET!,
           urlBuilder: {
-            generateURL: (key) => 
-              `https://${process.env.R2_PUBLIC_DOMAIN}/${key}`,
-          }
+            generateURL: (key) => `https://${process.env.R2_PUBLIC_DOMAIN}/${key}`,
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **특징**:
+
 - 무료 egress (전송 비용 없음)
 - S3 API 호환
 - Cloudflare 네트워크
@@ -418,55 +421,55 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 'minio',
+      default: "minio",
       drivers: {
         minio: drivers.s3({
           credentials: {
             accessKeyId: process.env.MINIO_ACCESS_KEY!,
             secretAccessKey: process.env.MINIO_SECRET_KEY!,
           },
-          endpoint: 'http://localhost:9000',
-          region: 'us-east-1',
-          bucket: 'uploads',
-          forcePathStyle: true,  // MinIO 필수
+          endpoint: "http://localhost:9000",
+          region: "us-east-1",
+          bucket: "uploads",
+          forcePathStyle: true, // MinIO 필수
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 ## 드라이버 비교
 
-| 특징 | fs | S3 |
-|------|----|----|
-| 비용 | 무료 (디스크 공간) | 유료 (저장 + 전송) |
-| 확장성 | 제한적 (서버 디스크) | 무제한 |
-| 속도 | 매우 빠름 | 빠름 (네트워크) |
-| 백업 | 수동 | 자동 (버전 관리) |
-| CDN | 별도 설정 필요 | CloudFront 연동 |
-| 용도 | 개발, 소규모 | 프로덕션, 대규모 |
+| 특징   | fs                   | S3                 |
+| ------ | -------------------- | ------------------ |
+| 비용   | 무료 (디스크 공간)   | 유료 (저장 + 전송) |
+| 확장성 | 제한적 (서버 디스크) | 무제한             |
+| 속도   | 매우 빠름            | 빠름 (네트워크)    |
+| 백업   | 수동                 | 자동 (버전 관리)   |
+| CDN    | 별도 설정 필요       | CloudFront 연동    |
+| 용도   | 개발, 소규모         | 프로덕션, 대규모   |
 
 ## 실전 전략
 
 ### 개발/프로덕션 분리
 
 ```typescript
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.NODE_ENV === "development";
 
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: isDevelopment ? 'fs' : 's3',
+      default: isDevelopment ? "fs" : "s3",
       drivers: {
         // 개발: 로컬
         fs: drivers.fs({
-          location: './uploads',
+          location: "./uploads",
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
-          }
+          },
         }),
-        
+
         // 프로덕션: S3
         s3: drivers.s3({
           credentials: {
@@ -476,9 +479,9 @@ export const config: SonamuConfig = {
           region: process.env.AWS_REGION!,
           bucket: process.env.AWS_BUCKET!,
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -488,44 +491,51 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 'private',
+      default: "private",
       drivers: {
         // 개인 문서 (private)
         private: drivers.s3({
-          credentials: { /* ... */ },
-          region: 'ap-northeast-2',
-          bucket: 'my-app-private',
+          credentials: {
+            /* ... */
+          },
+          region: "ap-northeast-2",
+          bucket: "my-app-private",
         }),
-        
+
         // 공개 파일 (public)
         public: drivers.s3({
-          credentials: { /* ... */ },
-          region: 'ap-northeast-2',
-          bucket: 'my-app-public',
+          credentials: {
+            /* ... */
+          },
+          region: "ap-northeast-2",
+          bucket: "my-app-public",
         }),
-        
+
         // 백업
         backup: drivers.s3({
-          credentials: { /* ... */ },
-          region: 'ap-northeast-2',
-          bucket: 'my-app-backup',
+          credentials: {
+            /* ... */
+          },
+          region: "ap-northeast-2",
+          bucket: "my-app-backup",
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **사용**:
+
 ```typescript
 // 프로필 사진 → public
-await file.saveToDisk('avatars/user-1.png', 'public');
+await file.saveToDisk("avatars/user-1.png", "public");
 
 // 개인 문서 → private (기본)
-await file.saveToDisk('documents/user-1/doc.pdf');
+await file.saveToDisk("documents/user-1/doc.pdf");
 
 // 백업 → backup
-await Sonamu.storage.use('backup').put('backup.json', data);
+await Sonamu.storage.use("backup").put("backup.json", data);
 ```
 
 ## 주의사항
@@ -534,13 +544,14 @@ await Sonamu.storage.use('backup').put('backup.json', data);
 **드라이버 설정 시 주의사항**:
 
 1. **환경변수 관리**: 절대 하드코딩 금지
+
    ```typescript
    // ❌ 하드코딩
    credentials: {
      accessKeyId: 'AKIA...',
      secretAccessKey: '...',
    }
-   
+
    // ✅ 환경변수
    credentials: {
      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
@@ -549,22 +560,24 @@ await Sonamu.storage.use('backup').put('backup.json', data);
    ```
 
 2. **fs urlBuilder 필수**: fs 드라이버는 반드시 urlBuilder 필요
+
    ```typescript
    // ❌ urlBuilder 없음
    fs: drivers.fs({
-     location: './uploads',
-   })
-   
+     location: "./uploads",
+   });
+
    // ✅ urlBuilder 설정
    fs: drivers.fs({
-     location: './uploads',
+     location: "./uploads",
      urlBuilder: {
        generateURL: (key) => `/uploads/${key}`,
-     }
-   })
+     },
+   });
    ```
 
 3. **S3 권한 확인**: IAM 사용자에게 S3 권한 부여
+
    ```json
    // 최소 권한
    {
@@ -572,11 +585,7 @@ await Sonamu.storage.use('backup').put('backup.json', data);
      "Statement": [
        {
          "Effect": "Allow",
-         "Action": [
-           "s3:PutObject",
-           "s3:GetObject",
-           "s3:DeleteObject"
-         ],
+         "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
          "Resource": "arn:aws:s3:::my-bucket/*"
        }
      ]
@@ -584,33 +593,44 @@ await Sonamu.storage.use('backup').put('backup.json', data);
    ```
 
 4. **버킷 이름 고유성**: S3 버킷 이름은 전역적으로 고유해야 함
+
    ```typescript
    // ❌ 이미 사용 중인 이름
-   bucket: 'uploads'  // 에러!
-   
+   bucket: "uploads"; // 에러!
+
    // ✅ 고유한 이름
-   bucket: 'my-app-uploads-prod-2024'
+   bucket: "my-app-uploads-prod-2024";
    ```
 
 5. **리전 일치**: bucket과 region이 일치해야 함
+
    ```typescript
    // ❌ 리전 불일치
    region: 'us-east-1',
    bucket: 'my-bucket'  // ap-northeast-2에 생성됨
-   
+
    // ✅ 리전 확인
    region: 'ap-northeast-2',
    bucket: 'my-bucket'  // ap-northeast-2에 생성됨
    ```
-</Warning>
+
+   </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="Storage Manager" icon="database" href="/ko/advanced-features/storage/storage-manager">
+  <Card
+    title="Storage Manager"
+    icon="database"
+    href="/ko/advanced-features/storage/storage-manager"
+  >
     여러 디스크 관리하기
   </Card>
-  <Card title="파일 저장 및 조회" icon="upload" href="/ko/advanced-features/storage/file-operations">
+  <Card
+    title="파일 저장 및 조회"
+    icon="upload"
+    href="/ko/advanced-features/storage/file-operations"
+  >
     파일 업로드 및 다운로드
   </Card>
   <Card title="URL 빌더" icon="link" href="/ko/advanced-features/storage/url-builder">

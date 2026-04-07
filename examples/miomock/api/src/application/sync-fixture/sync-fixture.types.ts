@@ -1,4 +1,5 @@
-import type { z } from "zod";
+import { type z } from "zod";
+
 import { SyncFixtureBaseListParams, SyncFixtureBaseSchema } from "../sonamu.generated";
 
 // SyncFixture - ListParams

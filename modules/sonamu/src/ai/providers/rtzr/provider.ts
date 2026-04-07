@@ -1,13 +1,15 @@
-import { NoSuchModelError, type ProviderV3, type TranscriptionModelV3 } from "@ai-sdk/provider";
+import { NoSuchModelError } from "@ai-sdk/provider";
+import { type ProviderV3, type TranscriptionModelV3 } from "@ai-sdk/provider";
 import {
-  type FetchFunction,
   loadApiKey,
   loadOptionalSetting,
   withoutTrailingSlash,
   withUserAgentSuffix,
 } from "@ai-sdk/provider-utils";
+import { type FetchFunction } from "@ai-sdk/provider-utils";
+
 import { RtzrTranscriptionModel } from "./model";
-import type { RtzrTranscriptionModelId } from "./options";
+import { type RtzrTranscriptionModelId } from "./options";
 
 export interface RtzrProvider extends ProviderV3 {
   (modelId: RtzrTranscriptionModelId): TranscriptionModelV3;

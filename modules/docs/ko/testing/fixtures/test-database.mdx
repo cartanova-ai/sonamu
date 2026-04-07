@@ -9,24 +9,16 @@ Sonamu의 테스트 데이터베이스 시스템과 설정 방법을 알아봅�
 
 <CardGroup cols={2}>
   <Card title="격리된 환경" icon="shield">
-    프로덕션과 분리
-    
-    안전한 테스트
+    프로덕션과 분리 안전한 테스트
   </Card>
   <Card title="자동 롤백" icon="rotate-left">
-    Transaction 기반
-    
-    테스트 후 자동 정리
+    Transaction 기반 테스트 후 자동 정리
   </Card>
   <Card title="Fixture 지원" icon="database">
-    실제 데이터 복사
-    
-    일관된 테스트 환경
+    실제 데이터 복사 일관된 테스트 환경
   </Card>
   <Card title="간편한 초기화" icon="wand-magic-sparkles">
-    한 명령어로 설정
-    
-    스키마 자동 복사
+    한 명령어로 설정 스키마 자동 복사
   </Card>
 </CardGroup>
 
@@ -49,6 +41,7 @@ flowchart TD
 ```
 
 **역할**:
+
 - **development_master**: 개발 중 사용하는 DB
 - **fixture**: 테스트에 사용할 공통 데이터 저장 (팀 공유 가능)
 - **test**: 실제 테스트가 실행되는 DB (Transaction 기반)
@@ -95,6 +88,7 @@ flowchart TD
 ```
 
 **주의**:
+
 - `test`와 `production_master`는 **절대 같은 DB를 사용하면 안 됩니다**
 - Sonamu가 초기화 시 자동으로 검증합니다
 
@@ -104,9 +98,11 @@ if (Sonamu.dbConfig.test && Sonamu.dbConfig.production_master) {
   const tConn = Sonamu.dbConfig.test.connection;
   const pConn = Sonamu.dbConfig.production_master.connection;
 
-  if (`${tConn.host ?? "localhost"}:${tConn.port ?? 5432}/${tConn.database}` ===
-      `${pConn.host ?? "localhost"}:${pConn.port ?? 5432}/${pConn.database}`) {
-    throw new Error('테스트DB와 프로덕션DB에 동일한 데이터베이스가 사용되었습니다.');
+  if (
+    `${tConn.host ?? "localhost"}:${tConn.port ?? 5432}/${tConn.database}` ===
+    `${pConn.host ?? "localhost"}:${pConn.port ?? 5432}/${pConn.database}`
+  ) {
+    throw new Error("테스트DB와 프로덕션DB에 동일한 데이터베이스가 사용되었습니다.");
   }
 }
 ```
@@ -124,37 +120,41 @@ pnpm sonamu fixture init
 **작동 과정**:
 
 1. **Development DB 덤프**
+
    ```bash
    # 스키마만 덤프 (데이터 제외)
    pg_dump -d myapp_dev -s > /tmp/schema.sql
-   
+
    # 마이그레이션 기록 덤프
    pg_dump myapp_dev knex_migrations knex_migrations_lock > /tmp/migrations.sql
    ```
 
 2. **Fixture DB 생성**
+
    ```bash
    # DB 생성
    psql -c "DROP DATABASE IF EXISTS myapp_fixture"
    psql -c "CREATE DATABASE myapp_fixture"
-   
+
    # 스키마 복원
    psql myapp_fixture < /tmp/schema.sql
    psql myapp_fixture < /tmp/migrations.sql
    ```
 
 3. **Test DB 생성**
+
    ```bash
    # DB 생성
    psql -c "DROP DATABASE IF EXISTS myapp_test"
    psql -c "CREATE DATABASE myapp_test"
-   
+
    # 스키마 복원
    psql myapp_test < /tmp/schema.sql
    psql myapp_test < /tmp/migrations.sql
    ```
 
 **결과**:
+
 - Fixture DB: 빈 스키마 (나중에 데이터 추가)
 - Test DB: 빈 스키마 (테스트마다 Fixture에서 동기화)
 
@@ -186,8 +186,7 @@ Fixture DB와 Test DB가 동일한 경우 Test DB 생성을 스킵합니다:
 const toSkip = (() => {
   const remoteConn = Sonamu.dbConfig.fixture.connection;
   const localConn = Sonamu.dbConfig.test.connection;
-  return remoteConn.host === localConn.host && 
-         remoteConn.database === localConn.database;
+  return remoteConn.host === localConn.host && remoteConn.database === localConn.database;
 })();
 ```
 
@@ -214,7 +213,7 @@ export function bootstrap(vi: VitestUtils) {
     // 각 테스트 시작 전: Transaction 시작
     await DB.createTestTransaction();
   });
-  
+
   afterEach(async () => {
     // 각 테스트 종료 후: 자동 롤백
     await DB.clearTestTransaction();
@@ -223,6 +222,7 @@ export function bootstrap(vi: VitestUtils) {
 ```
 
 **흐름**:
+
 ```typescript
 // 테스트 1 시작
 BEGIN TRANSACTION;
@@ -240,6 +240,7 @@ ROLLBACK;
 ### 장점
 
 **격리성**:
+
 ```typescript
 test("사용자 생성", async () => {
   const userModel = new UserModel();
@@ -250,11 +251,12 @@ test("사용자 생성", async () => {
 test("다음 테스트는 깨끗한 DB", async () => {
   const userModel = new UserModel();
   const { users } = await userModel.getUsers();
-  expect(users).toHaveLength(0);  // 이전 테스트의 john이 없음
+  expect(users).toHaveLength(0); // 이전 테스트의 john이 없음
 });
 ```
 
 **빠른 실행**:
+
 - 실제 DELETE 없음 → ROLLBACK만
 - DB 정리 시간 절약
 
@@ -286,14 +288,14 @@ test("다음 테스트는 깨끗한 DB", async () => {
   "fixture": {
     "client": "pg",
     "connection": {
-      "host": "fixture-db.company.com",  // 팀 공유 서버
+      "host": "fixture-db.company.com", // 팀 공유 서버
       "database": "myapp_fixture"
     }
   },
   "test": {
     "client": "pg",
     "connection": {
-      "host": "localhost",  // 로컬
+      "host": "localhost", // 로컬
       "database": "myapp_test"
     }
   }
@@ -321,6 +323,7 @@ Error: connect ECONNREFUSED 127.0.0.1:5432
 ```
 
 **해결**:
+
 - PostgreSQL 서버가 실행 중인지 확인
 - `sonamu.config.json`의 연결 정보 확인
 
@@ -331,6 +334,7 @@ Error: permission denied for database myapp_test
 ```
 
 **해결**:
+
 ```sql
 -- DB 사용자에게 권한 부여
 GRANT ALL PRIVILEGES ON DATABASE myapp_test TO postgres;
@@ -343,6 +347,7 @@ GRANT ALL PRIVILEGES ON DATABASE myapp_test TO postgres;
 ```
 
 **해결**:
+
 ```bash
 # DB를 강제로 재생성하려면 수동으로 삭제
 psql -c "DROP DATABASE myapp_test"
@@ -352,12 +357,10 @@ pnpm sonamu fixture init
 ## 주의사항
 
 <Warning>
-**테스트 DB 사용 시 주의사항**:
-1. **프로덕션 DB 절대 금지**: test DB는 프로덕션과 완전히 분리
-2. **스키마 동기화**: 마이그레이션 후 fixture init 실행
-3. **Transaction 기반**: 테스트 간 격리는 자동 처리
-4. **Fixture 공유**: 팀원과 동일한 Fixture DB 사용 권장
-5. **정기적인 초기화**: 개발 DB 스키마 변경 시 재초기화
+  **테스트 DB 사용 시 주의사항**: 1. **프로덕션 DB 절대 금지**: test DB는 프로덕션과 완전히 분리 2.
+  **스키마 동기화**: 마이그레이션 후 fixture init 실행 3. **Transaction 기반**: 테스트 간 격리는
+  자동 처리 4. **Fixture 공유**: 팀원과 동일한 Fixture DB 사용 권장 5. **정기적인 초기화**: 개발 DB
+  스키마 변경 시 재초기화
 </Warning>
 
 ## 다음 단계

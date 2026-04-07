@@ -6,11 +6,12 @@
 
 ## 얘가 하는 일
 
-TypeScript 파일을 직접 실행할 수 있게 도와줍니다. 
+TypeScript 파일을 직접 실행할 수 있게 도와줍니다.
 
 `ts-node` 또는 `tsx`와 비슷합니다.
 
 이런 식으로 씁니다:
+
 ```bash
 node --import @sonamu-kit/ts-loader test.ts
 ```
@@ -20,6 +21,7 @@ node --import @sonamu-kit/ts-loader test.ts
 보통 `ts-node`나 `tsx`로 실행하면 import 경로(`import.meta.filename`)가 실제 ts 파일의 위치가 됩니다.
 
 얘는 컨셉이 조금 다릅니다. 마치 빌드한 `dist` 폴더에 있는 `.js` 파일만 존재하는 것처럼 작동합니다.
+
 - `dist`의 `.js` 경로로 import해도 자동으로 `src`의 `.ts` 파일을 찾아서 트랜스파일해서 줍니다.
 - `src`의 `.ts` 경로로 import해도 당연히 잘 트랜스파일해서 줍니다.
 - `import.meta.filename`은 `dist`의 `.js` 파일의 경로가 됩니다.
@@ -28,9 +30,9 @@ node --import @sonamu-kit/ts-loader test.ts
 
 ## Fork해서 뜯어고친 부분
 
-### 1. 트랜스파일러 변경: esbuild -> swc
+### 1. 트랜스파일러 변경: esbuild -> OXC
 
-그냥 swc로 맞추고 싶어 바꾸었습니다.
+현재는 OXC 기반 transform 경로를 사용합니다.
 
 ### 2. 큰 버그 해결: `.ts` 확장자 Fully Resolved Path 처리
 

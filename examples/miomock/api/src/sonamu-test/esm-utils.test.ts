@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+
 import { isHotReloadServer } from "../../../../../modules/sonamu/dist/utils/controller";
 import {
   createImportUrl,
@@ -229,10 +230,10 @@ describe("esm-utils", () => {
     test.each([
       {
         mockModule: {
-          UserModel: class UserModel {},
-          PostModel: class PostModel {},
-          UserFrame: class {},
-          helper: () => {},
+          UserModel: class UserModel {}, // oxlint-disable
+          PostModel: class PostModel {}, // oxlint-disable
+          UserFrame: class {}, // oxlint-disable
+          helper: () => {}, // oxlint-disable
         },
         filter: (m: { name: string }) => m.name.endsWith("Model"),
         expected: ["UserModel", "PostModel"],
@@ -240,10 +241,10 @@ describe("esm-utils", () => {
       },
       {
         mockModule: {
-          UserModel: class {},
-          PostFrame: class PostFrame {},
-          CommentFrame: class CommentFrame {},
-          helper: () => {},
+          UserModel: class {}, // oxlint-disable
+          PostFrame: class PostFrame {}, // oxlint-disable
+          CommentFrame: class CommentFrame {}, // oxlint-disable
+          helper: () => {}, // oxlint-disable
         },
         filter: (m: { name: string }) => m.name.endsWith("Frame"),
         expected: ["PostFrame", "CommentFrame"],

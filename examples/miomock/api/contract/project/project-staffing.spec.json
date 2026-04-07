@@ -31,9 +31,7 @@
     "src/application/project/project.types.ts",
     "src/application/project/project.model.test.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "ProjectModel": "직원/태그 다대다 배정 동기화를 담당한다",
     "Project Types": "employee_ids, tag_ids 입력 구조를 정의한다"

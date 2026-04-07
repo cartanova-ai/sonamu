@@ -12,21 +12,25 @@ description: "관계 데이터를 선택하는 비동기 셀렉트 컴포넌트"
     API 호출
 
     자동 완성
+
   </Card>
   <Card title="타입 안전" icon="shield-check">
     Entity 기반
 
     ID 타입 보장
+
   </Card>
   <Card title="검색 지원" icon="magnifying-glass">
     실시간 필터링
 
     디바운스
+
   </Card>
   <Card title="다중 선택" icon="list-check">
     단일/다중 모드
 
     배열 반환
+
   </Card>
 </CardGroup>
 
@@ -37,6 +41,7 @@ description: "관계 데이터를 선택하는 비동기 셀렉트 컴포넌트"
 데이터베이스에서 외래키 관계를 처리할 때, 프론트엔드에서는 **관련 엔티티를 선택**해야 합니다.
 
 **전통적인 방식의 문제점**:
+
 ```typescript
 // ❌ 모든 사용자를 한 번에 로드 (비효율적)
 const [users, setUsers] = useState([]);
@@ -59,6 +64,7 @@ return (
 ```
 
 **문제점**:
+
 1. **성능**: 데이터가 많으면 로딩 시간 증가
 2. **메모리**: 불필요한 데이터를 모두 메모리에 적재
 3. **UX**: 사용자가 원하는 항목을 찾기 어려움
@@ -82,6 +88,7 @@ import { UserAsyncIdConfig } from "@/services/services.generated";
 ```
 
 **장점**:
+
 1. ✨ **성능**: 처음에는 최소한만 로드, 검색 시 필요한 것만
 2. ✨ **사용자 경험**: 자동완성으로 빠른 선택
 3. ✨ **타입 안전**: Entity 타입이 자동으로 적용
@@ -137,6 +144,7 @@ function PostForm() {
 ```
 
 **동작 방식**:
+
 1. 사용자가 타이핑하면 검색 API 호출
 2. 검색 결과를 드롭다운에 표시
 3. 선택 시 ID만 저장 (메모리 효율적)
@@ -169,6 +177,7 @@ function PostForm() {
 ```
 
 **다중 선택 특징**:
+
 - 선택된 항목을 태그 형태로 표시
 - X 버튼으로 개별 제거
 - 배열 형태로 ID 반환 (`number[]`)
@@ -194,6 +203,7 @@ function EditPostForm({ post }: { post: Post }) {
 ```
 
 **초기값 처리**:
+
 - `value`에 ID를 전달하면 자동으로 해당 엔티티 로드
 - 레이블 표시를 위해 백그라운드에서 단건 조회
 - 로딩 중에는 ID만 표시
@@ -245,6 +255,7 @@ function EditPostForm({ post }: { post: Post }) {
 ```
 
 **탐지 우선순위**:
+
 1. name-like 필드: `name`, `title`, `label`, `display_name`, `username`
 2. 첫 번째 string 타입 컬럼 (id 제외)
 3. fallback: `id`
@@ -316,9 +327,9 @@ function SelectWithRowData() {
 ```typescript
 // services.generated.ts에서 자동 생성
 export const UserAsyncIdConfig: AsyncIdConfig<
-  "A" | "D",              // TSubsetKey - 사용 가능한 Subset 키
-  UserSubsetMapping,      // TSubsetMapping - Subset별 타입 매핑
-  UserListParams          // TListParams - 검색 파라미터 타입
+  "A" | "D", // TSubsetKey - 사용 가능한 Subset 키
+  UserSubsetMapping, // TSubsetMapping - Subset별 타입 매핑
+  UserListParams // TListParams - 검색 파라미터 타입
 > = {
   placeholderKey: "user.placeholder",
   useList: UserService.useList,
@@ -522,46 +533,60 @@ function CompanySelectForm() {
 
 ## Props 레퍼런스
 
-| Prop | 타입 | 필수 | 설명 |
-|------|------|------|------|
-| `config` | `AsyncIdConfig` | ✓ | Entity의 AsyncIdConfig 객체 |
-| `subset` | `string` | ✓ | 조회할 Subset 키 |
-| `value` | `TValue \| TValue[] \| null` | | 선택된 값 |
-| `onValueChange` | `(value) => void` | | 값 변경 콜백 |
-| `onRowChange` | `(row) => void` | | Row 데이터 변경 콜백 |
-| `displayField` | `string \| ((row) => string)` | | 표시 필드 (생략 시 자동 탐지) |
-| `valueField` | `string` | | 값 필드 (기본: "id") |
-| `baseListParams` | `object` | | 검색 시 추가 파라미터 |
-| `multiple` | `boolean` | | 다중 선택 모드 |
-| `placeholder` | `string` | | 플레이스홀더 텍스트 |
-| `clearable` | `boolean` | | 선택 해제 가능 여부 |
-| `disabled` | `boolean` | | 비활성화 여부 |
-| `className` | `string` | | 추가 CSS 클래스 |
+| Prop             | 타입                          | 필수 | 설명                          |
+| ---------------- | ----------------------------- | ---- | ----------------------------- |
+| `config`         | `AsyncIdConfig`               | ✓    | Entity의 AsyncIdConfig 객체   |
+| `subset`         | `string`                      | ✓    | 조회할 Subset 키              |
+| `value`          | `TValue \| TValue[] \| null`  |      | 선택된 값                     |
+| `onValueChange`  | `(value) => void`             |      | 값 변경 콜백                  |
+| `onRowChange`    | `(row) => void`               |      | Row 데이터 변경 콜백          |
+| `displayField`   | `string \| ((row) => string)` |      | 표시 필드 (생략 시 자동 탐지) |
+| `valueField`     | `string`                      |      | 값 필드 (기본: "id")          |
+| `baseListParams` | `object`                      |      | 검색 시 추가 파라미터         |
+| `multiple`       | `boolean`                     |      | 다중 선택 모드                |
+| `placeholder`    | `string`                      |      | 플레이스홀더 텍스트           |
+| `clearable`      | `boolean`                     |      | 선택 해제 가능 여부           |
+| `disabled`       | `boolean`                     |      | 비활성화 여부                 |
+| `className`      | `string`                      |      | 추가 CSS 클래스               |
 
 ## 주의사항
 
 <Warning>
-**ID Async Select 사용 시 주의사항**:
-1. `config`는 `services.generated.ts`에서 자동 생성된 객체 사용
-2. `subset`은 Entity에 정의된 유효한 Subset 키여야 함
-3. 다중 선택 시 **배열 타입** 확인
-4. `displayField`로 지정한 필드는 해당 Subset에 포함되어 있어야 함
-5. 초기값 로딩 실패 시 에러 처리 필수
+  **ID Async Select 사용 시 주의사항**: 1. `config`는 `services.generated.ts`에서 자동 생성된 객체
+  사용 2. `subset`은 Entity에 정의된 유효한 Subset 키여야 함 3. 다중 선택 시 **배열 타입** 확인 4.
+  `displayField`로 지정한 필드는 해당 Subset에 포함되어 있어야 함 5. 초기값 로딩 실패 시 에러 처리
+  필수
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="View Scaffolding" icon="wand-magic-sparkles" href="/ko/frontend-integration/react-components/scaffolding-views">
+  <Card
+    title="View Scaffolding"
+    icon="wand-magic-sparkles"
+    href="/ko/frontend-integration/react-components/scaffolding-views"
+  >
     자동 뷰 생성
   </Card>
-  <Card title="Search Input" icon="magnifying-glass" href="/ko/frontend-integration/react-components/search-input">
+  <Card
+    title="Search Input"
+    icon="magnifying-glass"
+    href="/ko/frontend-integration/react-components/search-input"
+  >
     검색 컴포넌트
   </Card>
-  <Card title="커스텀 컴포넌트" icon="sliders" href="/ko/frontend-integration/react-components/custom-components">
+  <Card
+    title="커스텀 컴포넌트"
+    icon="sliders"
+    href="/ko/frontend-integration/react-components/custom-components"
+  >
     컴포넌트 커스터마이징
   </Card>
-  <Card title="Service 사용하기" icon="code" href="/ko/frontend-integration/generated-services/using-services">
+  <Card
+    title="Service 사용하기"
+    icon="code"
+    href="/ko/frontend-integration/generated-services/using-services"
+  >
     Service 통합
   </Card>
 </CardGroup>

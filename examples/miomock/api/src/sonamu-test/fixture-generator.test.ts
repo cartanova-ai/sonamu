@@ -1,6 +1,8 @@
-import { DB, type DBPreset, EntityManager } from "sonamu";
+import { DB, EntityManager } from "sonamu";
+import { type DBPreset } from "sonamu";
 import { bootstrap, DataExplorer, FixtureGenerator, test } from "sonamu/test";
 import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
+
 import {
   cleanupTestRecords,
   getFixtureMaxIds,

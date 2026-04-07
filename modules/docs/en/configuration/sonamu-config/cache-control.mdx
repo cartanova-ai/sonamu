@@ -1,6 +1,6 @@
 ---
-title: 'Cache-Control'
-description: 'HTTP Cache-Control header configuration'
+title: "Cache-Control"
+description: "HTTP Cache-Control header configuration"
 ---
 
 Sonamu can automatically set HTTP Cache-Control headers to control caching behavior in browsers and CDNs. You can apply appropriate caching strategies for each resource type including API responses, static files, and SSR pages.
@@ -48,6 +48,7 @@ type CacheControlRequest = {
 ### Request Types
 
 **type**:
+
 - `"assets"` - Static files (JS, CSS, images, etc.)
 - `"api"` - API endpoints
 - `"ssr"` - SSR pages
@@ -68,44 +69,56 @@ import { CachePresets } from "sonamu";
 ### Available Presets
 
 **CachePresets.noCache**
+
 ```
 Cache-Control: no-cache, no-store, must-revalidate
 ```
+
 - Always verify latest version from origin server
 - Use for: Real-time data, APIs requiring authentication
 
 **CachePresets.shortLived** (1 minute)
+
 ```
 Cache-Control: public, max-age=60
 ```
+
 - Cache for 1 minute
 - Use for: Frequently changing data, CSR entry point
 
 **CachePresets.mediumLived** (5 minutes)
+
 ```
 Cache-Control: public, max-age=300
 ```
+
 - Cache for 5 minutes
 - Use for: Data that changes at moderate intervals
 
 **CachePresets.longLived** (1 hour)
+
 ```
 Cache-Control: public, max-age=3600
 ```
+
 - Cache for 1 hour
 - Use for: Rarely changing static data
 
 **CachePresets.immutable** (1 year)
+
 ```
 Cache-Control: public, max-age=31536000, immutable
 ```
+
 - Cache for 1 year, never changes
 - Use for: Build files with hash in filename
 
 **CachePresets.ssr** (10 seconds)
+
 ```
 Cache-Control: public, max-age=10, stale-while-revalidate=60
 ```
+
 - Cache for 10 seconds, refresh in background
 - Use for: SSR pages
 
@@ -124,12 +137,12 @@ export default defineConfig({
         if (req.type === "api") {
           return CachePresets.noCache;
         }
-        
+
         // Long cache for static files
         if (req.type === "assets") {
           return CachePresets.longLived;
         }
-        
+
         // Short cache for SSR pages
         if (req.type === "ssr") {
           return CachePresets.ssr;
@@ -157,7 +170,7 @@ export default defineConfig({
           // Regular static files
           return CachePresets.longLived;
         }
-        
+
         return CachePresets.noCache;
       },
     },
@@ -181,13 +194,13 @@ export default defineConfig({
             if (req.path.startsWith("/api/static-data")) {
               return CachePresets.shortLived;
             }
-            
+
             // Medium cache for terms, etc.
             if (req.path.startsWith("/api/terms")) {
               return CachePresets.mediumLived;
             }
           }
-          
+
           // Default: no cache
           return CachePresets.noCache;
         }
@@ -215,7 +228,7 @@ export default defineConfig({
               return CachePresets.immutable;
             }
             return CachePresets.longLived;
-          
+
           case "api":
             // Cache only GET requests
             if (req.method === "GET") {
@@ -225,11 +238,11 @@ export default defineConfig({
               }
             }
             return CachePresets.noCache;
-          
+
           case "ssr":
             // SSR pages: 10 second cache
             return CachePresets.ssr;
-          
+
           case "csr":
             // index.html: 1 minute cache
             return CachePresets.shortLived;
@@ -254,15 +267,15 @@ export default defineConfig({
               return CachePresets.immutable;
             }
             return CachePresets.longLived;
-          
+
           case "api":
             // Don't cache APIs in CDN
             return CachePresets.noCache;
-          
+
           case "ssr":
             // Short cache for SSR in CDN
             return "public, max-age=30, stale-while-revalidate=120";
-          
+
           case "csr":
             return CachePresets.shortLived;
         }
@@ -285,7 +298,7 @@ export default defineConfig({
         if (isDev) {
           return CachePresets.noCache;
         }
-        
+
         // Production: normal caching strategy
         switch (req.type) {
           case "assets":
@@ -293,16 +306,16 @@ export default defineConfig({
               return CachePresets.immutable;
             }
             return CachePresets.longLived;
-          
+
           case "api":
             if (req.method === "GET") {
               return CachePresets.shortLived;
             }
             return CachePresets.noCache;
-          
+
           case "ssr":
             return CachePresets.ssr;
-          
+
           case "csr":
             return CachePresets.shortLived;
         }
@@ -325,12 +338,12 @@ export default defineConfig({
           // Feed: 5 minute cache + stale-while-revalidate
           return "public, max-age=300, stale-while-revalidate=600";
         }
-        
+
         if (req.type === "assets" && req.path.endsWith(".woff2")) {
           // Fonts: 1 year cache
           return "public, max-age=31536000, immutable";
         }
-        
+
         return CachePresets.noCache;
       },
     },
@@ -343,31 +356,38 @@ export default defineConfig({
 ### Key Directives
 
 **public**
+
 - Can be cached by CDN and intermediate proxies
 - Suitable for static files, public APIs
 
 **private**
+
 - Can only be cached by browser
 - Suitable for personalized data
 
 **no-cache**
+
 - Cache but always verify with origin
 - Conditional requests (304 Not Modified) possible
 
 **no-store**
+
 - Don't cache anywhere
 - Use for sensitive data
 
 **max-age=N**
+
 - Fresh state for N seconds
 - Use cache without revalidation during this period
 
 **immutable**
+
 - Will never change
 - Browser skips revalidation
 - Optimal for hash-based files
 
 **stale-while-revalidate=N**
+
 - Return stale version for N seconds after expiration
 - Refresh in background
 - Useful for SSR pages
@@ -376,16 +396,16 @@ export default defineConfig({
 
 ```typescript
 // Permanent cache (build files)
-"public, max-age=31536000, immutable"
+"public, max-age=31536000, immutable";
 
 // Short cache + background refresh (SSR)
-"public, max-age=10, stale-while-revalidate=60"
+"public, max-age=10, stale-while-revalidate=60";
 
 // Browser-only short cache (auth API)
-"private, max-age=60"
+"private, max-age=60";
 
 // No cache (real-time data)
-"no-cache, no-store, must-revalidate"
+"no-cache, no-store, must-revalidate";
 ```
 
 ## Returning undefined
@@ -401,7 +421,7 @@ export default defineConfig({
         if (req.path.startsWith("/api/internal")) {
           return undefined;
         }
-        
+
         return CachePresets.noCache;
       },
     },
@@ -416,12 +436,12 @@ export default defineConfig({
 ```typescript
 // ❌ Bad: public cache for auth API
 if (req.path.startsWith("/api/user/profile")) {
-  return "public, max-age=300";  // Risk of exposing other user's data!
+  return "public, max-age=300"; // Risk of exposing other user's data!
 }
 
 // ✅ Good: private or no-cache
 if (req.path.startsWith("/api/user/profile")) {
-  return "private, max-age=60";  // Or CachePresets.noCache
+  return "private, max-age=60"; // Or CachePresets.noCache
 }
 ```
 
@@ -443,12 +463,12 @@ if (req.type === "api") {
 ```typescript
 // Common build tool hash patterns
 const hashPatterns = [
-  /-[a-f0-9]{8,}\./,  // Vite: main-a3f2b1c4.js
-  /\.[a-f0-9]{20}\./,  // Webpack: main.a3f2b1c4d5e6f7a8b9c0.js
+  /-[a-f0-9]{8,}\./, // Vite: main-a3f2b1c4.js
+  /\.[a-f0-9]{20}\./, // Webpack: main.a3f2b1c4d5e6f7a8b9c0.js
 ];
 
 if (req.type === "assets") {
-  if (hashPatterns.some(p => p.test(req.path))) {
+  if (hashPatterns.some((p) => p.test(req.path))) {
     return CachePresets.immutable;
   }
 }

@@ -21,16 +21,16 @@ flowchart LR
         T1Insert --> T1Test["Verify"]
         T1Test --> T1Rollback["Rollback"]
     end
-    
+
     subgraph Test2["Test 2"]
         direction TB
         T2Start["Begin Transaction"] --> T2Update["Modify Data"]
         T2Update --> T2Test["Verify"]
         T2Test --> T2Rollback["Rollback"]
     end
-    
+
     T1Rollback --> T2Start
-    
+
     style Test1 fill:#e3f2fd
     style Test2 fill:#e3f2fd
 ```
@@ -71,24 +71,25 @@ export function bootstrap(vi: VitestUtils) {
   beforeAll(async () => {
     await Sonamu.initForTesting();
   });
-  
+
   beforeEach(async () => {
     await DB.createTestTransaction();  // Start transaction
   });
-  
+
   afterEach(async ({ task }) => {
     vi.useRealTimers();
     await DB.clearTestTransaction();   // Rollback transaction
-    
+
     // Send Naite logs
     await NaiteReporter.reportTestResult({...});
   });
-  
+
   afterAll(() => {});
 }
 ```
 
 **Key points**:
+
 1. `beforeEach`: Create transaction before each test starts
 2. `afterEach`: Rollback transaction after each test ends
 3. Always rollback regardless of test success/failure
@@ -120,11 +121,11 @@ export const config: SonamuConfig = {
       // Test environment settings
       test: {
         connection: {
-          database: "myapp_test",  // Separate test DB
+          database: "myapp_test", // Separate test DB
         },
         pool: {
           min: 1,
-          max: 1,  // Single connection pool (transaction isolation)
+          max: 1, // Single connection pool (transaction isolation)
         },
       },
       development: {
@@ -153,6 +154,7 @@ mysql -u root -e "CREATE DATABASE myapp_test;"
 </CodeGroup>
 
 **Important**:
+
 - Test DB is **completely separate** from development/production DB
 - Set `pool.max: 1` to use single connection (guarantees transaction isolation)
 
@@ -168,7 +170,7 @@ getDB(which: DBPreset): Knex {
     if (this.testTransaction) {
       return this.testTransaction;
     }
-    
+
     // Otherwise return wdb (single connection pool)
     if (!this.wdb) {
       this.wdb = createKnexInstance({
@@ -178,7 +180,7 @@ getDB(which: DBPreset): Knex {
     }
     return this.wdb;
   }
-  
+
   // Development/production environment logic
   // ...
 }
@@ -202,6 +204,7 @@ async createTestTransaction(): Promise<Knex.Transaction> {
 ```
 
 **How it works**:
+
 1. Get Write DB instance
 2. Start new transaction
 3. Store in `testTransaction` property
@@ -220,6 +223,7 @@ async clearTestTransaction(): Promise<void> {
 ```
 
 **How it works**:
+
 1. Rollback current transaction (cancel all changes)
 2. Initialize `testTransaction` to `null`
 3. Ready for next test
@@ -242,33 +246,33 @@ test("create and query user", async () => {
     email: "john@example.com",
   });
   expect(created.id).toBeDefined();
-  
+
   // Query
   const found = await userModel.findById(created.id);
   expect(found?.username).toBe("john");
-  
+
   // Auto rollback in afterEach → Not actually saved to DB
 });
 
 test("update user", async () => {
   // New transaction starts → No data from previous test
   const user = await userModel.create({ username: "jane" });
-  
+
   // Update
   await userModel.update(user.id, { username: "jane_updated" });
-  
+
   // Verify
   const updated = await userModel.findById(user.id);
   expect(updated?.username).toBe("jane_updated");
-  
+
   // Rollback
 });
 
 test("delete user", async () => {
   const user = await userModel.create({ username: "bob" });
-  
+
   await userModel.delete(user.id);
-  
+
   const deleted = await userModel.findById(user.id);
   expect(deleted).toBeNull();
 });
@@ -280,25 +284,25 @@ test("delete user", async () => {
 test("create post and comments", async () => {
   // Create user
   const user = await userModel.create({ username: "john" });
-  
+
   // Create post
   const post = await postModel.create({
     author_id: user.id,
     title: "Hello World",
   });
-  
+
   // Create comment
   const comment = await commentModel.create({
     post_id: post.id,
     author_id: user.id,
     content: "Nice post!",
   });
-  
+
   // Verify
   const comments = await commentModel.findByPostId(post.id);
   expect(comments.length).toBe(1);
   expect(comments[0].content).toBe("Nice post!");
-  
+
   // Rollback → user, post, comment all deleted
 });
 ```
@@ -308,21 +312,17 @@ test("create post and comments", async () => {
 ```typescript
 test("duplicate username error", async () => {
   await userModel.create({ username: "john" });
-  
+
   // Try to create with duplicate username
-  await expect(
-    userModel.create({ username: "john" })
-  ).rejects.toThrow("Username already exists");
-  
+  await expect(userModel.create({ username: "john" })).rejects.toThrow("Username already exists");
+
   // Transaction rolls back even on error
 });
 
 test("constraint violation", async () => {
   // NOT NULL constraint violation
-  await expect(
-    userModel.create({ username: null as any })
-  ).rejects.toThrow();
-  
+  await expect(userModel.create({ username: null as any })).rejects.toThrow();
+
   // Rollback keeps DB state clean
 });
 ```
@@ -333,27 +333,27 @@ test("constraint violation", async () => {
 test("full order creation flow", async () => {
   // 1. Create user
   const user = await userModel.create({ username: "customer" });
-  
+
   // 2. Create product
   const product = await productModel.create({
     name: "Laptop",
     price: 1000000,
     stock: 10,
   });
-  
+
   // 3. Create order (includes stock reduction)
   const order = await orderModel.create({
     user_id: user.id,
     items: [{ product_id: product.id, quantity: 2 }],
   });
-  
+
   // 4. Check stock
   const updatedProduct = await productModel.findById(product.id);
-  expect(updatedProduct?.stock).toBe(8);  // 10 - 2
-  
+  expect(updatedProduct?.stock).toBe(8); // 10 - 2
+
   // 5. Check order
   expect(order.total_amount).toBe(2000000);
-  
+
   // Full rollback → user, product, order all deleted, stock restored
 });
 ```
@@ -372,7 +372,7 @@ bootstrap(vi);
 test("Test 1: Create data", async () => {
   const user = await userModel.create({ username: "test1" });
   expect(user.id).toBeDefined();
-  
+
   const count = await userModel.count();
   expect(count).toBe(1);
 });
@@ -381,8 +381,8 @@ test("Test 2: Verify isolation", async () => {
   // Previous test data was rolled back
   // DB should be clean
   const count = await userModel.count();
-  expect(count).toBe(0);  // ✅ Passes
-  
+  expect(count).toBe(0); // ✅ Passes
+
   // Create new data
   await userModel.create({ username: "test2" });
   const newCount = await userModel.count();
@@ -391,7 +391,7 @@ test("Test 2: Verify isolation", async () => {
 
 test("Test 3: Verify isolation again", async () => {
   const count = await userModel.count();
-  expect(count).toBe(0);  // ✅ Passes
+  expect(count).toBe(0); // ✅ Passes
 });
 ```
 
@@ -405,20 +405,20 @@ import { DB } from "sonamu";
 test("manual transaction control", async () => {
   // Get current test transaction
   const trx = DB.testTransaction;
-  
+
   if (!trx) {
     throw new Error("No transaction");
   }
-  
+
   // Execute query directly within transaction
   await trx("users").insert({
     username: "manual",
     email: "manual@example.com",
   });
-  
+
   const users = await trx("users").where({ username: "manual" });
   expect(users.length).toBe(1);
-  
+
   // Auto rollback in afterEach
 });
 ```
@@ -431,6 +431,7 @@ Some operations execute outside transaction scope, so caution is needed:
 **Operations not rolled back by transactions**:
 
 1. **File system operations**
+
    ```typescript
    test("file upload", async () => {
      await fs.writeFile("/tmp/test.txt", "data");
@@ -439,6 +440,7 @@ Some operations execute outside transaction scope, so caution is needed:
    ```
 
 2. **External API calls**
+
    ```typescript
    test("payment API call", async () => {
      await paymentAPI.charge(1000);
@@ -447,6 +449,7 @@ Some operations execute outside transaction scope, so caution is needed:
    ```
 
 3. **DDL statements (exception for PostgreSQL)**
+
    ```typescript
    test("create table", async () => {
      await DB.getDB("w").schema.createTable("temp", (t) => {
@@ -465,7 +468,7 @@ Some operations execute outside transaction scope, so caution is needed:
      // Can control with vi.useFakeTimers()
    });
    ```
-</Warning>
+   </Warning>
 
 ### File System Mocking
 
@@ -477,16 +480,16 @@ import { access, constants } from "fs/promises";
 
 test("virtual file system", async () => {
   const filePath = "/tmp/virtual-file.txt";
-  
+
   // Register virtual file
   Naite.t("mock:fs/promises:virtualFileSystem", filePath);
-  
+
   // Check file existence
   await expect(access(filePath, constants.F_OK)).resolves.toBeUndefined();
-  
+
   // Delete Mock
   Naite.del("mock:fs/promises:virtualFileSystem");
-  
+
   // File no longer exists
   await expect(access(filePath, constants.F_OK)).rejects.toThrow();
 });
@@ -511,6 +514,7 @@ test: {
 ```
 
 **Reason**:
+
 - Same connection must be used to guarantee transaction isolation
 - Transactions aren't shared with multiple connections
 
@@ -535,7 +539,7 @@ export default defineConfig({
     pool: "forks",
     poolOptions: {
       forks: {
-        singleFork: true,  // Single process
+        singleFork: true, // Single process
       },
     },
   },
@@ -556,7 +560,7 @@ export default defineConfig({
 4. **DDL caution**: In MySQL, DDL statements commit immediately and are not rolled back. Avoid table creation/deletion in tests.
 
 5. **Limit parallel execution**: Sequential test execution is recommended for transaction isolation.
-</Warning>
+   </Warning>
 
 ## Next Steps
 

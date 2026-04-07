@@ -1,6 +1,6 @@
 ---
-title: 'Sinks & Filters'
-description: 'Log output destinations and filtering configuration'
+title: "Sinks & Filters"
+description: "Log output destinations and filtering configuration"
 ---
 
 Sinks determine where logs are output, and Filters determine which logs to output. You can add custom sinks and filters in the `logging` option of `sonamu.config.ts`.
@@ -10,6 +10,7 @@ Sinks determine where logs are output, and Filters determine which logs to outpu
 A Sink is where logs are ultimately output.
 
 **Examples:**
+
 - Console (terminal)
 - Files
 - External logging services (Sentry, Datadog, etc.)
@@ -20,6 +21,7 @@ A Sink is where logs are ultimately output.
 Logs should be recorded in different places depending on their purpose:
 
 **1. Real-time Monitoring (Console)**
+
 ```typescript
 // Check immediately during development
 logger.info("API called", { url: "/api/user" });
@@ -27,6 +29,7 @@ logger.info("API called", { url: "/api/user" });
 ```
 
 **2. Permanent Storage (File)**
+
 ```typescript
 // For later analysis
 logger.error("Payment failed", { orderId });
@@ -34,6 +37,7 @@ logger.error("Payment failed", { orderId });
 ```
 
 **3. Error Notifications (External Service)**
+
 ```typescript
 // Immediate notification for serious issues
 logger.fatal("DB connection lost");
@@ -41,6 +45,7 @@ logger.fatal("DB connection lost");
 ```
 
 **4. Statistical Analysis (Database)**
+
 ```typescript
 // Log data analysis
 logger.info("User action", { action: "purchase", amount });
@@ -55,13 +60,14 @@ You can send a single log to multiple Sinks at once:
 loggers: [
   {
     category: ["fastify"],
-    sinks: ["console", "file", "sentry"],  // Record to 3 places simultaneously
+    sinks: ["console", "file", "sentry"], // Record to 3 places simultaneously
     lowestLevel: "error",
   },
-]
+];
 ```
 
 **Benefits:**
+
 - Real-time viewing (console)
 - Permanent storage (file)
 - Immediate alerts (sentry)
@@ -71,6 +77,7 @@ loggers: [
 A Filter is a condition for selectively outputting logs.
 
 **Examples:**
+
 - Only specific categories
 - Only above a certain level
 - Only specific URL patterns
@@ -81,18 +88,26 @@ A Filter is a condition for selectively outputting logs.
 Recording all logs causes problems:
 
 **1. Performance Degradation**
+
 ```typescript
 // No Filter: logging all requests
-/favicon.ico  // Unnecessary
-/assets/logo.png  // Unnecessary
-/api/healthcheck  // Repetitive, unnecessary
-/api/user/list  // Needed!
-
-// With Filter: logging only /api
-/api/user/list  // Needed!
+/favicon.ico  / /
+  Unnecessary /
+  assets /
+  logo.png / // Unnecessary
+  api /
+  healthcheck / // Repetitive, unnecessary
+  api /
+  user /
+  list / // Needed!
+  // With Filter: logging only /api
+  api /
+  user /
+  list; // Needed!
 ```
 
 **2. Disk Space Waste**
+
 ```typescript
 // 1 million requests per day
 // No Filter: record all 1 million → hundreds of MB
@@ -100,6 +115,7 @@ Recording all logs causes problems:
 ```
 
 **3. Readability Degradation**
+
 ```
 [Log file]
 [INFO] /favicon.ico
@@ -130,12 +146,12 @@ filters: {
 
 The two concepts have different purposes:
 
-| Aspect | Sink | Filter |
-|--------|------|--------|
-| **Purpose** | Where to record? | What to record? |
-| **Timing** | At log output | At filtering |
-| **Examples** | Console, file, Sentry | URL patterns, levels, time |
-| **Role** | Determine output format | Determine whether to output |
+| Aspect       | Sink                    | Filter                      |
+| ------------ | ----------------------- | --------------------------- |
+| **Purpose**  | Where to record?        | What to record?             |
+| **Timing**   | At log output           | At filtering                |
+| **Examples** | Console, file, Sentry   | URL patterns, levels, time  |
+| **Role**     | Determine output format | Determine whether to output |
 
 ### Using Them Together
 
@@ -145,12 +161,12 @@ The two concepts have different purposes:
     console: getConsoleSink(),      // Where?
     errorFile: getFileSink("..."),  // Where?
   },
-  
+
   filters: {
     "api-only": (record) => ...,   // What?
     "errors": (record) => ...,      // What?
   },
-  
+
   loggers: [
     {
       category: ["fastify"],
@@ -171,6 +187,7 @@ The two concepts have different purposes:
 ### When to Add a Sink
 
 **1. When you need a new output destination**
+
 ```typescript
 // Example: Send error notifications to Slack
 sinks: {
@@ -179,6 +196,7 @@ sinks: {
 ```
 
 **2. When recording in a different format**
+
 ```typescript
 // Example: Save to file in JSON format
 sinks: {
@@ -187,17 +205,19 @@ sinks: {
 ```
 
 **3. When recording to multiple places simultaneously**
+
 ```typescript
 loggers: [
   {
-    sinks: ["console", "file", "sentry"],  // To 3 places simultaneously
+    sinks: ["console", "file", "sentry"], // To 3 places simultaneously
   },
-]
+];
 ```
 
 ### When to Add a Filter
 
 **1. When you only need logs matching specific conditions**
+
 ```typescript
 // Example: Only slow requests
 filters: {
@@ -206,6 +226,7 @@ filters: {
 ```
 
 **2. When you want to improve performance**
+
 ```typescript
 // Example: Exclude unnecessary logs
 filters: {
@@ -214,17 +235,18 @@ filters: {
 ```
 
 **3. When you want to send different logs to different Sinks**
+
 ```typescript
 loggers: [
   {
     sinks: ["console"],
-    filters: ["all"],     // Console: all logs
+    filters: ["all"], // Console: all logs
   },
   {
     sinks: ["errorFile"],
-    filters: ["errors"],  // File: errors only
+    filters: ["errors"], // File: errors only
   },
-]
+];
 ```
 
 ## Sinks Configuration Details
@@ -246,7 +268,7 @@ export default defineConfig({
       "my-file": getFileSink("logs/app.log"),
     },
   },
-  
+
   server: {
     // ...
   },
@@ -254,7 +276,8 @@ export default defineConfig({
 ```
 
 <Warning>
-The name `"fastify-console"` is the default Sink automatically generated by Sonamu. Adding with this name will overwrite the default Sink.
+  The name `"fastify-console"` is the default Sink automatically generated by Sonamu. Adding with
+  this name will overwrite the default Sink.
 </Warning>
 
 ### Console Sink
@@ -276,7 +299,7 @@ export default defineConfig({
       }),
     },
   },
-  
+
   server: {
     // ...
   },
@@ -296,7 +319,7 @@ export default defineConfig({
       accessLog: getFileSink("logs/access.log"),
       errorLog: getFileSink("logs/errors.log"),
     },
-    
+
     loggers: [
       // All logs to access.log
       {
@@ -312,7 +335,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -335,7 +358,7 @@ export default defineConfig({
       stream: getStreamSink(stream),
     },
   },
-  
+
   server: {
     // ...
   },
@@ -364,16 +387,16 @@ export default defineConfig({
     sinks: {
       sentry: sentrySink,
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
-        sinks: ["fastify-console", "sentry"],  // Console + Sentry
+        sinks: ["fastify-console", "sentry"], // Console + Sentry
         lowestLevel: "info",
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -405,7 +428,7 @@ export default defineConfig({
       },
     },
   },
-  
+
   server: {
     // ...
   },
@@ -413,7 +436,8 @@ export default defineConfig({
 ```
 
 <Warning>
-The name `"fastify-console"` is the default Filter automatically generated by Sonamu. Adding with this name will overwrite the default Filter.
+  The name `"fastify-console"` is the default Filter automatically generated by Sonamu. Adding with
+  this name will overwrite the default Filter.
 </Warning>
 
 ### URL-Based Filter
@@ -432,17 +456,17 @@ export default defineConfig({
         return url?.startsWith("/api/user") ?? false;
       },
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
         sinks: ["fastify-console"],
-        filters: ["user-api"],  // /api/user/* only
+        filters: ["user-api"], // /api/user/* only
         lowestLevel: "info",
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -459,7 +483,7 @@ export default defineConfig({
       "warning-or-higher": (record) => record.level >= "warning",
     },
   },
-  
+
   server: {
     // ...
   },
@@ -474,11 +498,11 @@ export default defineConfig({
     filters: {
       "business-hours": (record) => {
         const hour = new Date().getHours();
-        return hour >= 9 && hour < 18;  // 09:00 - 18:00 only
+        return hour >= 9 && hour < 18; // 09:00 - 18:00 only
       },
     },
   },
-  
+
   server: {
     // ...
   },
@@ -493,11 +517,11 @@ export default defineConfig({
     filters: {
       "slow-requests": (record) => {
         const responseTime = record.properties.responseTime as number | undefined;
-        return responseTime ? responseTime > 1000 : false;  // Over 1 second only
+        return responseTime ? responseTime > 1000 : false; // Over 1 second only
       },
     },
   },
-  
+
   server: {
     // ...
   },
@@ -530,7 +554,7 @@ export default defineConfig({
             errorFile: getFileSink("logs/errors.log"),
           }),
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -548,7 +572,7 @@ export default defineConfig({
         : []),
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -570,7 +594,7 @@ export default defineConfig({
       accessLog: getFileSink("logs/access.log"),
       errorLog: getFileSink("logs/error.log"),
     },
-    
+
     filters: {
       "api-requests": (record: LogRecord) => {
         const req = record.properties.req as FastifyRequest | undefined;
@@ -580,7 +604,7 @@ export default defineConfig({
       },
       "errors-only": (record: LogRecord) => record.level >= "error",
     },
-    
+
     loggers: [
       // Console: all logs
       {
@@ -604,7 +628,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -639,7 +663,7 @@ export default defineConfig({
       console: getConsoleSink(),
       sentry: sentrySink,
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -648,7 +672,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -670,7 +694,7 @@ export default defineConfig({
       adminLog: getFileSink("logs/admin.log"),
       userLog: getFileSink("logs/user.log"),
     },
-    
+
     filters: {
       "admin-routes": (record: LogRecord) => {
         const req = record.properties.req as FastifyRequest | undefined;
@@ -685,7 +709,7 @@ export default defineConfig({
         return url?.startsWith("/api/user") ?? false;
       },
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -701,7 +725,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -723,6 +747,7 @@ type LogRecord = {
 ```
 
 **Key properties:**
+
 - `category`: Log category (e.g., `["fastify"]`)
 - `level`: Log level (`"debug"` | `"info"` | `"warning"` | `"error"` | `"fatal"`)
 - `message`: Log message array
@@ -730,6 +755,7 @@ type LogRecord = {
 - `properties`: Additional information (for Fastify: `req`, `res`, etc.)
 
 **Fastify's properties:**
+
 ```typescript
 {
   req?: FastifyRequest;
@@ -805,33 +831,25 @@ filters: {
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="Category Logging" 
-    icon="folder-tree" 
+  <Card
+    title="Category Logging"
+    icon="folder-tree"
     href="/en/configuration/logging/category-logging"
   >
     Manage logs systematically with the category system
   </Card>
-  
-  <Card 
-    title="Fastify Logging" 
-    icon="bolt" 
-    href="/en/configuration/logging/fastify-logging"
-  >
-    Customize HTTP request/response logging
-  </Card>
-  
-  <Card 
-    title="LogTape Setup" 
-    icon="gear" 
-    href="/en/configuration/logging/logtape-setup"
-  >
-    Learn basic logging configuration and concepts
-  </Card>
-  
-  <Card 
-    title="LogTape Official Documentation" 
-    icon="book-open" 
+
+<Card title="Fastify Logging" icon="bolt" href="/en/configuration/logging/fastify-logging">
+  Customize HTTP request/response logging
+</Card>
+
+<Card title="LogTape Setup" icon="gear" href="/en/configuration/logging/logtape-setup">
+  Learn basic logging configuration and concepts
+</Card>
+
+  <Card
+    title="LogTape Official Documentation"
+    icon="book-open"
     href="https://github.com/dahlia/logtape"
   >
     Check LogTape's advanced features and APIs

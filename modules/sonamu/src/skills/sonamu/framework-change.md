@@ -13,12 +13,12 @@ Criteria for deciding whether to directly modify the framework or apply a projec
 
 Evaluate along the following 4 axes:
 
-| Axis | Project workaround | Framework fix |
-|----|-------------|----------------|
-| **Reproduction scope** | Only occurs in specific usage patterns | Occurs regardless of usage pattern |
-| **Workaround cost** | Resolved by modifying one place in the project | Workaround must be propagated to all projects |
-| **Impact scope** | Uncertain ripple effects on other projects if framework is changed | Change scope is isolated and side effects are clear |
-| **Ownership** | The code has a known author and discussion is needed | Bug is clear and a review path is available |
+| Axis                   | Project workaround                                                 | Framework fix                                       |
+| ---------------------- | ------------------------------------------------------------------ | --------------------------------------------------- |
+| **Reproduction scope** | Only occurs in specific usage patterns                             | Occurs regardless of usage pattern                  |
+| **Workaround cost**    | Resolved by modifying one place in the project                     | Workaround must be propagated to all projects       |
+| **Impact scope**       | Uncertain ripple effects on other projects if framework is changed | Change scope is isolated and side effects are clear |
+| **Ownership**          | The code has a known author and discussion is needed               | Bug is clear and a review path is available         |
 
 **Criteria for choosing project workaround**: If 2 or more of the 4 axes lean toward "project workaround", apply the workaround first.
 
@@ -62,6 +62,7 @@ async upload(entity_type: string, entity_id: number, file_type: string)
 ```
 
 Generated result:
+
 ```typescript
 // mutationFn only passes params.params and params.files (entity_id and file_type are missing)
 mutationFn: (params: { params: string; ... }) => upload(params.params, params.files)
@@ -77,11 +78,12 @@ async upload(params: { entity_type: string; entity_id: number; file_type: string
 The Sonamu backend automatically deserializes nested formData in the form `params[entity_type]` using `qs`, so this has no effect on runtime behavior.
 
 Call-site pattern:
+
 ```typescript
 uploadMutation.mutate({
   params: { entity_type, entity_id, file_type },
   files,
-})
+});
 ```
 
 **Rule**: If an `@upload` method requires 2 or more parameters, always wrap them in a single object.

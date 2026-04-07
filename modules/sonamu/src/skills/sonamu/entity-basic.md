@@ -216,12 +216,12 @@ A top-level option used when a child entity is managed as a dependent of a paren
 
 ### When to use parentId
 
-| Situation | parentId | Example |
-|-----------|----------|---------|
-| Cannot exist without a parent | Yes | OrderItem → Order |
-| Created and deleted together with parent | Yes | Chapter → Course, Lesson → Chapter |
-| Can be independently CRUD'd | No | Comment → Post |
-| Can belong to multiple parents | No | Tag → Post (ManyToMany) |
+| Situation                                | parentId | Example                            |
+| ---------------------------------------- | -------- | ---------------------------------- |
+| Cannot exist without a parent            | Yes      | OrderItem → Order                  |
+| Created and deleted together with parent | Yes      | Chapter → Course, Lesson → Chapter |
+| Can be independently CRUD'd              | No       | Comment → Post                     |
+| Can belong to multiple parents           | No       | Tag → Post (ManyToMany)            |
 
 ### parentId usage example
 
@@ -243,12 +243,12 @@ Child entities with parentId set (e.g., Chapter, Lesson) do not get their own `t
 
 Child entities with parentId must be placed **in the same folder as the root parent entity**.
 
-| Structure | Description |
-|-----------|-------------|
-| `course/course.entity.json` | Root entity |
-| `course/chapter.entity.json` | parentId: "Course" → same folder |
-| `course/lesson.entity.json` | parentId: "Chapter" → same folder (based on root) |
-| `course/course.types.ts` | types.ts generated only for root |
+| Structure                    | Description                                       |
+| ---------------------------- | ------------------------------------------------- |
+| `course/course.entity.json`  | Root entity                                       |
+| `course/chapter.entity.json` | parentId: "Course" → same folder                  |
+| `course/lesson.entity.json`  | parentId: "Chapter" → same folder (based on root) |
+| `course/course.types.ts`     | types.ts generated only for root                  |
 
 **Note:** Do not create child entities in a separate folder (e.g., `chapter/chapter.entity.json`).
 
@@ -344,8 +344,8 @@ Sonamu's `ubUpsert` uses PostgreSQL `ON CONFLICT ... DO UPDATE`, so **all requir
 // example
 {
   "props": [
-    { "name": "title", "type": "string" },    // required (no nullable)
-    { "name": "content", "type": "string" },  // required (no nullable)
+    { "name": "title", "type": "string" }, // required (no nullable)
+    { "name": "content", "type": "string" }, // required (no nullable)
     { "name": "category", "type": "string", "nullable": true } // optional
   ]
 }
@@ -382,7 +382,7 @@ A dedicated prop type that consolidates multiple columns into a single generated
   "props": [
     { "name": "title_ko", "type": "string" },
     { "name": "title_en", "type": "string" },
-    { "name": "tags",     "type": "string[]" },
+    { "name": "tags", "type": "string[]" },
     {
       "name": "search_text",
       "type": "searchText",
@@ -406,10 +406,10 @@ A dedicated prop type that consolidates multiple columns into a single generated
 
 SQL expressions per source column type:
 
-| source type | caseInsensitive: true | caseInsensitive: false (default) |
-|------------|----------------------|----------------------------------|
-| `string` | `lower(COALESCE(col, ''))` | `COALESCE(col, '')` |
-| `string[]` | `sonamu_text_array_agg(col)` | `sonamu_text_array_agg(col, false)` |
+| source type                  | caseInsensitive: true         | caseInsensitive: false (default)     |
+| ---------------------------- | ----------------------------- | ------------------------------------ |
+| `string`                     | `lower(COALESCE(col, ''))`    | `COALESCE(col, '')`                  |
+| `string[]`                   | `sonamu_text_array_agg(col)`  | `sonamu_text_array_agg(col, false)`  |
 | `json` (z.array(z.string())) | `sonamu_jsonb_array_agg(col)` | `sonamu_jsonb_array_agg(col, false)` |
 
 - If a `string[]` or `json(string[])` source is present, helper function DDL is automatically inserted in the migration
@@ -440,9 +440,9 @@ SQL expressions per source column type:
 
 **The way FK columns are referenced differs between indexes and subsets. Do not confuse them.**
 
-| Location | Format | Example |
-|----------|--------|---------|
-| `indexes` | Actual DB column name | `role_id`, `user_id`, `department_id` |
+| Location  | Format                     | Example                               |
+| --------- | -------------------------- | ------------------------------------- |
+| `indexes` | Actual DB column name      | `role_id`, `user_id`, `department_id` |
 | `subsets` | FieldExpr (relation.field) | `role.id`, `user.id`, `department.id` |
 
 **DO NOT:**
@@ -476,20 +476,20 @@ Not a technical decision — ask **"What if the same combination is inserted twi
 
 ## Common Mistakes
 
-| Mistake | Fix |
-|---------|-----|
-| Missing `id` prop | Recommended to add (needed by most Model logic) |
-| Missing `created_at` prop | Recommended to add with `dbDefault: "CURRENT_TIMESTAMP"` |
-| Missing `OrderBy` enum | Add `{EntityId}OrderBy` (needed for findMany sorting) |
-| Missing `SearchField` enum | Add `{EntityId}SearchField` (needed for search) |
-| enum prop `id` not defined in enums | Add definition to the enums section |
-| Missing `id` on json prop | Add the `id` field |
-| Using `"type": "text"` directly | `text` is invalid. Use `"type": "string"` without a length |
-| Adding multiple values to `OrderBy` enum | **Default is `id-desc` only** (see below) |
-| Defining fixed-choice fields as `string` | Convert to enum (check for fields with arrayElement-style fixtureGenerator) |
-| Yearly/mapping tables without unique constraints | Add composite unique based on business rules |
-| Using `number` type for integer fields | Use `integer` (use `numeric` only when decimal precision is needed) |
-| Using `role.id` format in indexes | indexes use actual DB column name (`role_id`); only subsets use FieldExpr (`role.id`) |
+| Mistake                                          | Fix                                                                                   |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| Missing `id` prop                                | Recommended to add (needed by most Model logic)                                       |
+| Missing `created_at` prop                        | Recommended to add with `dbDefault: "CURRENT_TIMESTAMP"`                              |
+| Missing `OrderBy` enum                           | Add `{EntityId}OrderBy` (needed for findMany sorting)                                 |
+| Missing `SearchField` enum                       | Add `{EntityId}SearchField` (needed for search)                                       |
+| enum prop `id` not defined in enums              | Add definition to the enums section                                                   |
+| Missing `id` on json prop                        | Add the `id` field                                                                    |
+| Using `"type": "text"` directly                  | `text` is invalid. Use `"type": "string"` without a length                            |
+| Adding multiple values to `OrderBy` enum         | **Default is `id-desc` only** (see below)                                             |
+| Defining fixed-choice fields as `string`         | Convert to enum (check for fields with arrayElement-style fixtureGenerator)           |
+| Yearly/mapping tables without unique constraints | Add composite unique based on business rules                                          |
+| Using `number` type for integer fields           | Use `integer` (use `numeric` only when decimal precision is needed)                   |
+| Using `role.id` format in indexes                | indexes use actual DB column name (`role_id`); only subsets use FieldExpr (`role.id`) |
 
 ## Resolving Entity Schema Validation Errors
 
@@ -556,10 +556,10 @@ PostgreSQL mapping:
 - `integer` → DB `integer` (whole numbers)
 - `number` → DB `numeric(p,s)` (precise decimal numbers)
 
-| Use case | Entity type | Example |
-|----------|-------------|---------|
-| PK, FK, count, order, quantity | `integer` | id, user_id, order_num, quantity |
-| Amount, ratio, values requiring decimal | `number` (+ `precision`, `scale`) | price, rate, weight, score |
+| Use case                                | Entity type                       | Example                          |
+| --------------------------------------- | --------------------------------- | -------------------------------- |
+| PK, FK, count, order, quantity          | `integer`                         | id, user_id, order_num, quantity |
+| Amount, ratio, values requiring decimal | `number` (+ `precision`, `scale`) | price, rate, weight, score       |
 
 **DO NOT:**
 
@@ -586,30 +586,30 @@ PostgreSQL mapping:
 
 Options applicable to all prop types:
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `name` | string | Field name (required) |
-| `desc` | string | Field description |
-| `nullable` | boolean | Whether NULL is allowed (default: false) |
-| `toFilter` | true | Register as a sonamuFilter filtering target. See model.md |
-| `cone` | Cone | LLM-based fixture generation metadata. See cone.md |
+| Option     | Type    | Description                                               |
+| ---------- | ------- | --------------------------------------------------------- |
+| `name`     | string  | Field name (required)                                     |
+| `desc`     | string  | Field description                                         |
+| `nullable` | boolean | Whether NULL is allowed (default: false)                  |
+| `toFilter` | true    | Register as a sonamuFilter filtering target. See model.md |
+| `cone`     | Cone    | LLM-based fixture generation metadata. See cone.md        |
 
 ## Required Options by Type
 
-| Type | Required | Optional |
-|------|----------|---------|
-| `string` | — | `length` (text if omitted), `zodFormat` (email, uuid, etc.) |
-| `integer` | — | — |
-| `bigInteger` | — | — |
-| `number` | — | `precision`, `scale`, `numberType` (real/double precision/numeric) |
-| `numeric` | — | `precision`, `scale` |
-| `enum` | `id` | `nullable`, `dbDefault`, `length` |
-| `json` | `id` | `dbDefault: "{}"` |
-| `date` | — | `dbDefault`, `precision` |
-| `boolean` | — | `dbDefault: "false"` |
-| `virtual` | `id` | `virtualType` (query/code, default: code) |
-| `vector` | `dimensions` | — |
-| `tsvector` | — | — |
+| Type         | Required     | Optional                                                           |
+| ------------ | ------------ | ------------------------------------------------------------------ |
+| `string`     | —            | `length` (text if omitted), `zodFormat` (email, uuid, etc.)        |
+| `integer`    | —            | —                                                                  |
+| `bigInteger` | —            | —                                                                  |
+| `number`     | —            | `precision`, `scale`, `numberType` (real/double precision/numeric) |
+| `numeric`    | —            | `precision`, `scale`                                               |
+| `enum`       | `id`         | `nullable`, `dbDefault`, `length`                                  |
+| `json`       | `id`         | `dbDefault: "{}"`                                                  |
+| `date`       | —            | `dbDefault`, `precision`                                           |
+| `boolean`    | —            | `dbDefault: "false"`                                               |
+| `virtual`    | `id`         | `virtualType` (query/code, default: code)                          |
+| `vector`     | `dimensions` | —                                                                  |
+| `tsvector`   | —            | —                                                                  |
 
 ## IMPORTANT: ENUM Type dbDefault Setting
 

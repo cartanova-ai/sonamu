@@ -1,10 +1,13 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: 제네릭 기본값으로 any 사용 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 제네릭 기본값으로 any 사용
 
-import type { BetterAuthClientOptions } from "better-auth/client";
+import { type BetterAuthClientOptions } from "better-auth/client";
 import { createAuthClient } from "better-auth/react";
-import { createContext, type ReactNode, useContext, useRef } from "react";
-import { type RCKeyName, type RCKeys, rcKeysEn } from "../i18n/rc-keys";
-import type { Dictionary, SDReturnType, SonamuFile } from "./types";
+import { createContext, useContext, useRef } from "react";
+import { type ReactNode } from "react";
+
+import { rcKeysEn } from "../i18n/rc-keys";
+import { type RCKeyName, type RCKeys } from "../i18n/rc-keys";
+import { type Dictionary, type SDReturnType, type SonamuFile } from "./types";
 
 /** createAuthClient의 반환 타입을 옵션으로부터 추론하는 유틸리티 타입 */
 export type SonamuAuthClient<O extends BetterAuthClientOptions> = ReturnType<
@@ -44,7 +47,7 @@ const createSDFallback = <D extends Dictionary = RCKeys>() => {
   };
 };
 
-const SonamuContext = createContext<SonamuContextValue>({} as SonamuContextValue);
+const SonamuContext = createContext({} as SonamuContextValue);
 
 export function SonamuProvider<
   D extends Dictionary = Dictionary,
@@ -52,7 +55,7 @@ export function SonamuProvider<
 >({ children, authOptions, ...value }: SonamuProviderProps<D, O>) {
   const authRef = useRef<SonamuAuthClient<O> | undefined>(undefined);
   if (authOptions && !authRef.current) {
-    authRef.current = createAuthClient<O>(authOptions);
+    authRef.current = createAuthClient(authOptions);
   }
 
   const normalizedValue: SonamuContextValue<D, O> = {

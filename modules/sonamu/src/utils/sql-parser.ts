@@ -1,5 +1,14 @@
-import type { AST, ColumnRef, Expr, ExpressionValue, From, Join, Select } from "node-sql-parser";
+import {
+  type AST,
+  type ColumnRef,
+  type Expr,
+  type ExpressionValue,
+  type From,
+  type Join,
+  type Select,
+} from "node-sql-parser";
 import { unique } from "radashi";
+
 import { nonNullable } from "./utils";
 
 export function getTableName(expr: ColumnRef) {

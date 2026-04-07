@@ -82,7 +82,7 @@ By default, Sonamu sets all TypeScript files in the project as Boundaries:
 // hmr-hook-register.ts
 await hot.init({
   rootDirectory: process.env.API_ROOT_PATH,
-  boundaries: [`./src/**/*.ts`],  // All .ts files are boundaries
+  boundaries: [`./src/**/*.ts`], // All .ts files are boundaries
 });
 ```
 
@@ -161,7 +161,7 @@ Static imports between Boundary files are allowed (Sonamu's enhancement):
 
 ```typescript
 // user.model.ts (boundary)
-import { PostModel } from "./post.model";  // ✅ OK - both are boundaries
+import { PostModel } from "./post.model"; // ✅ OK - both are boundaries
 
 export class UserModel extends BaseModelClass {
   async getPosts() {
@@ -171,6 +171,7 @@ export class UserModel extends BaseModelClass {
 ```
 
 This works because:
+
 - Both files are Boundaries
 - Both are dynamically loaded by Syncer
 - HMR works correctly even when they reference each other
@@ -181,11 +182,11 @@ HMR won't work if a non-boundary file statically imports a Boundary:
 
 ```typescript
 // server.ts (non-boundary)
-import { UserModel } from "./user.model";  // ❌ Full restart required
+import { UserModel } from "./user.model"; // ❌ Full restart required
 
 // server.ts (non-boundary) - correct approach
 async function loadModels() {
-  const { UserModel } = await import("./user.model");  // ✅ OK
+  const { UserModel } = await import("./user.model"); // ✅ OK
 }
 ```
 
@@ -199,10 +200,11 @@ async function loadModels() {
 
 ```typescript
 // Add role to User in Sonamu UI
-role: EnumProp<"admin" | "user">
+role: EnumProp<"admin" | "user">;
 ```
 
 On save, HMR automatically:
+
 - Updates `user.entity.ts`
 - Regenerates `user.types.ts`
 - Reloads `UserModel`
@@ -231,6 +233,7 @@ export class UserModel extends BaseModelClass {
 ```
 
 On save, HMR:
+
 - Reloads `UserModel`
 - Reloads all APIs that use `UserModel`
 
@@ -253,6 +256,7 @@ async create(body: PostForm) {
 ```
 
 On save, HMR:
+
 - Re-registers `PostApi.create`
 - **Testable immediately without server restart!**
 
@@ -291,23 +295,23 @@ On save, HMR:
 **File structure:**
 
 <Card>
-<FileTree>
-  <FileItem name="src/application/">
-    <FileItem name="product/">
-      <FileItem name="product.model.ts" description="Inventory check" />
+  <FileTree>
+    <FileItem name="src/application/">
+      <FileItem name="product/">
+        <FileItem name="product.model.ts" description="Inventory check" />
+      </FileItem>
+      <FileItem name="order/">
+        <FileItem name="order.model.ts" description="Order creation" />
+        <FileItem name="order.api.ts" description="API endpoint" />
+      </FileItem>
+      <FileItem name="payment/">
+        <FileItem name="payment.service.ts" description="Payment processing" />
+      </FileItem>
+      <FileItem name="notification/">
+        <FileItem name="notification.service.ts" description="Send notifications" />
+      </FileItem>
     </FileItem>
-    <FileItem name="order/">
-      <FileItem name="order.model.ts" description="Order creation" />
-      <FileItem name="order.api.ts" description="API endpoint" />
-    </FileItem>
-    <FileItem name="payment/">
-      <FileItem name="payment.service.ts" description="Payment processing" />
-    </FileItem>
-    <FileItem name="notification/">
-      <FileItem name="notification.service.ts" description="Send notifications" />
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 **Step 1: Inventory Check Logic**
@@ -335,7 +339,7 @@ Save → 2 seconds later → Instantly reflected ✅
 
 ```typescript
 // order.model.ts
-import { ProductModel } from "../product/product.model";  // ✅ OK
+import { ProductModel } from "../product/product.model"; // ✅ OK
 import { PaymentService } from "../payment/payment.service";
 
 export class OrderModel extends BaseModelClass {
@@ -534,7 +538,7 @@ export class RateLimiter {
     const count = requestCounts.get(userId) || 0;
 
     if (count >= 100) {
-      return false;  // Rate limit exceeded
+      return false; // Rate limit exceeded
     }
 
     requestCounts.set(userId, count + 1);
@@ -547,7 +551,8 @@ import.meta.hot?.boundary.requestCounts = requestCounts;
 ```
 
 <Warning>
-The `boundary` object maintains data between HMR cycles, but is reset on server restart. Use database or Redis for data requiring persistent storage.
+  The `boundary` object maintains data between HMR cycles, but is reset on server restart. Use
+  database or Redis for data requiring persistent storage.
 </Warning>
 
 ## Type Definitions
@@ -575,11 +580,11 @@ Verify if a specific file is configured as a Boundary:
 
 ```typescript
 const dump = await hot.dump();
-const userModel = dump.find(d => d.nodePath.includes("user.model.ts"));
+const userModel = dump.find((d) => d.nodePath.includes("user.model.ts"));
 
-console.log(`Boundary: ${userModel?.boundary}`);       // true
-console.log(`Reloadable: ${userModel?.reloadable}`);   // true
-console.log(`Children:`, userModel?.children);          // Dependent files
+console.log(`Boundary: ${userModel?.boundary}`); // true
+console.log(`Reloadable: ${userModel?.reloadable}`); // true
+console.log(`Children:`, userModel?.children); // Dependent files
 ```
 
 Output example:
@@ -625,10 +630,8 @@ Output:
 ```
 
 <Tip>
-If HMR isn't working during development:
-1. Verify the file is designated as a Boundary
-2. Check if it's being imported dynamically
-3. Check for circular dependencies
+  If HMR isn't working during development: 1. Verify the file is designated as a Boundary 2. Check
+  if it's being imported dynamically 3. Check for circular dependencies
 </Tip>
 
 ## Performance Optimization
@@ -662,7 +665,7 @@ import { CommentModel } from "../comment/comment.model";
 // ... many imports
 
 // ✅ Good example
-import { UserModel } from "../user/user.model";  // Only what's actually used
+import { UserModel } from "../user/user.model"; // Only what's actually used
 ```
 
 ## Summary

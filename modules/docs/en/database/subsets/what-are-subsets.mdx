@@ -9,24 +9,16 @@ Subsets are **predefined query templates** for retrieving Entity data in various
 
 <CardGroup cols={2}>
   <Card title="Flexible Retrieval" icon="table-cells">
-    Data formats for each situation
-    
-    A, P, SS, etc.
+    Data formats for each situation A, P, SS, etc.
   </Card>
   <Card title="Type Safety" icon="shield">
-    Compile-time validation
-    
-    Automatic type inference
+    Compile-time validation Automatic type inference
   </Card>
   <Card title="Relation Loading" icon="link">
-    Integrated JOIN and Loader
-    
-    1:N, N:M support
+    Integrated JOIN and Loader 1:N, N:M support
   </Card>
   <Card title="Performance Optimization" icon="gauge-high">
-    Select only needed fields
-    
-    Solve N+1 problem
+    Select only needed fields Solve N+1 problem
   </Card>
 </CardGroup>
 
@@ -78,13 +70,13 @@ flowchart TD
     A[Subset] --> B[1. SubsetQuery<br/>Field Selection + JOIN]
     A --> C[2. LoaderQuery<br/>1:N, N:M Loading]
     A --> D[3. Hydrate<br/>Flat → Nested Object]
-    
+
     B --> E[Execute Base Query]
     C --> F[Load Relation Data]
     E --> D
     F --> D
     D --> G[Final Result]
-    
+
     style A fill:#e3f2fd
     style B fill:#e8f5e9
     style C fill:#fff9c4
@@ -116,8 +108,9 @@ const loaders = {
   employees: {
     as: "employees",
     refId: "department_id",
-    qb: (qb, fromIds) => 
-      qb.table("employees")
+    qb: (qb, fromIds) =>
+      qb
+        .table("employees")
         .whereIn("department_id", fromIds)
         .select({ id: "id", name: "username" }),
   },
@@ -164,7 +157,7 @@ flowchart LR
         name: Eng
       }
     }}"]
-    
+
     style A fill:#fff9c4
     style B fill:#e8f5e9
     style C fill:#e3f2fd
@@ -174,17 +167,15 @@ flowchart LR
 
 Common Subset name patterns:
 
-| Subset | Meaning | Usage Example |
-|--------|---------|---------------|
-| **A** | All | Admin page detail |
-| **P** | Profile | User profile view |
-| **L** | List | List API, table rows |
+| Subset | Meaning | Usage Example         |
+| ------ | ------- | --------------------- |
+| **A**  | All     | Admin page detail     |
+| **P**  | Profile | User profile view     |
+| **L**  | List    | List API, table rows  |
 | **SS** | Summary | Dropdowns, brief info |
-| **C** | Card | Card UI components |
+| **C**  | Card    | Card UI components    |
 
-<Info>
-Subset names can be freely defined. Use consistent conventions within your team.
-</Info>
+<Info>Subset names can be freely defined. Use consistent conventions within your team.</Info>
 
 ## Practical Examples
 
@@ -197,7 +188,7 @@ async list(params: UserListParams) {
     listParams: params,
     subsetKey: "L",  // Use List Subset
   });
-  
+
   // Type: { id: number; username: string; role: string; created_at: Date }[]
   return users.map(user => ({
     id: user.id,
@@ -214,11 +205,11 @@ async list(params: UserListParams) {
 // GET /users/:id/profile
 async getProfile(userId: number) {
   const user = await UserModel.findById(userId, ["P"]);
-  
+
   if (!user) {
     throw new Error("User not found");
   }
-  
+
   // Type: {
   //   id: number;
   //   username: string;
@@ -227,7 +218,7 @@ async getProfile(userId: number) {
   //     department: { name: string }
   //   }
   // }
-  
+
   return {
     id: user.id,
     username: user.username,
@@ -276,6 +267,7 @@ const user = await UserModel.getPuri("r")
 - One-time data migrations
 
 For typical CRUD, **always use Subsets**.
+
 </Tip>
 
 ## Next Steps
@@ -287,7 +279,11 @@ For typical CRUD, **always use Subsets**.
   <Card title="Using Subsets" icon="code" href="/en/database/subsets/using-subsets">
     Use Subsets in Model
   </Card>
-  <Card title="Nested Relations" icon="diagram-project" href="/en/database/subsets/nested-relations">
+  <Card
+    title="Nested Relations"
+    icon="diagram-project"
+    href="/en/database/subsets/nested-relations"
+  >
     Load 1:N, N:M with LoaderQuery
   </Card>
   <Card title="Puri Basics" icon="database" href="/en/database/puri/basic-queries">

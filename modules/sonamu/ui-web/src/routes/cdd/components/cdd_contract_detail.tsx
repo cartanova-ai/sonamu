@@ -3,9 +3,10 @@ import Markdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import PencilIcon from "~icons/lucide/pencil";
+
 import { defaultCatch } from "../../../services/sonamu.shared";
 import { CddService } from "../service";
-import type { CddTreeNode } from "../types";
+import { type CddTreeNode } from "../types";
 import { CddFileIcon } from "./cdd_file_icon";
 
 export function CddContractDetail({

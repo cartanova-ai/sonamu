@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { setTimeout } from "node:timers/promises";
+
 import { test } from "@japa/runner";
 import { pEvent } from "p-event";
 import supertest from "supertest";
@@ -89,7 +90,7 @@ test.group("Loader", () => {
     const result = await pEvent(
       server.child,
       "message",
-      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
       (message: any) =>
         message?.type === "hot-hook:full-reload" && message.path === join(fs.basePath, "app.js"),
     );
@@ -179,7 +180,7 @@ test.group("Loader", () => {
     await server.waitForOutput("Server is running");
     await setTimeout(100);
 
-    // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
     const result = await pEvent(server.child, "message", (message: any) => message?.type === "ok");
     assert.isDefined(result);
   });
@@ -224,7 +225,7 @@ test.group("Loader", () => {
     const result = await pEvent(
       server.child,
       "message",
-      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
       (message: any) =>
         message?.type === "hot-hook:invalidated" &&
         message.paths.includes(join(fs.basePath, "config/test.js")),
@@ -320,7 +321,7 @@ test.group("Loader", () => {
     const result = await pEvent(
       server.child,
       "message",
-      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
       (message: any) => message?.type === "hot-hook:full-reload",
     );
     assert.isDefined(result);
@@ -366,7 +367,7 @@ test.group("Loader", () => {
     const result = await pEvent(
       server.child,
       "message",
-      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
       (message: any) =>
         message?.type === "hot-hook:full-reload" && message.shouldBeReloadable === true,
     );
@@ -421,7 +422,7 @@ test.group("Loader", () => {
 
     await setTimeout(100);
 
-    // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
     const result = await pEvent(server.child, "message", (message: any) => {
       console.log(message);
       return message?.type === "hot-hook:full-reload" && message.shouldBeReloadable === true;

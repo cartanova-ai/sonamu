@@ -183,7 +183,7 @@ export namespace EntityPropZodSchema {
     length?: number;
     dbDefault?: unknown;
     generated?: { type: string; expression: string };
-    // biome-ignore lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 파싱 결과이므로 any 허용
   }): z.ZodSafeParseSuccess<any> | z.ZodSafeParseError<any> {
     const zodSchema = (() => {
       switch (form.type) {

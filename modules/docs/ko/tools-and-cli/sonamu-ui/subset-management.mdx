@@ -1,12 +1,13 @@
 ---
-title: 'Subset 관리'
-description: 'Entity Subset 정의 및 관리하기'
+title: "Subset 관리"
+description: "Entity Subset 정의 및 관리하기"
 ---
 
 Subset은 **Entity의 특정 필드 조합을 미리 정의**하여 API 응답을 효율적으로 관리하는 기능입니다. Sonamu UI의 **Entity 탭**에서 Subset을 시각적으로 정의하고 편집할 수 있습니다.
 
 <Info>
-Subset은 별도의 탭이 아니라 **Entity 탭 내부의 Subsets 시트**에서 관리됩니다. Entity를 선택한 후 Properties, Indexes, Relations, Enums와 함께 Subsets 시트에서 작업합니다.
+  Subset은 별도의 탭이 아니라 **Entity 탭 내부의 Subsets 시트**에서 관리됩니다. Entity를 선택한 후
+  Properties, Indexes, Relations, Enums와 함께 Subsets 시트에서 작업합니다.
 </Info>
 
 ## Subset이란?
@@ -15,12 +16,12 @@ Subset은 Entity의 **일부 필드만 선택적으로 가져오는 사전 정�
 
 ### 사용 이유
 
-| 문제 | Subset 해결책 |
-|------|--------------|
-| 불필요한 데이터 전송 | 필요한 필드만 선택 |
-| 일관성 없는 응답 | 표준화된 필드 조합 |
-| 복잡한 JOIN | 관계 데이터 포함 여부 제어 |
-| 성능 저하 | 최소 데이터만 조회 |
+| 문제                 | Subset 해결책              |
+| -------------------- | -------------------------- |
+| 불필요한 데이터 전송 | 필요한 필드만 선택         |
+| 일관성 없는 응답     | 표준화된 필드 조합         |
+| 복잡한 JOIN          | 관계 데이터 포함 여부 제어 |
+| 성능 저하            | 최소 데이터만 조회         |
 
 ### 예시
 
@@ -44,8 +45,12 @@ Sonamu UI에서 Subset을 관리하려면:
 3. 상단의 시트 탭 중 **Subsets**를 클릭합니다
 
 <Columns cols={2}>
-<Frame caption="Entity 탭의 Subsets 시트에서 Subset 관리"><img src="/images/sonamuUI-relation-result.png" alt="Entity Relations 화면" /></Frame>
-<Frame><img src="/images/sonamuUI-relation-subsets.png" alt="Entity Subsets 화면" /></Frame>
+  <Frame caption="Entity 탭의 Subsets 시트에서 Subset 관리">
+    <img src="/images/sonamuUI-relation-result.png" alt="Entity Relations 화면" />
+  </Frame>
+  <Frame>
+    <img src="/images/sonamuUI-relation-subsets.png" alt="Entity Subsets 화면" />
+  </Frame>
 </Columns>
 
 ### 화면 구성
@@ -75,20 +80,19 @@ Sonamu UI에서 **Entity 탭**을 클릭합니다.
 
 **[Add Subset]** 버튼을 클릭하여 새 Subset을 생성합니다.
 
-| 필드 | 설명 | 예시 |
-|------|------|------|
-| **Subset ID** | Subset 식별자 (A-Z) | `A`, `B`, `C` |
-| **Description** | Subset 설명 | `기본 목록용`, `상세 조회용` |
+| 필드            | 설명                | 예시                         |
+| --------------- | ------------------- | ---------------------------- |
+| **Subset ID**   | Subset 식별자 (A-Z) | `A`, `B`, `C`                |
+| **Description** | Subset 설명         | `기본 목록용`, `상세 조회용` |
 
-<Info>
-Subset ID는 일반적으로 **알파벳 한 글자**(A, B, C...)를 사용합니다.
-</Info>
+<Info>Subset ID는 일반적으로 **알파벳 한 글자**(A, B, C...)를 사용합니다.</Info>
 
 ### 5. 필드 선택
 
 생성된 Subset에서 포함할 필드를 선택합니다:
 
 **기본 필드**:
+
 ```
 ☑ id          ← 필수 (항상 포함)
 ☑ email
@@ -99,6 +103,7 @@ Subset ID는 일반적으로 **알파벳 한 글자**(A, B, C...)를 사용합�
 ```
 
 **관계 필드**:
+
 ```
 ☐ posts → Post.Subset A
 ☐ profile → Profile.Subset B
@@ -122,6 +127,7 @@ Subset ID는 일반적으로 **알파벳 한 글자**(A, B, C...)를 사용합�
 ```
 
 **사용 예시**:
+
 ```typescript
 // 사용자 목록
 const users = await UserModel.findMany({ subset: "A" });
@@ -146,6 +152,7 @@ const users = await UserModel.findMany({ subset: "A" });
 ```
 
 **사용 예시**:
+
 ```typescript
 // 사용자 상세
 const user = await UserModel.findById(1, { subset: "B" });
@@ -169,6 +176,7 @@ const user = await UserModel.findById(1, { subset: "B" });
 ```
 
 **사용 예시**:
+
 ```typescript
 // 게시글 + 작성자 + 댓글
 const post = await PostModel.findById(1, { subset: "C" });
@@ -224,8 +232,8 @@ const post = await PostModel.findById(1, { subset: "C" });
 ```
 
 <Warning>
-**N+1 문제 주의**: hasMany 관계를 Subset에 포함하면 추가 쿼리가 발생할 수 있습니다.
-필요한 경우에만 포함하세요.
+  **N+1 문제 주의**: hasMany 관계를 Subset에 포함하면 추가 쿼리가 발생할 수 있습니다. 필요한
+  경우에만 포함하세요.
 </Warning>
 
 ## Subset 수정
@@ -238,6 +246,7 @@ const post = await PostModel.findById(1, { subset: "C" });
 4. **[Save]** 버튼 클릭
 
 **변경사항 즉시 반영**:
+
 ```
 Before: { id, email, name }
 After:  { id, email, name, bio, created_at }
@@ -251,7 +260,7 @@ After:  { id, email, name, bio, created_at }
 4. 확인 모달에서 **[Confirm]** 클릭
 
 <Warning>
-**사용 중인 Subset 삭제**: 삭제하려는 Subset을 사용하는 API가 있다면 오류가 발생할 수 있습니다.
+  **사용 중인 Subset 삭제**: 삭제하려는 Subset을 사용하는 API가 있다면 오류가 발생할 수 있습니다.
 </Warning>
 
 ## 실전 예제
@@ -339,7 +348,7 @@ class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async findMany(params: ListParams<User>) {
     const { qb } = this.getSubsetQueries("A");
-    
+
     return this.executeSubsetQuery({
       subset: "A",
       qb,
@@ -357,12 +366,12 @@ class UserModelClass extends BaseModelClass {
   async findById(id: number) {
     const { qb } = this.getSubsetQueries("B");
     qb.where("id", id);
-    
+
     return this.executeSubsetQuery({
       subset: "B",
       qb,
       params: { num: 1, page: 1 },
-    }).then(result => result.rows[0]);
+    }).then((result) => result.rows[0]);
   }
 }
 ```

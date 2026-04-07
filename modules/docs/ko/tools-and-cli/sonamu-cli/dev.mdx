@@ -12,6 +12,7 @@ pnpm dev
 ```
 
 개발 서버가 시작되면 다음 기능을 사용할 수 있습니다:
+
 - **자동 재시작**: 코드 변경 시 자동으로 서버 재시작
 - **TypeScript 지원**: .ts 파일을 바로 실행
 - **소스맵 지원**: 에러 발생 시 정확한 줄 번호 표시
@@ -21,13 +22,14 @@ pnpm dev
 
 API와 Web을 분리해서 실행할 수 있습니다.
 
-| 명령어 | 설명 |
-|--------|------|
-| `pnpm dev` | API + Web 통합 개발 서버 (기본) |
+| 명령어         | 설명                                       |
+| -------------- | ------------------------------------------ |
+| `pnpm dev`     | API + Web 통합 개발 서버 (기본)            |
 | `pnpm dev api` | API 전용 개발 서버 (통합 웹 서버 비활성화) |
-| `pnpm dev web` | Vite 개발 서버 단독 실행 |
+| `pnpm dev web` | Vite 개발 서버 단독 실행                   |
 
 **API와 Web을 별도 터미널에서 실행하기**:
+
 ```bash
 # 터미널 1: API 서버
 pnpm dev api
@@ -37,21 +39,19 @@ pnpm dev web
 ```
 
 <Tip>
-`pnpm dev web`은 `--` 뒤의 인자를 Vite에 그대로 전달합니다. 예를 들어 포트를 변경하려면:
-```bash
-pnpm dev web -- --port 5174
-```
+  `pnpm dev web`은 `--` 뒤의 인자를 Vite에 그대로 전달합니다. 예를 들어 포트를 변경하려면: ```bash
+  pnpm dev web -- --port 5174 ```
 </Tip>
 
 ## 동작 원리
 
 `pnpm dev`는 내부적으로 다음 도구들을 사용합니다:
 
-| 도구 | 역할 | 제공 |
-|------|------|------|
-| `@sonamu-kit/hmr-runner` | HMR 실행 엔진 | Sonamu |
-| `@sonamu-kit/ts-loader` | TypeScript 로더 | Sonamu |
-| `@sonamu-kit/hmr-hook` | HMR 훅 | Sonamu |
+| 도구                     | 역할            | 제공   |
+| ------------------------ | --------------- | ------ |
+| `@sonamu-kit/hmr-runner` | HMR 실행 엔진   | Sonamu |
+| `@sonamu-kit/ts-loader`  | TypeScript 로더 | Sonamu |
+| `@sonamu-kit/hmr-hook`   | HMR 훅          | Sonamu |
 
 **중요**: 이 패키지들은 Sonamu가 자동으로 제공하므로 **별도로 설치할 필요가 없습니다**.
 
@@ -67,17 +67,18 @@ pnpm dev web -- --port 5174
 
 개발 서버 실행 중 다음 단축키를 사용할 수 있습니다:
 
-| 단축키 | 기능 | 설명 |
-|--------|------|------|
-| `r` | 재시작 | 서버를 수동으로 재시작합니다 |
-| `c` | 화면 지우기 | 터미널 화면을 지워줍니다 |
-| `f` | 강제 재시작 | `sonamu.lock` 파일을 삭제하고 재시작합니다 |
-| `Enter` | 테스트 | 키 바인딩 테스트용 |
-| `Ctrl+F Ctrl+F` | 업데이트 | Git pull, 패키지 설치, 빌드 후 재시작 |
+| 단축키          | 기능        | 설명                                       |
+| --------------- | ----------- | ------------------------------------------ |
+| `r`             | 재시작      | 서버를 수동으로 재시작합니다               |
+| `c`             | 화면 지우기 | 터미널 화면을 지워줍니다                   |
+| `f`             | 강제 재시작 | `sonamu.lock` 파일을 삭제하고 재시작합니다 |
+| `Enter`         | 테스트      | 키 바인딩 테스트용                         |
+| `Ctrl+F Ctrl+F` | 업데이트    | Git pull, 패키지 설치, 빌드 후 재시작      |
 
 ### 단축키 사용 예시
 
 **서버 재시작**:
+
 ```
 # 터미널에서 개발 서버 실행 중
 [서버 실행 중...]
@@ -90,6 +91,7 @@ r
 ```
 
 **강제 재시작 (캐시 초기화)**:
+
 ```
 # 'f' 키 입력
 f
@@ -103,21 +105,21 @@ f
 
 개발 서버는 다음 환경 변수를 자동으로 설정합니다:
 
-| 변수 | 값 | 설명 |
-|------|-----|------|
-| `NODE_ENV` | `development` | 개발 모드 표시 |
-| `HOT` | `yes` | HMR 활성화 플래그 |
+| 변수            | 값            | 설명              |
+| --------------- | ------------- | ----------------- |
+| `NODE_ENV`      | `development` | 개발 모드 표시    |
+| `HOT`           | `yes`         | HMR 활성화 플래그 |
 | `API_ROOT_PATH` | 프로젝트 경로 | HMR 루트 디렉토리 |
 
 코드에서 환경 변수를 확인할 수 있습니다:
 
 ```typescript
-if (process.env.NODE_ENV === 'development') {
-  console.log('개발 모드입니다');
+if (process.env.NODE_ENV === "development") {
+  console.log("개발 모드입니다");
 }
 
-if (process.env.HOT === 'yes') {
-  console.log('HMR이 활성화되어 있습니다');
+if (process.env.HOT === "yes") {
+  console.log("HMR이 활성화되어 있습니다");
 }
 ```
 
@@ -166,11 +168,13 @@ export function formatDate(date: Date) {
 ### 서버가 시작되지 않는 경우
 
 **문제**: 포트가 이미 사용 중
+
 ```
 Error: listen EADDRINUSE: address already in use :::3000
 ```
 
 **해결**:
+
 ```bash
 # 포트 사용 중인 프로세스 종료
 lsof -ti:3000 | xargs kill -9
@@ -184,6 +188,7 @@ pnpm dev
 **문제**: 코드 변경이 반영되지 않음
 
 **해결**:
+
 ```bash
 # 1. 강제 재시작 (f 키)
 f
@@ -197,6 +202,7 @@ pnpm dev
 **문제**: 타입 에러로 서버 실행 실패
 
 **해결**:
+
 ```bash
 # 타입 체크
 pnpm tsc --noEmit
@@ -226,9 +232,9 @@ async getUsers() {
 개발 서버는 모든 로그를 콘솔에 출력합니다:
 
 ```typescript
-console.log('사용자 조회:', user);
-logger.info('API 호출', { method, path });
-logger.error('에러 발생', { error });
+console.log("사용자 조회:", user);
+logger.info("API 호출", { method, path });
+logger.error("에러 발생", { error });
 ```
 
 ### 3. 디버깅
@@ -243,13 +249,13 @@ Error: User not found
 
 ## 프로덕션과의 차이점
 
-| 기능 | 개발 서버 | 프로덕션 |
-|------|-----------|----------|
-| HMR | ✅ 활성화 | ❌ 비활성화 |
+| 기능       | 개발 서버 | 프로덕션    |
+| ---------- | --------- | ----------- |
+| HMR        | ✅ 활성화 | ❌ 비활성화 |
 | TypeScript | 즉시 실행 | 컴파일 필요 |
-| 소스맵 | 원본 파일 | 압축된 파일 |
-| 성능 | 느림 | 빠름 |
-| 에러 표시 | 상세함 | 간략함 |
+| 소스맵     | 원본 파일 | 압축된 파일 |
+| 성능       | 느림      | 빠름        |
+| 에러 표시  | 상세함    | 간략함      |
 
 <Warning>
 **개발 서버는 프로덕션에서 사용하지 마세요!**
@@ -259,6 +265,7 @@ Error: User not found
 - 보안에 취약
 
 프로덕션에서는 `pnpm build` 후 `pnpm start`를 사용하세요.
+
 </Warning>
 
 ## 다음 단계

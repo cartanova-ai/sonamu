@@ -62,6 +62,7 @@ Cache-Control: public, max-age=3600
 ```
 
 **Meaning**:
+
 - `public`: Can be stored by all caches (browser, CDN)
 - `max-age=3600`: Valid for 3600 seconds (1 hour)
 
@@ -82,6 +83,7 @@ Cache-Control: public, max-age=3600
     ```
     - **private**: Can only be stored in browser (not CDN/proxy)
     - Use case: Different response per user (my page, shopping cart)
+
   </Tab>
 
   <Tab title="No Caching" icon="ban">
@@ -100,6 +102,7 @@ Cache-Control: public, max-age=3600
     - **no-cache**: Stores cache but **requires revalidation every time**
     - Use case: Data where freshness is important
     - Effect: Asks server "Has it changed?" → Returns 304 Not Modified if unchanged
+
   </Tab>
 
   <Tab title="Expiration Time" icon="clock">
@@ -119,6 +122,7 @@ Cache-Control: public, max-age=3600
     - CDN/proxy cache validity time
     - Browser: 60 seconds, CDN: 300 seconds (5 minutes)
     - Use case: When you want CDN to cache longer
+
   </Tab>
 
   <Tab title="Revalidation" icon="rotate">
@@ -138,6 +142,7 @@ Cache-Control: public, max-age=3600
     - Cached response will **never change**
     - Use case: Static files with hash (`bundle-abc123.js`)
     - Effect: Uses only cache without revalidation
+
   </Tab>
 </Tabs>
 
@@ -177,6 +182,7 @@ sequenceDiagram
 ```
 
 **Benefits**:
+
 - User always gets fast response (returns stale immediately)
 - Background update ensures fresh data for next user
 
@@ -191,6 +197,7 @@ Cache-Control: public, max-age=60, stale-if-error=86400
 ```
 
 **How it works**:
+
 1. Normal situation: Updates every 60 seconds
 2. Server error occurs: Uses stale cache for up to 86400 seconds (1 day)
 3. Server recovers: Returns to normal updates
@@ -209,12 +216,14 @@ Vary: Accept-Language
 **Meaning**: Separate cache by `Accept-Language` header value
 
 **Example**:
+
 ```
 GET /api/products (Accept-Language: ko) → Korean response cached
 GET /api/products (Accept-Language: en) → English response cached
 ```
 
 **Commonly used Vary**:
+
 - `Accept-Language`: Multi-language support
 - `Accept-Encoding`: Compression method (gzip, br)
 - `Authorization`: Authentication status
@@ -244,6 +253,7 @@ Sonamu has two caching mechanisms:
     - Reduces network traffic
     - Client controlled (browser manages cache)
     - Difficult to invalidate
+
   </Tab>
 
   <Tab title="BentoCache (Server)" icon="server">
@@ -264,6 +274,7 @@ Sonamu has two caching mechanisms:
     - Reduces DB load
     - Server controlled (instant invalidation possible)
     - Tag-based invalidation
+
   </Tab>
 </Tabs>
 
@@ -283,6 +294,7 @@ async getProducts() {
 ```
 
 **Effect**:
+
 1. **First request**: DB query (slow) → Server cache + HTTP cache
 2. **Within 60 seconds**: Returns from browser cache (very fast, no server request)
 3. **60 seconds - 10 minutes**: Server request but uses server cache (fast, no DB query)
@@ -304,6 +316,7 @@ graph TD
 ```
 
 **Role of each layer**:
+
 1. **Browser Cache**: Per-user cache, fastest
 2. **CDN Cache**: Regional cache, reduces network latency
 3. **Server Cache**: Reduces DB load, instant invalidation possible
@@ -347,12 +360,12 @@ async getMyOrders(ctx: Context) {
 
 ```typescript
 registerSSR({
-  path: '/products',
+  path: "/products",
   cacheControl: {
-    visibility: 'public',
+    visibility: "public",
     maxAge: 10,
-    staleWhileRevalidate: 30,  // Use stale for 30 seconds after expiration
-  }
+    staleWhileRevalidate: 30, // Use stale for 30 seconds after expiration
+  },
 });
 ```
 
@@ -389,6 +402,7 @@ async createPayment(data: PaymentSave) {
 **Precautions when using Cache-Control**:
 
 1. **No caching for mutation requests**: Use `no-store` for POST, PUT, DELETE requests
+
    ```typescript
    // ❌ Wrong example
    @api({
@@ -404,6 +418,7 @@ async createPayment(data: PaymentSave) {
    ```
 
 2. **Private or no-store for personal information**: Data that should not be exposed to other users
+
    ```typescript
    // ❌ Dangerous: public can be cached on CDN
    @api({
@@ -419,6 +434,7 @@ async createPayment(data: PaymentSave) {
    ```
 
 3. **Short TTL for frequently changing data**: Prevent stale data
+
    ```typescript
    // ❌ Stock changes frequently but cached for 1 hour
    @api({
@@ -443,7 +459,7 @@ async createPayment(data: PaymentSave) {
    })
    async getData() { ... }
    ```
-</Warning>
+   </Warning>
 
 ## Next Steps
 

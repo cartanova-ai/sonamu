@@ -12,17 +12,17 @@ pnpm cone gen <entityId> [options]
 ```
 
 <Note>
-Requires `ANTHROPIC_API_KEY`. Set it in `sonamu.secret.ts` or as an environment variable.
+  Requires `ANTHROPIC_API_KEY`. Set it in `sonamu.secret.ts` or as an environment variable.
 </Note>
 
 ## Options
 
-| Option | Description | Example |
-|--------|-------------|---------|
-| (none) | Generate only empty fixtureHints (preserves existing values) | `pnpm cone gen Product` |
-| `--regenerate` | Overwrite existing cones and regenerate all | `pnpm cone gen Product --regenerate` |
-| `--locale <ko\|en\|ja>` | Specify generation language (default: `sonamu.config.ts` `i18n.defaultLocale` or `ko`) | `pnpm cone gen Product --locale en` |
-| `--all` | Generate cones for all Entities at once | `pnpm cone gen all` |
+| Option                  | Description                                                                            | Example                              |
+| ----------------------- | -------------------------------------------------------------------------------------- | ------------------------------------ |
+| (none)                  | Generate only empty fixtureHints (preserves existing values)                           | `pnpm cone gen Product`              |
+| `--regenerate`          | Overwrite existing cones and regenerate all                                            | `pnpm cone gen Product --regenerate` |
+| `--locale <ko\|en\|ja>` | Specify generation language (default: `sonamu.config.ts` `i18n.defaultLocale` or `ko`) | `pnpm cone gen Product --locale en`  |
+| `--all`                 | Generate cones for all Entities at once                                                | `pnpm cone gen all`                  |
 
 ## Examples
 

@@ -9,24 +9,16 @@ Strategies for safely changing database schemas in production environments.
 
 <CardGroup cols={2}>
   <Card title="Zero Downtime" icon="circle-check">
-    No-downtime deployment
-    
-    Maintain compatibility
+    No-downtime deployment Maintain compatibility
   </Card>
   <Card title="Backward Compatible" icon="arrow-left">
-    Backward compatibility
-    
-    Gradual changes
+    Backward compatibility Gradual changes
   </Card>
   <Card title="Rollback Ready" icon="rotate-left">
-    Rollback capability
-    
-    Always prepared
+    Rollback capability Always prepared
   </Card>
   <Card title="Test First" icon="vial">
-    Test first
-    
-    Staging verification
+    Test first Staging verification
   </Card>
 </CardGroup>
 
@@ -40,29 +32,31 @@ Add new structure → Migrate → Remove old structure
 flowchart LR
     A[Step 1: Expand<br/>Add new column<br/>nullable] --> B[Step 2: Migrate<br/>Transfer data<br/>Write to both]
     B --> C[Step 3: Contract<br/>Remove old column<br/>Use new only]
-    
+
     style A fill:#e8f5e9
     style B fill:#fff9c4
     style C fill:#ffebee
 ```
 
 **Step 1: Expand** - Add new column
+
 ```typescript
 // Migration 1: Add new column (nullable)
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
-    table.string("email_verified", 20).nullable();  // New column
+    table.string("email_verified", 20).nullable(); // New column
   });
 }
 
 // Application: Write to both
 await knex("users").update({
   is_verified: true,
-  email_verified: "verified",  // Also write to new column
+  email_verified: "verified", // Also write to new column
 });
 ```
 
 **Step 2: Migrate (Data Migration)**
+
 ```typescript
 // Migration 2: Transfer data
 export async function up(knex: Knex): Promise<void> {
@@ -78,20 +72,19 @@ export async function up(knex: Knex): Promise<void> {
 ```
 
 **Step 3: Contract** - Remove old column
+
 ```typescript
 // Migration 3: Remove old column
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
-    table.dropColumns("is_verified");  // Remove old column
+    table.dropColumns("is_verified"); // Remove old column
   });
 }
 ```
 
 <Info>
-**Expand-Contract benefits**:
-- Zero-downtime deployment possible
-- Rollback possible anytime
-- No data loss
+  **Expand-Contract benefits**: - Zero-downtime deployment possible - Rollback possible anytime - No
+  data loss
 </Info>
 
 ### Pattern 2: Gradual Migration
@@ -108,10 +101,8 @@ export async function up(knex: Knex): Promise<void> {
 
 // Phase 3: Data migration (background)
 async function migrateSettings() {
-  const users = await knex("users")
-    .whereNull("settings")
-    .limit(100);
-  
+  const users = await knex("users").whereNull("settings").limit(100);
+
   for (const user of users) {
     await knex("users")
       .where("id", user.id)
@@ -123,9 +114,7 @@ async function migrateSettings() {
 
 // Phase 4: Add NOT NULL constraint
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw(
-    `ALTER TABLE users ALTER COLUMN settings SET NOT NULL`
-  );
+  await knex.raw(`ALTER TABLE users ALTER COLUMN settings SET NOT NULL`);
 }
 ```
 
@@ -147,9 +136,7 @@ export async function up(knex: Knex): Promise<void> {
 ```typescript
 // Step 1: Make column nullable
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw(
-    `ALTER TABLE users ALTER COLUMN old_field DROP NOT NULL`
-  );
+  await knex.raw(`ALTER TABLE users ALTER COLUMN old_field DROP NOT NULL`);
 }
 
 // Step 2: Stop using in application
@@ -168,7 +155,7 @@ export async function up(knex: Knex): Promise<void> {
 // 🚨 Dangerous: Existing null data causes error
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
-    table.string("phone", 20).notNullable();  // Existing rows are null
+    table.string("phone", 20).notNullable(); // Existing rows are null
   });
 }
 ```
@@ -184,15 +171,11 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 // Step 2: Set default values
-await knex("users")
-  .whereNull("phone")
-  .update({ phone: "000-0000-0000" });
+await knex("users").whereNull("phone").update({ phone: "000-0000-0000" });
 
 // Step 3: Add NOT NULL
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw(
-    `ALTER TABLE users ALTER COLUMN phone SET NOT NULL`
-  );
+  await knex.raw(`ALTER TABLE users ALTER COLUMN phone SET NOT NULL`);
 }
 ```
 
@@ -221,11 +204,9 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("products", (table) => {
     table.dropColumns("price");
   });
-  
+
   // Rename column
-  await knex.raw(
-    `ALTER TABLE products RENAME COLUMN price_decimal TO price`
-  );
+  await knex.raw(`ALTER TABLE products RENAME COLUMN price_decimal TO price`);
 }
 ```
 
@@ -235,7 +216,7 @@ flowchart TD
     B --> C[3. Deploy application<br/>Use price_decimal]
     C --> D[4. Drop old column<br/>Remove price]
     D --> E[5. Rename column<br/>price_decimal → price]
-    
+
     style A fill:#e3f2fd
     style B fill:#e1f5ff
     style C fill:#fff9c4
@@ -265,10 +246,8 @@ export async function up(knex: Knex): Promise<void> {
 ```
 
 <Warning>
-**CONCURRENTLY caveats**:
-- Runs outside transaction
-- Takes longer
-- Leaves INVALID index on failure
+  **CONCURRENTLY caveats**: - Runs outside transaction - Takes longer - Leaves INVALID index on
+  failure
 </Warning>
 
 ### Index Creation Monitoring
@@ -315,10 +294,8 @@ export async function up(knex: Knex): Promise<void> {
 ```
 
 <Info>
-**NOT VALID + VALIDATE benefits**:
-- Skips existing data validation (fast)
-- Only validates new data immediately
-- Full validation later in background
+  **NOT VALID + VALIDATE benefits**: - Skips existing data validation (fast) - Only validates new
+  data immediately - Full validation later in background
 </Info>
 
 ## Large Data Migration
@@ -329,23 +306,18 @@ export async function up(knex: Knex): Promise<void> {
 export async function up(knex: Knex): Promise<void> {
   const batchSize = 1000;
   let offset = 0;
-  
+
   while (true) {
-    const users = await knex("users")
-      .whereNull("normalized_email")
-      .limit(batchSize)
-      .offset(offset);
-    
+    const users = await knex("users").whereNull("normalized_email").limit(batchSize).offset(offset);
+
     if (users.length === 0) break;
-    
+
     for (const user of users) {
-      await knex("users")
-        .where("id", user.id)
-        .update({
-          normalized_email: user.email.toLowerCase(),
-        });
+      await knex("users").where("id", user.id).update({
+        normalized_email: user.email.toLowerCase(),
+      });
     }
-    
+
     offset += batchSize;
     console.log(`Processed ${offset} users`);
   }
@@ -366,9 +338,9 @@ export async function up(knex: Knex): Promise<void> {
 // scripts/migrate-emails.ts
 async function migrateEmails() {
   const queue = new Queue("email-migration");
-  
+
   const users = await knex("users").whereNull("normalized_email");
-  
+
   for (const user of users) {
     await queue.add({
       userId: user.id,
@@ -398,10 +370,10 @@ graph TD
 // Version N: Old schema compatible
 app.get("/users/:id", async (req, res) => {
   const user = await knex("users")
-    .select("id", "email", "is_verified")  // Old column
+    .select("id", "email", "is_verified") // Old column
     .where("id", req.params.id)
     .first();
-  
+
   res.json(user);
 });
 
@@ -410,10 +382,10 @@ app.get("/users/:id", async (req, res) => {
 // Version N+1: Compatible with both schemas
 app.get("/users/:id", async (req, res) => {
   const user = await knex("users")
-    .select("id", "email", "is_verified", "email_verified")  // Both
+    .select("id", "email", "is_verified", "email_verified") // Both
     .where("id", req.params.id)
     .first();
-  
+
   res.json({
     ...user,
     verified: user.email_verified || (user.is_verified ? "verified" : "unverified"),
@@ -425,10 +397,10 @@ app.get("/users/:id", async (req, res) => {
 // Version N+2: New schema only
 app.get("/users/:id", async (req, res) => {
   const user = await knex("users")
-    .select("id", "email", "email_verified")  // New column only
+    .select("id", "email", "email_verified") // New column only
     .where("id", req.params.id)
     .first();
-  
+
   res.json(user);
 });
 ```
@@ -443,26 +415,26 @@ describe("20251220143200_alter_users_add1", () => {
   beforeEach(async () => {
     await knex.migrate.latest();
   });
-  
+
   afterEach(async () => {
     await knex.migrate.rollback(null, true);
   });
-  
+
   test("up: phone column added", async () => {
     const hasColumn = await knex.schema.hasColumn("users", "phone");
     expect(hasColumn).toBe(true);
   });
-  
+
   test("down: phone column removed", async () => {
     await knex.migrate.down();
     const hasColumn = await knex.schema.hasColumn("users", "phone");
     expect(hasColumn).toBe(false);
   });
-  
+
   test("reversibility: up → down → up", async () => {
     await knex.migrate.down();
     await knex.migrate.up();
-    
+
     const hasColumn = await knex.schema.hasColumn("users", "phone");
     expect(hasColumn).toBe(true);
   });
@@ -478,13 +450,13 @@ test("data migration", async () => {
     { email: "test@test.com", is_verified: true },
     { email: "test2@test.com", is_verified: false },
   ]);
-  
+
   // When: Run migration
   await knex.migrate.up();
-  
+
   // Then: Verify data
   const users = await knex("users").select("*");
-  
+
   expect(users[0].email_verified).toBe("verified");
   expect(users[1].email_verified).toBe("unverified");
 });
@@ -497,16 +469,16 @@ test("data migration", async () => {
 ```typescript
 export async function up(knex: Knex): Promise<void> {
   const startTime = Date.now();
-  
+
   await knex.schema.alterTable("users", (table) => {
     table.string("phone", 20).nullable();
   });
-  
+
   const duration = Date.now() - startTime;
-  
+
   // Logging
   console.log(`Migration completed in ${duration}ms`);
-  
+
   // Send metrics
   await sendMetric("migration.duration", duration, {
     migration: "alter_users_add1",
@@ -518,7 +490,7 @@ export async function up(knex: Knex): Promise<void> {
 
 ```sql
 -- Check running migration queries
-SELECT 
+SELECT
   pid,
   now() - query_start AS duration,
   state,

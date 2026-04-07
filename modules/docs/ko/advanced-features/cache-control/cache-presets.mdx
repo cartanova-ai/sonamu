@@ -59,7 +59,7 @@ registerSSR({
 **캐시 저장을 완전히 금지**합니다.
 
 ```typescript
-CachePresets.noStore
+CachePresets.noStore;
 // 생성되는 헤더: Cache-Control: no-store
 ```
 
@@ -107,7 +107,7 @@ CachePresets.noStore
 **캐시는 저장하되 매번 재검증**합니다.
 
 ```typescript
-CachePresets.noCache
+CachePresets.noCache;
 // 생성되는 헤더: Cache-Control: no-cache
 ```
 
@@ -141,6 +141,7 @@ CachePresets.noCache
 </Tabs>
 
 **no-cache의 장점**:
+
 ```
 1차 요청: GET /api/data → 200 OK + ETag: "abc123"
 2차 요청: GET /api/data (If-None-Match: "abc123")
@@ -152,7 +153,7 @@ CachePresets.noCache
 **1분 캐시** - 자주 변경되는 데이터에 적합합니다.
 
 ```typescript
-CachePresets.shortLived
+CachePresets.shortLived;
 // 생성되는 헤더: Cache-Control: public, max-age=60
 ```
 
@@ -198,7 +199,7 @@ CachePresets.shortLived
 **SSR 페이지 최적화** - 10초 캐시 + Stale-While-Revalidate 30초
 
 ```typescript
-CachePresets.ssr
+CachePresets.ssr;
 // 생성되는 헤더: Cache-Control: public, max-age=10, stale-while-revalidate=30
 ```
 
@@ -255,7 +256,7 @@ CachePresets.ssr
 **5분 캐시** - 거의 변경되지 않는 데이터에 적합합니다.
 
 ```typescript
-CachePresets.mediumLived
+CachePresets.mediumLived;
 // 생성되는 헤더: Cache-Control: public, max-age=300
 ```
 
@@ -304,7 +305,7 @@ CachePresets.mediumLived
 **1시간 캐시** - 정적 컨텐츠에 적합합니다.
 
 ```typescript
-CachePresets.longLived
+CachePresets.longLived;
 // 생성되는 헤더: Cache-Control: public, max-age=3600
 ```
 
@@ -352,7 +353,7 @@ CachePresets.longLived
 **영구 캐시** - 해시가 포함된 정적 파일용
 
 ```typescript
-CachePresets.immutable
+CachePresets.immutable;
 // 생성되는 헤더: Cache-Control: public, max-age=31536000, immutable
 ```
 
@@ -393,6 +394,7 @@ CachePresets.immutable
 </Tabs>
 
 **immutable의 장점**:
+
 - 재검증 없이 캐시만 사용 (가장 빠름)
 - 파일이 변경되면 새 해시 → 새 파일명 → 자동 캐시 갱신
 
@@ -401,7 +403,7 @@ CachePresets.immutable
 **개인화 데이터** - 사용자별로 다른 응답
 
 ```typescript
-CachePresets.private
+CachePresets.private;
 // 생성되는 헤더: Cache-Control: private, no-cache
 ```
 
@@ -448,21 +450,22 @@ CachePresets.private
 </Tabs>
 
 **private vs public**:
+
 - `private`: 브라우저에만 캐싱 (CDN에는 안 됨)
 - `public`: 모든 캐시(브라우저 + CDN)에 캐싱
 
 ## 프리셋 비교표
 
-| 프리셋 | 헤더 | 용도 | TTL |
-|--------|------|------|-----|
-| `noStore` | `no-store` | 민감한 데이터, Mutation | 없음 |
-| `noCache` | `no-cache` | 매번 재검증 필요 | 없음 (재검증) |
-| `shortLived` | `public, max-age=60` | 자주 변경 | 1분 |
-| `ssr` | `public, max-age=10, stale-while-revalidate=30` | SSR 페이지 | 10초 + SWR 30초 |
-| `mediumLived` | `public, max-age=300` | 거의 변경 안됨 | 5분 |
-| `longLived` | `public, max-age=3600` | 정적 콘텐츠 | 1시간 |
-| `immutable` | `public, max-age=31536000, immutable` | 해시 파일 | 1년 (영구) |
-| `private` | `private, no-cache` | 개인화 데이터 | 없음 (private) |
+| 프리셋        | 헤더                                            | 용도                    | TTL             |
+| ------------- | ----------------------------------------------- | ----------------------- | --------------- |
+| `noStore`     | `no-store`                                      | 민감한 데이터, Mutation | 없음            |
+| `noCache`     | `no-cache`                                      | 매번 재검증 필요        | 없음 (재검증)   |
+| `shortLived`  | `public, max-age=60`                            | 자주 변경               | 1분             |
+| `ssr`         | `public, max-age=10, stale-while-revalidate=30` | SSR 페이지              | 10초 + SWR 30초 |
+| `mediumLived` | `public, max-age=300`                           | 거의 변경 안됨          | 5분             |
+| `longLived`   | `public, max-age=3600`                          | 정적 콘텐츠             | 1시간           |
+| `immutable`   | `public, max-age=31536000, immutable`           | 해시 파일               | 1년 (영구)      |
+| `private`     | `private, no-cache`                             | 개인화 데이터           | 없음 (private)  |
 
 ## 커스텀 설정
 
@@ -507,30 +510,31 @@ export const config: SonamuConfig = {
     apiConfig: {
       cacheControlHandler: (req) => {
         // API 요청
-        if (req.type === 'api') {
-          if (req.method !== 'GET') {
-            return CachePresets.noStore;  // Mutation은 no-store
+        if (req.type === "api") {
+          if (req.method !== "GET") {
+            return CachePresets.noStore; // Mutation은 no-store
           }
-          return CachePresets.shortLived;  // GET은 1분 캐시
+          return CachePresets.shortLived; // GET은 1분 캐시
         }
-        
+
         // 정적 파일
-        if (req.type === 'assets') {
-          if (req.path.includes('-')) {  // 해시 포함
+        if (req.type === "assets") {
+          if (req.path.includes("-")) {
+            // 해시 포함
             return CachePresets.immutable;
           }
           return CachePresets.longLived;
         }
-        
+
         // SSR
-        if (req.type === 'ssr') {
+        if (req.type === "ssr") {
           return CachePresets.ssr;
         }
-        
-        return undefined;  // 기본값
-      }
-    }
-  }
+
+        return undefined; // 기본값
+      },
+    },
+  },
 };
 ```
 
@@ -542,34 +546,34 @@ export const config: SonamuConfig = {
 class ProductModelClass extends BaseModelClass {
   // 목록: 자주 변경 → 짧은 캐시
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.shortLived,
   })
   async findAll() {
     return this.findMany({});
   }
-  
+
   // 상세: 덜 변경 → 중간 캐시
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.mediumLived,
   })
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
-  
+
   // 카테고리: 거의 변경 안됨 → 긴 캐시
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.longLived,
   })
   async getCategories() {
     return this.categories;
   }
-  
+
   // 생성/수정: Mutation → no-store
   @api({
-    httpMethod: 'POST',
+    httpMethod: "POST",
     cacheControl: CachePresets.noStore,
   })
   async create(data: ProductSave) {
@@ -583,21 +587,21 @@ class ProductModelClass extends BaseModelClass {
 ```typescript
 // 홈페이지: SSR 최적화
 registerSSR({
-  path: '/',
+  path: "/",
   cacheControl: CachePresets.ssr,
   Component: HomePage,
 });
 
 // 상품 목록: 짧은 캐시
 registerSSR({
-  path: '/products',
+  path: "/products",
   cacheControl: CachePresets.shortLived,
   Component: ProductList,
 });
 
 // 약관: 긴 캐시
 registerSSR({
-  path: '/terms',
+  path: "/terms",
   cacheControl: CachePresets.longLived,
   Component: Terms,
 });
@@ -609,6 +613,7 @@ registerSSR({
 **프리셋 사용 시 주의사항**:
 
 1. **프리셋은 출발점**: 상황에 맞게 커스터마이징 필요
+
    ```typescript
    // ✅ 상황에 맞게 조정
    cacheControl: {
@@ -618,13 +623,14 @@ registerSSR({
    ```
 
 2. **GET만 캐싱**: POST, PUT, DELETE는 `noStore` 사용
+
    ```typescript
    // ❌ 잘못된 예
    @api({
      httpMethod: 'POST',
      cacheControl: CachePresets.shortLived,
    })
-   
+
    // ✅ 올바른 예
    @api({
      httpMethod: 'POST',
@@ -633,13 +639,14 @@ registerSSR({
    ```
 
 3. **개인 데이터는 private**: CDN 캐싱 방지
+
    ```typescript
    // ❌ 위험: CDN에 개인 데이터 캐싱
    @api({
      cacheControl: CachePresets.shortLived,  // public
    })
    async getMyData() { ... }
-   
+
    // ✅ 안전
    @api({
      cacheControl: CachePresets.private,
@@ -648,27 +655,41 @@ registerSSR({
    ```
 
 4. **immutable은 해시 파일만**: 파일명이 바뀌어야 갱신됨
+
    ```typescript
    // ❌ 잘못된 사용
    // main.js (해시 없음) → 내용 변경해도 캐시 유지
-   cacheControl: CachePresets.immutable
-   
+   cacheControl: CachePresets.immutable;
+
    // ✅ 올바른 사용
    // main-abc123.js (해시 있음) → 내용 변경 시 파일명도 변경
-   cacheControl: CachePresets.immutable
+   cacheControl: CachePresets.immutable;
    ```
-</Warning>
+
+   </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="Cache-Control이란?" icon="circle-question" href="/ko/advanced-features/cache-control/what-is-cache-control">
+  <Card
+    title="Cache-Control이란?"
+    icon="circle-question"
+    href="/ko/advanced-features/cache-control/what-is-cache-control"
+  >
     HTTP 캐싱 기본 개념
   </Card>
-  <Card title="API에서 사용하기" icon="code" href="/ko/advanced-features/cache-control/using-in-apis">
+  <Card
+    title="API에서 사용하기"
+    icon="code"
+    href="/ko/advanced-features/cache-control/using-in-apis"
+  >
     @api 데코레이터에 적용
   </Card>
-  <Card title="SSR에서 사용하기" icon="window" href="/ko/advanced-features/cache-control/using-in-ssr">
+  <Card
+    title="SSR에서 사용하기"
+    icon="window"
+    href="/ko/advanced-features/cache-control/using-in-ssr"
+  >
     SSR 페이지에 적용
   </Card>
 </CardGroup>

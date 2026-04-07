@@ -1,4 +1,5 @@
-import { type InferSchema, lazySchema, zodSchema } from "@ai-sdk/provider-utils";
+import { lazySchema, zodSchema } from "@ai-sdk/provider-utils";
+import { type InferSchema } from "@ai-sdk/provider-utils";
 import { z } from "zod";
 
 export type RtzrTranscriptionModelId = "whisper" | "sommers" | (string & {});

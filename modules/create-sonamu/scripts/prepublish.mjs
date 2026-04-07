@@ -62,7 +62,7 @@ console.log(`📦 Loaded ${Object.keys(catalog).length} catalog entries`);
 console.log("\n📄 Writing catalog.json...");
 await fs.writeFile(
   path.join(__dirname, "..", "catalog.json"),
-  JSON.stringify(catalog, null, 2) + "\n"
+  JSON.stringify(catalog, null, 2) + "\n",
 );
 console.log(`  ✅ catalog.json (${Object.keys(catalog).length} entries)`);
 

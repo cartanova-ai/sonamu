@@ -11,24 +11,16 @@ Learn how to set up and use Server-Side Rendering (SSR) in Sonamu.
 
 <CardGroup cols={2}>
   <Card title="TanStack Router" icon="route">
-    File-based routing
-    
-    Type-safe navigation
+    File-based routing Type-safe navigation
   </Card>
   <Card title="Vite SSR" icon="bolt">
-    Fast builds
-    
-    HMR support
+    Fast builds HMR support
   </Card>
   <Card title="Direct API Call" icon="server">
-    No HTTP overhead
-    
-    Fast response
+    No HTTP overhead Fast response
   </Card>
   <Card title="TanStack Query" icon="arrows-rotate">
-    Automated Hydration
-    
-    Caching integration
+    Automated Hydration Caching integration
   </Card>
 </CardGroup>
 
@@ -40,7 +32,10 @@ Sonamu implements SSR using **TanStack Router + Vite**.
 
 <FileTree>
   <FileItem name="web/src/">
-    <FileItem name="entry-server.generated.tsx" description="Server rendering entry (auto-generated)" />
+    <FileItem
+      name="entry-server.generated.tsx"
+      description="Server rendering entry (auto-generated)"
+    />
     <FileItem name="entry-client.tsx" description="Client hydration entry" />
     <FileItem name="routeTree.gen.ts" description="TanStack Router route tree (auto-generated)" />
     <FileItem name="routes/" description="File-based routes">
@@ -273,7 +268,7 @@ function UserPage() {
 ```typescript
 // web/vite.config.ts
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig(({ isSsrBuild }) => ({
@@ -316,6 +311,7 @@ Sonamu uses a **hybrid approach**:
 ```
 
 **Benefits**:
+
 - Fast First Contentful Paint
 - SEO optimization
 - Immediate display of initial data
@@ -329,6 +325,7 @@ Sonamu uses a **hybrid approach**:
 ```
 
 **Benefits**:
+
 - Reduced server load
 - Simple implementation
 - Fast development
@@ -358,6 +355,7 @@ sonamu build web      # Web only
 ```
 
 **Build output**:
+
 ```
 web/dist/                               # Web build source
 ├── client/                             # Client bundle
@@ -378,12 +376,10 @@ api/dist/                               # API build output
 ## Cautions
 
 <Warning>
-**Cautions when using Sonamu SSR**:
-1. **TanStack Router based**: Not Next.js App Router
-2. **entry-server.generated.tsx is auto-generated**: Don't modify directly
-3. **Be careful with window object**: window doesn't exist on server
-4. **dateReviver required**: Handles Date object serialization/deserialization
-5. **Use registerSSR**: See next document for data preloading
+  **Cautions when using Sonamu SSR**: 1. **TanStack Router based**: Not Next.js App Router 2.
+  **entry-server.generated.tsx is auto-generated**: Don't modify directly 3. **Be careful with
+  window object**: window doesn't exist on server 4. **dateReviver required**: Handles Date object
+  serialization/deserialization 5. **Use registerSSR**: See next document for data preloading
 </Warning>
 
 ## Next Steps
@@ -392,7 +388,11 @@ api/dist/                               # API build output
   <Card title="Data Preloading" icon="bolt" href="/en/frontend-integration/ssr/preloading-data">
     How to use registerSSR
   </Card>
-  <Card title="Hydration Strategies" icon="droplet" href="/en/frontend-integration/ssr/hydration-strategies">
+  <Card
+    title="Hydration Strategies"
+    icon="droplet"
+    href="/en/frontend-integration/ssr/hydration-strategies"
+  >
     Hydration optimization
   </Card>
   <Card title="Cache Control" icon="database" href="/en/frontend-integration/ssr/cache-control">

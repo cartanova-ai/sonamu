@@ -12,21 +12,25 @@ Learn how to effectively debug tests using Naite's callstack tracking feature.
     Automatic callstack tracking
 
     on Naite.t() calls
+
   </Card>
   <Card title="Call Path" icon="route">
     Function call sequence
 
     File location info
+
   </Card>
   <Card title="Debugging Support" icon="bug">
     Identify problem location
 
     Trace root cause
+
   </Card>
   <Card title="Viewer Integration" icon="eye">
     Visualize in VSCode
 
     Click to navigate
+
   </Card>
 </CardGroup>
 
@@ -52,6 +56,7 @@ In complex applications, a single operation executes through multiple functions.
     // Same log comes from three paths
     // Difficult to determine which path
     ```
+
   </Tab>
 
   <Tab title="Naite's Solution">
@@ -72,6 +77,7 @@ In complex applications, a single operation executes through multiple functions.
       .fromFunction("updateUser")  // Only path B
       .result();
     ```
+
   </Tab>
 </Tabs>
 
@@ -81,15 +87,15 @@ The callstack information collected by Naite is as follows:
 
 ```typescript
 interface StackFrame {
-  functionName: string | null;  // "createUser"
-  filePath: string;              // "/Users/.../user.model.ts"
-  lineNumber: number;            // 123
+  functionName: string | null; // "createUser"
+  filePath: string; // "/Users/.../user.model.ts"
+  lineNumber: number; // 123
 }
 
 interface NaiteTrace {
   key: string;
   data: any;
-  stack: StackFrame[];  // Callstack array
+  stack: StackFrame[]; // Callstack array
   at: Date;
 }
 ```
@@ -107,27 +113,29 @@ test("create user", async () => {
 ```
 
 **Collected callstack**:
+
 ```typescript
 [
   {
     functionName: "createUser",
     filePath: "/Users/.../user.model.ts",
-    lineNumber: 15
+    lineNumber: 15,
   },
   {
     functionName: "test",
     filePath: "/Users/.../user.model.test.ts",
-    lineNumber: 42
+    lineNumber: 42,
   },
   {
     functionName: "runWithMockContext",
     filePath: "/Users/.../bootstrap.ts",
-    lineNumber: 58
-  }
-]
+    lineNumber: 58,
+  },
+];
 ```
 
 **Meaning**:
+
 1. `createUser` (line 15): Location where `Naite.t()` was actually called
 2. `test` (line 42): Test code called `createUser`
 3. `runWithMockContext`: Sonamu's Context wrapper (ends here)
@@ -154,20 +162,17 @@ function extractCallStack(): StackFrame[] {
   // [2]: "at Naite.t"
   // [3]: Actual call location starts here
   const frames = lines
-    .slice(3)  // Exclude above 3
+    .slice(3) // Exclude above 3
     .map(parseStackFrame)
     .filter((frame): frame is StackFrame => frame !== null);
 
   // Cut at runWithContext when found
   const contextIndex = frames.findIndex(
     (f) =>
-      f.functionName?.includes("runWithContext") ||
-      f.functionName?.includes("runWithMockContext")
+      f.functionName?.includes("runWithContext") || f.functionName?.includes("runWithMockContext"),
   );
 
-  return contextIndex >= 0
-    ? frames.slice(0, contextIndex + 1)
-    : frames;
+  return contextIndex >= 0 ? frames.slice(0, contextIndex + 1) : frames;
 }
 ```
 
@@ -176,13 +181,11 @@ function extractCallStack(): StackFrame[] {
     Get current callstack as string with `new Error().stack`.
   </Step>
 
-  <Step title="Remove Unnecessary Frames">
-    Exclude `Error`, `extractCallStack`, `Naite.t` frames (`slice(3)`).
-  </Step>
+<Step title="Remove Unnecessary Frames">
+  Exclude `Error`, `extractCallStack`, `Naite.t` frames (`slice(3)`).
+</Step>
 
-  <Step title="Parse">
-    Parse each line into `StackFrame` objects.
-  </Step>
+<Step title="Parse">Parse each line into `StackFrame` objects.</Step>
 
   <Step title="End at Context Boundary">
     Cut at `runWithContext` when encountered. Beyond that is Vitest internal code which is not meaningful.
@@ -209,6 +212,7 @@ Parses two callstack formats:
       return { functionName, filePath, lineNumber };
     }
     ```
+
   </Tab>
 
   <Tab title="Format 2: Anonymous Function">
@@ -229,6 +233,7 @@ Parses two callstack formats:
       };
     }
     ```
+
   </Tab>
 
   <Tab title="Special Case: node:internal">
@@ -247,7 +252,9 @@ Parses two callstack formats:
 </Tabs>
 
 <Info>
-**Why End at runWithContext**: Naite keeps only meaningful callstacks. `runWithContext` is Sonamu's Context boundary, and above it is Vitest's internal code which doesn't help with debugging.
+  **Why End at runWithContext**: Naite keeps only meaningful callstacks. `runWithContext` is
+  Sonamu's Context boundary, and above it is Vitest's internal code which doesn't help with
+  debugging.
 </Info>
 
 ## Practical Debugging Scenarios
@@ -293,7 +300,8 @@ test("order processing", async () => {
 ```
 
 <Tip>
-**Check in VSCode**: When you click a log in Naite Viewer, the callstack is displayed, and clicking each frame navigates directly to that code location.
+  **Check in VSCode**: When you click a log in Naite Viewer, the callstack is displayed, and
+  clicking each frame navigates directly to that code location.
 </Tip>
 
 ### 2. Finding Error Locations
@@ -349,6 +357,7 @@ Regular `console.log` or `console.error` only shows the error message. But with 
 4. **Context**: Saved along with data at the time of error
 
 For example, if error occurred in `validateUser`:
+
 ```
 [
   { functionName: "validateUser", filePath: "...", lineNumber: 78 },
@@ -392,19 +401,19 @@ test("call chain analysis", async () => {
   const traceA = Naite.get("flow:A").getTraces()[0];
   const traceD = Naite.get("flow:D").getTraces()[0];
 
-  console.log("A's callstack length:", traceA.stack.length);  // 2 (A → test)
-  console.log("D's callstack length:", traceD.stack.length);  // 5 (D → C → B → A → test)
+  console.log("A's callstack length:", traceA.stack.length); // 2 (A → test)
+  console.log("D's callstack length:", traceD.stack.length); // 5 (D → C → B → A → test)
 
   // Check if D's callstack contains all functions
-  const functions = traceD.stack.map(f => f.functionName);
+  const functions = traceD.stack.map((f) => f.functionName);
   expect(functions).toContain("functionD");
   expect(functions).toContain("functionC");
   expect(functions).toContain("functionB");
   expect(functions).toContain("functionA");
 
   // Can also verify order
-  expect(functions[0]).toBe("functionD");  // Innermost
-  expect(functions[3]).toBe("functionA");  // Outermost
+  expect(functions[0]).toBe("functionD"); // Innermost
+  expect(functions[3]).toBe("functionA"); // Outermost
 });
 ```
 
@@ -436,14 +445,10 @@ test("logs called from specific function only", async () => {
   await processOrder(123);
 
   // Logs directly called from chargePayment function only
-  const paymentLogs = Naite.get("*")
-    .fromFunction("chargePayment", { from: "direct" })
-    .result();
+  const paymentLogs = Naite.get("*").fromFunction("chargePayment", { from: "direct" }).result();
 
   // All logs in chargePayment's call chain
-  const allPaymentLogs = Naite.get("*")
-    .fromFunction("chargePayment", { from: "both" })
-    .result();
+  const allPaymentLogs = Naite.get("*").fromFunction("chargePayment", { from: "both" }).result();
 
   console.log("Direct calls:", paymentLogs.length);
   console.log("Entire chain:", allPaymentLogs.length);
@@ -465,6 +470,7 @@ test("logs called from specific function only", async () => {
     // [sendEmail, chargePayment, processOrder, test]
     //  ^^^^^^^^^ not in first frame
     ```
+
   </Tab>
 
   <Tab title="indirect (Indirect Call)">
@@ -481,6 +487,7 @@ test("logs called from specific function only", async () => {
     // [chargePayment, processOrder, test]
     //  ^^^^^^^^^^^^^ in first frame (direct call)
     ```
+
   </Tab>
 
   <Tab title="both (All, default)">
@@ -495,6 +502,7 @@ test("logs called from specific function only", async () => {
     // [sendEmail, chargePayment, ...] Indirect call
     // All match
     ```
+
   </Tab>
 </Tabs>
 
@@ -525,6 +533,7 @@ user:create:start
 ```
 
 **Interaction**:
+
 - Click each frame to have VSCode editor navigate to the exact line in that file
 - Immediately see code context
 - Reduces debugging time
@@ -538,13 +547,13 @@ user:create:start
     After running tests, find suspicious logs in Naite Viewer.
   </Step>
 
-  <Step title="Check Callstack">
-    Click the log to view its callstack. Understand which functions it went through.
-  </Step>
+<Step title="Check Callstack">
+  Click the log to view its callstack. Understand which functions it went through.
+</Step>
 
-  <Step title="Navigate to Code Location">
-    Click each frame in the callstack to view the actual code.
-  </Step>
+<Step title="Navigate to Code Location">
+  Click each frame in the callstack to view the actual code.
+</Step>
 
   <Step title="Identify and Fix Problem">
     Follow the callstack to find and fix the root cause.
@@ -552,7 +561,8 @@ user:create:start
 </Steps>
 
 <Tip>
-**Pro Tip**: Comparing callstacks of multiple logs in Viewer helps quickly identify differences between normal and abnormal paths.
+  **Pro Tip**: Comparing callstacks of multiple logs in Viewer helps quickly identify differences
+  between normal and abnormal paths.
 </Tip>
 
 ## Advanced Patterns
@@ -606,13 +616,11 @@ Track Syncer's complex template generation process.
 ```typescript
 test("Syncer template generation tracking", async () => {
   await Sonamu.syncer.generateTemplate("model", {
-    entityId: "User"
+    entityId: "User",
   });
 
   // Where and how renderTemplate was called
-  const renderLogs = Naite.get("syncer:*")
-    .fromFunction("renderTemplate")
-    .getTraces();
+  const renderLogs = Naite.get("syncer:*").fromFunction("renderTemplate").getTraces();
 
   for (const trace of renderLogs) {
     console.log(`\n${trace.key}:`);
@@ -620,7 +628,9 @@ test("Syncer template generation tracking", async () => {
     console.log(`  Callstack:`);
 
     trace.stack.forEach((frame, i) => {
-      console.log(`    ${i + 1}. ${frame.functionName} (${frame.filePath.split('/').pop()}:${frame.lineNumber})`);
+      console.log(
+        `    ${i + 1}. ${frame.functionName} (${frame.filePath.split("/").pop()}:${frame.lineNumber})`,
+      );
     });
   }
 
@@ -663,9 +673,7 @@ test("check recursion depth", async () => {
     console.log(`  Callstack length: ${trace.stack.length}`);
 
     // How many recursiveFunction in callstack
-    const recursiveCount = trace.stack.filter(
-      f => f.functionName === "recursiveFunction"
-    ).length;
+    const recursiveCount = trace.stack.filter((f) => f.functionName === "recursiveFunction").length;
 
     console.log(`  Recursion depth: ${recursiveCount}`);
 
@@ -716,17 +724,15 @@ function extractCallStack(): StackFrame[] {
   // Cut at runWithContext family functions when found
   const contextIndex = frames.findIndex(
     (f) =>
-      f.functionName?.includes("runWithContext") ||
-      f.functionName?.includes("runWithMockContext")
+      f.functionName?.includes("runWithContext") || f.functionName?.includes("runWithMockContext"),
   );
 
-  return contextIndex >= 0
-    ? frames.slice(0, contextIndex + 1)
-    : frames;
+  return contextIndex >= 0 ? frames.slice(0, contextIndex + 1) : frames;
 }
 ```
 
 **Reasons**:
+
 - `runWithContext` is Sonamu's Context boundary
 - Above it is Vitest internal code (meaningless)
 - Keep only meaningful callstack for better readability
@@ -742,6 +748,7 @@ if (filePath.includes(":")) {
 ```
 
 **Example**:
+
 ```typescript
 {
   functionName: "processTicksAndRejections",
@@ -775,8 +782,9 @@ For easier debugging, give explicit names to important functions:
 async function handleUser() { /* ... */ }
 
 // ❌ Bad approach
-const handler = async () => { /* ... */ };
-```
+const handler = async () => {/* ... */};
+
+````
 </Tip>
 
 ## Best Practices
@@ -870,3 +878,4 @@ const handler = async () => { /* ... */ };
     Return to Naite overview.
   </Card>
 </CardGroup>
+````

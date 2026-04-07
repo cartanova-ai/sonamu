@@ -11,24 +11,17 @@ Sonamu supports 4 Relation types:
 
 <CardGroup cols={2}>
   <Card title="BelongsToOne" icon="arrow-right">
-    N:1 relationship - Many reference one
-    
-    Example: Post → User (multiple posts belong to one user)
+    N:1 relationship - Many reference one Example: Post → User (multiple posts belong to one user)
   </Card>
   <Card title="OneToOne" icon="arrows-left-right">
-    1:1 relationship - One references one
-    
-    Example: User ↔ Employee (user and employee info are 1:1 matched)
+    1:1 relationship - One references one Example: User ↔ Employee (user and employee info are 1:1
+    matched)
   </Card>
   <Card title="HasMany" icon="arrow-right-arrow-left">
-    1:N relationship - One owns many
-    
-    Example: User → Posts (one user owns multiple posts)
+    1:N relationship - One owns many Example: User → Posts (one user owns multiple posts)
   </Card>
   <Card title="ManyToMany" icon="arrows-split-up-and-left">
-    N:M relationship - Many-to-many
-    
-    Example: Post ↔ Tag (many-to-many between posts and tags)
+    N:M relationship - Many-to-many Example: Post ↔ Tag (many-to-many between posts and tags)
   </Card>
 </CardGroup>
 
@@ -73,23 +66,23 @@ Sonamu supports 4 Relation types:
 
 ### Options
 
-| Option | Type | Description | Default |
-|--------|------|-------------|---------|
-| `nullable` | boolean | Allow NULL | `false` |
-| `useConstraint` | boolean | Use Foreign Key constraint | `true` |
-| `onUpdate` | RelationOn | Action on referenced record update | `RESTRICT` |
-| `onDelete` | RelationOn | Action on referenced record delete | `RESTRICT` |
-| `customJoinClause` | string | Custom JOIN condition | - |
+| Option             | Type       | Description                        | Default    |
+| ------------------ | ---------- | ---------------------------------- | ---------- |
+| `nullable`         | boolean    | Allow NULL                         | `false`    |
+| `useConstraint`    | boolean    | Use Foreign Key constraint         | `true`     |
+| `onUpdate`         | RelationOn | Action on referenced record update | `RESTRICT` |
+| `onDelete`         | RelationOn | Action on referenced record delete | `RESTRICT` |
+| `customJoinClause` | string     | Custom JOIN condition              | -          |
 
 ### RelationOn Options
 
-| Value | Description | Use Case |
-|-------|-------------|----------|
-| `CASCADE` | Change/delete child when parent changes | Delete posts when user is deleted |
-| `SET NULL` | Set child's FK to NULL when parent deleted | Set employee's department to NULL when department deleted |
-| `RESTRICT` | Prevent parent change/delete if children exist | Cannot delete user if posts exist |
-| `NO ACTION` | Similar to RESTRICT, different check timing | - |
-| `SET DEFAULT` | Set to default value when parent deleted | - |
+| Value         | Description                                    | Use Case                                                  |
+| ------------- | ---------------------------------------------- | --------------------------------------------------------- |
+| `CASCADE`     | Change/delete child when parent changes        | Delete posts when user is deleted                         |
+| `SET NULL`    | Set child's FK to NULL when parent deleted     | Set employee's department to NULL when department deleted |
+| `RESTRICT`    | Prevent parent change/delete if children exist | Cannot delete user if posts exist                         |
+| `NO ACTION`   | Similar to RESTRICT, different check timing    | -                                                         |
+| `SET DEFAULT` | Set to default value when parent deleted       | -                                                         |
 
 ### Example: nullable and CASCADE
 
@@ -106,6 +99,7 @@ Sonamu supports 4 Relation types:
 ```
 
 **Behavior**:
+
 - `department_id` allows `NULL`
 - When department is deleted, employee's `department_id` is set to `NULL`
 
@@ -119,7 +113,8 @@ const posts = await this.puri()
   .many();
 
 // Can access posts[0].user.username
-```
+
+````
 
 ```typescript title="Type (auto-generated)"
 type PostSubsetA = {
@@ -130,7 +125,8 @@ type PostSubsetA = {
     username: string;
   };
 };
-```
+````
+
 </CodeGroup>
 
 ## OneToOne
@@ -197,14 +193,14 @@ OneToOne can be defined in two ways:
 
 ### Options
 
-| Option | Type | Description | Default |
-|--------|------|-------------|---------|
-| `hasJoinColumn` | boolean | Whether to create FK column | *required* |
-| `nullable` | boolean | Allow NULL (when hasJoinColumn: true) | `false` |
-| `useConstraint` | boolean | FK constraint (when hasJoinColumn: true) | `true` |
-| `onUpdate` | RelationOn | Action on update (when hasJoinColumn: true) | `RESTRICT` |
-| `onDelete` | RelationOn | Action on delete (when hasJoinColumn: true) | `RESTRICT` |
-| `customJoinClause` | string | Custom JOIN condition | - |
+| Option             | Type       | Description                                 | Default    |
+| ------------------ | ---------- | ------------------------------------------- | ---------- |
+| `hasJoinColumn`    | boolean    | Whether to create FK column                 | _required_ |
+| `nullable`         | boolean    | Allow NULL (when hasJoinColumn: true)       | `false`    |
+| `useConstraint`    | boolean    | FK constraint (when hasJoinColumn: true)    | `true`     |
+| `onUpdate`         | RelationOn | Action on update (when hasJoinColumn: true) | `RESTRICT` |
+| `onDelete`         | RelationOn | Action on delete (when hasJoinColumn: true) | `RESTRICT` |
+| `customJoinClause` | string     | Custom JOIN condition                       | -          |
 
 ### Example: Bidirectional OneToOne
 
@@ -230,9 +226,11 @@ OneToOne can be defined in two ways:
   "onDelete": "CASCADE"
 }
 ```
+
 </CodeGroup>
 
 **Relationship explained**:
+
 - User can optionally have an Employee (nullable)
 - Employee must have a User (not null)
 - When User is deleted, Employee is also deleted (CASCADE)
@@ -260,16 +258,17 @@ OneToOne can be defined in two ways:
 ```
 
 **Requirements**:
+
 - `Post` Entity must have a `user_id` column
 - Usually defined with `BelongsToOne` in reverse on `Post`
 
 ### Options
 
-| Option | Type | Description | Default |
-|--------|------|-------------|---------|
-| `joinColumn` | string | FK column name in the other table | *required* |
-| `fromColumn` | string | Reference column name in current table | `id` |
-| `nullable` | boolean | Nullable for the relation itself (optional) | `false` |
+| Option       | Type    | Description                                 | Default    |
+| ------------ | ------- | ------------------------------------------- | ---------- |
+| `joinColumn` | string  | FK column name in the other table           | _required_ |
+| `fromColumn` | string  | Reference column name in current table      | `id`       |
+| `nullable`   | boolean | Nullable for the relation itself (optional) | `false`    |
 
 ### Example: Using fromColumn
 
@@ -286,6 +285,7 @@ OneToOne can be defined in two ways:
 ```
 
 **JOIN query**:
+
 ```sql
 SELECT * FROM posts
 WHERE posts.parent_post_id = {user.id}
@@ -321,17 +321,17 @@ type UserSubsetA = {
 ```
 
 ```typescript title="Query"
-const users = await this.puri()
-  .select<UserSubsetA>("A")
-  .many();
+const users = await this.puri().select<UserSubsetA>("A").many();
 
 // users[0].posts is an array
 console.log(users[0].posts.length);
 ```
+
 </CodeGroup>
 
 <Info>
-HasMany is automatically optimized using the **DataLoader pattern**. N+1 query problems don't occur.
+  HasMany is automatically optimized using the **DataLoader pattern**. N+1 query problems don't
+  occur.
 </Info>
 
 ## ManyToMany
@@ -371,17 +371,16 @@ CREATE TABLE posts__tags (
 
 ### Options
 
-| Option | Type | Description | Default |
-|--------|------|-------------|---------|
-| `joinTable` | string | Join table name (`{table1}__${table2}`) | *required* |
-| `onUpdate` | RelationOn | Action on referenced record update | *required* |
-| `onDelete` | RelationOn | Action on referenced record delete | *required* |
-| `nullable` | boolean | Nullable for the relation itself (optional) | `false` |
+| Option      | Type       | Description                                 | Default    |
+| ----------- | ---------- | ------------------------------------------- | ---------- |
+| `joinTable` | string     | Join table name (`{table1}__${table2}`)     | _required_ |
+| `onUpdate`  | RelationOn | Action on referenced record update          | _required_ |
+| `onDelete`  | RelationOn | Action on referenced record delete          | _required_ |
+| `nullable`  | boolean    | Nullable for the relation itself (optional) | `false`    |
 
 <Warning>
-**Join Table Naming Convention**: Sort two table names alphabetically and connect with `__`.
-- Correct: `posts__tags`
-- Wrong: `tags__posts` (not alphabetical order)
+  **Join Table Naming Convention**: Sort two table names alphabetically and connect with `__`. -
+  Correct: `posts__tags` - Wrong: `tags__posts` (not alphabetical order)
 </Warning>
 
 ### Bidirectional Definition
@@ -410,6 +409,7 @@ CREATE TABLE posts__tags (
   "onDelete": "CASCADE"
 }
 ```
+
 </CodeGroup>
 
 ### TypeScript Usage
@@ -440,15 +440,14 @@ type PostSubsetA = {
 ```
 
 ```typescript title="Query"
-const posts = await this.puri()
-  .select<PostSubsetA>("A")
-  .many();
+const posts = await this.puri().select<PostSubsetA>("A").many();
 
 // posts[0].tags is an array
-posts[0].tags.forEach(tag => {
+posts[0].tags.forEach((tag) => {
   console.log(tag.name);
 });
 ```
+
 </CodeGroup>
 
 ## Custom Join Clause
@@ -467,9 +466,7 @@ You can write SQL expressions directly when complex JOIN conditions are needed.
 }
 ```
 
-<Warning>
-`customJoinClause` is an advanced feature. Use standard Relations when possible.
-</Warning>
+<Warning>`customJoinClause` is an advanced feature. Use standard Relations when possible.</Warning>
 
 ## Relation Usage Patterns
 
@@ -478,18 +475,13 @@ You can write SQL expressions directly when complex JOIN conditions are needed.
 ```json
 {
   "subsets": {
-    "A": [
-      "id",
-      "title",
-      "user.username",
-      "user.email",
-      "tags.name"
-    ]
+    "A": ["id", "title", "user.username", "user.email", "tags.name"]
   }
 }
 ```
 
 **Auto-generated queries**:
+
 - `user`: LEFT JOIN
 - `tags`: Separate query via DataLoader
 
@@ -498,18 +490,13 @@ You can write SQL expressions directly when complex JOIN conditions are needed.
 ```json
 {
   "subsets": {
-    "A": [
-      "id",
-      "title",
-      "user.id",
-      "user.username",
-      "user.employee.department.name"
-    ]
+    "A": ["id", "title", "user.id", "user.username", "user.employee.department.name"]
   }
 }
 ```
 
 Sonamu automatically generates the necessary JOINs:
+
 ```sql
 FROM posts
 LEFT JOIN users ON posts.user_id = users.id
@@ -535,41 +522,40 @@ const activePosts = await PostModel.puri()
   .where("status", "active")
   .many();
 ```
+
 </CodeGroup>
 
 ### 4. Sorting by Relations
 
 ```typescript
-const posts = await this.puri()
-  .orderBy("user.username", "asc")
-  .many();
+const posts = await this.puri().orderBy("user.username", "asc").many();
 ```
 
 ## Relation Design Guide
 
 ### BelongsToOne vs OneToOne
 
-| Situation | Recommended Type | Reason |
-|-----------|------------------|--------|
-| Post → Author | `BelongsToOne` | Multiple posts belong to one user |
-| User ↔ Profile | `OneToOne` | 1:1 matching relationship |
-| Order → Customer | `BelongsToOne` | Multiple orders belong to one customer |
+| Situation        | Recommended Type | Reason                                 |
+| ---------------- | ---------------- | -------------------------------------- |
+| Post → Author    | `BelongsToOne`   | Multiple posts belong to one user      |
+| User ↔ Profile   | `OneToOne`       | 1:1 matching relationship              |
+| Order → Customer | `BelongsToOne`   | Multiple orders belong to one customer |
 
 ### CASCADE vs RESTRICT
 
-| Situation | Recommended Action | Reason |
-|-----------|-------------------|--------|
-| User delete → Posts | `CASCADE` | Delete together |
-| Category delete → Posts | `RESTRICT` | Cannot delete if posts exist |
-| Department delete → Employees | `SET NULL` | Keep employees, set department to NULL |
+| Situation                     | Recommended Action | Reason                                 |
+| ----------------------------- | ------------------ | -------------------------------------- |
+| User delete → Posts           | `CASCADE`          | Delete together                        |
+| Category delete → Posts       | `RESTRICT`         | Cannot delete if posts exist           |
+| Department delete → Employees | `SET NULL`         | Keep employees, set department to NULL |
 
 ### nullable Setting
 
-| Situation | nullable | Reason |
-|-----------|----------|--------|
-| Required relationship | `false` | Reference always needed |
-| Optional relationship | `true` | May not exist |
-| Temporary state | `true` | Set later |
+| Situation             | nullable | Reason                  |
+| --------------------- | -------- | ----------------------- |
+| Required relationship | `false`  | Reference always needed |
+| Optional relationship | `true`   | May not exist           |
+| Temporary state       | `true`   | Set later               |
 
 ## Cautions
 
@@ -577,18 +563,21 @@ const posts = await this.puri()
 **Avoid Circular References**
 
 Avoid circular references like A → B → C → A. This can cause problems when creating data.
+
 </Warning>
 
 <Warning>
 **JOIN Depth Limit**
 
 Too deep nested Relations (3+ levels) can cause performance issues. Separate into different queries when needed.
+
 </Warning>
 
 <Tip>
 **ManyToMany Join Table**
 
 Sonamu automatically manages Join Tables, so you don't need to create a separate Entity. Only separate into an Entity when additional columns are needed.
+
 </Tip>
 
 ## Next Steps

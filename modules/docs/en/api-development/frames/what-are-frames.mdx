@@ -9,24 +9,16 @@ Frame is used to create independent API endpoints that are not connected to data
 
 <CardGroup cols={2}>
   <Card title="No Entity Required" icon="circle-xmark">
-    Works without DB tables
-    
-    Free API implementation
+    Works without DB tables Free API implementation
   </Card>
   <Card title="Simple Structure" icon="diagram-project">
-    Extend BaseFrameClass
-    
-    Use @api decorator
+    Extend BaseFrameClass Use @api decorator
   </Card>
   <Card title="Various Uses" icon="wand-magic-sparkles">
-    Health check, utilities
-    
-    External API proxy
+    Health check, utilities External API proxy
   </Card>
   <Card title="Independent Logic" icon="code">
-    Implement business logic only
-    
-    No Entity constraints
+    Implement business logic only No Entity constraints
   </Card>
 </CardGroup>
 
@@ -45,14 +37,14 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries); // ← Connected to Entity
   }
-  
+
   @api({ httpMethod: "GET" })
   async list(): Promise<User[]> {
     // Query users table
     const rdb = this.getPuri("r");
     return rdb.table("users").select("*");
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     // Insert into users table
@@ -65,6 +57,7 @@ class UserModelClass extends BaseModelClass<
 ```
 
 **Model Characteristics**:
+
 - 1:1 mapping with Entity (DB table)
 - CRUD operation focused
 - Uses UpsertBuilder, Subset
@@ -76,7 +69,7 @@ class UserModelClass extends BaseModelClass<
 // Independent API without Entity
 class HealthFrame extends BaseFrameClass {
   frameName = "Health"; // ← Independent of Entity
-  
+
   @api({ httpMethod: "GET" })
   async check(): Promise<{
     status: "ok" | "error";
@@ -90,7 +83,7 @@ class HealthFrame extends BaseFrameClass {
       uptime: process.uptime(),
     };
   }
-  
+
   @api({ httpMethod: "GET" })
   async ping(): Promise<{ pong: string }> {
     return { pong: "pong" };
@@ -99,6 +92,7 @@ class HealthFrame extends BaseFrameClass {
 ```
 
 **Frame Characteristics**:
+
 - Independent logic unrelated to Entity
 - Utilities, health checks, proxies, etc.
 - Flexible API structure
@@ -106,29 +100,29 @@ class HealthFrame extends BaseFrameClass {
 
 ## Comparison Table
 
-| Feature | Model | Frame |
-|---------|-------|-------|
-| Entity Connection | ✅ Required | ❌ Not needed |
-| DB Access | CRUD focused | Optional |
-| Use Cases | Data management | Utilities, proxies |
-| Complexity | High | Low |
-| UpsertBuilder | ✅ Uses | ❌ Not needed |
-| Subset | ✅ Uses | ❌ Not needed |
+| Feature           | Model           | Frame              |
+| ----------------- | --------------- | ------------------ |
+| Entity Connection | ✅ Required     | ❌ Not needed      |
+| DB Access         | CRUD focused    | Optional           |
+| Use Cases         | Data management | Utilities, proxies |
+| Complexity        | High            | Low                |
+| UpsertBuilder     | ✅ Uses         | ❌ Not needed      |
+| Subset            | ✅ Uses         | ❌ Not needed      |
 
 ```mermaid
 flowchart TD
     A[API Requirements] --> B{Entity needed?}
     B -->|Yes| C[BaseModelClass<br/>Entity-based]
     B -->|No| D[BaseFrameClass<br/>Independent API]
-    
+
     C --> E[CRUD operations]
     C --> F[Related data]
     C --> G[Type safety]
-    
+
     D --> H[Health check]
     D --> I[Utilities]
     D --> J[External API proxy]
-    
+
     style C fill:#e3f2fd
     style D fill:#fff9c4
     style E fill:#e8f5e9
@@ -144,24 +138,28 @@ flowchart TD
 ### ✅ Use Frame When
 
 1. **Health Check API**
+
    ```typescript
    // GET /api/health/check
    // Only check server status without Entity
    ```
 
 2. **Utility API**
+
    ```typescript
    // POST /api/utils/hash
    // Simple functions like string hashing
    ```
 
 3. **External API Proxy**
+
    ```typescript
    // GET /api/weather/current
    // Wrap external weather API as internal API
    ```
 
 4. **Aggregated Statistics**
+
    ```typescript
    // GET /api/stats/dashboard
    // Aggregate statistics from multiple tables
@@ -176,11 +174,13 @@ flowchart TD
 ### ❌ Use Model When
 
 1. **Entity CRUD Operations**
+
    ```typescript
    // Create/Read/Update/Delete for User, Product, Order, etc.
    ```
 
 2. **Related Data Processing**
+
    ```typescript
    // User → Profile, Order → OrderItems
    ```
@@ -214,9 +214,7 @@ api/src/frames/
     └── utils.frame.ts
 ```
 
-<Info>
-Frame only requires the `.frame.ts` file without Entity definition.
-</Info>
+<Info>Frame only requires the `.frame.ts` file without Entity definition.</Info>
 
 ## Simple Examples
 
@@ -225,7 +223,7 @@ Frame only requires the `.frame.ts` file without Entity definition.
 ```typescript
 class HealthFrame extends BaseFrameClass {
   frameName = "Health";
-  
+
   @api({ httpMethod: "GET" })
   async check(): Promise<{
     status: "ok" | "error";
@@ -234,7 +232,7 @@ class HealthFrame extends BaseFrameClass {
   }> {
     // DB connection check
     let dbStatus: "connected" | "disconnected" = "disconnected";
-    
+
     try {
       const rdb = this.getPuri("r");
       await rdb.raw("SELECT 1");
@@ -242,14 +240,14 @@ class HealthFrame extends BaseFrameClass {
     } catch (error) {
       console.error("Database connection failed:", error);
     }
-    
+
     return {
       status: dbStatus === "connected" ? "ok" : "error",
       timestamp: new Date(),
       database: dbStatus,
     };
   }
-  
+
   @api({ httpMethod: "GET" })
   async ping(): Promise<{ message: string }> {
     return { message: "pong" };
@@ -268,20 +266,17 @@ import crypto from "crypto";
 
 class UtilsFrame extends BaseFrameClass {
   frameName = "Utils";
-  
+
   @api({ httpMethod: "POST" })
   async hash(params: {
     text: string;
     algorithm: "md5" | "sha256" | "sha512";
   }): Promise<{ hash: string }> {
-    const hash = crypto
-      .createHash(params.algorithm)
-      .update(params.text)
-      .digest("hex");
-    
+    const hash = crypto.createHash(params.algorithm).update(params.text).digest("hex");
+
     return { hash };
   }
-  
+
   @api({ httpMethod: "POST" })
   async uuid(): Promise<{ uuid: string }> {
     return { uuid: crypto.randomUUID() };
@@ -299,24 +294,16 @@ class UtilsFrame extends BaseFrameClass {
 
 <CardGroup cols={2}>
   <Card title="Fast Implementation" icon="rocket">
-    No Entity definition needed
-    
-    Simple structure
+    No Entity definition needed Simple structure
   </Card>
   <Card title="Flexibility" icon="arrows-turn-to-dots">
-    Unrestricted logic
-    
-    Free API design
+    Unrestricted logic Free API design
   </Card>
   <Card title="Independence" icon="shield">
-    Independent of DB schema
-    
-    Easy external API integration
+    Independent of DB schema Easy external API integration
   </Card>
   <Card title="Easy Testing" icon="flask">
-    Simple logic
-    
-    No mock needed
+    Simple logic No mock needed
   </Card>
 </CardGroup>
 
@@ -324,14 +311,10 @@ class UtilsFrame extends BaseFrameClass {
 
 <CardGroup cols={2}>
   <Card title="Reduced Type Safety" icon="triangle-exclamation">
-    Entity types not used
-    
-    Manual type management
+    Entity types not used Manual type management
   </Card>
   <Card title="No Auto Generation" icon="circle-xmark">
-    No Subset, Types auto-generation
-    
-    Manual writing required
+    No Subset, Types auto-generation Manual writing required
   </Card>
 </CardGroup>
 
@@ -382,15 +365,21 @@ class MiscFrame extends BaseFrameClass {
 // ✅ Good: Related features in one Frame
 class CryptoUtilsFrame extends BaseFrameClass {
   frameName = "CryptoUtils";
-  
+
   @api({ httpMethod: "POST" })
-  async hash(params: HashParams): Promise<{ hash: string }> { /* ... */ }
-  
+  async hash(params: HashParams): Promise<{ hash: string }> {
+    /* ... */
+  }
+
   @api({ httpMethod: "POST" })
-  async encrypt(params: EncryptParams): Promise<{ encrypted: string }> { /* ... */ }
-  
+  async encrypt(params: EncryptParams): Promise<{ encrypted: string }> {
+    /* ... */
+  }
+
   @api({ httpMethod: "POST" })
-  async decrypt(params: DecryptParams): Promise<{ decrypted: string }> { /* ... */ }
+  async decrypt(params: DecryptParams): Promise<{ decrypted: string }> {
+    /* ... */
+  }
 }
 ```
 

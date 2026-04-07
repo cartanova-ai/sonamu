@@ -1,13 +1,13 @@
-import type { ProviderOptions, Tool } from "@ai-sdk/provider-utils";
-import type { LanguageModel, StopCondition, ToolSet } from "ai";
+import { type ProviderOptions, type Tool } from "@ai-sdk/provider-utils";
+import { type LanguageModel, type StopCondition, type ToolSet } from "ai";
 import type * as z4 from "zod/v4";
 
 export type ToolChoiceLimited = "auto" | "none" | "required";
 
 export interface ToolDecoratorSchema<INPUT, OUTPUT = unknown> {
-  // biome-ignore lint/suspicious/noExplicitAny: zod type의 타입 추론에 필요
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- zod type의 타입 추론에 필요
   input: z4.core.$ZodType<INPUT, any>;
-  // biome-ignore lint/suspicious/noExplicitAny: zod type의 타입 추론에 필요
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- zod type의 타입 추론에 필요
   output?: z4.core.$ZodType<OUTPUT, any>;
 }
 
@@ -23,7 +23,7 @@ export interface ToolDecoratorOptions<INPUT, OUTPUT = unknown> {
 export type RegisteredToolDefinition = {
   name: string;
   description?: string;
-  schema: ToolDecoratorSchema<unknown, unknown>;
+  schema: ToolDecoratorSchema<unknown>;
   needsApproval?: Tool["needsApproval"];
   toModelOutput?: Tool["toModelOutput"];
   providerOptions?: ProviderOptions;

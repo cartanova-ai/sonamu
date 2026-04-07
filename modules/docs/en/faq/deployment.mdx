@@ -1,6 +1,6 @@
 ---
-title: 'Deployment'
-description: 'Questions about production deployment and operations'
+title: "Deployment"
+description: "Questions about production deployment and operations"
 ---
 
 ## Build and Deployment
@@ -114,7 +114,7 @@ export default {
   server: {
     listen: {
       port: Number(process.env.PORT) || 34900,
-    }
+    },
   },
   database: {
     connections: {
@@ -124,12 +124,12 @@ export default {
         database: process.env.DB_NAME,
         user: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
-      }
-    }
+      },
+    },
   },
   session: {
     secret: process.env.SESSION_SECRET,
-  }
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -251,14 +251,14 @@ export default {
       transports: [
         new winston.transports.File({
           filename: "logs/error.log",
-          level: "error"
+          level: "error",
         }),
         new winston.transports.File({
-          filename: "logs/combined.log"
-        })
-      ]
-    })
-  }
+          filename: "logs/combined.log",
+        }),
+      ],
+    }),
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -291,7 +291,7 @@ class UserModelClass extends BaseModelClass {
 import { BaseFrameClass, api } from "sonamu";
 
 class HealthFrameClass extends BaseFrameClass {
-  @api({ httpMethod: "GET" })  // Omit guards = public API
+  @api({ httpMethod: "GET" }) // Omit guards = public API
   async healthCheck(): Promise<{
     status: string;
     timestamp: Date;
@@ -310,7 +310,7 @@ class HealthFrameClass extends BaseFrameClass {
       status: databaseStatus === "ok" ? "healthy" : "unhealthy",
       timestamp: new Date(),
       uptime: process.uptime(),
-      database: databaseStatus
+      database: databaseStatus,
     };
   }
 }
@@ -346,9 +346,9 @@ export default {
         if (process.env.NODE_ENV === "production") {
           Sentry.captureException(error);
         }
-      }
-    }
-  }
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -373,11 +373,11 @@ export default {
           min: 2,
           max: 10,
           acquireTimeoutMillis: 30000,
-          idleTimeoutMillis: 30000
-        }
-      }
-    }
-  }
+          idleTimeoutMillis: 30000,
+        },
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -392,16 +392,17 @@ export default {
     cache: {
       default: "redis",
       stores: {
-        redis: bentostore()
-          .useL1Layer(redisDriver({
+        redis: bentostore().useL1Layer(
+          redisDriver({
             connection: {
               host: process.env.REDIS_HOST,
-              port: 6379
-            }
-          }))
-      }
-    }
-  }
+              port: 6379,
+            },
+          }),
+        ),
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -415,9 +416,9 @@ export default {
     lifecycle: {
       async onStart(fastify) {
         await fastify.register(compress);
-      }
-    }
-  }
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -479,7 +480,7 @@ CMD ["node", "dist/index.js"]
 **docker-compose.yml:**
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -561,7 +562,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Install pnpm
         run: npm install -g pnpm
@@ -647,9 +648,9 @@ export default {
     cors: {
       origin: process.env.CORS_ORIGIN || "http://localhost:5173",
       credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
-    }
-  }
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -665,12 +666,12 @@ export default {
     lifecycle: {
       async onStart(fastify) {
         await fastify.register(rateLimit, {
-          max: 100,  // 100 requests
-          timeWindow: '1 minute'
+          max: 100, // 100 requests
+          timeWindow: "1 minute",
         });
-      }
-    }
-  }
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -685,6 +686,7 @@ export default {
 <Accordion title="Production checklist">
 
 **Security:**
+
 - [ ] HTTPS configured
 - [ ] Sensitive info managed via environment variables
 - [ ] CORS properly configured
@@ -693,6 +695,7 @@ export default {
 - [ ] XSS prevention (input validation)
 
 **Performance:**
+
 - [ ] Connection Pool optimized
 - [ ] Redis caching enabled
 - [ ] Static file caching
@@ -700,12 +703,14 @@ export default {
 - [ ] N+1 queries eliminated
 
 **Monitoring:**
+
 - [ ] Health check endpoint
 - [ ] Error monitoring (Sentry)
 - [ ] Log collection (Winston)
 - [ ] DB backup automation
 
 **Deployment:**
+
 - [ ] Production environment variables set
 - [ ] Migration tested (Shadow DB)
 - [ ] CI/CD pipeline

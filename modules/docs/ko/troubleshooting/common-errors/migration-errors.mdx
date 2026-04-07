@@ -1,6 +1,6 @@
 ---
-title: '마이그레이션 오류'
-description: '마이그레이션 문제 해결하기'
+title: "마이그레이션 오류"
+description: "마이그레이션 문제 해결하기"
 ---
 
 Sonamu에서 자주 발생하는 데이터베이스 마이그레이션 관련 문제와 해결 방법을 다룹니다.
@@ -62,7 +62,7 @@ cat sonamu.lock
 ### 증상
 
 ```bash
-Error: Migration files conflict: 
+Error: Migration files conflict:
   - 20240115_create_users.ts
   - 20240115_add_email_column.ts
 Both have timestamp: 20240115
@@ -122,7 +122,7 @@ export async function up(knex: Knex): Promise<void> {
     // 새로운 정의로 재생성
     table.specificType(
       "full_name",
-      "TEXT GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED"
+      "TEXT GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED",
     );
   });
 }
@@ -134,10 +134,7 @@ export async function down(knex: Knex): Promise<void> {
 
   // 이전 정의로 복원
   await knex.schema.alterTable("users", (table) => {
-    table.specificType(
-      "full_name",
-      "TEXT GENERATED ALWAYS AS (first_name || last_name) STORED"
-    );
+    table.specificType("full_name", "TEXT GENERATED ALWAYS AS (first_name || last_name) STORED");
   });
 }
 ```
@@ -161,7 +158,7 @@ export async function down(knex: Knex): Promise<void> {
 ### 증상
 
 ```bash
-column "created_at" is of type timestamp without time zone but default 
+column "created_at" is of type timestamp without time zone but default
 expression is of type timestamp with time zone
 ```
 
@@ -197,9 +194,13 @@ PostgreSQL에서 `timestamp` 타입의 precision이 명시되지 않아 기본�
 ```typescript
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
-    table.specificType("created_at", "TIMESTAMP(6)").notNullable()
+    table
+      .specificType("created_at", "TIMESTAMP(6)")
+      .notNullable()
       .defaultTo(knex.raw("CURRENT_TIMESTAMP(6)"));
-    table.specificType("updated_at", "TIMESTAMP(6)").notNullable()
+    table
+      .specificType("updated_at", "TIMESTAMP(6)")
+      .notNullable()
       .defaultTo(knex.raw("CURRENT_TIMESTAMP(6)"));
   });
 }
@@ -210,7 +211,7 @@ export async function up(knex: Knex): Promise<void> {
 ### 증상
 
 ```bash
-Error: update or delete on table "users" violates foreign key constraint 
+Error: update or delete on table "users" violates foreign key constraint
 "posts_user_id_foreign" on table "posts"
 ```
 
@@ -247,7 +248,8 @@ export async function up(knex: Knex): Promise<void> {
 
   // CASCADE 옵션으로 재생성
   await knex.schema.alterTable("posts", (table) => {
-    table.foreign("user_id")
+    table
+      .foreign("user_id")
       .references("id")
       .inTable("users")
       .onDelete("CASCADE")
@@ -364,7 +366,7 @@ SELECT * FROM knex_migrations ORDER BY migration_time;
 
 ```sql
 -- 특정 마이그레이션 제거
-DELETE FROM knex_migrations 
+DELETE FROM knex_migrations
 WHERE name = '20240115_create_users.ts';
 
 -- 또는 테이블 초기화 (주의!)
@@ -393,7 +395,7 @@ pnpm sonamu migrate latest
 table.integer("status").unsigned();
 
 // PostgreSQL
-table.integer("status");  // PostgreSQL은 unsigned 없음
+table.integer("status"); // PostgreSQL은 unsigned 없음
 ```
 
 #### 2. Auto Increment 변경
@@ -403,7 +405,7 @@ table.integer("status");  // PostgreSQL은 unsigned 없음
 table.increments("id");
 
 // PostgreSQL
-table.bigIncrements("id");  // BIGSERIAL 사용 권장
+table.bigIncrements("id"); // BIGSERIAL 사용 권장
 ```
 
 #### 3. 문자열 타입

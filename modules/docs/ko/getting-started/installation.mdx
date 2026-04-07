@@ -13,9 +13,7 @@ Sonamu를 사용하기 위해서는 다음 환경이 필요합니다:
 - **pnpm** v10.23 이상
 - **Docker** (데이터베이스 실행용)
 
-<Tip>
-  pnpm이 설치되지 않았다면 `corepack enable` 명령어로 활성화할 수 있습니다.
-</Tip>
+<Tip>pnpm이 설치되지 않았다면 `corepack enable` 명령어로 활성화할 수 있습니다.</Tip>
 
 <Frame caption="터미널에서 node --version, pnpm --version, docker --version 실행 결과">
   <img src="/images/installation1.png" alt="Node.js, pnpm, Docker 버전 확인" />
@@ -63,21 +61,22 @@ pnpm create sonamu myapp \
 pnpm create sonamu myapp --db-name myapp --db-password secret123
 ```
 
-| 옵션 | 설명 | 기본값 |
-|------|------|--------|
-| `--yes`, `-y` | 모든 옵션을 기본값으로 설정 | - |
-| `--pnpm` | pnpm 설치 여부 (`y`/`n`) | (프롬프트로 질문) |
-| `--docker` | Docker DB 설정 여부 (`y`/`n`) | (프롬프트로 질문) |
-| `--skip-pnpm` | pnpm 설정 건너뛰기 (`--pnpm n`과 동일) | false |
-| `--skip-docker` | Docker DB 설정 건너뛰기 (`--docker n`과 동일) | false |
-| `--docker-project`, `--docker-pj-name` | Docker Compose 프로젝트명 | {프로젝트명}-docker |
-| `--db-user` | 데이터베이스 사용자명 | postgres |
-| `--db-name` | 데이터베이스 이름 | {프로젝트명} |
-| `--db-password` | 데이터베이스 비밀번호 | 1234 |
-| `--container-name` | Docker 컨테이너 이름 | {프로젝트명}-container |
+| 옵션                                   | 설명                                          | 기본값                 |
+| -------------------------------------- | --------------------------------------------- | ---------------------- |
+| `--yes`, `-y`                          | 모든 옵션을 기본값으로 설정                   | -                      |
+| `--pnpm`                               | pnpm 설치 여부 (`y`/`n`)                      | (프롬프트로 질문)      |
+| `--docker`                             | Docker DB 설정 여부 (`y`/`n`)                 | (프롬프트로 질문)      |
+| `--skip-pnpm`                          | pnpm 설정 건너뛰기 (`--pnpm n`과 동일)        | false                  |
+| `--skip-docker`                        | Docker DB 설정 건너뛰기 (`--docker n`과 동일) | false                  |
+| `--docker-project`, `--docker-pj-name` | Docker Compose 프로젝트명                     | {프로젝트명}-docker    |
+| `--db-user`                            | 데이터베이스 사용자명                         | postgres               |
+| `--db-name`                            | 데이터베이스 이름                             | {프로젝트명}           |
+| `--db-password`                        | 데이터베이스 비밀번호                         | 1234                   |
+| `--container-name`                     | Docker 컨테이너 이름                          | {프로젝트명}-container |
 
 <Note>
-`--pnpm y`, `--docker y`에서 `y`는 `yes`, `true`, `1`로도 지정할 수 있습니다. 마찬가지로 `n`은 `no`, `false`, `0`으로도 지정할 수 있습니다.
+  `--pnpm y`, `--docker y`에서 `y`는 `yes`, `true`, `1`로도 지정할 수 있습니다. 마찬가지로 `n`은
+  `no`, `false`, `0`으로도 지정할 수 있습니다.
 </Note>
 
 <Frame caption="인라인 옵션 기본값으로 pnpm create sonamu 실행">
@@ -115,9 +114,7 @@ pnpm create sonamu myapp --db-name myapp --db-password secret123
 </Warning>
 </Step>
 
-<Step title="pnpm 설정">
-  pnpm을 자동으로 설정할지 선택합니다. 권장 옵션입니다.
-</Step>
+<Step title="pnpm 설정">pnpm을 자동으로 설정할지 선택합니다. 권장 옵션입니다.</Step>
 
 <Step title="데이터베이스 설정">
 Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니다. Yes를 선택하면:
@@ -309,7 +306,7 @@ Vite + React + TanStack Router + SSR 기반 애플리케이션이 생성됩니�
 ```typescript title="packages/web/vite.config.ts"
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 import dotenv from "dotenv";
 import path from "path";
 import Icons from "unplugin-icons/vite";
@@ -343,17 +340,17 @@ export default defineConfig(({ command, isSsrBuild }) => ({
 
 기본 포트는 다음과 같이 설정됩니다:
 
-| 서비스     | 포트 | 설명                   |
-| ---------- | ---- | ---------------------- |
-| API 서버   | 34900 | Fastify 기반 REST API  |
-| Sonamu UI  | -    | http://localhost:34900/sonamu-ui |
-| Web 앱     | 5173 | Vite 개발 서버 (Vite 기본값, SSR 지원) |
-| PostgreSQL | 5432 | 데이터베이스           |
+| 서비스     | 포트  | 설명                                   |
+| ---------- | ----- | -------------------------------------- |
+| API 서버   | 34900 | Fastify 기반 REST API                  |
+| Sonamu UI  | -     | http://localhost:34900/sonamu-ui       |
+| Web 앱     | 5173  | Vite 개발 서버 (Vite 기본값, SSR 지원) |
+| PostgreSQL | 5432  | 데이터베이스                           |
 
 <Note>
-- **Sonamu UI**: 별도 포트가 아닌 API 서버의 `/sonamu-ui` 경로로 접근합니다.
-- API 서버 포트: `packages/api/src/sonamu.config.ts`에서 `port` 상수 수정 (이 경우 `packages/web/.sonamu.env`의 `API_PORT`도 함께 수정 필요)
-- Web 앱 포트: `packages/web/vite.config.ts`에서 `server.port` 수정
+  - **Sonamu UI**: 별도 포트가 아닌 API 서버의 `/sonamu-ui` 경로로 접근합니다. - API 서버 포트:
+  `packages/api/src/sonamu.config.ts`에서 `port` 상수 수정 (이 경우 `packages/web/.sonamu.env`의
+  `API_PORT`도 함께 수정 필요) - Web 앱 포트: `packages/web/vite.config.ts`에서 `server.port` 수정
 </Note>
 
 ## 다음 단계

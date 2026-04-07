@@ -39,6 +39,7 @@ async getData() {
     ```
 
     **TTL**: `"forever"`, `"1d"`, `"1w"`
+
   </Tab>
 
   <Tab title="Semi-static Data" icon="hourglass-half">
@@ -59,6 +60,7 @@ async getData() {
     ```
 
     **TTL**: `"30m"`, `"1h"`, `"6h"`
+
   </Tab>
 
   <Tab title="Dynamic Data" icon="bolt">
@@ -79,6 +81,7 @@ async getData() {
     ```
 
     **TTL**: `"1m"`, `"5m"`, `"10m"`
+
   </Tab>
 
   <Tab title="Very Short-lived Data" icon="gauge-high">
@@ -99,6 +102,7 @@ async getData() {
     ```
 
     **TTL**: `"5s"`, `"10s"`, `"30s"`
+
   </Tab>
 </Tabs>
 
@@ -191,6 +195,7 @@ sequenceDiagram
       return await this.complexAggregation();
     }
     ```
+
   </Card>
 
   <Card title="Grace Unnecessary ❌" icon="xmark">
@@ -207,6 +212,7 @@ sequenceDiagram
       return this.findOne(['id', id]);
     }
     ```
+
   </Card>
 </CardGroup>
 
@@ -216,9 +222,9 @@ sequenceDiagram
 class AnalyticsModelClass extends BaseModelClass {
   // Dashboard stats (heavy aggregation)
   @cache({
-    ttl: "5m",      // Refresh every 5 minutes
-    grace: "2h",    // Allow stale for 2 hours
-    tags: ["analytics"]
+    ttl: "5m", // Refresh every 5 minutes
+    grace: "2h", // Allow stale for 2 hours
+    tags: ["analytics"],
   })
   @api()
   async getDashboardStats() {
@@ -233,9 +239,9 @@ class AnalyticsModelClass extends BaseModelClass {
 
   // Real-time ranking (very heavy)
   @cache({
-    ttl: "1m",      // Refresh every minute
-    grace: "10m",   // Allow stale for 10 minutes
-    tags: ["ranking"]
+    ttl: "1m", // Refresh every minute
+    grace: "10m", // Allow stale for 10 minutes
+    tags: ["ranking"],
   })
   @api()
   async getRealTimeRanking() {
@@ -248,17 +254,21 @@ class AnalyticsModelClass extends BaseModelClass {
 ### Grace vs Long TTL
 
 **Grace Strategy**:
+
 ```typescript
 @cache({ ttl: "5m", grace: "1h" })
 ```
+
 - Mostly fresh data (within 5 minutes)
 - Returns stale immediately on expiration (fast)
 - Background refresh
 
 **Long TTL**:
+
 ```typescript
 @cache({ ttl: "1h" })
 ```
+
 - Data up to 1 hour old
 - Recalculates on expiration (slow)
 
@@ -278,8 +288,8 @@ const adminCache = Sonamu.cache.namespace("admin");
 await userCache.set({ key: "data", value: "user data" });
 await adminCache.set({ key: "data", value: "admin data" });
 
-await userCache.get({ key: "data" });   // "user data"
-await adminCache.get({ key: "data" });  // "admin data"
+await userCache.get({ key: "data" }); // "user data"
+await adminCache.get({ key: "data" }); // "admin data"
 ```
 
 ### Per-User Isolation
@@ -298,7 +308,7 @@ class UserDataModelClass extends BaseModelClass {
       ttl: "1h",
       factory: async () => {
         return this.getUserPreferences(userId);
-      }
+      },
     });
   }
 
@@ -317,6 +327,7 @@ class UserDataModelClass extends BaseModelClass {
 ```
 
 **Advantages**:
+
 - User A's changes don't affect User B
 - Selective invalidation possible
 
@@ -335,9 +346,9 @@ class TenantServiceModelClass extends BaseModelClass {
       tags: ["service"],
       factory: async () => {
         return this.findMany({
-          where: [['tenant_id', tenantId]]
+          where: [["tenant_id", tenantId]],
         });
-      }
+      },
     });
   }
 
@@ -469,13 +480,13 @@ class ProductModelClass extends BaseModelClass {
   // L1 (memory): Short TTL
   // L2 (Redis): Long TTL
   @cache({
-    ttl: "5m",      // L1 is 5 minutes
+    ttl: "5m", // L1 is 5 minutes
     // L2 automatically retained longer
-    tags: ["product"]
+    tags: ["product"],
   })
   @api()
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 }
 ```
@@ -499,6 +510,7 @@ class ProductModelClass extends BaseModelClass {
       return this.getStock(productId);
     }
     ```
+
   </Tab>
 
   <Tab title="Important Data" icon="star">
@@ -517,6 +529,7 @@ class ProductModelClass extends BaseModelClass {
       return this.findOne(['id', id]);
     }
     ```
+
   </Tab>
 
   <Tab title="Nice-to-have Data" icon="circle-check">
@@ -535,6 +548,7 @@ class ProductModelClass extends BaseModelClass {
       return this.findPopular();
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -547,7 +561,7 @@ class DynamicCacheModelClass extends BaseModelClass {
     const hour = new Date().getHours();
 
     // Peak hours (9 AM ~ 6 PM): Short TTL
-    const ttl = (hour >= 9 && hour <= 18) ? "5m" : "30m";
+    const ttl = hour >= 9 && hour <= 18 ? "5m" : "30m";
 
     return Sonamu.cache.getOrSet({
       key: "dynamic-data",
@@ -555,7 +569,7 @@ class DynamicCacheModelClass extends BaseModelClass {
       tags: ["data"],
       factory: async () => {
         return this.expensiveQuery();
-      }
+      },
     });
   }
 }
@@ -574,7 +588,7 @@ class CacheWarmerModelClass extends BaseModelClass {
 
     // Pre-cache frequently used data
     await Promise.all([
-      this.getCategoryTree(),  // @cache applied
+      this.getCategoryTree(), // @cache applied
       this.getPopularProducts(),
       this.getConfig(),
     ]);
@@ -605,10 +619,8 @@ Cache multiple items at once.
 class BatchCacheModelClass extends BaseModelClass {
   async batchCache(ids: number[]) {
     // 1. Find uncached IDs
-    const cacheKeys = ids.map(id => `item:${id}`);
-    const cached = await Promise.all(
-      cacheKeys.map(key => Sonamu.cache.get({ key }))
-    );
+    const cacheKeys = ids.map((id) => `item:${id}`);
+    const cached = await Promise.all(cacheKeys.map((key) => Sonamu.cache.get({ key })));
 
     const uncachedIds = ids.filter((_, i) => !cached[i]);
 
@@ -618,18 +630,18 @@ class BatchCacheModelClass extends BaseModelClass {
 
     // 2. Query from DB
     const items = await this.findMany({
-      where: [['id', 'in', uncachedIds]]
+      where: [["id", "in", uncachedIds]],
     });
 
     // 3. Batch cache
     await Promise.all(
-      items.rows.map(item =>
+      items.rows.map((item) =>
         Sonamu.cache.set({
           key: `item:${item.id}`,
           value: item,
-          ttl: "10m"
-        })
-      )
+          ttl: "10m",
+        }),
+      ),
     );
 
     // 4. Return results
@@ -650,15 +662,15 @@ class ConditionalCacheModelClass extends BaseModelClass {
 
     // Choose whether to use cache
     if (!useCache) {
-      return this.findOne(['id', id]);
+      return this.findOne(["id", id]);
     }
 
     return Sonamu.cache.getOrSet({
       key: cacheKey,
       ttl: "10m",
       factory: async () => {
-        return this.findOne(['id', id]);
-      }
+        return this.findOne(["id", id]);
+      },
     });
   }
 }
@@ -670,6 +682,7 @@ class ConditionalCacheModelClass extends BaseModelClass {
 **Cache Strategy Selection Cautions**:
 
 1. **TTL Too Long**: Serves stale data
+
    ```typescript
    // ❌ Frequently changing but TTL too long
    @cache({ ttl: "1d" })
@@ -681,6 +694,7 @@ class ConditionalCacheModelClass extends BaseModelClass {
    ```
 
 2. **TTL Too Short**: Reduced cache effectiveness
+
    ```typescript
    // ❌ Rarely changes but TTL too short
    @cache({ ttl: "10s" })
@@ -692,6 +706,7 @@ class ConditionalCacheModelClass extends BaseModelClass {
    ```
 
 3. **Grace Overuse**: Grace unnecessary for fast queries
+
    ```typescript
    // ❌ Unnecessary Grace
    @cache({ ttl: "5m", grace: "1h" })
@@ -705,6 +720,7 @@ class ConditionalCacheModelClass extends BaseModelClass {
    ```
 
 4. **Namespace Overuse**: Too many namespaces are hard to manage
+
    ```typescript
    // ❌ Excessive namespace
    const cache1 = Sonamu.cache.namespace("a:b:c:d:e");
@@ -712,29 +728,38 @@ class ConditionalCacheModelClass extends BaseModelClass {
    // ✅ Appropriate namespace
    const userCache = Sonamu.cache.namespace(`user:${userId}`);
    ```
-</Warning>
+
+   </Warning>
 
 ## Strategy Summary Table
 
-| Data Type | TTL | Grace | Tags | Invalidation |
-|-----------|-----|-------|------|--------------|
-| Static Config | `forever` | ❌ | `["config"]` | Manual |
-| User Profile | `1h` | ❌ | `["user"]` | On change |
-| Product Info | `30m` | `1h` | `["product"]` | On change |
-| Post List | `5m` | `30m` | `["post", "list"]` | On create/update |
-| Real-time Stats | `1m` | `10m` | `["stats"]` | TTL dependent |
-| Aggregated Dashboard | `10m` | `2h` | `["dashboard"]` | TTL dependent |
+| Data Type            | TTL       | Grace | Tags               | Invalidation     |
+| -------------------- | --------- | ----- | ------------------ | ---------------- |
+| Static Config        | `forever` | ❌    | `["config"]`       | Manual           |
+| User Profile         | `1h`      | ❌    | `["user"]`         | On change        |
+| Product Info         | `30m`     | `1h`  | `["product"]`      | On change        |
+| Post List            | `5m`      | `30m` | `["post", "list"]` | On create/update |
+| Real-time Stats      | `1m`      | `10m` | `["stats"]`        | TTL dependent    |
+| Aggregated Dashboard | `10m`     | `2h`  | `["dashboard"]`    | TTL dependent    |
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Cache Configuration" icon="gear" href="/en/advanced-features/caching/cache-configuration">
+  <Card
+    title="Cache Configuration"
+    icon="gear"
+    href="/en/advanced-features/caching/cache-configuration"
+  >
     Configure Stores and Drivers
   </Card>
   <Card title="@cache Decorator" icon="at" href="/en/advanced-features/caching/cache-decorator">
     Apply caching to methods
   </Card>
-  <Card title="Cache Invalidation" icon="trash" href="/en/advanced-features/caching/cache-invalidation">
+  <Card
+    title="Cache Invalidation"
+    icon="trash"
+    href="/en/advanced-features/caching/cache-invalidation"
+  >
     Tag-based cache invalidation
   </Card>
 </CardGroup>

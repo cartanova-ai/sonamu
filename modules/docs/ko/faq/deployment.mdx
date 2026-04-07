@@ -1,6 +1,6 @@
 ---
-title: '배포'
-description: '프로덕션 배포와 운영에 관한 질문'
+title: "배포"
+description: "프로덕션 배포와 운영에 관한 질문"
 ---
 
 ## 빌드와 배포
@@ -114,7 +114,7 @@ export default {
   server: {
     listen: {
       port: Number(process.env.PORT) || 34900,
-    }
+    },
   },
   database: {
     connections: {
@@ -124,12 +124,12 @@ export default {
         database: process.env.DB_NAME,
         user: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
-      }
-    }
+      },
+    },
   },
   session: {
     secret: process.env.SESSION_SECRET,
-  }
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -251,14 +251,14 @@ export default {
       transports: [
         new winston.transports.File({
           filename: "logs/error.log",
-          level: "error"
+          level: "error",
         }),
         new winston.transports.File({
-          filename: "logs/combined.log"
-        })
-      ]
-    })
-  }
+          filename: "logs/combined.log",
+        }),
+      ],
+    }),
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -269,7 +269,7 @@ class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async createUser(params: UserSaveParams): Promise<User> {
     this.logger.info("Creating user", { email: params.email });
-    
+
     try {
       const user = await this.save(params);
       this.logger.info("User created", { userId: user.id });
@@ -291,7 +291,7 @@ class UserModelClass extends BaseModelClass {
 import { BaseFrameClass, api } from "sonamu";
 
 class HealthFrameClass extends BaseFrameClass {
-  @api({ httpMethod: "GET" })  // guards 생략 = 공개 API
+  @api({ httpMethod: "GET" }) // guards 생략 = 공개 API
   async healthCheck(): Promise<{
     status: string;
     timestamp: Date;
@@ -305,12 +305,12 @@ class HealthFrameClass extends BaseFrameClass {
     } catch (error) {
       databaseStatus = "error";
     }
-    
+
     return {
       status: databaseStatus === "ok" ? "healthy" : "unhealthy",
       timestamp: new Date(),
       uptime: process.uptime(),
-      database: databaseStatus
+      database: databaseStatus,
     };
   }
 }
@@ -346,9 +346,9 @@ export default {
         if (process.env.NODE_ENV === "production") {
           Sentry.captureException(error);
         }
-      }
-    }
-  }
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -373,11 +373,11 @@ export default {
           min: 2,
           max: 10,
           acquireTimeoutMillis: 30000,
-          idleTimeoutMillis: 30000
-        }
-      }
-    }
-  }
+          idleTimeoutMillis: 30000,
+        },
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -392,16 +392,17 @@ export default {
     cache: {
       default: "redis",
       stores: {
-        redis: bentostore()
-          .useL1Layer(redisDriver({
+        redis: bentostore().useL1Layer(
+          redisDriver({
             connection: {
               host: process.env.REDIS_HOST,
-              port: 6379
-            }
-          }))
-      }
-    }
-  }
+              port: 6379,
+            },
+          }),
+        ),
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -415,9 +416,9 @@ export default {
     lifecycle: {
       async onStart(fastify) {
         await fastify.register(compress);
-      }
-    }
-  }
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -430,7 +431,7 @@ export default {
 ```nginx
 server {
   # ...
-  
+
   location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf)$ {
     expires 1y;
     add_header Cache-Control "public, immutable";
@@ -479,7 +480,7 @@ CMD ["node", "dist/index.js"]
 **docker-compose.yml:**
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -554,27 +555,27 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
-      
+          node-version: "18"
+
       - name: Install pnpm
         run: npm install -g pnpm
-      
+
       - name: Install dependencies
         run: pnpm install
-      
+
       - name: Run tests
         run: pnpm test
-      
+
       - name: Build
         run: pnpm build
-      
+
       - name: Deploy to server
         uses: appleboy/ssh-action@master
         with:
@@ -647,9 +648,9 @@ export default {
     cors: {
       origin: process.env.CORS_ORIGIN || "http://localhost:5173",
       credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
-    }
-  }
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -665,12 +666,12 @@ export default {
     lifecycle: {
       async onStart(fastify) {
         await fastify.register(rateLimit, {
-          max: 100,  // 100 requests
-          timeWindow: '1 minute'
+          max: 100, // 100 requests
+          timeWindow: "1 minute",
         });
-      }
-    }
-  }
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -685,6 +686,7 @@ export default {
 <Accordion title="프로덕션 체크리스트">
 
 **보안:**
+
 - [ ] HTTPS 설정
 - [ ] 환경 변수로 민감 정보 관리
 - [ ] CORS 올바르게 설정
@@ -693,6 +695,7 @@ export default {
 - [ ] XSS 방지 (입력 검증)
 
 **성능:**
+
 - [ ] Connection Pool 최적화
 - [ ] Redis 캐싱 활성화
 - [ ] 정적 파일 캐싱
@@ -700,12 +703,14 @@ export default {
 - [ ] N+1 쿼리 제거
 
 **모니터링:**
+
 - [ ] 헬스체크 엔드포인트
 - [ ] 에러 모니터링 (Sentry)
 - [ ] 로그 수집 (Winston)
 - [ ] DB 백업 자동화
 
 **배포:**
+
 - [ ] 프로덕션 환경 변수 설정
 - [ ] 마이그레이션 테스트 (Shadow DB)
 - [ ] CI/CD 파이프라인

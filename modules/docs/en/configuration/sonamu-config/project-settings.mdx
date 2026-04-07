@@ -1,6 +1,6 @@
 ---
-title: 'Project Settings'
-description: 'Configuring projectName, api, and i18n'
+title: "Project Settings"
+description: "Configuring projectName, api, and i18n"
 ---
 
 This covers basic project settings in `sonamu.config.ts`. You can configure project name, API paths, timezone, internationalization support, and more.
@@ -12,7 +12,7 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   projectName: "MyProject",
-  
+
   api: {
     dir: "api",
     route: {
@@ -20,12 +20,12 @@ export default defineConfig({
     },
     timezone: "Asia/Seoul",
   },
-  
+
   i18n: {
     defaultLocale: "ko",
     supportedLocales: ["ko", "en"],
   },
-  
+
   // ... other settings
 });
 ```
@@ -57,7 +57,8 @@ export default defineConfig({
 ```
 
 <Tip>
-Use environment variables to have different project names per environment (e.g., `MyProject-Dev`, `MyProject-Prod`).
+  Use environment variables to have different project names per environment (e.g., `MyProject-Dev`,
+  `MyProject-Prod`).
 </Tip>
 
 ## api Settings
@@ -75,14 +76,14 @@ The directory name where API code is located.
 ```typescript
 export default defineConfig({
   api: {
-    dir: "api",  // Directory containing src/application folder
+    dir: "api", // Directory containing src/application folder
     // ...
   },
 });
 ```
 
 <Note>
-Most projects use `"api"` as is. Keep the default unless there's a specific reason to change it.
+  Most projects use `"api"` as is. Keep the default unless there's a specific reason to change it.
 </Note>
 
 ### api.route.prefix
@@ -98,7 +99,7 @@ export default defineConfig({
   api: {
     dir: "api",
     route: {
-      prefix: "/api",  // All APIs start with /api/* path
+      prefix: "/api", // All APIs start with /api/* path
     },
   },
 });
@@ -113,7 +114,8 @@ With `prefix: "/api"`:
 - `OrderModel.create` → `POST /api/order/create`
 
 <Warning>
-Changing the `prefix` will also update the generated Service code on the frontend. Therefore, it's recommended to only change this early in the project.
+  Changing the `prefix` will also update the generated Service code on the frontend. Therefore, it's
+  recommended to only change this early in the project.
 </Warning>
 
 **Other prefix examples**:
@@ -122,7 +124,7 @@ Changing the `prefix` will also update the generated Service code on the fronten
 export default defineConfig({
   api: {
     route: {
-      prefix: "/v1",  // GET /v1/user/list
+      prefix: "/v1", // GET /v1/user/list
     },
   },
 });
@@ -132,7 +134,7 @@ export default defineConfig({
 export default defineConfig({
   api: {
     route: {
-      prefix: "/graphql",  // Different routing strategy
+      prefix: "/graphql", // Different routing strategy
     },
   },
 });
@@ -151,7 +153,7 @@ export default defineConfig({
   api: {
     dir: "api",
     route: { prefix: "/api" },
-    timezone: "Asia/Seoul",  // Korea time
+    timezone: "Asia/Seoul", // Korea time
   },
 });
 ```
@@ -167,7 +169,7 @@ export default defineConfig({
 - `"UTC"` - Coordinated Universal Time
 
 <Tip>
-For global services, it's recommended to use `"UTC"` and convert to user timezone on the client.
+  For global services, it's recommended to use `"UTC"` and convert to user timezone on the client.
 </Tip>
 
 ## i18n Settings
@@ -207,7 +209,7 @@ Sets the default language. Serves two roles:
 ```typescript
 export default defineConfig({
   i18n: {
-    defaultLocale: "ko",  // Korean as default
+    defaultLocale: "ko", // Korean as default
     supportedLocales: ["ko", "en", "ja"],
   },
 });
@@ -221,14 +223,12 @@ List of all languages to support. Must include `defaultLocale`.
 export default defineConfig({
   i18n: {
     defaultLocale: "ko",
-    supportedLocales: ["ko", "en", "ja", "zh"],  // Support 4 languages
+    supportedLocales: ["ko", "en", "ja", "zh"], // Support 4 languages
   },
 });
 ```
 
-<Warning>
-An error will occur if `defaultLocale` is not included in `supportedLocales`.
-</Warning>
+<Warning>An error will occur if `defaultLocale` is not included in `supportedLocales`.</Warning>
 
 ### Disabling i18n
 
@@ -237,7 +237,9 @@ If you don't need multilingual support, simply omit the `i18n` setting:
 ```typescript
 export default defineConfig({
   projectName: "MyProject",
-  api: { /* ... */ },
+  api: {
+    /* ... */
+  },
   // i18n: undefined  ← Omit
   // ...
 });
@@ -252,7 +254,7 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   projectName: "MyEcommerce",
-  
+
   api: {
     dir: "api",
     route: {
@@ -260,12 +262,12 @@ export default defineConfig({
     },
     timezone: "Asia/Seoul",
   },
-  
+
   i18n: {
     defaultLocale: "ko",
     supportedLocales: ["ko", "en"],
   },
-  
+
   // ... database, server and other settings
 });
 ```
@@ -279,7 +281,7 @@ const isDev = process.env.NODE_ENV === "development";
 
 export default defineConfig({
   projectName: process.env.PROJECT_NAME ?? "MyProject",
-  
+
   api: {
     dir: "api",
     route: {
@@ -287,12 +289,12 @@ export default defineConfig({
     },
     timezone: process.env.TIMEZONE ?? "Asia/Seoul",
   },
-  
+
   i18n: {
     defaultLocale: "ko",
     supportedLocales: ["ko", "en", "ja"],
   },
-  
+
   // ...
 });
 ```
@@ -304,20 +306,20 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   projectName: "GlobalService",
-  
+
   api: {
     dir: "api",
     route: {
-      prefix: "/api/v1",  // Including versioning
+      prefix: "/api/v1", // Including versioning
     },
-    timezone: "UTC",  // UTC recommended for global services
+    timezone: "UTC", // UTC recommended for global services
   },
-  
+
   i18n: {
     defaultLocale: "en",
     supportedLocales: ["en", "ko", "ja", "zh", "es", "fr"],
   },
-  
+
   // ...
 });
 ```

@@ -1,6 +1,7 @@
 import { loadConfig as loadC12Config } from "c12";
-import type { Backend } from "./backend";
-import type { WorkerOptions } from "./worker";
+
+import { type Backend } from "./backend";
+import { type WorkerOptions } from "./worker";
 
 export interface OpenWorkflowConfig {
   backend: Backend;

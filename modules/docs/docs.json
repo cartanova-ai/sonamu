@@ -193,9 +193,7 @@
             "pages": [
               {
                 "group": "시작하기",
-                "pages": [
-                  "ko/frontend-integration/getting-started/setup"
-                ]
+                "pages": ["ko/frontend-integration/getting-started/setup"]
               },
               {
                 "group": "자동 생성 Service",
@@ -749,9 +747,7 @@
             "pages": [
               {
                 "group": "Getting Started",
-                "pages": [
-                  "en/frontend-integration/getting-started/setup"
-                ]
+                "pages": ["en/frontend-integration/getting-started/setup"]
               },
               {
                 "group": "Generated Services",

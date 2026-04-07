@@ -30,9 +30,7 @@
     "src/application/project/project.agent.ts",
     "src/application/project/project.model.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "ProjectAgent": "프로젝트 질의응답 생성과 SSE 스트리밍 응답을 담당한다",
     "ProjectModel": "에이전트가 참조할 프로젝트 데이터 조회를 지원한다"

@@ -1,8 +1,9 @@
+import fs from "fs";
+import path from "path";
+
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
-import fs from "fs";
-import path from "path";
 import Icons from "unplugin-icons/vite";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
@@ -56,7 +57,7 @@ export default defineConfig({
       formats: ["es"],
       fileName: (format) => `react-components.${format}.js`,
     },
-    rollupOptions: {
+    rolldownOptions: {
       external: ["react", "react-dom", "@tanstack/react-router", /^better-auth/, /^@better-auth/],
     },
   },

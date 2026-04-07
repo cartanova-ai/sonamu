@@ -9,24 +9,16 @@ In addition to Zod, you can implement custom validation logic to apply business 
 
 <CardGroup cols={2}>
   <Card title="Business Rules" icon="briefcase">
-    Domain-specific validation
-    
-    Complex condition handling
+    Domain-specific validation Complex condition handling
   </Card>
   <Card title="DB Validation" icon="database">
-    Duplicate checks
-    
-    Referential integrity
+    Duplicate checks Referential integrity
   </Card>
   <Card title="External APIs" icon="cloud">
-    External service validation
-    
-    Real-time data verification
+    External service validation Real-time data verification
   </Card>
   <Card title="Reusability" icon="recycle">
-    Shared validation logic
-    
-    Consistent rule application
+    Shared validation logic Consistent rule application
   </Card>
 </CardGroup>
 
@@ -40,45 +32,34 @@ class UserModel extends BaseModelClass {
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     // Run validation
     await this.validateCreateParams(params);
-    
+
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(params)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
+
     return { userId: user.id };
   }
-  
-  private async validateCreateParams(
-    params: CreateUserParams
-  ): Promise<void> {
+
+  private async validateCreateParams(params: CreateUserParams): Promise<void> {
     // Email duplicate check
     const rdb = this.getPuri("r");
-    const existing = await rdb
-      .table("users")
-      .where("email", params.email)
-      .first();
-    
+    const existing = await rdb.table("users").where("email", params.email).first();
+
     if (existing) {
       throw new Error("Email already exists");
     }
-    
+
     // Username duplicate check
-    const existingUsername = await rdb
-      .table("users")
-      .where("username", params.username)
-      .first();
-    
+    const existingUsername = await rdb.table("users").where("username", params.username).first();
+
     if (existingUsername) {
       throw new Error("Username already taken");
     }
-    
+
     // Password strength check
     if (!/[A-Z]/.test(params.password)) {
       throw new Error("Password must contain at least one uppercase letter");
     }
-    
+
     if (!/[0-9]/.test(params.password)) {
       throw new Error("Password must contain at least one number");
     }
@@ -92,83 +73,79 @@ class UserModel extends BaseModelClass {
 // validators/user.validator.ts
 export class UserValidator {
   private rdb: any;
-  
+
   constructor(rdb: any) {
     this.rdb = rdb;
   }
-  
+
   async validateEmail(email: string): Promise<void> {
     // Format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       throw new Error("Invalid email format");
     }
-    
+
     // Duplicate validation
-    const existing = await this.rdb
-      .table("users")
-      .where("email", email)
-      .first();
-    
+    const existing = await this.rdb.table("users").where("email", email).first();
+
     if (existing) {
       throw new Error("Email already exists");
     }
-    
+
     // Domain blacklist check
     const domain = email.split("@")[1];
     const blockedDomains = ["tempmail.com", "throwaway.com"];
-    
+
     if (blockedDomains.includes(domain)) {
       throw new Error("Email domain not allowed");
     }
   }
-  
+
   async validateUsername(username: string): Promise<void> {
     // Length validation
     if (username.length < 3 || username.length > 20) {
       throw new Error("Username must be 3-20 characters");
     }
-    
+
     // Format validation
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
       throw new Error("Username can only contain letters, numbers, and underscores");
     }
-    
+
     // Reserved words check
     const reserved = ["admin", "root", "system", "api", "test"];
     if (reserved.includes(username.toLowerCase())) {
       throw new Error("Username is reserved");
     }
-    
+
     // Duplicate validation
-    const existing = await this.rdb
-      .table("users")
-      .where("username", username)
-      .first();
-    
+    const existing = await this.rdb.table("users").where("username", username).first();
+
     if (existing) {
       throw new Error("Username already taken");
     }
   }
-  
+
   validatePassword(password: string): void {
     // Minimum length
     if (password.length < 8) {
       throw new Error("Password must be at least 8 characters");
     }
-    
+
     // Complexity
     const hasUppercase = /[A-Z]/.test(password);
     const hasLowercase = /[a-z]/.test(password);
     const hasNumber = /[0-9]/.test(password);
     const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    
+
     const strength = [hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length;
-    
+
     if (strength < 3) {
-      throw new Error("Password must contain at least 3 of: uppercase, lowercase, number, special character");
+      throw new Error(
+        "Password must contain at least 3 of: uppercase, lowercase, number, special character",
+      );
     }
-    
+
     // Common password check
     const common = ["password", "123456", "qwerty", "admin"];
     if (common.includes(password.toLowerCase())) {
@@ -183,19 +160,16 @@ class UserModel extends BaseModelClass {
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     const rdb = this.getPuri("r");
     const validator = new UserValidator(rdb);
-    
+
     // Validate
     await validator.validateEmail(params.email);
     await validator.validateUsername(params.username);
     validator.validatePassword(params.password);
-    
+
     // Create
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(params)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
+
     return { userId: user.id };
   }
 }
@@ -207,47 +181,40 @@ class UserModel extends BaseModelClass {
 
 ```typescript
 class UserModel extends BaseModelClass {
-  private async checkDuplicate(
-    field: string,
-    value: any,
-    excludeId?: number
-  ): Promise<void> {
+  private async checkDuplicate(field: string, value: any, excludeId?: number): Promise<void> {
     const rdb = this.getPuri("r");
-    
+
     let query = rdb.table("users").where(field, value);
-    
+
     if (excludeId) {
       query = query.whereNot("id", excludeId);
     }
-    
+
     const existing = await query.first();
-    
+
     if (existing) {
       throw new Error(`${field} already exists`);
     }
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     await this.checkDuplicate("email", params.email);
     await this.checkDuplicate("username", params.username);
-    
+
     // ...
   }
-  
+
   @api({ httpMethod: "PUT" })
-  async update(
-    userId: number,
-    params: UpdateUserParams
-  ): Promise<void> {
+  async update(userId: number, params: UpdateUserParams): Promise<void> {
     if (params.email) {
       await this.checkDuplicate("email", params.email, userId);
     }
-    
+
     if (params.username) {
       await this.checkDuplicate("username", params.username, userId);
     }
-    
+
     // ...
   }
 }
@@ -257,50 +224,39 @@ class UserModel extends BaseModelClass {
 
 ```typescript
 class PostModel extends BaseModelClass {
-  private async validateReferences(
-    params: CreatePostParams
-  ): Promise<void> {
+  private async validateReferences(params: CreatePostParams): Promise<void> {
     const rdb = this.getPuri("r");
-    
+
     // Check author exists
-    const user = await rdb
-      .table("users")
-      .where("id", params.userId)
-      .first();
-    
+    const user = await rdb.table("users").where("id", params.userId).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // Check category exists
     if (params.categoryId) {
-      const category = await rdb
-        .table("categories")
-        .where("id", params.categoryId)
-        .first();
-      
+      const category = await rdb.table("categories").where("id", params.categoryId).first();
+
       if (!category) {
         throw new Error("Category not found");
       }
     }
-    
+
     // Check tags exist
     if (params.tagIds && params.tagIds.length > 0) {
-      const tags = await rdb
-        .table("tags")
-        .whereIn("id", params.tagIds)
-        .select("id");
-      
+      const tags = await rdb.table("tags").whereIn("id", params.tagIds).select("id");
+
       if (tags.length !== params.tagIds.length) {
         throw new Error("Some tags not found");
       }
     }
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: CreatePostParams): Promise<{ postId: number }> {
     await this.validateReferences(params);
-    
+
     // ...
   }
 }
@@ -318,44 +274,30 @@ class OrderModel extends BaseModelClass {
     delivered: [],
     cancelled: [],
   };
-  
-  private async validateStateTransition(
-    orderId: number,
-    newState: string
-  ): Promise<void> {
+
+  private async validateStateTransition(orderId: number, newState: string): Promise<void> {
     const rdb = this.getPuri("r");
-    
-    const order = await rdb
-      .table("orders")
-      .where("id", orderId)
-      .first();
-    
+
+    const order = await rdb.table("orders").where("id", orderId).first();
+
     if (!order) {
       throw new Error("Order not found");
     }
-    
+
     const currentState = order.state;
     const allowedTransitions = this.STATE_TRANSITIONS[currentState] || [];
-    
+
     if (!allowedTransitions.includes(newState)) {
-      throw new Error(
-        `Cannot transition from ${currentState} to ${newState}`
-      );
+      throw new Error(`Cannot transition from ${currentState} to ${newState}`);
     }
   }
-  
+
   @api({ httpMethod: "PUT" })
-  async updateState(
-    orderId: number,
-    newState: string
-  ): Promise<void> {
+  async updateState(orderId: number, newState: string): Promise<void> {
     await this.validateStateTransition(orderId, newState);
-    
+
     const wdb = this.getPuri("w");
-    await wdb
-      .table("orders")
-      .where("id", orderId)
-      .update({ state: newState });
+    await wdb.table("orders").where("id", orderId).update({ state: newState });
   }
 }
 ```
@@ -366,42 +308,36 @@ class OrderModel extends BaseModelClass {
 
 ```typescript
 class EventModel extends BaseModelClass {
-  private validateEventDates(
-    startDate: Date,
-    endDate: Date
-  ): void {
+  private validateEventDates(startDate: Date, endDate: Date): void {
     const now = new Date();
-    
+
     // No past dates
     if (startDate < now) {
       throw new Error("Event start date cannot be in the past");
     }
-    
+
     // Start date before end date
     if (startDate >= endDate) {
       throw new Error("Start date must be before end date");
     }
-    
+
     // Maximum duration limit (e.g., 30 days)
     const maxDuration = 30 * 24 * 60 * 60 * 1000; // 30 days
     if (endDate.getTime() - startDate.getTime() > maxDuration) {
       throw new Error("Event duration cannot exceed 30 days");
     }
-    
+
     // Minimum preparation time (e.g., 1 day)
     const minPreparationTime = 24 * 60 * 60 * 1000; // 1 day
     if (startDate.getTime() - now.getTime() < minPreparationTime) {
       throw new Error("Event must be scheduled at least 1 day in advance");
     }
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: CreateEventParams): Promise<{ eventId: number }> {
-    this.validateEventDates(
-      new Date(params.startDate),
-      new Date(params.endDate)
-    );
-    
+    this.validateEventDates(new Date(params.startDate), new Date(params.endDate));
+
     // ...
   }
 }
@@ -411,76 +347,64 @@ class EventModel extends BaseModelClass {
 
 ```typescript
 class OrderModel extends BaseModelClass {
-  private async validateOrderItems(
-    items: OrderItem[]
-  ): Promise<void> {
+  private async validateOrderItems(items: OrderItem[]): Promise<void> {
     if (items.length === 0) {
       throw new Error("Order must contain at least one item");
     }
-    
+
     if (items.length > 100) {
       throw new Error("Order cannot contain more than 100 items");
     }
-    
+
     const rdb = this.getPuri("r");
-    
+
     for (const item of items) {
       // Quantity validation
       if (item.quantity <= 0) {
         throw new Error("Item quantity must be positive");
       }
-      
+
       if (item.quantity > 1000) {
         throw new Error("Item quantity cannot exceed 1000");
       }
-      
+
       // Product existence and stock check
-      const product = await rdb
-        .table("products")
-        .where("id", item.productId)
-        .first();
-      
+      const product = await rdb.table("products").where("id", item.productId).first();
+
       if (!product) {
         throw new Error(`Product ${item.productId} not found`);
       }
-      
+
       if (!product.is_available) {
         throw new Error(`Product ${product.name} is not available`);
       }
-      
+
       if (product.stock < item.quantity) {
-        throw new Error(
-          `Insufficient stock for ${product.name}. Available: ${product.stock}`
-        );
+        throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}`);
       }
-      
+
       // Price validation (compare client-sent price with actual price)
       if (item.price !== product.price) {
-        throw new Error(
-          `Price mismatch for ${product.name}. Current price: ${product.price}`
-        );
+        throw new Error(`Price mismatch for ${product.name}. Current price: ${product.price}`);
       }
     }
-    
+
     // Total amount validation
-    const totalAmount = items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-    
+    const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
     if (totalAmount < 1000) {
       throw new Error("Minimum order amount is 1000");
     }
-    
+
     if (totalAmount > 10000000) {
       throw new Error("Maximum order amount is 10,000,000");
     }
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: CreateOrderParams): Promise<{ orderId: number }> {
     await this.validateOrderItems(params.items);
-    
+
     // ...
   }
 }
@@ -492,81 +416,75 @@ class OrderModel extends BaseModelClass {
 class DocumentModel extends BaseModelClass {
   private async validateAccess(
     documentId: number,
-    requiredPermission: "read" | "write" | "delete"
+    requiredPermission: "read" | "write" | "delete",
   ): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     const rdb = this.getPuri("r");
-    
+
     // Get document
-    const document = await rdb
-      .table("documents")
-      .where("id", documentId)
-      .first();
-    
+    const document = await rdb.table("documents").where("id", documentId).first();
+
     if (!document) {
       throw new Error("Document not found");
     }
-    
+
     // Owner has all permissions
     if (document.owner_id === context.user.id) {
       return;
     }
-    
+
     // Admin has all permissions
     if (context.user.role === "admin") {
       return;
     }
-    
+
     // Check permission
     const permission = await rdb
       .table("document_permissions")
       .where("document_id", documentId)
       .where("user_id", context.user.id)
       .first();
-    
+
     if (!permission) {
       throw new Error("Access denied");
     }
-    
+
     const permissionLevel = {
       read: 1,
       write: 2,
       delete: 3,
     };
-    
+
     if (permissionLevel[permission.level] < permissionLevel[requiredPermission]) {
       throw new Error(`Insufficient permission: ${requiredPermission} required`);
     }
   }
-  
+
   @api({ httpMethod: "GET" })
   async get(documentId: number): Promise<Document> {
     await this.validateAccess(documentId, "read");
-    
+
     const rdb = this.getPuri("r");
     return rdb.table("documents").where("id", documentId).first();
   }
-  
+
   @api({ httpMethod: "PUT" })
-  async update(
-    documentId: number,
-    params: UpdateDocumentParams
-  ): Promise<void> {
+  async update(documentId: number, params: UpdateDocumentParams): Promise<void> {
     await this.validateAccess(documentId, "write");
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("documents").where("id", documentId).update(params);
   }
-  
+
   @api({ httpMethod: "DELETE" })
   async remove(documentId: number): Promise<void> {
     await this.validateAccess(documentId, "delete");
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("documents").where("id", documentId).delete();
   }
@@ -582,22 +500,19 @@ import axios from "axios";
 
 class EmailValidator {
   private apiKey = process.env.EMAIL_VALIDATION_API_KEY;
-  
+
   async validateEmail(email: string): Promise<void> {
     try {
-      const response = await axios.get(
-        `https://api.emailvalidation.com/validate`,
-        {
-          params: {
-            email,
-            apiKey: this.apiKey,
-          },
-          timeout: 5000,
-        }
-      );
-      
+      const response = await axios.get(`https://api.emailvalidation.com/validate`, {
+        params: {
+          email,
+          apiKey: this.apiKey,
+        },
+        timeout: 5000,
+      });
+
       const { valid, reason } = response.data;
-      
+
       if (!valid) {
         throw new Error(`Invalid email: ${reason}`);
       }
@@ -623,12 +538,10 @@ class AddressValidator {
     country: string;
   }): Promise<void> {
     try {
-      const response = await axios.post(
-        "https://api.address-verification.com/verify",
-        address,
-        { timeout: 5000 }
-      );
-      
+      const response = await axios.post("https://api.address-verification.com/verify", address, {
+        timeout: 5000,
+      });
+
       if (!response.data.valid) {
         throw new Error("Address could not be verified");
       }
@@ -649,32 +562,27 @@ class UserModel extends BaseModelClass {
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     // 1. Zod schema validation
     const validated = CreateUserSchema.parse(params);
-    
+
     // 2. Custom validation
     await this.validateCreateParams(validated);
-    
+
     // 3. Create
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(validated)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+
     return { userId: user.id };
   }
-  
-  private async validateCreateParams(
-    params: CreateUserParams
-  ): Promise<void> {
+
+  private async validateCreateParams(params: CreateUserParams): Promise<void> {
     const rdb = this.getPuri("r");
     const validator = new UserValidator(rdb);
-    
+
     // Parallel validation (independent validations)
     await Promise.all([
       validator.validateEmail(params.email),
       validator.validateUsername(params.username),
     ]);
-    
+
     // Sequential validation (password is synchronous)
     validator.validatePassword(params.password);
   }
@@ -687,62 +595,49 @@ class UserModel extends BaseModelClass {
 // validators/base.validator.ts
 export abstract class BaseValidator {
   protected rdb: any;
-  
+
   constructor(rdb: any) {
     this.rdb = rdb;
   }
-  
+
   protected async checkUnique(
     table: string,
     field: string,
     value: any,
-    excludeId?: number
+    excludeId?: number,
   ): Promise<void> {
     let query = this.rdb.table(table).where(field, value);
-    
+
     if (excludeId) {
       query = query.whereNot("id", excludeId);
     }
-    
+
     const existing = await query.first();
-    
+
     if (existing) {
       throw new Error(`${field} already exists`);
     }
   }
-  
-  protected async checkExists(
-    table: string,
-    id: number
-  ): Promise<void> {
-    const record = await this.rdb
-      .table(table)
-      .where("id", id)
-      .first();
-    
+
+  protected async checkExists(table: string, id: number): Promise<void> {
+    const record = await this.rdb.table(table).where("id", id).first();
+
     if (!record) {
       throw new Error(`${table} not found`);
     }
   }
-  
-  protected validateLength(
-    value: string,
-    min: number,
-    max: number,
-    fieldName: string
-  ): void {
+
+  protected validateLength(value: string, min: number, max: number, fieldName: string): void {
     if (value.length < min || value.length > max) {
-      throw new Error(
-        `${fieldName} must be ${min}-${max} characters`
-      );
+      throw new Error(`${fieldName} must be ${min}-${max} characters`);
     }
   }
-  
+
   protected validatePattern(
     value: string,
     pattern: RegExp,
     fieldName: string,
-    message: string
+    message: string,
   ): void {
     if (!pattern.test(value)) {
       throw new Error(`${fieldName}: ${message}`);
@@ -753,13 +648,8 @@ export abstract class BaseValidator {
 // Usage
 class UserValidator extends BaseValidator {
   async validateEmail(email: string): Promise<void> {
-    this.validatePattern(
-      email,
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-      "Email",
-      "Invalid format"
-    );
-    
+    this.validatePattern(email, /^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email", "Invalid format");
+
     await this.checkUnique("users", "email", email);
   }
 }
@@ -768,21 +658,26 @@ class UserValidator extends BaseValidator {
 ## Cautions
 
 <Warning>
-**Cautions for custom validation**:
-1. Run validation before business logic
-2. Provide clear error messages
-3. Avoid excessive DB queries
-4. Set timeouts for external API calls
-5. Consider validation logic reuse
+  **Cautions for custom validation**: 1. Run validation before business logic 2. Provide clear error
+  messages 3. Avoid excessive DB queries 4. Set timeouts for external API calls 5. Consider
+  validation logic reuse
 </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Automatic Validation" icon="wand-magic-sparkles" href="/en/api-development/validation/automatic-validation">
+  <Card
+    title="Automatic Validation"
+    icon="wand-magic-sparkles"
+    href="/en/api-development/validation/automatic-validation"
+  >
     Zod-based validation
   </Card>
-  <Card title="Error Handling" icon="triangle-exclamation" href="/en/api-development/validation/error-handling">
+  <Card
+    title="Error Handling"
+    icon="triangle-exclamation"
+    href="/en/api-development/validation/error-handling"
+  >
     Using SonamuError
   </Card>
   <Card title="@api Decorator" icon="at" href="/en/api-development/creating-apis/api-decorator">

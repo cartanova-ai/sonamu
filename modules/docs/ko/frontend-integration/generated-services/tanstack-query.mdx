@@ -9,24 +9,16 @@ Sonamu의 자동 생성된 TanStack Query Hook을 사용하여 React에서 타�
 
 <CardGroup cols={2}>
   <Card title="자동 생성" icon="wand-magic-sparkles">
-    useUser, usePost Hook
-    
-    코드 작성 불필요
+    useUser, usePost Hook 코드 작성 불필요
   </Card>
   <Card title="타입 안전" icon="shield-check">
-    Service 타입 유지
-    
-    완전한 타입 체인
+    Service 타입 유지 완전한 타입 체인
   </Card>
   <Card title="자동 캐싱" icon="database">
-    메모리 캐시
-    
-    중복 요청 제거
+    메모리 캐시 중복 요청 제거
   </Card>
   <Card title="자동 재검증" icon="arrows-rotate">
-    포커스 시 갱신
-    
-    주기적 폴링
+    포커스 시 갱신 주기적 폴링
   </Card>
 </CardGroup>
 
@@ -37,6 +29,7 @@ Sonamu의 자동 생성된 TanStack Query Hook을 사용하여 React에서 타�
 Sonamu는 각 Service 함수마다 **TanStack Query Hook을 자동 생성**합니다.
 
 **생성되는 Hook (services.generated.ts)**:
+
 ```typescript
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import qs from "qs";
@@ -45,29 +38,26 @@ export namespace UserService {
   // 1. 일반 함수
   export async function getUser<T extends UserSubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<UserSubsetMapping[T]> {
     return fetch({
       method: "GET",
       url: `/api/user/findById?${qs.stringify({ subset, id })}`,
     });
   }
-  
+
   // 2. Query Options (재사용 가능)
-  export const getUserQueryOptions = <T extends UserSubsetKey>(
-    subset: T,
-    id: number
-  ) =>
+  export const getUserQueryOptions = <T extends UserSubsetKey>(subset: T, id: number) =>
     queryOptions({
       queryKey: ["User", "getUser", subset, id],
       queryFn: () => getUser(subset, id),
     });
-  
+
   // 3. React Hook (자동 생성)
   export const useUser = <T extends UserSubsetKey>(
     subset: T,
     id: number,
-    options?: { enabled?: boolean }
+    options?: { enabled?: boolean },
   ) =>
     useQuery({
       ...getUserQueryOptions(subset, id),
@@ -77,6 +67,7 @@ export namespace UserService {
 ```
 
 **생성 규칙**:
+
 - 함수명: `get{Entity}` → Hook명: `use{Entity}`
 - Query Key: `["{Entity}", "{methodName}", ...params]`
 - 타입 완전 보존 (Subset 지원)
@@ -93,11 +84,11 @@ import { UserService } from "@/services/services.generated";
 function UserProfile({ userId }: { userId: number }) {
   // 자동 생성된 Hook 사용
   const { data, error, isLoading } = UserService.useUser("A", userId);
-  
+
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
   if (!data) return <div>User not found</div>;
-  
+
   return (
     <div>
       <h1>{data.username}</h1>
@@ -108,6 +99,7 @@ function UserProfile({ userId }: { userId: number }) {
 ```
 
 **특징**:
+
 - `data`는 `UserSubsetMapping["A"] | undefined` 타입
 - 자동 캐싱: 같은 userId로 다시 호출하면 캐시 사용
 - 자동 재검증: 포커스 시, 재연결 시 자동 갱신
@@ -121,14 +113,14 @@ Subset에 따라 정확한 타입이 반환됩니다.
 function UserProfile({ userId }: { userId: number }) {
   // Subset "A": 기본 정보
   const { data: basicUser } = UserService.useUser("A", userId);
-  console.log(basicUser?.id);       // ✅ OK
+  console.log(basicUser?.id); // ✅ OK
   console.log(basicUser?.username); // ✅ OK
-  console.log(basicUser?.bio);      // ❌ 컴파일 에러 (Subset A에 없음)
-  
+  console.log(basicUser?.bio); // ❌ 컴파일 에러 (Subset A에 없음)
+
   // Subset "B": bio 포함
   const { data: userWithBio } = UserService.useUser("B", userId);
-  console.log(userWithBio?.bio);    // ✅ OK
-  
+  console.log(userWithBio?.bio); // ✅ OK
+
   // Subset "C": 전체 필드
   const { data: fullUser } = UserService.useUser("C", userId);
   console.log(fullUser?.createdAt); // ✅ OK
@@ -136,11 +128,12 @@ function UserProfile({ userId }: { userId: number }) {
 ```
 
 **타입 체인**:
+
 ```
-Backend Entity 
-  → Subset Mapping 
-  → Service Function 
-  → TanStack Query Hook 
+Backend Entity
+  → Subset Mapping
+  → Service Function
+  → TanStack Query Hook
   → React Component
 ```
 
@@ -159,16 +152,17 @@ function UserProfile({ userId }: { userId: number | null }) {
     userId!,
     { enabled: userId !== null } // userId가 null이면 호출 안함
   );
-  
+
   if (!userId) return <div>Please select a user</div>;
   if (isLoading) return <div>Loading...</div>;
   if (!data) return <div>User not found</div>;
-  
+
   return <div>{data.username}</div>;
 }
 ```
 
 **enabled 옵션**:
+
 - `true`: 즉시 데이터 로드 (기본값)
 - `false`: 데이터 로드하지 않음
 - 사용 사례: 로그인 여부, 파라미터 존재 여부 등
@@ -181,14 +175,14 @@ function UserProfile({ userId }: { userId: number | null }) {
 function UserDashboard({ userId }: { userId: number }) {
   // 1단계: 사용자 정보
   const { data: user } = UserService.useUser("A", userId);
-  
+
   // 2단계: 사용자의 게시글 (user가 있을 때만)
   const { data: posts } = PostService.usePosts(
     "A",
     user ? user.id : 0,
     { enabled: !!user } // user가 있을 때만 호출
   );
-  
+
   return (
     <div>
       <h1>{user?.username}</h1>
@@ -208,23 +202,23 @@ import { useQueryClient } from "@tanstack/react-query";
 
 function UserProfile({ userId }: { userId: number }) {
   const queryClient = useQueryClient();
-  
+
   // Options 재사용
   const queryOptions = UserService.getUserQueryOptions("A", userId);
-  
+
   // 1. Hook에서 사용
   const { data } = useQuery(queryOptions);
-  
+
   // 2. 수동 refetch
   function handleRefresh() {
     queryClient.invalidateQueries(queryOptions);
   }
-  
+
   // 3. Prefetch
   function handleMouseEnter() {
     queryClient.prefetchQuery(queryOptions);
   }
-  
+
   return <div onMouseEnter={handleMouseEnter}>{data?.username}</div>;
 }
 ```
@@ -241,7 +235,7 @@ import { UserService } from "@/services/services.generated";
 
 function EditProfile({ userId }: { userId: number }) {
   const queryClient = useQueryClient();
-  
+
   // Mutation 정의
   const updateMutation = useMutation({
     mutationFn: (data: { username?: string; bio?: string }) =>
@@ -253,12 +247,12 @@ function EditProfile({ userId }: { userId: number }) {
       });
     },
   });
-  
+
   async function handleSubmit(data: { username: string; bio: string }) {
     await updateMutation.mutateAsync(data);
     alert("Updated!");
   }
-  
+
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
@@ -281,39 +275,39 @@ API 응답을 기다리지 않고 즉시 UI를 업데이트합니다.
 ```typescript
 function EditProfile({ userId }: { userId: number }) {
   const queryClient = useQueryClient();
-  
+
   const updateMutation = useMutation({
     mutationFn: (data: { username: string }) =>
       UserService.updateProfile(data),
-    
+
     // 1. Mutation 시작 전 (낙관적 업데이트)
     onMutate: async (newData) => {
       // 진행 중인 쿼리 취소
       await queryClient.cancelQueries(
         UserService.getUserQueryOptions("A", userId)
       );
-      
+
       // 이전 데이터 백업
       const previousUser = queryClient.getQueryData(
         UserService.getUserQueryOptions("A", userId).queryKey
       );
-      
+
       // 낙관적으로 캐시 업데이트
       queryClient.setQueryData(
         UserService.getUserQueryOptions("A", userId).queryKey,
         (old: any) => ({ ...old, username: newData.username })
       );
-      
+
       return { previousUser };
     },
-    
+
     // 2. 성공 시
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["User"],
       });
     },
-    
+
     // 3. 실패 시 (롤백)
     onError: (err, newData, context) => {
       queryClient.setQueryData(
@@ -322,7 +316,7 @@ function EditProfile({ userId }: { userId: number }) {
       );
     },
   });
-  
+
   return (
     <button onClick={() => updateMutation.mutate({ username: "newname" })}>
       Update Username
@@ -332,6 +326,7 @@ function EditProfile({ userId }: { userId: number }) {
 ```
 
 **사용자 경험**:
+
 - 버튼 클릭 → 즉시 UI 업데이트 (대기 없음)
 - 백그라운드에서 API 호출
 - 성공 시 서버 데이터로 확정
@@ -349,18 +344,16 @@ import { UserService } from "@/services/services.generated";
 
 function SomeComponent({ userId }: { userId: number }) {
   const queryClient = useQueryClient();
-  
+
   function handleUpdate() {
     // 1. 특정 User 쿼리만 무효화
-    queryClient.invalidateQueries(
-      UserService.getUserQueryOptions("A", userId)
-    );
-    
+    queryClient.invalidateQueries(UserService.getUserQueryOptions("A", userId));
+
     // 2. 모든 User 쿼리 무효화
     queryClient.invalidateQueries({
       queryKey: ["User"],
     });
-    
+
     // 3. 특정 메서드의 모든 쿼리 무효화
     queryClient.invalidateQueries({
       queryKey: ["User", "getUser"],
@@ -376,7 +369,7 @@ API 호출 없이 캐시를 직접 수정합니다.
 ```typescript
 function LikeButton({ postId }: { postId: number }) {
   const queryClient = useQueryClient();
-  
+
   function handleLike() {
     // 캐시 직접 수정
     queryClient.setQueryData(
@@ -387,11 +380,11 @@ function LikeButton({ postId }: { postId: number }) {
         isLiked: true,
       })
     );
-    
+
     // 백그라운드에서 API 호출
     PostService.likePost(postId);
   }
-  
+
   return <button onClick={handleLike}>Like</button>;
 }
 ```
@@ -403,14 +396,14 @@ function LikeButton({ postId }: { postId: number }) {
 ```typescript
 function UserList({ userIds }: { userIds: number[] }) {
   const queryClient = useQueryClient();
-  
+
   // 호버 시 미리 로드
   function handleMouseEnter(userId: number) {
     queryClient.prefetchQuery(
       UserService.getUserQueryOptions("A", userId)
     );
   }
-  
+
   return (
     <ul>
       {userIds.map((id) => (
@@ -452,16 +445,16 @@ function PostList() {
     },
     initialPageParam: 1,
   });
-  
+
   // 모든 페이지의 게시글을 평탄화
   const posts = data?.pages.flat() || [];
-  
+
   return (
     <div>
       {posts.map((post) => (
         <div key={post.id}>{post.title}</div>
       ))}
-      
+
       {hasNextPage && (
         <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
           {isFetchingNextPage ? "Loading..." : "Load More"}
@@ -486,7 +479,7 @@ function RealtimeFeed() {
       refetchIntervalInBackground: false, // 백그라운드에서는 안함
     }
   );
-  
+
   return (
     <div>
       {data?.items.map((item) => (
@@ -505,17 +498,17 @@ function UserDashboard({ userId }: { userId: number }) {
   const userQuery = UserService.useUser("A", userId);
   const postsQuery = PostService.usePostsByUser("A", userId);
   const statsQuery = UserService.useStats(userId);
-  
+
   // 모든 쿼리가 로드될 때까지 대기
   if (userQuery.isLoading || postsQuery.isLoading || statsQuery.isLoading) {
     return <div>Loading...</div>;
   }
-  
+
   // 하나라도 에러면 에러 표시
   if (userQuery.error || postsQuery.error || statsQuery.error) {
     return <div>Error loading data</div>;
   }
-  
+
   return (
     <div>
       <h1>{userQuery.data?.username}</h1>
@@ -539,16 +532,16 @@ const queryClient = new QueryClient({
     queries: {
       // 데이터가 stale 상태로 간주되는 시간 (5초)
       staleTime: 5000,
-      
+
       // 포커스 시 재검증
       refetchOnWindowFocus: true,
-      
+
       // 재연결 시 재검증
       refetchOnReconnect: true,
-      
+
       // 에러 재시도
       retry: 1,
-      
+
       // 사용하지 않는 데이터 캐시 유지 시간 (5분)
       gcTime: 5 * 60 * 1000,
     },
@@ -618,7 +611,7 @@ function Dashboard({ userId }: { userId: number }) {
   const { data: user } = UserService.useUser("A", userId);
   const { data: posts } = PostService.usePosts("A", { userId });
   const { data: stats } = StatsService.useUserStats(userId);
-  
+
   // 세 요청이 동시에 실행되어 빠름!
 }
 ```
@@ -626,29 +619,37 @@ function Dashboard({ userId }: { userId: number }) {
 ## 주의사항
 
 <Warning>
-**TanStack Query Hook 사용 시 주의사항**:
-1. Hook은 **컴포넌트 내부**에서만 호출 (React 규칙)
-2. **Subset 파라미터 필수**: `useUser("A", userId)`
-3. `enabled: false`로 **조건부 페칭** 구현
-4. Mutation 성공 시 **캐시 무효화** 필수
-5. Query Key는 **자동 생성**되므로 수동 작성 금지
-6. 생성된 Hook은 **수정 금지** (재생성 시 덮어씀)
-7. `QueryClientProvider`로 앱 전체 감싸기
+  **TanStack Query Hook 사용 시 주의사항**: 1. Hook은 **컴포넌트 내부**에서만 호출 (React 규칙) 2.
+  **Subset 파라미터 필수**: `useUser("A", userId)` 3. `enabled: false`로 **조건부 페칭** 구현 4.
+  Mutation 성공 시 **캐시 무효화** 필수 5. Query Key는 **자동 생성**되므로 수동 작성 금지 6. 생성된
+  Hook은 **수정 금지** (재생성 시 덮어씀) 7. `QueryClientProvider`로 앱 전체 감싸기
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="Service 동작 원리" icon="diagram-project" href="/ko/frontend-integration/generated-services/how-services-work">
+  <Card
+    title="Service 동작 원리"
+    icon="diagram-project"
+    href="/ko/frontend-integration/generated-services/how-services-work"
+  >
     자동 생성 이해하기
   </Card>
-  <Card title="Service 사용하기" icon="code" href="/ko/frontend-integration/generated-services/using-services">
+  <Card
+    title="Service 사용하기"
+    icon="code"
+    href="/ko/frontend-integration/generated-services/using-services"
+  >
     Service 기본 사용법
   </Card>
   <Card title="TanStack Query 공식 문서" icon="book" href="https://tanstack.com/query/latest">
     TanStack Query 더 알아보기
   </Card>
-  <Card title="Subset System" icon="layer-group" href="/ko/core-concepts/entity-system/subset-system">
+  <Card
+    title="Subset System"
+    icon="layer-group"
+    href="/ko/core-concepts/entity-system/subset-system"
+  >
     Subset 시스템
   </Card>
 </CardGroup>

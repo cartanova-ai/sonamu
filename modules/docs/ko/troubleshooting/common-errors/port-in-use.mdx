@@ -1,6 +1,6 @@
 ---
-title: '포트가 이미 사용 중'
-description: '포트 충돌 해결하기'
+title: "포트가 이미 사용 중"
+description: "포트 충돌 해결하기"
 ---
 
 포트 충돌 문제와 해결 방법을 다룹니다.
@@ -51,10 +51,10 @@ taskkill /PID <프로세스ID> /F
 export default {
   server: {
     listen: {
-      port: 10281,  // 다른 포트 사용
-      host: "localhost"
-    }
-  }
+      port: 10281, // 다른 포트 사용
+      host: "localhost",
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -72,9 +72,9 @@ Sonamu UI는 API 서버와 같은 포트를 사용하며, `/sonamu-ui` 경로로
 export default {
   server: {
     listen: {
-      port: 10280
-    }
-  }
+      port: 10280,
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -97,9 +97,9 @@ Sonamu UI 접근: `http://localhost:10280/sonamu-ui`
 export default {
   server: {
     listen: {
-      port: 10280
-    }
-  }
+      port: 10280,
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -110,9 +110,9 @@ export default {
 export default {
   server: {
     listen: {
-      port: 10380
-    }
-  }
+      port: 10380,
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
