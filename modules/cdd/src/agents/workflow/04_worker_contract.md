@@ -4,6 +4,22 @@ Follow `00_shared_contract.md` and `01_cdd.md` first.
 
 All CDD execution workers must read this document before starting work.
 
+## Sonamu CLI required sequences
+
+Workers must follow the exact sequence for each situation. Do not skip steps or reorder.
+
+| Condition | Required sequence | Primary worker |
+|---|---|---|
+| `entity.json` changed | `pnpm sonamu sync` | surface |
+| DB schema change needed | `pnpm sonamu migrate generate` → `pnpm sonamu migrate run` | surface |
+| New model creation | `pnpm sonamu scaffold model <EntityId>` → `pnpm sonamu sync` | surface |
+| New entity creation | `pnpm sonamu stub entity <name>` → `pnpm sonamu sync` | surface |
+| New test file creation | `pnpm sonamu scaffold model_test <EntityId>` | test |
+| Test execution | `pnpm sonamu test -s` (readiness check) → `pnpm sonamu test [file] [--pattern]` | test, implement |
+| Fixture sync | `pnpm sonamu fixture sync` | test |
+
+When a Claim's `scope.write` or `required_cli_commands` matches one of these conditions, the worker must execute the corresponding sequence. If multiple conditions apply, execute sequences in the order listed above.
+
 ## Common constraints
 
 - Leaf worker. Cannot spawn other agents.
