@@ -1,0 +1,11 @@
+{
+  "description": "API(백엔드) 구현 규칙",
+  "rules": [
+    {
+      "id": "api-example-rule",
+      "when": "TODO: 규칙이 적용되는 조건",
+      "instruction": "TODO: 구체적인 지시사항",
+      "examples": []
+    }
+  ]
+}
