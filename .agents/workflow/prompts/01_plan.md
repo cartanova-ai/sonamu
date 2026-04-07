@@ -19,7 +19,7 @@ Convert `bootstrap_context` into a detailed execution plan and a machine-readabl
    - merge-risk surfaces
 4. Include mandatory validation matrix:
    - monorepo root lint/format via `pnpm check`
-   - affected subproject Biome checks via `pnpm check`
+   - affected subproject lint/format checks via `pnpm check`
    - project-level build/test targets
 5. For backend/library units, include regression tests for non-obvious failure-prone behavior.
 6. For every unit, define `must_verify_behaviors` that must be validated with tests first.

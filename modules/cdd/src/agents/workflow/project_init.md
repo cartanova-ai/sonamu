@@ -171,7 +171,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 ### 9. Create Entities
 
 22. Create entity.json files in batch according to the design
-23. Run biome check and type check
+23. Run lint/format check (`pnpm check`) and type check
 24. Confirm the build succeeds without errors
 
 ### 10. Run Migration
@@ -198,7 +198,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
     - view_form
     - Run via Sonamu UI or via Claude Code CLI
 29. Confirm generation completes without errors
-30. Run biome check and type check
+30. Run lint/format check (`pnpm check`) and type check
 31. Confirm the build succeeds without errors
 32. Run `pnpm dump` to generate a DB dump file
 
@@ -208,7 +208,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 - [ ] Migration complete, DB tables confirmed
 - [ ] Cone generated
 - [ ] Scaffolding complete (model, model_test, view_list, view_search_input, view_form — all of them)
-- [ ] biome check, type check, build all pass
+- [ ] lint/format check, type check, build all pass
 - [ ] `pnpm dump` executed
 
 ---
@@ -229,7 +229,7 @@ Read both documents before starting.
 - [ ] All domain ACs defined (test skeletons exist in test files)
 - [ ] All Claims executed
 - [ ] All tests pass
-- [ ] Full biome check, type check, and build pass
+- [ ] Full lint/format check, type check, and build pass
 
 ---
 

@@ -44,7 +44,7 @@ These apply to every CDD participant regardless of role.
 All stages that produce code changes must pass these gates before reporting completion:
 
 - `pnpm build` (type check + build)
-- `pnpm check` (Biome lint/format at workspace root)
+- `pnpm check` (oxlint + oxfmt lint/format at workspace root)
 
 Project-level gates (test, migration validation) are stage-specific and defined in respective workflow prompts.
 

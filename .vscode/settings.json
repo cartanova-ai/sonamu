@@ -5,31 +5,11 @@
     "**/node_modules": true
   },
   "typescript.tsdk": "node_modules/typescript/lib",
-  "editor.formatOnSave": true,
-  "[typescript]": {
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.codeActionsOnSave": {
-      "source.fixAll.biome": "explicit"
-    }
-  },
-  "[typescriptreact]": {
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.codeActionsOnSave": {
-      "source.fixAll.biome": "explicit"
-    }
-  },
-  "[javascript]": {
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.codeActionsOnSave": {
-      "source.fixAll.biome": "explicit"
-    }
-  },
+  "editor.formatOnSave": false,
   "[json]": {
-    "editor.defaultFormatter": "biomejs.biome",
     "editor.formatOnSave": true
   },
   "[jsonc]": {
-    "editor.defaultFormatter": "biomejs.biome",
     "editor.formatOnSave": true
   },
   "rest-client.environmentVariables": {

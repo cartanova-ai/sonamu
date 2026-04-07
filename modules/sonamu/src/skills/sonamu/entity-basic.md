@@ -622,7 +622,7 @@ When setting a default value on an ENUM field, the value must be wrapped in **es
 { "name": "status", "type": "enum", "id": "ApprovalStatus", "dbDefault": "pending" }
 // Error: cannot use column reference in DEFAULT expression
 
-// Incorrect: single quotes — causes Biome format error
+// Incorrect: single quotes — causes oxfmt format error
 { "name": "status", "type": "enum", "id": "ApprovalStatus", "dbDefault": "'pending'" }
 ```
 

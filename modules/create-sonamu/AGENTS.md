@@ -33,4 +33,4 @@ See `.claude/skills/sonamu/SKILL.md` for the full skill list.
 
 ## Cross-workspace gate
 
-- For changes in this scope, root `pnpm check` (Biome) must pass before handoff.
+- For changes in this scope, root `pnpm check` (oxlint + oxfmt) must pass before handoff.

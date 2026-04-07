@@ -44,7 +44,7 @@ pnpm install -D @tanstack/router-vite-plugin @tanstack/router-devtools
 **파일**: `vite.config.ts`
 
 ```typescript
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 import { TanStackRouterVite } from '@tanstack/router-vite-plugin';
 import dotenv from "dotenv";
 import path from "path";

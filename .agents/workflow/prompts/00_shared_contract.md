@@ -30,7 +30,7 @@ Every stage prompt must inherit from the canonical files above:
 - implementation commit + review policy: implementation sub-agents always commit and return `unit_execution_report`; if inline Codex unit-review is explicitly enabled and available, implementation sub-agents may close unit review before returning; otherwise orchestrator runs context-isolated unit review and full-branch final review; fast-path may skip unit reviewer for trivial changes
 - code comment policy: comments only where logic is not self-evident, no region-marker comments
 - test-first policy for must-verify behaviors
-- validation gate baseline: `pnpm check` (Biome) must pass at workspace root and in every affected subproject
+- validation gate baseline: `pnpm check` (oxlint + oxfmt) must pass at workspace root and in every affected subproject
 
 Do not restate these shared policies in stage prompts unless role-specific exceptions are required.
 

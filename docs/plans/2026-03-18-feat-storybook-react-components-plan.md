@@ -368,7 +368,7 @@ export const Default: Story = {
 
 - [ ] `pnpm --filter @sonamu-kit/react-components build`: stories가 dist/에 미포함 확인
 - [ ] `pnpm --filter @sonamu-kit/react-components lint`: stories 파일 린트 통과
-- [ ] `pnpm check`: Biome 통과
+- [ ] `pnpm check`: oxlint + oxfmt 통과
 - [ ] `pnpm --filter @sonamu-kit/react-components storybook`: 개발 서버 정상 기동
 - [ ] `pnpm --filter @sonamu-kit/react-components build-storybook`: 정적 빌드 성공
 - [ ] 기존 demo/ 앱 정상 동작 확인 (`pnpm dev`)

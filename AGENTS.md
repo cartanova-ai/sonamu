@@ -161,7 +161,7 @@ When writing docs, messages, or direct agent responses (Notion, Linear, Slack, G
 
 ## Validation policy
 - Ensure monorepo root checks (lint/format) are included in plans.
-- `pnpm check` (Biome) must pass at the workspace root and in each affected subproject.
+- `pnpm check` (oxlint + oxfmt) must pass at the workspace root and in each affected subproject.
 - Ensure project-level build/test targets are included in plans.
 - In backend/library work, include regression tests for non-obvious, high-risk behavior.
 - Minimum Sonamu baseline:

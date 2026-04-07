@@ -632,8 +632,7 @@ SD.locale = (locale: string) => <K extends DictKey>(key: K): Dictionary[K] => {
       body,
       importKeys: [],
       customHeaders: [
-        "/** biome-ignore-all lint: generated는 무시 */",
-        "/** biome-ignore-all assist: generated는 무시 */",
+        "/* oxlint-disable: generated 파일은 lint 제외 */",
         "",
       ],
     };
