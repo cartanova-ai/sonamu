@@ -11,12 +11,33 @@ import { TransactionContext } from "./transaction-context";
  * 여러 설정 객체를 순차적으로 deep merge합니다.
  * undefined/null인 인자는 무시됩니다.
  */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function mergeRecord(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): Record<string, unknown> {
+  for (const [key, value] of Object.entries(source)) {
+    const currentValue = target[key];
+
+    if (isPlainObject(currentValue) && isPlainObject(value)) {
+      target[key] = mergeRecord({ ...currentValue }, value);
+    } else {
+      target[key] = value;
+    }
+  }
+
+  return target;
+}
+
 function mergeConfigs<T extends object>(...configs: (Partial<T> | undefined | null)[]): T {
-  const merged: Partial<T> = {};
+  const merged: Record<string, unknown> = {};
 
   for (const config of configs) {
     if (config !== undefined && config !== null) {
-      Object.assign(merged, config);
+      mergeRecord(merged, config as Record<string, unknown>);
     }
   }
 
@@ -179,21 +200,22 @@ export class DBClass {
   }
 
   public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
-    const defaultKnexConfig: Partial<DatabaseConfig> = {
-      client: "postgresql",
-      pool: {
-        min: 1,
-        max: 5,
+    const defaultKnexConfig = mergeConfigs<Partial<DatabaseConfig>>(
+      {
+        client: "postgresql",
+        pool: {
+          min: 1,
+          max: 5,
+        },
+        migrations: {
+          directory: "./src/migrations",
+        },
+        connection: {
+          database: config.name,
+        },
       },
-      migrations: {
-        directory: "./src/migrations",
-      },
-      connection: {
-        database: config.name,
-        ...config.defaultOptions?.connection,
-      },
-      ...config.defaultOptions,
-    };
+      config.defaultOptions,
+    );
 
     // oxfmt-ignore -- 설정 구조 가독성을 위해 여러 줄로 유지
     return {
