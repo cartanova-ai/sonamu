@@ -1,7 +1,7 @@
 {
   "name": "@sonamu-kit/react-components",
-  "version": "0.2.5",
-  "type": "module",
+  "version": "0.3.1",
+  "license": "MIT",
   "author": "CartaNova <dev@cartanova.ai>",
   "repository": {
     "type": "git",
