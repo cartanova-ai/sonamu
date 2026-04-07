@@ -4,9 +4,7 @@
 
 ## 용도
 
-- **requirements.md**: 프로젝트 요구사항 명세
-- **business-logic.md**: 비즈니스 로직 상세 (선택)
-- **architecture.md**: 아키텍처 설계 문서 (선택)
+- **architecture.md**: 아키텍처 설계 문서
 
 ## 사용 방법
 
