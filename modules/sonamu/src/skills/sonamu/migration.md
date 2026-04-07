@@ -271,7 +271,7 @@ The sync command references `dist/sonamu.config.js`. An error will occur if it d
 
 ```bash
 cd packages/api
-npx swc src/sonamu.config.ts -o dist/sonamu.config.js --config-file .swcrc
+pnpm exec tsdown --config tsdown.config.ts
 ```
 
 ### 2. Verify DB Connection
@@ -295,7 +295,7 @@ Split the migration, or set the FK to nullable and add it later.
 cd packages/api
 
 # 1. Build config
-npx swc src/sonamu.config.ts -o dist/sonamu.config.js --config-file .swcrc
+pnpm exec tsdown --config tsdown.config.ts
 
 # 2. Run sync
 pnpm sonamu sync

@@ -8,7 +8,7 @@ import inflection from "inflection";
 import { type Knex } from "knex";
 import { unique } from "radashi";
 
-import { Sonamu } from "../api";
+import { Sonamu } from "../api/sonamu";
 import { BaseModel } from "../database/base-model";
 import { type SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";

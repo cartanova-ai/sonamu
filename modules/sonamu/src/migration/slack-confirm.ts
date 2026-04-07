@@ -4,7 +4,7 @@ import fs from "fs/promises";
 import os from "os";
 import path from "path";
 
-import { Sonamu } from "../api";
+import { Sonamu } from "../api/sonamu";
 import { type SonamuDBConfig } from "../database/db";
 import { SD } from "../dict/sd";
 import { type MigrationResult } from "./migrator";

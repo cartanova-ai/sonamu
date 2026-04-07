@@ -6,7 +6,7 @@ import chalk from "chalk";
 import { type Knex } from "knex";
 import { group, sum, unique } from "radashi";
 
-import { Sonamu } from "../api";
+import { Sonamu } from "../api/sonamu";
 import { DB } from "../database/db";
 import { type SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";

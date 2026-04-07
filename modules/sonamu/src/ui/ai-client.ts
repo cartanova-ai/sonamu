@@ -6,7 +6,7 @@ import path from "path";
 import { type LanguageModel, type ModelMessage, type StreamTextResult } from "ai";
 import { z } from "zod";
 
-import { Sonamu } from "../api";
+import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import {
   getEnumDefValues,

@@ -55,27 +55,27 @@ Cleanly removes residual files from previous builds.
 - `web/dist/` - Web build output
 - `web-dist/` - Copied Web output
 
-### 2. Prepare SWC Configuration
+### 2. Prepare API Build Configuration
 
-Determines the SWC configuration file to use for the build.
+Determines the tsdown configuration file to use for the API build.
 
 ```typescript
 // Priority
-// 1. .swcrc in project root (custom config)
-// 2. Sonamu default .swcrc (if none exists)
+// 1. tsdown.config.ts in project root (custom override)
+// 2. Sonamu default tsdown API config (if none exists)
 ```
 
 **Using custom config**:
 
 ```bash
-# Create .swcrc in project root
-touch .swcrc
+# Create tsdown.config.ts in project root
+touch tsdown.config.ts
 ```
 
 **Using default config**:
 
 ```
-Using default .swcrc from sonamu package...
+Using default tsdown API config from sonamu package...
 ```
 
 ### 3. Build API Project
@@ -93,10 +93,10 @@ Compiles TypeScript to JavaScript.
 
   <Step title="Run compilation">
     ```bash
-    swc src -d dist --config-file .swcrc
+    tsc --noEmit && pnpm exec tsdown --config /path/to/tsdown.config.ts
     ```
 
-    **Build tool**: [SWC](https://swc.rs/) - Rust-based ultra-fast TypeScript compiler
+    **Build tool**: [tsdown](https://github.com/rolldown/tsdown) with OXC/Rolldown
 
   </Step>
 
@@ -155,45 +155,37 @@ If a Web project exists, builds it and copies to the API project.
 
 ## Build Configuration
 
-### Customizing SWC Configuration
+### Customizing API Build Configuration
 
-Create a `.swcrc` file in the project root to customize the build.
+Create a `tsdown.config.ts` file in the project root to override the default API build.
 
-```json title=".swcrc"
-{
-  "jsc": {
-    "parser": {
-      "syntax": "typescript",
-      "tsx": false,
-      "decorators": true
-    },
-    "target": "es2022",
-    "loose": false,
-    "externalHelpers": false,
-    "keepClassNames": true,
-    "transform": {
-      "legacyDecorator": true,
-      "decoratorMetadata": true
-    }
+```ts title="tsdown.config.ts"
+import { defineConfig } from "tsdown";
+
+export default defineConfig({
+  clean: true,
+  entry: {
+    index: "src/index.ts",
   },
-  "module": {
-    "type": "es6"
-  },
-  "sourceMaps": true
-}
+  format: "esm",
+  platform: "node",
+  sourcemap: "inline",
+  target: "esnext",
+  unbundle: true,
+});
 ```
 
 **Key options**:
 
 | Option           | Description          | Default  |
 | ---------------- | -------------------- | -------- |
-| `target`         | Compilation target   | `es2022` |
+| `target`         | Compilation target   | `esnext` |
 | `decorators`     | Decorator support    | `true`   |
-| `sourceMaps`     | Generate source maps | `true`   |
-| `keepClassNames` | Preserve class names | `true`   |
+| `sourceMaps`     | Generate source maps | `inline` |
+| `unbundle`       | Preserve file layout | `true`   |
 
 <Tip>
-  If no `.swcrc` file exists, **optimized default configuration** provided by Sonamu is used.
+  If no `tsdown.config.ts` file exists, Sonamu falls back to its bundled default API build config.
 </Tip>
 
 ## Build Output
@@ -273,7 +265,7 @@ pnpm dev
 
 ### 3. Cache Utilization
 
-SWC automatically uses build cache.
+tsdown reuses incremental dependency analysis across builds.
 
 ```bash
 # First build (slow)
@@ -307,19 +299,19 @@ rm -rf node_modules
 pnpm install
 ```
 
-### SWC Configuration Error
+### tsdown Configuration Error
 
-**Problem**: `.swcrc` configuration error
+**Problem**: `tsdown.config.ts` configuration error
 
 ```
-Error: Invalid .swcrc configuration
+Error: Failed to load tsdown config
 ```
 
 **Solution**:
 
 ```bash
 # Restore to default config
-rm .swcrc
+rm tsdown.config.ts
 pnpm build
 ```
 

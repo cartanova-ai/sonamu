@@ -19,7 +19,7 @@ import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
 import { type AbsolutePath } from "../utils/path-utils";
 import { runtimePath } from "../utils/path-utils";
-import { Entity } from "./entity";
+import { type Entity } from "./entity";
 
 export type EntityNamesRecord = Record<
   "fs" | "fsPlural" | "camel" | "camelPlural" | "capital" | "capitalPlural" | "upper" | "constant",
@@ -83,6 +83,7 @@ class EntityManagerClass {
     json: EntityJson,
     options: { deferSearchTextJsonSourceValidation?: boolean } = {},
   ): Promise<void> {
+    const { Entity } = await import("./entity");
     const entity = new Entity(json);
     await entity.registerModulePaths();
     if (!options.deferSearchTextJsonSourceValidation) {

@@ -55,27 +55,27 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 - `web/dist/` - Web 빌드 결과물
 - `web-dist/` - 복사된 Web 결과물
 
-### 2. SWC 설정 파일 준비
+### 2. API 빌드 설정 준비
 
-빌드에 사용할 SWC 설정 파일을 결정합니다.
+API 빌드에 사용할 tsdown 설정 파일을 결정합니다.
 
 ```typescript
 // 우선순위
-// 1. 프로젝트 루트의 .swcrc (커스텀 설정)
-// 2. Sonamu 기본 .swcrc (없을 경우)
+// 1. 프로젝트 루트의 tsdown.config.ts (커스텀 오버라이드)
+// 2. Sonamu 기본 tsdown API 설정 (없을 경우)
 ```
 
 **커스텀 설정 사용**:
 
 ```bash
-# 프로젝트 루트에 .swcrc 생성
-touch .swcrc
+# 프로젝트 루트에 tsdown.config.ts 생성
+touch tsdown.config.ts
 ```
 
 **기본 설정 사용**:
 
 ```
-Using default .swcrc from sonamu package...
+Using default tsdown API config from sonamu package...
 ```
 
 ### 3. API 프로젝트 빌드
@@ -88,8 +88,8 @@ TypeScript를 JavaScript로 컴파일합니다.
   </Step>
 
 <Step title="컴파일 실행">
-  ```bash swc src -d dist --config-file .swcrc ``` **빌드 도구**: [SWC](https://swc.rs/) - Rust 기반
-  초고속 TypeScript 컴파일러
+  ```bash tsc --noEmit && pnpm exec tsdown --config /path/to/tsdown.config.ts ``` **빌드 도구**:
+  tsdown + OXC/Rolldown
 </Step>
 
   <Step title="완료">``` ✓ build completed (2.5s) ✓ API build completed in 2.5s ```</Step>
@@ -122,44 +122,36 @@ Web 프로젝트가 있는 경우 빌드하고 API 프로젝트로 복사합니�
 
 ## 빌드 설정
 
-### SWC 설정 커스터마이징
+### API 빌드 설정 커스터마이징
 
-프로젝트 루트에 `.swcrc` 파일을 생성하여 빌드를 커스터마이징할 수 있습니다.
+프로젝트 루트에 `tsdown.config.ts` 파일을 생성하여 기본 API 빌드를 오버라이드할 수 있습니다.
 
-```json title=".swcrc"
-{
-  "jsc": {
-    "parser": {
-      "syntax": "typescript",
-      "tsx": false,
-      "decorators": true
-    },
-    "target": "es2022",
-    "loose": false,
-    "externalHelpers": false,
-    "keepClassNames": true,
-    "transform": {
-      "legacyDecorator": true,
-      "decoratorMetadata": true
-    }
+```ts title="tsdown.config.ts"
+import { defineConfig } from "tsdown";
+
+export default defineConfig({
+  clean: true,
+  entry: {
+    index: "src/index.ts",
   },
-  "module": {
-    "type": "es6"
-  },
-  "sourceMaps": true
-}
+  format: "esm",
+  platform: "node",
+  sourcemap: "inline",
+  target: "esnext",
+  unbundle: true,
+});
 ```
 
 **주요 옵션**:
 
 | 옵션             | 설명            | 기본값   |
 | ---------------- | --------------- | -------- |
-| `target`         | 컴파일 타겟     | `es2022` |
+| `target`         | 컴파일 타겟     | `esnext` |
 | `decorators`     | 데코레이터 지원 | `true`   |
-| `sourceMaps`     | 소스맵 생성     | `true`   |
-| `keepClassNames` | 클래스명 보존   | `true`   |
+| `sourceMaps`     | 소스맵 생성     | `inline` |
+| `unbundle`       | 파일 구조 유지  | `true`   |
 
-<Tip>`.swcrc` 파일이 없으면 Sonamu가 제공하는 **최적화된 기본 설정**을 사용합니다.</Tip>
+<Tip>`tsdown.config.ts` 파일이 없으면 Sonamu가 제공하는 기본 API 빌드 설정을 사용합니다.</Tip>
 
 ## 빌드 결과물
 
@@ -238,7 +230,7 @@ pnpm dev
 
 ### 3. 캐시 활용
 
-SWC는 자동으로 빌드 캐시를 사용합니다.
+tsdown은 빌드 간 의존성 분석 결과를 재사용합니다.
 
 ```bash
 # 첫 빌드 (느림)
@@ -272,19 +264,19 @@ rm -rf node_modules
 pnpm install
 ```
 
-### SWC 설정 에러
+### tsdown 설정 에러
 
-**문제**: `.swcrc` 설정 오류
+**문제**: `tsdown.config.ts` 설정 오류
 
 ```
-Error: Invalid .swcrc configuration
+Error: Failed to load tsdown config
 ```
 
 **해결**:
 
 ```bash
 # 기본 설정으로 복구
-rm .swcrc
+rm tsdown.config.ts
 pnpm build
 ```
 

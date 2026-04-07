@@ -46,7 +46,6 @@
     "@japa/runner": "catalog:",
     "@japa/snapshot": "catalog:",
     "@julr/tooling-configs": "catalog:",
-    "@swc/core": "catalog:",
     "@types/fs-extra": "catalog:",
     "@types/node": "catalog:",
     "@types/supertest": "catalog:",

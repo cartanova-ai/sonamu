@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import prompts from "prompts";
 
-import { Sonamu } from "../api";
+import { Sonamu } from "../api/sonamu";
 import { DB } from "../database/db";
 import { createKnexInstance } from "../database/knex";
 import { EntityManager } from "../entity/entity-manager";

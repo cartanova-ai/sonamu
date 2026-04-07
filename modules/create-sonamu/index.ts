@@ -237,7 +237,6 @@ ${catalogEntries.join("\n")}
 
 onlyBuiltDependencies:
   - "@parcel/watcher"
-  - "@swc/core"
   - bcrypt
   - esbuild
   - libpq
