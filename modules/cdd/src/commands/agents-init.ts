@@ -5,8 +5,15 @@ import chalk from "chalk";
 
 import { findWorkspaceRoot } from "../utils/workspace.js";
 
-// sync와 동일하게 cdd 패키지가 단독 소유하는 서브디렉토리만 관리한다.
 const MANAGED_DIRS = ["agents", "workflow", "skills/cdd"];
+
+const CONTRACT_TEMPLATES = path.resolve(
+  import.meta.dirname,
+  "..",
+  "..",
+  "src",
+  "contract-templates",
+);
 
 function ensureSymlink(linkPath: string, target: string, force: boolean): void {
   const name = path.basename(linkPath);
@@ -38,6 +45,47 @@ function ensureSymlink(linkPath: string, target: string, force: boolean): void {
   }
 }
 
+function writeIfAbsent(filePath: string, sourcePath: string, force: boolean): void {
+  const name = path.relative(process.cwd(), filePath);
+  if (fs.existsSync(filePath) && !force) {
+    console.log(chalk.dim(`⏭ ${name} already exists (preserved)`));
+    return;
+  }
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.copyFileSync(sourcePath, filePath);
+  console.log(chalk.green(`✓ ${name}`));
+}
+
+export function runContractInit(force: boolean): void {
+  const workspaceRoot = findWorkspaceRoot();
+  const contractDir = path.join(workspaceRoot, "contract");
+  const rulesDir = path.join(contractDir, "rules");
+
+  fs.mkdirSync(rulesDir, { recursive: true });
+
+  writeIfAbsent(
+    path.join(contractDir, "planning.md"),
+    path.join(CONTRACT_TEMPLATES, "planning.md"),
+    force,
+  );
+  writeIfAbsent(
+    path.join(rulesDir, "web.rules.json"),
+    path.join(CONTRACT_TEMPLATES, "rules", "web.rules.json"),
+    force,
+  );
+  writeIfAbsent(
+    path.join(rulesDir, "api.rules.json"),
+    path.join(CONTRACT_TEMPLATES, "rules", "api.rules.json"),
+    force,
+  );
+
+  console.log(chalk.cyan("\n  contract init complete."));
+  console.log(chalk.dim("  Next: write contract/{domain}/{domain}.contract.md for each domain."));
+  console.log(
+    chalk.dim("  Tip: add contract/rules/*.known-issues.json when recurring issues are found."),
+  );
+}
+
 export function runAgentsInit(force: boolean): void {
   const workspaceRoot = findWorkspaceRoot();
   const sourceBase = path.resolve(import.meta.dirname, "..", "..", "src", "agents");
@@ -53,12 +101,10 @@ export function runAgentsInit(force: boolean): void {
   const claudeMdLink = path.join(workspaceRoot, "CLAUDE.md");
 
   if (!fs.existsSync(agentsDir)) {
-    // 최초 생성: 전체 복사 후 템플릿 파일만 제거
     fs.cpSync(sourceBase, agentsDir, { recursive: true });
     fs.rmSync(path.join(agentsDir, "AGENTS.md.template"), { force: true });
     console.log(chalk.green("✓ .agents/ created"));
   } else if (force) {
-    // --force: 다른 패키지가 관리하는 파일을 건드리지 않도록 managed 디렉토리만 교체
     for (const dir of MANAGED_DIRS) {
       const src = path.join(sourceBase, dir);
       const dest = path.join(agentsDir, dir);
@@ -102,6 +148,6 @@ export function runAgentsInit(force: boolean): void {
   ensureSymlink(claudeMdLink, "AGENTS.md", force);
 
   console.log(chalk.cyan("\n  agents init complete."));
-  console.log(chalk.dim("  Run 'pnpm sonamu skills sync' first if you haven't already."));
+  console.log(chalk.dim("  Run 'pnpm sonamu skills sync' if you haven't already."));
   console.log(chalk.dim("  Then use /cdd slash command to start CDD workflow."));
 }

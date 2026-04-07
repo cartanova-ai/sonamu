@@ -4,7 +4,7 @@ import minimist from "minimist";
 
 import { runAcAdd } from "./commands/ac-add.js";
 import { runAcList } from "./commands/ac-list.js";
-import { runAgentsInit } from "./commands/agents-init.js";
+import { runAgentsInit, runContractInit } from "./commands/agents-init.js";
 import { runAgentsSync } from "./commands/agents-sync.js";
 import { runRulesValidate } from "./commands/rules-validate.js";
 import { findContractDir, loadProject } from "./core/loader.js";
@@ -28,16 +28,33 @@ if (args.help || !command) {
 const cwd = args.cwd ?? process.cwd();
 const cmdArgs = args._.slice(1);
 
-// agents 커맨드는 OutputResult 패턴 없이 직접 출력 후 종료
+// agents / contract 커맨드는 OutputResult 패턴 없이 직접 출력 후 종료
 if (command === "agents") {
   const subCmd = cmdArgs[0];
   if (subCmd === "init") {
     runAgentsInit(args.force);
+    console.log();
+    runContractInit(args.force);
   } else if (subCmd === "sync") {
     runAgentsSync(args["dry-run"]);
+  } else if (subCmd === "contract" && cmdArgs[1] === "init") {
+    // alias: cdd agents contract init
+    runContractInit(args.force);
   } else {
     console.error(`알 수 없는 agents 서브커맨드: "${subCmd}"`);
-    console.error("사용 가능: init, sync");
+    console.error("사용 가능: init, sync, contract init");
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
+if (command === "contract") {
+  const subCmd = cmdArgs[0];
+  if (subCmd === "init") {
+    runContractInit(args.force);
+  } else {
+    console.error(`알 수 없는 contract 서브커맨드: "${subCmd}"`);
+    console.error("사용 가능: init");
     process.exit(1);
   }
   process.exit(0);
@@ -90,8 +107,10 @@ Commands:
   ac add <file> [--describe <group>] <test-name>  AC 추가 (빈 테스트 스켈레톤 생성)
   ac list [file]                                   AC 목록 조회 (describe/test 트리)
   rules validate                                   Rules 파일 구조 검증
-  agents init [--force]                            프로젝트에 CDD 에이전트 초기 설정
+  agents init [--force]                            CDD 에이전트 + contract/ 초기 설정
   agents sync [--dry-run]                          CDD 에이전트 프롬프트 최신화
+  agents contract init [--force]                   contract/ 만 초기 설정 (alias)
+  contract init [--force]                          contract/ 초기 설정 (planning.md, rules/)
 
 Options:
   --cwd <dir>         작업 디렉토리 지정 (기본: 현재 디렉토리)
