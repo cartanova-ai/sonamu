@@ -7,7 +7,7 @@ import { describe, expect, test } from "vitest";
 import { createMigrationSource } from "./base";
 
 describe("createMigrationSource", () => {
-  test("normalizes emitted js migrations back to canonical ts names", async () => {
+  test("preserves emitted migration filenames for knex identity", async () => {
     const migrationsDir = await mkdtemp(path.join(tmpdir(), "sonamu-tasks-migrations-"));
 
     try {
@@ -25,7 +25,7 @@ describe("createMigrationSource", () => {
       ]);
 
       const migrationSource = createMigrationSource(migrationsDir);
-      const migrations = await migrationSource.getMigrations();
+      const migrations = await migrationSource.getMigrations([]);
 
       expect(migrations.map((migration) => migration.fileName)).toStrictEqual([
         "20251212000000_0_init.js",
@@ -33,7 +33,7 @@ describe("createMigrationSource", () => {
       ]);
       expect(
         migrations.map((migration) => migrationSource.getMigrationName(migration)),
-      ).toStrictEqual(["20251212000000_0_init.ts", "20251212000000_1_tables.ts"]);
+      ).toStrictEqual(["20251212000000_0_init.js", "20251212000000_1_tables.ts"]);
     } finally {
       await rm(migrationsDir, { recursive: true, force: true });
     }

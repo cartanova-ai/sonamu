@@ -42,8 +42,8 @@ async function listMigrationEntries(directory: string): Promise<MigrationEntry[]
 
 export function createMigrationSource(directory: string): Knex.MigrationSource<MigrationEntry> {
   return {
-    getMigrations: async () => listMigrationEntries(directory),
-    getMigrationName: (migration) => migration.canonicalName,
+    getMigrations: async (_loadExtensions) => listMigrationEntries(directory),
+    getMigrationName: (migration) => migration.fileName,
     getMigration: async (migration): Promise<MigrationModule> => {
       const migrationUrl = pathToFileURL(path.join(directory, migration.fileName)).href;
       return import(migrationUrl) as Promise<MigrationModule>;

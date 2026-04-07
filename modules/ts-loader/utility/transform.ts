@@ -47,6 +47,27 @@ function encodeInlineSourceMap(map: SourceMap): string {
   return Buffer.from(JSON.stringify(map)).toString("base64");
 }
 
+type EmptyImport = {
+  placeholderSpecifier: string;
+  specifier: string;
+};
+
+const EMPTY_IMPORT_PATTERN = /^\s*import\s*\{\s*\}\s*from\s*(["'][^"']+["']);?\s*$/gm;
+
+function rewriteEmptyImports(sourceText: string, verbatimModuleSyntax: boolean) {
+  const emptyImports: EmptyImport[] = [];
+  let index = 0;
+
+  const code = sourceText.replace(EMPTY_IMPORT_PATTERN, (_match, specifier: string) => {
+    const placeholderSpecifier = `"__sonamu_empty_import__/${index}"`;
+    emptyImports.push({ placeholderSpecifier, specifier });
+    index += 1;
+    return verbatimModuleSyntax ? `import ${specifier};` : `import ${placeholderSpecifier};`;
+  });
+
+  return { code, emptyImports };
+}
+
 /** @internal */
 export async function transpileSource(
   sourceText: string,
@@ -60,6 +81,10 @@ export async function transpileSource(
   const baseDirectory = transformContext?.packageDirectory ?? new URL("./", sourceLocation);
   const config = loadTransformConfig(transformContext?.compilerOptions);
   const lang = getLangFromFilename(filename);
+  const { code: transformedSourceText, emptyImports } = rewriteEmptyImports(
+    sourceText,
+    config.verbatimModuleSyntax,
+  );
 
   const transformOptions: TransformOptions = {
     cwd: baseDirectory.pathname,
@@ -84,7 +109,7 @@ export async function transpileSource(
     transformOptions.lang = lang;
   }
 
-  const result = await transform(filename, sourceText, transformOptions);
+  const result = await transform(filename, transformedSourceText, transformOptions);
 
   if (result.errors.length > 0) {
     const messages = result.errors
@@ -102,16 +127,14 @@ export async function transpileSource(
     throw new Error("Source map is required but was not returned by oxc-transform");
   }
 
-  const emptyImportPattern = /^\s*import\s*\{\s*\}\s*from\s*(["'][^"']+["']);?\s*$/gm;
-  const emptyImportMatches = Array.from(sourceText.matchAll(emptyImportPattern));
-  const hasEmptyImport = emptyImportMatches.length > 0;
-  const preservedEmptyImports = emptyImportMatches.map(([, specifier]) => `import ${specifier};`);
-  const code =
-    !config.verbatimModuleSyntax && hasEmptyImport
-      ? result.code.replace(/^\s*import\s*\{\s*\}\s*from\s*["'][^"']+["'];?\n?/gm, "")
-      : config.verbatimModuleSyntax && preservedEmptyImports.length > 0
-        ? `${preservedEmptyImports.join("\n")}\n${result.code}`.trim()
-        : result.code;
+  let code = result.code;
+
+  if (!config.verbatimModuleSyntax && emptyImports.length > 0) {
+    for (const { placeholderSpecifier } of emptyImports) {
+      const escapedSpecifier = placeholderSpecifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      code = code.replace(new RegExp(`^\\s*import\\s*${escapedSpecifier};?\\n?`, "m"), "");
+    }
+  }
 
   return `${code}\n//# sourceMappingURL=data:application/json;base64,${encodeInlineSourceMap(result.map)}`;
 }

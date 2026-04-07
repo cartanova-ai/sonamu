@@ -85,6 +85,23 @@ await describe("transpilation options", async () => {
     assert.ok(result.ran);
   });
 
+  await test("verbatimModuleSyntax preserves side-effect import order", async () => {
+    const { evaluate } = makeTestLoader({
+      "package.json": JSON.stringify({ type: "module" }),
+      "tsconfig.json": JSON.stringify({
+        compilerOptions: {
+          verbatimModuleSyntax: true,
+        },
+      }),
+      "main.ts": 'import "./first.js";\nimport {} from "./second.js";',
+      "first.ts": 'globalThis.order = ["first"];',
+      "second.ts": 'globalThis.order.push("second");',
+    });
+    const result = await evaluate("main.ts");
+    assert.ok(Array.isArray(result.order));
+    assert.strictEqual(JSON.stringify(result.order), JSON.stringify(["first", "second"]));
+  });
+
   await test("no verbatimModuleSyntax", async () => {
     const { evaluate } = makeTestLoader({
       "package.json": JSON.stringify({ type: "module" }),
