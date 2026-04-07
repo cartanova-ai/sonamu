@@ -21,7 +21,7 @@ function App({ children }: AppProps) {
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  const isLoginPage = pathname === "/admin/login" || pathname === "/admin/login-test";
+  const isLoginPage = pathname === "/admin/login";
 
   return (
     <div className="h-screen">

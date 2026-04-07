@@ -6,7 +6,7 @@ import os from "os";
 import path from "path";
 
 import { dispose as logtapeDispose } from "@logtape/logtape";
-import type { Auth, BetterAuthOptions } from "better-auth";
+import { type Auth, type BetterAuthOptions } from "better-auth";
 import { type FSWatcher } from "chokidar";
 import { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import mime, { lookup as mimeLookup } from "mime-types";

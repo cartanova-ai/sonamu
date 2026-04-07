@@ -11,6 +11,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import ArrowRightIcon from "~icons/lucide/arrow-right";
 
+import { useSonamuContext } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
 import {
   type ActiveProjectItem,
@@ -26,6 +27,9 @@ export const Route = createFileRoute("/admin/")({
 });
 
 function AdminIndexPage() {
+  const { auth } = useSonamuContext();
+  const session = auth.useSession();
+  const user = session.data?.user ?? null;
   const navigate = useNavigate();
   const [period, setPeriod] = useState<ActivityPeriod>("7");
 
@@ -44,6 +48,42 @@ function AdminIndexPage() {
         <div className="mb-6">
           <h1 className="text-lg font-semibold">{SD("dashboard.title")}</h1>
         </div>
+
+        {/* 사용자 정보 */}
+        <Card className="border-border/40 shadow-sm mb-5">
+          <CardHeader className="px-5 py-3 border-b border-gray-100">
+            <CardTitle className="text-sm font-medium leading-none m-0">
+              {SD("dashboard.welcome")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-5">
+            {user ? (
+              <div className="flex items-center justify-between">
+                <div className="space-y-1 text-sm">
+                  <p>
+                    <strong>{SD("dashboard.name")}:</strong> {user.name}
+                  </p>
+                  <p>
+                    <strong>{SD("dashboard.email")}:</strong> {user.email}
+                  </p>
+                  <p>
+                    <strong>{SD("dashboard.role")}:</strong> {user.role}
+                  </p>
+                </div>
+                <Button variant="secondary" onClick={() => auth.signOut()}>
+                  {SD("common.logout")}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">{SD("dashboard.loginRequired")}</p>
+                <Button variant="secondary" onClick={() => navigate({ to: "/admin/login" })}>
+                  {SD("common.login")}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* 조직 현황 */}
         <SectionLabel>{SD("dashboard.organizationStats")}</SectionLabel>

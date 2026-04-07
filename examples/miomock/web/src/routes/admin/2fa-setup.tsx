@@ -189,7 +189,7 @@ function TwoFactorSetupPage() {
                   variant="outline"
                   className="flex-1"
                   icon={<ArrowLeftIcon />}
-                  onClick={() => navigate({ to: "/admin/login-test" })}
+                  onClick={() => navigate({ to: "/admin/login" })}
                 >
                   돌아가기
                 </Button>
@@ -234,7 +234,7 @@ function TwoFactorSetupPage() {
                   variant="outline"
                   className="flex-1"
                   icon={<ArrowLeftIcon />}
-                  onClick={() => navigate({ to: "/admin/login-test" })}
+                  onClick={() => navigate({ to: "/admin/login" })}
                 >
                   취소
                 </Button>
@@ -342,7 +342,7 @@ function TwoFactorSetupPage() {
               <Button
                 className="w-full text-white"
                 style={{ background: "linear-gradient(90deg, #10b981 0%, #059669 100%)" }}
-                onClick={() => navigate({ to: "/admin/login-test" })}
+                onClick={() => navigate({ to: "/admin/login" })}
               >
                 완료
               </Button>

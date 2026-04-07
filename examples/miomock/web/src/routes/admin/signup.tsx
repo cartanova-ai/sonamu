@@ -41,17 +41,20 @@ function SignupPage() {
       return;
     }
 
-    auth.signUp
-      .email({
-        name,
-        email,
-        password,
-        role: "normal",
-        created_at: new Date(),
-      })
-      .then(() => {
-        navigate({ to: "/admin/login" });
-      });
+    const result = await auth.signUp.email({
+      name,
+      email,
+      password,
+      role: "normal",
+      created_at: new Date(),
+    });
+
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+
+    navigate({ to: "/admin/login" });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -149,7 +152,7 @@ function SignupPage() {
               variant="outline"
               className="flex-1 h-11 gap-2"
               style={{ borderColor: "#6ee7b7", color: "#059669" }}
-              onClick={() => navigate({ to: "/admin/login-test" })}
+              onClick={() => navigate({ to: "/admin/login" })}
             >
               <LogInIcon className="h-4 w-4" />
               {SD("signup.login")}

@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminSignupRouteImport } from './routes/admin/signup'
-import { Route as AdminLoginTestRouteImport } from './routes/admin/login-test'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as Admin2faVerifyRouteImport } from './routes/admin/2fa-verify'
 import { Route as Admin2faSetupRouteImport } from './routes/admin/2fa-setup'
@@ -51,11 +50,6 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const AdminSignupRoute = AdminSignupRouteImport.update({
   id: '/admin/signup',
   path: '/admin/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminLoginTestRoute = AdminLoginTestRouteImport.update({
-  id: '/admin/login-test',
-  path: '/admin/login-test',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -184,7 +178,6 @@ export interface FileRoutesByFullPath {
   '/admin/2fa-setup': typeof Admin2faSetupRoute
   '/admin/2fa-verify': typeof Admin2faVerifyRoute
   '/admin/login': typeof AdminLoginRoute
-  '/admin/login-test': typeof AdminLoginTestRoute
   '/admin/signup': typeof AdminSignupRoute
   '/admin': typeof AdminIndexRoute
   '/admin/companies/$companyId': typeof AdminCompaniesCompanyIdRoute
@@ -214,7 +207,6 @@ export interface FileRoutesByTo {
   '/admin/2fa-setup': typeof Admin2faSetupRoute
   '/admin/2fa-verify': typeof Admin2faVerifyRoute
   '/admin/login': typeof AdminLoginRoute
-  '/admin/login-test': typeof AdminLoginTestRoute
   '/admin/signup': typeof AdminSignupRoute
   '/admin': typeof AdminIndexRoute
   '/admin/companies/$companyId': typeof AdminCompaniesCompanyIdRoute
@@ -245,7 +237,6 @@ export interface FileRoutesById {
   '/admin/2fa-setup': typeof Admin2faSetupRoute
   '/admin/2fa-verify': typeof Admin2faVerifyRoute
   '/admin/login': typeof AdminLoginRoute
-  '/admin/login-test': typeof AdminLoginTestRoute
   '/admin/signup': typeof AdminSignupRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/companies/$companyId': typeof AdminCompaniesCompanyIdRoute
@@ -277,7 +268,6 @@ export interface FileRouteTypes {
     | '/admin/2fa-setup'
     | '/admin/2fa-verify'
     | '/admin/login'
-    | '/admin/login-test'
     | '/admin/signup'
     | '/admin'
     | '/admin/companies/$companyId'
@@ -307,7 +297,6 @@ export interface FileRouteTypes {
     | '/admin/2fa-setup'
     | '/admin/2fa-verify'
     | '/admin/login'
-    | '/admin/login-test'
     | '/admin/signup'
     | '/admin'
     | '/admin/companies/$companyId'
@@ -337,7 +326,6 @@ export interface FileRouteTypes {
     | '/admin/2fa-setup'
     | '/admin/2fa-verify'
     | '/admin/login'
-    | '/admin/login-test'
     | '/admin/signup'
     | '/admin/'
     | '/admin/companies/$companyId'
@@ -368,7 +356,6 @@ export interface RootRouteChildren {
   Admin2faSetupRoute: typeof Admin2faSetupRoute
   Admin2faVerifyRoute: typeof Admin2faVerifyRoute
   AdminLoginRoute: typeof AdminLoginRoute
-  AdminLoginTestRoute: typeof AdminLoginTestRoute
   AdminSignupRoute: typeof AdminSignupRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminCompaniesCompanyIdRoute: typeof AdminCompaniesCompanyIdRoute
@@ -415,13 +402,6 @@ declare module '@tanstack/react-router' {
       path: '/admin/signup'
       fullPath: '/admin/signup'
       preLoaderRoute: typeof AdminSignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/login-test': {
-      id: '/admin/login-test'
-      path: '/admin/login-test'
-      fullPath: '/admin/login-test'
-      preLoaderRoute: typeof AdminLoginTestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/login': {
@@ -600,7 +580,6 @@ const rootRouteChildren: RootRouteChildren = {
   Admin2faSetupRoute: Admin2faSetupRoute,
   Admin2faVerifyRoute: Admin2faVerifyRoute,
   AdminLoginRoute: AdminLoginRoute,
-  AdminLoginTestRoute: AdminLoginTestRoute,
   AdminSignupRoute: AdminSignupRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminCompaniesCompanyIdRoute: AdminCompaniesCompanyIdRoute,
