@@ -150,7 +150,6 @@
     "@types/qs": "catalog:",
     "nodemon": "catalog:",
     "tsdown": "catalog:",
-    "tsup": "catalog:",
     "typescript": "catalog:"
   },
   "peerDependencies": {

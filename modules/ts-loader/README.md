@@ -30,9 +30,9 @@ node --import @sonamu-kit/ts-loader test.ts
 
 ## Fork해서 뜯어고친 부분
 
-### 1. 트랜스파일러 변경: esbuild -> swc
+### 1. 트랜스파일러 변경: esbuild -> OXC
 
-그냥 swc로 맞추고 싶어 바꾸었습니다.
+현재는 OXC 기반 transform 경로를 사용합니다.
 
 ### 2. 큰 버그 해결: `.ts` 확장자 Fully Resolved Path 처리
 
