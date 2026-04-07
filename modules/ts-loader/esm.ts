@@ -431,11 +431,14 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
           // Get transpiled source. JavaScript is also passed through esbuild in case downleveling
           // is expected.
           const content = await fileSystem.readFileString(tsSourceUrl);
-          const payload = await transpileSource(
-            content,
-            tsSourceUrl,
-            packageMeta?.packageDirectory,
-          );
+          const tsConfig = await resolveTsConfig(tsSourceUrl);
+          const transformContext = {
+            ...(tsConfig?.compilerOptions ? { compilerOptions: tsConfig.compilerOptions } : {}),
+            ...(packageMeta?.packageDirectory
+              ? { packageDirectory: packageMeta.packageDirectory }
+              : {}),
+          };
+          const payload = await transpileSource(content, tsSourceUrl, transformContext);
           return {
             format,
             shortCircuit: true,
