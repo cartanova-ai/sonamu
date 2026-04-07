@@ -43,19 +43,13 @@ export const apiKeyEntityDef: BetterAuthEntityDef = {
         { name: "enabled", type: "boolean", desc: "활성화 여부" },
         { name: "permissions", type: "string", nullable: true, desc: "권한" },
         { name: "metadata", type: "string", nullable: true, desc: "메타데이터 (JSON)" },
+        { name: "reference_id", type: "string", desc: "참조 대상 ID" },
+        { name: "config_id", type: "string", dbDefault: "'default'", desc: "설정 ID" },
         { name: "created_at", type: "date", dbDefault: "CURRENT_TIMESTAMP", desc: "생성일시" },
         { name: "updated_at", type: "date", nullable: true, desc: "수정일시" },
-        {
-          type: "relation",
-          name: "user",
-          with: "User",
-          relationType: "BelongsToOne",
-          onDelete: "CASCADE",
-          desc: "사용자",
-        },
       ],
       indexes: [
-        { type: "index", name: "api_keys_user_id_idx", columns: [{ name: "user_id" }] },
+        { type: "index", name: "api_keys_reference_id_idx", columns: [{ name: "reference_id" }] },
         { type: "unique", name: "api_keys_key_unique", columns: [{ name: "key" }] },
       ],
       subsets: {
@@ -80,7 +74,8 @@ export const apiKeyEntityDef: BetterAuthEntityDef = {
           "metadata",
           "created_at",
           "updated_at",
-          "user.id",
+          "reference_id",
+          "config_id",
         ],
       },
       enums: {

@@ -1,9 +1,8 @@
-import { apiKey as _apiKey } from "better-auth/plugins";
-import { type ApiKeyOptions } from "better-auth/plugins";
+import { apiKey as _apiKey, type ApiKeyOptions } from "@better-auth/api-key";
 
 import { merge } from "../../../utils/utils";
 
-export type { ApiKeyOptions } from "better-auth/plugins";
+export type { ApiKeyOptions } from "@better-auth/api-key";
 
 /**
  * API Key 플러그인 스키마
@@ -17,7 +16,8 @@ export const API_KEY_SCHEMA: ApiKeyOptions["schema"] = {
   apikey: {
     modelName: "api_keys",
     fields: {
-      userId: "user_id",
+      referenceId: "reference_id",
+      configId: "config_id",
       lastRequest: "last_request",
       requestCount: "request_count",
       rateLimitEnabled: "rate_limit_enabled",
