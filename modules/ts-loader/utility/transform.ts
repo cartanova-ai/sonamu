@@ -108,7 +108,7 @@ export async function transpileSource(
   const preservedEmptyImports = emptyImportMatches.map(([, specifier]) => `import ${specifier};`);
   const code =
     !config.verbatimModuleSyntax && hasEmptyImport
-      ? result.code.replace(/^\s*import(?:\s*\{\s*\}\s*from)?\s*["'][^"']+["'];?\n?/gm, "")
+      ? result.code.replace(/^\s*import\s*\{\s*\}\s*from\s*["'][^"']+["'];?\n?/gm, "")
       : config.verbatimModuleSyntax && preservedEmptyImports.length > 0
         ? `${preservedEmptyImports.join("\n")}\n${result.code}`.trim()
         : result.code;

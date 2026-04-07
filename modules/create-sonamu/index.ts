@@ -260,7 +260,7 @@ overrides:
   let isPnpm = true; // 기본값
   const pnpmOption = parseYesNo(argv.pnpm);
 
-  if (argv["skip-pnpm"] || !pnpmOption) {
+  if (argv["skip-pnpm"] || pnpmOption === false) {
     // --skip-pnpm 또는 --pnpm n 옵션으로 스킵
     isPnpm = false;
   } else if (pnpmOption || useDefaults) {
@@ -300,7 +300,7 @@ overrides:
   let isDatabase = true; // 기본값
   const dockerOption = parseYesNo(argv.docker);
 
-  if (argv["skip-docker"] || !dockerOption) {
+  if (argv["skip-docker"] || dockerOption === false) {
     // --skip-docker 또는 --docker n 옵션으로 스킵
     isDatabase = false;
   } else if (dockerOption || useDefaults) {
