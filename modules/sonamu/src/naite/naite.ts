@@ -143,6 +143,10 @@ function matchesPattern(key: string, pattern: string): boolean {
 export class NaiteQuery {
   constructor(private traces: NaiteTrace[]) {}
 
+  private isComparableValue(value: unknown): value is number | string {
+    return typeof value === "number" || typeof value === "string";
+  }
+
   /**
    * 파일명으로 필터링
    * @param fileName 파일명 (예: "syncer.test.ts")
@@ -190,13 +194,13 @@ export class NaiteQuery {
 
       switch (operator) {
         case ">":
-          return actual > value;
+          return this.isComparableValue(actual) && this.isComparableValue(value) && actual > value;
         case "<":
-          return actual < value;
+          return this.isComparableValue(actual) && this.isComparableValue(value) && actual < value;
         case ">=":
-          return actual >= value;
+          return this.isComparableValue(actual) && this.isComparableValue(value) && actual >= value;
         case "<=":
-          return actual <= value;
+          return this.isComparableValue(actual) && this.isComparableValue(value) && actual <= value;
         case "=":
           return actual === value;
         case "!=":

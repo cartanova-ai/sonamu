@@ -1,6 +1,5 @@
 import { execSync } from "child_process";
 import fs from "fs";
-import { type AddressInfo } from "net";
 import path from "path";
 
 import { type FastifyInstance } from "fastify";

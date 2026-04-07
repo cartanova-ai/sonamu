@@ -1,4 +1,5 @@
 import { type LoadHook, type ResolveHook } from "node:module";
+import path from "node:path";
 
 import { resolve as cjsResolve } from "@loaderkit/resolve/cjs";
 import { resolve as esmResolve } from "@loaderkit/resolve/esm";
@@ -47,6 +48,24 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
     const packageMeta = await resolvePackage(fileSystem, url);
     return resolveTypeScriptPackage(url, packageMeta?.packagePath);
   };
+  const hasKnownSourceExtension = (pathname: string) =>
+    testAnyScript.test(pathname) || testAnyJSON.test(pathname);
+  const extensionlessSourceCandidates = (url: URL) => {
+    if (hasKnownSourceExtension(url.pathname) || url.pathname.endsWith("/")) {
+      return [];
+    }
+
+    return [
+      new URL(`${path.basename(url.pathname)}.ts${url.search}${url.hash}`, url),
+      new URL(`${path.basename(url.pathname)}.tsx${url.search}${url.hash}`, url),
+      new URL(`${path.basename(url.pathname)}.mts${url.search}${url.hash}`, url),
+      new URL(`${path.basename(url.pathname)}.cts${url.search}${url.hash}`, url),
+      new URL(`${path.basename(url.pathname)}/index.ts${url.search}${url.hash}`, url),
+      new URL(`${path.basename(url.pathname)}/index.tsx${url.search}${url.hash}`, url),
+      new URL(`${path.basename(url.pathname)}/index.mts${url.search}${url.hash}`, url),
+      new URL(`${path.basename(url.pathname)}/index.cts${url.search}${url.hash}`, url),
+    ];
+  };
 
   // Resolves from .ts source files to another source file. Used for relative imports.
   const sourceResolverFileSystem = ((): FileSystemAsync => {
@@ -58,6 +77,12 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
           return asTs;
         }
       }
+      // Then try extensionless imports such as "./sonamu.generated" -> "./sonamu.generated.ts"
+      for (const candidate of extensionlessSourceCandidates(url)) {
+        if (await fileSystem.fileExists(candidate)) {
+          return candidate;
+        }
+      }
       // Try file as is
       if (await fileSystem.fileExists(url)) {
         return url;
@@ -66,14 +91,14 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
     return {
       ...fileSystem,
       fileExists: async (url) => {
-        if (testAnyScript.test(url.pathname)) {
+        if (!url.pathname.endsWith("/")) {
           return !!(await findSource(url));
         } else {
           return fileSystem.fileExists(url);
         }
       },
       readLink: async (url) => {
-        if (testAnyScript.test(url.pathname)) {
+        if (!url.pathname.endsWith("/")) {
           const source = await findSource(url);
           if (source) {
             if (source.href === url.href) {
@@ -291,6 +316,22 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
       const result = await (async () => {
         try {
           if (specifier.startsWith(".")) {
+            const resolutionParentURL = sourceParentURL ?? parentURL;
+            const unresolvedUrl = new URL(specifier, resolutionParentURL);
+            if (!hasKnownSourceExtension(unresolvedUrl.pathname)) {
+              const resolvedTsConfig = await resolveTsConfig(resolutionParentURL);
+              for (const candidate of extensionlessSourceCandidates(unresolvedUrl)) {
+                if (await fileSystem.fileExists(candidate)) {
+                  const outputUrl = sourceToOutput(candidate, resolvedTsConfig?.locations);
+                  return {
+                    format: resolveFormat(candidate.pathname, packageMeta?.packageJson),
+                    url: outputUrl ?? absoluteTypeScriptToJavaScript(candidate),
+                    sourceUrl: candidate,
+                  };
+                }
+              }
+            }
+
             // Relative imports will use a resolver which returns the source file URL. It
             // must then be mapped to an output file.
             const resolve = makeResolver(
@@ -298,7 +339,6 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
               packageMeta?.packageJson,
               tsConfig?.locations,
             );
-            const resolutionParentURL = sourceParentURL ?? parentURL;
             const sourceResolution = await resolve(specifier, resolutionParentURL);
             const resolvedTsConfig = await resolveTsConfig(resolutionParentURL);
             const outputUrl = sourceToOutput(sourceResolution.url, resolvedTsConfig?.locations);

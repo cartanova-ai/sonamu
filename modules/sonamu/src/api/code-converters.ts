@@ -19,8 +19,6 @@
  */
 
 import { z } from "zod";
-import { type core } from "zod/v4";
-import { type $ZodLooseShape } from "zod/v4/core";
 
 import { ApiParamType } from "../types/types";
 import { type ApiParam } from "../types/types";

@@ -1,55 +1,54 @@
+import { type User } from "better-auth";
 /**
  * @generated
  * 직접 수정하지 마세요.
  */
-
-import { type User } from "better-auth";
 import {
-  type DatabaseSchemaExtend,
-  type ManyToManyBaseSchema,
-  type PuriLoaderQueries,
   type PuriWrapper,
+  type DatabaseSchemaExtend,
+  type PuriLoaderQueries,
+  type ManyToManyBaseSchema,
 } from "sonamu";
 
 import {
-  type AccountBaseSchema,
   type AccountSubsetKey,
-  type AuditLogBaseSchema,
   type AuditLogSubsetKey,
-  type CompanyBaseSchema,
   type CompanySubsetKey,
-  type DepartmentBaseSchema,
   type DepartmentSubsetKey,
-  type DocumentBaseSchema,
   type DocumentSubsetKey,
-  type EmployeeBaseSchema,
   type EmployeeSubsetKey,
-  type FileBaseSchema,
   type FileSubsetKey,
-  type MilestoneBaseSchema,
   type MilestoneSubsetKey,
-  type PasskeyBaseSchema,
   type PasskeySubsetKey,
-  type ProjectBaseSchema,
   type ProjectSubsetKey,
-  type SessionBaseSchema,
   type SessionSubsetKey,
-  type SyncFixtureBaseSchema,
   type SyncFixtureSubsetKey,
-  type TagBaseSchema,
   type TagSubsetKey,
-  type TwoFactorBaseSchema,
   type TwoFactorSubsetKey,
-  type UserBaseSchema,
-  type UserRole,
   type UserSubsetKey,
-  type VerificationBaseSchema,
   type VerificationSubsetKey,
+  type AccountBaseSchema,
+  type AuditLogBaseSchema,
+  type CompanyBaseSchema,
+  type DepartmentBaseSchema,
+  type DocumentBaseSchema,
+  type EmployeeBaseSchema,
+  type FileBaseSchema,
+  type MilestoneBaseSchema,
+  type PasskeyBaseSchema,
+  type ProjectBaseSchema,
+  type SessionBaseSchema,
+  type SyncFixtureBaseSchema,
+  type TagBaseSchema,
+  type TwoFactorBaseSchema,
+  type UserBaseSchema,
+  type VerificationBaseSchema,
+  type UserRole,
 } from "./sonamu.generated";
 
 // SubsetQuery: Account
 export const accountSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("accounts").select({
       id: "accounts.id",
       account_id: "accounts.account_id",
@@ -75,7 +74,7 @@ export const accountLoaderQueries = {
 
 // SubsetQuery: AuditLog
 export const auditLogSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("audit_logs").select({
       id: "audit_logs.id",
       created_at: "audit_logs.created_at",
@@ -96,7 +95,7 @@ export const auditLogLoaderQueries = {
 
 // SubsetQuery: Company
 export const companySubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("companies").select({
       id: "companies.id",
       created_at: "companies.created_at",
@@ -112,7 +111,7 @@ export const companyLoaderQueries = {
 
 // SubsetQuery: Department
 export const departmentSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper
       .from("departments")
       .join({ company: "companies" }, "departments.company_id", "company.id")
@@ -131,7 +130,7 @@ export const departmentSubsetQueries = {
         },
       });
   },
-  P: (qbWrapper: PuriWrapper) => {
+  P: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper
       .from("departments")
       .join({ company: "companies" }, "departments.company_id", "company.id")
@@ -150,7 +149,7 @@ export const departmentSubsetQueries = {
         },
       });
   },
-  P2: (qbWrapper: PuriWrapper) => {
+  P2: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper
       .from("departments")
       .join({ company: "companies" }, "departments.company_id", "company.id")
@@ -172,7 +171,7 @@ export const departmentLoaderQueries = {
     {
       as: "employees",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper, fromIds: number[] | string[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("employees")
           .join({ user: "users" }, "employees.user_id", "user.id")
@@ -196,7 +195,7 @@ export const departmentLoaderQueries = {
 
 // SubsetQuery: Document
 export const documentSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("documents").select({
       id: "documents.id",
       created_at: "documents.created_at",
@@ -214,7 +213,7 @@ export const documentLoaderQueries = {
 
 // SubsetQuery: Employee
 export const employeeSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper
       .from("employees")
       .join({ user: "users" }, "employees.user_id", "user.id")
@@ -244,7 +243,7 @@ export const employeeSubsetQueries = {
         },
       });
   },
-  P: (qbWrapper: PuriWrapper) => {
+  P: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper
       .from("employees")
       .join({ user: "users" }, "employees.user_id", "user.id")
@@ -283,7 +282,7 @@ export const employeeLoaderQueries = {
     {
       as: "department__employees",
       refId: "department__id",
-      qb: (qbWrapper: PuriWrapper, fromIds: number[] | string[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("employees")
           .whereIn("employees.department_id", fromIds as number[])
@@ -297,7 +296,7 @@ export const employeeLoaderQueries = {
         {
           as: "projs",
           refId: "id",
-          qb: (qbWrapper: PuriWrapper, fromIds: number[] | string[]) => {
+          qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
             return qbWrapper
               .from("projects__employees")
               .join("projects", "projects__employees.project_id", "projects.id")
@@ -315,7 +314,7 @@ export const employeeLoaderQueries = {
     {
       as: "projs",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper, fromIds: number[] | string[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("projects__employees")
           .join("projects", "projects__employees.project_id", "projects.id")
@@ -334,7 +333,7 @@ export const employeeLoaderQueries = {
 
 // SubsetQuery: File
 export const fileSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("files").select({
       id: "files.id",
       created_at: "files.created_at",
@@ -352,7 +351,7 @@ export const fileLoaderQueries = {
 
 // SubsetQuery: Milestone
 export const milestoneSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper
       .from("milestones")
       .join({ project: "projects" }, "milestones.project_id", "project.id")
@@ -380,7 +379,7 @@ export const milestoneLoaderQueries = {
 
 // SubsetQuery: Passkey
 export const passkeySubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("passkeys").select({
       id: "passkeys.id",
       name: "passkeys.name",
@@ -404,7 +403,7 @@ export const passkeyLoaderQueries = {
 
 // SubsetQuery: Project
 export const projectSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("projects").select({
       id: "projects.id",
       created_at: "projects.created_at",
@@ -416,7 +415,7 @@ export const projectSubsetQueries = {
       image_urls: "projects.image_urls",
     });
   },
-  P: (qbWrapper: PuriWrapper) => {
+  P: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("projects").select({
       id: "projects.id",
       created_at: "projects.created_at",
@@ -436,7 +435,7 @@ export const projectLoaderQueries = {
     {
       as: "employee",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper, fromIds: number[] | string[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("projects__employees")
           .join("employees", "projects__employees.employee_id", "employees.id")
@@ -461,7 +460,7 @@ export const projectLoaderQueries = {
     {
       as: "tags",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper, fromIds: number[] | string[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("project_tags")
           .join("tags", "project_tags.tag_id", "tags.id")
@@ -478,7 +477,7 @@ export const projectLoaderQueries = {
     {
       as: "employee",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper, fromIds: number[] | string[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("projects__employees")
           .join("employees", "projects__employees.employee_id", "employees.id")
@@ -503,7 +502,7 @@ export const projectLoaderQueries = {
     {
       as: "tags",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper, fromIds: number[] | string[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("project_tags")
           .join("tags", "project_tags.tag_id", "tags.id")
@@ -520,7 +519,7 @@ export const projectLoaderQueries = {
 
 // SubsetQuery: Session
 export const sessionSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("sessions").select({
       id: "sessions.id",
       expires_at: "sessions.expires_at",
@@ -541,7 +540,7 @@ export const sessionLoaderQueries = {
 
 // SubsetQuery: SyncFixture
 export const syncFixtureSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("sync_fixtures").select({
       id: "sync_fixtures.id",
       created_at: "sync_fixtures.created_at",
@@ -564,7 +563,7 @@ export const syncFixtureLoaderQueries = {
 
 // SubsetQuery: Tag
 export const tagSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("tags").select({
       id: "tags.id",
       created_at: "tags.created_at",
@@ -582,7 +581,7 @@ export const tagLoaderQueries = {
 
 // SubsetQuery: TwoFactor
 export const twoFactorSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("two_factors").select({
       id: "two_factors.id",
       secret: "two_factors.secret",
@@ -601,7 +600,7 @@ export const twoFactorLoaderQueries = {
 
 // SubsetQuery: User
 export const userSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("users").select({
       id: "users.id",
       created_at: "users.created_at",
@@ -615,7 +614,7 @@ export const userSubsetQueries = {
       deleted_at: "users.deleted_at",
     });
   },
-  P: (qbWrapper: PuriWrapper) => {
+  P: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper
       .from("users")
       .leftJoin({ employee: "employees" }, "users.id", "employee.user_id")
@@ -639,7 +638,7 @@ export const userSubsetQueries = {
         },
       });
   },
-  SS: (qbWrapper: PuriWrapper) => {
+  SS: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("users").select({
       id: "users.id",
       created_at: "users.created_at",
@@ -662,7 +661,7 @@ export const userLoaderQueries = {
 
 // SubsetQuery: Verification
 export const verificationSubsetQueries = {
-  A: (qbWrapper: PuriWrapper) => {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("verifications").select({
       id: "verifications.id",
       identifier: "verifications.identifier",
@@ -707,8 +706,8 @@ declare module "sonamu" {
     two_factors: TwoFactorBaseSchema;
     users: UserBaseSchema;
     verifications: VerificationBaseSchema;
-    projects__employees: ManyToManyBaseSchema<"employee", "project", number>;
-    project_tags: ManyToManyBaseSchema<"project", "tag", number>;
+    projects__employees: ManyToManyBaseSchema<"employee", "project", number, number>;
+    project_tags: ManyToManyBaseSchema<"project", "tag", number, number>;
   }
 
   export interface DatabaseForeignKeys {

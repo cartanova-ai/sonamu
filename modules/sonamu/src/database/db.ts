@@ -2,7 +2,6 @@ import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
 
 import { type Knex } from "knex";
-import { assign } from "radashi";
 
 import { type DatabaseConfig, type SonamuConfig } from "../api/config";
 import { createKnexInstance } from "./knex";
@@ -13,7 +12,15 @@ import { TransactionContext } from "./transaction-context";
  * undefined/null인 인자는 무시됩니다.
  */
 function mergeConfigs<T extends object>(...configs: (Partial<T> | undefined | null)[]): T {
-  return configs.reduce((acc, config) => (config ? assign(acc, config as T) : acc), {} as T);
+  const merged: Partial<T> = {};
+
+  for (const config of configs) {
+    if (config !== undefined && config !== null) {
+      Object.assign(merged, config);
+    }
+  }
+
+  return merged as T;
 }
 
 export type DBPreset = "w" | "r";
@@ -172,23 +179,21 @@ export class DBClass {
   }
 
   public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
-    const defaultKnexConfig: Partial<DatabaseConfig> = assign(
-      {
-        client: "postgresql",
-        pool: {
-          min: 1,
-          max: 5,
-        },
-        migrations: {
-          directory: "./src/migrations",
-        },
-        connection: {
-          database: config.name,
-          ...config.defaultOptions?.connection,
-        },
+    const defaultKnexConfig: Partial<DatabaseConfig> = {
+      client: "postgresql",
+      pool: {
+        min: 1,
+        max: 5,
       },
-      config.defaultOptions,
-    );
+      migrations: {
+        directory: "./src/migrations",
+      },
+      connection: {
+        database: config.name,
+        ...config.defaultOptions?.connection,
+      },
+      ...config.defaultOptions,
+    };
 
     // oxfmt-ignore -- 설정 구조 가독성을 위해 여러 줄로 유지
     return {

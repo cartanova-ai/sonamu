@@ -75,7 +75,7 @@ export class Migrator {
         const tConn = createKnexInstance(knexOptions);
 
         try {
-          const status = await (async () => {
+          const status: number | "error" = await (async () => {
             try {
               return await tConn.migrate.status();
             } catch (err) {
@@ -97,7 +97,7 @@ export class Migrator {
               return [];
             }
           })();
-          const currentVersion = await (async () => {
+          const currentVersion: string | "error" = await (async () => {
             try {
               return await tConn.migrate.currentVersion();
             } catch (_err) {

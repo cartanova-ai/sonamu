@@ -30,6 +30,7 @@
     "@logtape/logtape": "catalog:",
     "@logtape/pretty": "catalog:",
     "@logtape/redaction": "catalog:",
+    "@oxc-project/runtime": "catalog:",
     "ai": "catalog:",
     "bcrypt": "catalog:",
     "better-auth": "catalog:",

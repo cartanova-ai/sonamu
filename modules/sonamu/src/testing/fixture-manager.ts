@@ -31,7 +31,6 @@ import {
   type FixtureImportResult,
   type FixtureRecord,
   type FixtureSearchOptions,
-  type ManyToManyRelationProp,
   type OneToOneRelationProp,
 } from "../types/types";
 import { isTest } from "../utils/controller";

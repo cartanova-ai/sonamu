@@ -17,7 +17,7 @@
     "dev": "pnpm --parallel --filter !sonamu-docs --filter !@sonamu-kit/react-sui --filter !ui-web dev",
     "publish:image": "tsx scripts/publish-image.ts",
     "publish:packages": "tsx scripts/publish.ts",
-    "format": "oxfmt",
+    "format": "oxlint --type-aware --fix && oxfmt",
     "check": "oxlint --type-aware && oxfmt --check",
     "check:fix": "oxlint --type-aware --fix --fix-suggestions && oxfmt",
     "verify:clean": "tsx scripts/verify.ts clean",

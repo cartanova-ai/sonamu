@@ -110,6 +110,7 @@ catalog:
   "@types/react-syntax-highlighter": ^15.5.13
   "@types/supertest": ^6.0.3
   "@typescript/native-preview": ^7.0.0-dev.20251225.1
+  "@oxc-project/runtime": ^0.79.0
   "@vitejs/plugin-react": 6.0.1
   "@vitest/coverage-v8": ^4.1.2
   "@xyflow/react": ^12.9.3

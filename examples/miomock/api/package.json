@@ -28,6 +28,7 @@
     "@logtape/logtape": "catalog:",
     "@logtape/pretty": "catalog:",
     "@logtape/redaction": "catalog:",
+    "@oxc-project/runtime": "catalog:",
     "@sonamu-kit/cdd": "workspace:^",
     "ai": "catalog:",
     "bcrypt": "catalog:",

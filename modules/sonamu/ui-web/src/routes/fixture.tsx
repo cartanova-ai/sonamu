@@ -51,7 +51,7 @@ function FixtureIndex() {
 
   const [fixtureRecords, setFixtureRecords] = useState<FixtureRecord[]>([]);
   const [importResults, setImportResults] = useState<FixtureImportResult[]>([]);
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [activeTab, setActiveTab] = useState(0);
 

@@ -126,6 +126,9 @@ catalogs:
     '@logtape/redaction':
       specifier: 2.0.0
       version: 2.0.0
+    '@oxc-project/runtime':
+      specifier: ^0.79.0
+      version: 0.79.1
     '@radix-ui/react-accordion':
       specifier: ^1.2.12
       version: 1.2.12
@@ -675,6 +678,9 @@ importers:
       '@logtape/redaction':
         specifier: 'catalog:'
         version: 2.0.0(@logtape/logtape@2.0.0)
+      '@oxc-project/runtime':
+        specifier: 'catalog:'
+        version: 0.79.1
       '@sonamu-kit/cdd':
         specifier: workspace:^
         version: link:../../../modules/cdd
@@ -2914,6 +2920,10 @@ packages:
   '@opentelemetry/api@1.9.0':
     resolution: {integrity: sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==}
     engines: {node: '>=8.0.0'}
+
+  '@oxc-project/runtime@0.79.1':
+    resolution: {integrity: sha512-sKObiX1IODLUcrklqL+gaYq+Q/AbXs09mibyYgH6V31O0M3fEipmQcP22rWXUfYQFH0h1aetsl0URAnLtyFmWA==}
+    engines: {node: '>=6.9.0'}
 
   '@oxc-project/types@0.103.0':
     resolution: {integrity: sha512-bkiYX5kaXWwUessFRSoXFkGIQTmc6dLGdxuRTrC+h8PSnIdZyuXHHlLAeTmOue5Br/a0/a7dHH0Gca6eXn9MKg==}
@@ -12113,6 +12123,8 @@ snapshots:
       fastq: 1.20.1
 
   '@opentelemetry/api@1.9.0': {}
+
+  '@oxc-project/runtime@0.79.1': {}
 
   '@oxc-project/types@0.103.0': {}
 

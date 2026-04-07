@@ -2,56 +2,68 @@
  * @generated
  * 직접 수정하지 마세요.
  */
-/** biome-ignore-all lint: generated는 무시 */
-/** biome-ignore-all assist: generated는 무시 */
+/* oxlint-disable */
 
-import  { type AsyncIdConfig } from "@sonamu-kit/react-components/components";
-import { queryOptions, useMutation, useQuery } from '@tanstack/react-query';
-import  { type UseMutationOptions } from '@tanstack/react-query';
-import  { type AxiosProgressEvent } from "axios";
+import type { AsyncIdConfig } from "@sonamu-kit/react-components/components";
+import {
+  queryOptions,
+  useQuery,
+  useMutation,
+  type UseMutationOptions,
+} from "@tanstack/react-query";
+import type { AxiosProgressEvent } from "axios";
 import qs from "qs";
-import { type AuditLogListParams } from "./audit-log/audit-log.types";
-import { type CompanyListParams, type CompanySaveParams } from "./company/company.types";
-import { type ActivityGroup, type ActivityPeriod, type DashboardStats } from "./dashboard/dashboard.types";
-import { type DepartmentListParams, type DepartmentSaveParams } from "./department/department.types";
+
+import { AuditLogListParams } from "./audit-log/audit-log.types";
+import { CompanyListParams, CompanySaveParams } from "./company/company.types";
+import { DashboardStats, ActivityPeriod, ActivityGroup } from "./dashboard/dashboard.types";
+import { DepartmentListParams, DepartmentSaveParams } from "./department/department.types";
 import {
-  type DocumentListParams,
-  type DocumentSaveParams,
-  type DocumentSemanticParams,
+  DocumentListParams,
+  DocumentSemanticParams,
+  DocumentSaveParams,
 } from "./document/document.types";
-import { type EmployeeListParams, type EmployeeSaveParams } from "./employee/employee.types";
-import { type FileListParams, type FileSaveParams } from "./file/file.types";
-import { type MilestoneListParams, type MilestoneSaveParams } from "./milestone/milestone.types";
-import { type ProjectListParams, type ProjectSaveParams } from "./project/project.types";
+import { EmployeeListParams, EmployeeSaveParams } from "./employee/employee.types";
+import { FileListParams, FileSaveParams } from "./file/file.types";
+import { MilestoneListParams, MilestoneSaveParams } from "./milestone/milestone.types";
+import { ProjectListParams, ProjectSaveParams } from "./project/project.types";
 import {
-  type AuditLogSubsetKey,
-  type AuditLogSubsetMapping,
-  type CompanySubsetKey,
-  type CompanySubsetMapping,
-  type DepartmentSubsetKey,
-  type DepartmentSubsetMapping,
-  type DocumentSubsetKey,
-  type DocumentSubsetMapping,
-  type EmployeeSubsetKey,
-  type EmployeeSubsetMapping,
-  type FileSubsetKey,
-  type FileSubsetMapping,
-  type MilestoneSubsetKey,
-  type MilestoneSubsetMapping,
-  type ProjectSubsetKey,
-  type ProjectSubsetMapping,
-  type SyncFixtureSubsetKey,
-  type SyncFixtureSubsetMapping,
-  type TagSubsetKey,
-  type TagSubsetMapping,
-  type UserSubsetKey,
-  type UserSubsetMapping,
+  UserSubsetKey,
+  UserSubsetMapping,
+  TagSubsetKey,
+  TagSubsetMapping,
+  SyncFixtureSubsetKey,
+  SyncFixtureSubsetMapping,
+  ProjectSubsetKey,
+  ProjectSubsetMapping,
+  MilestoneSubsetKey,
+  MilestoneSubsetMapping,
+  FileSubsetKey,
+  FileSubsetMapping,
+  EmployeeSubsetKey,
+  EmployeeSubsetMapping,
+  DocumentSubsetKey,
+  DocumentSubsetMapping,
+  DepartmentSubsetKey,
+  DepartmentSubsetMapping,
+  CompanySubsetKey,
+  CompanySubsetMapping,
+  AuditLogSubsetKey,
+  AuditLogSubsetMapping,
 } from "./sonamu.generated";
-import { fetch, toFormData, useSSEStream } from './sonamu.shared';
-import  { type EventHandlers, type FilterQuery, type ListResult, type SonamuFile, type SSEStreamOptions } from './sonamu.shared';
-import { type SyncFixtureListParams, type SyncFixtureSaveParams } from "./sync-fixture/sync-fixture.types";
-import { type TagListParams, type TagSaveParams } from "./tag/tag.types";
-import { type UserListParams, type UserSaveParams } from "./user/user.types";
+import {
+  type ListResult,
+  type FilterQuery,
+  type SonamuFile,
+  fetch,
+  type EventHandlers,
+  type SSEStreamOptions,
+  useSSEStream,
+  toFormData,
+} from "./sonamu.shared";
+import { SyncFixtureListParams, SyncFixtureSaveParams } from "./sync-fixture/sync-fixture.types";
+import { TagListParams, TagSaveParams } from "./tag/tag.types";
+import { UserListParams, UserSaveParams } from "./user/user.types";
 
 export namespace UserService {
   export async function getUser<T extends UserSubsetKey>(

@@ -56,11 +56,13 @@ describe("code-converters", () => {
 
   describe("getZodTypeFromApiParamType", () => {
     describe("Primitive 타입", () => {
-      test.each([
+      const primitiveCases: [ApiParamType, unknown, unknown][] = [
         ["string", "test", 123],
         ["number", 123, "test"],
         ["boolean", true, "true"],
-      ])("%s 타입", (type, validValue, invalidValue) => {
+      ];
+
+      test.each(primitiveCases)("%s 타입", (type, validValue, invalidValue) => {
         const zodType = getZodTypeFromApiParamType(type as ApiParamType, {});
 
         // 유효한 타입의 값
@@ -747,11 +749,13 @@ describe("code-converters", () => {
     });
 
     describe("Literal 타입", () => {
-      test.each([
+      const literalCases: [string, ApiParamType, string][] = [
         // [ 입력값, {입력 객체}, 기대값 ]
         ["string-literal", { t: "string-literal", value: "test" }, '"test"'],
         ["numeric-literal", { t: "numeric-literal", value: 123 }, "123"],
-      ])("%s", (_name, input, expected) => {
+      ];
+
+      test.each(literalCases)("%s", (_name, input, expected) => {
         const result = apiParamTypeToTsType(input as unknown as ApiParamType, []);
         expect(result).toBe(expected);
       });

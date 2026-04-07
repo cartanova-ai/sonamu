@@ -171,6 +171,22 @@ await test("directory import", async () => {
   assert.strictEqual(result.url, "file:///dir/index.js");
 });
 
+await test("extensionless import with dotted basename", async () => {
+  const { evaluate } = makeTestLoader({
+    "package.json": JSON.stringify({ type: "module" }),
+    "tsconfig.json": JSON.stringify({
+      compilerOptions: {
+        rootDir: "src",
+        outDir: "dist",
+      },
+    }),
+    "src/sonamu.generated.ts": "globalThis.url = import.meta.url;",
+    "src/child/main.ts": "import '../sonamu.generated';",
+  });
+  const result = await evaluate("src/child/main.ts");
+  assert.strictEqual(result.url, "file:///dist/sonamu.generated.js");
+});
+
 await test("do not resolve .ts file with outDir set", async () => {
   const { evaluate } = makeTestLoader({
     "package.json": JSON.stringify({ type: "module" }),

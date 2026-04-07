@@ -74,13 +74,51 @@ export async function runWithMockContext(fn: () => Promise<void>) {
   await runWithContext(getMockContext(), fn);
 }
 
+type TestResult = Promise<ReturnType<typeof vitestTest>>;
+type TestCallbackResult = void | Promise<void>;
+type TestEach = <TArgs extends readonly unknown[]>(
+  cases: readonly TArgs[],
+) => (title: string, fn: (...args: TArgs) => TestCallbackResult) => void;
+
+type TestWrapper = {
+  (title: string, fn: TestFunction, options?: TestOptions): TestResult;
+  skip: (title: string, fn: TestFunction, options?: TestOptions) => TestResult;
+  only: (title: string, fn: TestFunction, options?: TestOptions) => TestResult;
+  todo: (title: string) => void;
+  each: TestEach;
+};
+
+type TestAsWrapper = {
+  <User extends Context["user"]>(
+    user: User,
+    title: string,
+    fn: TestFunction,
+    options?: TestOptions,
+  ): TestResult;
+  skip: <User extends Context["user"]>(
+    user: User,
+    title: string,
+    fn: TestFunction,
+    options?: TestOptions,
+  ) => TestResult;
+  only: <User extends Context["user"]>(
+    user: User,
+    title: string,
+    fn: TestFunction,
+    options?: TestOptions,
+  ) => TestResult;
+  todo: (title: string) => void;
+};
+
+const each: TestEach = vitestTest.each.bind(vitestTest);
+
 declare module "vitest" {
   interface TaskMeta {
     traces: SerializedTrace[];
   }
 }
 
-export const test = Object.assign(
+export const test: TestWrapper = Object.assign(
   async (title: string, fn: TestFunction, options?: TestOptions) => {
     return vitestTest(title, options, async (context) => {
       await runWithMockContext(async () => {
@@ -111,11 +149,11 @@ export const test = Object.assign(
       });
     },
     todo: (title: string) => vitestTest.todo(title),
-    each: vitestTest.each.bind(vitestTest),
+    each,
   },
 );
 
-export const testAs = Object.assign(
+export const testAs: TestAsWrapper = Object.assign(
   async <User extends Context["user"]>(
     user: User,
     title: string,

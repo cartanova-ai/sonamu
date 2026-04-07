@@ -22,7 +22,6 @@ import path from "path";
 
 import inflection from "inflection";
 import { z } from "zod";
-import { type $ZodLooseShape } from "zod/v4/core";
 
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
