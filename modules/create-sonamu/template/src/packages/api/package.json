@@ -30,7 +30,6 @@
     "@logtape/logtape": "catalog:",
     "@logtape/pretty": "catalog:",
     "@logtape/redaction": "catalog:",
-    "@swc/core": "catalog:",
     "ai": "catalog:",
     "bcrypt": "catalog:",
     "better-auth": "catalog:",
@@ -46,12 +45,12 @@
   },
   "devDependencies": {
     "@fastify/compress": "catalog:",
-    "@swc/cli": "catalog:",
     "@types/bcrypt": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "fastify": "catalog:",
     "ioredis": "catalog:",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

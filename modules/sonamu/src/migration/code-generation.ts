@@ -2,7 +2,8 @@ import equal from "fast-deep-equal";
 import { type Knex } from "knex";
 import { alphabetical, diff } from "radashi";
 
-import { EntityManager, Naite } from "..";
+import { EntityManager } from "../entity/entity-manager";
+import { Naite } from "../naite/naite";
 import {
   type EntityProp,
   type GenMigrationCode,

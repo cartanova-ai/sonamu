@@ -21,7 +21,7 @@
     "dist",
     "src",
     "bin",
-    ".swcrc.project-default"
+    "tsdown.api.config.ts"
   ],
   "type": "module",
   "exports": {
@@ -112,7 +112,6 @@
     "@sonamu-kit/hmr-runner": "workspace:^",
     "@sonamu-kit/tasks": "workspace:^",
     "@sonamu-kit/ts-loader": "workspace:^",
-    "@swc/core": "catalog:",
     "bcrypt": "catalog:",
     "bentocache": "catalog:",
     "better-auth": "catalog:",
@@ -161,8 +160,6 @@
     "@ai-sdk/provider-utils": "catalog:",
     "@better-auth/passkey": "catalog:",
     "@better-auth/sso": "catalog:",
-    "@swc/cli": "catalog:",
-    "@swc/core": "catalog:",
     "ai": "catalog:",
     "better-auth": "catalog:",
     "fastify": "catalog:",

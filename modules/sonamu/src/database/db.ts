@@ -4,7 +4,6 @@ import { AsyncLocalStorage } from "async_hooks";
 import { type Knex } from "knex";
 import { assign } from "radashi";
 
-import { Sonamu } from "../api";
 import { type DatabaseConfig, type SonamuConfig } from "../api/config";
 import { createKnexInstance } from "./knex";
 import { TransactionContext } from "./transaction-context";
@@ -32,6 +31,7 @@ export class DBClass {
   private wdb?: Knex;
   private rdb?: Knex;
   private workerDBs: Map<number, Knex> = new Map();
+  private currentConfig: SonamuDBConfig | null = null;
 
   public transactionStorage = new AsyncLocalStorage<TransactionContext>();
 
@@ -39,12 +39,24 @@ export class DBClass {
     return this.transactionStorage.run(new TransactionContext(), callback);
   }
 
+  setConfig(dbConfig: SonamuDBConfig): void {
+    this.currentConfig = dbConfig;
+  }
+
+  private getCurrentConfig(): SonamuDBConfig {
+    if (this.currentConfig === null) {
+      throw new Error("Sonamu DB config has not been initialized");
+    }
+
+    return this.currentConfig;
+  }
+
   public getTransactionContext(): TransactionContext {
     return this.transactionStorage.getStore() ?? new TransactionContext();
   }
 
   getDB(which: DBPreset): Knex {
-    const dbConfig = Sonamu.dbConfig;
+    const dbConfig = this.getCurrentConfig();
 
     // 테스트 트랜잭션 격리
     if (process.env.NODE_ENV === "test") {
@@ -117,7 +129,7 @@ export class DBClass {
   }
 
   getDBConfig(which: DBPreset): Knex.Config {
-    const dbConfig = Sonamu.dbConfig;
+    const dbConfig = this.getCurrentConfig();
     if (process.env.NODE_ENV === "test") {
       return {
         ...dbConfig.test,

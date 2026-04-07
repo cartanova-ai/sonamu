@@ -10,13 +10,13 @@ import { minimatch } from "minimatch";
 import { group, unique } from "radashi";
 import { type z } from "zod";
 
-import { type WorkflowMetadata } from "..";
 import { registeredApis } from "../api/decorators";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import { type EntityNamesRecord } from "../entity/entity-manager";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
+import { type WorkflowMetadata } from "../tasks/decorator";
 import { TemplateManager } from "../template/template-manager";
 import { type GenerateOptions, type PathAndCode } from "../types/types";
 import { TemplateKey } from "../types/types";

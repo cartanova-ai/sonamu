@@ -15,7 +15,7 @@ import knex from "knex";
 import { type Knex } from "knex";
 import { tsicli } from "tsicli";
 
-import { Sonamu } from "../api";
+import { Sonamu } from "../api/sonamu";
 import { addCompanionsToEntities, generateBetterAuthEntities } from "../auth/auth-generator";
 import { isValidPluginId, SUPPORTED_PLUGIN_IDS } from "../auth/plugins/entity-definitions";
 import { type BetterAuthPluginId } from "../auth/plugins/entity-definitions";
@@ -369,23 +369,24 @@ async function dev_web() {
 }
 
 /**
- * SWC 설정 파일 경로를 결정합니다. API 빌드(SWC)에서만 사용됩니다.
- * 프로젝트 루트에 .swcrc가 있으면 그것을, 없으면 sonamu 기본 설정을 사용합니다.
+ * API 빌드 설정 파일 경로를 결정합니다.
+ * 프로젝트 루트에 `tsdown.config.ts`가 있으면 그것을, 없으면 sonamu 기본 설정을 사용합니다.
  */
-async function resolveSwcConfigPath(): Promise<string> {
-  let swcFilePath = ".swcrc";
+async function resolveApiBuildConfigPath(): Promise<string> {
+  const localConfigPath = path.join(process.cwd(), "tsdown.config.ts");
+
   try {
-    if (await exists(swcFilePath)) {
-      console.log(chalk.dim("Using .swcrc from project root..."));
-    } else {
-      console.log(chalk.dim("Using default .swcrc from sonamu package..."));
-      swcFilePath = path.join(import.meta.dirname, "..", "..", ".swcrc.project-default");
+    if (await exists(localConfigPath)) {
+      console.log(chalk.dim("Using tsdown.config.ts from project root..."));
+      return localConfigPath;
     }
+
+    console.log(chalk.dim("Using default tsdown API config from sonamu package..."));
+    return path.join(import.meta.dirname, "..", "..", "tsdown.api.config.ts");
   } catch (error) {
-    console.error(chalk.red("Setting up swc config file failed."), error);
+    console.error(chalk.red("Setting up API build config failed."), error);
     process.exit(1);
   }
-  return swcFilePath;
 }
 
 /**
@@ -405,7 +406,7 @@ async function build_all() {
  */
 async function build_api() {
   const appRoot = findAppRootPath();
-  const swcFilePath = await resolveSwcConfigPath();
+  const configFilePath = await resolveApiBuildConfigPath();
 
   const apiStartedAt = Date.now();
   try {
@@ -413,7 +414,7 @@ async function build_api() {
       const cwd = path.join(appRoot, artifact.projectPath);
       printTaskHeader(artifact.name, artifact.description, cwd);
 
-      await runBuildSteps(artifact, { cwd, buildCommandArgs: { configFilePath: swcFilePath } });
+      await runBuildSteps(artifact, { cwd, buildCommandArgs: { configFilePath } });
     }
     printBuildSummary("API", true, Date.now() - apiStartedAt);
   } catch (e) {

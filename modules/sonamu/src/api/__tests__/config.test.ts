@@ -18,7 +18,6 @@ type GlobalWithTsLoaderRegisterState = typeof globalThis & {
 function resetRegisterState() {
   const globalState = globalThis as GlobalWithTsLoaderRegisterState;
   delete globalState[tsLoaderRegisterStateKey];
-  delete process.env.TS_LOADER_TRANSFORM_CONFIG_PATH;
 }
 
 async function createTempRoot(): Promise<string> {
@@ -27,6 +26,20 @@ async function createTempRoot(): Promise<string> {
 
 async function writeSourceFixture(rootPath: string): Promise<void> {
   await mkdir(path.join(rootPath, "src"), { recursive: true });
+  await writeFile(
+    path.join(rootPath, "tsconfig.json"),
+    JSON.stringify(
+      {
+        compilerOptions: {
+          experimentalDecorators: true,
+          module: "esnext",
+          target: "esnext",
+        },
+      },
+      null,
+      2,
+    ),
+  );
   await writeFile(
     path.join(rootPath, "src", "support.ts"),
     `
@@ -123,7 +136,6 @@ describe("loadConfig", () => {
   const tempRoots: string[] = [];
   const originalHot = process.env.HOT;
   const originalVitest = process.env.VITEST;
-  const originalTransformConfigPath = process.env.TS_LOADER_TRANSFORM_CONFIG_PATH;
 
   beforeEach(() => {
     vi.resetModules();
@@ -148,12 +160,6 @@ describe("loadConfig", () => {
       delete process.env.VITEST;
     } else {
       process.env.VITEST = originalVitest;
-    }
-
-    if (originalTransformConfigPath === undefined) {
-      delete process.env.TS_LOADER_TRANSFORM_CONFIG_PATH;
-    } else {
-      process.env.TS_LOADER_TRANSFORM_CONFIG_PATH = originalTransformConfigPath;
     }
 
     await Promise.all(

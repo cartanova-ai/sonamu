@@ -12,34 +12,30 @@ import { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fa
 import mime, { lookup as mimeLookup } from "mime-types";
 import { type ZodObject } from "zod";
 
-import {
-  BASE_FIELD_MAPPINGS,
-  convertFastifyHeadersToStandard,
-  createMockSSEFactory,
-  DB,
-  isDaemonServer,
-  merge,
-  NotFoundException,
-} from "..";
+import { BASE_FIELD_MAPPINGS } from "../auth/better-auth-entities";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
 import { type CacheControlConfig, type CacheControlRequest } from "../cache-control/types";
 import { type CacheConfig, type CacheManager } from "../cache/types";
 import { toFastifyCompressOption } from "../compress/compress";
 import { type CompressOptions } from "../compress/types";
+import { DB } from "../database/db";
 import { type SonamuDBConfig } from "../database/db";
-import { SD } from "../dict/sd";
+import { SD, setSDConfig } from "../dict/sd";
 import { type LocalizedString } from "../dict/types";
-import { Naite } from "../naite/naite";
+import { NotFoundException } from "../exceptions/so-exceptions";
 import { BufferedFile } from "../storage/buffered-file";
 import { type StorageManager } from "../storage/storage-manager";
 import { type KeyGenerator } from "../storage/types";
 import { UploadedFile } from "../storage/uploaded-file";
+import { createMockSSEFactory } from "../stream/sse";
 import { type Syncer } from "../syncer/syncer";
 import { type WorkflowManager } from "../tasks/workflow-manager";
 import { type DevVitestManager } from "../testing/dev-vitest-manager";
 import { type SonamuFastifyConfig } from "../types/types";
+import { isDaemonServer } from "../utils/controller";
 import { exists, fileExists } from "../utils/fs-utils";
 import { type AbsolutePath } from "../utils/path-utils";
+import { convertFastifyHeadersToStandard, merge } from "../utils/utils";
 import { type SonamuConfig, type SonamuServerOptions, type SonamuTaskOptions } from "./config";
 import { type Context } from "./context";
 import { type ExtendedApi } from "./decorators";
@@ -205,6 +201,7 @@ class SonamuClass {
     // 설정을 로딩하는 것부터 시작
     const { loadConfig } = await import("./config");
     this.config = await loadConfig(this.apiRootPath);
+    setSDConfig(this.config.i18n);
     // sonamu.config.ts 기본값 설정
     this.config.database.database = this.config.database.database ?? "pg";
     this.config.database.defaultOptions.client = this.config.database.database ?? "pg";
@@ -220,6 +217,7 @@ class SonamuClass {
     // DB 로드
     const { DB } = await import("../database/db");
     this.dbConfig = DB.generateDBConfig(this.config.database);
+    DB.setConfig(this.dbConfig);
     if (!doSilent) {
       const chalk = (await import("chalk")).default;
       console.log(chalk.green("DB Config Loaded!"));
@@ -1100,7 +1098,7 @@ class SonamuClass {
             reply,
             headers: request.headers,
             createSSE,
-            naiteStore: Naite.createStore(),
+            naiteStore: new Map(),
             locale,
             // auth
             user: session?.user ?? null,

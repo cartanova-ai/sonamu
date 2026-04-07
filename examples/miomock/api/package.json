@@ -29,7 +29,6 @@
     "@logtape/pretty": "catalog:",
     "@logtape/redaction": "catalog:",
     "@sonamu-kit/cdd": "workspace:^",
-    "@swc/core": "catalog:",
     "ai": "catalog:",
     "bcrypt": "catalog:",
     "better-auth": "catalog:",
@@ -47,7 +46,6 @@
     "@iconify-json/lucide": "catalog:",
     "@iconify-json/mdi": "catalog:",
     "@sheetkit/node": "catalog:",
-    "@swc/cli": "catalog:",
     "@types/bcrypt": "catalog:",
     "@types/node": "catalog:",
     "@typescript/native-preview": "catalog:",
@@ -55,6 +53,7 @@
     "fastify": "catalog:",
     "node-sql-parser": "catalog:",
     "ts-node": "catalog:",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

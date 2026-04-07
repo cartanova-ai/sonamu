@@ -1,48 +1,113 @@
 import * as fs from "node:fs/promises";
+import { createRequire } from "node:module";
 import * as path from "node:path";
 
 import JSON5 from "json5";
 import { type SourceMap, transform, type TransformOptions } from "oxc-transform";
 
-type LegacySwcConfig = {
-  sourceMaps?: boolean | "inline";
-  module?: {
-    type?: string;
-  };
-  jsc?: {
-    parser?: {
-      syntax?: string;
-      decorators?: boolean;
-    };
+type TypeScriptConfig = {
+  compilerOptions?: {
+    experimentalDecorators?: boolean;
+    module?: string;
     target?: string;
+    verbatimModuleSyntax?: boolean;
   };
+  extends?: string;
 };
 
-const TRANSFORM_CONFIG_ENV = "TS_LOADER_TRANSFORM_CONFIG_PATH";
-const LEGACY_SWC_CONFIG_ENV = "SWCRC_PATH";
+type TransformConfig = {
+  decorators: boolean;
+  sourceType: TransformOptions["sourceType"];
+  target: string | undefined;
+  verbatimModuleSyntax: boolean;
+};
 
-let transformConfigCache: { path: string; config: LegacySwcConfig } | null = null;
+const transformConfigCache = new Map<string, Promise<TransformConfig>>();
+const require = createRequire(import.meta.url);
 
-function getTransformConfigPath(): string {
-  const configPath = process.env[TRANSFORM_CONFIG_ENV] ?? process.env[LEGACY_SWC_CONFIG_ENV];
-  if (!configPath) {
-    throw new Error(`${TRANSFORM_CONFIG_ENV} environment variable is required`);
-  }
-
-  return configPath;
+function resolveConfigPath(baseDirectory: URL): string {
+  return path.join(baseDirectory.pathname, "tsconfig.json");
 }
 
-async function loadTransformConfig(): Promise<LegacySwcConfig> {
-  const configPath = getTransformConfigPath();
-
-  if (transformConfigCache?.path === configPath) {
-    return transformConfigCache.config;
+function resolveExtendsPath(configPath: string, extendsPath: string): string {
+  if (extendsPath.startsWith(".")) {
+    return path.resolve(path.dirname(configPath), extendsPath);
   }
 
+  return require.resolve(extendsPath, {
+    paths: [path.dirname(configPath)],
+  });
+}
+
+async function loadTypeScriptConfig(configPath: string): Promise<TypeScriptConfig> {
   const content = await fs.readFile(configPath, "utf8");
-  const config = JSON5.parse(content) as LegacySwcConfig;
-  transformConfigCache = { path: configPath, config };
-  return config;
+  const config = JSON5.parse(content) as TypeScriptConfig;
+
+  if (!config.extends) {
+    return config;
+  }
+
+  const parentConfigPath = resolveExtendsPath(configPath, config.extends);
+  const parentConfig = await loadTypeScriptConfig(parentConfigPath);
+
+  return {
+    ...parentConfig,
+    ...config,
+    compilerOptions: {
+      ...parentConfig.compilerOptions,
+      ...config.compilerOptions,
+    },
+  };
+}
+
+async function loadTransformConfig(baseDirectory: URL): Promise<TransformConfig> {
+  const cacheKey = baseDirectory.href;
+
+  if (!transformConfigCache.has(cacheKey)) {
+    transformConfigCache.set(
+      cacheKey,
+      (async () => {
+        const configPath = resolveConfigPath(baseDirectory);
+        let config: TypeScriptConfig;
+
+        try {
+          config = await loadTypeScriptConfig(configPath);
+        } catch (error) {
+          const isMissingConfig =
+            error instanceof Error &&
+            "code" in error &&
+            (error as NodeJS.ErrnoException).code === "ENOENT";
+
+          if (isMissingConfig) {
+            return {
+              decorators: false,
+              sourceType: "module",
+              target: undefined,
+              verbatimModuleSyntax: false,
+            };
+          }
+
+          throw error;
+        }
+
+        const moduleType = config.compilerOptions?.module?.toLowerCase();
+
+        return {
+          decorators: config.compilerOptions?.experimentalDecorators ?? false,
+          sourceType: moduleType === "commonjs" ? "commonjs" : "module",
+          target: config.compilerOptions?.target?.toLowerCase(),
+          verbatimModuleSyntax: config.compilerOptions?.verbatimModuleSyntax ?? false,
+        };
+      })(),
+    );
+  }
+
+  const cachedConfig = transformConfigCache.get(cacheKey);
+  if (!cachedConfig) {
+    throw new Error(`Failed to cache transform config for ${cacheKey}`);
+  }
+
+  return cachedConfig;
 }
 
 function getLangFromFilename(filename: string): TransformOptions["lang"] {
@@ -72,26 +137,27 @@ export async function transpileSource(
   packageDirectory?: URL,
 ): Promise<string> {
   const filename = sourceLocation.pathname;
-  const config = await loadTransformConfig();
+  const baseDirectory = packageDirectory ?? new URL("./", sourceLocation);
+  const config = await loadTransformConfig(baseDirectory);
   const lang = getLangFromFilename(filename);
 
   const options: TransformOptions = {
-    cwd: packageDirectory?.pathname ?? process.cwd(),
-    sourceType: config.module?.type === "commonjs" ? "commonjs" : "module",
+    cwd: baseDirectory.pathname,
+    sourceType: config.sourceType,
     sourcemap: true,
     typescript: {
       rewriteImportExtensions: false,
     },
   };
 
-  if (config.jsc?.parser?.decorators) {
+  if (config.decorators) {
     options.decorator = {
       legacy: true,
     };
   }
 
-  if (config.jsc?.target) {
-    options.target = config.jsc.target;
+  if (config.target) {
+    options.target = config.target;
   }
 
   if (lang) {
@@ -116,5 +182,13 @@ export async function transpileSource(
     throw new Error("Source map is required but was not returned by oxc-transform");
   }
 
-  return `${result.code}\n//# sourceMappingURL=data:application/json;base64,${encodeInlineSourceMap(result.map)}`;
+  const emptyImportPattern = /^\s*import\s*\{\s*\}\s*from\s*["'][^"']+["'];?\s*$/gm;
+  const hasEmptyImport = emptyImportPattern.test(sourceText);
+  const code = !config.verbatimModuleSyntax && hasEmptyImport
+    ? result.code.replace(/^\s*import(?:\s*\{\s*\}\s*from)?\s*["'][^"']+["'];?\n?/gm, "")
+    : config.verbatimModuleSyntax && hasEmptyImport
+      ? `${sourceText.match(emptyImportPattern)?.[0] ?? ""}\n${result.code}`
+    : result.code;
+
+  return `${code}\n//# sourceMappingURL=data:application/json;base64,${encodeInlineSourceMap(result.map)}`;
 }

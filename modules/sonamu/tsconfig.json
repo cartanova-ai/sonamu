@@ -54,6 +54,7 @@
     "src/**/*.ignore.ts",
     "vitest.config.ts",
     "tsdown.config.ts",
+    "tsdown.api.config.ts",
     "wasted_src/**",
     "_templates/**",
     "**/__mocks__/**"

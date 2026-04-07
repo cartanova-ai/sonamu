@@ -1,5 +1,59 @@
 #!/usr/bin/env node
 
+import { spawn } from "child_process";
+import { createRequire } from "module";
+import { fileURLToPath } from "url";
+
+const require = createRequire(import.meta.url);
+const sourceCliPath = fileURLToPath(new URL("../src/bin/cli.ts", import.meta.url));
+const tsxImportPath = (() => {
+  try {
+    return require.resolve("tsx");
+  } catch {
+    return "tsx";
+  }
+})();
+
+function printCliError(error, fallbackError) {
+  console.error(
+    "Sonamu CLI를 실행하는 과정에 문제가 발생하였습니다. 보통은 dist/bin/cli.js 파일이 없는 경우입니다만, 아래 에러 메시지를 자세히 읽어보시면 힌트를 얻으실 수 있을 것입니다.",
+  );
+  console.error(
+    "There was an error while executing Sonamu CLI. Usually it's because dist/bin/cli.js file is not found. Please read the error message below for more information.",
+  );
+  console.error("=".repeat(80));
+  console.error(error);
+
+  if (fallbackError) {
+    console.error("-".repeat(80));
+    console.error("Source CLI fallback also failed.");
+    console.error(fallbackError);
+  }
+}
+
+function runSourceCli(originalError) {
+  const child = spawn(
+    process.execPath,
+    ["--import", tsxImportPath, sourceCliPath, ...process.argv.slice(2)],
+    {
+      env: process.env,
+      stdio: "inherit",
+    },
+  );
+
+  child.on("error", (fallbackError) => {
+    printCliError(originalError, fallbackError);
+    process.exit(1);
+  });
+
+  child.on("exit", (code) => {
+    if ((code ?? 1) !== 0) {
+      printCliError(originalError);
+    }
+    process.exit(code ?? 1);
+  });
+}
+
 /**
  * 이 스크립트는 터미널 또는 기타 환경에서 pnpm sonamu 또는 sonamu 명령어를 호출하였을 때 실행되는 스크립트입니다.
  *
@@ -18,15 +72,4 @@
  *
  * 이 스크립트를 실행시킬 때 넘어온 인자와 환경변수 등은 모두 dist/bin/cli.js에 그대로 전달됩니다.
  */
-import("../dist/bin/cli.js").catch((e) => {
-  console.error(
-    "Sonamu CLI를 실행하는 과정에 문제가 발생하였습니다. 보통은 dist/bin/cli.js 파일이 없는 경우입니다만, 아래 에러 메시지를 자세히 읽어보시면 힌트를 얻으실 수 있을 것입니다.",
-  );
-  console.error(
-    "There was an error while executing Sonamu CLI. Usually it's because dist/bin/cli.js file is not found. Please read the error message below for more information.",
-  );
-  console.error("=".repeat(80));
-  console.error(e);
-
-  process.exit(1);
-});
+import("../dist/bin/cli.js").catch(runSourceCli);

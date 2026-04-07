@@ -5,7 +5,6 @@ import { join } from "path";
 
 import { format } from "oxfmt";
 
-import { Naite } from "../naite/naite";
 import { isTest } from "./controller";
 
 const _require = createRequire(import.meta.url);
@@ -36,8 +35,6 @@ export async function formatCode(
   parser: "typescript" | "json",
   _filePath: string,
 ): Promise<string> {
-  Naite.t("formatCode", { code, parser });
-
   const fileName = parser === "json" ? "file.json" : "file.ts";
 
   // oxfmt 포맷팅
@@ -48,11 +45,9 @@ export async function formatCode(
       .map((e) => e.message);
     if (errorMessages.length > 0) {
       // 파싱 에러가 있는 코드는 포맷팅 없이 원본 반환 (Biome formatWithErrors: false와 동일)
-      Naite.t("formatCode:parse-error", errorMessages);
       return code;
     }
   }
-  Naite.t("formatCode:formatted", formatted.code);
 
   // JSON은 포맷팅만 수행
   if (parser === "json") {
@@ -79,7 +74,7 @@ export async function formatCode(
       if (execError instanceof Error) {
         const errObj = execError as Error & { status?: number | null; code?: string };
         if (typeof errObj.status === "number") {
-          Naite.t("formatCode:oxlint-exit", errObj.status);
+          void errObj.status;
         } else {
           throw execError;
         }
@@ -89,7 +84,6 @@ export async function formatCode(
     }
 
     const lintFixed = readFileSync(tmpFile, "utf-8");
-    Naite.t("formatCode:linted", lintFixed);
 
     // lint fix 후 재포맷 (import 구문 변경으로 인한 정렬 등)
     const reformatted = await format(fileName, lintFixed, OXFMT_OPTIONS);

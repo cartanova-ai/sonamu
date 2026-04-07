@@ -1,0 +1,49 @@
+import { readdirSync, statSync } from "node:fs";
+import path from "node:path";
+
+import { defineConfig } from "tsdown";
+
+const srcRoot = path.resolve(process.cwd(), "src");
+const ignoredSuffixes = [".test.ts", ".test-hold.ts", ".ignore.ts", ".d.ts"];
+const ignoredDirectories = new Set(["__mocks__", "_templates", "wasted_src"]);
+
+function collectEntries(directory: string): Record<string, string> {
+  const entries: Record<string, string> = {};
+
+  for (const entry of readdirSync(directory)) {
+    if (ignoredDirectories.has(entry)) {
+      continue;
+    }
+
+    const absolutePath = path.join(directory, entry);
+    const stats = statSync(absolutePath);
+
+    if (stats.isDirectory()) {
+      Object.assign(entries, collectEntries(absolutePath));
+      continue;
+    }
+
+    if (
+      !absolutePath.endsWith(".ts") ||
+      ignoredSuffixes.some((suffix) => absolutePath.endsWith(suffix))
+    ) {
+      continue;
+    }
+
+    const relativePath = path.relative(srcRoot, absolutePath);
+    const entryName = relativePath.replace(/\.ts$/, "").split(path.sep).join("/");
+    entries[entryName] = absolutePath;
+  }
+
+  return entries;
+}
+
+export default defineConfig({
+  clean: true,
+  entry: collectEntries(srcRoot),
+  format: "esm",
+  platform: "node",
+  sourcemap: "inline",
+  target: "esnext",
+  unbundle: true,
+});

@@ -248,6 +248,9 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
     // Try as TypeScript resolution
     return (async () => {
       if (!specifier.startsWith(".")) {
+        const parentPackageMeta = await resolvePackage(fileSystem, parentURL);
+        const parentFormat = resolveFormat(parentURL.pathname, parentPackageMeta?.packageJson);
+
         // Fully-qualified imports (패키지 import)인 경우입니다.
         // 먼저 Node.js의 기본 resolver를 사용하여 실제 패키지 엔트리 포인트를 찾은 뒤,
         // 그것이 /build/ 또는 /dist/ 또는 /node_modules/ 디렉토리를 포함하는지 확인하여,
@@ -270,11 +273,11 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
         const nextResultUrl = new URL(nextResult.url);
 
         // 빌드된 파일을 가리키는 경우 그대로 사용합니다 (소스 파일을 찾지 않습니다)
-        if (
+        const isBuiltEntry =
           nextResultUrl.pathname.includes("/build/") ||
           nextResultUrl.pathname.includes("/dist/") ||
-          nextResultUrl.pathname.includes("/node_modules/")
-        ) {
+          nextResultUrl.pathname.includes("/node_modules/");
+        if (parentFormat === "module" && isBuiltEntry) {
           return nextResult;
         }
 

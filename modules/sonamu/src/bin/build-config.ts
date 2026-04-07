@@ -18,7 +18,7 @@ export const API_ARTIFACTS: BuildArtifact<{ configFilePath: string }>[] = [
     projectPath: "api",
     preBuildCommand: () => "rm -rf dist",
     buildCommand: ({ configFilePath }) =>
-      `tsc --noEmit && swc src -d dist --config-file ${configFilePath} --strip-leading-paths`,
+      `tsc --noEmit && pnpm exec tsdown --config ${JSON.stringify(configFilePath)}`,
   },
 ];
 
