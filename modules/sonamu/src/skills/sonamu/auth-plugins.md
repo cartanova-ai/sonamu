@@ -18,18 +18,18 @@ Use the `auth generate --plugins` command to auto-generate plugin entities.
 
 ## Supported Plugins
 
-| Plugin ID      | Wrapper function | Package                | Purpose                                               |
-| -------------- | ---------------- | ---------------------- | ----------------------------------------------------- |
-| `admin`        | `admin()`        | `better-auth/plugins`  | Admin features, user ban/unban, session impersonation |
-| `organization` | `organization()` | `better-auth/plugins`  | Organization, team, member, and invitation management |
-| `2fa`          | `twoFactor()`    | `better-auth/plugins`  | TOTP-based two-factor authentication                  |
-| `username`     | `username()`     | `better-auth/plugins`  | Username-based authentication                         |
-| `phone-number` | `phoneNumber()`  | `better-auth/plugins`  | Phone number authentication                           |
-| `api-key`      | `apiKey()`       | `better-auth/plugins`  | API key issuance/management, rate limiting            |
-| `jwt`          | `jwt()`          | `better-auth/plugins`  | JWT tokens + JWKS key management                      |
-| `passkey`      | `passkey()`      | `@better-auth/passkey` | WebAuthn/Passkey authentication                       |
-| `sso`          | `sso()`          | `@better-auth/sso`     | OIDC/SAML SSO integration                             |
-| `anonymous`    | `anonymous()`    | `better-auth/plugins`  | Anonymous user support                                |
+| Plugin ID      | Wrapper function | Package                 | Purpose                                               |
+| -------------- | ---------------- | ----------------------- | ----------------------------------------------------- |
+| `admin`        | `admin()`        | `better-auth/plugins`   | Admin features, user ban/unban, session impersonation |
+| `organization` | `organization()` | `better-auth/plugins`   | Organization, team, member, and invitation management |
+| `2fa`          | `twoFactor()`    | `better-auth/plugins`   | TOTP-based two-factor authentication                  |
+| `username`     | `username()`     | `better-auth/plugins`   | Username-based authentication                         |
+| `phone-number` | `phoneNumber()`  | `better-auth/plugins`   | Phone number authentication                           |
+| `api-key`      | `apiKey()`       | `@better-auth/api-key`  | API key issuance/management, rate limiting            |
+| `jwt`          | `jwt()`          | `better-auth/plugins`   | JWT tokens + JWKS key management                      |
+| `passkey`      | `passkey()`      | `@better-auth/passkey`  | WebAuthn/Passkey authentication                       |
+| `sso`          | `sso()`          | `@better-auth/sso`      | OIDC/SAML SSO integration                             |
+| `anonymous`    | `anonymous()`    | `better-auth/plugins`   | Anonymous user support                                |
 
 ---
 
@@ -183,6 +183,11 @@ Schema mapping:
 ### api-key
 
 **Additional entities:** ApiKey (table: `api_keys`)
+**Package:** `@better-auth/api-key` (must be installed separately)
+
+```bash
+pnpm add @better-auth/api-key
+```
 
 ```typescript
 import { apiKey } from "sonamu/auth/plugins";
@@ -192,11 +197,14 @@ apiKey();
 
 Schema mapping:
 
-- `userId` → `user_id`, `lastRequest` → `last_request`, `requestCount` → `request_count`
+- `referenceId` → `reference_id`, `configId` → `config_id`
+- `lastRequest` → `last_request`, `requestCount` → `request_count`
 - `rateLimitEnabled` → `rate_limit_enabled`, `rateLimitTimeWindow` → `rate_limit_time_window`
 - `rateLimitMax` → `rate_limit_max`, `refillInterval` → `refill_interval`
 - `refillAmount` → `refill_amount`, `lastRefillAt` → `last_refill_at`
 - `expiresAt` → `expires_at`, `createdAt` → `created_at`, `updatedAt` → `updated_at`
+
+Note: v1.5.0에서 `userId`가 `referenceId`로 변경됨. `referenceId`는 user 또는 organization을 참조하는 polymorphic ID.
 
 ### jwt
 
