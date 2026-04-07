@@ -8,6 +8,17 @@ import Icons from "unplugin-icons/vite";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
+function isExternalModule(id: string) {
+  // 라이브러리 배포물에는 bare import만 남겨 소비자 번들러가 의존성을 올바르게 처리하게 합니다.
+  return (
+    !id.startsWith(".") &&
+    !path.isAbsolute(id) &&
+    !id.startsWith("\0") &&
+    !id.startsWith("@/") &&
+    !id.startsWith("~icons/")
+  );
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -58,7 +69,7 @@ export default defineConfig({
       fileName: (format) => `react-components.${format}.js`,
     },
     rolldownOptions: {
-      external: ["react", "react-dom", "@tanstack/react-router", /^better-auth/, /^@better-auth/],
+      external: isExternalModule,
     },
   },
 });
