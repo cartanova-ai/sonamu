@@ -7,7 +7,6 @@
 ### SSR 데이터 로딩 방식
 
 **기존 계획 (HTTP 경유):**
-
 ```
 registerSSR → preloadConfig 생성
 → entry-server.js에서 web의 Services 호출 (axios)
@@ -16,7 +15,6 @@ registerSSR → preloadConfig 생성
 ```
 
 **새로운 방식 (직접 호출):**
-
 ```
 registerSSR → preloadConfig 생성
 → Sonamu.invokeApiForSSR로 API Model 메소드 직접 호출
@@ -25,7 +23,6 @@ registerSSR → preloadConfig 생성
 ```
 
 **장점:**
-
 1. HTTP 오버헤드 제거 (서버 내부에서 직접 호출)
 2. SonamuContext의 세션 정보 완벽 동기화 (ALS 활용)
 
@@ -40,11 +37,11 @@ registerSSR → preloadConfig 생성
 ### 1. entry-client.tsx 생성
 
 ```tsx
-import { QueryClient, QueryClientProvider, HydrationBoundary } from "@tanstack/react-query";
-import { RouterProvider, createRouter } from "@tanstack/react-router";
-import ReactDOM from "react-dom/client";
-import Main from "./Main";
-import { routeTree } from "./routeTree.gen";
+import { QueryClient, QueryClientProvider, HydrationBoundary } from '@tanstack/react-query';
+import { RouterProvider, createRouter } from '@tanstack/react-router';
+import ReactDOM from 'react-dom/client';
+import Main from './Main';
+import { routeTree } from './routeTree.gen';
 
 // SSR 데이터 타입
 declare global {
@@ -67,17 +64,17 @@ const queryClient = new QueryClient({
 const router = createRouter({
   routeTree,
   context: { queryClient },
-  defaultPreload: "intent",
+  defaultPreload: 'intent',
 });
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router;
   }
 }
 
 // Root element
-const root = document.getElementById("root")!;
+const root = document.getElementById('root')!;
 
 // SSR 데이터
 const dehydratedState = window.__SONAMU_SSR__;
@@ -90,13 +87,13 @@ if (root.innerHTML && dehydratedState) {
       <HydrationBoundary state={dehydratedState}>
         <RouterProvider router={router} />
       </HydrationBoundary>
-    </Main>,
+    </Main>
   );
 } else {
   ReactDOM.createRoot(root).render(
     <Main queryClient={queryClient}>
       <RouterProvider router={router} />
-    </Main>,
+    </Main>
   );
 }
 ```
@@ -104,9 +101,9 @@ if (root.innerHTML && dehydratedState) {
 ### 2. Main.tsx 생성 (커스터마이징 가능)
 
 ```tsx
-import { QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { AuthProvider } from "./admin-common/auth";
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { AuthProvider } from './admin-common/auth';
 
 export default function Main({
   children,
@@ -117,7 +114,9 @@ export default function Main({
 }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>
+        {children}
+      </AuthProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
@@ -144,7 +143,7 @@ export class Template__entry_server extends Template {
     };
   }
 
-  render({}: TemplateOptions["entry-server"]) {
+  render({ }: TemplateOptions["entry-server"]) {
     const body = `
 import { QueryClient, dehydrate } from '@tanstack/react-query';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
@@ -229,7 +228,6 @@ export async function render(url: string, preloadedData: PreloadedData[] = []) {
 ```
 
 ### 확인 사항
-
 - [ ] entry-client.tsx 정상 동작 (CSR)
 - [ ] Main.tsx 커스터마이징 가능
 - [ ] entry-server.template.ts 작성 완료
@@ -245,11 +243,11 @@ export async function render(url: string, preloadedData: PreloadedData[] = []) {
 
 ```typescript
 // Branded type - 실수로 일반 객체 사용 방지
-export type SSRQuery = {
-  modelName: string; // 'UserModel'
-  methodName: string; // 'findById'
-  params: any[]; // [subset, id] - Context 제외한 실제 파라미터
-} & { __brand: "SSRQuery" };
+export type SSRQuery = { 
+  modelName: string;   // 'UserModel'
+  methodName: string;  // 'findById'
+  params: any[];       // [subset, id] - Context 제외한 실제 파라미터
+} & { __brand: 'SSRQuery' };
 
 export type PreloadConfig = SSRQuery[];
 
@@ -274,7 +272,10 @@ export type PreloadedData = {
 
 ```typescript
 import inflection from "inflection";
-import { apiParamToTsCode, apiParamTypeToTsType } from "../../api/code-converters";
+import {
+  apiParamToTsCode,
+  apiParamTypeToTsType,
+} from "../../api/code-converters";
 import { Sonamu } from "../../api/sonamu";
 import { Template } from "../template";
 import type { TemplateOptions } from "../../types/types";
@@ -292,70 +293,70 @@ export class Template__queries extends Template {
     };
   }
 
-  render({}: TemplateOptions["queries"]) {
+  render({ }: TemplateOptions["queries"]) {
     const { apis } = Sonamu.syncer;
-
+    
     // tanstack-query를 포함한 API만 필터링
-    const queryApis = apis.filter((api) => api.options.clients?.includes("tanstack-query"));
-
+    const queryApis = apis.filter(api => 
+      api.options.clients?.includes('tanstack-query')
+    );
+    
     // 모델별로 그룹화
     const apisByModel = new Map<string, typeof queryApis>();
     for (const api of queryApis) {
-      const modelName = api.modelName.replace(/Model$/, "").replace(/Frame$/, "");
+      const modelName = api.modelName.replace(/Model$/, '').replace(/Frame$/, '');
       if (!apisByModel.has(modelName)) {
         apisByModel.set(modelName, []);
       }
       apisByModel.get(modelName)!.push(api);
     }
-
+    
     const importKeys: string[] = [];
     const namespaces: string[] = [];
-
+    
     for (const [modelName, modelApis] of apisByModel) {
       const functions: string[] = [];
-
+      
       for (const api of modelApis) {
         const paramsWithoutContext = api.parameters.filter(
           (param) =>
             !ApiParamType.isContext(param.type) &&
             !ApiParamType.isRefKnex(param.type) &&
-            !(param.optional === true && param.name.startsWith("_")),
+            !(param.optional === true && param.name.startsWith("_"))
         );
-
+        
         const typeParametersAsTsType = api.typeParameters
           .map((typeParam) => apiParamTypeToTsType(typeParam, importKeys))
           .join(", ");
         const typeParamsDef = typeParametersAsTsType ? `<${typeParametersAsTsType}>` : "";
-
+        
         const paramsDef = apiParamToTsCode(paramsWithoutContext, importKeys);
-        const paramNames = paramsWithoutContext.map((p) => p.name).join(", ");
-
+        const paramNames = paramsWithoutContext.map(p => p.name).join(', ');
+        
         // getUser 형태로 생성 (실제로는 Model의 findById 호출)
-        functions.push(
-          `
+        functions.push(`
   export const ${api.methodName} = ${typeParamsDef}(${paramsDef}): SSRQuery => ({
     modelName: '${api.modelName}',
     methodName: '${api.methodName}',
     params: [${paramNames}]
   } as SSRQuery);
-        `.trim(),
-        );
+        `.trim());
       }
-
-      namespaces.push(
-        `
+      
+      namespaces.push(`
 export namespace ${modelName}Service {
-${functions.join("\n\n")}
+${functions.join('\n\n')}
 }
-      `.trim(),
-      );
+      `.trim());
     }
-
+    
     return {
       ...this.getTargetAndPath(),
-      body: namespaces.join("\n\n"),
+      body: namespaces.join('\n\n'),
       importKeys: [...new Set(importKeys)],
-      customHeaders: [`import type { SSRQuery } from 'sonamu/ssr';`],
+      customHeaders: [
+        `import type { SSRQuery } from 'sonamu/ssr';`,
+      ],
     };
   }
 }
@@ -380,17 +381,16 @@ export const TemplateKey = z.enum([
 ```typescript
 if (diffGroups.entity.length > 0 || diffGroups.model.length > 0) {
   // ... 기존 로직
-
+  
   // queries.generated.ts 재생성 (api 프로젝트)
-  await generateTemplate("queries", {});
-
+  await generateTemplate('queries', {});
+  
   // entry-server.generated.tsx 재생성 (web 프로젝트)
-  await generateTemplate("entry-server", {});
+  await generateTemplate('entry-server', {});
 }
 ```
 
 ### 확인 사항
-
 - [ ] queries.generated.ts 생성 확인 (api 프로젝트)
 - [ ] entry-server.generated.tsx 생성 확인 (web 프로젝트)
 - [ ] TypeScript 타입 에러 없음
@@ -413,11 +413,11 @@ mkdir -p /Users/minsangk/Development/sonamu/modules/sonamu/src/ssr
 ### 2. types.ts
 
 ```typescript
-export type SSRQuery = {
+export type SSRQuery = { 
   modelName: string;
   methodName: string;
   params: any[];
-} & { __brand: "SSRQuery" };
+} & { __brand: 'SSRQuery' };
 
 export type PreloadConfig = SSRQuery[];
 
@@ -439,7 +439,7 @@ export type PreloadedData = {
 ### 3. registry.ts 생성
 
 ```typescript
-import type { SSRRoute } from "./types";
+import type { SSRRoute } from './types';
 
 const ssrRoutes: SSRRoute[] = [];
 
@@ -455,9 +455,7 @@ export function clearSSRRoutes(): void {
   ssrRoutes.length = 0;
 }
 
-export function matchSSRRoute(
-  url: string,
-): { route: SSRRoute; params: Record<string, string> } | null {
+export function matchSSRRoute(url: string): { route: SSRRoute; params: Record<string, string> } | null {
   for (const route of ssrRoutes) {
     const params = matchPath(route.path, url);
     if (params !== null) {
@@ -469,26 +467,26 @@ export function matchSSRRoute(
 
 // 간단한 path matching
 export function matchPath(pattern: string, url: string): Record<string, string> | null {
-  const patternParts = pattern.split("/").filter(Boolean);
-  const urlParts = url.split("?")[0].split("/").filter(Boolean);
-
+  const patternParts = pattern.split('/').filter(Boolean);
+  const urlParts = url.split('?')[0].split('/').filter(Boolean);
+  
   if (patternParts.length !== urlParts.length) {
     return null;
   }
-
+  
   const params: Record<string, string> = {};
-
+  
   for (let i = 0; i < patternParts.length; i++) {
     const patternPart = patternParts[i];
     const urlPart = urlParts[i];
-
-    if (patternPart.startsWith(":")) {
+    
+    if (patternPart.startsWith(':')) {
       params[patternPart.slice(1)] = urlPart;
     } else if (patternPart !== urlPart) {
       return null;
     }
   }
-
+  
   return params;
 }
 ```
@@ -496,12 +494,11 @@ export function matchPath(pattern: string, url: string): Record<string, string> 
 ### 4. index.ts 생성 (exports)
 
 ```typescript
-export { registerSSR, getSSRRoutes, matchSSRRoute, clearSSRRoutes } from "./registry";
-export type { SSRRoute, SSRQuery, PreloadConfig, PreloadedData } from "./types";
+export { registerSSR, getSSRRoutes, matchSSRRoute, clearSSRRoutes } from './registry';
+export type { SSRRoute, SSRQuery, PreloadConfig, PreloadedData } from './types';
 ```
 
 ### 확인 사항
-
 - [ ] TypeScript 컴파일 에러 없음
 - [ ] 모듈 import 정상 동작
 
@@ -531,7 +528,7 @@ async invokeApiForSSR(
 ): Promise<unknown> {
   // Context 생성 (기존 메소드 재사용)
   const context = await this.createContext(config, request, reply);
-
+  
   // args 생성: Context 파라미터는 주입, 나머지는 params에서 가져오기
   const { ApiParamType } = await import("../types/types");
   let paramsIndex = 0;
@@ -541,14 +538,13 @@ async invokeApiForSSR(
     }
     return params[paramsIndex++];
   });
-
+  
   // 모델 메소드 호출 (기존 메소드 재사용)
   return this.invokeModelMethod(api, args, context, reply);
 }
 ```
 
 ### 확인 사항
-
 - [ ] TypeScript 컴파일 에러 없음
 - [ ] createContext, invokeModelMethod 재사용 확인
 
@@ -563,7 +559,7 @@ async invokeApiForSSR(
 ### 1. import 추가
 
 ```typescript
-import { clearSSRRoutes } from "../ssr";
+import { clearSSRRoutes } from '../ssr';
 ```
 
 ### 2. autoloadSSRRoutes 메서드 추가
@@ -571,19 +567,19 @@ import { clearSSRRoutes } from "../ssr";
 ```typescript
 async autoloadSSRRoutes(): Promise<void> {
   const ssrConfigPath = path.join(Sonamu.apiRootPath, 'src/ssr');
-
+  
   // 기존 routes 초기화
   clearSSRRoutes();
-
+  
   // ssr 폴더 없으면 스킵
   if (!(await exists(ssrConfigPath))) {
     return;
   }
-
+  
   // ssr 폴더 안의 모든 .ts 파일 로드
   const glob = (await import('glob')).glob;
   const files = await glob(`${ssrConfigPath}/**/*.ts`);
-
+  
   for (const file of files) {
     try {
       await import(file);
@@ -604,13 +600,13 @@ async init(
   forTesting: boolean = false,
 ) {
   // ... 기존 코드
-
+  
   // SSR routes autoload 추가
   const { isLocal, isTest } = await import("../utils/controller");
   if (isLocal() && !isTest()) {
     await this.autoloadSSRRoutes();
   }
-
+  
   // ... 기존 코드
 }
 ```
@@ -620,7 +616,7 @@ async init(
 ```typescript
 async syncFromWatcher(event: string, filePath: AbsolutePath): Promise<void> {
   // ... 기존 코드
-
+  
   // SSR 설정 파일 변경 감지
   if (filePath.includes('/src/ssr/')) {
     const chalk = (await import("chalk")).default;
@@ -629,13 +625,12 @@ async syncFromWatcher(event: string, filePath: AbsolutePath): Promise<void> {
     await this.finishHMR();
     return;
   }
-
+  
   // ... 기존 코드
 }
 ```
 
 ### 확인 사항
-
 - [ ] TypeScript 컴파일 에러 없음
 - [ ] Sonamu 재시작 시 autoloadSSRRoutes 호출 확인
 

@@ -40,7 +40,6 @@ Dev 모드에서 이미 동작하는 SSR 로직을 Production 환경에서도 �
 **파일**: `web/vite.config.ts`
 
 현재 vite.config.ts는 dev 모드용 기본 설정만 있습니다:
-
 - plugins (react, tailwindcss, TanStackRouter)
 - resolve (alias)
 - server (dev server 설정)
@@ -57,13 +56,16 @@ export default defineConfig({
 
   // ➕ 추가: Production 빌드 설정
   build: {
-    outDir: "dist/client",
+    outDir: 'dist/client',
     emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks: {
-          "vendor-react": ["react", "react-dom"],
-          "vendor-tanstack": ["@tanstack/react-query", "@tanstack/react-router"],
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-tanstack': [
+            '@tanstack/react-query',
+            '@tanstack/react-router'
+          ],
         },
       },
     },
@@ -77,7 +79,6 @@ export default defineConfig({
 ```
 
 **설정 설명:**
-
 - `outDir: 'dist/client'`: 클라이언트 빌드 결과물 위치
 - `emptyOutDir: true`: 빌드 전 기존 파일 삭제
 - `manualChunks`: vendor 라이브러리를 별도 chunk로 분리하여 캐싱 최적화
@@ -92,19 +93,17 @@ export default defineConfig({
 **파일**: `web/package.json`
 
 **현재 상태:**
-
 ```json
 {
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build", // 단순 빌드만
+    "build": "tsc && vite build",  // 단순 빌드만
     "preview": "vite preview"
   }
 }
 ```
 
 **수정 후:**
-
 ```json
 {
   "scripts": {
@@ -118,7 +117,6 @@ export default defineConfig({
 ```
 
 **변경 사항:**
-
 - ✏️ `build`: client와 server를 순차적으로 빌드
 - ➕ `build:client`: 클라이언트 빌드 (브라우저용)
 - ➕ `build:server`: 서버 빌드 (SSR용)
@@ -131,7 +129,6 @@ pnpm build
 ```
 
 **생성되는 파일:**
-
 ```
 web/
   dist/
@@ -147,7 +144,6 @@ web/
 ```
 
 ### 확인 사항
-
 - [ ] `dist/client` 폴더 생성 확인
 - [ ] `dist/server/entry-server.generated.js` 생성 확인
 - [ ] TypeScript 컴파일 에러 없음
@@ -163,7 +159,6 @@ mkdir -p examples/miomock/api/web-dist
 ```
 
 **설명:**
-
 - `api/web-dist/client`: 클라이언트 빌드 결과물 (CSS, JS, HTML) - `web/dist/client`에서 복사
 - `api/web-dist/server`: 서버 빌드 결과물 (entry-server.generated.js) - `web/dist/server`에서 복사
 
@@ -174,7 +169,6 @@ mkdir -p examples/miomock/api/web-dist
 **파일**: `api/.gitignore`
 
 **추가할 내용:**
-
 ```
 web-dist
 ```
@@ -186,19 +180,17 @@ web-dist
 **파일**: `api/package.json`
 
 **현재 상태:**
-
 ```json
 {
   "scripts": {
     "build": "pnpm build:web && sonamu build",
-    "build:web": "cd ../web && pnpm build", // ✅ 이미 있음
+    "build:web": "cd ../web && pnpm build",  // ✅ 이미 있음
     "start": "sonamu start"
   }
 }
 ```
 
 **수정 후:**
-
 ```json
 {
   "scripts": {
@@ -210,7 +202,6 @@ web-dist
 ```
 
 **변경 사항:**
-
 - ✏️ `build:web`: Web 빌드 후 결과물을 `web-dist` 폴더로 복사하는 로직 추가
 - ✅ `build`: 변경 없음 (build:web → sonamu build 순서 유지)
 
@@ -222,7 +213,6 @@ pnpm build
 ```
 
 **확인:**
-
 ```
 api/
   web-dist/             # ← web/dist에서 복사됨
@@ -238,7 +228,6 @@ api/
 ```
 
 ### 확인 사항
-
 - [ ] `web-dist/client`에 클라이언트 파일 복사 확인
 - [ ] `web-dist/server/entry-server.generated.js` 복사 확인
 - [ ] API 빌드 정상 완료 (`dist` 폴더 생성)
@@ -265,14 +254,12 @@ if (isLocal()) {
 ```
 
 **Dev 모드 (`setupViteDevServer`)는 Phase 3-5에서 완전히 구현되었습니다.**
-
 - SSR 라우트 매칭
 - Preload 실행 및 렌더링
 - HTML 생성 및 주입
 - CSR fallback
 
 **Production 모드 (`setupStaticWebServer`)는 현재 CSR만 지원합니다.**
-
 - 정적 파일 서빙만 구현
 - SPA fallback만 구현
 - SSR 렌더링 로직 없음
@@ -313,7 +300,6 @@ private async setupStaticWebServer(
 ```
 
 **문제점:**
-
 - SSR 라우트 체크 없음
 - SSR 렌더링 로직 없음
 - 모든 경로에서 CSR (index.html만 반환)
@@ -336,7 +322,7 @@ export async function renderSSR(
   request: FastifyRequest,
   reply: FastifyReply,
   config: SonamuFastifyConfig,
-  vite?: ViteDevServer, // 있으면 dev, 없으면 prod
+  vite?: ViteDevServer,  // 있으면 dev, 없으면 prod
 ): Promise<string> {
   const { Sonamu } = await import("../api/sonamu");
 
@@ -363,10 +349,7 @@ export async function renderSSR(
 
   // 2. ➕ dev/prod 분기
   let template: string;
-  let render: (
-    url: string,
-    preloadedData: PreloadedData[],
-  ) => Promise<{ html: string; dehydratedState: any }>;
+  let render: (url: string, preloadedData: PreloadedData[]) => Promise<{ html: string; dehydratedState: any }>;
 
   if (vite) {
     // Dev: Vite Dev Server 사용
@@ -381,7 +364,7 @@ export async function renderSSR(
     const fs = await import("node:fs");
     const webDistPath = path.join(Sonamu.apiRootPath, "web-dist", "client");
     const ssrPath = path.join(Sonamu.apiRootPath, "web-dist", "server");
-
+    
     template = fs.readFileSync(path.join(webDistPath, "index.html"), "utf-8");
     const entryModule = await import(path.join(ssrPath, "entry-server.generated.js"));
     render = entryModule.render;
@@ -399,7 +382,7 @@ export async function renderSSR(
 
   // 5. head 생성
   const headTags = route.head ? generateHeadTags(route.head(dehydratedState)) : "";
-
+  
   // 6. Dev에서만 CSS 링크 추가 (prod는 빌드된 index.html에 이미 포함)
   const devCssLinks = vite ? `<link rel="stylesheet" href="/src/styles/tailwind.css" />` : "";
 
@@ -470,7 +453,7 @@ private async setupStaticWebServer(
       const assetsDir = path.join(webDistPath, "assets");
       const files = fs.readdirSync(assetsDir);
       const currentFile = files.find(f => f.startsWith("index-") && f.endsWith(`.${ext}`));
-
+      
       if (currentFile) {
         const filePath = path.join(assetsDir, currentFile);
         const content = fs.readFileSync(filePath);
@@ -526,7 +509,6 @@ private async setupStaticWebServer(
 ```
 
 **변경 요약:**
-
 1. ➕ `renderSSR` 함수 dev/prod 공유 - 코드 중복 제거
 2. ➕ 경로 명확화 - prod에서는 `api/web-dist/client`, `api/web-dist/server` 사용
 3. ➕ 롤링 업데이트 대응 - `setNotFoundHandler` 내부에서 처리
@@ -542,14 +524,12 @@ NODE_ENV=production pnpm start
 ```
 
 **확인:**
-
 - 브라우저에서 `http://localhost:10280/admin/companies` 접속
 - 페이지 소스 보기 → `<!--app-html-->` 안에 렌더링된 HTML 확인
 - `<script>window.__SONAMU_SSR__ = ...</script>` 확인
 - 콘솔에 Hydration 에러 없음 확인
 
 ### 확인 사항
-
 - [ ] SSR entry 로드 성공 로그 출력
 - [ ] SSR 라우트 정상 렌더링
 - [ ] SEO 메타 태그 생성 확인
@@ -578,7 +558,6 @@ Section 6.3에서 `setupStaticWebServer()`에 기본적인 에러 핸들링이 �
 ```
 
 **현재 동작:**
-
 - SSR 에러 발생 시 콘솔에 로그 출력
 - 자동으로 CSR로 fallback
 - 사용자는 에러를 인지하지 못함 (정상적으로 페이지 로드)
@@ -590,13 +569,10 @@ Section 6.3에서 `setupStaticWebServer()`에 기본적인 에러 핸들링이 �
 **파일:** `api/src/ssr/error-logger.ts` (선택사항)
 
 ```typescript
-export function logSSRError(
-  error: Error,
-  context: {
-    url: string;
-    route: string;
-  },
-) {
+export function logSSRError(error: Error, context: {
+  url: string;
+  route: string;
+}) {
   // Sentry 예시
   // Sentry.captureException(error, {
   //   tags: {
@@ -607,7 +583,7 @@ export function logSSRError(
   // });
 
   // 기본 로그
-  console.error("[SSR Error]", {
+  console.error('[SSR Error]', {
     ...context,
     message: error.message,
     stack: error.stack,
@@ -617,7 +593,6 @@ export function logSSRError(
 ```
 
 **사용:**
-
 ```typescript
 } catch (e) {
   const error = e instanceof Error ? e : new Error(String(e));
@@ -641,7 +616,7 @@ SSR 환경에서는 `window`, `document` 등의 브라우저 API를 사용할 �
 
 ```tsx
 if (!import.meta.env.SSR) {
-  window.addEventListener("resize", handleResize);
+  window.addEventListener('resize', handleResize);
 }
 ```
 
@@ -650,8 +625,8 @@ if (!import.meta.env.SSR) {
 ```tsx
 // useEffect는 자동으로 클라이언트에서만 실행
 useEffect(() => {
-  window.addEventListener("resize", handleResize);
-  return () => window.removeEventListener("resize", handleResize);
+  window.addEventListener('resize', handleResize);
+  return () => window.removeEventListener('resize', handleResize);
 }, []);
 ```
 
@@ -661,7 +636,7 @@ useEffect(() => {
 const [Component, setComponent] = useState(null);
 
 useEffect(() => {
-  import("./ClientOnlyComponent").then((mod) => {
+  import('./ClientOnlyComponent').then(mod => {
     setComponent(() => mod.default);
   });
 }, []);
@@ -679,7 +654,6 @@ return Component ? <Component /> : null;
 - DOM 조작 라이브러리
 
 ### 확인 사항
-
 - [ ] SSR 에러 로그 형식 확인
 - [ ] CSR fallback 동작 확인
 - [ ] (선택) 외부 로깅 서비스 연동
@@ -690,31 +664,27 @@ return Component ? <Component /> : null;
 
 ### CloudFront 캐싱 전략 (참고용)
 
-````markdown
+```markdown
 # CloudFront 캐싱 전략
 
 ## 경로별 캐싱 설정
 
 ### Static Assets
-
 - Path: `/assets/*`
 - Cache: `max-age=31536000, immutable`
 - 이유: 파일명에 hash 포함, 변경 불가
 
 ### SSR Pages
-
 - Path: `/users/*`, `/projects/*` 등
 - Cache: `max-age=60` (1분) 또는 `no-cache`
 - 이유: 데이터 변경 가능성
 
 ### API
-
 - Path: `/api/*`
 - Cache: `no-cache`
 - 이유: 동적 데이터
 
 ### Sonamu UI
-
 - Path: `/sonamu-ui/*`
 - Cache: `no-cache`
 - 이유: 관리 인터페이스
@@ -723,18 +693,17 @@ return Component ? <Component /> : null;
 
 ```typescript
 // api에서 설정
-server.addHook("onSend", async (request, reply) => {
-  if (request.url.startsWith("/assets/")) {
-    reply.header("Cache-Control", "public, max-age=31536000, immutable");
-  } else if (request.url.startsWith("/api/")) {
-    reply.header("Cache-Control", "no-cache");
+server.addHook('onSend', async (request, reply) => {
+  if (request.url.startsWith('/assets/')) {
+    reply.header('Cache-Control', 'public, max-age=31536000, immutable');
+  } else if (request.url.startsWith('/api/')) {
+    reply.header('Cache-Control', 'no-cache');
   } else {
     // SSR pages
-    reply.header("Cache-Control", "public, max-age=60");
+    reply.header('Cache-Control', 'public, max-age=60');
   }
 });
 ```
-````
 
 ## 배포 프로세스
 
@@ -743,8 +712,7 @@ server.addHook("onSend", async (request, reply) => {
 3. API 빌드: `pnpm build`
 4. 배포 스크립트 실행
 5. CloudFront invalidation: `/` 경로만 (필요시)
-
-````
+```
 
 ### 확인 사항
 - [ ] 에러 핸들링 정상 동작
@@ -774,7 +742,7 @@ pnpm copy:web
 # Terminal 3: 새 버전 실행 (다른 포트)
 cd api
 PORT=10281 pnpm start
-````
+```
 
 #### 2. 요청 확인
 
@@ -791,7 +759,6 @@ curl http://localhost:10280/assets/index-new456.js
 > **참고**: 리다이렉트 대신 현재 버전 asset을 직접 서빙합니다. 이렇게 하면 브라우저가 추가 요청 없이 즉시 사용할 수 있어요.
 
 ### 확인 사항
-
 - [ ] 롤링 업데이트 시나리오 테스트
 - [ ] Asset hash 불일치 대응 확인
 - [ ] 현재 버전 asset 정상 서빙
@@ -851,21 +818,18 @@ curl http://localhost:10280/assets/index-new456.js
 프로젝트 완료 후:
 
 ### 1. 성능 모니터링
-
 - SSR vs CSR 성능 비교
 - TTFB, FCP, LCP 측정
 - 번들 크기 모니터링
 - 서버 리소스 사용량 확인
 
 ### 2. SEO 검증
-
 - 크롤러 테스트 (Google, Naver)
 - og:tags 정상 노출 확인
 - sitemap.xml 생성
 - robots.txt 설정
 
 ### 3. 추가 최적화 (선택)
-
 - Streaming SSR (React 18 Suspense)
 - ISR (Incremental Static Regeneration)
 - Edge Functions (Cloudflare Workers)

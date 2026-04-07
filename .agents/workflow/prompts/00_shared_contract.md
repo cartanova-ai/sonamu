@@ -3,25 +3,19 @@
 This contract is mandatory for every prompt under `.agents/workflow/prompts/`.
 
 ## Canonical policy references (no duplication)
-
 Use file-path references below as the single source of truth instead of repeating policy text in every prompt.
 
 1. Global coding-agent policy:
-
 - `../../../AGENTS.md`
 
 2. Role/dispatch policy:
-
 - `../subagents/00_agent_roles.md`
 
 3. Review session and long-output policy:
-
 - `06_codex_output_and_sessions.md`
 
 ## Required inheritance for all stage prompts
-
 Every stage prompt must inherit from the canonical files above:
-
 - language/output style policy
 - writing quality policy
 - commit message policy
@@ -41,7 +35,6 @@ Every stage prompt must inherit from the canonical files above:
 Do not restate these shared policies in stage prompts unless role-specific exceptions are required.
 
 ## Standard artifacts
-
 - `bootstrap_context`
 - `plan_document`
 - `spawn_manifest`

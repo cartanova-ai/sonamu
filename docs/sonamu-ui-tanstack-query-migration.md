@@ -8,7 +8,6 @@ Sonamu UI 웹 프로젝트를 SWR에서 Tanstack Query로 마이그레이션합�
 ## 현재 상태 분석
 
 ### SWR 사용 위치
-
 1. **sonamu-ui.service.ts** - 3개의 useSWR 훅:
    - `useEntities()` - Entity 목록 조회
    - `useTypeIds()` - Type ID 목록 조회
@@ -22,12 +21,10 @@ Sonamu UI 웹 프로젝트를 SWR에서 Tanstack Query로 마이그레이션합�
    - `swrPostFetcher` - POST 요청용
 
 ### 의존성
-
 - package.json에 `swr: ^2.2.2` 포함
 - 다른 패키지들과의 의존성 없음 (독립적으로 제거 가능)
 
 ### 페이지 파일 (잠재적 영향)
-
 ```
 /pages/migrations/index.tsx
 /pages/fixture/index.tsx
@@ -41,19 +38,16 @@ Sonamu UI 웹 프로젝트를 SWR에서 Tanstack Query로 마이그레이션합�
 ### STEP 1: Tanstack Query 설정
 
 **1.1 의존성 추가**
-
 ```bash
 cd /Users/minsangk/Development/sonamu/modules/sonamu/ui-web
 pnpm add @tanstack/react-query
 ```
 
 **1.2 main.tsx - Provider 변경**
-
 - SWRConfig → QueryClientProvider로 교체
 - QueryClient 생성 및 설정
-
 ```typescript
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,7 +63,6 @@ const queryClient = new QueryClient({
 ### STEP 2: sonamu-ui.service.ts 마이그레이션
 
 **2.1 useEntities() 변경**
-
 ```typescript
 // Before
 export function useEntities(): SWRResponse<{ entities: ExtendedEntity[] }, SWRError> {
@@ -79,18 +72,16 @@ export function useEntities(): SWRResponse<{ entities: ExtendedEntity[] }, SWREr
 // After
 export function useEntities() {
   return useQuery({
-    queryKey: ["entities", "findMany"],
-    queryFn: () =>
-      fetch({
-        method: "GET",
-        url: `/sonamu-ui/api/entity/findMany`,
-      }),
+    queryKey: ['entities', 'findMany'],
+    queryFn: () => fetch({
+      method: "GET",
+      url: `/sonamu-ui/api/entity/findMany`,
+    }),
   });
 }
 ```
 
 **2.2 useTypeIds() 변경**
-
 ```typescript
 // Before
 export function useTypeIds(
@@ -105,19 +96,17 @@ export function useTypeIds(
 // After
 export function useTypeIds(filter?: "enums" | "types") {
   return useQuery({
-    queryKey: ["entity", "typeIds", filter],
-    queryFn: () =>
-      fetch({
-        method: "GET",
-        url: `/sonamu-ui/api/entity/typeIds`,
-        params: { filter, reload: "1" },
-      }),
+    queryKey: ['entity', 'typeIds', filter],
+    queryFn: () => fetch({
+      method: "GET",
+      url: `/sonamu-ui/api/entity/typeIds`,
+      params: { filter, reload: "1" },
+    }),
   });
 }
 ```
 
 **2.3 useMigrationStatus() 변경**
-
 ```typescript
 // Before
 export function useMigrationStatus(): SWRResponse<{ status: MigrationStatus }, SWRError> {
@@ -127,18 +116,16 @@ export function useMigrationStatus(): SWRResponse<{ status: MigrationStatus }, S
 // After
 export function useMigrationStatus() {
   return useQuery({
-    queryKey: ["migrations", "status"],
-    queryFn: () =>
-      fetch({
-        method: "GET",
-        url: `/sonamu-ui/api/migrations/status`,
-      }),
+    queryKey: ['migrations', 'status'],
+    queryFn: () => fetch({
+      method: "GET",
+      url: `/sonamu-ui/api/migrations/status`,
+    }),
   });
 }
 ```
 
 **2.4 useScaffoldingStatus() 변경**
-
 ```typescript
 // Before
 export function useScaffoldingStatus(
@@ -167,13 +154,12 @@ export function useScaffoldingStatus(params: ScaffoldingGetStatusParams) {
   })();
 
   return useQuery({
-    queryKey: ["scaffolding", "getStatus", params],
-    queryFn: () =>
-      fetch({
-        method: "POST",
-        url: `/sonamu-ui/api/scaffolding/getStatus`,
-        data: params,
-      }),
+    queryKey: ['scaffolding', 'getStatus', params],
+    queryFn: () => fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/scaffolding/getStatus`,
+      data: params,
+    }),
     enabled,
   });
 }
@@ -182,13 +168,11 @@ export function useScaffoldingStatus(params: ScaffoldingGetStatusParams) {
 ### STEP 3: 페이지 파일 수정
 
 **3.1 검색 및 확인**
-
 - 모든 페이지 파일에서 `mutate()` 호출 확인
 - `data`, `error`, `isLoading` 등의 반환값 사용 확인
 - 필요시 `refetch()` 또는 `queryClient.invalidateQueries()` 사용으로 변경
 
 **주요 체크 포인트:**
-
 - `/pages/entities/show.tsx` - 엔티티 CRUD 후 리스트 갱신
 - `/pages/migrations/index.tsx` - 마이그레이션 실행 후 상태 갱신
 - `/pages/scaffolding/index.tsx` - 스캐폴딩 실행 후 상태 갱신
@@ -196,13 +180,11 @@ export function useScaffoldingStatus(params: ScaffoldingGetStatusParams) {
 ### STEP 4: sonamu.shared.ts 정리
 
 **4.1 제거할 항목**
-
 - `swrFetcher` 함수
 - `swrPostFetcher` 함수
 - SWRError 타입 (필요시 유지)
 
 **4.2 유지할 항목**
-
 - `fetch` 함수 - 그대로 사용
 - `SonamuError` 클래스
 - `isSonamuError` 함수
@@ -211,38 +193,34 @@ export function useScaffoldingStatus(params: ScaffoldingGetStatusParams) {
 ### STEP 5: Import 문 정리
 
 **5.1 sonamu-ui.service.ts**
-
 ```typescript
 // 제거
 import useSWR, { type SWRResponse } from "swr";
 import { fetch, swrPostFetcher } from "./sonamu.shared";
 
 // 추가
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from '@tanstack/react-query';
 import { fetch } from "./sonamu.shared";
 ```
 
 **5.2 main.tsx**
-
 ```typescript
 // 제거
 import { SWRConfig } from "swr";
 import { swrFetcher } from "./services/sonamu.shared.ts";
 
 // 추가
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 ```
 
 ### STEP 6: 의존성 제거
 
 **6.1 package.json 수정**
-
 ```bash
 pnpm remove swr
 ```
 
 **6.2 확인**
-
 - 빌드 에러 없는지 확인
 - 타입 에러 없는지 확인
 
@@ -281,39 +259,32 @@ const { data, error, refetch } = SonamuUIService.useEntities();
 ## 잠재적 이슈 및 해결방안
 
 ### 1. Conditional Fetching
-
 **SWR:**
-
 ```typescript
-useSWR(shouldFetch ? key : null);
+useSWR(shouldFetch ? key : null)
 ```
 
 **Tanstack Query:**
-
 ```typescript
-useQuery({ queryKey, queryFn, enabled: shouldFetch });
+useQuery({ queryKey, queryFn, enabled: shouldFetch })
 ```
 
 ### 2. POST 요청을 Query로 사용하는 경우
-
 - `useScaffoldingStatus`는 POST 요청이지만 Query처럼 사용됨
 - Tanstack Query에서도 동일하게 useQuery 사용 가능 (queryFn에서 POST 호출)
 
 ### 3. 전역 캐시 무효화
-
 **필요한 경우:**
-
 ```typescript
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from '@tanstack/react-query';
 
 const queryClient = useQueryClient();
-queryClient.invalidateQueries({ queryKey: ["entities"] });
+queryClient.invalidateQueries({ queryKey: ['entities'] });
 ```
 
 ## 테스트 계획
 
 ### 1. 기능 테스트
-
 - [ ] Entity 목록 로딩 확인
 - [ ] Entity CRUD 후 자동 갱신 확인
 - [ ] Migration 상태 조회 및 실행 확인
@@ -321,13 +292,11 @@ queryClient.invalidateQueries({ queryKey: ["entities"] });
 - [ ] Fixture import/export 확인
 
 ### 2. 성능 테스트
-
 - [ ] 초기 로딩 시간
 - [ ] 캐싱 동작 확인
 - [ ] 자동 리페치 동작 확인
 
 ### 3. 에러 핸들링
-
 - [ ] 네트워크 에러 처리
 - [ ] Retry 동작 확인
 - [ ] SonamuError 처리 확인

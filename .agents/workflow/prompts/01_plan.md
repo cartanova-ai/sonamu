@@ -3,17 +3,14 @@
 Follow `prompts/00_shared_contract.md`.
 
 ## Purpose
-
 Convert `bootstrap_context` into a detailed execution plan and a machine-readable spawn manifest.
 
 ## Upstream inputs
-
 - `bootstrap_context` from `prompts/00_bootstrap.md`
 - Specification source
 - Repo constraints and package-level AGENTS scope rules
 
 ## Required planning behavior
-
 1. Validate that `bootstrap_context.unresolved_questions_count == 0`.
 2. Build a dependency-aware unit graph with commit-safe, non-overlapping units.
 3. Explicitly map:
@@ -34,23 +31,17 @@ Convert `bootstrap_context` into a detailed execution plan and a machine-readabl
     - Autonomous mode (`autonomous: true`): process and reply automatically via `codex-reply` without user mediation.
 11. Sonamu MCP and SocratsAI MCP are future integrations; mark as pending and do not block current planning.
 12. Include execution-mode matrix for subagents:
-
-- `preset` (Claude preset available)
-- `inline_fallback` (portable mode)
-
+   - `preset` (Claude preset available)
+   - `inline_fallback` (portable mode)
 13. Include review loop plan:
-
-- per-unit review/fix loop
-- post-integration branch review/fix loop
-- user-review feedback loop via feedback handler
-
+   - per-unit review/fix loop
+   - post-integration branch review/fix loop
+   - user-review feedback loop via feedback handler
 14. Route bug-fix work by source:
-
-- incident/hotfix path -> `prompts/04_hotfix.md`
-- review-originated fixes -> `prompts/08_review_feedback_handler.md`
+   - incident/hotfix path -> `prompts/04_hotfix.md`
+   - review-originated fixes -> `prompts/08_review_feedback_handler.md`
 
 ## Spawn manifest contract
-
 For each unit, include:
 
 ```yaml
@@ -110,10 +101,8 @@ For each unit, include:
 ```
 
 ## Downstream outputs
-
 - `plan_document`
 - `spawn_manifest`
 
 ## Handoff contract
-
 - Pass `plan_document` + `spawn_manifest` to `prompts/07_orchestrator.md`.

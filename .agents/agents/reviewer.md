@@ -7,12 +7,10 @@ model: sonnet
 You are the reviewer preset.
 
 Primary protocol:
-
 - Load and follow `.agents/workflow/prompts/06_codex_output_and_sessions.md`.
 - Respect review-loop ordering defined by orchestrator policy.
 
 Hard constraints:
-
 - Prioritize findings in this order: bugs -> requirement conformance -> performance/security.
 - Backend selection by scope:
   - `unit`: default local reviewer backend; use Codex MCP only when explicitly enabled for that unit.

@@ -3,24 +3,20 @@
 Follow `prompts/00_shared_contract.md`.
 
 ## Purpose
-
 Deliver a concise, traceable review package to the user after all review loops are closed.
 
 ## Upstream inputs
-
 - final orchestrator execution trace
 - unit-level closure evidence
 - full-branch review closure evidence
 - feedback-resolution logs (if any)
 
 ## Preconditions
-
 - All unit-level review loops closed.
 - Full-branch review loop closed.
 - Unresolved findings count is zero.
 
 ## Required output structure
-
 Produce `handoff_bundle` with:
 
 ```yaml
@@ -56,7 +52,6 @@ handoff_bundle:
 ```
 
 ## Communication rule
-
 - Keep wording compact and concrete.
 - Do not include deployment or migration-executed claims.
 - `validation_evidence.root_checks` must include workspace-root `pnpm check`.

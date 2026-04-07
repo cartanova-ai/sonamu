@@ -92,7 +92,11 @@ import crypto from "crypto";
 
 function getMigrationsHash(migrations: string[]): string {
   const sorted = [...migrations].sort();
-  return crypto.createHash("md5").update(sorted.join(",")).digest("hex").slice(0, 12);
+  return crypto
+    .createHash("md5")
+    .update(sorted.join(","))
+    .digest("hex")
+    .slice(0, 12);
 }
 ```
 
@@ -135,20 +139,31 @@ export class SlackConfirm {
    */
   getMigrationsHash(migrations: string[]): string {
     const sorted = [...migrations].sort();
-    return crypto.createHash("md5").update(sorted.join(",")).digest("hex").slice(0, 12);
+    return crypto
+      .createHash("md5")
+      .update(sorted.join(","))
+      .digest("hex")
+      .slice(0, 12);
   }
 
   /**
    * 로컬 파일 경로
    */
   private getConfirmFilePath(hash: string): string {
-    return path.join(Sonamu.apiRootPath, "src", "migrations", `.slack-confirm-${hash}`);
+    return path.join(
+      Sonamu.apiRootPath,
+      "src",
+      "migrations",
+      `.slack-confirm-${hash}`
+    );
   }
 
   /**
    * 기존 승인 요청 조회
    */
-  async getExistingRequest(migrations: string[]): Promise<{ channel: string; ts: string } | null> {
+  async getExistingRequest(
+    migrations: string[]
+  ): Promise<{ channel: string; ts: string } | null> {
     const hash = this.getMigrationsHash(migrations);
     const filePath = this.getConfirmFilePath(hash);
 
@@ -167,7 +182,11 @@ export class SlackConfirm {
   /**
    * 승인 요청 저장
    */
-  async saveRequest(migrations: string[], channel: string, ts: string): Promise<void> {
+  async saveRequest(
+    migrations: string[],
+    channel: string,
+    ts: string
+  ): Promise<void> {
     const hash = this.getMigrationsHash(migrations);
     const filePath = this.getConfirmFilePath(hash);
     await fs.writeFile(filePath, `${channel}:${ts}`, "utf-8");
@@ -179,7 +198,7 @@ export class SlackConfirm {
   async postApprovalRequest(
     migrations: string[],
     targets: string[],
-    requestor?: string,
+    requestor?: string
   ): Promise<{ channel: string; ts: string }> {
     const response = await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",
@@ -209,7 +228,11 @@ export class SlackConfirm {
   /**
    * 메시지 텍스트 생성
    */
-  private buildMessageText(migrations: string[], targets: string[], requestor?: string): string {
+  private buildMessageText(
+    migrations: string[],
+    targets: string[],
+    requestor?: string
+  ): string {
     const timestamp = new Date().toLocaleString("ko-KR", {
       timeZone: "Asia/Seoul",
     });
@@ -233,7 +256,7 @@ ${migrationsText}
    */
   async checkApproval(
     channel: string,
-    ts: string,
+    ts: string
   ): Promise<{
     approved: boolean;
     rejected: boolean;
@@ -246,7 +269,7 @@ ${migrationsText}
         headers: {
           Authorization: `Bearer ${this.config!.botToken}`,
         },
-      },
+      }
     );
 
     const data = await response.json();
@@ -272,7 +295,7 @@ ${migrationsText}
     channel: string,
     ts: string,
     reason: string,
-    requestor?: string,
+    requestor?: string
   ): Promise<void> {
     // 1. ✅ 이모지 추가
     await fetch("https://slack.com/api/reactions.add", {
@@ -298,7 +321,9 @@ ${migrationsText}
       body: JSON.stringify({
         channel,
         thread_ts: ts,
-        text: `⚠️ *Force 승인*\n요청자: ${requestor ?? "Unknown"}\n사유: ${reason}`,
+        text: `⚠️ *Force 승인*\n요청자: ${
+          requestor ?? "Unknown"
+        }\n사유: ${reason}`,
       }),
     });
   }
@@ -310,13 +335,15 @@ ${migrationsText}
     channel: string,
     ts: string,
     result: { applied: string[]; batchNo: number },
-    requestor?: string,
+    requestor?: string
   ): Promise<void> {
     const timestamp = new Date().toLocaleString("ko-KR", {
       timeZone: "Asia/Seoul",
     });
     const appliedText =
-      result.applied.length > 0 ? result.applied.map((m) => `• ${m}`).join("\n") : "(없음)";
+      result.applied.length > 0
+        ? result.applied.map((m) => `• ${m}`).join("\n")
+        : "(없음)";
 
     await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",
@@ -329,7 +356,9 @@ ${migrationsText}
         thread_ts: ts,
         text: `✅ *마이그레이션 실행 완료*\n실행자: ${
           requestor ?? "Unknown"
-        }\n시간: ${timestamp}\nBatch: ${result.batchNo}\n\n적용됨:\n${appliedText}`,
+        }\n시간: ${timestamp}\nBatch: ${
+          result.batchNo
+        }\n\n적용됨:\n${appliedText}`,
       }),
     });
   }
@@ -505,7 +534,7 @@ export function migrationsRunAction(
     force?: boolean;
     forceReason?: string;
     requestor?: string;
-  },
+  }
 ): Promise<MigrationResult | SlackConfirmPendingResult> {
   return fetch({
     method: "POST",
@@ -520,7 +549,7 @@ export function migrationsRunAction(
 
 export function migrationsCheckApproval(
   channel: string,
-  ts: string,
+  ts: string
 ): Promise<{ approved: boolean; rejected: boolean }> {
   return fetch({
     method: "POST",
@@ -533,7 +562,7 @@ export function migrationsForceApproval(
   channel: string,
   ts: string,
   reason: string,
-  requestor?: string,
+  requestor?: string
 ): Promise<{ success: boolean }> {
   return fetch({
     method: "POST",
@@ -607,14 +636,19 @@ const pollingRef = useRef<NodeJS.Timeout | null>(null);
 const startPolling = (channel: string, ts: string) => {
   pollingRef.current = setInterval(async () => {
     try {
-      const { approved, rejected } = await SonamuUIService.migrationsCheckApproval(channel, ts);
+      const { approved, rejected } =
+        await SonamuUIService.migrationsCheckApproval(channel, ts);
 
       if (approved) {
         stopPolling();
         // 승인됨 → 실행
-        const result = await SonamuUIService.migrationsRunAction(action, targets, {
-          requestor: "현재 유저",
-        });
+        const result = await SonamuUIService.migrationsRunAction(
+          action,
+          targets,
+          {
+            requestor: "현재 유저",
+          }
+        );
         if (!("status" in result)) {
           onOpenChange(false);
           onCompleted?.();
@@ -653,7 +687,7 @@ const handleForce = async () => {
       approvalState.channel,
       approvalState.ts,
       forceReason,
-      "현재 유저",
+      "현재 유저"
     );
 
     const result = await SonamuUIService.migrationsRunAction(action, targets, {
@@ -685,7 +719,9 @@ const handleForce = async () => {
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="font-medium">승인 대기중...</span>
       </div>
-      <p className="text-sm text-gray-600 mb-4">슬랙에서 ✅ 이모지를 눌러 승인해주세요.</p>
+      <p className="text-sm text-gray-600 mb-4">
+        슬랙에서 ✅ 이모지를 눌러 승인해주세요.
+      </p>
       <Button variant="outline" onClick={() => setForceModalOpen(true)}>
         Force 진행
       </Button>
@@ -696,7 +732,9 @@ const handleForce = async () => {
 {
   approvalState.status === "rejected" && (
     <div className="p-4 bg-red-50 border border-red-200 rounded">
-      <span className="font-medium text-red-600">❌ 마이그레이션이 거절되었습니다.</span>
+      <span className="font-medium text-red-600">
+        ❌ 마이그레이션이 거절되었습니다.
+      </span>
     </div>
   );
 }
@@ -708,7 +746,9 @@ const handleForce = async () => {
   <DialogContent>
     <DialogHeader>
       <DialogTitle>Force 진행</DialogTitle>
-      <DialogDescription>승인 없이 진행합니다. 사유를 입력해주세요.</DialogDescription>
+      <DialogDescription>
+        승인 없이 진행합니다. 사유를 입력해주세요.
+      </DialogDescription>
     </DialogHeader>
     <Textarea
       placeholder="사유 입력..."
@@ -732,18 +772,23 @@ const handleForce = async () => {
 ## 테스트 시나리오
 
 1. **정상 플로우**
+
    - Apply 클릭 → 슬랙 메시지 발송 → 대기 → ✅ 클릭 → 실행
 
 2. **기존 승인 있는 경우**
+
    - Apply 클릭 → 기존 ts로 reactions.get → ✅ 있음 → 바로 실행
 
 3. **거절**
+
    - Apply 클릭 → 대기 → ❌ 클릭 → 거절 메시지
 
 4. **Force 진행**
+
    - Apply 클릭 → 대기 → Force 버튼 → 사유 입력 → 실행 (슬랙에 로그 남음)
 
 5. **슬랙 설정 없음**
+
    - `slackConfirm` 설정 없으면 기존 동작과 동일 (바로 실행)
 
 6. **대상 아닌 DB**

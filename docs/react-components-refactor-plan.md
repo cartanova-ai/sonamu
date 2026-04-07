@@ -64,7 +64,7 @@ export type SonamuInputProps = Override<
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
     return <input {...props} />;
-  },
+  }
 );
 
 // After (Sonamu 통일 API)
@@ -84,7 +84,7 @@ export const Input = React.forwardRef<HTMLInputElement, SonamuInputProps>(
     };
 
     return <input onChange={handleChange} {...props} ref={ref} />;
-  },
+  }
 );
 ```
 
@@ -211,12 +211,15 @@ isObject → isObject (radashi에 있는지 확인)
 
 ```ts
 // useListParams.ts
-export function useListParams<U extends z.ZodType<any>, T extends Partial<z.infer<U>>>(
+export function useListParams<
+  U extends z.ZodType<any>,
+  T extends Partial<z.infer<U>>
+>(
   zType: U,
   defaultValue: T,
   options?: {
     disableSearchParams?: boolean;
-  },
+  }
 ) {
   // tanstack-router만 사용
   const search = useSearch({ strict: false }) as Record<string, unknown>;
@@ -479,10 +482,12 @@ grep -r "onChange.*_e.*prop" src/
    - 비교적 단순한 CRUD 페이지들
    - 패턴이 일정함
 2. **공통 컴포넌트** (components/\*)
+
    - SearchInput.tsx 등
    - 한 번 수정하면 여러 곳에 영향
 
 3. **메인 페이지들**
+
    - Sidebar.tsx
    - 기타 복잡한 로직이 있는 페이지
 

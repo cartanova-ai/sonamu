@@ -5,7 +5,6 @@
 ### 핵심 목적: 프로젝트 전체 i18n SSoT
 
 **현재 문제:**
-
 - 텍스트가 코드베이스 전체에 하드코딩
 - api 에러 메시지, web/app UI 텍스트가 각각 분리
 - i18n 적용 시 일관성 없고 누락 발생
@@ -31,7 +30,7 @@ throw new BadRequestException('잘못된 요청입니다')  // api
 ```tsx
 // 새로운 방식: SD를 통한 통합 관리
 throw new BadRequestException(SD('error.badRequest'))  // api
-<Button>{SD('common.save')}</Button>  // web
+<Button>{SD('common.save')}</Button>  // web  
 <MessageAlert message={SD('confirm.delete')('상품')} />  // app
 
 // 장점:
@@ -47,19 +46,18 @@ SD 도입의 부가적인 이점으로 **스캐폴딩 재사용**이 가능해�
 
 ```tsx
 // 스캐폴딩된 코드
-<Button>{SD("common.save")}</Button>;
+<Button>{SD('common.save')}</Button>
 
 // 텍스트 수정 필요 시 - 코드는 그대로, dictionary만 변경
 // api/src/i18n/ko.ts
 export default {
-  "common.save": "저장하기", // '저장' → '저장하기'로 변경
-};
+  'common.save': '저장하기',  // '저장' → '저장하기'로 변경
+}
 
 // → 재스캐폴딩 가능! 코드는 변경 없음
 ```
 
 **핵심:**
-
 - **주목적**: 프로젝트 전체 i18n SSoT 구축
 - **부수효과**: 스캐폴딩 단위를 "단어"로 축소하여 재사용성 확보
 
@@ -70,13 +68,11 @@ export default {
 ### 2.1 Dictionary의 범위
 
 **포함 대상:**
-
 - UI 텍스트: 버튼, 레이블, 메시지
 - Validation 메시지: 에러 메시지 템플릿
 - 공통 용어: 상태값, 액션명
 
 **제외 대상:**
-
 - DB 컬럼명/필드명 → 별도 `intlCol()` 함수 사용
 - 비즈니스 로직
 - 복잡한 렌더링 함수
@@ -85,18 +81,18 @@ export default {
 
 ```ts
 // 기본 (context에서 locale 자동 판단)
-SD("common.save"); // → '저장' (string)
-SD.locale("en")("common.save"); // → 'Save' (string)
+SD('common.save')  // → '저장' (string)
+SD.locale('en')('common.save')  // → 'Save' (string)
 
 // 템플릿 함수 - 정의한 형태 그대로 반환
-SD("validation.required"); // → function
-SD("validation.required")("이름"); // → '이름은 필수입니다'
-SD("validation.range")("나이", 0, 100); // → '나이는 0~100 사이여야 합니다'
+SD('validation.required')  // → function
+SD('validation.required')('이름')  // → '이름은 필수입니다'
+SD('validation.range')('나이', 0, 100)  // → '나이는 0~100 사이여야 합니다'
 
 // locale 지정도 동일한 패턴
-const EN = SD.locale("en");
-EN("common.save"); // → 'Save'
-EN("validation.required")("Name"); // → 'Name is required'
+const EN = SD.locale('en')
+EN('common.save')  // → 'Save'
+EN('validation.required')('Name')  // → 'Name is required'
 ```
 
 ---
@@ -123,7 +119,6 @@ packages/app/src/i18n/
 ```
 
 **중요:**
-
 - `sd.generated.ts`는 api/web/app 각각 **독립 생성** (플랫폼별 구현 다름)
 - locale 파일(`ko.ts`, `en.ts` 등)은 api에만 실제 존재, web/app은 symlink
 
@@ -133,12 +128,12 @@ packages/app/src/i18n/
 // sonamu.config.ts
 export default defineConfig({
   // ... 기존 설정
-
+  
   i18n: {
-    defaultLocale: "ko", // 키 정의 기준 + 런타임 기본값
-    supportedLocales: ["ko", "en", "ja"],
+    defaultLocale: 'ko',        // 키 정의 기준 + 런타임 기본값
+    supportedLocales: ['ko', 'en', 'ja'],
   },
-
+  
   // ... 나머지 설정
 });
 ```
@@ -148,36 +143,36 @@ export default defineConfig({
 ```ts
 // api/src/i18n/ko.ts (defaultLocale - 키 정의)
 export default {
-  "common.save": "저장",
-  "common.cancel": "취소",
-  "common.delete": "삭제",
-  "confirm.delete": "정말 삭제하시겠습니까?",
-  "validation.required": "필수 항목입니다",
+  'common.save': '저장',
+  'common.cancel': '취소',
+  'common.delete': '삭제',
+  'confirm.delete': '정말 삭제하시겠습니까?',
+  'validation.required': '필수 항목입니다',
   // 템플릿 함수 (개별 파라미터)
-  "validation.minLength": (field: string, min: number) =>
+  'validation.minLength': (field: string, min: number) => 
     `${field}는 최소 ${min}자 이상이어야 합니다`,
-  "validation.range": (field: string, min: number, max: number) =>
+  'validation.range': (field: string, min: number, max: number) => 
     `${field}는 ${min}~${max} 사이여야 합니다`,
-};
+}
 ```
 
 ```ts
 // api/src/i18n/en.ts
-import { defineLocale } from "./sd.generated";
+import { defineLocale } from './sd.generated'
 
 export default defineLocale({
-  "common.save": "Save",
-  "common.cancel": "Cancel",
-  "common.delete": "Delete",
-  "confirm.delete": "Are you sure you want to delete?",
-  "validation.required": "Required field",
+  'common.save': 'Save',
+  'common.cancel': 'Cancel',
+  'common.delete': 'Delete',
+  'confirm.delete': 'Are you sure you want to delete?',
+  'validation.required': 'Required field',
   // 템플릿 함수 - 시그니처까지 강제!
-  "validation.minLength": (field: string, min: number) =>
+  'validation.minLength': (field: string, min: number) => 
     `${field} must be at least ${min} characters`,
-  "validation.range": (field: string, min: number, max: number) =>
+  'validation.range': (field: string, min: number, max: number) => 
     `${field} must be between ${min} and ${max}`,
   // 키 누락 또는 시그니처 불일치 시 타입 에러!
-});
+})
 ```
 
 ### 3.4 타입 안전성
@@ -186,20 +181,19 @@ export default defineLocale({
 
 ```ts
 // sd.generated.ts
-import ko from "./ko";
+import ko from './ko'
 
 type Dictionary = typeof ko;
 export type DictKey = keyof Dictionary;
 
 // LocalizedString BrandedType
-export type LocalizedString = string & { __brand: "LocalizedString" };
+export type LocalizedString = string & { __brand: 'LocalizedString' };
 
 // SD는 항상 LocalizedString 반환
-export function SD<K extends DictKey>(
-  key: K,
-): Dictionary[K] extends (...args: infer P) => string
-  ? (...args: P) => LocalizedString
-  : LocalizedString;
+export function SD<K extends DictKey>(key: K): 
+  Dictionary[K] extends (...args: infer P) => string
+    ? (...args: P) => LocalizedString
+    : LocalizedString;
 ```
 
 **하드코딩 방지 메커니즘:**
@@ -223,7 +217,6 @@ interface MessageAlertProps {
 ```
 
 **장점:**
-
 - ✅ 하드코딩 문자열 사용 시 컴파일 에러
 - ✅ i18n 누락 부분 자동 감지
 - ✅ 모든 사용자 대면 텍스트 강제 번역
@@ -233,7 +226,7 @@ interface MessageAlertProps {
 ```ts
 // 다른 locale 파일이 defaultLocale과 동일한 타입을 가지도록 강제
 type LocaleDefinition = {
-  [K in DictKey]: Dictionary[K]; // string이면 string, 함수면 같은 시그니처의 함수
+  [K in DictKey]: Dictionary[K]  // string이면 string, 함수면 같은 시그니처의 함수
 };
 
 export function defineLocale(dict: LocaleDefinition) {
@@ -242,7 +235,6 @@ export function defineLocale(dict: LocaleDefinition) {
 ```
 
 **동작:**
-
 1. `ko.ts`에 `'product.title': '상품명'` 추가
 2. `sonamu codegen` 실행 → `DictKey` 타입 업데이트
 3. `en.ts`에서 `'product.title'` 누락 → **타입 에러**
@@ -316,13 +308,13 @@ async createContext(
 
 private detectLocale(acceptLanguage?: string, supported: string[]): string | undefined {
   if (!acceptLanguage) return undefined;
-
+  
   // Accept-Language: ko-KR,ko;q=0.9,en;q=0.8
   const langs = acceptLanguage.split(',').map(lang => {
     const [code] = lang.split(';');
     return code.trim().split('-')[0]; // ko-KR -> ko
   });
-
+  
   return langs.find(lang => supported.includes(lang));
 }
 ```
@@ -331,27 +323,27 @@ private detectLocale(acceptLanguage?: string, supported: string[]): string | und
 
 ```ts
 // api/src/i18n/sd.generated.ts (자동 생성)
-import { Sonamu } from "sonamu";
-import ko from "./ko";
-import en from "./en";
-import ja from "./ja";
+import { Sonamu } from 'sonamu';
+import ko from './ko';
+import en from './en';
+import ja from './ja';
 
 type Dictionary = typeof ko;
 export type DictKey = keyof Dictionary;
 
 // LocalizedString BrandedType
-export type LocalizedString = string & { __brand: "LocalizedString" };
+export type LocalizedString = string & { __brand: 'LocalizedString' };
 
 // 다른 locale 파일이 defaultLocale과 동일한 타입을 가지도록 강제
 type LocaleDefinition = {
-  [K in DictKey]: Dictionary[K];
+  [K in DictKey]: Dictionary[K]
 };
 
 export function defineLocale(dict: LocaleDefinition) {
   return dict;
 }
 
-const DEFAULT_LOCALE = "ko";
+const DEFAULT_LOCALE = 'ko';
 
 const dictionaries = {
   ko,
@@ -370,34 +362,30 @@ function getDictValue<K extends DictKey>(key: K, locale: string): Dictionary[K] 
 }
 
 // 함수 타입인 경우 래퍼 반환, 아니면 LocalizedString 반환
-export function SD<K extends DictKey>(
-  key: K,
-): Dictionary[K] extends (...args: infer P) => string
-  ? (...args: P) => LocalizedString
-  : LocalizedString {
+export function SD<K extends DictKey>(key: K): 
+  Dictionary[K] extends (...args: infer P) => string
+    ? (...args: P) => LocalizedString
+    : LocalizedString {
   const locale = getCurrentLocale();
   const value = getDictValue(key, locale);
-
-  if (typeof value === "function") {
+  
+  if (typeof value === 'function') {
     return ((...args: any[]) => value(...args) as LocalizedString) as any;
   }
   return value as LocalizedString;
 }
 
-SD.locale =
-  (locale: string) =>
-  <K extends DictKey>(
-    key: K,
-  ): Dictionary[K] extends (...args: infer P) => string
+SD.locale = (locale: string) => <K extends DictKey>(key: K): 
+  Dictionary[K] extends (...args: infer P) => string
     ? (...args: P) => LocalizedString
     : LocalizedString => {
-    const value = getDictValue(key, locale);
-
-    if (typeof value === "function") {
-      return ((...args: any[]) => value(...args) as LocalizedString) as any;
-    }
-    return value as LocalizedString;
-  };
+  const value = getDictValue(key, locale);
+  
+  if (typeof value === 'function') {
+    return ((...args: any[]) => value(...args) as LocalizedString) as any;
+  }
+  return value as LocalizedString;
+};
 ```
 
 ### 4.2 Frontend (web/app)
@@ -406,26 +394,26 @@ SD.locale =
 
 ```ts
 // web/src/i18n/sd.generated.ts (자동 생성)
-import ko from "./ko";
-import en from "./en";
-import ja from "./ja";
+import ko from './ko';
+import en from './en';
+import ja from './ja';
 
 type Dictionary = typeof ko;
 export type DictKey = keyof Dictionary;
 
 // LocalizedString BrandedType
-export type LocalizedString = string & { __brand: "LocalizedString" };
+export type LocalizedString = string & { __brand: 'LocalizedString' };
 
 // 다른 locale 파일이 defaultLocale과 동일한 타입을 가지도록 강제
 type LocaleDefinition = {
-  [K in DictKey]: Dictionary[K];
+  [K in DictKey]: Dictionary[K]
 };
 
 export function defineLocale(dict: LocaleDefinition) {
   return dict;
 }
 
-const DEFAULT_LOCALE = "ko";
+const DEFAULT_LOCALE = 'ko';
 
 const dictionaries = {
   ko,
@@ -449,52 +437,48 @@ function getDictValue<K extends DictKey>(key: K, locale: string): Dictionary[K] 
 }
 
 // 함수 타입인 경우 래퍼 반환, 아니면 LocalizedString 반환
-export function SD<K extends DictKey>(
-  key: K,
-): Dictionary[K] extends (...args: infer P) => string
-  ? (...args: P) => LocalizedString
-  : LocalizedString {
+export function SD<K extends DictKey>(key: K): 
+  Dictionary[K] extends (...args: infer P) => string
+    ? (...args: P) => LocalizedString
+    : LocalizedString {
   const locale = getCurrentLocale();
   const value = getDictValue(key, locale);
-
-  if (typeof value === "function") {
+  
+  if (typeof value === 'function') {
     return ((...args: any[]) => value(...args) as LocalizedString) as any;
   }
   return value as LocalizedString;
 }
 
-SD.locale =
-  (locale: string) =>
-  <K extends DictKey>(
-    key: K,
-  ): Dictionary[K] extends (...args: infer P) => string
+SD.locale = (locale: string) => <K extends DictKey>(key: K): 
+  Dictionary[K] extends (...args: infer P) => string
     ? (...args: P) => LocalizedString
     : LocalizedString => {
-    const value = getDictValue(key, locale);
-
-    if (typeof value === "function") {
-      return ((...args: any[]) => value(...args) as LocalizedString) as any;
-    }
-    return value as LocalizedString;
-  };
+  const value = getDictValue(key, locale);
+  
+  if (typeof value === 'function') {
+    return ((...args: any[]) => value(...args) as LocalizedString) as any;
+  }
+  return value as LocalizedString;
+};
 ```
 
 **사용 예시 (React)**
 
 ```tsx
 // App.tsx
-import { setLocale } from "@/i18n/sd.generated";
-import { useEffect } from "react";
+import { setLocale } from '@/i18n/sd.generated';
+import { useEffect } from 'react';
 
 function App() {
   useEffect(() => {
     // 브라우저 locale 감지
-    const browserLocale = navigator.language.split("-")[0];
-    if (["ko", "en", "ja"].includes(browserLocale)) {
+    const browserLocale = navigator.language.split('-')[0];
+    if (['ko', 'en', 'ja'].includes(browserLocale)) {
       setLocale(browserLocale);
     }
   }, []);
-
+  
   return <YourApp />;
 }
 ```
@@ -546,13 +530,12 @@ export class Template__sd extends Template {
 
   getTargetAndPath(options: TemplateOptions["sd"]) {
     const { target } = options;
-    const dir =
-      target === "api"
-        ? Sonamu.config.api.dir
-        : target === "web"
-          ? path.join(Sonamu.appRootPath, "web")
-          : path.join(Sonamu.appRootPath, "app");
-
+    const dir = target === 'api' 
+      ? Sonamu.config.api.dir 
+      : target === 'web'
+      ? path.join(Sonamu.appRootPath, 'web')
+      : path.join(Sonamu.appRootPath, 'app');
+    
     return {
       target: `${dir}/src/i18n`,
       path: `sd.generated.ts`,
@@ -561,21 +544,22 @@ export class Template__sd extends Template {
 
   render(options: TemplateOptions["sd"]) {
     const { target } = options;
-    const i18nConfig = Sonamu.config.i18n ?? {
-      defaultLocale: "ko",
-      supportedLocales: ["ko"],
+    const i18nConfig = Sonamu.config.i18n ?? { 
+      defaultLocale: 'ko', 
+      supportedLocales: ['ko'] 
     };
 
     const { defaultLocale, supportedLocales } = i18nConfig;
 
     // defaultLocale 파일에서 키 추출
     const keys = this.extractKeysFromDefaultLocale(target, defaultLocale);
-    const keysType = keys.length > 0 ? keys.map((k) => `'${k}'`).join(" | ") : "string"; // 키가 없으면 일단 string
+    const keysType = keys.length > 0 
+      ? keys.map(k => `'${k}'`).join(' | ')
+      : 'string'; // 키가 없으면 일단 string
 
     // 플랫폼별 locale 관리 코드
-    const localeManagementCode =
-      target === "api"
-        ? `
+    const localeManagementCode = target === 'api'
+      ? `
 import { Sonamu } from 'sonamu';
 
 function getCurrentLocale(): string {
@@ -583,7 +567,7 @@ function getCurrentLocale(): string {
   return ctx?.locale ?? '${defaultLocale}';
 }
       `.trim()
-        : `
+      : `
 let _currentLocale = '${defaultLocale}';
 
 export function setLocale(locale: string) {
@@ -597,11 +581,13 @@ export function getCurrentLocale(): string {
 
     // locale import
     const localeImports = supportedLocales
-      .map((locale) => `import ${locale} from './${locale}';`)
-      .join("\n");
+      .map(locale => `import ${locale} from './${locale}';`)
+      .join('\n');
 
     // dictionaries object
-    const dictionariesObj = supportedLocales.map((locale) => `  ${locale},`).join("\n");
+    const dictionariesObj = supportedLocales
+      .map(locale => `  ${locale},`)
+      .join('\n');
 
     const body = `
 ${localeManagementCode}
@@ -670,9 +656,9 @@ SD.locale = (locale: string) => <K extends DictKey>(key: K): Dictionary[K] => {
 // sonamu/src/types/types.ts
 export interface TemplateOptions {
   // ... 기존 템플릿들
-
+  
   sd: {
-    target: "api" | "web" | "app";
+    target: 'api' | 'web' | 'app';
   };
 }
 ```
@@ -684,7 +670,7 @@ export interface TemplateOptions {
 export class TemplateManager {
   static async autoload(): Promise<void> {
     // ... 기존 템플릿들
-
+    
     const { Template__sd } = await import("./implementations/sd.template");
     this.register(new Template__sd());
   }
@@ -698,7 +684,7 @@ export class TemplateManager {
 export class Syncer {
   async sync(): Promise<void> {
     // ... 기존 sync 로직
-
+    
     // i18n 설정이 있으면 SD 생성
     if (Sonamu.config.i18n) {
       await this.syncSD();
@@ -706,20 +692,20 @@ export class Syncer {
   }
 
   private async syncSD(): Promise<void> {
-    const targets: Array<"api" | "web" | "app"> = ["api"];
-
+    const targets: Array<'api' | 'web' | 'app'> = ['api'];
+    
     // sync.targets 확인
     if (Sonamu.config.sync?.targets) {
-      if (Sonamu.config.sync.targets.includes("web")) {
-        targets.push("web");
+      if (Sonamu.config.sync.targets.includes('web')) {
+        targets.push('web');
       }
-      if (Sonamu.config.sync.targets.includes("app")) {
-        targets.push("app");
+      if (Sonamu.config.sync.targets.includes('app')) {
+        targets.push('app');
       }
     }
 
     for (const target of targets) {
-      const template = TemplateManager.get("sd");
+      const template = TemplateManager.get('sd');
       const result = template.render({ target });
       await this.writeTemplate(result);
     }
@@ -737,16 +723,16 @@ locale 파일(ko.ts, en.ts 등) 변경 시 자동 재생성:
 // sonamu/src/api/sonamu.ts - handleFileChange 수정
 private async handleFileChange(event: string, filePath: AbsolutePath): Promise<void> {
   // ... 기존 로직
-
+  
   // i18n 파일 변경 감지
-  const isI18nFile = filePath.includes('/i18n/') &&
+  const isI18nFile = filePath.includes('/i18n/') && 
                      (filePath.endsWith('.ts') && !filePath.endsWith('.generated.ts'));
-
+  
   if (isI18nFile) {
     await this.syncer.syncSD();
     return;
   }
-
+  
   // ... 나머지 로직
 }
 ```
@@ -760,12 +746,12 @@ Sonamu가 자체적으로 사용하는 기본 메시지:
 ```ts
 // sonamu-kit/dict/ko.ts
 export const sonamuDict = {
-  "error.badRequest": "잘못된 요청입니다",
-  "error.unauthorized": "인증이 필요합니다",
-  "error.forbidden": "권한이 없습니다",
-  "error.notFound": "찾을 수 없습니다",
-  "error.internalError": "서버 오류가 발생했습니다",
-};
+  'error.badRequest': '잘못된 요청입니다',
+  'error.unauthorized': '인증이 필요합니다',
+  'error.forbidden': '권한이 없습니다',
+  'error.notFound': '찾을 수 없습니다',
+  'error.internalError': '서버 오류가 발생했습니다',
+}
 ```
 
 **타입 확장:**
@@ -773,8 +759,8 @@ export const sonamuDict = {
 
 ```ts
 // api/src/i18n/sd.generated.ts
-import { sonamuDict } from "sonamu-kit/dict";
-import ko from "./ko";
+import { sonamuDict } from 'sonamu-kit/dict';
+import ko from './ko';
 
 // Sonamu 내장 + 프로젝트 키 합침
 export type DictKey = keyof typeof sonamuDict | keyof typeof ko;
@@ -787,7 +773,6 @@ export type DictKey = keyof typeof sonamuDict | keyof typeof ko;
 ### 8.1 스캐폴딩 템플릿 수정
 
 **Before:**
-
 ```tsx
 // list.template.tsx
 export function ProductList() {
@@ -801,16 +786,15 @@ export function ProductList() {
 ```
 
 **After:**
-
 ```tsx
 // list.template.tsx
-import { SD } from "@/i18n/sd.generated";
+import { SD } from '@/i18n/sd.generated';
 
 export function ProductList() {
   return (
     <div>
-      <h1>{SD("product.list.title")}</h1>
-      <Button>{SD("common.save")}</Button>
+      <h1>{SD('product.list.title')}</h1>
+      <Button>{SD('common.save')}</Button>
     </div>
   );
 }
@@ -828,8 +812,8 @@ $ sonamu scaffold list Product
 // api/src/i18n/ko.ts (자동 추가)
 export default {
   // ... 기존 키들
-  "product.list.title": "상품 목록", // 자동 추가
-};
+  'product.list.title': '상품 목록',  // 자동 추가
+}
 ```
 
 ---
@@ -837,7 +821,6 @@ export default {
 ## 9. 구현 체크리스트
 
 ### Phase 1: Core Infrastructure
-
 - [ ] `Context` 타입에 `locale` 필드 추가
 - [ ] `Sonamu.createContext()`에 locale 자동 감지 로직 추가
 - [ ] `Sonamu.detectLocale()` 메서드 구현
@@ -845,7 +828,6 @@ export default {
 - [ ] Sonamu 내장 dictionary 기본 키 정의 (`sonamu-kit/dict/`)
 
 ### Phase 2: Template System
-
 - [ ] `Template__sd` 클래스 구현
 - [ ] `extractKeysFromDefaultLocale()` 메서드 구현
 - [ ] `TemplateOptions['sd']` 타입 정의
@@ -853,7 +835,6 @@ export default {
 - [ ] `Syncer.syncSD()` 메서드 구현
 
 ### Phase 3: File Generation
-
 - [ ] api용 `sd.generated.ts` 생성 (ALS 기반)
 - [ ] web용 `sd.generated.ts` 생성 (싱글턴 기반)
 - [ ] app용 `sd.generated.ts` 생성 (싱글턴 기반)
@@ -861,19 +842,16 @@ export default {
 - [ ] web/app locale 파일 symlink 처리
 
 ### Phase 4: Watch System
-
 - [ ] locale 파일 변경 감지
 - [ ] 변경 시 자동 재생성 트리거
 - [ ] HMR 메시지 출력
 
 ### Phase 5: Scaffolding Integration
-
 - [ ] 기존 스캐폴딩 템플릿에 SD 적용
 - [ ] 스캐폴딩 시 자동 키 추가 로직
 - [ ] Sonamu UI에서 Dictionary 편집 기능 (선택)
 
 ### Phase 6: Testing & Documentation
-
 - [ ] 단위 테스트 작성
 - [ ] 통합 테스트 작성
 - [ ] 마이그레이션 가이드 작성
@@ -884,38 +862,30 @@ export default {
 ## 10. 예상 이슈 및 대응
 
 ### 10.1 키 동기화 문제
-
 **문제:** defaultLocale에 키 추가 후 다른 locale에 반영 전 타입 에러
 
 **대응:**
-
 - `defineLocale()` 함수로 타입 강제
 - 누락된 키는 빌드 시 에러 → 개발자가 즉시 인지
 
 ### 10.2 Symlink 관리
-
 **문제:** Windows에서 symlink 권한 이슈
 
 **대응:**
-
 - 개발자 모드 활성화 안내
 - 또는 symlink 대신 파일 복사 (watch로 자동 동기화)
 
 ### 10.3 성능 문제
-
 **문제:** 매 렌더링마다 SD() 호출 시 성능 우려
 
 **대응:**
-
 - getDictValue는 단순 객체 참조라 오버헤드 미미
 - 필요시 memoization 추가
 
 ### 10.4 Locale 감지 커스터마이징
-
 **문제:** Accept-Language 외 다른 방식으로 locale 결정하고 싶은 경우
 
 **대응:**
-
 - contextProvider에서 locale을 덮어쓸 수 있도록 허용
 - Sonamu가 자동 감지한 locale을 defaultContext에 포함
 - 사용자가 원하면 덮어쓰기 가능
@@ -927,7 +897,7 @@ apiConfig: {
     // Sonamu가 감지한 locale 사용 가능
     // 또는 커스텀 로직으로 덮어쓰기
     const locale = request.session?.locale ?? defaultContext.locale;
-
+    
     return {
       ...defaultContext,
       locale, // 덮어쓰기
@@ -941,14 +911,12 @@ apiConfig: {
 ## 11. 마이그레이션 전략
 
 ### 기존 프로젝트 적용
-
 1. `sonamu.config.ts`에 `i18n` 설정 추가
 2. `sonamu codegen` 실행 → locale 파일 자동 생성
 3. 기존 하드코딩된 텍스트를 점진적으로 SD로 교체
 4. 스캐폴딩 재실행 → 새로운 파일은 자동으로 SD 사용
 
 ### 점진적 적용
-
 - 기존 코드는 그대로 유지 (하드코딩)
 - 새로 생성되는 코드만 SD 사용
 - 필요에 따라 기존 코드 리팩토링
@@ -958,16 +926,14 @@ apiConfig: {
 ## 12. 향후 확장
 
 ### 12.1 Plural Forms
-
 ```ts
-'item.count': (n: number) =>
+'item.count': (n: number) => 
   n === 0 ? '항목 없음' :
   n === 1 ? '항목 1개' :
   `항목 ${n}개`
 ```
 
 ### 12.3 Sonamu UI 통합
-
 - Dictionary 키 목록 시각화
 - Excel과 유사한 편집 UI
 - 번역 누락 경고

@@ -10,7 +10,7 @@ Sonamu는 E2E Type-safety, 효율적인 서브셋 쿼리, 스캐폴딩을 통한
 
 ### 0. 개발 환경
 
-다음 환경이 필요합니다:
+다음 환경이 필요합니다: 
 
 - Node.js v22 이상
 - pnpm v10.23.0
@@ -30,7 +30,6 @@ corepack enable # pnpm PnP 활성화
 pnpm install # 의존성 패키지 설치
 pnpm build # 모노레포 내 패키지들 빌드
 ```
-
 워크스페이스 내 모든 package들의 의존성이 최상단 `.pnpm/cache` 디렉토리에 설치됩니다.
 
 프로젝트 실행에 필요한 도구들(`@sonamu-kit/ts-loader`, `@sonamu-kit/hmr-hook`, `@sonamu-kit/hmr-runner` 등)이 준비(build)되어야 하기 때문에 최초 한 번은 `pnpm build`를 실행해주어야 합니다.
@@ -38,7 +37,6 @@ pnpm build # 모노레포 내 패키지들 빌드
 ### 3. 예제 프로젝트 실행
 
 데이터베이스를 docker로 올려줍니다;
-
 ```bash
 # 클론받은 sonamu 저장소 루트 기준입니다.
 cd examples/miomock/api/database
@@ -46,7 +44,6 @@ docker compose up -d
 ```
 
 API 서버를 실행합니다;
-
 ```bash
 # 클론받은 sonamu 저장소 루트 기준입니다.
 cd examples/miomock/api
@@ -54,7 +51,6 @@ pnpm dev
 ```
 
 Sonamu UI를 실행합니다;
-
 ```bash
 # 클론받은 sonamu 저장소 루트 기준입니다.
 cd examples/miomock/api
@@ -62,7 +58,6 @@ pnpm sonamu ui
 ```
 
 Web 서버를 실행합니다;
-
 ```bash
 # 클론받은 sonamu 저장소 루트 기준입니다.
 cd examples/miomock/web

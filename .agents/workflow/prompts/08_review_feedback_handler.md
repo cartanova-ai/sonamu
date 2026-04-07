@@ -3,24 +3,20 @@
 Follow `prompts/00_shared_contract.md`.
 
 ## Purpose
-
 Convert branch-level or user-review findings into minimal fix units, drive closure, and keep traceability.
 This prompt handles review-originated fixes only.
 
 ## Upstream inputs
-
 - `unit_review_result` or `branch_review_result`
 - unresolved findings list
 - current `objective_revision`
 
 ## Hard constraints
-
 - Leaf worker only. Never spawn subagents.
 - If findings imply extra decomposition, escalate unit proposals back to orchestrator.
 - Do not handle incident/hotfix primary triage here. Use `prompts/04_hotfix.md` for incident/hotfix path.
 
 ## Required behavior
-
 1. Normalize findings into fix candidates.
 2. Group fixes into minimal conflict-safe units.
 3. Map each fix unit to the correct implementation owner.
@@ -30,7 +26,6 @@ This prompt handles review-originated fixes only.
 7. Keep concise resolution trace for final handoff.
 
 ## Downstream output
-
 Produce `feedback_resolution_log`:
 
 ```yaml

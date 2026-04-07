@@ -50,14 +50,14 @@ StoryObj<typeof meta> → args가 모든 branch를 동시에 만족해야 함 (B
 
 ## 시도했으나 실패한 접근
 
-| 시도                                         | 실패 원인                                                         |
-| -------------------------------------------- | ----------------------------------------------------------------- |
-| `StoryObj<typeof meta>`                      | union props가 component에서 args 요구사항으로 전파                |
-| `StoryObj` (제네릭 없음)                     | args 타입이 `{}`가 되어 render 함수에서 타입 정보 소실            |
-| `Meta<SelectCommonProps>` + `Pick`           | component 필드의 contravariance 체크 실패                         |
-| `Meta<(props: CommonProps) => ReactElement>` | 동일한 contravariance 문제                                        |
-| `satisfies` 제거                             | `typeof meta`가 여전히 component 타입 전달                        |
-| args에 discriminant 필드 채우기              | 모든 union branch 만족 요구 + generic erasure로 `valueKey` 필수화 |
+| 시도 | 실패 원인 |
+|---|---|
+| `StoryObj<typeof meta>` | union props가 component에서 args 요구사항으로 전파 |
+| `StoryObj` (제네릭 없음) | args 타입이 `{}`가 되어 render 함수에서 타입 정보 소실 |
+| `Meta<SelectCommonProps>` + `Pick` | component 필드의 contravariance 체크 실패 |
+| `Meta<(props: CommonProps) => ReactElement>` | 동일한 contravariance 문제 |
+| `satisfies` 제거 | `typeof meta`가 여전히 component 타입 전달 |
+| args에 discriminant 필드 채우기 | 모든 union branch 만족 요구 + generic erasure로 `valueKey` 필수화 |
 
 ## 해결: `StoryObj<MetaArgs>` 패턴
 
@@ -90,14 +90,18 @@ export const SingleSync: StoryObj<MetaArgs> = {
   render: function Render(args) {
     // args.items, args.placeholder 타입 정상 추론
     const [value, setValue] = useState<string | undefined>(undefined);
-    return <Select {...args} value={value} onValueChange={(v) => setValue(v)} clearable />;
+    return (
+      <Select {...args} value={value} onValueChange={(v) => setValue(v)} clearable />
+    );
   },
 };
 
 export const MultiSync: StoryObj<MetaArgs> = {
   render: function Render(args) {
     const [values, setValues] = useState<string[]>([]);
-    return <Select {...args} multiple value={values} onValueChange={(v) => setValues(v)} />;
+    return (
+      <Select {...args} multiple value={values} onValueChange={(v) => setValues(v)} />
+    );
   },
 };
 ```
@@ -114,11 +118,11 @@ StoryObj<MetaArgs> → args = plain object, union 개입 없음 (WORKS)
 
 ## 영향받는 컴포넌트
 
-| 컴포넌트          | Discriminant         | Branch 수 |
-| ----------------- | -------------------- | --------- |
-| **Select**        | `multiple` x `async` | 4         |
-| **EnumSelect**    | `multiple`           | 2         |
-| **IdAsyncSelect** | `multiple`           | 2         |
+| 컴포넌트 | Discriminant | Branch 수 |
+|---|---|---|
+| **Select** | `multiple` x `async` | 4 |
+| **EnumSelect** | `multiple` | 2 |
+| **IdAsyncSelect** | `multiple` | 2 |
 
 나머지 컴포넌트(Button, Input, Dialog, Sheet, Tabs 등)는 union props가 아니므로 표준 `StoryObj<typeof meta>` 사용 가능.
 

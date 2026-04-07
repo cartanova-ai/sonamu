@@ -27,12 +27,12 @@ ORDER BY score DESC;
 
 ### 언어별 특성
 
-| 언어                        | 적합성 | 비고                             |
-| --------------------------- | ------ | -------------------------------- |
-| 영어                        | 우수   | 단어 단위 분리 + word_similarity |
-| 키릴 문자 (우크라이나어 등) | 우수   | alphabetic으로 분류됨            |
-| 한국어                      | 양호   | 1-2글자 검색 시 성능 저하        |
-| 일본어                      | 양호   | 1-2글자 검색 시 성능 저하        |
+| 언어 | 적합성 | 비고 |
+|------|--------|------|
+| 영어 | 우수 | 단어 단위 분리 + word_similarity |
+| 키릴 문자 (우크라이나어 등) | 우수 | alphabetic으로 분류됨 |
+| 한국어 | 양호 | 1-2글자 검색 시 성능 저하 |
+| 일본어 | 양호 | 1-2글자 검색 시 성능 저하 |
 
 ---
 
@@ -57,16 +57,16 @@ entity.json의 인덱스 컬럼에 `opclass` 필드를 지정하면 DDL에 반�
 
 ### 지원하는 알려진 opclass
 
-| opclass                                    | 용도                     |
-| ------------------------------------------ | ------------------------ |
-| `gin_trgm_ops`                             | pg_trgm GIN 인덱스       |
-| `gist_trgm_ops`                            | pg_trgm GiST 인덱스      |
-| `gin_bigm_ops`                             | pg_bigm GIN 인덱스       |
-| `vector_cosine_ops`                        | pgvector cosine distance |
-| `vector_ip_ops`                            | pgvector inner product   |
-| `vector_l2_ops`                            | pgvector L2 distance     |
-| `pgroonga_varchar_full_text_search_ops_v2` | PGroonga varchar FTS     |
-| `pgroonga_jsonb_full_text_search_ops_v2`   | PGroonga jsonb FTS       |
+| opclass | 용도 |
+|---------|------|
+| `gin_trgm_ops` | pg_trgm GIN 인덱스 |
+| `gist_trgm_ops` | pg_trgm GiST 인덱스 |
+| `gin_bigm_ops` | pg_bigm GIN 인덱스 |
+| `vector_cosine_ops` | pgvector cosine distance |
+| `vector_ip_ops` | pgvector inner product |
+| `vector_l2_ops` | pgvector L2 distance |
+| `pgroonga_varchar_full_text_search_ops_v2` | PGroonga varchar FTS |
+| `pgroonga_jsonb_full_text_search_ops_v2` | PGroonga jsonb FTS |
 
 위 목록에 없는 값도 자유 문자열로 지정할 수 있다.
 
@@ -101,9 +101,9 @@ DB에서 인덱스를 읽을 때 `pg_get_indexdef()`를 파싱하여 다음을 �
   "props": [
     { "name": "title_ko", "type": "string" },
     { "name": "title_en", "type": "string" },
-    { "name": "code", "type": "string" },
-    { "name": "tags", "type": "string[]" },
-    { "name": "aliases", "type": "json", "id": "ItemAliases" },
+    { "name": "code",     "type": "string" },
+    { "name": "tags",     "type": "string[]" },
+    { "name": "aliases",  "type": "json", "id": "ItemAliases" },
     {
       "name": "search_text",
       "type": "searchText",
@@ -121,10 +121,10 @@ DB에서 인덱스를 읽을 때 `pg_get_indexdef()`를 파싱하여 다음을 �
 
 ### source column 타입별 SQL 표현식
 
-| source 타입                  | caseInsensitive: true                       | caseInsensitive: false                             |
-| ---------------------------- | ------------------------------------------- | -------------------------------------------------- |
-| `string`                     | `lower(COALESCE(col, ''))`                  | `COALESCE(col, '')`                                |
-| `string[]`                   | `COALESCE(sonamu_text_array_agg(col), '')`  | `COALESCE(sonamu_text_array_agg(col, false), '')`  |
+| source 타입 | caseInsensitive: true | caseInsensitive: false |
+|---|---|---|
+| `string` | `lower(COALESCE(col, ''))` | `COALESCE(col, '')` |
+| `string[]` | `COALESCE(sonamu_text_array_agg(col), '')` | `COALESCE(sonamu_text_array_agg(col, false), '')` |
 | `json` (z.array(z.string())) | `COALESCE(sonamu_jsonb_array_agg(col), '')` | `COALESCE(sonamu_jsonb_array_agg(col, false), '')` |
 
 위 세 타입 외에는 파싱 에러가 발생한다. `json` 타입은 optional/nullable 래퍼를 벗긴 뒤 `z.array(z.string())`이어야 한다.
@@ -199,24 +199,24 @@ puri.whereFuzzy("items.search_text", query, { operator: "<<%" });
 
 연산자별 SQL (피연산자 순서가 다르다):
 
-| 연산자      | 의미                   | SQL                              |
-| ----------- | ---------------------- | -------------------------------- |
-| `<%` (기본) | word similarity        | `'query'::text <% column::text`  |
-| `%`         | similarity             | `column::text % 'query'::text`   |
-| `<<%`       | strict word similarity | `'query'::text <<% column::text` |
+| 연산자 | 의미 | SQL |
+|--------|------|-----|
+| `<%` (기본) | word similarity | `'query'::text <% column::text` |
+| `%` | similarity | `column::text % 'query'::text` |
+| `<<%` | strict word similarity | `'query'::text <<% column::text` |
 
 ### 유사도 함수
 
 점수 계산용 정적 메서드이다. `SqlExpression<"number">`를 반환하므로 select에서 사용한다.
 
 ```typescript
-Puri.wordSimilarity("items.title_ko", query);
+Puri.wordSimilarity("items.title_ko", query)
 // -> word_similarity('query'::text, items.title_ko::text)
 
-Puri.similarity("items.title_ko", query);
+Puri.similarity("items.title_ko", query)
 // -> similarity(items.title_ko::text, 'query'::text)
 
-Puri.strictWordSimilarity("items.title_ko", query);
+Puri.strictWordSimilarity("items.title_ko", query)
 // -> strict_word_similarity('query'::text, items.title_ko::text)
 ```
 

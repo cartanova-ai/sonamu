@@ -85,7 +85,7 @@ export namespace UserService {
   // 1. axios 함수 (항상 생성)
   export async function getUser<T extends UserSubsetKey>(
     subset: T,
-    id: number,
+    id: number
   ): Promise<UserSubsetMapping[T]> {
     return fetch({
       method: "GET",
@@ -94,7 +94,10 @@ export namespace UserService {
   }
 
   // 2. queryOptions (clients에 'tanstack-query' 포함 시)
-  export const getUserQueryOptions = <T extends UserSubsetKey>(subset: T, id: number) =>
+  export const getUserQueryOptions = <T extends UserSubsetKey>(
+    subset: T,
+    id: number
+  ) =>
     queryOptions({
       queryKey: ["User", "getUser", subset, id], // ← 엔티티 prefix 추가
       queryFn: () => getUser(subset, id), // ← axios 함수 재사용
@@ -104,7 +107,7 @@ export namespace UserService {
   export const useUser = <T extends UserSubsetKey>(
     subset: T,
     id: number,
-    options?: { enabled?: boolean }, // ← 조건부 쿼리 지원
+    options?: { enabled?: boolean } // ← 조건부 쿼리 지원
   ) =>
     useQuery({
       ...getUserQueryOptions(subset, id),
@@ -140,7 +143,10 @@ class UserApi {
     httpMethod: "GET",
     clients: ["axios", "tanstack-query"], // ← queryOptions + useQuery 생성
   })
-  async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
+  async findById<T extends UserSubsetKey>(
+    subset: T,
+    id: number
+  ): Promise<UserSubsetMapping[T]> {
     // ...
   }
 
@@ -203,7 +209,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       </AuthProvider>
     </BrowserRouter>
     <ReactQueryDevtools initialIsOpen={false} />
-  </QueryClientProvider>,
+  </QueryClientProvider>
 );
 ```
 
@@ -221,7 +227,7 @@ export namespace UserService {
   // axios 함수
   export async function getUser<T extends UserSubsetKey>(
     subset: T,
-    id: number,
+    id: number
   ): Promise<UserSubsetMapping[T]> {
     return fetch({
       method: "GET",
@@ -230,7 +236,10 @@ export namespace UserService {
   }
 
   // queryOptions
-  export const getUserQueryOptions = <T extends UserSubsetKey>(subset: T, id: number) =>
+  export const getUserQueryOptions = <T extends UserSubsetKey>(
+    subset: T,
+    id: number
+  ) =>
     queryOptions({
       queryKey: ["User", "getUser", subset, id], // ← 엔티티 prefix
       queryFn: () => getUser(subset, id),
@@ -240,7 +249,7 @@ export namespace UserService {
   export const useUser = <T extends UserSubsetKey>(
     subset: T,
     id: number,
-    options?: { enabled?: boolean }, // ← 조건부 쿼리 지원
+    options?: { enabled?: boolean } // ← 조건부 쿼리 지원
   ) =>
     useQuery({
       ...getUserQueryOptions(subset, id),
@@ -338,7 +347,9 @@ export class Template__services extends Template {
     // 모델별로 그룹화
     const apisByModel = new Map<string, typeof apis>();
     for (const api of apis) {
-      const modelName = api.modelName.replace(/Model$/, "").replace(/Frame$/, "");
+      const modelName = api.modelName
+        .replace(/Model$/, "")
+        .replace(/Frame$/, "");
       if (!apisByModel.has(modelName)) {
         apisByModel.set(modelName, []);
       }
@@ -356,22 +367,25 @@ export class Template__services extends Template {
           (param) =>
             !ApiParamType.isContext(param.type) &&
             !ApiParamType.isRefKnex(param.type) &&
-            !(param.optional === true && param.name.startsWith("_")),
+            !(param.optional === true && param.name.startsWith("_"))
         );
 
         const typeParametersAsTsType = api.typeParameters
           .map((typeParam) => apiParamTypeToTsType(typeParam, importKeys))
           .join(", ");
-        const typeParamsDef = typeParametersAsTsType ? `<${typeParametersAsTsType}>` : "";
+        const typeParamsDef = typeParametersAsTsType
+          ? `<${typeParametersAsTsType}>`
+          : "";
 
         const paramsDef = apiParamToTsCode(paramsWithoutContext, importKeys);
         const returnTypeDef = apiParamTypeToTsType(
           assertDefined(unwrapPromiseOnce(api.returnType)),
-          importKeys,
+          importKeys
         );
 
         const paramNames = paramsWithoutContext.map((p) => p.name).join(", ");
-        const dataOrParams = api.options.httpMethod === "GET" ? "params" : "data";
+        const dataOrParams =
+          api.options.httpMethod === "GET" ? "params" : "data";
         const hasParams = paramsWithoutContext.length > 0;
 
         // 1. axios 함수 (항상 생성)
@@ -380,7 +394,9 @@ export class Template__services extends Template {
             ? `\`${api.route}?\${qs.stringify({ ${paramNames} })}\``
             : `\`${api.route}\``;
         const bodyPart =
-          api.options.httpMethod !== "GET" && hasParams ? `data: { ${paramNames} },` : "";
+          api.options.httpMethod !== "GET" && hasParams
+            ? `data: { ${paramNames} },`
+            : "";
 
         functions.push(
           `
@@ -391,7 +407,7 @@ export class Template__services extends Template {
       ${bodyPart}
     });
   }
-        `.trim(),
+        `.trim()
         );
 
         const clients = api.options.clients || [];
@@ -404,23 +420,27 @@ export class Template__services extends Template {
 
           functions.push(
             `
-  export const ${api.methodName}QueryOptions = ${typeParamsDef}(${paramsDef}) => queryOptions({
-    queryKey: ['${modelName}', '${api.methodName}'${paramNames ? `, ${paramNames}` : ""}],
+  export const ${
+    api.methodName
+  }QueryOptions = ${typeParamsDef}(${paramsDef}) => queryOptions({
+    queryKey: ['${modelName}', '${api.methodName}'${
+              paramNames ? `, ${paramNames}` : ""
+            }],
     queryFn: () => ${api.methodName}(${paramNames})
   });
-          `.trim(),
+          `.trim()
           );
 
           functions.push(
             `
   export const use${inflection.camelize(
-    hookName,
+    hookName
   )} = ${typeParamsDef}(${paramsDef}, options?: { enabled?: boolean }) =>
     useQuery({
       ...${api.methodName}QueryOptions(${paramNames}),
       ...options
     });
-          `.trim(),
+          `.trim()
           );
         }
 
@@ -443,7 +463,7 @@ export class Template__services extends Template {
   export const use${hookName}Mutation = ${typeParamsDef}() => useMutation({
     mutationFn: (params: ${mutationParamType}) => ${api.methodName}(${mutationParamNames})
   });
-          `.trim(),
+          `.trim()
           );
         }
       }
@@ -453,7 +473,7 @@ export class Template__services extends Template {
 export namespace ${modelName}Service {
 ${functions.join("\n\n")}
 }
-      `.trim(),
+      `.trim()
       );
     }
 
@@ -698,17 +718,20 @@ rm -rf src/services/employee
 **단계별 체크리스트**:
 
 1. **AuthProvider 변환 후**:
+
    - [ ] 로그인 정상 동작
    - [ ] 로그아웃 정상 동작
    - [ ] 페이지 새로고침 시 인증 상태 유지
 
 2. **services.generated.ts 생성 후**:
+
    - [ ] 파일 정상 생성 확인
    - [ ] namespace 구조 확인 (UserService, CompanyService 등)
    - [ ] queryKey에 엔티티 prefix 포함 확인 (['User', 'getUser', ...])
    - [ ] options 파라미터 포함 확인 (enabled 지원)
 
 3. **페이지 변환 후**:
+
    - [ ] 모든 페이지에서 SWR import 제거
    - [ ] 모든 페이지에서 Tanstack Query hooks 사용
    - [ ] mutate() → refetch() 또는 invalidateQueries() 변환 완료
