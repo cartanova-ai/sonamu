@@ -19,18 +19,17 @@ Convert `bootstrap_context`, contract, Rules, and codebase state into planning a
 
 ## Upstream inputs
 
-| Input                 | Source                                                       |
-| --------------------- | ------------------------------------------------------------ |
-| `bootstrap_context`   | Orchestrator                                                 |
-| Contract files        | Filesystem (paths in `bootstrap_context.affected_contracts`) |
-| Rules files           | Filesystem (paths in `bootstrap_context.affected_rules`)     |
-| Code and test context | Filesystem                                                   |
-| AC state              | Orchestrator (optional)                                      |
+| Input | Source |
+|---|---|
+| `bootstrap_context` | Orchestrator |
+| Contract files | Filesystem (paths in `bootstrap_context.affected_contracts`) |
+| Rules files | Filesystem (paths in `bootstrap_context.affected_rules`) |
+| Code and test context | Filesystem |
+| AC state | Orchestrator (optional) |
 
 ## Downstream outputs
 
 Return all three artifacts together:
-
 - `plan_document` (schema: `03_planner.md#plan-document`)
 - `claim_blueprint` (schema: `03_planner.md#claim-blueprint`)
 - `execution_graph` (schema: `03_planner.md#execution-graph`)

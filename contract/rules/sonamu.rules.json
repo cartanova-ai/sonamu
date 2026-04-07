@@ -1,0 +1,14 @@
+{
+  "description": "Sonamu 패키지 관련 규칙",
+  "rules": [
+    {
+      "id": "sonamu-test-location",
+      "when": "Sonamu 프레임워크 테스트 코드를 작성할 때",
+      "instruction": "테스트 코드는 examples/miomock/api/src/testing/ 경로에 작성한다.",
+      "examples": [
+        "examples/miomock/api/src/testing/base-model.test.ts",
+        "examples/miomock/api/src/testing/mocks.test.ts"
+      ]
+    }
+  ]
+}

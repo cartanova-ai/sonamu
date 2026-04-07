@@ -21,14 +21,14 @@ Review code changes at stage level or integration level. Produce findings only. 
 
 From the orchestrator's review assignment:
 
-| Field             | Meaning                                                    |
-| ----------------- | ---------------------------------------------------------- |
-| `review_scope`    | `unit` (stage-level) or `integration` (cross-cutting)      |
-| `stage`           | `surface`, `test`, `implement`, or `all` (for integration) |
-| `changed_files`   | Files to review                                            |
-| `rules`           | Rule files to check compliance against                     |
-| `worker_evidence` | `worker_result.evidence` from the completed worker         |
-| `claim`           | The original Claim for context                             |
+| Field | Meaning |
+|---|---|
+| `review_scope` | `unit` (stage-level) or `integration` (cross-cutting) |
+| `stage` | `surface`, `test`, `implement`, or `all` (for integration) |
+| `changed_files` | Files to review |
+| `rules` | Rule files to check compliance against |
+| `worker_evidence` | `worker_result.evidence` from the completed worker |
+| `claim` | The original Claim for context |
 
 ## Downstream output
 
