@@ -118,8 +118,9 @@ pnpm cdd <command>
 | `cdd ac add <file> <test-name>` | Add an empty test skeleton to a test file. Use `--describe <group>` to specify a describe block |
 | `cdd ac list [file]` | Print the describe/test tree of a test file. Parses `test()`, `it()`, and `testAs()` patterns |
 | `cdd rules validate` | Validate the format of `contract/rules/*.rules.json` |
-| `cdd agents init [--force]` | Initialize CDD agent setup in the project (creates `.agents/`, `AGENTS.md`, and symlinks) |
+| `cdd agents init [--force]` | Initialize CDD agent setup + contract scaffold (creates `.agents/`, `AGENTS.md`, `contract/planning.md`, `contract/rules/web.rules.json`, `contract/rules/api.rules.json`) |
 | `cdd agents sync [--dry-run]` | Update CDD agent prompts to the latest version |
+| `cdd contract init [--force]` | Scaffold contract directory only (`planning.md`, `rules/web.rules.json`, `rules/api.rules.json`). Alias: `cdd agents contract init` |
 
 ### Common options
 
