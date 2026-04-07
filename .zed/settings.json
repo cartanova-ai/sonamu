@@ -1,6 +1,7 @@
 {
   "project_name": "Sonamu",
   "lsp": {
+    "biome": { "initialization_options": { "disabled": true } },
     "vtsls": {
       "settings": {
         "typescript": {
@@ -62,6 +63,25 @@
     },
     "tailwindcss-language-server": {
       "settings": {}
+    },
+    "oxlint": {
+      "initialization_options": {
+        "settings": {
+          "configPath": null,
+          "run": "onType",
+          "disableNestedConfig": false,
+          "fixKind": "safe_fix",
+          "unusedDisableDirectives": "deny"
+        }
+      }
+    },
+    "oxfmt": {
+      "initialization_options": {
+        "settings": {
+          "fmt.configPath": null,
+          "run": "onSave"
+        }
+      }
     }
   },
   "file_scan_exclusions": [
@@ -89,10 +109,10 @@
       "prettier": { "allowed": false },
       "formatter": {
         "language_server": {
-          "name": "oxc"
+          "name": "oxfmt"
         }
       },
-      "language_servers": ["!typescript-language-server", "vtsls", "oxc"]
+      "language_servers": ["!typescript-language-server", "!biome", "vtsls", "oxfmt"]
     },
     "TypeScript": {
       "format_on_save": "on",
@@ -103,10 +123,10 @@
       "prettier": { "allowed": false },
       "formatter": {
         "language_server": {
-          "name": "oxc"
+          "name": "oxfmt"
         }
       },
-      "language_servers": ["!typescript-language-server", "vtsls", "oxc"]
+      "language_servers": ["!typescript-language-server", "!biome", "vtsls", "oxfmt"]
     },
     "TSX": {
       "format_on_save": "on",
@@ -117,18 +137,28 @@
       "prettier": { "allowed": false },
       "formatter": {
         "language_server": {
-          "name": "oxc"
+          "name": "oxfmt"
         }
       },
       "language_servers": [
         "!typescript-language-server",
+        "!biome",
         "vtsls",
-        "oxc",
+        "oxfmt",
         "tailwindcss-language-server"
       ]
     },
     "CSS": {
       "language_servers": ["tailwindcss-intellisense-css", "!vscode-css-language-server"]
+    },
+    "JSON": {
+      "format_on_save": "on",
+      "formatter": {
+        "language_server": {
+          "name": "oxfmt"
+        }
+      },
+      "language_servers": ["oxfmt", "!biome"]
     }
   }
 }
