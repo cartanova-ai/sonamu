@@ -1,6 +1,6 @@
 {
   "name": "@sonamu-kit/hmr-runner",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Runner for applications that use hmr-hook (forked from hot-hook)",
   "keywords": [
     "hmr",

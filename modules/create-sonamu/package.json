@@ -1,6 +1,6 @@
 {
   "name": "create-sonamu",
-  "version": "0.1.18",
+  "version": "0.2.0",
   "description": "Create a new Sonamu project",
   "keywords": [
     "cli",
