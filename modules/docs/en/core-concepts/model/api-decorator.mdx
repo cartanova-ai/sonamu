@@ -567,34 +567,13 @@ async del(ids: number[]): Promise<number> {
 
 ### Authentication API
 
-```typescript
-@api({
-  httpMethod: "POST",
-  clients: ["axios", "tanstack-mutation"],
-})
-async login(params: LoginParams): Promise<{ user: User }> {
-  const { email, password } = params;
-  
-  // Find user
-  const user = await this.getPuri("r")
-    .where("email", email)
-    .first();
-    
-  if (!user) {
-    throw new UnauthorizedException("Email or password does not match");
-  }
-  
-  // Verify password
-  const isValid = await bcrypt.compare(password, user.password);
-  if (!isValid) {
-    throw new UnauthorizedException("Email or password does not match");
-  }
-  
-  // Authentication is handled by better-auth's HTTP endpoint (/api/auth/sign-in/email).
-  // Model methods only handle user lookup and verification.
-  return { user };
-}
+<Info>
+Sonamu handles authentication through better-auth's HTTP endpoints. For login (`/api/auth/sign-in/email`), logout (`/api/auth/sign-out`), and other auth operations, use the endpoints provided directly by better-auth rather than Sonamu `@api` decorated methods.
+</Info>
 
+The `me()` API that returns the current logged-in user's information is implemented via `context.user`.
+
+```typescript
 @api({
   httpMethod: "GET",
   clients: ["axios", "tanstack-query"],

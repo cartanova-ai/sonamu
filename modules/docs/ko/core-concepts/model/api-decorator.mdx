@@ -565,34 +565,13 @@ async del(ids: number[]): Promise<number> {
 
 ### 인증 API
 
-```typescript
-@api({
-  httpMethod: "POST",
-  clients: ["axios", "tanstack-mutation"],
-})
-async login(params: LoginParams): Promise<{ user: User }> {
-  const { email, password } = params;
-  
-  // 사용자 조회
-  const user = await this.getPuri("r")
-    .where("email", email)
-    .first();
-    
-  if (!user) {
-    throw new UnauthorizedException("이메일 또는 비밀번호가 일치하지 않습니다");
-  }
-  
-  // 비밀번호 확인
-  const isValid = await bcrypt.compare(password, user.password);
-  if (!isValid) {
-    throw new UnauthorizedException("이메일 또는 비밀번호가 일치하지 않습니다");
-  }
-  
-  // 인증은 better-auth의 HTTP 엔드포인트(/api/auth/sign-in/email)로 처리됩니다.
-  // 모델 메서드에서는 사용자 조회 및 검증만 담당합니다.
-  return { user };
-}
+<Info>
+Sonamu는 인증을 better-auth의 HTTP 엔드포인트로 처리합니다. 로그인(`/api/auth/sign-in/email`), 로그아웃(`/api/auth/sign-out`) 등은 Sonamu `@api` 데코레이터가 아닌 better-auth가 직접 제공하는 엔드포인트를 사용하세요.
+</Info>
 
+로그인한 사용자 정보를 반환하는 `me()` API는 `context.user`를 통해 구현합니다.
+
+```typescript
 @api({
   httpMethod: "GET",
   clients: ["axios", "tanstack-query"],
