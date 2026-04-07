@@ -15,8 +15,11 @@ Follow `00_shared_contract.md` first.
 | Document | Location | Content | Updated when |
 |---|---|---|---|
 | Business logic | `contract/**/*.contract.md` | Domain rules in cohesive form + decision rationale | Policy changes |
-| Rules | `contract/rules/*.rules.json` | Code conventions, UI/API rules (split by FE/BE) | Convention changes |
+| Rules | `contract/rules/*.rules.json` | Code conventions, UI/API rules | Convention changes |
+| Known issues | `contract/rules/*.known-issues.json` | Recurring bugs, framework constraints, workarounds | When a repeating issue pattern is found |
 | AC | describe/test in `*.test.ts` | Per-feature acceptance criteria. Pass/fail basis | Feature add/change |
+
+`*.known-issues.json` is **not** created by `cdd agents init`. Add it manually when a workaround recurs across multiple features and is worth recording for future agents.
 
 ## What is business logic
 
@@ -135,6 +138,21 @@ If the approved plan requires a Frame class or adjacent runtime shell that has n
       "when": "Trigger condition",
       "instruction": "Concrete directive",
       "examples": ["Example (optional)"]
+    }
+  ]
+}
+```
+
+## Known-issues file format
+
+```json
+{
+  "description": "Known bugs and workarounds for this area",
+  "issues": [
+    {
+      "id": "issue-id",
+      "symptom": "What goes wrong and when",
+      "workaround": "How to avoid or fix it"
     }
   ]
 }

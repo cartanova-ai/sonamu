@@ -1,6 +1,6 @@
 # Sonamu Project Initialization Workflow
 
-> For CDD execution protocol (Claim, AC, contract.md): read `.claude/workflow/cdd.md`.
+> For CDD execution protocol (Claim, AC, contract.md): read `.agents/workflow/01_cdd.md`.
 
 Follow this workflow when the user requests a system to be built from scratch.
 
@@ -46,34 +46,42 @@ Requirements are a starting point only. Entity structure, relationships, fields,
    - Check whether `ANTHROPIC_API_KEY` is set → if not, instruct the user to add it manually (Claude Code must not input the key directly)
 9. Report findings and wait for user approval
 
-### 4. Start Infrastructure
+### 4. Initialize CDD and Contract
 
-10. Start Docker (`pnpm docker:up` or equivalent)
-11. Attempt build — the first build may fail; do not try to fix everything immediately. Try starting the dev server first.
-12. Start dev server (`pnpm dev`)
+10. Run `pnpm cdd agents init` to set up CDD agent workflow and scaffold the contract directory:
+    - Creates `.agents/` workflow prompts
+    - Creates `contract/planning.md` (project overview template)
+    - Creates `contract/rules/web.rules.json` and `contract/rules/api.rules.json` (starter rule files)
 
-### 5. Generate Auth Entities
+### 5. Start Infrastructure
+
+11. Start Docker (`pnpm docker:up` or equivalent)
+12. Attempt build — the first build may fail; do not try to fix everything immediately. Try starting the dev server first.
+13. Start dev server (`pnpm dev`)
+
+### 6. Generate Auth Entities
 
 **If plugins are needed, use the `--plugins` option. See `auth-plugins.md`.**
 
-13. Run `pnpm sonamu auth generate` to create better-auth entities
-14. Add `"fixtureStrategy": "sequence"` to the `cone` of the `id` prop in the User entity
+14. Run `pnpm sonamu auth generate` to create better-auth entities
+15. Add `"fixtureStrategy": "sequence"` to the `cone` of the `id` prop in the User entity
     - **This setting must not be changed later**
-15. Review the generated entities (User, Session, Account, Verification) and ask the user to confirm in Sonamu UI
-16. After user confirmation, run migration
-17. Verify that tables were created in the Docker DB
+16. Review the generated entities (User, Session, Account, Verification) and ask the user to confirm in Sonamu UI
+17. After user confirmation, run migration
+18. Verify that tables were created in the Docker DB
 
-### 6. Set Up Users Table Sequence
+### 7. Set Up Users Table Sequence
 
 **CRITICAL: Run this immediately after auth entity migration completes. Skipping this will cause test and fixture generation failures later.**
 
-18. Run `CREATE SEQUENCE users_id_seq;`
-19. Run `ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq')::text;`
+19. Run `CREATE SEQUENCE users_id_seq;`
+20. Run `ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq')::text;`
 
 **Done criteria:**
 
 - [ ] Project created
 - [ ] Domain list identified and user-approved
+- [ ] `pnpm cdd agents init` complete (`.agents/`, `contract/planning.md`, `contract/rules/` created)
 - [ ] sonamu.config.ts and .env verified and user-approved
 - [ ] Docker and dev server running
 - [ ] Auth entities created and migrated
@@ -87,13 +95,25 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 
 **CRITICAL: Do not begin entity design (PHASE 2) until this PHASE is complete.**
 
-### 7. Write Domain `*.contract.md` Files
+### 7. Fill In `planning.md`
 
-20. For each domain confirmed in PHASE 0, write `contract/{domain}/{domain}.contract.md`
+21. Open `contract/planning.md` (created by `cdd agents init` in PHASE 0)
+22. Fill in the TODO sections with the user: project background, core domains, user roles, domain glossary, global business rules, tech stack, MVP scope
+23. Confirm the completed document with the user
+
+### 8. Write Domain `*.contract.md` Files
+
+24. For each domain confirmed in PHASE 0, write `contract/{domain}/{domain}.contract.md`
     - Domain folder names in lowercase English (e.g., `auth`, `organization`, `research`)
     - Include domain rules, state transitions, permissions, edge cases, and decision rationale that cannot be inferred from code alone
     - Does not need to be perfect from the start — refine iteratively with the user
-21. Confirm each domain's document with the user one at a time
+25. Confirm each domain's document with the user one at a time
+
+### 9. Set Up Rules Files
+
+26. Open `contract/rules/web.rules.json` and `contract/rules/api.rules.json` (created by `cdd agents init`)
+27. Replace the placeholder example rules with actual project conventions as they become clear
+28. Add `contract/rules/*.known-issues.json` files only when a recurring issue pattern is discovered during implementation — do not create them upfront
 
 **`*.contract.md` format:**
 
@@ -109,8 +129,10 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 
 **Done criteria:**
 
+- [ ] `contract/planning.md` filled in and user-confirmed
 - [ ] `contract/{domain}/{domain}.contract.md` written for all domains
 - [ ] User confirmed each domain document
+- [ ] `contract/rules/web.rules.json` and `contract/rules/api.rules.json` updated with initial conventions
 
 ---
 
@@ -196,7 +218,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 ### 12. Run CDD
 
 - Concept definitions (Claim structure, AC principles, contract.md purpose): `.claude/skills/sonamu/cdd.md`
-- Execution protocol (flow, Claim format, review stages): `.claude/workflow/cdd.md`
+- Execution protocol (flow, Claim format, review stages): `.agents/workflow/01_cdd.md`
 
 Read both documents before starting.
 
@@ -271,8 +293,13 @@ The following documents are created during the workflow:
 
 ```
 contract/
-└── {domain}/
-    └── {domain}.contract.md  # PHASE 1: domain rules + decision rationale (permanent)
+├── planning.md               # PHASE 1: project background, domains, roles, tech stack
+├── {domain}/
+│   └── {domain}.contract.md  # PHASE 1: domain rules + decision rationale (permanent)
+└── rules/
+    ├── web.rules.json        # PHASE 1: frontend conventions
+    ├── api.rules.json        # PHASE 1: backend/API conventions
+    └── *.known-issues.json   # PHASE 4+: add when recurring issues are found
 
 .claude/skills/project/
 └── architecture.md           # PHASE 2: entity design
