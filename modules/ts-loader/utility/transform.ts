@@ -184,11 +184,12 @@ export async function transpileSource(
 
   const emptyImportPattern = /^\s*import\s*\{\s*\}\s*from\s*["'][^"']+["'];?\s*$/gm;
   const hasEmptyImport = emptyImportPattern.test(sourceText);
-  const code = !config.verbatimModuleSyntax && hasEmptyImport
-    ? result.code.replace(/^\s*import(?:\s*\{\s*\}\s*from)?\s*["'][^"']+["'];?\n?/gm, "")
-    : config.verbatimModuleSyntax && hasEmptyImport
-      ? `${sourceText.match(emptyImportPattern)?.[0] ?? ""}\n${result.code}`
-    : result.code;
+  const code =
+    !config.verbatimModuleSyntax && hasEmptyImport
+      ? result.code.replace(/^\s*import(?:\s*\{\s*\}\s*from)?\s*["'][^"']+["'];?\n?/gm, "")
+      : config.verbatimModuleSyntax && hasEmptyImport
+        ? `${sourceText.match(emptyImportPattern)?.[0] ?? ""}\n${result.code}`
+        : result.code;
 
   return `${code}\n//# sourceMappingURL=data:application/json;base64,${encodeInlineSourceMap(result.map)}`;
 }

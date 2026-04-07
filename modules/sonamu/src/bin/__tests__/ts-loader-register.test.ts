@@ -43,9 +43,12 @@ describe("ensureTsLoaderRegistered", () => {
     await module.ensureTsLoaderRegistered("/tmp/fixture-api");
 
     expect(registerMock).toHaveBeenCalledTimes(1);
-    expect(registerMock).toHaveBeenCalledWith(expect.stringContaining("/modules/ts-loader/dist/loader.js"), {
-      parentURL: expect.stringContaining("/src/bin/ts-loader-registration"),
-    });
+    expect(registerMock).toHaveBeenCalledWith(
+      expect.stringContaining("/modules/ts-loader/dist/loader.js"),
+      {
+        parentURL: expect.stringContaining("/src/bin/ts-loader-registration"),
+      },
+    );
 
     await module.ensureTsLoaderRegistered("/tmp/another-api");
 
