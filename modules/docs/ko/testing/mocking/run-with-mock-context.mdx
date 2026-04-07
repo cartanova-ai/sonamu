@@ -15,18 +15,15 @@ Mock Context는 다음과 같은 속성을 포함합니다:
 
 ```typescript
 type Context = {
-  ip: string;              // 클라이언트 IP 주소
-  session: object;         // 세션 데이터
-  user: PassportUser | null;  // 인증된 사용자 정보
-  passport: {
-    login: (user: PassportUser) => Promise<void>;
-    logout: () => void;
-  };
-  naiteStore: NaiteStore;  // Naite 로그 저장소
   request: FastifyRequest;
   reply: FastifyReply;
   headers: IncomingHttpHeaders;
-  // ... 기타 속성
+  createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>;
+  naiteStore: NaiteStore;  // Naite 로그 저장소
+  locale: string;          // 요청 locale
+  user: User | null;       // 인증된 사용자 정보 (better-auth)
+  session: Session | null; // 세션 정보 (better-auth)
+  // ... ContextExtend 속성
 };
 ```
 
@@ -34,14 +31,10 @@ type Context = {
 
 ```typescript
 {
-  ip: "127.0.0.1",
-  session: {},
+  session: null,
   user: null,
-  passport: {
-    login: async () => {},
-    logout: () => {},
-  },
   naiteStore: Naite.createStore(),
+  locale: "",
 }
 ```
 
@@ -246,24 +239,19 @@ Mock Context는 다음과 같이 생성됩니다:
 ```typescript
 function getMockContext(): Context {
   return {
-    ip: "127.0.0.1",
-    session: {},
+    session: null,
     user: null,
-    passport: {
-      login: async () => {},
-      logout: () => {},
-    },
     naiteStore: Naite.createStore(),
+    locale: "",
   } as unknown as Context;
 }
 ```
 
 **특징**:
-- `ip`: 로컬 환경을 나타내는 `127.0.0.1`
-- `session`: 빈 객체로 초기화
-- `user`: 기본값은 `null` (비인증 상태)
-- `passport`: Mock 함수로 실제 인증 로직은 실행되지 않음
+- `session`: `null`로 초기화 (미인증 상태)
+- `user`: 기본값은 `null` (미인증 상태)
 - `naiteStore`: 각 테스트마다 독립된 로그 저장소
+- `locale`: 빈 문자열로 초기화
 
 ### AsyncLocalStorage 격리
 

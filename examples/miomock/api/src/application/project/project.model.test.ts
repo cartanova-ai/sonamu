@@ -378,13 +378,9 @@ describe("ProjectModel", () => {
       const events: Set<keyof ProjectAskStreamEvents> = new Set();
       await runWithContext(
         {
-          ip: "127.0.0.1",
-          session: {},
+          session: null,
           user: null,
-          passport: {
-            login: async () => {},
-            logout: () => {},
-          },
+          locale: "",
           naiteStore: Naite.createStore(),
           createSSE: vi.fn().mockImplementation(() => {
             return {

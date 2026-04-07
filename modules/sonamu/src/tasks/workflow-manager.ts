@@ -24,7 +24,7 @@ import type { WorkflowMetadata } from "./decorator";
 import { StepWrapper } from "./step-wrapper";
 
 export interface WorkflowOptions {
-  // worker에서 동시 실행할 태스크 수, 기본은 CPU 코어 수 - 1개
+  // worker에서 동시 실행할 태스크 수, 기본은 1
   concurrency?: number;
 
   // worker에서 사용할 pub/sub 여부, 기본은 true
@@ -288,11 +288,9 @@ export class WorkflowManager {
         headers: {},
         createSSE: (schema: ZodObject) => createMockSSEFactory(schema),
         naiteStore: Naite.createStore(),
+        locale: "",
         user: null,
-        passport: {
-          login: async () => {},
-          logout: () => {},
-        },
+        session: null,
       } as unknown as Context;
 
       const contextProvider = Sonamu.config.tasks?.contextProvider;

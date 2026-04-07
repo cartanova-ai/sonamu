@@ -24,7 +24,7 @@ type Context = {
 
 Context 타입은 **교차 타입(Intersection Type, `&`)**으로 구성됩니다:
 - 기본 Context 객체 (request, reply 등)
-- `AuthContext`: 인증 관련 속성 (user, passport)
+- `AuthContext`: 인증 관련 속성 (user, session)
 - `ContextExtend`: 프로젝트별 확장 속성
 
 이러한 구조 덕분에 Context는 타입 안전성을 유지하면서 확장 가능합니다.
@@ -298,8 +298,8 @@ class FileModelClass extends BaseModelClass {
 
 Context는 [AuthContext](/ko/api-reference/context/auth-context)의 속성들도 포함합니다:
 
-- `user`: 현재 인증된 사용자 정보
-- `passport`: 인증 관련 메서드 (login, logout)
+- `user`: 현재 인증된 사용자 정보 (`User | null`)
+- `session`: 현재 세션 정보 (`Session | null`)
 
 ## Context 확장
 
