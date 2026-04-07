@@ -469,39 +469,18 @@ class FileModel extends BaseModelClass {
 
 ### Streaming Upload (Large Files)
 
-For large files, you can use streaming instead of Buffer.
+For large files, use `@upload({ consume: "stream" })`. Files are streamed directly to the specified storage destination. Access the already-uploaded file info via `context.uploadedFiles`.
 
 ```typescript
-import { pipeline } from "stream/promises";
-import fs from "fs";
-
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async uploadLarge(params: { file: UploadedFile }): Promise<{ url: string }> {
-    const { file } = params;
+  @upload({ consume: "stream", destination: "s3" })
+  async uploadLarge(): Promise<{ url: string }> {
+    const { uploadedFiles } = Sonamu.getContext();
+    const file = uploadedFiles?.[0];
+    if (!file) throw new Error("File is required");
 
-    // Save to temp file
-    const tempPath = `/tmp/${Date.now()}.${file.extname}`;
-    const writeStream = fs.createWriteStream(tempPath);
-
-    await pipeline(file.raw.file, writeStream);
-
-    // Upload temp file to Storage
-    const disk = Sonamu.storage.use();
-    const key = `uploads/${Date.now()}.${file.extname}`;
-
-    const buffer = await fs.promises.readFile(tempPath);
-    await disk.put(key, new Uint8Array(buffer), {
-      contentType: file.mimetype,
-    });
-
-    // Delete temp file
-    await fs.promises.unlink(tempPath);
-
-    const url = await disk.getUrl(key);
-
-    return { url };
+    // In stream mode, files are already saved to the destination
+    return { url: file.url };
   }
 }
 ```
@@ -510,10 +489,8 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadWithMetadata(params: {
-    file: UploadedFile;
     title?: string;
     description?: string;
     tags?: string[];
@@ -524,14 +501,14 @@ class FileModel extends BaseModelClass {
       throw new Error("Authentication required");
     }
 
-    const { file, title, description, tags } = params;
-
-    // Calculate MD5 hash
-    const md5Hash = await file.md5();
+    const { bufferedFiles } = context;
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
+    const { title, description, tags } = params;
 
     // Save file
-    const key = `uploads/${Date.now()}.${file.extname}`;
-    const url = await file.saveToDisk(key);
+    const key = `uploads/${Date.now()}-${file.filename}`;
+    const url = await file.saveToDisk("fs", key);
 
     // Save metadata to DB
     const wdb = this.getPuri("w");
@@ -543,7 +520,6 @@ class FileModel extends BaseModelClass {
         filename: file.filename,
         mime_type: file.mimetype,
         size: file.size,
-        md5_hash: md5Hash,
         url,
         title,
         description,

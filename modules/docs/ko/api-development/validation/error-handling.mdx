@@ -1,6 +1,6 @@
 ---
 title: "에러 처리"
-description: "일관된 에러 응답과 SonamuError"
+description: "SoException 기반의 일관된 에러 응답"
 ---
 
 API에서 발생하는 에러를 일관되게 처리하고 명확한 응답을 제공하는 방법을 알아봅니다.
@@ -22,11 +22,15 @@ API에서 발생하는 에러를 일관되게 처리하고 명확한 응답을 �
   </Card>
 </CardGroup>
 
-## 기본 에러 처리
+## SoException
 
-### throw Error
+Sonamu는 `SoException` 기반의 에러 클래스를 제공합니다. `SoException`을 throw하면 프레임워크가 자동으로 적절한 HTTP 상태 코드와 구조화된 에러 응답을 전송합니다.
+
+### 기본 사용법
 
 ```typescript
+import { NotFoundException } from "sonamu";
+
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<User> {
@@ -35,8 +39,7 @@ class UserModel extends BaseModelClass {
     const user = await rdb.table("users").where("id", id).first();
 
     if (!user) {
-      // 기본 에러 (HTTP 500)
-      throw new Error("User not found");
+      throw new NotFoundException("사용자를 찾을 수 없습니다");
     }
 
     return user;
@@ -44,201 +47,43 @@ class UserModel extends BaseModelClass {
 }
 ```
 
-### Context로 상태 코드 설정
+### 제공되는 예외 클래스
+
+Sonamu가 기본으로 제공하는 예외 클래스입니다. 모두 `SoException`을 상속합니다.
+
+| 클래스 | 상태 코드 | 사용 시기 |
+|--------|-----------|-----------|
+| `BadRequestException` | 400 | 잘못된 매개변수 등 요청에 문제가 있는 경우 |
+| `UnauthorizedException` | 401 | 로그인이 필요하거나 접근 권한이 없는 경우 |
+| `NotFoundException` | 404 | 존재하지 않는 레코드에 접근하는 경우 |
+| `InternalServerErrorException` | 500 | 내부 처리 로직 또는 외부 API 호출 오류 |
+| `ServiceUnavailableException` | 503 | 현재 상태에서 처리가 불가능한 경우 |
+| `TargetNotFoundException` | 520 | 처리 대상이 존재하지 않는 경우 |
+| `AlreadyProcessedException` | 541 | 이미 처리된 요청인 경우 |
+| `DuplicateRowException` | 542 | 중복을 허용하지 않는 케이스에 중복 요청 |
+
+### SoException 생성자
+
+모든 예외 클래스는 동일한 생성자 시그니처를 가집니다.
 
 ```typescript
-class UserModel extends BaseModelClass {
-  @api({ httpMethod: "GET" })
-  async get(id: number): Promise<User> {
-    const context = Sonamu.getContext();
-    const rdb = this.getPuri("r");
-
-    const user = await rdb.table("users").where("id", id).first();
-
-    if (!user) {
-      // 404 Not Found
-      context.reply.status(404);
-      throw new Error("User not found");
-    }
-
-    return user;
-  }
-}
+constructor(message: LocalizedString, payload?: unknown)
 ```
 
-## HTTP 상태 코드
+- `message`: 에러 메시지. 다국어 문자열(`LocalizedString`)을 지원합니다.
+- `payload`: 추가 정보. Zod 검증 이슈 배열 등을 전달할 수 있습니다.
 
-### 주요 상태 코드
+## 사용 예제
 
-```typescript
-class ApiModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  async handleRequest(params: any): Promise<any> {
-    const context = Sonamu.getContext();
-
-    // 400 Bad Request - 잘못된 요청
-    if (!params.required) {
-      context.reply.status(400);
-      throw new Error("Required field missing");
-    }
-
-    // 401 Unauthorized - 인증 필요
-    if (!context.user) {
-      context.reply.status(401);
-      throw new Error("Authentication required");
-    }
-
-    // 403 Forbidden - 권한 없음
-    if (context.user.role !== "admin") {
-      context.reply.status(403);
-      throw new Error("Admin permission required");
-    }
-
-    // 404 Not Found - 리소스 없음
-    const resource = await this.findResource(params.id);
-    if (!resource) {
-      context.reply.status(404);
-      throw new Error("Resource not found");
-    }
-
-    // 409 Conflict - 충돌
-    const existing = await this.checkDuplicate(params.email);
-    if (existing) {
-      context.reply.status(409);
-      throw new Error("Email already exists");
-    }
-
-    // 429 Too Many Requests - 속도 제한
-    if (await this.isRateLimited(context.user.id)) {
-      context.reply.status(429);
-      throw new Error("Too many requests");
-    }
-
-    // 422 Unprocessable Entity - 검증 실패
-    const validationError = this.validate(params);
-    if (validationError) {
-      context.reply.status(422);
-      throw new Error(`Validation failed: ${validationError}`);
-    }
-
-    // 500 Internal Server Error - 서버 에러 (기본값)
-    try {
-      return await this.process(params);
-    } catch (error) {
-      context.reply.status(500);
-      throw new Error("Internal server error");
-    }
-  }
-}
-```
-
-### 상태 코드 참조표
-
-| 코드 | 이름                  | 사용 시기                |
-| ---- | --------------------- | ------------------------ |
-| 200  | OK                    | 성공 (GET, PUT)          |
-| 201  | Created               | 리소스 생성 성공 (POST)  |
-| 204  | No Content            | 성공, 응답 없음 (DELETE) |
-| 400  | Bad Request           | 잘못된 요청 형식         |
-| 401  | Unauthorized          | 인증 필요                |
-| 403  | Forbidden             | 권한 없음                |
-| 404  | Not Found             | 리소스 없음              |
-| 409  | Conflict              | 중복, 충돌               |
-| 422  | Unprocessable Entity  | 검증 실패                |
-| 429  | Too Many Requests     | 속도 제한                |
-| 500  | Internal Server Error | 서버 내부 에러           |
-
-## 구조화된 에러 응답
-
-### 에러 응답 형식
-
-```typescript
-interface ErrorResponse {
-  error: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-  timestamp: Date;
-  requestId?: string;
-}
-```
-
-### 커스텀 에러 클래스
-
-```typescript
-// errors/api-error.ts
-export class ApiError extends Error {
-  constructor(
-    public statusCode: number,
-    public code: string,
-    message: string,
-    public details?: any,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-
-  toJSON(): ErrorResponse {
-    return {
-      error: {
-        code: this.code,
-        message: this.message,
-        details: this.details,
-      },
-      timestamp: new Date(),
-    };
-  }
-}
-
-// 편의 메서드
-export class BadRequestError extends ApiError {
-  constructor(message: string, details?: any) {
-    super(400, "BAD_REQUEST", message, details);
-  }
-}
-
-export class UnauthorizedError extends ApiError {
-  constructor(message: string = "Authentication required") {
-    super(401, "UNAUTHORIZED", message);
-  }
-}
-
-export class ForbiddenError extends ApiError {
-  constructor(message: string = "Permission denied") {
-    super(403, "FORBIDDEN", message);
-  }
-}
-
-export class NotFoundError extends ApiError {
-  constructor(resource: string) {
-    super(404, "NOT_FOUND", `${resource} not found`);
-  }
-}
-
-export class ConflictError extends ApiError {
-  constructor(message: string, details?: any) {
-    super(409, "CONFLICT", message, details);
-  }
-}
-
-export class ValidationError extends ApiError {
-  constructor(message: string, details?: any) {
-    super(422, "VALIDATION_ERROR", message, details);
-  }
-}
-```
-
-### 사용 예제
+### 다양한 에러 상황
 
 ```typescript
 import {
-  NotFoundError,
-  UnauthorizedError,
-  ForbiddenError,
-  ConflictError,
-  ValidationError,
-} from "./errors/api-error";
+  BadRequestException,
+  UnauthorizedException,
+  NotFoundException,
+  DuplicateRowException,
+} from "sonamu";
 
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
@@ -248,7 +93,7 @@ class UserModel extends BaseModelClass {
     const user = await rdb.table("users").where("id", id).first();
 
     if (!user) {
-      throw new NotFoundError("User");
+      throw new NotFoundException("사용자를 찾을 수 없습니다");
     }
 
     return user;
@@ -260,12 +105,12 @@ class UserModel extends BaseModelClass {
 
     // 인증 확인
     if (!context.user) {
-      throw new UnauthorizedError();
+      throw new UnauthorizedException("로그인이 필요합니다");
     }
 
-    // 권한 확인
-    if (context.user.role !== "admin") {
-      throw new ForbiddenError("Admin permission required");
+    // 입력 검증
+    if (!params.email) {
+      throw new BadRequestException("이메일은 필수입니다");
     }
 
     const rdb = this.getPuri("r");
@@ -274,18 +119,7 @@ class UserModel extends BaseModelClass {
     const existing = await rdb.table("users").where("email", params.email).first();
 
     if (existing) {
-      throw new ConflictError("Email already exists", {
-        field: "email",
-        value: params.email,
-      });
-    }
-
-    // 검증
-    if (params.password.length < 8) {
-      throw new ValidationError("Password too short", {
-        field: "password",
-        minLength: 8,
-      });
+      throw new DuplicateRowException("이미 사용 중인 이메일입니다");
     }
 
     const wdb = this.getPuri("w");
@@ -296,36 +130,42 @@ class UserModel extends BaseModelClass {
 }
 ```
 
-## Zod 검증 에러 처리
-
-### Zod 에러 변환
+### payload를 활용한 상세 정보 전달
 
 ```typescript
-import { z } from "zod";
-import { ValidationError } from "./errors/api-error";
+import { BadRequestException } from "sonamu";
 
-function handleZodError(error: z.ZodError): never {
-  const details = error.errors.map((e) => ({
-    field: e.path.join("."),
-    message: e.message,
-    code: e.code,
-  }));
-
-  throw new ValidationError("Validation failed", details);
-}
-
-// 사용
-class UserModel extends BaseModelClass {
+class OrderModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  async create(params: unknown): Promise<{ userId: number }> {
-    try {
-      const validated = CreateUserSchema.parse(params);
+  async create(params: CreateOrderParams): Promise<{ orderId: number }> {
+    // payload로 에러 상세 정보 전달
+    if (params.quantity <= 0) {
+      throw new BadRequestException("주문 수량이 올바르지 않습니다", {
+        field: "quantity",
+        value: params.quantity,
+        constraint: "must be > 0",
+      });
+    }
 
-      // 생성 로직
-      // ...
+    // ...
+  }
+}
+```
+
+### isSoException 타입 가드
+
+```typescript
+import { isSoException, AlreadyProcessedException } from "sonamu";
+
+class PaymentModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async process(paymentId: number): Promise<void> {
+    try {
+      await this.executePayment(paymentId);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        handleZodError(error);
+      if (isSoException(error) && error.statusCode === 541) {
+        // 이미 처리된 결제 - 무시
+        return;
       }
       throw error;
     }
@@ -333,323 +173,163 @@ class UserModel extends BaseModelClass {
 }
 ```
 
-### safeParse 사용
+## Zod 검증 에러 처리
+
+`BadRequestException`의 `payload`에 Zod 이슈 배열을 전달하면, Sonamu의 에러 핸들러가 자동으로 검증 에러 상세 정보를 응답에 포함합니다.
+
+### Zod 에러 변환
 
 ```typescript
+import { z } from "zod";
+import { BadRequestException } from "sonamu";
+
+const CreateUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2),
+  password: z.string().min(8),
+});
+
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async create(params: unknown): Promise<{ userId: number }> {
     const result = CreateUserSchema.safeParse(params);
 
     if (!result.success) {
-      const details = result.error.errors.map((e) => ({
-        field: e.path.join("."),
-        message: e.message,
-      }));
-
-      throw new ValidationError("Validation failed", details);
+      throw new BadRequestException("검증 실패", result.error.issues);
     }
 
     const validated = result.data;
 
-    // 생성 로직
-    // ...
+    const wdb = this.getPuri("w");
+    const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+
+    return { userId: user.id };
   }
 }
 ```
 
-## 에러 핸들러 미들웨어
+## 에러 응답 형식
 
-### 전역 에러 핸들러
+Sonamu의 내장 에러 핸들러는 다음 형식으로 응답합니다.
 
-```typescript
-// middleware/error-handler.ts
-import { FastifyError, FastifyRequest, FastifyReply } from "fastify";
-import { ApiError } from "../errors/api-error";
-import { ZodError } from "zod";
+### 기본 에러 응답
 
-export async function errorHandler(
-  error: FastifyError | Error,
-  request: FastifyRequest,
-  reply: FastifyReply,
-) {
-  console.error("Error:", error);
-
-  // ApiError
-  if (error instanceof ApiError) {
-    return reply.status(error.statusCode).send(error.toJSON());
-  }
-
-  // Zod Validation Error
-  if (error instanceof ZodError) {
-    const details = error.errors.map((e) => ({
-      field: e.path.join("."),
-      message: e.message,
-    }));
-
-    return reply.status(422).send({
-      error: {
-        code: "VALIDATION_ERROR",
-        message: "Validation failed",
-        details,
-      },
-      timestamp: new Date(),
-    });
-  }
-
-  // Database Error
-  if (error.message.includes("violates foreign key constraint")) {
-    return reply.status(400).send({
-      error: {
-        code: "REFERENCE_ERROR",
-        message: "Referenced resource does not exist",
-      },
-      timestamp: new Date(),
-    });
-  }
-
-  if (error.message.includes("duplicate key value")) {
-    return reply.status(409).send({
-      error: {
-        code: "DUPLICATE_ERROR",
-        message: "Resource already exists",
-      },
-      timestamp: new Date(),
-    });
-  }
-
-  // 기본 에러
-  const statusCode = (error as any).statusCode || 500;
-
-  return reply.status(statusCode).send({
-    error: {
-      code: "INTERNAL_ERROR",
-      message: process.env.NODE_ENV === "production" ? "Internal server error" : error.message,
-    },
-    timestamp: new Date(),
-  });
+```json
+{
+  "name": "NotFoundException",
+  "code": null,
+  "message": "사용자를 찾을 수 없습니다"
 }
-
-// server.ts
-import fastify from "fastify";
-import { errorHandler } from "./middleware/error-handler";
-
-const app = fastify();
-
-app.setErrorHandler(errorHandler);
 ```
 
-## 에러 로깅
+### Zod 검증 에러 응답 (payload에 이슈 배열 전달 시)
 
-### 로깅 서비스
-
-```typescript
-// services/logger.service.ts
-export class Logger {
-  static error(
-    error: Error,
-    context?: {
-      userId?: number;
-      requestId?: string;
-      endpoint?: string;
-      params?: any;
-    },
-  ): void {
-    console.error({
-      timestamp: new Date(),
-      level: "ERROR",
-      message: error.message,
-      stack: error.stack,
-      context,
-    });
-
-    // 외부 로깅 서비스로 전송 (선택)
-    // Sentry, CloudWatch, etc.
-  }
-
-  static warn(message: string, context?: any): void {
-    console.warn({
-      timestamp: new Date(),
-      level: "WARN",
-      message,
-      context,
-    });
-  }
-
-  static info(message: string, context?: any): void {
-    console.log({
-      timestamp: new Date(),
-      level: "INFO",
-      message,
-      context,
-    });
-  }
-}
-
-// 사용
-class UserModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  async create(params: CreateUserParams): Promise<{ userId: number }> {
-    try {
-      const wdb = this.getPuri("w");
-      const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
-
-      Logger.info("User created", { userId: user.id });
-
-      return { userId: user.id };
-    } catch (error) {
-      const context = Sonamu.getContext();
-
-      Logger.error(error as Error, {
-        userId: context.user?.id,
-        requestId: context.requestId,
-        endpoint: context.request.url,
-        params,
-      });
-
-      throw error;
+```json
+{
+  "name": "BadRequestException",
+  "code": null,
+  "message": "검증 실패 (email)",
+  "issues": [
+    {
+      "code": "invalid_type",
+      "expected": "string",
+      "received": "undefined",
+      "path": ["email"],
+      "message": "Required"
     }
-  }
+  ]
 }
 ```
 
-## 재시도 가능한 에러
+## 에러 핸들러 커스터마이징
+
+Sonamu는 기본 에러 핸들러를 내장하고 있지만, 필요 시 `startServer`의 `lifecycle.onError` 옵션으로 커스텀 에러 핸들러를 설정할 수 있습니다.
 
 ```typescript
-export class RetryableError extends ApiError {
-  constructor(
-    message: string,
-    public retryAfter?: number,
-  ) {
-    super(503, "SERVICE_UNAVAILABLE", message);
-  }
-}
+import { Sonamu, isSoException } from "sonamu";
 
-class ExternalApiModel extends BaseModelClass {
-  @api({ httpMethod: "GET" })
-  async fetchData(): Promise<any> {
-    try {
-      const response = await axios.get("https://external-api.com/data", {
-        timeout: 5000,
-      });
-
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        if (error.code === "ECONNABORTED") {
-          throw new RetryableError("Request timeout", 10);
-        }
-
-        if (error.response?.status === 429) {
-          const retryAfter = parseInt(error.response.headers["retry-after"] || "60");
-          throw new RetryableError("Rate limited", retryAfter);
-        }
+Sonamu.startServer({
+  lifecycle: {
+    onError: (error, request, reply) => {
+      // 커스텀 에러 처리 로직
+      if (isSoException(error)) {
+        reply.status(error.statusCode).send({
+          error: error.message,
+          payload: error.payload,
+        });
+      } else {
+        reply.status(500).send({
+          error: "Internal server error",
+        });
       }
-
-      throw new ApiError(502, "BAD_GATEWAY", "External service unavailable");
-    }
-  }
-}
+    },
+  },
+});
 ```
 
-## 다국어 에러 메시지
+## 상태 코드 참조표
 
-```typescript
-// i18n/errors.ts
-const errorMessages: Record<string, Record<string, string>> = {
-  ko: {
-    USER_NOT_FOUND: "사용자를 찾을 수 없습니다",
-    EMAIL_EXISTS: "이미 사용 중인 이메일입니다",
-    INVALID_PASSWORD: "비밀번호가 올바르지 않습니다",
-    PERMISSION_DENIED: "권한이 없습니다",
-  },
-  en: {
-    USER_NOT_FOUND: "User not found",
-    EMAIL_EXISTS: "Email already exists",
-    INVALID_PASSWORD: "Invalid password",
-    PERMISSION_DENIED: "Permission denied",
-  },
-};
+### 표준 HTTP 상태 코드
 
-export function getErrorMessage(code: string, locale: string = "ko"): string {
-  return errorMessages[locale]?.[code] || code;
-}
+| 코드 | 이름                  | 사용 시기                |
+| ---- | --------------------- | ------------------------ |
+| 200  | OK                    | 성공 (GET, PUT)          |
+| 201  | Created               | 리소스 생성 성공 (POST)  |
+| 204  | No Content            | 성공, 응답 없음 (DELETE) |
+| 400  | Bad Request           | 잘못된 요청 형식         |
+| 401  | Unauthorized          | 인증 필요                |
+| 404  | Not Found             | 리소스 없음              |
+| 500  | Internal Server Error | 서버 내부 에러           |
+| 503  | Service Unavailable   | 서비스 이용 불가         |
 
-// 사용
-class UserModel extends BaseModelClass {
-  @api({ httpMethod: "GET" })
-  async get(id: number): Promise<User> {
-    const context = Sonamu.getContext();
-    const rdb = this.getPuri("r");
+### Sonamu 커스텀 상태 코드
 
-    const user = await rdb.table("users").where("id", id).first();
-
-    if (!user) {
-      const locale = context.locale || "ko";
-      throw new NotFoundError(getErrorMessage("USER_NOT_FOUND", locale));
-    }
-
-    return user;
-  }
-}
-```
+| 코드 | 예외 클래스                  | 사용 시기                    |
+| ---- | ---------------------------- | ---------------------------- |
+| 520  | `TargetNotFoundException`    | 처리 대상이 존재하지 않음    |
+| 541  | `AlreadyProcessedException` | 이미 처리된 요청             |
+| 542  | `DuplicateRowException`     | 중복 허용하지 않는 곳에 중복 |
 
 ## 실전 패턴
 
 ```typescript
+import {
+  UnauthorizedException,
+  BadRequestException,
+  DuplicateRowException,
+} from "sonamu";
+
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async create(params: unknown): Promise<{ userId: number }> {
     const context = Sonamu.getContext();
 
-    try {
-      // 1. 인증 확인
-      if (!context.user) {
-        throw new UnauthorizedError();
-      }
-
-      // 2. Zod 검증
-      const validated = CreateUserSchema.safeParse(params);
-      if (!validated.success) {
-        const details = validated.error.errors.map((e) => ({
-          field: e.path.join("."),
-          message: e.message,
-        }));
-        throw new ValidationError("Validation failed", details);
-      }
-
-      const data = validated.data;
-
-      // 3. 비즈니스 규칙 검증
-      const rdb = this.getPuri("r");
-      const existing = await rdb.table("users").where("email", data.email).first();
-
-      if (existing) {
-        throw new ConflictError("Email already exists", {
-          field: "email",
-        });
-      }
-
-      // 4. 생성
-      const wdb = this.getPuri("w");
-      const [user] = await wdb.table("users").insert(data).returning({ id: "id" });
-
-      // 5. 로깅
-      Logger.info("User created", {
-        userId: user.id,
-        email: data.email,
-      });
-
-      return { userId: user.id };
-    } catch (error) {
-      // 에러 로깅
-      Logger.error(error as Error, {
-        userId: context.user?.id,
-        endpoint: context.request.url,
-      });
-
-      throw error;
+    // 1. 인증 확인
+    if (!context.user) {
+      throw new UnauthorizedException("로그인이 필요합니다");
     }
+
+    // 2. Zod 검증
+    const validated = CreateUserSchema.safeParse(params);
+    if (!validated.success) {
+      throw new BadRequestException("검증 실패", validated.error.issues);
+    }
+
+    const data = validated.data;
+
+    // 3. 비즈니스 규칙 검증
+    const rdb = this.getPuri("r");
+    const existing = await rdb.table("users").where("email", data.email).first();
+
+    if (existing) {
+      throw new DuplicateRowException("이미 사용 중인 이메일입니다");
+    }
+
+    // 4. 생성
+    const wdb = this.getPuri("w");
+    const [user] = await wdb.table("users").insert(data).returning({ id: "id" });
+
+    return { userId: user.id };
   }
 }
 ```

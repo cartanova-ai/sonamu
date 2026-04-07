@@ -416,27 +416,23 @@ async updateUserAndProfile(
 }
 ```
 
-### @api + @upload
+### @upload (Standalone)
 
-Create file upload API.
+Creates a file upload API. `@upload` is used independently without `@api`.
 
 ```typescript
-@api({
-  httpMethod: "POST",
-  clients: ["axios-multipart"],
-})
-@upload({ mode: "single" })
+@upload()
 async uploadAvatar(): Promise<{ url: string }> {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // Use first file
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // Use first file
 
   if (!file) {
     throw new BadRequestException("No file provided");
   }
-  
+
   // Process file...
-  const url = await saveToS3(file);
-  
+  const url = await file.saveToDisk("fs", `avatars/${Date.now()}-${file.filename}`);
+
   return { url };
 }
 ```
@@ -445,8 +441,10 @@ async uploadAvatar(): Promise<{ url: string }> {
 
 | Option | Description | Use Case |
 |--------|-------------|----------|
-| `mode: "single"` | Single file | Profile image |
-| `mode: "multiple"` | Multiple files | Gallery upload |
+| `limits.fileSize` | Maximum file size (bytes) | `10 * 1024 * 1024` (10MB) |
+| `limits.files` | Maximum number of files | `5` |
+
+Single/multiple file handling is determined by how you access `bufferedFiles` from the context.
 
 ## API Path Rules
 

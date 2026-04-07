@@ -1,6 +1,6 @@
 ---
 title: "Error Handling"
-description: "Consistent error responses and SonamuError"
+description: "Consistent error responses based on SoException"
 ---
 
 Learn how to consistently handle errors in APIs and provide clear responses.
@@ -22,11 +22,15 @@ Learn how to consistently handle errors in APIs and provide clear responses.
   </Card>
 </CardGroup>
 
-## Basic Error Handling
+## SoException
 
-### throw Error
+Sonamu provides error classes based on `SoException`. When you throw a `SoException`, the framework automatically sends an appropriate HTTP status code and structured error response.
+
+### Basic Usage
 
 ```typescript
+import { NotFoundException } from "sonamu";
+
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<User> {
@@ -35,8 +39,7 @@ class UserModel extends BaseModelClass {
     const user = await rdb.table("users").where("id", id).first();
 
     if (!user) {
-      // Default error (HTTP 500)
-      throw new Error("User not found");
+      throw new NotFoundException("User not found");
     }
 
     return user;
@@ -44,201 +47,43 @@ class UserModel extends BaseModelClass {
 }
 ```
 
-### Setting Status Code with Context
+### Available Exception Classes
+
+These are the exception classes provided by Sonamu. All inherit from `SoException`.
+
+| Class | Status Code | When to Use |
+|-------|-------------|-------------|
+| `BadRequestException` | 400 | Invalid parameters or malformed request |
+| `UnauthorizedException` | 401 | Authentication required or access denied |
+| `NotFoundException` | 404 | Accessing a non-existent record |
+| `InternalServerErrorException` | 500 | Internal processing or external API call error |
+| `ServiceUnavailableException` | 503 | Processing not possible in current state |
+| `TargetNotFoundException` | 520 | Processing target does not exist |
+| `AlreadyProcessedException` | 541 | Request has already been processed |
+| `DuplicateRowException` | 542 | Duplicate request where duplicates are not allowed |
+
+### SoException Constructor
+
+All exception classes share the same constructor signature.
 
 ```typescript
-class UserModel extends BaseModelClass {
-  @api({ httpMethod: "GET" })
-  async get(id: number): Promise<User> {
-    const context = Sonamu.getContext();
-    const rdb = this.getPuri("r");
-
-    const user = await rdb.table("users").where("id", id).first();
-
-    if (!user) {
-      // 404 Not Found
-      context.reply.status(404);
-      throw new Error("User not found");
-    }
-
-    return user;
-  }
-}
+constructor(message: LocalizedString, payload?: unknown)
 ```
 
-## HTTP Status Codes
+- `message`: Error message. Supports localized strings (`LocalizedString`).
+- `payload`: Additional information. Can pass Zod validation issue arrays, etc.
 
-### Common Status Codes
+## Usage Examples
 
-```typescript
-class ApiModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  async handleRequest(params: any): Promise<any> {
-    const context = Sonamu.getContext();
-
-    // 400 Bad Request - Invalid request
-    if (!params.required) {
-      context.reply.status(400);
-      throw new Error("Required field missing");
-    }
-
-    // 401 Unauthorized - Authentication required
-    if (!context.user) {
-      context.reply.status(401);
-      throw new Error("Authentication required");
-    }
-
-    // 403 Forbidden - No permission
-    if (context.user.role !== "admin") {
-      context.reply.status(403);
-      throw new Error("Admin permission required");
-    }
-
-    // 404 Not Found - Resource not found
-    const resource = await this.findResource(params.id);
-    if (!resource) {
-      context.reply.status(404);
-      throw new Error("Resource not found");
-    }
-
-    // 409 Conflict - Conflict
-    const existing = await this.checkDuplicate(params.email);
-    if (existing) {
-      context.reply.status(409);
-      throw new Error("Email already exists");
-    }
-
-    // 429 Too Many Requests - Rate limited
-    if (await this.isRateLimited(context.user.id)) {
-      context.reply.status(429);
-      throw new Error("Too many requests");
-    }
-
-    // 422 Unprocessable Entity - Validation failed
-    const validationError = this.validate(params);
-    if (validationError) {
-      context.reply.status(422);
-      throw new Error(`Validation failed: ${validationError}`);
-    }
-
-    // 500 Internal Server Error - Server error (default)
-    try {
-      return await this.process(params);
-    } catch (error) {
-      context.reply.status(500);
-      throw new Error("Internal server error");
-    }
-  }
-}
-```
-
-### Status Code Reference
-
-| Code | Name                  | When to Use                   |
-| ---- | --------------------- | ----------------------------- |
-| 200  | OK                    | Success (GET, PUT)            |
-| 201  | Created               | Resource created (POST)       |
-| 204  | No Content            | Success, no response (DELETE) |
-| 400  | Bad Request           | Invalid request format        |
-| 401  | Unauthorized          | Authentication required       |
-| 403  | Forbidden             | No permission                 |
-| 404  | Not Found             | Resource not found            |
-| 409  | Conflict              | Duplicate, conflict           |
-| 422  | Unprocessable Entity  | Validation failed             |
-| 429  | Too Many Requests     | Rate limited                  |
-| 500  | Internal Server Error | Internal server error         |
-
-## Structured Error Responses
-
-### Error Response Format
-
-```typescript
-interface ErrorResponse {
-  error: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-  timestamp: Date;
-  requestId?: string;
-}
-```
-
-### Custom Error Class
-
-```typescript
-// errors/api-error.ts
-export class ApiError extends Error {
-  constructor(
-    public statusCode: number,
-    public code: string,
-    message: string,
-    public details?: any,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-
-  toJSON(): ErrorResponse {
-    return {
-      error: {
-        code: this.code,
-        message: this.message,
-        details: this.details,
-      },
-      timestamp: new Date(),
-    };
-  }
-}
-
-// Convenience methods
-export class BadRequestError extends ApiError {
-  constructor(message: string, details?: any) {
-    super(400, "BAD_REQUEST", message, details);
-  }
-}
-
-export class UnauthorizedError extends ApiError {
-  constructor(message: string = "Authentication required") {
-    super(401, "UNAUTHORIZED", message);
-  }
-}
-
-export class ForbiddenError extends ApiError {
-  constructor(message: string = "Permission denied") {
-    super(403, "FORBIDDEN", message);
-  }
-}
-
-export class NotFoundError extends ApiError {
-  constructor(resource: string) {
-    super(404, "NOT_FOUND", `${resource} not found`);
-  }
-}
-
-export class ConflictError extends ApiError {
-  constructor(message: string, details?: any) {
-    super(409, "CONFLICT", message, details);
-  }
-}
-
-export class ValidationError extends ApiError {
-  constructor(message: string, details?: any) {
-    super(422, "VALIDATION_ERROR", message, details);
-  }
-}
-```
-
-### Usage Example
+### Various Error Situations
 
 ```typescript
 import {
-  NotFoundError,
-  UnauthorizedError,
-  ForbiddenError,
-  ConflictError,
-  ValidationError,
-} from "./errors/api-error";
+  BadRequestException,
+  UnauthorizedException,
+  NotFoundException,
+  DuplicateRowException,
+} from "sonamu";
 
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
@@ -248,7 +93,7 @@ class UserModel extends BaseModelClass {
     const user = await rdb.table("users").where("id", id).first();
 
     if (!user) {
-      throw new NotFoundError("User");
+      throw new NotFoundException("User not found");
     }
 
     return user;
@@ -260,12 +105,12 @@ class UserModel extends BaseModelClass {
 
     // Check authentication
     if (!context.user) {
-      throw new UnauthorizedError();
+      throw new UnauthorizedException("Authentication required");
     }
 
-    // Check permission
-    if (context.user.role !== "admin") {
-      throw new ForbiddenError("Admin permission required");
+    // Input validation
+    if (!params.email) {
+      throw new BadRequestException("Email is required");
     }
 
     const rdb = this.getPuri("r");
@@ -274,18 +119,7 @@ class UserModel extends BaseModelClass {
     const existing = await rdb.table("users").where("email", params.email).first();
 
     if (existing) {
-      throw new ConflictError("Email already exists", {
-        field: "email",
-        value: params.email,
-      });
-    }
-
-    // Validation
-    if (params.password.length < 8) {
-      throw new ValidationError("Password too short", {
-        field: "password",
-        minLength: 8,
-      });
+      throw new DuplicateRowException("Email already exists");
     }
 
     const wdb = this.getPuri("w");
@@ -296,36 +130,42 @@ class UserModel extends BaseModelClass {
 }
 ```
 
-## Zod Validation Error Handling
-
-### Converting Zod Errors
+### Passing Detailed Info via payload
 
 ```typescript
-import { z } from "zod";
-import { ValidationError } from "./errors/api-error";
+import { BadRequestException } from "sonamu";
 
-function handleZodError(error: z.ZodError): never {
-  const details = error.errors.map((e) => ({
-    field: e.path.join("."),
-    message: e.message,
-    code: e.code,
-  }));
-
-  throw new ValidationError("Validation failed", details);
-}
-
-// Usage
-class UserModel extends BaseModelClass {
+class OrderModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  async create(params: unknown): Promise<{ userId: number }> {
-    try {
-      const validated = CreateUserSchema.parse(params);
+  async create(params: CreateOrderParams): Promise<{ orderId: number }> {
+    // Pass error details via payload
+    if (params.quantity <= 0) {
+      throw new BadRequestException("Invalid order quantity", {
+        field: "quantity",
+        value: params.quantity,
+        constraint: "must be > 0",
+      });
+    }
 
-      // Create logic
-      // ...
+    // ...
+  }
+}
+```
+
+### isSoException Type Guard
+
+```typescript
+import { isSoException, AlreadyProcessedException } from "sonamu";
+
+class PaymentModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async process(paymentId: number): Promise<void> {
+    try {
+      await this.executePayment(paymentId);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        handleZodError(error);
+      if (isSoException(error) && error.statusCode === 541) {
+        // Already processed payment - ignore
+        return;
       }
       throw error;
     }
@@ -333,323 +173,163 @@ class UserModel extends BaseModelClass {
 }
 ```
 
-### Using safeParse
+## Zod Validation Error Handling
+
+When you pass a Zod issue array to `BadRequestException`'s `payload`, Sonamu's error handler automatically includes validation error details in the response.
+
+### Converting Zod Errors
 
 ```typescript
+import { z } from "zod";
+import { BadRequestException } from "sonamu";
+
+const CreateUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2),
+  password: z.string().min(8),
+});
+
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async create(params: unknown): Promise<{ userId: number }> {
     const result = CreateUserSchema.safeParse(params);
 
     if (!result.success) {
-      const details = result.error.errors.map((e) => ({
-        field: e.path.join("."),
-        message: e.message,
-      }));
-
-      throw new ValidationError("Validation failed", details);
+      throw new BadRequestException("Validation failed", result.error.issues);
     }
 
     const validated = result.data;
 
-    // Create logic
-    // ...
+    const wdb = this.getPuri("w");
+    const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+
+    return { userId: user.id };
   }
 }
 ```
 
-## Error Handler Middleware
+## Error Response Format
 
-### Global Error Handler
+Sonamu's built-in error handler responds in the following format.
 
-```typescript
-// middleware/error-handler.ts
-import { FastifyError, FastifyRequest, FastifyReply } from "fastify";
-import { ApiError } from "../errors/api-error";
-import { ZodError } from "zod";
+### Basic Error Response
 
-export async function errorHandler(
-  error: FastifyError | Error,
-  request: FastifyRequest,
-  reply: FastifyReply,
-) {
-  console.error("Error:", error);
-
-  // ApiError
-  if (error instanceof ApiError) {
-    return reply.status(error.statusCode).send(error.toJSON());
-  }
-
-  // Zod Validation Error
-  if (error instanceof ZodError) {
-    const details = error.errors.map((e) => ({
-      field: e.path.join("."),
-      message: e.message,
-    }));
-
-    return reply.status(422).send({
-      error: {
-        code: "VALIDATION_ERROR",
-        message: "Validation failed",
-        details,
-      },
-      timestamp: new Date(),
-    });
-  }
-
-  // Database Error
-  if (error.message.includes("violates foreign key constraint")) {
-    return reply.status(400).send({
-      error: {
-        code: "REFERENCE_ERROR",
-        message: "Referenced resource does not exist",
-      },
-      timestamp: new Date(),
-    });
-  }
-
-  if (error.message.includes("duplicate key value")) {
-    return reply.status(409).send({
-      error: {
-        code: "DUPLICATE_ERROR",
-        message: "Resource already exists",
-      },
-      timestamp: new Date(),
-    });
-  }
-
-  // Default error
-  const statusCode = (error as any).statusCode || 500;
-
-  return reply.status(statusCode).send({
-    error: {
-      code: "INTERNAL_ERROR",
-      message: process.env.NODE_ENV === "production" ? "Internal server error" : error.message,
-    },
-    timestamp: new Date(),
-  });
+```json
+{
+  "name": "NotFoundException",
+  "code": null,
+  "message": "User not found"
 }
-
-// server.ts
-import fastify from "fastify";
-import { errorHandler } from "./middleware/error-handler";
-
-const app = fastify();
-
-app.setErrorHandler(errorHandler);
 ```
 
-## Error Logging
+### Zod Validation Error Response (when issue array is passed as payload)
 
-### Logging Service
-
-```typescript
-// services/logger.service.ts
-export class Logger {
-  static error(
-    error: Error,
-    context?: {
-      userId?: number;
-      requestId?: string;
-      endpoint?: string;
-      params?: any;
-    },
-  ): void {
-    console.error({
-      timestamp: new Date(),
-      level: "ERROR",
-      message: error.message,
-      stack: error.stack,
-      context,
-    });
-
-    // Send to external logging service (optional)
-    // Sentry, CloudWatch, etc.
-  }
-
-  static warn(message: string, context?: any): void {
-    console.warn({
-      timestamp: new Date(),
-      level: "WARN",
-      message,
-      context,
-    });
-  }
-
-  static info(message: string, context?: any): void {
-    console.log({
-      timestamp: new Date(),
-      level: "INFO",
-      message,
-      context,
-    });
-  }
-}
-
-// Usage
-class UserModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  async create(params: CreateUserParams): Promise<{ userId: number }> {
-    try {
-      const wdb = this.getPuri("w");
-      const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
-
-      Logger.info("User created", { userId: user.id });
-
-      return { userId: user.id };
-    } catch (error) {
-      const context = Sonamu.getContext();
-
-      Logger.error(error as Error, {
-        userId: context.user?.id,
-        requestId: context.requestId,
-        endpoint: context.request.url,
-        params,
-      });
-
-      throw error;
+```json
+{
+  "name": "BadRequestException",
+  "code": null,
+  "message": "Validation failed (email)",
+  "issues": [
+    {
+      "code": "invalid_type",
+      "expected": "string",
+      "received": "undefined",
+      "path": ["email"],
+      "message": "Required"
     }
-  }
+  ]
 }
 ```
 
-## Retryable Errors
+## Customizing the Error Handler
+
+Sonamu includes a built-in error handler, but you can set a custom error handler via the `lifecycle.onError` option in `startServer` if needed.
 
 ```typescript
-export class RetryableError extends ApiError {
-  constructor(
-    message: string,
-    public retryAfter?: number,
-  ) {
-    super(503, "SERVICE_UNAVAILABLE", message);
-  }
-}
+import { Sonamu, isSoException } from "sonamu";
 
-class ExternalApiModel extends BaseModelClass {
-  @api({ httpMethod: "GET" })
-  async fetchData(): Promise<any> {
-    try {
-      const response = await axios.get("https://external-api.com/data", {
-        timeout: 5000,
-      });
-
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        if (error.code === "ECONNABORTED") {
-          throw new RetryableError("Request timeout", 10);
-        }
-
-        if (error.response?.status === 429) {
-          const retryAfter = parseInt(error.response.headers["retry-after"] || "60");
-          throw new RetryableError("Rate limited", retryAfter);
-        }
+Sonamu.startServer({
+  lifecycle: {
+    onError: (error, request, reply) => {
+      // Custom error handling logic
+      if (isSoException(error)) {
+        reply.status(error.statusCode).send({
+          error: error.message,
+          payload: error.payload,
+        });
+      } else {
+        reply.status(500).send({
+          error: "Internal server error",
+        });
       }
-
-      throw new ApiError(502, "BAD_GATEWAY", "External service unavailable");
-    }
-  }
-}
+    },
+  },
+});
 ```
 
-## Internationalized Error Messages
+## Status Code Reference
 
-```typescript
-// i18n/errors.ts
-const errorMessages: Record<string, Record<string, string>> = {
-  ko: {
-    USER_NOT_FOUND: "사용자를 찾을 수 없습니다",
-    EMAIL_EXISTS: "이미 사용 중인 이메일입니다",
-    INVALID_PASSWORD: "비밀번호가 올바르지 않습니다",
-    PERMISSION_DENIED: "권한이 없습니다",
-  },
-  en: {
-    USER_NOT_FOUND: "User not found",
-    EMAIL_EXISTS: "Email already exists",
-    INVALID_PASSWORD: "Invalid password",
-    PERMISSION_DENIED: "Permission denied",
-  },
-};
+### Standard HTTP Status Codes
 
-export function getErrorMessage(code: string, locale: string = "en"): string {
-  return errorMessages[locale]?.[code] || code;
-}
+| Code | Name                  | When to Use                   |
+| ---- | --------------------- | ----------------------------- |
+| 200  | OK                    | Success (GET, PUT)            |
+| 201  | Created               | Resource created (POST)       |
+| 204  | No Content            | Success, no response (DELETE) |
+| 400  | Bad Request           | Invalid request format        |
+| 401  | Unauthorized          | Authentication required       |
+| 404  | Not Found             | Resource not found            |
+| 500  | Internal Server Error | Internal server error         |
+| 503  | Service Unavailable   | Service unavailable           |
 
-// Usage
-class UserModel extends BaseModelClass {
-  @api({ httpMethod: "GET" })
-  async get(id: number): Promise<User> {
-    const context = Sonamu.getContext();
-    const rdb = this.getPuri("r");
+### Sonamu Custom Status Codes
 
-    const user = await rdb.table("users").where("id", id).first();
-
-    if (!user) {
-      const locale = context.locale || "en";
-      throw new NotFoundError(getErrorMessage("USER_NOT_FOUND", locale));
-    }
-
-    return user;
-  }
-}
-```
+| Code | Exception Class              | When to Use                              |
+| ---- | ---------------------------- | ---------------------------------------- |
+| 520  | `TargetNotFoundException`    | Processing target does not exist         |
+| 541  | `AlreadyProcessedException` | Request already processed                |
+| 542  | `DuplicateRowException`     | Duplicate where duplicates not allowed   |
 
 ## Practical Pattern
 
 ```typescript
+import {
+  UnauthorizedException,
+  BadRequestException,
+  DuplicateRowException,
+} from "sonamu";
+
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async create(params: unknown): Promise<{ userId: number }> {
     const context = Sonamu.getContext();
 
-    try {
-      // 1. Check authentication
-      if (!context.user) {
-        throw new UnauthorizedError();
-      }
-
-      // 2. Zod validation
-      const validated = CreateUserSchema.safeParse(params);
-      if (!validated.success) {
-        const details = validated.error.errors.map((e) => ({
-          field: e.path.join("."),
-          message: e.message,
-        }));
-        throw new ValidationError("Validation failed", details);
-      }
-
-      const data = validated.data;
-
-      // 3. Business rule validation
-      const rdb = this.getPuri("r");
-      const existing = await rdb.table("users").where("email", data.email).first();
-
-      if (existing) {
-        throw new ConflictError("Email already exists", {
-          field: "email",
-        });
-      }
-
-      // 4. Create
-      const wdb = this.getPuri("w");
-      const [user] = await wdb.table("users").insert(data).returning({ id: "id" });
-
-      // 5. Logging
-      Logger.info("User created", {
-        userId: user.id,
-        email: data.email,
-      });
-
-      return { userId: user.id };
-    } catch (error) {
-      // Error logging
-      Logger.error(error as Error, {
-        userId: context.user?.id,
-        endpoint: context.request.url,
-      });
-
-      throw error;
+    // 1. Check authentication
+    if (!context.user) {
+      throw new UnauthorizedException("Authentication required");
     }
+
+    // 2. Zod validation
+    const validated = CreateUserSchema.safeParse(params);
+    if (!validated.success) {
+      throw new BadRequestException("Validation failed", validated.error.issues);
+    }
+
+    const data = validated.data;
+
+    // 3. Business rule validation
+    const rdb = this.getPuri("r");
+    const existing = await rdb.table("users").where("email", data.email).first();
+
+    if (existing) {
+      throw new DuplicateRowException("Email already exists");
+    }
+
+    // 4. Create
+    const wdb = this.getPuri("w");
+    const [user] = await wdb.table("users").insert(data).returning({ id: "id" });
+
+    return { userId: user.id };
   }
 }
 ```

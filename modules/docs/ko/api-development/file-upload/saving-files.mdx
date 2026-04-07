@@ -26,18 +26,18 @@ Sonamu의 Storage Manager를 사용하여 로컬, S3, GCS 등에 파일을 저�
 
 ### 기본 사용법
 
-`UploadedFile`의 `saveToDisk()` 메서드가 가장 간편한 파일 저장 방법입니다.
+`@upload()` 데코레이터로 업로드된 파일은 `Sonamu.getContext().bufferedFiles`를 통해 접근합니다. `BufferedFile`의 `saveToDisk()` 메서드가 가장 간편한 파일 저장 방법입니다.
 
 ```typescript
-import type { UploadedFile } from "sonamu";
-
 class FileModel extends BaseModelClass {
   @upload()
-  async upload(params: { file: UploadedFile }): Promise<{ url: string }> {
-    const { file } = params;
+  async upload(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("파일이 필요합니다");
 
     // 파일 저장 (기본 디스크)
-    const url = await file.saveToDisk(`uploads/${Date.now()}-${file.filename}`);
+    const url = await file.saveToDisk("fs", `uploads/${Date.now()}-${file.filename}`);
 
     return { url };
   }
@@ -49,14 +49,13 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @upload()
-  async uploadToS3(params: { file: UploadedFile }): Promise<{ url: string }> {
-    const { file } = params;
+  async uploadToS3(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("파일이 필요합니다");
 
     // S3 디스크에 저장
-    const url = await file.saveToDisk(
-      `uploads/${Date.now()}-${file.filename}`,
-      "s3", // 디스크 이름
-    );
+    const url = await file.saveToDisk("s3", `uploads/${Date.now()}-${file.filename}`);
 
     return { url };
   }
@@ -240,8 +239,10 @@ const signedUrl = await disk.getSignedUrl(key, expiresIn);
 ```typescript
 class FileModel extends BaseModelClass {
   @upload()
-  async upload(params: { file: UploadedFile }): Promise<{ url: string }> {
-    const { file } = params;
+  async upload(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("파일이 필요합니다");
 
     // 날짜별 경로 생성
     const now = new Date();
@@ -251,7 +252,7 @@ class FileModel extends BaseModelClass {
 
     const key = `uploads/${year}/${month}/${day}/${Date.now()}.${file.extname}`;
 
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk("fs", key);
 
     return { url };
   }
@@ -263,19 +264,21 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @upload()
-  async upload(params: { file: UploadedFile }): Promise<{ url: string }> {
+  async upload(): Promise<{ url: string }> {
     const context = Sonamu.getContext();
 
     if (!context.user) {
       throw new Error("Authentication required");
     }
 
-    const { file } = params;
+    const { bufferedFiles } = context;
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("파일이 필요합니다");
 
     // 사용자별 경로
     const key = `users/${context.user.id}/${Date.now()}.${file.extname}`;
 
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk("fs", key);
 
     return { url };
   }
@@ -287,17 +290,17 @@ class FileModel extends BaseModelClass {
 ```typescript
 class MediaModel extends BaseModelClass {
   @upload()
-  async uploadMedia(params: {
-    file: UploadedFile;
-    category: "public" | "private";
-  }): Promise<{ url: string }> {
-    const { file, category } = params;
+  async uploadMedia(params: { category: "public" | "private" }): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("파일이 필요합니다");
+    const { category } = params;
 
     // 카테고리별 디스크 선택
     const diskName = category === "public" ? "public" : "private";
 
     const key = `media/${Date.now()}.${file.extname}`;
-    const url = await file.saveToDisk(key, diskName);
+    const url = await file.saveToDisk(diskName, key);
 
     return { url };
   }
@@ -311,22 +314,24 @@ import sharp from "sharp";
 
 class ImageModel extends BaseModelClass {
   @upload()
-  async uploadOptimized(params: { image: UploadedFile }): Promise<{
+  async uploadOptimized(): Promise<{
     originalUrl: string;
     thumbnailUrl: string;
     mediumUrl: string;
   }> {
-    const { image } = params;
+    const { bufferedFiles } = Sonamu.getContext();
+    const image = bufferedFiles?.[0];
+    if (!image) throw new Error("이미지가 필요합니다");
 
     // 원본 이미지 Buffer
-    const buffer = await image.toBuffer();
+    const buffer = image.buffer;
 
     const timestamp = Date.now();
     const ext = image.extname;
 
     // 원본 저장
     const originalKey = `images/original/${timestamp}.${ext}`;
-    const originalUrl = await image.saveToDisk(originalKey);
+    const originalUrl = await image.saveToDisk("fs", originalKey);
 
     // Storage Manager 가져오기
     const disk = Sonamu.storage.use();
@@ -369,17 +374,19 @@ class ImageModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @upload()
-  async uploadWithBackup(params: { file: UploadedFile }): Promise<{
+  async uploadWithBackup(): Promise<{
     primaryUrl: string;
     backupUrl: string;
   }> {
-    const { file } = params;
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("파일이 필요합니다");
 
     const key = `uploads/${Date.now()}.${file.extname}`;
-    const buffer = await file.toBuffer();
+    const buffer = file.buffer;
 
     // Primary 디스크에 저장
-    const primaryUrl = await file.saveToDisk(key, "s3");
+    const primaryUrl = await file.saveToDisk("s3", key);
 
     // Backup 디스크에도 저장
     const backupDisk = Sonamu.storage.use("backup");
@@ -460,38 +467,18 @@ class FileModel extends BaseModelClass {
 
 ### 스트리밍 업로드 (대용량 파일)
 
-대용량 파일의 경우 Buffer 대신 스트리밍을 사용할 수 있습니다.
+대용량 파일의 경우 `@upload({ consume: "stream" })` 옵션을 사용하면 파일이 지정된 스토리지에 직접 스트리밍 저장됩니다. 이 경우 `context.uploadedFiles`를 통해 이미 업로드된 파일 정보에 접근합니다.
 
 ```typescript
-import { pipeline } from "stream/promises";
-import fs from "fs";
-
 class FileModel extends BaseModelClass {
-  @upload()
-  async uploadLarge(params: { file: UploadedFile }): Promise<{ url: string }> {
-    const { file } = params;
+  @upload({ consume: "stream", destination: "s3" })
+  async uploadLarge(): Promise<{ url: string }> {
+    const { uploadedFiles } = Sonamu.getContext();
+    const file = uploadedFiles?.[0];
+    if (!file) throw new Error("파일이 필요합니다");
 
-    // 임시 파일로 저장
-    const tempPath = `/tmp/${Date.now()}.${file.extname}`;
-    const writeStream = fs.createWriteStream(tempPath);
-
-    await pipeline(file.raw.file, writeStream);
-
-    // 임시 파일을 Storage에 업로드
-    const disk = Sonamu.storage.use();
-    const key = `uploads/${Date.now()}.${file.extname}`;
-
-    const buffer = await fs.promises.readFile(tempPath);
-    await disk.put(key, new Uint8Array(buffer), {
-      contentType: file.mimetype,
-    });
-
-    // 임시 파일 삭제
-    await fs.promises.unlink(tempPath);
-
-    const url = await disk.getUrl(key);
-
-    return { url };
+    // stream 모드에서는 파일이 이미 destination에 저장되어 있음
+    return { url: file.url };
   }
 }
 ```
@@ -502,7 +489,6 @@ class FileModel extends BaseModelClass {
 class FileModel extends BaseModelClass {
   @upload()
   async uploadWithMetadata(params: {
-    file: UploadedFile;
     title?: string;
     description?: string;
     tags?: string[];
@@ -513,14 +499,14 @@ class FileModel extends BaseModelClass {
       throw new Error("Authentication required");
     }
 
-    const { file, title, description, tags } = params;
-
-    // MD5 해시 계산
-    const md5Hash = await file.md5();
+    const { bufferedFiles } = context;
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("파일이 필요합니다");
+    const { title, description, tags } = params;
 
     // 파일 저장
-    const key = `uploads/${Date.now()}.${file.extname}`;
-    const url = await file.saveToDisk(key);
+    const key = `uploads/${Date.now()}-${file.filename}`;
+    const url = await file.saveToDisk("fs", key);
 
     // DB에 메타데이터 저장
     const wdb = this.getPuri("w");
@@ -532,7 +518,6 @@ class FileModel extends BaseModelClass {
         filename: file.filename,
         mime_type: file.mimetype,
         size: file.size,
-        md5_hash: md5Hash,
         url,
         title,
         description,
