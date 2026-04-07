@@ -29,6 +29,26 @@ export type MigrationResult = {
 }[];
 
 export class Migrator {
+  private async runMigrationsSequentially(
+    conns: { connKey: keyof SonamuDBConfig; knex: Knex }[],
+    action: "apply" | "rollback",
+  ): Promise<MigrationResult> {
+    const results: MigrationResult = [];
+
+    for (const { connKey, knex } of conns) {
+      const [batchNo, applied] =
+        action === "apply" ? await knex.migrate.latest() : await knex.migrate.rollback();
+
+      results.push({
+        connKey,
+        batchNo,
+        applied,
+      });
+    }
+
+    return results;
+  }
+
   private async getMigrationCodes(): Promise<MigrationCode[]> {
     const srcMigrationsDir = path.join(Sonamu.apiRootPath, "src", "migrations"); // 이건 환경에 관계없이 항상 src에서 찾아야 해요.
 
@@ -200,27 +220,9 @@ export class Migrator {
       const result = await (async () => {
         switch (action) {
           case "apply":
-            return Promise.all(
-              conns.map(async ({ connKey, knex }) => {
-                const [batchNo, applied] = await knex.migrate.latest();
-                return {
-                  connKey,
-                  batchNo,
-                  applied, // 이번 latest 호출로 인해 "up"이 적용된 마이그레이션 이름(e.g. "20251124233557_create__companies.ts")들의 배열입니다. 참고: https://github.com/knex/knex/blob/01b177c485d696f1b72858dee728ba143c4fad76/lib/migrations/migrate/Migrator.js#L560
-                };
-              }),
-            );
+            return this.runMigrationsSequentially(conns, "apply");
           case "rollback":
-            return Promise.all(
-              conns.map(async ({ connKey, knex }) => {
-                const [batchNo, applied] = await knex.migrate.rollback();
-                return {
-                  connKey,
-                  batchNo,
-                  applied, // 이번 rollback 호출로 인해 "down"이 적용된(=롤백된) 마이그레이션 이름(e.g. "20251124233557_create__companies.ts")들의 배열입니다. 참고: https://github.com/knex/knex/blob/01b177c485d696f1b72858dee728ba143c4fad76/lib/migrations/migrate/Migrator.js#L611
-                };
-              }),
-            );
+            return this.runMigrationsSequentially(conns, "rollback");
         }
       })();
 
