@@ -85,7 +85,7 @@ export class HotHookLoader {
   async #onMessage(message: any) {
     if (message.type === "hmr-hook:dump") {
       return this.#messagePort?.postMessage({
-        type: "hmr-hook:dump",
+        type: "hmr-hook:dump-done",
         dump: this.#dependencyTree.dump(),
       });
     }

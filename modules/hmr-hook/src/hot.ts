@@ -133,15 +133,16 @@ class Hot {
    * 워커 스레드에 메시지를 보내고, 지정된 타입의 응답을 타임아웃 내에 기다립니다.
    * 타임아웃 초과 시 리스너를 정리하고 에러를 throw합니다.
    */
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- dump 메시지 등 MessageChannelMessage에 포함되지 않은 타입도 지원
-  #waitForResponse(expectedType: string, timeoutMs = 30_000): Promise<any> {
+  #waitForResponse<K extends MessageChannelMessage["type"]>(
+    expectedType: K,
+    timeoutMs = 30_000,
+  ): Promise<Extract<MessageChannelMessage, { type: K }>> {
     return new Promise((resolve, reject) => {
-      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 워커 메시지의 타입은 런타임에 결정됨
-      const listener = (message: any) => {
+      const listener = (message: MessageChannelMessage) => {
         if (message.type === expectedType) {
           clearTimeout(timer);
           this.#messageChannel.port1.off("message", listener);
-          resolve(message);
+          resolve(message as Extract<MessageChannelMessage, { type: K }>);
         }
       };
 
@@ -159,8 +160,7 @@ class Hot {
    */
   async dump() {
     this.#messageChannel.port1.postMessage({ type: "hmr-hook:dump" });
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- MessageChannel 응답은 런타임에 타입이 결정됨
-    const result: any = await this.#waitForResponse("hmr-hook:dump");
+    const result = await this.#waitForResponse("hmr-hook:dump-done");
 
     return result.dump;
   }
@@ -182,8 +182,7 @@ class Hot {
       path,
       action,
     });
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- MessageChannel 응답은 런타임에 타입이 결정됨
-    const result: any = await this.#waitForResponse("hmr-hook:manual-invalidate-done");
+    const result = await this.#waitForResponse("hmr-hook:manual-invalidate-done");
 
     return result.invalidatedPaths || [];
   }
@@ -196,8 +195,7 @@ class Hot {
     this.#messageChannel.port1.postMessage({
       type: "hmr-hook:invalidate-all",
     });
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- MessageChannel 응답은 런타임에 타입이 결정됨
-    const result: any = await this.#waitForResponse("hmr-hook:invalidate-all-done");
+    const result = await this.#waitForResponse("hmr-hook:invalidate-all-done");
 
     return result.invalidatedPaths || [];
   }

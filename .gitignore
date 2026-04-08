@@ -20,6 +20,9 @@ build
 storybook-static
 *.tsbuildinfo
 
+# Test coverage
+coverage/
+
 # IDE
 .vscode/*
 !.vscode/extensions.json

@@ -1,6 +1,17 @@
 import { type MessagePort } from "node:worker_threads";
 
 export type FileChangeAction = "change" | "add" | "unlink";
+
+export type DumpNode = {
+  version: number;
+  boundary: boolean;
+  path: string;
+  nodePath: string;
+  dependents: string[];
+  dependencies: string[];
+  reloadable: boolean;
+};
+
 export type MessageChannelMessage =
   | { type: "hmr-hook:full-reload"; path: string; shouldBeReloadable?: boolean }
   | { type: "hmr-hook:invalidated"; paths: string[] }
@@ -8,7 +19,9 @@ export type MessageChannelMessage =
   | { type: "hmr-hook:manual-invalidate"; path: string; action: FileChangeAction }
   | { type: "hmr-hook:manual-invalidate-done"; path: string; invalidatedPaths: string[] }
   | { type: "hmr-hook:invalidate-all" }
-  | { type: "hmr-hook:invalidate-all-done" };
+  | { type: "hmr-hook:invalidate-all-done"; invalidatedPaths: string[] }
+  | { type: "hmr-hook:dump" }
+  | { type: "hmr-hook:dump-done"; dump: DumpNode[] };
 
 export type MessageChannelPerType = {
   [K in MessageChannelMessage["type"]]: Omit<Extract<MessageChannelMessage, { type: K }>, "type">;
