@@ -561,7 +561,7 @@ function removeDirectory(dirPath: string): void {
   }
   try {
     fs.rmSync(dirPath, { recursive: true, force: true });
-  } catch (_error) {
+  } catch {
     console.error(chalk.yellow(`Warning: Failed to remove ${dirPath}`));
   }
 }

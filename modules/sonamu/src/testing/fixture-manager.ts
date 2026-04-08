@@ -342,7 +342,7 @@ export class FixtureManagerClass {
         }
       }
 
-      for await (const fixture of fixtures) {
+      for (const fixture of fixtures) {
         const entity = EntityManager.get(fixture.entityId);
 
         // 사용자 지정 컬럼 기준 중복 확인 → target
@@ -680,7 +680,7 @@ export class FixtureManagerClass {
               ]);
               !isTest() && console.log(chalk.green(`Reset sequence for ${tableName}: ${maxId}`));
             }
-          } catch (_err) {
+          } catch {
             // 시퀀스가 없는 테이블(join table 등)은 무시
             !isTest() && console.log(chalk.gray(`Skipped sequence reset for ${tableName}`));
           }
