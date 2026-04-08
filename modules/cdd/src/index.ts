@@ -31,15 +31,8 @@ const cwd = args.cwd ?? process.cwd();
 const cmdArgs = args._.slice(1);
 
 // agents / contract / cdd 커맨드는 OutputResult 패턴 없이 직접 출력 후 종료
-if (command === "cdd") {
-  const subCmd = cmdArgs[0];
-  if (subCmd === "init") {
-    runCddInit(args.force);
-  } else {
-    console.error(`알 수 없는 cdd 서브커맨드: "${subCmd}"`);
-    console.error("사용 가능: init");
-    process.exit(1);
-  }
+if (command === "init") {
+  runCddInit(args.force);
   process.exit(0);
 }
 
@@ -116,7 +109,7 @@ Commands:
   ac add <file> [--describe <group>] <test-name>  AC 추가 (빈 테스트 스켈레톤 생성)
   ac list [file]                                   AC 목록 조회 (describe/test 트리)
   rules validate                                   Rules 파일 구조 검증
-  cdd init [--force]                               agents init + contract init 한 번에 실행
+  init [--force]                                   agents init + contract init 한 번에 실행
   agents init [--force]                            CDD 에이전트 셋업 (.agents/, AGENTS.md)
   agents sync [--dry-run]                          CDD 에이전트 프롬프트 최신화
   contract init [--force]                          contract/ 초기 설정 (planning.md)
