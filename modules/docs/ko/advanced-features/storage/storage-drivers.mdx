@@ -529,10 +529,10 @@ export const config: SonamuConfig = {
 
 ```typescript
 // 프로필 사진 → public
-await file.saveToDisk("avatars/user-1.png", "public");
+await file.saveToDisk("public", "avatars/user-1.png");
 
 // 개인 문서 → private (기본)
-await file.saveToDisk("documents/user-1/doc.pdf");
+await file.saveToDisk("fs", "documents/user-1/doc.pdf");
 
 // 백업 → backup
 await Sonamu.storage.use("backup").put("backup.json", data);

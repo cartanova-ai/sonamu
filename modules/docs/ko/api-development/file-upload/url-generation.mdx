@@ -38,7 +38,7 @@ class FileModel extends BaseModelClass {
     const { file } = params;
 
     // 파일 저장
-    await file.saveToDisk(`uploads/${Date.now()}.${file.extname}`);
+    await file.saveToDisk("fs", `uploads/${Date.now()}.${file.extname}`);
 
     // URL 자동 생성됨
     const publicUrl = file.url!; // Public URL
