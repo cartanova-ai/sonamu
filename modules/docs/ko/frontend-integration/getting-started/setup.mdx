@@ -36,67 +36,45 @@ Sonamu 프론트엔드 통합의 시작점인 `SonamuProvider` 설정 방법을 
 
 ## 기본 설정
 
-### 1. 설정 파일 생성
+### 1. SonamuProvider 설정 파일 생성
 
-프로젝트의 `src/config/sonamu-provider.config.ts` 파일을 생성합니다.
+프로젝트의 `src/contexts/sonamu-provider.tsx` 파일을 생성합니다.
 
 ```typescript
-// src/config/sonamu-provider.config.ts
-import type { SonamuAuth, SonamuContextValue, SonamuFile } from "@sonamu-kit/react-components";
-import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import type { DictKey, MergedDictionary } from "@/i18n/sd.generated";
+// src/contexts/sonamu-provider.tsx
+import {
+  SonamuProvider as BaseSonamuProvider,
+  useSonamuBaseContext,
+} from "@sonamu-kit/react-components";
+import { type SonamuFile } from "@sonamu-kit/react-components";
+import { type BetterAuthClientOptions } from "better-auth/client";
+import { inferAdditionalFields } from "better-auth/client/plugins";
+import { type ReactNode } from "react";
+
+import { type MergedDictionary } from "@/i18n/sd.generated";
 import { SD } from "@/i18n/sd.generated";
-import { FileService, UserService } from "@/services/services.generated";
-import type { UserSubsetSS } from "@/services/sonamu.generated";
-import type { UserLoginParams } from "@/services/user/user.types";
+import { FileService } from "@/services/services.generated";
 
-export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
-  // Auth 설정
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const { data: user, isLoading, refetch } = UserService.useMe();
-  const loginMutation = UserService.useLoginMutation();
-  const logoutMutation = UserService.useLogoutMutation();
+// better-auth 클라이언트 옵션 정의
+const authOptions = {
+  plugins: [
+    inferAdditionalFields({
+      user: {
+        role: { type: "string" },
+      },
+    }),
+  ],
+} satisfies BetterAuthClientOptions;
 
-  const auth_config: SonamuAuth<UserSubsetSS, UserLoginParams> = {
-    user: user ?? null,
-    loading: isLoading || loginMutation.isPending || logoutMutation.isPending,
-    login: (loginParams: UserLoginParams) => {
-      loginMutation.mutate(
-        { params: loginParams },
-        {
-          onSuccess: async ({ user: _user }) => {
-            await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
-            await queryClient.refetchQueries({ queryKey: ["User", "me"] });
-            navigate({ to: "/admin", replace: true });
-          },
-          onError: (error) => {
-            console.error("Login failed:", error);
-            alert(SD("user.login.failed"));
-          },
-        },
-      );
-    },
-    logout: () => {
-      logoutMutation.mutate(undefined, {
-        onSuccess: async () => {
-          await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
-          await queryClient.refetchQueries({ queryKey: ["User", "me"] });
-        },
-        onError: (error) => {
-          console.error("Logout failed:", error);
-          alert(SD("user.logout.failed"));
-        },
-      });
-    },
-    refetch,
-  };
+// 타입이 지정된 useSonamuContext
+export function useSonamuContext() {
+  return useSonamuBaseContext<MergedDictionary, typeof authOptions>();
+}
 
-  // Uploader 설정
+export function SonamuProvider({ children }: { children: ReactNode }) {
   const uploadMutation = FileService.useUploadMutation();
 
-  const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
+  const uploader = async (files: File[]): Promise<SonamuFile[]> => {
     if (files.length === 0) {
       return [];
     }
@@ -105,10 +83,11 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
     return result.files;
   };
 
-  // SD 설정
-  const sd_config = <K extends DictKey>(key: K): ReturnType<typeof SD<K>> => SD(key);
-
-  return { auth: auth_config, uploader: uploader_config, SD: sd_config };
+  return (
+    <BaseSonamuProvider<MergedDictionary> authOptions={authOptions} uploader={uploader} SD={SD}>
+      {children}
+    </BaseSonamuProvider>
+  );
 }
 ```
 
@@ -118,11 +97,9 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
 
 ```typescript
 // src/routes/__root.tsx
-import { SonamuProvider } from "@sonamu-kit/react-components";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
-import { createSonamuConfig } from "@/config/sonamu-provider.config";
-import type { MergedDictionary } from "@/i18n/sd.generated";
+import { SonamuProvider } from "@/contexts/sonamu-provider";
 
 export const Route = createRootRouteWithContext()({
   component: RootComponent,
@@ -133,141 +110,117 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SonamuProviderWrapper>
+      <SonamuProvider>
         <Outlet />
-      </SonamuProviderWrapper>
+      </SonamuProvider>
     </QueryClientProvider>
   );
-}
-
-function SonamuProviderWrapper({ children }: { children: React.ReactNode }) {
-  const sonamuConfig = createSonamuConfig();
-  return <SonamuProvider<MergedDictionary> {...sonamuConfig}>{children}</SonamuProvider>;
 }
 ```
 
 <Info>
-**왜 SonamuProviderWrapper를 별도로 만드나요?**
+**왜 SonamuProvider를 별도 파일로 만드나요?**
 
-`createSonamuConfig`는 React 훅(`useQueryClient`, `useNavigate` 등)을 사용하므로 컴포넌트 안에서 호출되어야 합니다.
-따라서 별도 컴포넌트로 분리하여 `QueryClientProvider` 아래에 배치합니다.
+`SonamuProvider`는 `FileService.useUploadMutation()` 같은 React 훅을 사용하므로 `QueryClientProvider` 아래에 배치해야 합니다.
+별도 파일로 분리하면 `authOptions`, `useSonamuContext` 등의 설정과 타입을 함께 관리할 수 있습니다.
 
 </Info>
 
 ## 인증 설정
 
-### Auth 인터페이스
+Sonamu는 [better-auth](https://www.better-auth.com/)를 기반으로 인증을 처리합니다. `SonamuProvider`에 `authOptions`를 전달하면 내부적으로 better-auth 클라이언트가 생성됩니다.
+
+### authOptions 정의
+
+better-auth 클라이언트 옵션을 정의합니다. 플러그인을 통해 사용자 필드를 확장할 수 있습니다.
 
 ```typescript
-export type SonamuAuth<TUser = any, TLoginParams = any> = {
-  user: TUser | null;
-  loading: boolean;
-  login: (params: TLoginParams) => void;
-  logout: () => void;
-  refetch: () => void;
-};
-```
+import { type BetterAuthClientOptions } from "better-auth/client";
+import { inferAdditionalFields } from "better-auth/client/plugins";
 
-### User 타입 지정
-
-자동 생성된 User Subset을 사용합니다.
-
-```typescript
-import type { UserSubsetSS } from "@/services/sonamu.generated";
-
-const auth_config: SonamuAuth<UserSubsetSS, UserLoginParams> = {
-  // UserSubsetSS: Session Summary (세션용 최소 정보)
-  // 예: { id, username, email, role }
-  user: user ?? null,
-  // ...
-};
+const authOptions = {
+  plugins: [
+    inferAdditionalFields({
+      user: {
+        role: { type: "string" },
+        // 필요한 추가 필드 정의
+      },
+    }),
+  ],
+} satisfies BetterAuthClientOptions;
 ```
 
 <Info>
-**Subset "SS"란?**
+**`inferAdditionalFields`란?**
 
-Session Summary의 약자로, 세션 관리에 필요한 최소한의 사용자 정보만 포함합니다.
-전체 사용자 정보(Subset "A")를 로드하는 것보다 가볍고 빠릅니다.
+better-auth의 기본 User 타입(`id`, `name`, `email` 등) 외에 프로젝트에서 추가한 필드(`role` 등)를 클라이언트 타입에 반영합니다.
+서버에서 정의한 사용자 스키마와 일치시켜야 합니다.
 
 </Info>
 
 ### 로그인 흐름
 
+better-auth 클라이언트의 `signIn` 메서드를 사용합니다.
+
 ```typescript
-login: (loginParams: UserLoginParams) => {
-  loginMutation.mutate(
-    { params: loginParams },
-    {
-      onSuccess: async ({ user: _user }) => {
-        // 1. 캐시 무효화
-        await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+import { useSonamuContext } from "@/contexts/sonamu-provider";
 
-        // 2. 최신 사용자 정보 리패칭
-        await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+export function LoginPage() {
+  const { auth } = useSonamuContext();
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
 
-        // 3. 관리자 페이지로 이동
-        navigate({ to: "/admin", replace: true });
-      },
-      onError: (error) => {
-        console.error("Login failed:", error);
-        alert(SD("user.login.failed"));
-      },
-    },
+  const handleSubmit = async () => {
+    const result = await auth.signIn.email({ email, password });
+
+    if (result.error) {
+      alert(result.error.message);
+      return;
+    }
+  };
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+      <input value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <button type="submit">로그인</button>
+    </form>
   );
-},
+}
 ```
-
-**핵심 단계**:
-
-1. `loginMutation.mutate`: 백엔드 로그인 API 호출
-2. `invalidateQueries`: 기존 사용자 정보 캐시 무효화
-3. `refetchQueries`: 새로운 사용자 정보 가져오기
-4. `navigate`: 성공 시 페이지 이동
 
 ### 로그아웃 흐름
 
 ```typescript
-logout: () => {
-  logoutMutation.mutate(undefined, {
-    onSuccess: async () => {
-      // 사용자 정보 리패칭 (null로 바뀜)
-      await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
-      await queryClient.refetchQueries({ queryKey: ["User", "me"] });
-    },
-    onError: (error) => {
-      console.error("Logout failed:", error);
-      alert(SD("user.logout.failed"));
-    },
-  });
-},
+const handleLogout = () => {
+  auth.signOut();
+};
 ```
 
-### Auth 사용하기
+### 세션 사용하기
 
-컴포넌트에서 `useSonamuContext`로 auth에 접근합니다.
+컴포넌트에서 `useSonamuContext`로 auth 클라이언트에 접근하고, `auth.useSession()`으로 현재 세션을 조회합니다.
 
 ```typescript
-import { useSonamuContext } from "@sonamu-kit/react-components";
+import { useSonamuContext } from "@/contexts/sonamu-provider";
 
 export function Header() {
   const { auth } = useSonamuContext();
+  const session = auth.useSession();
+  const user = session.data?.user ?? null;
 
-  if (auth.loading) {
+  if (session.isPending) {
     return <div>로딩 중...</div>;
   }
 
-  if (!auth.user) {
-    return (
-      <button onClick={() => auth.login({ email: "user@example.com", password: "password" })}>
-        로그인
-      </button>
-    );
+  if (!user) {
+    return <a href="/login">로그인</a>;
   }
 
   return (
     <div>
-      <span>환영합니다, {auth.user.username}님</span>
-      <button onClick={() => auth.logout()}>로그아웃</button>
+      <span>환영합니다, {user.name}님</span>
+      <button onClick={() => auth.signOut()}>로그아웃</button>
     </div>
   );
 }
@@ -425,20 +378,21 @@ export function WelcomeMessage() {
 
 ### 제네릭 타입 지정
 
-`SonamuProvider`에 Dictionary 타입을 지정하면 `SD` 함수가 타입 안전해집니다.
+`BaseSonamuProvider`에 Dictionary 타입을 지정하면 `SD` 함수가 타입 안전해집니다.
 
 ```typescript
 import type { MergedDictionary } from "@/i18n/sd.generated";
 
-<SonamuProvider<MergedDictionary> {...sonamuConfig}>
+<BaseSonamuProvider<MergedDictionary> authOptions={authOptions} uploader={uploader} SD={SD}>
   {children}
-</SonamuProvider>
+</BaseSonamuProvider>
 ```
 
 ### 자동 완성
 
 ```typescript
-const { SD } = useSonamuContext<MergedDictionary>();
+// useSonamuBaseContext에 Dictionary와 authOptions 타입을 지정합니다.
+const { SD } = useSonamuBaseContext<MergedDictionary, typeof authOptions>();
 
 SD("
     ↓
@@ -458,13 +412,12 @@ SD("
 파일 업로드가 필요 없다면 `uploader`를 생략할 수 있습니다.
 
 ```typescript
-export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
-  const auth_config = {
-    /* ... */
-  };
-  const sd_config = SD;
-
-  return { auth: auth_config, SD: sd_config };
+export function SonamuProvider({ children }: { children: ReactNode }) {
+  return (
+    <BaseSonamuProvider<MergedDictionary> authOptions={authOptions} SD={SD}>
+      {children}
+    </BaseSonamuProvider>
+  );
   // uploader 생략 (fallback 함수가 자동으로 설정됨)
 }
 ```
@@ -476,24 +429,30 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
 
 ### Auth 없이 사용
 
-인증이 필요 없는 프로젝트라면 `auth`도 생략 가능합니다.
+인증이 필요 없는 프로젝트라면 `authOptions`를 생략할 수 있습니다.
 
 ```typescript
-export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
-  const sd_config = SD;
-
-  return { SD: sd_config };
+export function SonamuProvider({ children }: { children: ReactNode }) {
+  return (
+    <BaseSonamuProvider<MergedDictionary> SD={SD}>
+      {children}
+    </BaseSonamuProvider>
+  );
 }
 ```
 
 ### 로딩 상태 표시
 
 ```typescript
+import { useSonamuContext } from "@/contexts/sonamu-provider";
+
 export function App({ children }: { children: React.ReactNode }) {
   const { auth } = useSonamuContext();
+  const session = auth.useSession();
+  const user = session.data?.user ?? null;
 
   // 초기 로딩 중
-  if (auth.loading) {
+  if (session.isPending) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Spinner />
@@ -502,7 +461,7 @@ export function App({ children }: { children: React.ReactNode }) {
   }
 
   // 인증 필요
-  if (!auth.user) {
+  if (!user) {
     return <LoginPage />;
   }
 
@@ -516,24 +475,22 @@ export function App({ children }: { children: React.ReactNode }) {
 로그인 성공 후 이동 경로를 동적으로 결정할 수 있습니다.
 
 ```typescript
-login: (loginParams: UserLoginParams) => {
-  loginMutation.mutate(
-    { params: loginParams },
-    {
-      onSuccess: async ({ user: _user }) => {
-        await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
-        await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+const handleLogin = async (email: string, password: string) => {
+  const result = await auth.signIn.email({ email, password });
 
-        // 역할에 따라 다른 페이지로 이동
-        if (_user.role === "admin") {
-          navigate({ to: "/admin", replace: true });
-        } else {
-          navigate({ to: "/dashboard", replace: true });
-        }
-      },
-    },
-  );
-},
+  if (result.error) {
+    alert(result.error.message);
+    return;
+  }
+
+  // 역할에 따라 다른 페이지로 이동
+  const session = await auth.getSession();
+  if (session.data?.user.role === "admin") {
+    navigate({ to: "/admin", replace: true });
+  } else {
+    navigate({ to: "/dashboard", replace: true });
+  }
+};
 ```
 
 ## 문제 해결
@@ -545,7 +502,7 @@ Error: [SonamuProvider] uploader is not configured.
 Please provide uploader configuration to SonamuProvider.
 ```
 
-**해결**: `createSonamuConfig`에서 `uploader_config`를 반환하세요.
+**해결**: `SonamuProvider`에서 `uploader`를 전달하세요.
 
 ### "auth is not configured" 에러
 
@@ -554,7 +511,7 @@ Error: [SonamuProvider] auth is not configured.
 Please provide auth configuration to SonamuProvider.
 ```
 
-**해결**: `createSonamuConfig`에서 `auth_config`를 반환하세요.
+**해결**: `SonamuProvider`에 `authOptions`를 전달하세요.
 
 ### QueryClient를 찾을 수 없음
 

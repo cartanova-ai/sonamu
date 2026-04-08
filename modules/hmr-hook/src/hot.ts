@@ -130,14 +130,37 @@ class Hot {
   }
 
   /**
+   * 워커 스레드에 메시지를 보내고, 지정된 타입의 응답을 타임아웃 내에 기다립니다.
+   * 타임아웃 초과 시 리스너를 정리하고 에러를 throw합니다.
+   */
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- dump 메시지 등 MessageChannelMessage에 포함되지 않은 타입도 지원
+  #waitForResponse(expectedType: string, timeoutMs = 30_000): Promise<any> {
+    return new Promise((resolve, reject) => {
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 워커 메시지의 타입은 런타임에 결정됨
+      const listener = (message: any) => {
+        if (message.type === expectedType) {
+          clearTimeout(timer);
+          this.#messageChannel.port1.off("message", listener);
+          resolve(message);
+        }
+      };
+
+      const timer = setTimeout(() => {
+        this.#messageChannel.port1.off("message", listener);
+        reject(new Error(`hmr-hook: '${expectedType}' 응답 대기 시간 초과 (${timeoutMs}ms)`));
+      }, timeoutMs);
+
+      this.#messageChannel.port1.on("message", listener);
+    });
+  }
+
+  /**
    * Dump the current state HMR hook
    */
   async dump() {
     this.#messageChannel.port1.postMessage({ type: "hmr-hook:dump" });
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- MessageChannel 응답은 런타임에 타입이 결정됨
-    const result: any = await new Promise((resolve) =>
-      this.#messageChannel.port1.once("message", (message) => resolve(message)),
-    );
+    const result: any = await this.#waitForResponse("hmr-hook:dump");
 
     return result.dump;
   }
@@ -160,18 +183,7 @@ class Hot {
       action,
     });
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- MessageChannel 응답은 런타임에 타입이 결정됨
-    const result: any = await new Promise((resolve) => {
-      const listener = (message: MessageChannelMessage) => {
-        if (message.type === "hmr-hook:manual-invalidate-done") {
-          resolve(message);
-          this.#messageChannel.port1.off("message", listener);
-        }
-      };
-
-      // 메시지가 이거 하나 말고 여러 개 오기 때문에 일단 on으로 계속 듣게 해놓았습니다.
-      // 필요한게 오면 알아서 off할 거예요.
-      this.#messageChannel.port1.on("message", listener);
-    });
+    const result: any = await this.#waitForResponse("hmr-hook:manual-invalidate-done");
 
     return result.invalidatedPaths || [];
   }
@@ -185,16 +197,7 @@ class Hot {
       type: "hmr-hook:invalidate-all",
     });
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- MessageChannel 응답은 런타임에 타입이 결정됨
-    const result: any = await new Promise((resolve) => {
-      const listener = (message: MessageChannelMessage) => {
-        if (message.type === "hmr-hook:invalidate-all-done") {
-          resolve(message);
-          this.#messageChannel.port1.off("message", listener);
-        }
-      };
-
-      this.#messageChannel.port1.on("message", listener);
-    });
+    const result: any = await this.#waitForResponse("hmr-hook:invalidate-all-done");
 
     return result.invalidatedPaths || [];
   }
