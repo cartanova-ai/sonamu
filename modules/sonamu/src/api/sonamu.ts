@@ -189,18 +189,17 @@ class SonamuClass {
       return;
     }
 
-    if (!doSilent) {
-      const chalk = (await import("chalk")).default;
-      console.time(chalk.cyan(`Sonamu.init${forTesting ? " for testing" : ""}`));
-    }
+    const initStart = performance.now();
 
     // API 루트 패스
     const { findApiRootPath } = await import("../utils/utils");
     this.apiRootPath = apiRootPath ?? findApiRootPath();
 
     // 설정을 로딩하는 것부터 시작
+    const configStart = performance.now();
     const { loadConfig } = await import("./config");
     this.config = await loadConfig(this.apiRootPath);
+    const configTime = performance.now() - configStart;
     setSDConfig(this.config.i18n);
     // sonamu.config.ts 기본값 설정
     this.config.database.database = this.config.database.database ?? "pg";
@@ -218,10 +217,6 @@ class SonamuClass {
     const { DB } = await import("../database/db");
     this.dbConfig = DB.generateDBConfig(this.config.database);
     DB.setConfig(this.dbConfig);
-    if (!doSilent) {
-      const chalk = (await import("chalk")).default;
-      console.log(chalk.green("DB Config Loaded!"));
-    }
 
     // Entity 로드
     // 테스트에서도 Entity 정보는 필요합니다.
@@ -278,11 +273,12 @@ class SonamuClass {
     }
 
     this.isInitialized = true;
-    if (!doSilent) {
-      const chalk = (await import("chalk")).default;
-      console.timeEnd(chalk.cyan("Sonamu.init"));
-    }
+    this._initElapsed = performance.now() - initStart;
+    this._configElapsed = configTime;
   }
+
+  private _initElapsed = 0;
+  private _configElapsed = 0;
 
   async createServer(initOptions?: { enableSync?: boolean; doSilent?: boolean }) {
     if (!this.isInitialized) {
@@ -326,6 +322,10 @@ class SonamuClass {
 
     // 서버 시작
     await this.boot(server, options);
+
+    if (!initOptions?.doSilent) {
+      this.printStartupSummary();
+    }
 
     return server;
   }
@@ -372,10 +372,7 @@ class SonamuClass {
           return value;
         });
       });
-      if (!options?.doSilent) {
-        const chalk = (await import("chalk")).default;
-        console.log(chalk.green(`Timezone set to ${timezone}`));
-      }
+      // Timezone 로그는 printStartupSummary에서 통합 출력
     }
 
     // 전체 라우팅 리스트
@@ -607,7 +604,8 @@ class SonamuClass {
       await this.viteServer.close();
     });
 
-    console.log("✓ Vite dev server integrated");
+    const chalk = (await import("chalk")).default;
+    console.log(chalk.dim("✓ Vite dev server integrated"));
   }
 
   private async setupStaticWebServer(
@@ -1277,8 +1275,47 @@ class SonamuClass {
       },
     });
 
+  }
+
+  private async printStartupSummary() {
     const chalk = (await import("chalk")).default;
-    console.log(chalk.green(`✓ better-auth registered at ${basePath}/*`));
+    const env = process.env.NODE_ENV ?? "development";
+    const activePreset = env === "production" ? "production_master" : "development_master";
+
+    const dim = (msg: string) => console.log(chalk.dim(`✓ ${msg}`));
+    const green = (msg: string) => console.log(chalk.green(`✓ ${msg}`));
+
+    dim(`Config loaded${formatTime(this._configElapsed)}`);
+
+    // DB preset 목록
+    green("DB");
+    const { isLocal } = await import("../utils/controller");
+    const presetNames = Object.keys(this.dbConfig) as (keyof SonamuDBConfig)[];
+    const maxLen = Math.max(...presetNames.map((n) => n.length));
+    for (const name of presetNames) {
+      const conn = this.dbConfig[name].connection as
+        | { host?: string; port?: number; database?: string }
+        | undefined;
+      const host = conn?.host ?? "localhost";
+      const addr = `@ ${host}:${conn?.port ?? 5432}/${conn?.database ?? this.config.database.name}`;
+      const padded = name.padEnd(maxLen);
+      const remoteTag = isLocal() && !isLocalHost(host) ? chalk.yellow(` \u26a0 remote`) : "";
+
+      if (name === activePreset) {
+        console.log(chalk.green(`  \u25b8 ${padded} ${addr}`) + remoteTag);
+      } else {
+        console.log(chalk.dim(`    ${padded} ${addr}`) + remoteTag);
+      }
+    }
+
+    if (this.config.server.auth) {
+      const basePath = this.config.server.auth.basePath ?? "/api/auth";
+      dim(`Auth: better-auth at ${basePath}/*`);
+    }
+    if (this.config.api.timezone) {
+      dim(`Timezone: ${this.config.api.timezone}`);
+    }
+    green(`Sonamu ready${formatTime(this._initElapsed)}`);
   }
 
   private async initializeCache(config: CacheConfig | undefined, forTesting: boolean) {
@@ -1427,4 +1464,14 @@ function defaultKeyGenerator(file: { filename: string; mimetype: string }): stri
   const timestamp = Date.now();
   const random = Math.random().toString(36).slice(2, 8);
   return `uploads/${timestamp}-${random}.${ext}`;
+}
+
+function formatTime(ms: number): string {
+  const formatted = ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`;
+  return ` (${formatted})`;
+}
+
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
+function isLocalHost(host: string): boolean {
+  return LOCAL_HOSTS.has(host);
 }
