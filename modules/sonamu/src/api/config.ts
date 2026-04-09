@@ -294,7 +294,6 @@ export function defineConfig(config: Executable<SonamuConfig>): Promise<SonamuCo
  * @returns
  */
 export async function loadConfig(rootPath: string): Promise<SonamuConfig> {
-  const start = performance.now();
   const shouldLoadSourceConfig = process.env.HOT === "yes" || process.env.VITEST === "true";
   const configPath = shouldLoadSourceConfig
     ? `${rootPath}/src/sonamu.config.ts`
@@ -306,8 +305,5 @@ export async function loadConfig(rootPath: string): Promise<SonamuConfig> {
   }
 
   const { default: config } = await import(`file://${configPath}`);
-  const importTime = performance.now() - start;
-  process.env.NODE_ENV !== "test" &&
-    console.log(`[TIMING] loadConfig took ${importTime.toFixed(2)}ms`);
   return config;
 }
