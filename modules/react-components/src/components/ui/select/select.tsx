@@ -340,6 +340,32 @@ function useSelectCommon<Item>(
 // CommandBasedSelect
 // - 모든 모드를 처리하는 통합 Command Popover UI
 // ============================================================================
+function highlightMatch(label: React.ReactNode, searchTerm: string): React.ReactNode {
+  if (!searchTerm || typeof label !== "string") {
+    return label;
+  }
+
+  const lowerLabel = label.toLowerCase();
+  const lowerSearch = searchTerm.toLowerCase();
+  const idx = lowerLabel.indexOf(lowerSearch);
+
+  if (idx === -1) {
+    return label;
+  }
+
+  const before = label.slice(0, idx);
+  const match = label.slice(idx, idx + searchTerm.length);
+  const after = label.slice(idx + searchTerm.length);
+
+  return (
+    <>
+      {before}
+      <strong className="font-bold">{match}</strong>
+      {after}
+    </>
+  );
+}
+
 function CommandBasedSelect<Item>({
   props,
   isMultiple,
@@ -607,7 +633,7 @@ function CommandBasedSelect<Item>({
                             className={cn("mr-2 h-4 w-4", selected ? "opacity-100" : "opacity-0")}
                           />
                         )}
-                        <span>{getItemLabel(option.value)}</span>
+                        <span>{highlightMatch(getItemLabel(option.value), searchValue)}</span>
                       </CommandItem>
                     );
                   })}
