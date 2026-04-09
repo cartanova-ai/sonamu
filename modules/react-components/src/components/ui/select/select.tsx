@@ -434,7 +434,8 @@ function CommandBasedSelect<Item>({
   const error = isAsync && "error" in props ? props.error : undefined;
   const hasValue = isMultiple
     ? (props as MultiSyncProps<Item> | MultiAsyncProps<Item>).value.length > 0
-    : !!(props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value;
+    : (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value !== undefined &&
+      (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value !== null;
 
   // Badge 렌더링 헬퍼 (multi 모드 전용)
   const renderBadges = () => {
@@ -505,7 +506,7 @@ function CommandBasedSelect<Item>({
             <div className="flex justify-between items-center w-full px-2 py-1">
               {(() => {
                 const value = (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value;
-                return value ? (
+                return value !== undefined && value !== null ? (
                   <span className="flex-1 truncate text-left text-sm">{getItemLabel(value)}</span>
                 ) : null;
               })()}

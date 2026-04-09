@@ -1,5 +1,4 @@
 @import url("https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.min.css");
-@import "react-day-picker/dist/style.css";
 @import "tailwindcss";
 
 /* Tailwind v4: 소스 경로 지정 */
@@ -489,53 +488,6 @@ html {
 
   [data-slot="table-row"] {
     border-color: color-mix(in srgb, var(--border) 40%, transparent);
-  }
-
-  /* Calendar date range styles - react-day-picker v8 */
-  .rdp {
-    --rdp-cell-size: 2rem;
-    --rdp-accent-color: var(--primary);
-    --rdp-background-color: var(--primary);
-  }
-
-  /* Range selection - start date */
-  .rdp-day_range_start:not(.rdp-day_range_end) {
-    background-color: var(--primary) !important;
-    color: var(--primary-foreground) !important;
-    border-radius: var(--radius-md) 0 0 var(--radius-md) !important;
-  }
-
-  /* Range selection - end date */
-  .rdp-day_range_end:not(.rdp-day_range_start) {
-    background-color: var(--primary) !important;
-    color: var(--primary-foreground) !important;
-    border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
-  }
-
-  /* Range selection - single day (start = end) */
-  .rdp-day_range_start.rdp-day_range_end {
-    background-color: var(--primary) !important;
-    color: var(--primary-foreground) !important;
-    border-radius: var(--radius-md) !important;
-  }
-
-  /* Range selection - middle dates (연결된 배경) */
-  .rdp-day_range_middle {
-    background-color: color-mix(in srgb, var(--primary) 15%, transparent) !important;
-    border-radius: 0 !important;
-  }
-
-  /* Hover states */
-  .rdp-day:not(.rdp-day_selected):not(.rdp-day_range_start):not(.rdp-day_range_end):not(
-      .rdp-day_range_middle
-    ):hover {
-    background-color: var(--secondary) !important;
-  }
-
-  /* Selected single date */
-  .rdp-day_selected:not(.rdp-day_range_start):not(.rdp-day_range_end):not(.rdp-day_range_middle) {
-    background-color: var(--primary) !important;
-    color: var(--primary-foreground) !important;
   }
 }
 
