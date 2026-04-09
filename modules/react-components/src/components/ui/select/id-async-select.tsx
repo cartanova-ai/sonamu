@@ -336,7 +336,7 @@ export function IdAsyncSelect<
         <Select
           items={items}
           valueKey={valueKey}
-          value={value as TValue | undefined}
+          value={singleValue ?? undefined}
           onValueChange={(newValue: TValue | undefined) => {
             onValueChange?.(newValue);
             onRowChange?.((newValue ? rowMap.get(newValue) : undefined) as RowChangeParam);
@@ -372,7 +372,7 @@ export function IdAsyncSelect<
     return (
       <Select
         items={items}
-        value={value as TValue | undefined}
+        value={singleValue ?? undefined}
         onValueChange={(newValue: TValue | undefined) => {
           onValueChange?.(newValue);
           onRowChange?.((newValue ? rowMap.get(newValue) : undefined) as RowChangeParam);
