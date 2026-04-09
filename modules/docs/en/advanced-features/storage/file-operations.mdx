@@ -212,7 +212,7 @@ A class that wraps uploaded files.
     **URL after saving** (unsigned)
 
     ```typescript
-    await file.saveToDisk('uploads/file.pdf');
+    await file.saveToDisk("fs", 'uploads/file.pdf');
     console.log(file.url);
     // '/uploads/file.pdf' (fs)
     // 'https://bucket.s3.amazonaws.com/uploads/file.pdf' (s3)
@@ -224,7 +224,7 @@ A class that wraps uploaded files.
     **Signed URL after saving** (S3)
 
     ```typescript
-    await file.saveToDisk('uploads/file.pdf');
+    await file.saveToDisk("fs", 'uploads/file.pdf');
     console.log(file.signedUrl);
     // 'https://bucket.s3.amazonaws.com/uploads/file.pdf?X-Amz-...'
     ```
@@ -433,7 +433,7 @@ class MediaModelClass extends BaseModelClass {
 
     // Save new file
     const key = `media/${hash}.${file.extname}`;
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk("fs", key);
 
     // Save to DB
     await this.saveOne({
@@ -468,7 +468,7 @@ class FileModelClass extends BaseModelClass {
     const key = `${visibility}/${ctx.user.id}/${Date.now()}-${file.filename}`;
 
     // Save
-    const url = await file.saveToDisk(key, disk);
+    const url = await file.saveToDisk(disk, key);
 
     // Save to DB
     await this.saveOne({
