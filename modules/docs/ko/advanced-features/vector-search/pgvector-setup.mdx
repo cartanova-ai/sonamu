@@ -78,7 +78,7 @@ class DocumentModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async search(query: string) {
     // Puri로 벡터 검색 SQL 작성
-    const results = await this.getPuri().raw(`...`);
+    const results = await this.getPuri("r").raw(`...`);
     return results.rows;
   }
 }
@@ -392,7 +392,7 @@ class KnowledgeBaseModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async search(query: string) {
     // vector-search.mdx 참고
-    const results = await this.getPuri().raw(`...`);
+    const results = await this.getPuri("r").raw(`...`);
     return results.rows;
   }
 }

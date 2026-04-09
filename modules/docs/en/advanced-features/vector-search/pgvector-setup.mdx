@@ -78,7 +78,7 @@ class DocumentModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async search(query: string) {
     // Write vector search SQL with Puri
-    const results = await this.getPuri().raw(`...`);
+    const results = await this.getPuri("r").raw(`...`);
     return results.rows;
   }
 }
@@ -428,7 +428,7 @@ class KnowledgeBaseModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async search(query: string) {
     // See vector-search.mdx
-    const results = await this.getPuri().raw(`...`);
+    const results = await this.getPuri("r").raw(`...`);
     return results.rows;
   }
 }

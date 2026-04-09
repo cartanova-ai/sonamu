@@ -66,7 +66,7 @@ class DocumentModelClass extends BaseModelClass {
     );
 
     // 2. Puri로 벡터 검색 SQL 작성
-    const results = await this.getPuri().raw(
+    const results = await this.getPuri("r").raw(
       `
       SELECT 
         id,
@@ -106,7 +106,7 @@ await this.findMany({
 });
 
 // ✅ Puri.raw()로 SQL 직접 작성
-await this.getPuri().raw(`
+await this.getPuri("r").raw(`
   SELECT * FROM docs
   WHERE embedding <=> ? < 0.5
 `);
@@ -178,7 +178,7 @@ ORDER BY embedding <#> ?;
 
 ```typescript
 // ✅ 권장: 코사인 유사도
-const results = await this.getPuri().raw(
+const results = await this.getPuri("r").raw(
   `
   SELECT 
     id, title, content,
@@ -205,7 +205,7 @@ async searchWithThreshold(
 ) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
-  const results = await this.getPuri().raw(`
+  const results = await this.getPuri("r").raw(`
     SELECT
       id, title, content,
       1 - (embedding <=> ?) AS similarity
@@ -247,7 +247,7 @@ class KnowledgeBaseModelClass extends BaseModelClass {
     // 카테고리 필터 (선택)
     const categoryFilter = category ? `AND category = '${category}'` : "";
 
-    const results = await this.getPuri().raw(
+    const results = await this.getPuri("r").raw(
       `
       SELECT 
         id, title, content, category,
@@ -301,7 +301,7 @@ class ProductModelClass extends BaseModelClass {
     }
 
     // 유사 상품 검색 (자기 자신 제외)
-    const results = await this.getPuri().raw(
+    const results = await this.getPuri("r").raw(
       `
       SELECT 
         id, name, description, price,
@@ -390,7 +390,7 @@ async advancedSearch(
 
   params.push(limit);
 
-  const results = await this.getPuri().raw(`
+  const results = await this.getPuri("r").raw(`
     SELECT
       id, title, content, category,
       1 - (embedding <=> ?) AS similarity,
@@ -418,7 +418,7 @@ async searchDocumentChunks(
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
   // 청크별 검색 (더 많이 가져옴)
-  const chunks = await this.getPuri().raw(`
+  const chunks = await this.getPuri("r").raw(`
     SELECT
       id, parent_id, title, content, chunk_index,
       1 - (embedding <=> ?) AS similarity
@@ -486,7 +486,7 @@ USING hnsw (embedding vector_cosine_ops);
 ### EXPLAIN ANALYZE로 확인
 
 ```typescript
-const explain = await this.getPuri().raw(
+const explain = await this.getPuri("r").raw(
   `
   EXPLAIN ANALYZE
   SELECT id, title, 1 - (embedding <=> ?) AS similarity
@@ -521,8 +521,8 @@ SET LOCAL hnsw.ef_search = 100;  -- 기본: 40
 Sonamu에서:
 
 ```typescript
-await this.getPuri().raw("SET LOCAL hnsw.ef_search = 100");
-const results = await this.getPuri().raw(`SELECT ...`);
+await this.getPuri("r").raw("SET LOCAL hnsw.ef_search = 100");
+const results = await this.getPuri("r").raw(`SELECT ...`);
 ```
 
 ## 벤치마크
@@ -577,7 +577,7 @@ const results = await this.getPuri().raw(`SELECT ...`);
 5. **Puri.raw() 사용**: Knex의 wq로는 안 됨
 
    ```typescript
-   await this.getPuri().raw(`SELECT ...`);
+   await this.getPuri("r").raw(`SELECT ...`);
    ```
 
 6. **인덱스 생성 시점**: 데이터 후

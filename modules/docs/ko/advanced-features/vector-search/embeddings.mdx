@@ -201,7 +201,7 @@ async search(query: string) {
   );
 
   // 2. 벡터 검색 (vector-search.mdx 참고)
-  const results = await this.getPuri().raw(`
+  const results = await this.getPuri("r").raw(`
     SELECT title, content,
       1 - (embedding <=> ?) AS similarity
     FROM documents
@@ -370,7 +370,7 @@ async searchSimilar(query: string) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
   // 유사 문서 검색
-  const results = await this.getPuri().raw(`
+  const results = await this.getPuri("r").raw(`
     SELECT id, title, content,
       1 - (embedding <=> ?) AS similarity
     FROM knowledge_base

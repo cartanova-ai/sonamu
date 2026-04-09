@@ -66,7 +66,7 @@ class DocumentModelClass extends BaseModelClass {
     );
 
     // 2. Write vector search SQL with Puri
-    const results = await this.getPuri().raw(
+    const results = await this.getPuri("r").raw(
       `
       SELECT
         id,
@@ -106,7 +106,7 @@ await this.findMany({
 });
 
 // Write SQL directly with Puri.raw()
-await this.getPuri().raw(`
+await this.getPuri("r").raw(`
   SELECT * FROM docs
   WHERE embedding <=> ? < 0.5
 `);
@@ -178,7 +178,7 @@ ORDER BY embedding <#> ?;
 
 ```typescript
 // Recommended: Cosine similarity
-const results = await this.getPuri().raw(
+const results = await this.getPuri("r").raw(
   `
   SELECT
     id, title, content,
@@ -205,7 +205,7 @@ async searchWithThreshold(
 ) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
-  const results = await this.getPuri().raw(`
+  const results = await this.getPuri("r").raw(`
     SELECT
       id, title, content,
       1 - (embedding <=> ?) AS similarity
@@ -247,7 +247,7 @@ class KnowledgeBaseModelClass extends BaseModelClass {
     // Category filter (optional)
     const categoryFilter = category ? `AND category = '${category}'` : "";
 
-    const results = await this.getPuri().raw(
+    const results = await this.getPuri("r").raw(
       `
       SELECT
         id, title, content, category,
@@ -301,7 +301,7 @@ class ProductModelClass extends BaseModelClass {
     }
 
     // Search similar products (exclude self)
-    const results = await this.getPuri().raw(
+    const results = await this.getPuri("r").raw(
       `
       SELECT
         id, name, description, price,
@@ -390,7 +390,7 @@ async advancedSearch(
 
   params.push(limit);
 
-  const results = await this.getPuri().raw(`
+  const results = await this.getPuri("r").raw(`
     SELECT
       id, title, content, category,
       1 - (embedding <=> ?) AS similarity,
@@ -418,7 +418,7 @@ async searchDocumentChunks(
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
   // Search by chunk (fetch more)
-  const chunks = await this.getPuri().raw(`
+  const chunks = await this.getPuri("r").raw(`
     SELECT
       id, parent_id, title, content, chunk_index,
       1 - (embedding <=> ?) AS similarity
@@ -486,7 +486,7 @@ USING hnsw (embedding vector_cosine_ops);
 ### Verify with EXPLAIN ANALYZE
 
 ```typescript
-const explain = await this.getPuri().raw(
+const explain = await this.getPuri("r").raw(
   `
   EXPLAIN ANALYZE
   SELECT id, title, 1 - (embedding <=> ?) AS similarity
@@ -521,8 +521,8 @@ SET LOCAL hnsw.ef_search = 100;  -- default: 40
 In Sonamu:
 
 ```typescript
-await this.getPuri().raw("SET LOCAL hnsw.ef_search = 100");
-const results = await this.getPuri().raw(`SELECT ...`);
+await this.getPuri("r").raw("SET LOCAL hnsw.ef_search = 100");
+const results = await this.getPuri("r").raw(`SELECT ...`);
 ```
 
 ## Benchmarks
@@ -577,7 +577,7 @@ const results = await this.getPuri().raw(`SELECT ...`);
 5. **Use Puri.raw()**: Cannot use Knex's wq
 
    ```typescript
-   await this.getPuri().raw(`SELECT ...`);
+   await this.getPuri("r").raw(`SELECT ...`);
    ```
 
 6. **Index creation timing**: After data

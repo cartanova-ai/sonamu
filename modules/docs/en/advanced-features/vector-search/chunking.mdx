@@ -296,7 +296,7 @@ async searchDocs(query: string, limit: number = 5) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
   // Search chunks
-  const chunks = await this.getPuri().raw(`
+  const chunks = await this.getPuri("r").raw(`
     SELECT
       c.id, c.parent_id, c.content, c.chunk_index,
       d.title,

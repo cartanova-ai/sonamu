@@ -12,7 +12,7 @@ You've built a product search API with Sonamu:
 async searchProducts(query: string) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
-  const results = await this.getPuri().raw(`
+  const results = await this.getPuri("r").raw(`
     SELECT name, description,
       1 - (embedding <=> ?) AS similarity
     FROM products
@@ -150,7 +150,7 @@ class ProductModelClass extends BaseModelClass {
     const embedding = await Embedding.embedOne(query, "voyage", "query");
 
     // 2. Hybrid search SQL
-    const results = await this.getPuri().raw(
+    const results = await this.getPuri("r").raw(
       `
       WITH vector_results AS (
         SELECT
@@ -400,7 +400,7 @@ async searchProducts(
 
   params.push(limit);
 
-  const results = await this.getPuri().raw(`
+  const results = await this.getPuri("r").raw(`
     WITH vector_results AS (
       SELECT
         id,
