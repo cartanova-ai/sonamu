@@ -242,7 +242,7 @@ class UserModelClass extends BaseModelClass<
     // 비밀번호 변경 로직
     const hashedPassword = await this.hashPassword(newPassword);
 
-    await this.db().where("id", userId).update({ password: hashedPassword });
+    await this.getPuri("w").where("id", userId).update({ password: hashedPassword });
   }
 
   private async hashPassword(password: string): Promise<string> {
@@ -523,7 +523,7 @@ Post 엔티티에 `like_count` 필드 추가
 ```typescript
 @api({ httpMethod: "POST", clients: ["axios"] })
 async addLike(postId: number): Promise<Post> {
-  await this.db()
+  await this.getPuri("w")
     .where("id", postId)
     .increment("like_count", 1);
   
