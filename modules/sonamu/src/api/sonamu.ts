@@ -1274,7 +1274,6 @@ class SonamuClass {
         return reply.send(response.body ? await response.text() : null);
       },
     });
-
   }
 
   private async printStartupSummary() {
