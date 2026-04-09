@@ -461,7 +461,8 @@ function CommandBasedSelect<Item>({
   const hasValue = isMultiple
     ? (props as MultiSyncProps<Item> | MultiAsyncProps<Item>).value.length > 0
     : (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value !== undefined &&
-      (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value !== null;
+      (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value !== null &&
+      (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value !== "";
 
   // Badge 렌더링 헬퍼 (multi 모드 전용)
   const renderBadges = () => {
