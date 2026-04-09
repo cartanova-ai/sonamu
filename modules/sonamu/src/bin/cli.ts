@@ -309,7 +309,9 @@ function spawnApiDevServer(options?: { extraEnv?: Record<string, string> }) {
  * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
  */
 function dev_all() {
-  console.log(chalk.yellow.bold("Starting Sonamu dev server...\n"));
+  const require = createRequire(import.meta.url);
+  const { version } = require("../../package.json");
+  console.log(`🌲 Sonamu v${version}\n`);
   spawnApiDevServer();
 }
 
@@ -498,6 +500,10 @@ async function runBuildSteps<T>(
  * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
  */
 async function start() {
+  const require = createRequire(import.meta.url);
+  const { version } = require("../../package.json");
+  console.log(`🌲 Sonamu v${version}\n`);
+
   const apiRoot = findApiRootPath();
   const entryPoint = "dist/index.js";
 
