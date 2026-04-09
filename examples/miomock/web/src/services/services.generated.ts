@@ -14,6 +14,7 @@ import {
 import type { AxiosProgressEvent } from "axios";
 import qs from "qs";
 
+import { AuditEventListParams, AuditEventSaveParams } from "./audit-event/audit-event.types";
 import { AuditLogListParams } from "./audit-log/audit-log.types";
 import { CompanyListParams, CompanySaveParams } from "./company/company.types";
 import { DashboardStats, ActivityPeriod, ActivityGroup } from "./dashboard/dashboard.types";
@@ -50,6 +51,8 @@ import {
   CompanySubsetMapping,
   AuditLogSubsetKey,
   AuditLogSubsetMapping,
+  AuditEventSubsetKey,
+  AuditEventSubsetMapping,
 } from "./sonamu.generated";
 import {
   type ListResult,
@@ -1398,6 +1401,102 @@ export namespace AuditLogService {
       ...options,
     });
 }
+
+export namespace AuditEventService {
+  export async function getAuditEvent<T extends AuditEventSubsetKey>(
+    subset: T,
+    id: number,
+  ): Promise<AuditEventSubsetMapping[T]> {
+    return fetch({
+      method: "GET",
+      url: `/api/auditEvent/findById?${qs.stringify({ subset, id })}`,
+    });
+  }
+
+  export const getAuditEventQueryOptions = <T extends AuditEventSubsetKey>(subset: T, id: number) =>
+    queryOptions({
+      queryKey: ["AuditEvent", "getAuditEvent", subset, id],
+      queryFn: () => getAuditEvent(subset, id),
+    });
+
+  export const useAuditEvent = <T extends AuditEventSubsetKey>(
+    subset: T,
+    id: number,
+    options?: { enabled?: boolean },
+  ) =>
+    useQuery({
+      ...getAuditEventQueryOptions(subset, id),
+      ...options,
+    });
+
+  export async function getAuditEvents<
+    T extends AuditEventSubsetKey,
+    LP extends AuditEventListParams,
+  >(subset: T, rawParams?: LP): Promise<ListResult<LP, AuditEventSubsetMapping[T]>> {
+    return fetch({
+      method: "GET",
+      url: `/api/auditEvent/findMany?${qs.stringify({ subset, rawParams })}`,
+    });
+  }
+
+  export const getAuditEventsQueryOptions = <
+    T extends AuditEventSubsetKey,
+    LP extends AuditEventListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    queryOptions({
+      queryKey: ["AuditEvent", "getAuditEvents", subset, rawParams],
+      queryFn: () => getAuditEvents(subset, rawParams),
+    });
+
+  export const useAuditEvents = <T extends AuditEventSubsetKey, LP extends AuditEventListParams>(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useQuery({
+      ...getAuditEventsQueryOptions(subset, rawParams),
+      ...options,
+    });
+
+  export async function save(spa: AuditEventSaveParams[]): Promise<number[]> {
+    return fetch({
+      method: "POST",
+      url: `/api/auditEvent/save`,
+      data: { spa },
+    });
+  }
+
+  export const useSaveMutation = () =>
+    useMutation({
+      mutationFn: (params: { spa: AuditEventSaveParams[] }) => save(params.spa),
+    });
+
+  export async function del(ids: number[]): Promise<number> {
+    return fetch({
+      method: "POST",
+      url: `/api/auditEvent/del`,
+      data: { ids },
+    });
+  }
+
+  export const useDelMutation = () =>
+    useMutation({
+      mutationFn: (params: { ids: number[] }) => del(params.ids),
+    });
+}
+
+// AsyncIdConfig: AuditEvent
+export const AuditEventAsyncIdConfig: AsyncIdConfig<
+  AuditEventSubsetKey,
+  AuditEventSubsetMapping,
+  AuditEventListParams
+> = {
+  placeholderKey: "entity.AuditEvent",
+  useList: AuditEventService.useAuditEvents,
+};
 
 // AsyncIdConfig: AuditLog
 export const AuditLogAsyncIdConfig: AsyncIdConfig<

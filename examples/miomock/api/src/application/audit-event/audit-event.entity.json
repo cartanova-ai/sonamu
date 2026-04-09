@@ -1,0 +1,334 @@
+{
+  "id": "AuditEvent",
+  "table": "audit_events",
+  "title": "감사이벤트",
+  "cone": {
+    "note": "Better Auth dash() 프록시를 통해 수집되는 감사 이벤트. audit_events 테이블에 1건씩 적재되며 dedupe_key로 중복을 방지한다."
+  },
+  "props": [
+    {
+      "name": "id",
+      "type": "integer",
+      "desc": "ID",
+      "cone": { "note": "PK. auto-increment 정수." }
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "length": 32,
+      "desc": "이벤트 소스",
+      "cone": { "note": "이벤트를 발생시킨 소스 식별자. 예: better-auth" }
+    },
+    {
+      "name": "source_version",
+      "type": "string",
+      "length": 96,
+      "nullable": true,
+      "desc": "소스 버전",
+      "cone": { "note": "이벤트 소스의 버전 문자열. 없으면 null." }
+    },
+    {
+      "name": "category",
+      "type": "enum",
+      "id": "AuditEventCategory",
+      "desc": "카테고리",
+      "cone": { "note": "event_type을 기준으로 분류되는 상위 카테고리." }
+    },
+    {
+      "name": "event_type",
+      "type": "string",
+      "length": 64,
+      "desc": "이벤트 타입",
+      "cone": { "note": "Better Auth 이벤트 타입 식별자. 예: user_created, user_signed_in" }
+    },
+    {
+      "name": "event_key",
+      "type": "string",
+      "length": 191,
+      "desc": "이벤트 키",
+      "cone": { "note": "이벤트 소스에서 전달한 이벤트 키." }
+    },
+    {
+      "name": "dedupe_key",
+      "type": "string",
+      "length": 64,
+      "desc": "중복 제거 키",
+      "cone": { "note": "지정 필드 조합의 sha256 hex. UNIQUE." }
+    },
+    {
+      "name": "actor_user_id",
+      "type": "string",
+      "length": 191,
+      "nullable": true,
+      "desc": "액터 사용자 ID",
+      "cone": { "note": "이벤트를 트리거한 사용자 ID." }
+    },
+    {
+      "name": "subject_user_id",
+      "type": "string",
+      "length": 191,
+      "nullable": true,
+      "desc": "대상 사용자 ID",
+      "cone": { "note": "이벤트의 대상 사용자 ID." }
+    },
+    {
+      "name": "organization_id",
+      "type": "string",
+      "length": 191,
+      "nullable": true,
+      "desc": "조직 ID",
+      "cone": { "note": "조직 식별자." }
+    },
+    {
+      "name": "team_id",
+      "type": "string",
+      "length": 191,
+      "nullable": true,
+      "desc": "팀 ID",
+      "cone": { "note": "팀 식별자." }
+    },
+    {
+      "name": "session_id",
+      "type": "string",
+      "length": 191,
+      "nullable": true,
+      "desc": "세션 ID",
+      "cone": { "note": "Better Auth 세션 식별자." }
+    },
+    {
+      "name": "provider_id",
+      "type": "string",
+      "length": 64,
+      "nullable": true,
+      "desc": "프로바이더 ID",
+      "cone": { "note": "OAuth 등 프로바이더 식별자." }
+    },
+    {
+      "name": "login_method",
+      "type": "string",
+      "length": 64,
+      "nullable": true,
+      "desc": "로그인 방식",
+      "cone": { "note": "credential, oauth 등." }
+    },
+    {
+      "name": "identifier",
+      "type": "string",
+      "length": 255,
+      "nullable": true,
+      "desc": "식별자",
+      "cone": { "note": "이메일 등 폴백 체인으로 결정된 식별자." }
+    },
+    {
+      "name": "visitor_id",
+      "type": "string",
+      "length": 191,
+      "nullable": true,
+      "desc": "방문자 ID",
+      "cone": { "note": "익명 방문자 식별자." }
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "length": 128,
+      "nullable": true,
+      "desc": "사유",
+      "cone": { "note": "보안 블록/거부 등의 사유." }
+    },
+    {
+      "name": "action",
+      "type": "string",
+      "length": 64,
+      "nullable": true,
+      "desc": "액션",
+      "cone": { "note": "이벤트에 동반된 세부 액션." }
+    },
+    {
+      "name": "trigger_context",
+      "type": "string",
+      "length": 64,
+      "nullable": true,
+      "desc": "트리거 컨텍스트",
+      "cone": { "note": "이벤트 트리거의 컨텍스트 힌트." }
+    },
+    {
+      "name": "ip_address",
+      "type": "string",
+      "length": 45,
+      "nullable": true,
+      "desc": "IP 주소",
+      "cone": { "note": "클라이언트 IP. IPv4/IPv6." }
+    },
+    {
+      "name": "country_code",
+      "type": "string",
+      "length": 8,
+      "nullable": true,
+      "desc": "국가 코드",
+      "cone": { "note": "ISO 3166-1 alpha-2/3." }
+    },
+    {
+      "name": "country",
+      "type": "string",
+      "length": 100,
+      "nullable": true,
+      "desc": "국가",
+      "cone": { "note": "국가명." }
+    },
+    {
+      "name": "city",
+      "type": "string",
+      "length": 100,
+      "nullable": true,
+      "desc": "도시",
+      "cone": { "note": "도시명." }
+    },
+    {
+      "name": "user_agent",
+      "type": "string",
+      "nullable": true,
+      "desc": "User-Agent",
+      "cone": { "note": "클라이언트 User-Agent. 길이 제한 없이 text로 저장." }
+    },
+    {
+      "name": "payload_json",
+      "type": "json",
+      "id": "AuditEventPayload",
+      "desc": "원본 payload",
+      "cone": { "note": "Better Auth 이벤트의 eventData 원본 JSON." }
+    },
+    {
+      "name": "occurred_at",
+      "type": "date",
+      "desc": "발생 시각",
+      "cone": { "note": "이벤트가 원 소스에서 발생한 시각." }
+    },
+    {
+      "name": "ingested_at",
+      "type": "date",
+      "dbDefault": "CURRENT_TIMESTAMP",
+      "desc": "적재 시각",
+      "cone": { "note": "audit_events 테이블에 INSERT된 시각. DB CURRENT_TIMESTAMP." }
+    }
+  ],
+  "indexes": [
+    {
+      "type": "unique",
+      "name": "audit_events_dedupe_key_unique",
+      "columns": [{ "name": "dedupe_key" }]
+    },
+    {
+      "type": "index",
+      "name": "audit_events_occurred_at_index",
+      "columns": [{ "name": "occurred_at" }]
+    },
+    {
+      "type": "index",
+      "name": "audit_events_event_type_occurred_at_index",
+      "columns": [{ "name": "event_type" }, { "name": "occurred_at" }]
+    },
+    {
+      "type": "index",
+      "name": "audit_events_subject_user_id_occurred_at_index",
+      "columns": [{ "name": "subject_user_id" }, { "name": "occurred_at" }]
+    },
+    {
+      "type": "index",
+      "name": "audit_events_actor_user_id_occurred_at_index",
+      "columns": [{ "name": "actor_user_id" }, { "name": "occurred_at" }]
+    },
+    {
+      "type": "index",
+      "name": "audit_events_organization_id_occurred_at_index",
+      "columns": [{ "name": "organization_id" }, { "name": "occurred_at" }]
+    },
+    {
+      "type": "index",
+      "name": "audit_events_team_id_occurred_at_index",
+      "columns": [{ "name": "team_id" }, { "name": "occurred_at" }]
+    },
+    {
+      "type": "index",
+      "name": "audit_events_session_id_index",
+      "columns": [{ "name": "session_id" }]
+    },
+    {
+      "type": "index",
+      "name": "audit_events_reason_occurred_at_index",
+      "columns": [{ "name": "reason" }, { "name": "occurred_at" }]
+    }
+  ],
+  "subsets": {
+    "A": {
+      "fields": [
+        "id",
+        "source",
+        "source_version",
+        "category",
+        "event_type",
+        "event_key",
+        "dedupe_key",
+        "actor_user_id",
+        "subject_user_id",
+        "organization_id",
+        "team_id",
+        "session_id",
+        "provider_id",
+        "login_method",
+        "identifier",
+        "visitor_id",
+        "reason",
+        "action",
+        "trigger_context",
+        "ip_address",
+        "country_code",
+        "country",
+        "city",
+        "user_agent",
+        "payload_json",
+        "occurred_at",
+        "ingested_at"
+      ],
+      "cone": {
+        "note": "AuditEvent 전체 필드 서브셋."
+      }
+    }
+  },
+  "enums": {
+    "AuditEventOrderBy": {
+      "values": { "id-desc": "ID최신순" },
+      "cone": {
+        "note": "AuditEvent 정렬 기준.",
+        "values": { "id-desc": { "note": "ID 내림차순" } }
+      }
+    },
+    "AuditEventSearchField": {
+      "values": { "id": "ID" },
+      "cone": {
+        "note": "AuditEvent 검색 대상 필드.",
+        "values": { "id": { "note": "ID로 검색" } }
+      }
+    },
+    "AuditEventCategory": {
+      "values": {
+        "user": "사용자",
+        "session": "세션",
+        "account": "계정",
+        "verification": "인증",
+        "organization": "조직",
+        "security": "보안"
+      },
+      "cone": {
+        "note": "event_type 기준 상위 카테고리.",
+        "values": {
+          "user": { "note": "사용자 관련" },
+          "session": { "note": "세션/로그인 관련" },
+          "account": { "note": "계정 연결 관련" },
+          "verification": { "note": "이메일/휴대폰 인증 관련" },
+          "organization": { "note": "조직/팀 관련" },
+          "security": { "note": "보안 관련" }
+        }
+      }
+    }
+  }
+}

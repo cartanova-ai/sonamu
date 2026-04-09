@@ -704,3 +704,76 @@ GET {{baseUrl}}/api/auditLog/findMany
 	&rawParams[date_from]=2000-01-01
 	&rawParams[date_to]=2000-01-01
 Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/auditEvent/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/auditEvent/findMany
+	?subset=A
+	&rawParams[num]=24
+	&rawParams[page]=1
+	&rawParams[search]=id
+	&rawParams[keyword]=KEYWORD
+	&rawParams[orderBy]=id-desc
+	&rawParams[queryMode]=both
+	&rawParams[id]=0
+	&rawParams[sonamuFilter]=unknown-custom
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/auditEvent/save
+Content-Type: application/json
+
+{
+  "spa": [
+    {
+      "id": 0,
+      "source": "SOURCE",
+      "source_version": null,
+      "category": "user",
+      "event_type": "EVENT_TYPE",
+      "event_key": "EVENT_KEY",
+      "dedupe_key": "DEDUPE_KEY",
+      "actor_user_id": null,
+      "subject_user_id": null,
+      "organization_id": null,
+      "team_id": null,
+      "session_id": null,
+      "provider_id": null,
+      "login_method": null,
+      "identifier": null,
+      "visitor_id": null,
+      "reason": null,
+      "action": null,
+      "trigger_context": null,
+      "ip_address": null,
+      "country_code": null,
+      "country": null,
+      "city": null,
+      "user_agent": null,
+      "payload_json": {
+        "PAYLOAD_JSON": "unknown"
+      },
+      "occurred_at": "2000-01-01",
+      "ingested_at": "2000-01-01"
+    }
+  ]
+}
+
+###
+
+POST {{baseUrl}}/api/auditEvent/del
+Content-Type: application/json
+
+{
+  "ids": [
+    0
+  ]
+}
