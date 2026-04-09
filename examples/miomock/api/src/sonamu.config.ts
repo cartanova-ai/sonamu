@@ -128,6 +128,7 @@ export default defineConfig({
       emailAndPassword: { enabled: true },
       baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}`,
       secret: process.env.BETTER_AUTH_SECRET ?? "miomock-secret-key-change-this-in-production",
+      auditLog: true,
       session: {
         expiresIn: 60 * 60 * 24 * 365,
       },

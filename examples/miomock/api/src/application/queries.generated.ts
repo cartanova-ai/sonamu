@@ -16,6 +16,7 @@ function createSSRQuery(
   return { modelName, methodName, params, serviceKey, __brand: "SSRQuery" } as SSRQuery;
 }
 
+import { AuditEventListParams } from "./audit-event/audit-event.types";
 import { AuditLogListParams } from "./audit-log/audit-log.types";
 import { CompanyListParams } from "./company/company.types";
 import { ActivityPeriod } from "./dashboard/dashboard.types";
@@ -37,6 +38,7 @@ import {
   DepartmentSubsetKey,
   CompanySubsetKey,
   AuditLogSubsetKey,
+  AuditEventSubsetKey,
 } from "./sonamu.generated";
 import { SyncFixtureListParams } from "./sync-fixture/sync-fixture.types";
 import { TagListParams } from "./tag/tag.types";
@@ -215,4 +217,20 @@ export namespace AuditLogService {
     rawParams?: LP,
   ): SSRQuery =>
     createSSRQuery("AuditLogModel", "findMany", [subset, rawParams], ["AuditLog", "getAuditLogs"]);
+}
+
+export namespace AuditEventService {
+  export const getAuditEvent = <T extends AuditEventSubsetKey>(subset: T, id: number): SSRQuery =>
+    createSSRQuery("AuditEventModel", "findById", [subset, id], ["AuditEvent", "getAuditEvent"]);
+
+  export const getAuditEvents = <T extends AuditEventSubsetKey, LP extends AuditEventListParams>(
+    subset: T,
+    rawParams?: LP,
+  ): SSRQuery =>
+    createSSRQuery(
+      "AuditEventModel",
+      "findMany",
+      [subset, rawParams],
+      ["AuditEvent", "getAuditEvents"],
+    );
 }

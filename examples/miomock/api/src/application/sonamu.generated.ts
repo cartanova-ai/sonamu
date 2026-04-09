@@ -7,6 +7,10 @@
 import { zArrayable, SonamuQueryMode, ApplySonamuFilter, SonamuFileArraySchema } from "sonamu";
 import { z } from "zod";
 
+// CustomScalar: AuditEventPayload
+const AuditEventPayload = z.record(z.string(), z.unknown());
+type AuditEventPayload = z.infer<typeof AuditEventPayload>;
+
 // CustomScalar: AuditLogValue
 const AuditLogValue = z.record(z.string(), z.unknown());
 type AuditLogValue = z.infer<typeof AuditLogValue>;
@@ -30,6 +34,26 @@ export const AccountOrderByLabel = { "id-desc": "ID최신순" };
 export const AccountSearchField = z.enum(["id"]).describe("AccountSearchField");
 export type AccountSearchField = z.infer<typeof AccountSearchField>;
 export const AccountSearchFieldLabel = { id: "ID" };
+
+// Enums: AuditEvent
+export const AuditEventOrderBy = z.enum(["id-desc"]).describe("AuditEventOrderBy");
+export type AuditEventOrderBy = z.infer<typeof AuditEventOrderBy>;
+export const AuditEventOrderByLabel = { "id-desc": "ID최신순" };
+export const AuditEventSearchField = z.enum(["id"]).describe("AuditEventSearchField");
+export type AuditEventSearchField = z.infer<typeof AuditEventSearchField>;
+export const AuditEventSearchFieldLabel = { id: "ID" };
+export const AuditEventCategory = z
+  .enum(["user", "session", "account", "verification", "organization", "security"])
+  .describe("AuditEventCategory");
+export type AuditEventCategory = z.infer<typeof AuditEventCategory>;
+export const AuditEventCategoryLabel = {
+  user: "사용자",
+  session: "세션",
+  account: "계정",
+  verification: "인증",
+  organization: "조직",
+  security: "보안",
+};
 
 // Enums: AuditLog
 export const AuditLogOrderBy = z.enum(["id-desc"]).describe("AuditLogOrderBy");
@@ -219,6 +243,61 @@ export type AccountBaseSchema = z.infer<typeof AccountBaseSchema> & {
     "scope",
     "password",
     "created_at",
+    "id",
+  ];
+};
+
+// BaseSchema: AuditEvent
+export const AuditEventBaseSchema = z.object({
+  id: z.int(),
+  source: z.string().max(32),
+  source_version: z.string().max(96).nullable(),
+  category: AuditEventCategory,
+  event_type: z.string().max(64),
+  event_key: z.string().max(191),
+  dedupe_key: z.string().max(64),
+  actor_user_id: z.string().max(191).nullable(),
+  subject_user_id: z.string().max(191).nullable(),
+  organization_id: z.string().max(191).nullable(),
+  team_id: z.string().max(191).nullable(),
+  session_id: z.string().max(191).nullable(),
+  provider_id: z.string().max(64).nullable(),
+  login_method: z.string().max(64).nullable(),
+  identifier: z.string().max(255).nullable(),
+  visitor_id: z.string().max(191).nullable(),
+  reason: z.string().max(128).nullable(),
+  action: z.string().max(64).nullable(),
+  trigger_context: z.string().max(64).nullable(),
+  ip_address: z.string().max(45).nullable(),
+  country_code: z.string().max(8).nullable(),
+  country: z.string().max(100).nullable(),
+  city: z.string().max(100).nullable(),
+  user_agent: z.string().nullable(),
+  payload_json: AuditEventPayload,
+  occurred_at: z.date(),
+  ingested_at: z.date(),
+});
+export type AuditEventBaseSchema = z.infer<typeof AuditEventBaseSchema> & {
+  readonly __hasDefault__: readonly [
+    "source_version",
+    "actor_user_id",
+    "subject_user_id",
+    "organization_id",
+    "team_id",
+    "session_id",
+    "provider_id",
+    "login_method",
+    "identifier",
+    "visitor_id",
+    "reason",
+    "action",
+    "trigger_context",
+    "ip_address",
+    "country_code",
+    "country",
+    "city",
+    "user_agent",
+    "ingested_at",
     "id",
   ];
 };
@@ -509,6 +588,21 @@ export const AccountBaseListParams = z
   .partial();
 export type AccountBaseListParams = z.infer<typeof AccountBaseListParams>;
 
+// BaseListParams: AuditEvent
+export const AuditEventBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: AuditEventSearchField,
+    keyword: z.string(),
+    orderBy: AuditEventOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.custom<ApplySonamuFilter<AuditEventBaseSchema, never, never>>(),
+  })
+  .partial();
+export type AuditEventBaseListParams = z.infer<typeof AuditEventBaseListParams>;
+
 // BaseListParams: AuditLog
 export const AuditLogBaseListParams = z
   .object({
@@ -759,6 +853,43 @@ export type AccountSubsetMapping = {
 };
 export const AccountSubsetKey = z.enum(["A"]);
 export type AccountSubsetKey = z.infer<typeof AccountSubsetKey>;
+
+// Subsets: AuditEvent
+export const AuditEventSubsetA = z.object({
+  id: z.int(),
+  source: z.string().max(32),
+  source_version: z.string().max(96).nullable(),
+  category: AuditEventCategory,
+  event_type: z.string().max(64),
+  event_key: z.string().max(191),
+  dedupe_key: z.string().max(64),
+  actor_user_id: z.string().max(191).nullable(),
+  subject_user_id: z.string().max(191).nullable(),
+  organization_id: z.string().max(191).nullable(),
+  team_id: z.string().max(191).nullable(),
+  session_id: z.string().max(191).nullable(),
+  provider_id: z.string().max(64).nullable(),
+  login_method: z.string().max(64).nullable(),
+  identifier: z.string().max(255).nullable(),
+  visitor_id: z.string().max(191).nullable(),
+  reason: z.string().max(128).nullable(),
+  action: z.string().max(64).nullable(),
+  trigger_context: z.string().max(64).nullable(),
+  ip_address: z.string().max(45).nullable(),
+  country_code: z.string().max(8).nullable(),
+  country: z.string().max(100).nullable(),
+  city: z.string().max(100).nullable(),
+  user_agent: z.string().nullable(),
+  payload_json: AuditEventPayload,
+  occurred_at: z.date(),
+  ingested_at: z.date(),
+});
+export type AuditEventSubsetA = z.infer<typeof AuditEventSubsetA>;
+export type AuditEventSubsetMapping = {
+  A: AuditEventSubsetA;
+};
+export const AuditEventSubsetKey = z.enum(["A"]);
+export type AuditEventSubsetKey = z.infer<typeof AuditEventSubsetKey>;
 
 // Subsets: AuditLog
 export const AuditLogSubsetA = z.object({

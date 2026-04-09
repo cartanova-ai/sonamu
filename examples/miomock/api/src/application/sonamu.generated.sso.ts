@@ -12,6 +12,7 @@ import {
 
 import {
   type AccountSubsetKey,
+  type AuditEventSubsetKey,
   type AuditLogSubsetKey,
   type CompanySubsetKey,
   type DepartmentSubsetKey,
@@ -28,6 +29,7 @@ import {
   type UserSubsetKey,
   type VerificationSubsetKey,
   type AccountBaseSchema,
+  type AuditEventBaseSchema,
   type AuditLogBaseSchema,
   type CompanyBaseSchema,
   type DepartmentBaseSchema,
@@ -71,6 +73,46 @@ export const accountSubsetQueries = {
 export const accountLoaderQueries = {
   A: [],
 } as const satisfies PuriLoaderQueries<AccountSubsetKey>;
+
+// SubsetQuery: AuditEvent
+export const auditEventSubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper.from("audit_events").select({
+      id: "audit_events.id",
+      source: "audit_events.source",
+      source_version: "audit_events.source_version",
+      category: "audit_events.category",
+      event_type: "audit_events.event_type",
+      event_key: "audit_events.event_key",
+      dedupe_key: "audit_events.dedupe_key",
+      actor_user_id: "audit_events.actor_user_id",
+      subject_user_id: "audit_events.subject_user_id",
+      organization_id: "audit_events.organization_id",
+      team_id: "audit_events.team_id",
+      session_id: "audit_events.session_id",
+      provider_id: "audit_events.provider_id",
+      login_method: "audit_events.login_method",
+      identifier: "audit_events.identifier",
+      visitor_id: "audit_events.visitor_id",
+      reason: "audit_events.reason",
+      action: "audit_events.action",
+      trigger_context: "audit_events.trigger_context",
+      ip_address: "audit_events.ip_address",
+      country_code: "audit_events.country_code",
+      country: "audit_events.country",
+      city: "audit_events.city",
+      user_agent: "audit_events.user_agent",
+      payload_json: "audit_events.payload_json",
+      occurred_at: "audit_events.occurred_at",
+      ingested_at: "audit_events.ingested_at",
+    });
+  },
+};
+
+// LoaderQuery: AuditEvent
+export const auditEventLoaderQueries = {
+  A: [],
+} as const satisfies PuriLoaderQueries<AuditEventSubsetKey>;
 
 // SubsetQuery: AuditLog
 export const auditLogSubsetQueries = {
@@ -691,6 +733,7 @@ export type TwoFactorForeignKeys = "user_id";
 declare module "sonamu" {
   export interface DatabaseSchemaExtend {
     accounts: AccountBaseSchema;
+    audit_events: AuditEventBaseSchema;
     audit_logs: AuditLogBaseSchema;
     companies: CompanyBaseSchema;
     departments: DepartmentBaseSchema;
