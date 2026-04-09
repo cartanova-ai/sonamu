@@ -14,6 +14,7 @@ import { type QsPluginOptions } from "fastify-qs";
 import { type SsePluginOptions } from "fastify-sse-v2/lib/types";
 import { type Knex } from "knex";
 
+import { type AuditLogProxyOptions } from "../auth/audit-log-proxy-types";
 import { type CacheConfig } from "../cache/types";
 import { type SonamuDBConfig } from "../database/db";
 import { type SonamuLoggingOptions } from "../logger/configure";
@@ -199,6 +200,12 @@ export type SonamuServerOptions = {
       >;
     };
   };
+
+  /**
+   * AuditLog 프록시 설정
+   * Better Auth dash() 플러그인의 이벤트 추적 요청을 프록시로 받기 위한 설정
+   */
+  auditLog?: AuditLogProxyOptions;
 
   apiConfig: SonamuFastifyConfig;
 
