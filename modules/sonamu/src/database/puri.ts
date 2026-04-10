@@ -225,23 +225,23 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // Raw functions for SELECT
-  static rawString(sql: string, params: unknown[] = []): SqlExpression<"string"> {
+  static rawString(sql: string, params: Knex.RawBinding[] = []): SqlExpression<"string"> {
     return { _type: "sql_expression", _return: "string", _sql: sql, _params: params };
   }
 
-  static rawStringArray(sql: string, params: unknown[] = []): SqlExpression<"string[]"> {
+  static rawStringArray(sql: string, params: Knex.RawBinding[] = []): SqlExpression<"string[]"> {
     return { _type: "sql_expression", _return: "string[]", _sql: sql, _params: params };
   }
 
-  static rawNumber(sql: string, params: unknown[] = []): SqlExpression<"number"> {
+  static rawNumber(sql: string, params: Knex.RawBinding[] = []): SqlExpression<"number"> {
     return { _type: "sql_expression", _return: "number", _sql: sql, _params: params };
   }
 
-  static rawBoolean(sql: string, params: unknown[] = []): SqlExpression<"boolean"> {
+  static rawBoolean(sql: string, params: Knex.RawBinding[] = []): SqlExpression<"boolean"> {
     return { _type: "sql_expression", _return: "boolean", _sql: sql, _params: params };
   }
 
-  static rawDate(sql: string, params: unknown[] = []): SqlExpression<"date"> {
+  static rawDate(sql: string, params: Knex.RawBinding[] = []): SqlExpression<"date"> {
     return { _type: "sql_expression", _return: "date", _sql: sql, _params: params };
   }
 
@@ -814,7 +814,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // WHERE RAW
-  whereRaw(sql: string, bindings?: readonly unknown[]): this {
+  whereRaw(sql: string, bindings?: readonly Knex.RawBinding[]): this {
     this.knexQuery.whereRaw(sql, bindings);
     return this;
   }

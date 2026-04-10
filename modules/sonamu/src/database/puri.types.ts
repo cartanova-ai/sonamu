@@ -1,5 +1,6 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // Puri.types.ts는 다양한 타입을 사용하고 있습니다.
 
+import { type Knex } from "knex";
 import { type QueryResult } from "pg";
 
 import { type DatabaseForeignKeys, type DatabaseSchemaExtend } from "../types/types";
@@ -308,7 +309,7 @@ export type SqlExpression<
   _type: "sql_expression"; // 또는 "computed_value"
   _return: T;
   _sql: string;
-  _params: unknown[];
+  _params: Knex.RawBinding[];
 };
 
 // 결과 타입 가독성을 위한 타입 확장

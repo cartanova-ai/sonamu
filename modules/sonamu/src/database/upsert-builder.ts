@@ -458,7 +458,7 @@ export class UpsertBuilder {
 
         // 각 FK 컬럼에 대한 WHERE IN 조건 추가
         for (const { column, values } of fkConditions) {
-          deleteQuery = deleteQuery.whereIn(column, values);
+          deleteQuery = deleteQuery.whereIn(column, values as Knex.Value[]);
         }
 
         // 방금 upsert한 ID는 제외
