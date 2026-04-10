@@ -22,6 +22,15 @@ const ACCOUNT_EVENT_TYPES = new Set<string>([
   "account_linked",
   "account_unlinked",
   "password_changed",
+
+  // @better-auth/infra@0.1.14 기준 EVENT_TYPES 상수에는 정의되어 있으나 실제 trackEvent() 호출이 없는 미구현 이벤트임
+  // 향후 버전에서 emit될 경우를 대비해 account로 임시 등록
+  "two_factor_enabled",
+  "two_factor_disabled",
+  "two_factor_verified",
+]);
+
+const VERIFICATION_EVENT_TYPES = new Set<string>([
   "email_verification_sent",
   "password_reset_requested",
   "password_reset_completed",
@@ -39,6 +48,7 @@ const USER_EVENT_TYPES = new Set<string>([
   "profile_updated",
   "profile_image_updated",
   "email_verified",
+  "email_changed",
   "user_banned",
   "user_unbanned",
   "user_deleted",
@@ -74,7 +84,7 @@ function parseOccurredAt(raw: unknown): Date {
 
 function classifyCategory(
   eventType: string,
-): "user" | "session" | "account" | "organization" | "security" {
+): "user" | "session" | "account" | "verification" | "organization" | "security" {
   if (eventType.startsWith("organization_")) {
     return "organization";
   }
@@ -83,6 +93,9 @@ function classifyCategory(
   }
   if (ACCOUNT_EVENT_TYPES.has(eventType)) {
     return "account";
+  }
+  if (VERIFICATION_EVENT_TYPES.has(eventType)) {
+    return "verification";
   }
   if (SECURITY_EVENT_TYPES.has(eventType)) {
     return "security";
