@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - stable-v*
   pull_request:
     branches:
       - master
@@ -104,5 +105,5 @@ jobs:
       # npm에 퍼블리시합니다.
       # 인증은 trusted publisher로 따로 처리됩니다(https://docs.npmjs.com/trusted-publishers#step-2-configure-your-cicd-workflow).
       - name: Publish
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/stable-v'))
         run: pnpm publish:packages
