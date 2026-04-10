@@ -99,7 +99,7 @@ class UserModelClass extends BaseModelClass {
   // Cache for 5 minutes
   @cache({ ttl: "5m" })
   async getActiveUsersCount(): Promise<number> {
-    const result = await this.getPuri().select({ count: Puri.count() }).where({ status: "active" });
+    const result = await this.getPuri("r").select({ count: Puri.count() }).where({ status: "active" });
     return result[0].count;
   }
 }
@@ -112,19 +112,19 @@ class ProductModelClass extends BaseModelClass {
   // Cache for 1 hour
   @cache({ ttl: "1h" })
   async getFeaturedProducts() {
-    return this.getPuri().select("*").where({ featured: true });
+    return this.getPuri("r").select("*").where({ featured: true });
   }
 
   // Cache for 1 day
   @cache({ ttl: "1d" })
   async getCategoryCounts() {
-    return this.getPuri().select("category", knex.raw("COUNT(*) as count")).groupBy("category");
+    return this.getPuri("r").select("category", knex.raw("COUNT(*) as count")).groupBy("category");
   }
 
   // Permanent cache (requires manual invalidation)
   @cache({ ttl: 0 })
   async getProductCategories() {
-    return this.getPuri().select("DISTINCT category");
+    return this.getPuri("r").select("DISTINCT category");
   }
 }
 ```
@@ -144,7 +144,7 @@ class UserModelClass extends BaseModelClass {
   // Creates different cache entries per parameter
   @cache({ ttl: "5m" })
   async getUsersByStatus(status: string) {
-    return this.getPuri().select("id", "name", "email").where({ status });
+    return this.getPuri("r").select("id", "name", "email").where({ status });
   }
 }
 
@@ -162,7 +162,7 @@ class PostModelClass extends BaseModelClass {
     key: (userId: number, page: number) => `posts:user:${userId}:page:${page}`,
   })
   async getUserPosts(userId: number, page: number = 1) {
-    return this.getPuri()
+    return this.getPuri("r")
       .select("*")
       .where({ user_id: userId })
       .offset((page - 1) * 20)
@@ -330,7 +330,7 @@ class ProductModelClass extends BaseModelClass {
 class ProductModelClass extends BaseModelClass {
   // Warm popular products cache on server start
   async warmPopularProducts() {
-    const popularProducts = await this.getPuri()
+    const popularProducts = await this.getPuri("r")
       .select("*")
       .where({ featured: true })
       .orWhere("view_count", ">", 1000);
@@ -354,7 +354,7 @@ class PostModelClass extends BaseModelClass {
   @cache({ ttl: "10m" })
   @api({ httpMethod: "GET" })
   async listPosts(page: number = 1) {
-    return this.getPuri()
+    return this.getPuri("r")
       .select("id", "title", "author_id", "created_at")
       .orderBy("created_at", "desc")
       .offset((page - 1) * 20)
@@ -465,7 +465,7 @@ class AuthService {
 // Simplest - auto-expire with TTL
 @cache({ ttl: '5m' })  // Auto-expire after 5 minutes
 async getData() {
-  return this.getPuri();
+  return this.getPuri("r");
 }
 ```
 

@@ -662,7 +662,7 @@ async createUserComplex(data: UserSaveParams): Promise<number> {
 ## 주의사항
 
 <Warning>
-  **반드시 지켜야 할 사항**: 1. 메서드는 `async` 함수여야 함 2. `this.getPuri()`로 DB 접근 3. 에러는
+  **반드시 지켜야 할 사항**: 1. 메서드는 `async` 함수여야 함 2. `this.getPuri("r"/"w")`로 DB 접근 3. 에러는
   throw로 전파 (자동 롤백) 4. 중첩 트랜잭션은 같은 컨텍스트 공유
 </Warning>
 

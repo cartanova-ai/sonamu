@@ -165,14 +165,14 @@ class UserModelClass extends BaseModelClass<
   // CRUD API
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
   async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
-    const user = await this.db().where("id", id).first();
+    const user = await this.getPuri("r").where("id", id).first();
     return user;
   }
 
   // Custom business logic
   @api({ httpMethod: "POST", clients: ["axios"] })
   async changePassword(userId: number, newPassword: string): Promise<void> {
-    await this.db()
+    await this.getPuri("w")
       .where("id", userId)
       .update({ password: await this.hashPassword(newPassword) });
   }
@@ -315,7 +315,7 @@ Let's see how Sonamu works during actual development:
 ```typescript
 @api({ httpMethod: "GET" })
 async findById(id: number): Promise<Post> {
-  return await this.db().where("id", id).first();
+  return await this.getPuri("r").where("id", id).first();
 }
 ```
 **Auto-generated on save:**
@@ -438,7 +438,7 @@ type User = {
 
 // 3. Model method (type-safe)
 async findByEmail(email: string): Promise<User> {
-  return await this.db().where("email", email).first();
+  return await this.getPuri("r").where("email", email).first();
 }
 
 ↓

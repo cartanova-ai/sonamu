@@ -446,7 +446,7 @@ async createUserComplex(data: UserSaveParams): Promise<number> {
 ## Important Notes
 
 <Warning>
-  **Must Follow**: 1. Method must be `async` function 2. Access DB with `this.getPuri()` 3.
+  **Must Follow**: 1. Method must be `async` function 2. Access DB with `this.getPuri("r" or "w")` 3.
   Propagate errors with throw (auto rollback) 4. Nested transactions share same context
 </Warning>
 
