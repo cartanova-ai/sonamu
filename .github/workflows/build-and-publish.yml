@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - stable-v*
 
 permissions: # 여기를 보세요: https://docs.npmjs.com/trusted-publishers#step-2-configure-your-cicd-workflow
   id-token: write # Required for OIDC
