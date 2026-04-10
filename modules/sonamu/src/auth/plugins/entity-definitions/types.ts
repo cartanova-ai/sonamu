@@ -14,7 +14,8 @@ export type BetterAuthPluginId =
   | "organization"
   | "api-key"
   | "jwt"
-  | "anonymous";
+  | "anonymous"
+  | "audit-log";
 
 /**
  * better-auth 엔티티 정의
