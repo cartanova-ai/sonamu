@@ -12,6 +12,7 @@ import { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fa
 import mime, { lookup as mimeLookup } from "mime-types";
 import { type ZodObject } from "zod";
 
+import { ingestAuditEvent } from "../auth/audit-log-ingestor";
 import { type AuditLogEvent } from "../auth/audit-log-proxy-types";
 import { BASE_FIELD_MAPPINGS } from "../auth/better-auth-entities";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
@@ -234,11 +235,10 @@ class SonamuClass {
       // 사용자 설정과 기본값을 merge
       const mergedFieldMappings = merge(BASE_FIELD_MAPPINGS, authConfig);
 
-      // auditLog가 설정된 경우 dash() 플러그인 자동 주입
-      const auditLogConfig = this.config.server.auditLog;
-      if (auditLogConfig) {
+      // auth.auditLog: true인 경우 dash() 플러그인 자동 주입
+      if (authConfig.auditLog) {
         const { dash } = await import("@better-auth/infra");
-        const auditLogBasePath = auditLogConfig.basePath ?? "/api/audit-log";
+        const auditLogBasePath = "/api/audit-log";
         const apiUrl = `${authConfig.baseURL}${auditLogBasePath}`;
         const existingPlugins = mergedFieldMappings.plugins ?? [];
         mergedFieldMappings.plugins = [...existingPlugins, dash({ apiUrl })];
@@ -325,8 +325,8 @@ class SonamuClass {
       await this.registerBetterAuth(server, options.auth);
     }
 
-    if (options.auditLog) {
-      this.registerAuditLogProxy(server, options.auditLog);
+    if (options.auth?.auditLog) {
+      this.registerAuditLogProxy(server);
     }
 
     // API 라우팅 설정
@@ -1291,12 +1291,9 @@ class SonamuClass {
     });
   }
 
-  private registerAuditLogProxy(
-    server: FastifyInstance,
-    options: NonNullable<SonamuServerOptions["auditLog"]>,
-  ) {
+  private registerAuditLogProxy(server: FastifyInstance) {
     const logger = getLogger(["sonamu", "audit-log"]);
-    const basePath = options.basePath ?? "/api/audit-log";
+    const basePath = "/api/audit-log";
 
     server.route<{ Body: AuditLogEvent }>({
       method: "POST",
@@ -1315,12 +1312,10 @@ class SonamuClass {
           },
         );
 
-        if (options.onEvent) {
-          try {
-            await options.onEvent(event);
-          } catch (err) {
-            logger.error("onEvent callback failed: {error}", { error: err });
-          }
+        try {
+          await ingestAuditEvent(DB.getDB("w"), event);
+        } catch (err) {
+          logger.error("audit event ingest failed: {error}", { error: err });
         }
 
         return reply.status(200).send({ ok: true });
@@ -1363,9 +1358,8 @@ class SonamuClass {
       const basePath = this.config.server.auth.basePath ?? "/api/auth";
       dim(`Auth: better-auth at ${basePath}/*`);
     }
-    if (this.config.server.auditLog) {
-      const basePath = this.config.server.auditLog.basePath ?? "/api/audit-log";
-      dim(`AuditLog: proxy at ${basePath}/events/track`);
+    if (this.config.server.auth?.auditLog) {
+      dim(`AuditLog: proxy at /api/audit-log/events/track`);
     }
     if (this.config.api.timezone) {
       dim(`Timezone: ${this.config.api.timezone}`);

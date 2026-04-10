@@ -14,7 +14,6 @@ import { type QsPluginOptions } from "fastify-qs";
 import { type SsePluginOptions } from "fastify-sse-v2/lib/types";
 import { type Knex } from "knex";
 
-import { type AuditLogProxyOptions } from "../auth/audit-log-proxy-types";
 import { type CacheConfig } from "../cache/types";
 import { type SonamuDBConfig } from "../database/db";
 import { type SonamuLoggingOptions } from "../logger/configure";
@@ -199,13 +198,15 @@ export type SonamuServerOptions = {
         }
       >;
     };
+    /**
+     * AuditLog 활성화 여부
+     * true로 설정하면 Better Auth dash() 플러그인을 자동 주입하고
+     * /api/audit-log/events/track 엔드포인트에서 이벤트를 수신하여
+     * audit_events 테이블에 적재합니다.
+     * 사전에 `sonamu auth generate --plugins audit-log`로 엔티티를 생성해야 합니다.
+     */
+    auditLog?: boolean;
   };
-
-  /**
-   * AuditLog 프록시 설정
-   * Better Auth dash() 플러그인의 이벤트 추적 요청을 프록시로 받기 위한 설정
-   */
-  auditLog?: AuditLogProxyOptions;
 
   apiConfig: SonamuFastifyConfig;
 
