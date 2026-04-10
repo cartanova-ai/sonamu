@@ -102,4 +102,16 @@ jobs:
       # npm에 퍼블리시합니다.
       # 인증은 trusted publisher로 따로 처리됩니다(https://docs.npmjs.com/trusted-publishers#step-2-configure-your-cicd-workflow).
       - name: Publish
-        run: pnpm publish:packages
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/stable-v'))
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "master" ]; then
+            export NPM_DIST_TAG=latest
+          elif [[ "${GITHUB_REF_NAME}" == stable-v* ]]; then
+            export NPM_DIST_TAG="${GITHUB_REF_NAME}"
+          else
+            echo "Unsupported publish branch: ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+
+          echo "Publishing npm packages with dist-tag: ${NPM_DIST_TAG}"
+          pnpm publish:packages

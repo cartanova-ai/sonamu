@@ -6,7 +6,7 @@
  *  2. 각 패키지의 package.json 파일을 읽어서 패키지 이름과 버전을 추출하고,
  *  3. 패키지의 현재 버전이 NPM에 퍼블리시되어 있지 않다면 퍼블리시를 수행합니다.
  *
- * 이 스크립트는 딱히 인자를 받지 않고, 환경변수에 따라 달리 움직이지도 않습니다.
+ * 이 스크립트는 딱히 인자를 받지 않지만, 필요하면 NPM_DIST_TAG 환경변수로 dist-tag를 지정할 수 있습니다.
  * CI 환경 뿐만 아니라 로컬에서도 추가적인 설정 없이 바로 실행할 수 있습니다.
  * tsx를 사용하도록 감싸놓은 pnpm publish 명령을 사용하면 됩니다.
  *
@@ -26,19 +26,29 @@ type LocalPackageInfo = {
   version: string;
 };
 
+function getPublishTag(): string | undefined {
+  const tag = process.env.NPM_DIST_TAG?.trim();
+  return tag ? tag : undefined;
+}
+
 /**
  * 이 스크립트의 메인 함수입니다.
  * @param packagePaths 퍼블리시할 패키지들의 경로 목록입니다.
  */
 async function publish(...packagePaths: string[]) {
   const packages = await resolveAllPackages(...packagePaths);
+  const publishTag = getPublishTag();
+
+  if (publishTag) {
+    console.log(`NPM dist-tag: ${publishTag}`);
+  }
 
   for (const pkg of packages) {
     if (await isPublished(pkg)) {
       console.log(`${pkg.name}@${pkg.version}: 이미 퍼블리시 되었습니다.`);
     } else {
       console.log(`${pkg.name}@${pkg.version}: 퍼블리시되지 않았습니다.`);
-      await publishPackage(pkg);
+      await publishPackage(pkg, publishTag);
     }
   }
 }
@@ -70,11 +80,13 @@ async function isPublished(localPackage: LocalPackageInfo): Promise<boolean> {
   return allPublishedVersions.includes(localPackage.version);
 }
 
-async function publishPackage(localPackage: LocalPackageInfo): Promise<void> {
+async function publishPackage(localPackage: LocalPackageInfo, publishTag?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     console.log(`${localPackage.name}@${localPackage.version}: 퍼블리시 중입니다...`);
 
-    const command = `pnpm --filter ${localPackage.name} publish --no-git-checks`;
+    const command = publishTag
+      ? `pnpm --filter ${localPackage.name} publish --no-git-checks --tag ${publishTag}`
+      : `pnpm --filter ${localPackage.name} publish --no-git-checks`;
     console.log(command);
 
     const child = exec(command);
