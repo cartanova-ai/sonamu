@@ -114,6 +114,14 @@ pnpm create sonamu my_project \
 
    > Will fail if sonamu is an npm version. See "Sonamu Link Setup" below.
 
+   To create a new **project-local** skill file (in `.claude/skills/local/`):
+
+   ```bash
+   pnpm sonamu skills create <name>
+   ```
+
+   This creates `.claude/skills/local/<name>.md` with a frontmatter skeleton. Use it to document project-specific conventions or troubleshooting notes that aren't appropriate for the shared Sonamu skills.
+
 3. Start the dev server
 
    ```bash

@@ -71,6 +71,23 @@ The 4 entities generated (`betterAuthV1` array):
 - Fields with changed types are updated automatically
 - Uses snake_case column names (better-auth uses camelCase)
 
+## Adding Fixture Companions (`auth add-companions`)
+
+After running `auth generate`, run this command once to add `fixtureCompanions` to the `id` prop of better-auth entities (User, etc.).
+
+```bash
+pnpm sonamu auth add-companions
+```
+
+**Purpose:** Enables automatic Account fixture creation when generating User fixtures. Without this, fixture gen creates User records without a corresponding credentials Account, breaking auth-dependent tests.
+
+**What it does:**
+- Reads `fixtureCompanions` from the `betterAuthV1` definitions
+- Adds them to the existing entity.json `id` prop's cone
+- Skips if `fixtureCompanions` already exists
+
+**When to run:** Once, after `auth generate`, before running `fixture gen` for the first time. Re-running is safe (idempotent).
+
 ## Field Mapping (Applied Automatically)
 
 **Source code:** `modules/sonamu/src/auth/better-auth-entities.ts` (BASE_FIELD_MAPPINGS)

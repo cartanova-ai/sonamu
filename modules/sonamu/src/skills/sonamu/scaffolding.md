@@ -19,6 +19,19 @@ description: Reference for using Sonamu UI Scaffolding. Common errors and soluti
 
 **DO NOT:** scaffold only model and model_test and skip the view-related items
 
+## CLI Scaffold Commands
+
+All scaffold types can be generated via CLI (in addition to Sonamu UI):
+
+```bash
+pnpm sonamu scaffold model <entityId>
+pnpm sonamu scaffold model_test <entityId>
+pnpm sonamu scaffold view_list <entityId>
+pnpm sonamu scaffold view_form <entityId>
+```
+
+`model_test` generates the test file skeleton (`{entity}.model.test.ts`) with the correct imports and `bootstrap(vi)` setup. Run it from `packages/api` after the entity's types.ts and migration are ready.
+
 ---
 
 ## Pre-Scaffolding Checklist
