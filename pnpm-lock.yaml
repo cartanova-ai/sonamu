@@ -442,8 +442,8 @@ catalogs:
       specifier: ^2.2.3
       version: 2.2.3
     knex:
-      specifier: ^3.1.0
-      version: 3.1.0
+      specifier: ^3.2.9
+      version: 3.2.9
     luxon:
       specifier: ^3.0.3
       version: 3.7.2
@@ -452,7 +452,7 @@ catalogs:
       version: 3.0.2
     minimatch:
       specifier: ^10.0.3
-      version: 10.1.1
+      version: 10.2.4
     minimist:
       specifier: ^1.2.8
       version: 1.2.8
@@ -707,7 +707,7 @@ importers:
         version: 16.6.1
       knex:
         specifier: 'catalog:'
-        version: 3.1.0(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2))
+        version: 3.2.9(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2))
       pg:
         specifier: 'catalog:'
         version: 8.16.3(pg-native@3.5.2)
@@ -1563,7 +1563,7 @@ importers:
         version: 6.0.0
       bentocache:
         specifier: 'catalog:'
-        version: 1.5.1(ioredis@5.8.2)(knex@3.1.0(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2)))(kysely@0.28.10)
+        version: 1.5.1(ioredis@5.8.2)(knex@3.2.9(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2)))(kysely@0.28.10)
       better-auth:
         specifier: 'catalog:'
         version: 1.4.18(pg@8.16.3(pg-native@3.5.2))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.10)(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.7)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2))
@@ -1602,13 +1602,13 @@ importers:
         version: 5.8.2
       knex:
         specifier: 'catalog:'
-        version: 3.1.0(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2))
+        version: 3.2.9(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2))
       mime-types:
         specifier: 'catalog:'
         version: 3.0.2
       minimatch:
         specifier: 'catalog:'
-        version: 10.1.1
+        version: 10.2.4
       node-cron:
         specifier: 'catalog:'
         version: 4.2.1
@@ -1823,7 +1823,7 @@ importers:
         version: 3.0.2
       knex:
         specifier: 'catalog:'
-        version: 3.1.0(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2))
+        version: 3.2.9(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2))
       node-cron:
         specifier: 'catalog:'
         version: 4.2.1
@@ -5572,6 +5572,7 @@ packages:
   '@xmldom/xmldom@0.8.11':
     resolution: {integrity: sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xyflow/react@12.10.0':
     resolution: {integrity: sha512-eOtz3whDMWrB4KWVatIBrKuxECHqip6PfA8fTpaS2RUGVpiEAe+nqDKsLqkViVWxDGreq0lWX71Xth/SPAzXiw==}
@@ -7892,8 +7893,8 @@ packages:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
 
-  knex@3.1.0:
-    resolution: {integrity: sha512-GLoII6hR0c4ti243gMs5/1Rb3B+AjwMOfjYm97pu0FOQa7JH56hgBxYf5WK2525ceSbBY1cjeZ9yk99GPMB6Kw==}
+  knex@3.2.9:
+    resolution: {integrity: sha512-dtAILTjBMaG8YloP5oBxohDIKyIsdQ/TkcVvSjhsksvsjeH63Y0PADyuMDfNZKbVT3Rlx3vEYVBlecbPT/KerA==}
     engines: {node: '>=16'}
     hasBin: true
     peerDependencies:
@@ -7902,6 +7903,7 @@ packages:
       mysql2: '*'
       pg: '*'
       pg-native: '*'
+      pg-query-stream: ^4.14.0
       sqlite3: '*'
       tedious: '*'
     peerDependenciesMeta:
@@ -7914,6 +7916,8 @@ packages:
       pg:
         optional: true
       pg-native:
+        optional: true
+      pg-query-stream:
         optional: true
       sqlite3:
         optional: true
@@ -8297,10 +8301,6 @@ packages:
     resolution: {integrity: sha512-IPZ167aShDZZUMdRk66cyQAW3qr0WzbHkPdMYa8bzZhlHhO3jALbKdxcaak7W9FfT2rZNpQuUu4Od7ILEpXSaw==}
     engines: {node: 20 || >=22}
 
-  minimatch@10.1.1:
-    resolution: {integrity: sha512-enIvLvRAFZYXJzkCYG5RKmPfrFArdLv+R+lbQ53BmIMLIry74bjKzX6iHAm8WYamJkhSSEabrWN5D97XnKObjQ==}
-    engines: {node: 20 || >=22}
-
   minimatch@10.2.4:
     resolution: {integrity: sha512-oRjTw/97aTBN0RHbYCdtF1MQfvusSIBQM0IZEgzl6426+8jSC0nF1a/GmnVLpfB9yyr6g6FTqWqiZVbxrtaCIg==}
     engines: {node: 18 || 20 || >=22}
@@ -8314,10 +8314,6 @@ packages:
 
   minimist@1.2.8:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
-
-  minipass@7.1.2:
-    resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
-    engines: {node: '>=16 || 14 >=14.17'}
 
   minipass@7.1.3:
     resolution: {integrity: sha512-tEBHqDnIoM/1rXME1zgka9g6Q2lcoCkxHLuc7ODJ5BxbP5d4c2Z5cGgtXAku59200Cx7diuHTOYfSBD8n6mm8A==}
@@ -11795,7 +11791,7 @@ snapshots:
       '@fastify/accept-negotiator': 1.1.0
       fastify-plugin: 4.5.1
       mime-db: 1.54.0
-      minipass: 7.1.2
+      minipass: 7.1.3
       peek-stream: 1.1.3
       pump: 3.0.3
       pumpify: 2.0.1
@@ -15251,7 +15247,7 @@ snapshots:
       node-addon-api: 8.5.0
       node-gyp-build: 4.8.4
 
-  bentocache@1.5.1(ioredis@5.8.2)(knex@3.1.0(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2)))(kysely@0.28.10):
+  bentocache@1.5.1(ioredis@5.8.2)(knex@3.2.9(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2)))(kysely@0.28.10):
     dependencies:
       '@boringnode/bus': 0.9.0(ioredis@5.8.2)
       '@julr/utils': 1.9.0
@@ -15261,7 +15257,7 @@ snapshots:
       p-timeout: 7.0.1
     optionalDependencies:
       ioredis: 5.8.2
-      knex: 3.1.0(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2))
+      knex: 3.2.9(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2))
       kysely: 0.28.10
 
   better-auth@1.4.18(pg@8.16.3(pg-native@3.5.2))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.10)(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.7)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)):
@@ -16168,7 +16164,7 @@ snapshots:
       eslint: 9.39.2(jiti@2.6.1)
       eslint-import-context: 0.1.9(unrs-resolver@1.11.1)
       is-glob: 4.0.3
-      minimatch: 10.1.1
+      minimatch: 10.2.4
       semver: 7.7.3
       stable-hash-x: 0.2.0
       unrs-resolver: 1.11.1
@@ -16749,7 +16745,7 @@ snapshots:
       foreground-child: 3.3.1
       jackspeak: 3.4.3
       minimatch: 9.0.5
-      minipass: 7.1.2
+      minipass: 7.1.3
       package-json-from-dist: 1.0.1
       path-scurry: 1.11.1
 
@@ -17317,7 +17313,7 @@ snapshots:
 
   kleur@4.1.5: {}
 
-  knex@3.1.0(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2)):
+  knex@3.2.9(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2)):
     dependencies:
       colorette: 2.0.19
       commander: 10.0.1
@@ -17792,10 +17788,6 @@ snapshots:
     dependencies:
       '@isaacs/brace-expansion': 5.0.0
 
-  minimatch@10.1.1:
-    dependencies:
-      '@isaacs/brace-expansion': 5.0.0
-
   minimatch@10.2.4:
     dependencies:
       brace-expansion: 5.0.4
@@ -17809,8 +17801,6 @@ snapshots:
       brace-expansion: 2.0.2
 
   minimist@1.2.8: {}
-
-  minipass@7.1.2: {}
 
   minipass@7.1.3: {}
 
@@ -18155,7 +18145,7 @@ snapshots:
   path-scurry@1.11.1:
     dependencies:
       lru-cache: 10.4.3
-      minipass: 7.1.2
+      minipass: 7.1.3
 
   path-scurry@2.0.2:
     dependencies:
