@@ -333,7 +333,8 @@ export function IdAsyncSelect<
   const valueKey = (v: TValue) => String(v);
 
   // isDropdown 모드: sync 드롭다운 (검색창 없이 목록 즉시 표시)
-  if (isDropdown) {
+  // searchable이면 async 경로로 빠져서 초기 데이터 + 서버 검색 하이브리드 동작
+  if (isDropdown && !searchable) {
     if (!multiple) {
       return (
         <Select
@@ -349,7 +350,6 @@ export function IdAsyncSelect<
           disabled={disabled}
           className={className}
           multiple={false}
-          searchable={searchable}
         />
       );
     }
@@ -368,7 +368,6 @@ export function IdAsyncSelect<
         disabled={disabled}
         className={className}
         multiple={true}
-        searchable={searchable}
       />
     );
   }
