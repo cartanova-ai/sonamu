@@ -82,6 +82,8 @@ type IdAsyncSelectBaseProps<
   className?: string;
   /** true이면 키워드 없이도 마운트 시 전체 목록을 즉시 로드 (소규모 데이터셋에 적합) */
   preload?: boolean;
+  /** true이면 드롭다운 내 클라이언트 사이드 검색 필터를 표시 */
+  searchable?: boolean;
   // Single/Multi 모드
   multiple?: boolean;
   value?: TValue | TValue[] | null;
@@ -144,6 +146,7 @@ export function IdAsyncSelect<
   className,
   multiple = false,
   preload = false,
+  searchable,
   value,
   onValueChange,
   onRowChange,
@@ -346,6 +349,7 @@ export function IdAsyncSelect<
           disabled={disabled}
           className={className}
           multiple={false}
+          searchable={searchable}
         />
       );
     }
@@ -364,6 +368,7 @@ export function IdAsyncSelect<
         disabled={disabled}
         className={className}
         multiple={true}
+        searchable={searchable}
       />
     );
   }
