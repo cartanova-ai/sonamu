@@ -40,7 +40,7 @@ class UserModelClass extends BaseModelClass {
         throw new BadRequestException("Users under 18 cannot register");
       }
       
-      const existing = await this.puri()
+      const existing = await this.getPuri("r").from("users")
         .where("email", param.email)
         .first();
         
@@ -133,9 +133,9 @@ async createUserWithProfile(
 async save(params: UserSaveParams[]): Promise<number[]> {
   // Email duplicate check
   for (const param of params) {
-    const existing = await this.puri()
+    const existing = await this.getPuri("r").from("users")
       .where("email", param.email)
-      .whereNot("id", param.id ?? 0)  // Exclude self when updating
+      .where("id", "!=", param.id ?? 0)  // Exclude self when updating
       .first();
 
     if (existing) {
@@ -482,7 +482,7 @@ async innerTransaction(): Promise<void> {
 
 ```typescript
 async login(params: LoginParams): Promise<{ user: User }> {
-  const user = await this.puri()
+  const user = await this.getPuri("r").from("users")
     .where("email", params.email)
     .first();
 

@@ -486,8 +486,7 @@ const users = await puri
     employee__salary: "employees.salary",
     employee__department__name: "departments.name",
   })
-  .where("users.role", "admin")
-  .many();
+  .where("users.role", "admin");
 
 // 타입: { id: number; username: string; ... }[]
 // JOIN 수동 설정
