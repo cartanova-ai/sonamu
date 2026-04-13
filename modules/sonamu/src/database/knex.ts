@@ -12,12 +12,20 @@ export function createKnexInstance(config: Knex.Config): Knex {
   }
 
   config.pool = {
+    maxConnectionLifetimeMillis: 1800000,
+    maxConnectionLifetimeJitterMillis: 300000,
     ...config.pool,
     propagateCreateError: false,
     idleTimeoutMillis: 10000,
     reapIntervalMillis: 1000,
     acquireTimeoutMillis: 30000,
     createTimeoutMillis: 30000,
+    validate: (connection: unknown) => {
+      if (typeof connection !== "object" || connection === null) return false;
+      const conn = connection as Record<string, unknown>;
+      if (conn._ending === true || conn._closed === true) return false;
+      return true;
+    },
     afterCreate: ((
       conn: Knex.Client & Record<string, unknown>,
       done: (err: Error | null, conn: Knex.Client) => void,
@@ -30,27 +38,9 @@ export function createKnexInstance(config: Knex.Config): Knex {
         stream.stream.setKeepAlive(true, 10000);
       }
 
-      conn.on("error", (err: Error) => {
-        Object.defineProperty(conn, "__knex__disposed", {
-          value: err,
-          writable: true,
-          configurable: true,
-          enumerable: true,
-        });
-      });
-
       done(null, conn);
     }) satisfies Knex.PoolConfig["afterCreate"],
   };
 
-  const knexInstance = knex(config);
-  knexInstance.client.validateConnection = (connection: unknown) => {
-    if (typeof connection !== "object" || connection === null) return false;
-    if ("__knex__disposed" in connection) return false;
-    const conn = connection as Record<string, unknown>;
-    if (conn._ending === true || conn._closed === true) return false;
-    return true;
-  };
-
-  return knexInstance;
+  return knex(config);
 }
