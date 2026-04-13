@@ -17,7 +17,6 @@ import { drivers } from "sonamu/storage";
 export default defineConfig({
   server: {
     storage: {
-      default: process.env.DRIVE_DISK ?? "fs",
       drivers: {
         fs: drivers.fs({
           /* ... */
@@ -32,53 +31,11 @@ export default defineConfig({
 });
 ```
 
-## default
-
-Specifies the default storage driver to use.
-
-**Type**: `string`
-
-```typescript
-export default defineConfig({
-  server: {
-    storage: {
-      default: "fs", // Use fs driver
-      // ...
-    },
-  },
-});
-```
-
-**Switching with environment variables**:
-
-```typescript
-export default defineConfig({
-  server: {
-    storage: {
-      default: process.env.DRIVE_DISK ?? "fs", // Switch based on environment
-      // ...
-    },
-  },
-});
-```
-
-**.env**:
-
-```bash
-# Development: Local file system
-DRIVE_DISK=fs
-
-# Production: AWS S3
-DRIVE_DISK=s3
-```
-
-<Tip>Using environment variables allows you to switch storage without code changes.</Tip>
-
 ## drivers
 
-Defines the storage drivers to use.
+Defines the storage drivers to use. Two types are supported: `"fs"` (local file system) and `"s3"` (AWS S3).
 
-**Type**: `Record<string, Driver>`
+**Type**: `Record<DriverKey, () => DriverContract>` (`DriverKey = "fs" | "s3"`)
 
 ```typescript
 import { drivers } from "sonamu/storage";
@@ -86,7 +43,6 @@ import { drivers } from "sonamu/storage";
 export default defineConfig({
   server: {
     storage: {
-      default: "fs",
       drivers: {
         fs: drivers.fs({
           /* ... */
@@ -99,6 +55,8 @@ export default defineConfig({
   },
 });
 ```
+
+When saving files, you explicitly specify which driver to use in the `saveToDisk(diskName, key)` call. To use different drivers per environment, branch at the code level using environment variables.
 
 ### fs Driver
 
@@ -344,7 +302,6 @@ import { drivers } from "sonamu/storage";
 export default defineConfig({
   server: {
     storage: {
-      default: "fs",
       drivers: {
         fs: drivers.fs({
           location: path.join(import.meta.dirname, "/../public/uploaded"),
@@ -367,6 +324,8 @@ export default defineConfig({
 
 ### fs + S3 (Environment-based Switching)
 
+Register both drivers, then select which driver to use in code based on an environment variable.
+
 ```typescript
 import path from "path";
 import { defineConfig } from "sonamu";
@@ -375,8 +334,6 @@ import { drivers } from "sonamu/storage";
 export default defineConfig({
   server: {
     storage: {
-      default: process.env.DRIVE_DISK ?? "fs", // Switch via environment variable
-
       drivers: {
         // Development: Local file system
         fs: drivers.fs({
@@ -409,6 +366,15 @@ export default defineConfig({
 });
 ```
 
+**Selecting driver per environment in model code**:
+
+```typescript
+import { type DriverKey } from "sonamu/storage";
+
+const diskName: DriverKey = process.env.DRIVE_DISK === "s3" ? "s3" : "fs";
+const url = await file.saveToDisk(diskName, `uploads/${Date.now()}-${file.filename}`);
+```
+
 **.env.development**:
 
 ```bash
@@ -425,80 +391,25 @@ AWS_ACCESS_KEY_ID=your_access_key_here
 AWS_SECRET_ACCESS_KEY=your_secret_key_here
 ```
 
-### Multiple S3 Buckets
-
-When using multiple S3 buckets for different purposes:
-
-```typescript
-import { defineConfig } from "sonamu";
-import { drivers } from "sonamu/storage";
-
-export default defineConfig({
-  server: {
-    storage: {
-      default: "s3-public",
-
-      drivers: {
-        // For public files (profile images, etc.)
-        "s3-public": drivers.s3({
-          credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
-          },
-          region: "ap-northeast-2",
-          bucket: "my-app-public",
-          visibility: "public",
-        }),
-
-        // For private files (documents, receipts, etc.)
-        "s3-private": drivers.s3({
-          credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
-          },
-          region: "ap-northeast-2",
-          bucket: "my-app-private",
-          visibility: "private",
-        }),
-      },
-    },
-  },
-  // ...
-});
-```
-
-**Usage example**:
-
-```typescript
-import { StorageManager } from "sonamu/storage";
-
-// Upload public image
-await StorageManager.use("s3-public").put("profile.jpg", buffer);
-
-// Upload private document
-await StorageManager.use("s3-private").put("invoice.pdf", buffer);
-```
-
 ## File Upload Usage
 
-After storage configuration, you can upload files in your API.
+After storage configuration, you can upload files using the `@upload` decorator and `BufferedFile.saveToDisk()`.
 
 ```typescript
-import { api } from "sonamu";
-import { StorageManager } from "sonamu/storage";
-import type { UploadedFile } from "sonamu";
+import { Sonamu } from "sonamu";
+import { upload } from "sonamu/decorators";
+import { BaseModelClass } from "sonamu";
 
-export class FileModel {
-  @api({ httpMethod: "POST" })
-  static async upload(file: UploadedFile) {
-    // Save file
-    const key = `uploads/${Date.now()}-${file.filename}`;
-    await StorageManager.put(key, file.buffer);
+export class FileModel extends BaseModelClass {
+  @upload()
+  static async upload() {
+    const ctx = Sonamu.getContext();
+    const file = ctx.bufferedFiles[0];
 
-    // Generate URL
-    const url = await StorageManager.url(key);
+    // Save file (diskName, key order)
+    const url = await file.saveToDisk("fs", `uploads/${Date.now()}-${file.filename}`);
 
-    return { key, url };
+    return { url };
   }
 }
 ```

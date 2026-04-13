@@ -17,7 +17,6 @@ import { drivers } from "sonamu/storage";
 export default defineConfig({
   server: {
     storage: {
-      default: process.env.DRIVE_DISK ?? "fs",
       drivers: {
         fs: drivers.fs({
           /* ... */
@@ -32,53 +31,11 @@ export default defineConfig({
 });
 ```
 
-## default
-
-기본으로 사용할 스토리지 드라이버를 지정합니다.
-
-**타입**: `string`
-
-```typescript
-export default defineConfig({
-  server: {
-    storage: {
-      default: "fs", // fs 드라이버 사용
-      // ...
-    },
-  },
-});
-```
-
-**환경 변수로 전환**:
-
-```typescript
-export default defineConfig({
-  server: {
-    storage: {
-      default: process.env.DRIVE_DISK ?? "fs", // 환경에 따라 전환
-      // ...
-    },
-  },
-});
-```
-
-**.env**:
-
-```bash
-# 개발: 로컬 파일 시스템
-DRIVE_DISK=fs
-
-# 프로덕션: AWS S3
-DRIVE_DISK=s3
-```
-
-<Tip>환경 변수를 사용하면 코드 변경 없이 스토리지를 전환할 수 있습니다.</Tip>
-
 ## drivers
 
-사용할 스토리지 드라이버들을 정의합니다.
+사용할 스토리지 드라이버들을 정의합니다. `"fs"`(로컬 파일 시스템)와 `"s3"`(AWS S3) 두 종류를 지원합니다.
 
-**타입**: `Record<string, Driver>`
+**타입**: `Record<DriverKey, () => DriverContract>` (`DriverKey = "fs" | "s3"`)
 
 ```typescript
 import { drivers } from "sonamu/storage";
@@ -86,7 +43,6 @@ import { drivers } from "sonamu/storage";
 export default defineConfig({
   server: {
     storage: {
-      default: "fs",
       drivers: {
         fs: drivers.fs({
           /* ... */
@@ -99,6 +55,8 @@ export default defineConfig({
   },
 });
 ```
+
+파일 저장 시 `saveToDisk(diskName, key)` 호출에서 사용할 드라이버를 명시적으로 지정합니다. 환경별로 다른 드라이버를 사용하려면 환경 변수를 활용하여 코드 레벨에서 분기할 수 있습니다.
 
 ### fs 드라이버
 
@@ -342,7 +300,6 @@ import { drivers } from "sonamu/storage";
 export default defineConfig({
   server: {
     storage: {
-      default: "fs",
       drivers: {
         fs: drivers.fs({
           location: path.join(import.meta.dirname, "/../public/uploaded"),
@@ -365,6 +322,8 @@ export default defineConfig({
 
 ### fs + S3 (환경별 전환)
 
+두 드라이버를 모두 등록하고, 코드에서 환경 변수를 기반으로 사용할 드라이버를 선택합니다.
+
 ```typescript
 import path from "path";
 import { defineConfig } from "sonamu";
@@ -373,8 +332,6 @@ import { drivers } from "sonamu/storage";
 export default defineConfig({
   server: {
     storage: {
-      default: process.env.DRIVE_DISK ?? "fs", // 환경 변수로 전환
-
       drivers: {
         // 개발: 로컬 파일 시스템
         fs: drivers.fs({
@@ -407,6 +364,15 @@ export default defineConfig({
 });
 ```
 
+**모델에서 환경별 드라이버 선택**:
+
+```typescript
+import { type DriverKey } from "sonamu/storage";
+
+const diskName: DriverKey = process.env.DRIVE_DISK === "s3" ? "s3" : "fs";
+const url = await file.saveToDisk(diskName, `uploads/${Date.now()}-${file.filename}`);
+```
+
 **.env.development**:
 
 ```bash
@@ -423,80 +389,25 @@ AWS_ACCESS_KEY_ID=your_access_key_here
 AWS_SECRET_ACCESS_KEY=your_secret_key_here
 ```
 
-### 다중 S3 버킷
-
-용도별로 여러 S3 버킷을 사용하는 경우:
-
-```typescript
-import { defineConfig } from "sonamu";
-import { drivers } from "sonamu/storage";
-
-export default defineConfig({
-  server: {
-    storage: {
-      default: "s3-public",
-
-      drivers: {
-        // 공개 파일용 (프로필 이미지 등)
-        "s3-public": drivers.s3({
-          credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
-          },
-          region: "ap-northeast-2",
-          bucket: "my-app-public",
-          visibility: "public",
-        }),
-
-        // 프라이빗 파일용 (문서, 영수증 등)
-        "s3-private": drivers.s3({
-          credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
-          },
-          region: "ap-northeast-2",
-          bucket: "my-app-private",
-          visibility: "private",
-        }),
-      },
-    },
-  },
-  // ...
-});
-```
-
-**사용 예시**:
-
-```typescript
-import { StorageManager } from "sonamu/storage";
-
-// 공개 이미지 업로드
-await StorageManager.use("s3-public").put("profile.jpg", buffer);
-
-// 프라이빗 문서 업로드
-await StorageManager.use("s3-private").put("invoice.pdf", buffer);
-```
-
 ## 파일 업로드 사용
 
-스토리지 설정 후 API에서 파일을 업로드할 수 있습니다.
+스토리지 설정 후 `@upload` 데코레이터와 `BufferedFile.saveToDisk()`를 사용하여 파일을 업로드할 수 있습니다.
 
 ```typescript
-import { api } from "sonamu";
-import { StorageManager } from "sonamu/storage";
-import type { UploadedFile } from "sonamu";
+import { Sonamu } from "sonamu";
+import { upload } from "sonamu/decorators";
+import { BaseModelClass } from "sonamu";
 
-export class FileModel {
-  @api({ httpMethod: "POST" })
-  static async upload(file: UploadedFile) {
-    // 파일 저장
-    const key = `uploads/${Date.now()}-${file.filename}`;
-    await StorageManager.put(key, file.buffer);
+export class FileModel extends BaseModelClass {
+  @upload()
+  static async upload() {
+    const ctx = Sonamu.getContext();
+    const file = ctx.bufferedFiles[0];
 
-    // URL 생성
-    const url = await StorageManager.url(key);
+    // 파일 저장 (diskName, key 순서)
+    const url = await file.saveToDisk("fs", `uploads/${Date.now()}-${file.filename}`);
 
-    return { key, url };
+    return { url };
   }
 }
 ```

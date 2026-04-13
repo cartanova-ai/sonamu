@@ -212,14 +212,13 @@ export type SonamuServerOptions = {
 
   /**
    * Storage 드라이버 설정.
-   * DRIVE_DISK 환경변수로 사용할 드라이버를 선택합니다. (기본값: default 키)
+   * saveToDisk(diskName, key) 호출 시 드라이버를 명시적으로 지정합니다.
    *
    * @example
    * ```typescript
    * import { drivers } from "sonamu/storage";
    *
    * storage: {
-   *   default: process.env.DRIVE_DISK ?? "fs",
    *   drivers: {
    *     fs: drivers.fs({ location: "./uploads", urlBuilder: { ... } }),
    *     s3: drivers.s3({ bucket: "my-bucket", region: "ap-northeast-2", ... }),
