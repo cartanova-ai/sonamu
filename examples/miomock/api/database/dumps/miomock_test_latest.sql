@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict a6wQYQ94TphROIjKsTA6VKZJ7pBmjLa1gh9cKYygk4CmtXLBcEXM2Fofs85qfQ0
+\restrict ClwDbSXVnC9EpuW9cgsgsF50fqfBbjEXhYfjjSGDn4htfV8R6XC5nPyxngS626h
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
--- Dumped by pg_dump version 18.3
+-- Dumped by pg_dump version 18.1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -56,6 +56,61 @@ CREATE TABLE public.accounts (
     created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp(3) with time zone NOT NULL
 );
+
+
+--
+-- Name: audit_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.audit_events (
+    id integer NOT NULL,
+    source character varying(32) NOT NULL,
+    source_version character varying(96),
+    category text NOT NULL,
+    event_type character varying(64) NOT NULL,
+    event_key character varying(191) NOT NULL,
+    dedupe_key character varying(64) NOT NULL,
+    actor_user_id character varying(191),
+    subject_user_id character varying(191),
+    organization_id character varying(191),
+    team_id character varying(191),
+    session_id character varying(191),
+    provider_id character varying(64),
+    login_method character varying(64),
+    identifier character varying(255),
+    visitor_id character varying(191),
+    reason character varying(128),
+    action character varying(64),
+    trigger_context character varying(64),
+    ip_address character varying(45),
+    country_code character varying(8),
+    country character varying(100),
+    city character varying(100),
+    user_agent text,
+    payload_json jsonb NOT NULL,
+    occurred_at timestamp(3) with time zone NOT NULL,
+    ingested_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: audit_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.audit_events_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: audit_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.audit_events_id_seq OWNED BY public.audit_events.id;
 
 
 --
@@ -635,6 +690,13 @@ CREATE TABLE public.verifications (
 
 
 --
+-- Name: audit_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.audit_events ALTER COLUMN id SET DEFAULT nextval('public.audit_events_id_seq'::regclass);
+
+
+--
 -- Name: audit_logs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -741,6 +803,12 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT (nextval('public.users
 
 --
 -- Data for Name: accounts; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: audit_events; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 
@@ -862,6 +930,7 @@ INSERT INTO public.knex_migrations VALUES (78, '20260203141331_alter_users_add1_
 INSERT INTO public.knex_migrations VALUES (86, '20260309160529_create__milestones.ts', 15, '2026-03-09 16:36:46.313+09');
 INSERT INTO public.knex_migrations VALUES (87, '20260309160530_foreign__milestones__project_id.ts', 15, '2026-03-09 16:36:46.314+09');
 INSERT INTO public.knex_migrations VALUES (88, '20260309161828_create__audit_logs.ts', 15, '2026-03-09 16:36:46.316+09');
+INSERT INTO public.knex_migrations VALUES (89, '20260410140734_create__audit_events.ts', 16, '2026-04-13 20:01:36.37+09');
 
 
 --
@@ -2001,6 +2070,13 @@ INSERT INTO public.users VALUES ('1', '2024-01-01 01:00:00+09', 'kim@tech.com', 
 
 
 --
+-- Name: audit_events_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.audit_events_id_seq', 1, false);
+
+
+--
 -- Name: audit_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -2046,7 +2122,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, true);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 88, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 89, true);
 
 
 --
@@ -2111,6 +2187,14 @@ SELECT pg_catalog.setval('public.users_id_seq', 12, true);
 
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: audit_events audit_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.audit_events
+    ADD CONSTRAINT audit_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -2313,6 +2397,69 @@ CREATE INDEX accounts_user_id_idx ON public.accounts USING btree (user_id);
 
 
 --
+-- Name: audit_events_actor_user_id_occurred_at_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_events_actor_user_id_occurred_at_index ON public.audit_events USING btree (actor_user_id, occurred_at);
+
+
+--
+-- Name: audit_events_dedupe_key_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX audit_events_dedupe_key_unique ON public.audit_events USING btree (dedupe_key);
+
+
+--
+-- Name: audit_events_event_type_occurred_at_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_events_event_type_occurred_at_index ON public.audit_events USING btree (event_type, occurred_at);
+
+
+--
+-- Name: audit_events_occurred_at_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_events_occurred_at_index ON public.audit_events USING btree (occurred_at);
+
+
+--
+-- Name: audit_events_organization_id_occurred_at_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_events_organization_id_occurred_at_index ON public.audit_events USING btree (organization_id, occurred_at);
+
+
+--
+-- Name: audit_events_reason_occurred_at_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_events_reason_occurred_at_index ON public.audit_events USING btree (reason, occurred_at);
+
+
+--
+-- Name: audit_events_session_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_events_session_id_index ON public.audit_events USING btree (session_id);
+
+
+--
+-- Name: audit_events_subject_user_id_occurred_at_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_events_subject_user_id_occurred_at_index ON public.audit_events USING btree (subject_user_id, occurred_at);
+
+
+--
+-- Name: audit_events_team_id_occurred_at_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_events_team_id_occurred_at_index ON public.audit_events USING btree (team_id, occurred_at);
+
+
+--
 -- Name: audit_logs_actor_id_index; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2497,5 +2644,5 @@ ALTER TABLE ONLY public.two_factors
 -- PostgreSQL database dump complete
 --
 
-\unrestrict a6wQYQ94TphROIjKsTA6VKZJ7pBmjLa1gh9cKYygk4CmtXLBcEXM2Fofs85qfQ0
+\unrestrict ClwDbSXVnC9EpuW9cgsgsF50fqfBbjEXhYfjjSGDn4htfV8R6XC5nPyxngS626h
 
