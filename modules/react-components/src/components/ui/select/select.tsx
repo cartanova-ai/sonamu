@@ -280,11 +280,18 @@ function useSelectCommon<Item>(
       : 300;
 
   useEffect(() => {
-    if (!onSearchFn || searchValue === "") return;
+    if (!onSearchFn) return;
 
-    const timer = setTimeout(() => {
-      onSearchFn(searchValue);
-    }, searchDebounceTime);
+    // 빈 문자열(검색어 삭제 / 팝오버 닫힘으로 인한 초기화)은 즉시 전파하여
+    // 부모의 keyword state를 리셋합니다. 이렇게 해야 "검색어 비움 → 초기 리스트"와
+    // "선택 후 재오픈 → 초기 리스트" 동작이 성립합니다. 비어 있지 않은 입력만
+    // 디바운스합니다.
+    const timer = setTimeout(
+      () => {
+        onSearchFn(searchValue);
+      },
+      searchValue === "" ? 0 : searchDebounceTime,
+    );
 
     return () => clearTimeout(timer);
   }, [searchValue, onSearchFn, searchDebounceTime]);
