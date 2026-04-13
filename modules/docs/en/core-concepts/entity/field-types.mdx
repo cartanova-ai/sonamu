@@ -652,14 +652,11 @@ Virtual fields not stored in the database.
     Calculated with SQL using Puri query's appendSelect.
     
     ```typescript
-    // {entity}.model.ts
-    async findAll() {
-      return this.puri()
-        .appendSelect({
-          full_name: this.puri().knex.raw("first_name || ' ' || last_name")
-        })
-        .many();
-    }
+    // Used in {entity}.model.ts subset queries
+    const { qb } = this.getSubsetQueries(subset);
+    qb.appendSelect({
+      full_name: this.getPuri("r").raw("first_name || ' ' || last_name"),
+    });
     ```
     
     **Pros**: Database-level calculation, can filter/sort
@@ -719,11 +716,14 @@ Type for storing vector embeddings. Requires pgvector extension.
 ```typescript
 // Search by cosine similarity
 async searchSimilar(queryEmbedding: number[]) {
-  return this.puri()
-    .whereRaw("embedding <=> ?", [JSON.stringify(queryEmbedding)])
-    .orderByRaw("embedding <=> ?", [JSON.stringify(queryEmbedding)])
-    .limit(10)
-    .many();
+  const results = await this.getPuri("r").raw(`
+    SELECT id, content,
+      1 - (embedding <=> ?) AS similarity
+    FROM documents
+    ORDER BY embedding <=> ?
+    LIMIT 10
+  `, [JSON.stringify(queryEmbedding), JSON.stringify(queryEmbedding)]);
+  return results.rows;
 }
 ```
 

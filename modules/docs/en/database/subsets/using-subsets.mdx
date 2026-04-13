@@ -336,8 +336,7 @@ const users = await puri
     employee__salary: "employees.salary",
     employee__department__name: "departments.name",
   })
-  .where("users.role", "admin")
-  .many();
+  .where("users.role", "admin");
 
 // Type: { id: number; username: string; ... }[]
 // JOIN manual configuration

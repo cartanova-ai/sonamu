@@ -173,10 +173,12 @@ Defines field combinations for API responses.
 
 <CodeGroup>
 ```typescript title="Usage in Model"
-async findAll(): Promise<UserSubsetA[]> {
-  return this.puri()
-    .select<UserSubsetA>("A")
-    .many();
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams,
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb } = this.getSubsetQueries(subset);
+  return this.executeSubsetQuery({ subset, qb, params });
 }
 ```
 

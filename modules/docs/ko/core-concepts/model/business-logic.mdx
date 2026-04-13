@@ -40,7 +40,7 @@ class UserModelClass extends BaseModelClass {
         throw new BadRequestException("18세 미만은 가입할 수 없습니다");
       }
       
-      const existing = await this.puri()
+      const existing = await this.getPuri("r").from("users")
         .where("email", param.email)
         .first();
         
@@ -133,9 +133,9 @@ async createUserWithProfile(
 async save(params: UserSaveParams[]): Promise<number[]> {
   // 이메일 중복 체크
   for (const param of params) {
-    const existing = await this.puri()
+    const existing = await this.getPuri("r").from("users")
       .where("email", param.email)
-      .whereNot("id", param.id ?? 0)  // 수정 시 자신 제외
+      .where("id", "!=", param.id ?? 0)  // 수정 시 자신 제외
       .first();
 
     if (existing) {
@@ -482,7 +482,7 @@ async innerTransaction(): Promise<void> {
 
 ```typescript
 async login(params: LoginParams): Promise<{ user: User }> {
-  const user = await this.puri()
+  const user = await this.getPuri("r").from("users")
     .where("email", params.email)
     .first();
 

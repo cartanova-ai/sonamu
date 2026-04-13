@@ -650,14 +650,11 @@ export type ProductMetadata = {
     Puri 쿼리의 appendSelect로 SQL 계산합니다.
     
     ```typescript
-    // {entity}.model.ts
-    async findAll() {
-      return this.puri()
-        .appendSelect({
-          full_name: this.puri().knex.raw("first_name || ' ' || last_name")
-        })
-        .many();
-    }
+    // {entity}.model.ts의 subset 쿼리에서 사용
+    const { qb } = this.getSubsetQueries(subset);
+    qb.appendSelect({
+      full_name: this.getPuri("r").raw("first_name || ' ' || last_name"),
+    });
     ```
     
     **장점**: 데이터베이스 레벨 계산, 필터링/정렬 가능
@@ -717,11 +714,14 @@ export type ProductMetadata = {
 ```typescript
 // 코사인 유사도로 검색
 async searchSimilar(queryEmbedding: number[]) {
-  return this.puri()
-    .whereRaw("embedding <=> ?", [JSON.stringify(queryEmbedding)])
-    .orderByRaw("embedding <=> ?", [JSON.stringify(queryEmbedding)])
-    .limit(10)
-    .many();
+  const results = await this.getPuri("r").raw(`
+    SELECT id, content,
+      1 - (embedding <=> ?) AS similarity
+    FROM documents
+    ORDER BY embedding <=> ?
+    LIMIT 10
+  `, [JSON.stringify(queryEmbedding), JSON.stringify(queryEmbedding)]);
+  return results.rows;
 }
 ```
 

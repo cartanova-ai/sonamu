@@ -295,7 +295,7 @@ class UserModelClass extends BaseModelClass {
   // ✅ Add custom methods (safe)
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async login(params: UserLoginParams): Promise<{ user: User; token: string }> {
-    const user = await this.puri().where("email", params.email).first();
+    const user = await this.getPuri("r").from("users").where("email", params.email).first();
 
     if (!user) {
       throw new UnauthorizedException("Email or password does not match");
@@ -320,7 +320,7 @@ class UserModelClass extends BaseModelClass {
 
   // Internal helper method (no @api)
   async findByEmail(email: string): Promise<User | null> {
-    return this.puri().where("email", email).first();
+    return this.getPuri("r").from("users").where("email", email).first();
   }
 }
 ```

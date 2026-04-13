@@ -183,10 +183,10 @@ export class UserModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async updateRole(userId: number, role: UserRole) {
     // role은 타입 안전함
-    await this.puri()
+    await this.getPuri("w").from("users")
       .where("id", userId)
       .update({ role });
-      
+
     return { success: true };
   }
 }
@@ -253,9 +253,8 @@ function UserBadge({ role }: { role: UserRole }) {
 ```typescript
 async findAll(orderBy: UserOrderBy = "id-desc") {
   const [field, direction] = orderBy.split("-");
-  return this.puri()
-    .orderBy(field, direction as "asc" | "desc")
-    .many();
+  return this.getPuri("r").from("users")
+    .orderBy(field, direction as "asc" | "desc");
 }
 ```
 
@@ -279,9 +278,8 @@ async findAll(orderBy: UserOrderBy = "id-desc") {
 
 ```typescript
 async search(field: UserSearchField, keyword: string) {
-  return this.puri()
-    .whereLike(field, `%${keyword}%`)
-    .many();
+  return this.getPuri("r").from("users")
+    .whereLike(field, `%${keyword}%`);
 }
 ```
 
@@ -306,7 +304,7 @@ async search(field: UserSearchField, keyword: string) {
 
 ```typescript
 async publish(postId: number) {
-  await this.puri()
+  await this.getPuri("w").from("posts")
     .where("id", postId)
     .update({ status: "published" });
 }
@@ -380,10 +378,10 @@ function hasPermission(user: User, permission: Permission): boolean {
 async grantPermission(userId: number, permission: Permission) {
   const user = await this.findById(userId);
   if (!user.permissions.includes(permission)) {
-    await this.puri()
+    await this.getPuri("w").from("users")
       .where("id", userId)
       .update({
-        permissions: [...user.permissions, permission]
+        permissions: [...user.permissions, permission],
       });
   }
 }

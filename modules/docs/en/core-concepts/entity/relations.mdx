@@ -108,13 +108,11 @@ Sonamu supports 4 Relation types:
 <CodeGroup>
 ```typescript title="Query"
 // Include relation in Subset
-const posts = await this.puri()
-  .select<PostSubsetA>("A")
-  .many();
+const { qb } = this.getSubsetQueries("A");
+const result = await this.executeSubsetQuery({ subset: "A", qb, params });
 
-// Can access posts[0].user.username
-
-````
+// Can access result.rows[0].user.username
+```
 
 ```typescript title="Type (auto-generated)"
 type PostSubsetA = {
@@ -321,10 +319,11 @@ type UserSubsetA = {
 ```
 
 ```typescript title="Query"
-const users = await this.puri().select<UserSubsetA>("A").many();
+const { qb } = this.getSubsetQueries("A");
+const result = await this.executeSubsetQuery({ subset: "A", qb, params });
 
-// users[0].posts is an array
-console.log(users[0].posts.length);
+// result.rows[0].posts is an array
+console.log(result.rows[0].posts.length);
 ```
 
 </CodeGroup>
@@ -440,10 +439,11 @@ type PostSubsetA = {
 ```
 
 ```typescript title="Query"
-const posts = await this.puri().select<PostSubsetA>("A").many();
+const { qb } = this.getSubsetQueries("A");
+const result = await this.executeSubsetQuery({ subset: "A", qb, params });
 
-// posts[0].tags is an array
-posts[0].tags.forEach((tag) => {
+// result.rows[0].tags is an array
+result.rows[0].tags.forEach((tag) => {
   console.log(tag.name);
 });
 ```
@@ -508,19 +508,18 @@ LEFT JOIN departments ON employees.department_id = departments.id
 
 <CodeGroup>
 ```typescript title="BelongsToOne Filter"
-const posts = await this.puri()
-  .where("user.role", "admin")
-  .many();
+const { qb } = this.getSubsetQueries("A");
+qb.where("user.role", "admin");
+const result = await this.executeSubsetQuery({ subset: "A", qb, params });
 ```
 
 ```typescript title="HasMany Filter"
 // HasMany included in Subset cannot be filtered
 // Use separate query instead
 const user = await UserModel.findById(userId);
-const activePosts = await PostModel.puri()
+const activePosts = await PostModel.getPuri("r").from("posts")
   .where("user_id", userId)
-  .where("status", "active")
-  .many();
+  .where("status", "active");
 ```
 
 </CodeGroup>
@@ -528,7 +527,9 @@ const activePosts = await PostModel.puri()
 ### 4. Sorting by Relations
 
 ```typescript
-const posts = await this.puri().orderBy("user.username", "asc").many();
+const { qb } = this.getSubsetQueries("A");
+qb.orderBy("user.username", "asc");
+const result = await this.executeSubsetQuery({ subset: "A", qb, params });
 ```
 
 ## Relation Design Guide

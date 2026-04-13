@@ -134,7 +134,7 @@ export type UserSubsetA = User;
 class UserModelClass extends BaseModelClass {
   async findById(id: number): Promise<User> {
     // Business logic
-    const user = await this.puri().where("id", id).first();
+    const user = await this.getPuri("r").from("users").where("id", id).first();
     return user;
   }
 }
@@ -337,7 +337,7 @@ class UserModelClass extends BaseModelClass {
     ```typescript
     // Model method
     async findActiveUsers(): Promise<User[]> {
-      return this.puri().where("is_active", true).many();
+      return this.getPuri("r").from("users").where("is_active", true);
     }
     
     // Reuse in multiple APIs
