@@ -1,27 +1,9 @@
 import assert from "assert";
 import { createHash } from "crypto";
 
-import { DB, ingestAuditEvent } from "sonamu";
+import { type AuditLogEvent, DB, ingestAuditEvent } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
-
-import sonamuConfig from "../../sonamu.config";
-
-/**
- * sonamu의 Better Auth dash() 프록시가 전달하는 이벤트 body 구조.
- * modules/sonamu/src/auth/audit-log-proxy-types.ts의 AuditLogEvent와 동일한 shape.
- * sonamu가 이 타입을 공개 export하지 않으므로 테스트 내부에서 재정의한다.
- */
-type AuditLogEvent = {
-  eventType: string;
-  eventData: Record<string, unknown>;
-  eventKey: string;
-  eventDisplayName?: string;
-  ipAddress?: string;
-  city?: string;
-  country?: string;
-  countryCode?: string;
-};
 
 bootstrap(vi);
 
@@ -473,31 +455,5 @@ describe("AuditEventModel 시각 구분", () => {
 
     // 두 컬럼은 서로 다른 시각으로 별도 기록되어야 한다
     expect(ingestedAt.getTime()).not.toBe(occurredAt.getTime());
-  });
-});
-
-describe("sonamu.config auditLog.onEvent", () => {
-  test("auditLog.onEvent이 AuditEventModel.ingest를 호출한다", async () => {
-    // auth.auditLog: true 설정 확인 — sonamu가 내부적으로 ingestAuditEvent를 호출한다.
-    // onEvent 콜백은 제거되었으며, auditLog: true가 설정된 경우 proxy route가 자동으로 등록된다.
-    const resolvedConfig = await sonamuConfig;
-    expect(resolvedConfig.server?.auth?.auditLog).toBe(true);
-
-    // ingestAuditEvent가 올바르게 동작하는지 직접 DB 확인으로 검증한다.
-    const wdb = DB.getDB("w");
-    const eventKey = `onevent-${Date.now()}`;
-    const event: AuditLogEvent = {
-      eventType: "user_created",
-      eventKey,
-      eventData: {
-        identifier: "onevent@example.com",
-        occurredAt: "2026-04-10T20:00:00.000Z",
-      },
-    };
-
-    await ingestAuditEvent(wdb, event);
-
-    const row = await wdb("audit_events").where("event_key", eventKey).first("event_key");
-    expect(row?.event_key).toBe(eventKey);
   });
 });

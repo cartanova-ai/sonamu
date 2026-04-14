@@ -13,7 +13,7 @@
   },
   {
     "path": "src/application/audit-event/audit-event.model.ts",
-    "checksum": "99c31f8f04d9f7858b85bfab147b5bae0e829812"
+    "checksum": "0f1b9f6613928c8386ec62c2ee90bcfbf9418b48"
   },
   {
     "path": "src/application/audit-event/audit-event.types.ts",
@@ -221,6 +221,6 @@
   },
   {
     "path": "src/sonamu.config.ts",
-    "checksum": "43e7de6d1deede826e8337be423adc23ac3a8088"
+    "checksum": "b8e4eea7065eee661147280f9fb0136014550a8c"
   }
 ]
