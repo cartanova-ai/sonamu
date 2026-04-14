@@ -1,9 +1,9 @@
 ---
-title: "UploadedFile 클래스"
+title: "BufferedFile 클래스"
 description: "파일 정보 접근과 saveToDisk() 메서드"
 ---
 
-UploadedFile 클래스는 업로드된 파일의 정보를 제공하고, `saveToDisk()` 메서드로 파일을 저장합니다.
+BufferedFile 클래스는 업로드된 파일의 정보를 제공하고, `saveToDisk()` 메서드로 파일을 저장합니다.
 
 ## UploadedFile 개요
 
@@ -14,8 +14,8 @@ UploadedFile 클래스는 업로드된 파일의 정보를 제공하고, `saveTo
   <Card title="saveToDisk()" icon="floppy-disk">
     스토리지에 저장 URL 자동 생성
   </Card>
-  <Card title="toBuffer()" icon="memory">
-    Buffer 변환 캐싱 지원
+  <Card title="buffer" icon="memory">
+    Buffer 접근 `.buffer` getter
   </Card>
   <Card title="URL 속성" icon="link">
     url, signedUrl 저장 후 자동 설정
@@ -27,12 +27,14 @@ UploadedFile 클래스는 업로드된 파일의 정보를 제공하고, `saveTo
 ### 파일 정보
 
 ```typescript
-import type { UploadedFile } from "sonamu";
+import type { BufferedFile } from "sonamu";
 
 class FileModel extends BaseModelClass {
   @upload()
-  async upload(params: { file: UploadedFile }): Promise<any> {
-    const { file } = params;
+  async upload(): Promise<any> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
 
     // 파일 정보 접근
     console.log({
@@ -68,8 +70,10 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @upload()
-  async upload(params: { file: UploadedFile }): Promise<{ url: string }> {
-    const { file } = params;
+  async upload(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
 
     // 파일 저장 (기본 디스크 사용)
     const url = await file.saveToDisk("fs", `uploads/${Date.now()}-${file.filename}`);
@@ -88,21 +92,22 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @upload()
-  async uploadToS3(params: { file: UploadedFile }): Promise<{ url: string }> {
-    const { file } = params;
+  async uploadToS3(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
 
     // S3 디스크에 저장
-    const url = await file.saveToDisk(
-      "s3", // 디스크 이름
-      `uploads/${Date.now()}-${file.filename}`,
-    );
+    const url = await file.saveToDisk("s3", `uploads/${Date.now()}-${file.filename}`);
 
     return { url };
   }
 
   @upload()
-  async uploadPublic(params: { file: UploadedFile }): Promise<{ url: string }> {
-    const { file } = params;
+  async uploadPublic(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
 
     // Public 디스크에 저장
     const url = await file.saveToDisk("public", `public/${Date.now()}-${file.filename}`);
@@ -112,18 +117,20 @@ class FileModel extends BaseModelClass {
 }
 ```
 
-## Buffer 변환
+## buffer Getter
 
-### toBuffer() 메서드
+### buffer 속성
 
 ```typescript
 class FileModel extends BaseModelClass {
   @upload()
-  async processImage(params: { image: UploadedFile }): Promise<{ url: string }> {
-    const { image } = params;
+  async processImage(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const image = bufferedFiles?.[0];
+    if (!image) throw new Error("Image is required");
 
-    // Buffer로 변환 (캐싱됨)
-    const buffer = await image.toBuffer();
+    // Buffer에 직접 접근
+    const buffer = image.buffer;
 
     console.log("Buffer size:", buffer.length);
 
@@ -148,7 +155,7 @@ class FileModel extends BaseModelClass {
 }
 ```
 
-<Info>`toBuffer()`는 결과를 캐싱하므로, 여러 번 호출해도 한 번만 읽습니다.</Info>
+<Info>`.buffer`는 multipart 파싱 시 미리 로드된 Buffer를 반환하는 getter입니다.</Info>
 
 ## MD5 해시
 
@@ -157,11 +164,13 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @upload()
-  async uploadWithHash(params: { file: UploadedFile }): Promise<{
+  async uploadWithHash(): Promise<{
     url: string;
     md5: string;
   }> {
-    const { file } = params;
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
 
     // MD5 해시 계산
     const md5Hash = await file.md5();
@@ -213,8 +222,10 @@ class FileValidator {
 // 사용
 class FileModel extends BaseModelClass {
   @upload()
-  async upload(params: { file: UploadedFile }): Promise<{ url: string }> {
-    const { file } = params;
+  async upload(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
 
     // 크기 검증 (10MB)
     FileValidator.validateSize(file, 10 * 1024 * 1024);
@@ -242,8 +253,10 @@ class FileValidator {
 // 사용
 class ImageModel extends BaseModelClass {
   @upload()
-  async uploadImage(params: { image: UploadedFile }): Promise<{ url: string }> {
-    const { image } = params;
+  async uploadImage(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const image = bufferedFiles?.[0];
+    if (!image) throw new Error("Image is required");
 
     // MIME 타입 검증
     FileValidator.validateMimeType(image, ["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -273,8 +286,10 @@ class FileValidator {
 // 사용
 class DocumentModel extends BaseModelClass {
   @upload()
-  async uploadDocument(params: { document: UploadedFile }): Promise<{ url: string }> {
-    const { document } = params;
+  async uploadDocument(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const document = bufferedFiles?.[0];
+    if (!document) throw new Error("Document is required");
 
     // 확장자 검증
     FileValidator.validateExtension(document, ["pdf", "doc", "docx", "txt"]);
@@ -346,8 +361,10 @@ class FileValidator {
 // 사용
 class MediaModel extends BaseModelClass {
   @upload()
-  async uploadImage(params: { image: UploadedFile }): Promise<{ url: string }> {
-    const { image } = params;
+  async uploadImage(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const image = bufferedFiles?.[0];
+    if (!image) throw new Error("Image is required");
 
     FileValidator.validateImage(image);
 
@@ -365,7 +382,7 @@ class MediaModel extends BaseModelClass {
 ```typescript
 class UserModel extends BaseModelClass {
   @upload()
-  async uploadProfileImage(params: { image: UploadedFile }): Promise<{
+  async uploadProfileImage(): Promise<{
     imageId: number;
     url: string;
     thumbnailUrl: string;
@@ -376,13 +393,15 @@ class UserModel extends BaseModelClass {
       throw new Error("Authentication required");
     }
 
-    const { image } = params;
+    const { bufferedFiles } = context;
+    const image = bufferedFiles?.[0];
+    if (!image) throw new Error("Image is required");
 
     // 검증
     FileValidator.validateImage(image);
 
     // 원본 이미지 Buffer
-    const buffer = await image.toBuffer();
+    const buffer = image.buffer;
 
     // 썸네일 생성
     const sharp = require("sharp");
@@ -432,7 +451,7 @@ class UserModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @upload()
-  async uploadMultiple(params: { files: UploadedFile[]; category?: string }): Promise<{
+  async uploadMultiple(params: { category?: string }): Promise<{
     uploadedFiles: Array<{
       fileId: number;
       filename: string;
@@ -440,20 +459,21 @@ class FileModel extends BaseModelClass {
       md5: string;
     }>;
   }> {
-    const { files, category } = params;
+    const { bufferedFiles } = Sonamu.getContext();
+    const { category } = params;
 
-    if (!files || files.length === 0) {
+    if (!bufferedFiles || bufferedFiles.length === 0) {
       throw new Error("At least one file is required");
     }
 
-    if (files.length > 10) {
+    if (bufferedFiles.length > 10) {
       throw new Error("Maximum 10 files allowed");
     }
 
     const uploadedFiles = [];
     const wdb = this.getPuri("w");
 
-    for (const file of files) {
+    for (const file of bufferedFiles) {
       // 검증
       if (file.size > 20 * 1024 * 1024) {
         throw new Error(`File ${file.filename} too large (max 20MB)`);
@@ -515,8 +535,10 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @upload()
-  async uploadAdvanced(params: { file: UploadedFile }): Promise<any> {
-    const { file } = params;
+  async uploadAdvanced(): Promise<any> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
 
     // 원본 Fastify MultipartFile 접근
     const rawFile = file.raw;
@@ -537,8 +559,8 @@ class FileModel extends BaseModelClass {
 ## 주의사항
 
 <Warning>
-  **UploadedFile 사용 시 주의사항**: 1. `saveToDisk()` 호출 전 검증 필수 2. `toBuffer()`는
-  캐싱되므로 여러 번 호출 가능 3. `url`, `signedUrl`은 저장 후에만 사용 가능 4. 대용량 파일은
+  **UploadedFile 사용 시 주의사항**: 1. `saveToDisk()` 호출 전 검증 필수 2.
+  `.buffer`로 미리 로드된 Buffer에 직접 접근 가능 3. `url`, `signedUrl`은 저장 후에만 사용 가능 4. 대용량 파일은
   스트리밍 고려 5. Storage 설정 확인
 </Warning>
 
