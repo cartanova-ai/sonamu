@@ -364,15 +364,6 @@ export default defineConfig({
 });
 ```
 
-**모델에서 환경별 드라이버 선택**:
-
-```typescript
-import { type DriverKey } from "sonamu/storage";
-
-const diskName: DriverKey = process.env.DRIVE_DISK === "s3" ? "s3" : "fs";
-const url = await file.saveToDisk(diskName, `uploads/${Date.now()}-${file.filename}`);
-```
-
 **.env.development**:
 
 ```bash
@@ -389,11 +380,14 @@ AWS_ACCESS_KEY_ID=your_access_key_here
 AWS_SECRET_ACCESS_KEY=your_secret_key_here
 ```
 
+<Note>현재 `DriverKey`는 `"fs"`와 `"s3"` 두 가지만 지원합니다. 공개/비공개 파일을 별도 버킷에 나누어 저장하는 다중 버킷 구성은 현재 지원되지 않습니다.</Note>
+
 ## 파일 업로드 사용
 
 스토리지 설정 후 `@upload` 데코레이터와 `BufferedFile.saveToDisk()`를 사용하여 파일을 업로드할 수 있습니다.
 
 ```typescript
+import { type DriverKey } from "sonamu/storage";
 import { Sonamu } from "sonamu";
 import { upload } from "sonamu/decorators";
 import { BaseModelClass } from "sonamu";
@@ -403,9 +397,11 @@ export class FileModel extends BaseModelClass {
   static async upload() {
     const ctx = Sonamu.getContext();
     const file = ctx.bufferedFiles[0];
+    if (!file) throw new Error("업로드된 파일이 없습니다.");
 
-    // 파일 저장 (diskName, key 순서)
-    const url = await file.saveToDisk("fs", `uploads/${Date.now()}-${file.filename}`);
+    // 환경 변수로 드라이버 선택
+    const diskName: DriverKey = process.env.DRIVE_DISK === "s3" ? "s3" : "fs";
+    const url = await file.saveToDisk(diskName, `uploads/${Date.now()}-${file.filename}`);
 
     return { url };
   }

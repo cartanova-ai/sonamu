@@ -366,15 +366,6 @@ export default defineConfig({
 });
 ```
 
-**Selecting driver per environment in model code**:
-
-```typescript
-import { type DriverKey } from "sonamu/storage";
-
-const diskName: DriverKey = process.env.DRIVE_DISK === "s3" ? "s3" : "fs";
-const url = await file.saveToDisk(diskName, `uploads/${Date.now()}-${file.filename}`);
-```
-
 **.env.development**:
 
 ```bash
@@ -391,11 +382,14 @@ AWS_ACCESS_KEY_ID=your_access_key_here
 AWS_SECRET_ACCESS_KEY=your_secret_key_here
 ```
 
+<Note>`DriverKey` currently supports only `"fs"` and `"s3"`. Multiple bucket configurations — such as separating public and private files into different buckets — are not supported at this time.</Note>
+
 ## File Upload Usage
 
 After storage configuration, you can upload files using the `@upload` decorator and `BufferedFile.saveToDisk()`.
 
 ```typescript
+import { type DriverKey } from "sonamu/storage";
 import { Sonamu } from "sonamu";
 import { upload } from "sonamu/decorators";
 import { BaseModelClass } from "sonamu";
@@ -405,9 +399,11 @@ export class FileModel extends BaseModelClass {
   static async upload() {
     const ctx = Sonamu.getContext();
     const file = ctx.bufferedFiles[0];
+    if (!file) throw new Error("No uploaded file found.");
 
-    // Save file (diskName, key order)
-    const url = await file.saveToDisk("fs", `uploads/${Date.now()}-${file.filename}`);
+    // Select driver via environment variable
+    const diskName: DriverKey = process.env.DRIVE_DISK === "s3" ? "s3" : "fs";
+    const url = await file.saveToDisk(diskName, `uploads/${Date.now()}-${file.filename}`);
 
     return { url };
   }
