@@ -24,7 +24,7 @@ class NotificationModelClass extends BaseModelClass {
       }),
     }),
   })
-  async streamNotifications(userId: number, ctx: Context): Promise<void> {
+  async streamNotifications(userId: number, ctx: Context) {
     const sse = ctx.createSSE(
       z.object({
         notification: z.object({
@@ -42,6 +42,8 @@ class NotificationModelClass extends BaseModelClass {
 
     // Close connection
     await sse.end();
+
+    return sse;
   }
 }
 ```
