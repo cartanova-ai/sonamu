@@ -5,15 +5,13 @@ import { type IncomingMessage, type Server, type ServerResponse } from "http";
 import os from "os";
 import path from "path";
 
-import { dispose as logtapeDispose, getLogger } from "@logtape/logtape";
+import { dispose as logtapeDispose } from "@logtape/logtape";
 import { type Auth, type BetterAuthOptions } from "better-auth";
 import { type FSWatcher } from "chokidar";
 import { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import mime, { lookup as mimeLookup } from "mime-types";
 import { type ZodObject } from "zod";
 
-import { ingestAuditEvent } from "../auth/audit-log-ingestor";
-import { type AuditLogEvent } from "../auth/audit-log-proxy-types";
 import { BASE_FIELD_MAPPINGS } from "../auth/better-auth-entities";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
 import { type CacheControlConfig, type CacheControlRequest } from "../cache-control/types";
@@ -235,15 +233,6 @@ class SonamuClass {
       // 사용자 설정과 기본값을 merge
       const mergedFieldMappings = merge(BASE_FIELD_MAPPINGS, authConfig);
 
-      // auth.auditLog: true인 경우 dash() 플러그인 자동 주입
-      if (authConfig.auditLog) {
-        const { dash } = await import("@better-auth/infra");
-        const auditLogBasePath = "/api/audit-log";
-        const apiUrl = `${authConfig.baseURL}${auditLogBasePath}`;
-        const existingPlugins = mergedFieldMappings.plugins ?? [];
-        mergedFieldMappings.plugins = [...existingPlugins, dash({ apiUrl })];
-      }
-
       // better-auth 인스턴스 생성
       const { betterAuth } = await import("better-auth");
       const { sonamuKnexAdapter } = await import("../auth/knex-adapter");
@@ -323,10 +312,6 @@ class SonamuClass {
 
     if (options.auth) {
       await this.registerBetterAuth(server, options.auth);
-    }
-
-    if (options.auth?.auditLog) {
-      this.registerAuditLogProxy(server);
     }
 
     // API 라우팅 설정
@@ -1305,38 +1290,6 @@ class SonamuClass {
     });
   }
 
-  private registerAuditLogProxy(server: FastifyInstance) {
-    const logger = getLogger(["sonamu", "audit-log"]);
-    const basePath = "/api/audit-log";
-
-    server.route<{ Body: AuditLogEvent }>({
-      method: "POST",
-      url: `${basePath}/events/track`,
-      handler: async (request, reply) => {
-        const event = request.body;
-
-        logger.info(
-          "Audit event received: {eventType} {eventKey} {eventDisplayName} from {ipAddress} ({country})",
-          {
-            eventType: event.eventType,
-            eventKey: event.eventKey,
-            eventDisplayName: event.eventDisplayName,
-            ipAddress: event.ipAddress,
-            country: event.country,
-          },
-        );
-
-        try {
-          await ingestAuditEvent(DB.getDB("w"), event);
-        } catch (err) {
-          logger.error("audit event ingest failed: {error}", { error: err });
-        }
-
-        return reply.status(200).send({ ok: true });
-      },
-    });
-  }
-
   private async printStartupSummary() {
     const chalk = (await import("chalk")).default;
     const env = process.env.NODE_ENV ?? "development";
@@ -1371,9 +1324,6 @@ class SonamuClass {
     if (this.config.server.auth) {
       const basePath = this.config.server.auth.basePath ?? "/api/auth";
       dim(`Auth: better-auth at ${basePath}/*`);
-    }
-    if (this.config.server.auth?.auditLog) {
-      dim(`AuditLog: proxy at /api/audit-log/events/track`);
     }
     if (this.config.api.timezone) {
       dim(`Timezone: ${this.config.api.timezone}`);

@@ -198,14 +198,6 @@ export type SonamuServerOptions = {
         }
       >;
     };
-    /**
-     * AuditLog 활성화 여부
-     * true로 설정하면 Better Auth dash() 플러그인을 자동 주입하고
-     * /api/audit-log/events/track 엔드포인트에서 이벤트를 수신하여
-     * audit_events 테이블에 적재합니다.
-     * 사전에 `sonamu auth generate --plugins audit-log`로 엔티티를 생성해야 합니다.
-     */
-    auditLog?: boolean;
   };
 
   apiConfig: SonamuFastifyConfig;
