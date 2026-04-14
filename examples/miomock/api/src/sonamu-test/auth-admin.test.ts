@@ -7,7 +7,10 @@ bootstrap(vi);
 const AUTH_BASE = "http://localhost:10280/api/auth";
 
 async function callAuth(path: string, init: { body: unknown; cookie?: string }): Promise<Response> {
-  const headers = new Headers({ "content-type": "application/json" });
+  const headers = new Headers({
+    "content-type": "application/json",
+    "x-forwarded-for": "127.0.0.1",
+  });
   if (init.cookie) {
     headers.set("cookie", init.cookie);
   }
@@ -100,5 +103,27 @@ describe("auth admin", () => {
     expect(row.banned).toBe(false);
     expect(row.ban_reason).toBeNull();
     expect(row.ban_expires).toBeNull();
+  });
+});
+
+describe("auth admin 통합", () => {
+  test("admin.banUser 호출 시 audit_events에 user_banned 1건이 적재된다", async () => {
+    const adminCookie = await createAdminAndGetCookie("admin-ac12@test.com", "admin-pass-123");
+    const targetId = await signUp("target-ac12@test.com", "target-pass-123");
+
+    const banReason = "AC-12 회귀";
+    const banRes = await callAuth("/admin/ban-user", {
+      cookie: adminCookie,
+      body: { userId: targetId, banReason, banExpiresIn: 60 },
+    });
+    expect(banRes.status).toBe(200);
+
+    const wdb = DB.getDB("w");
+    const rows = await wdb("audit_events")
+      .where({ event_type: "user_banned", subject_user_id: targetId })
+      .select("*");
+    expect(rows.length).toBe(1);
+    expect(rows[0].reason).toBe(banReason);
+    expect(rows[0].ip_address).toBe("127.0.0.1");
   });
 });

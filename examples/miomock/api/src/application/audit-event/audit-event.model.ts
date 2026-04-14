@@ -19,7 +19,7 @@ import { type AuditEventListParams, type AuditEventSaveParams } from "./audit-ev
 
 /*
   AuditEvent Model
-  - ingest() 로직은 sonamu 패키지 내부(auth.auditLog: true)에서 자동 처리됩니다.
+  - ingest() 로직은 sonamu 패키지 내부(auth.plugins에 sonamuAuditLog() 등록 시)에서 자동 처리됩니다.
   - 이 모델은 audit_events 조회/관리 API를 제공합니다.
 */
 
