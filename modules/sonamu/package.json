@@ -94,7 +94,6 @@
     "@aws-sdk/lib-storage": "catalog:",
     "@aws-sdk/s3-request-presigner": "catalog:",
     "@better-auth/api-key": "catalog:",
-    "@better-auth/infra": "catalog:",
     "@better-auth/passkey": "catalog:",
     "@better-auth/sso": "catalog:",
     "@faker-js/faker": "catalog:",
