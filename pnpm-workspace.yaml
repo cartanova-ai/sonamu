@@ -17,7 +17,6 @@ catalog:
   "@aws-sdk/lib-storage": ^3.971.0
   "@aws-sdk/s3-request-presigner": ^3.958.0
   "@better-auth/api-key": ~1.6.0
-  "@better-auth/infra": ~0.1.14
   "@better-auth/passkey": ~1.6.0
   "@better-auth/sso": ~1.6.0
   "@changesets/cli": ^2.29.4

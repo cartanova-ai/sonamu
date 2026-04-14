@@ -25,7 +25,6 @@
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",
-    "@better-auth/infra": "catalog:",
     "@logtape/logtape": "catalog:",
     "@logtape/pretty": "catalog:",
     "@logtape/redaction": "catalog:",
