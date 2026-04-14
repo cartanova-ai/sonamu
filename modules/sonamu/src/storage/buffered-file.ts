@@ -35,8 +35,8 @@ export class BufferedFile extends BaseFile {
 
   /**
    * 파일을 디스크에 저장
+   * @param diskName 디스크 이름 ("fs" 또는 "s3")
    * @param key 저장 경로 (예: 'uploads/avatar.png')
-   * @param diskName 디스크 이름 (기본: default disk)
    * @returns 저장된 파일의 URL
    */
   async saveToDisk(diskName: DriverKey, key: string): Promise<string> {
