@@ -23,6 +23,23 @@ interface FixtureCommandOptions {
 }
 
 /**
+ * username을 일반적인 규칙(영문자 시작, 영문자/숫자만, 1-20자)에 맞도록 정규화합니다.
+ */
+function sanitizeUsername(raw: string): string {
+  // 소문자 변환 후 영문자/숫자 외 문자 제거
+  let username = raw.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (username.length === 0) {
+    username = "user";
+  }
+  // 첫 글자가 숫자면 'u' 접두어 추가
+  if (/^[0-9]/.test(username)) {
+    username = `u${username}`;
+  }
+  // 20자 초과 시 truncate
+  return username.slice(0, 20);
+}
+
+/**
  * fixture gen 명령어 - cone 메타데이터를 활용하여 자동으로 fixture를 생성합니다.
  */
 export async function fixtureGenCommand(options: FixtureCommandOptions) {
@@ -74,6 +91,132 @@ export async function fixtureGenCommand(options: FixtureCommandOptions) {
       }
 
       count = result.count;
+    }
+
+    // User 엔티티가 포함된 경우: 로그인 가능/확인용 분기 선택
+    const hasUser = entityNames.includes("User");
+
+    if (hasUser) {
+      const userModeResult = await prompts({
+        type: "select",
+        name: "userMode",
+        message: "User 엔티티가 포함되어 있습니다. 생성 방식을 선택하세요:",
+        choices: [
+          { title: "1. 로그인 가능한 사용자 fixture 생성", value: "login" },
+          { title: "2. 확인용 데이터(로그인 불가) 생성", value: "dummy" },
+        ],
+      });
+
+      if (!userModeResult.userMode) {
+        console.log(chalk.yellow("취소되었습니다."));
+        return;
+      }
+
+      if (userModeResult.userMode === "login") {
+        // LLM 사용 여부
+        let useLLM = options["use-llm"] ?? false;
+        if (!options["use-llm"]) {
+          const llmResult = await prompts({
+            type: "confirm",
+            name: "useLLM",
+            message:
+              "LLM으로 더 현실적인 데이터를 생성할까요? (fixtureHint 기반, ANTHROPIC_API_KEY 필요)",
+            initial: false,
+          });
+          useLLM = llmResult.useLLM ?? false;
+        }
+
+        const enableLLMCache = !options["no-cache"];
+        const DEFAULT_PASSWORD = "Test1234!";
+
+        // 로그인 가능 경로에서는 sourceDb로 development_master 사용
+        const sourceDb = DB.getDB("r");
+        const generator = new FixtureGenerator(
+          sourceDb,
+          sourceDb,
+          "production_master",
+          EntityManager,
+          { useLLM, enableLLMCache },
+        );
+
+        const createdCredentials: Array<{ email: string; password: string }> = [];
+        const basePath = Sonamu.config.server.auth?.basePath ?? "/api/auth";
+
+        if (useLLM) {
+          console.log(
+            chalk.cyan(
+              `\nLLM 모드로 로그인 가능한 사용자 ${count}명 생성 중... (캐싱: ${enableLLMCache ? "ON" : "OFF"})`,
+            ),
+          );
+        } else {
+          console.log(chalk.cyan(`\n로그인 가능한 사용자 ${count}명 생성 중...`));
+        }
+
+        for (let i = 0; i < count; i++) {
+          const userData = await generator.generate("User");
+
+          const name = String(userData.name ?? "");
+          const email = String(userData.email ?? "");
+          const username = sanitizeUsername(String(userData.username ?? ""));
+          const displayUsername =
+            userData.display_username !== undefined ? String(userData.display_username) : undefined;
+
+          const body: Record<string, unknown> = {
+            name,
+            email,
+            username,
+            password: DEFAULT_PASSWORD,
+          };
+          if (displayUsername !== undefined) {
+            body.display_username = displayUsername;
+          }
+
+          const req = new Request(`http://localhost${basePath}/sign-up/email`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+
+          const response = await Sonamu.auth.handler(req);
+
+          if (!response.ok) {
+            const responseData = (await response.json()) as Record<string, unknown>;
+            const code = typeof responseData.code === "string" ? responseData.code : undefined;
+            if (code === "USER_ALREADY_EXISTS") {
+              console.log(chalk.yellow(`  ⚠️  ${email} 이미 존재 - 건너뜁니다.`));
+              continue;
+            }
+            console.log(chalk.red(`  ❌ ${email} 생성 실패: ${JSON.stringify(responseData)}`));
+            continue;
+          }
+
+          createdCredentials.push({ email, password: DEFAULT_PASSWORD });
+          console.log(chalk.green(`  ✅ ${email} 생성 완료`));
+        }
+
+        // email_verified = true 직접 업데이트 (dev 편의)
+        if (createdCredentials.length > 0) {
+          const emails = createdCredentials.map((c) => c.email);
+          await DB.getDB("w")("users").whereIn("email", emails).update({ email_verified: true });
+          console.log(chalk.green(`\nemail_verified = true 업데이트 완료`));
+        }
+
+        if (useLLM) {
+          const stats = generator.getLLMCacheStats();
+          console.log(chalk.cyan(`[LLM Cache] 캐시 크기: ${stats.size}`));
+        }
+
+        console.log(
+          chalk.green(`\n✅ ${createdCredentials.length}명의 로그인 가능한 사용자 생성 완료`),
+        );
+        if (createdCredentials.length > 0) {
+          console.log("\n생성된 계정 목록:");
+          console.table(createdCredentials);
+        }
+
+        return;
+      }
+      // userMode === "dummy": 기존 generateBatch() 흐름 계속
     }
 
     let saveTarget = options["save-to"] || "db";
