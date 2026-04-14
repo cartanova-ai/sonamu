@@ -10,7 +10,7 @@ import { type BetterAuthEntityDef } from "./types";
  * - role: 사용자 역할 (기본값: "user")
  * - banned: 차단 여부
  * - ban_reason: 차단 사유
- * - ban_expires: 차단 만료 시간 (Unix timestamp)
+ * - ban_expires: 차단 만료 시간 (Date)
  *
  * Session 테이블:
  * - impersonated_by: 대리 로그인한 관리자 ID
@@ -43,9 +43,9 @@ export const adminEntityDef: BetterAuthEntityDef = {
       },
       {
         name: "ban_expires",
-        type: "bigInteger",
+        type: "date",
         nullable: true,
-        desc: "차단 만료 (Unix timestamp)",
+        desc: "차단 만료",
       },
     ],
     Session: [
