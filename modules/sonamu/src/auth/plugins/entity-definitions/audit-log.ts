@@ -3,8 +3,8 @@ import { type BetterAuthEntityDef } from "./types";
 /**
  * better-auth AuditLog 플러그인 엔티티 정의
  *
- * auth.auditLog: true 로 활성화되며 audit_events 테이블을 생성합니다.
- * - Better Auth dash() 플러그인이 전송하는 이벤트를 1건씩 적재합니다.
+ * auth.plugins에 sonamuAuditLog() 추가 시 audit_events 테이블이 사용됩니다.
+ * - sonamuAuditLog 플러그인이 Better Auth databaseHooks/organizationHooks/middleware에서 수신한 이벤트를 1건씩 적재합니다.
  * - dedupe_key(sha256 hex)로 중복 적재를 방지합니다.
  *
  * 생성 방법: pnpm sonamu auth generate --plugins audit-log

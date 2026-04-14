@@ -1,6 +1,7 @@
 export type { GenerateBetterAuthEntitiesOptions } from "./auth-generator";
 export { generateBetterAuthEntities } from "./auth-generator";
 export { ingestAuditEvent } from "./audit-log-ingestor";
+export { sonamuAuditLog, type AuditLogEvent } from "./audit-log-plugin";
 export { BASE_FIELD_MAPPINGS, betterAuthV1 } from "./better-auth-entities";
 export { sonamuKnexAdapter } from "./knex-adapter";
 

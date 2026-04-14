@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { type Knex } from "knex";
 
-import { type AuditLogEvent } from "./audit-log-proxy-types";
+import { type AuditLogEvent } from "./audit-log-plugin";
 
 const AUDIT_EVENT_SOURCE = "better_auth";
 const AUDIT_EVENT_SOURCE_VERSION = "better-auth|@better-auth/infra";
@@ -48,7 +48,6 @@ const USER_EVENT_TYPES = new Set<string>([
   "profile_updated",
   "profile_image_updated",
   "email_verified",
-  "email_changed",
   "user_banned",
   "user_unbanned",
   "user_deleted",
@@ -139,9 +138,9 @@ function computeDedupeKey(parts: {
 }
 
 /**
- * Better Auth dash() 이벤트를 audit_events 테이블에 적재합니다.
+ * sonamuAuditLog 플러그인이 구성한 AuditLogEvent를 audit_events 테이블에 적재합니다.
  * ON CONFLICT (dedupe_key) DO NOTHING으로 중복을 silent 무시합니다.
- * auth.auditLog: true 설정 시 sonamu 내부에서 자동으로 호출됩니다.
+ * auth.plugins에 sonamuAuditLog() 추가 시 sonamu 내부에서 자동으로 호출됩니다.
  */
 export async function ingestAuditEvent(db: Knex, event: AuditLogEvent): Promise<void> {
   const eventData = event.eventData;
