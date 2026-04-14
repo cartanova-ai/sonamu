@@ -5,7 +5,7 @@ import {
 } from "@sonamu-kit/react-components";
 import { type SonamuFile } from "@sonamu-kit/react-components";
 import { type BetterAuthClientOptions } from "better-auth/client";
-import { inferAdditionalFields, twoFactorClient } from "better-auth/client/plugins";
+import { adminClient, inferAdditionalFields, twoFactorClient } from "better-auth/client/plugins";
 import { type ReactNode } from "react";
 
 import { type MergedDictionary } from "@/i18n/sd.generated";
@@ -27,6 +27,7 @@ const authOptions = {
       },
     }),
     passkeyClient(),
+    adminClient(),
   ],
 } satisfies BetterAuthClientOptions;
 

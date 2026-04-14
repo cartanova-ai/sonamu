@@ -133,7 +133,7 @@
   },
   {
     "path": "src/application/session/session.entity.json",
-    "checksum": "72cf0128f9e75cd22f7f61fd14905c226d83a878"
+    "checksum": "12fd9e9a768d4e319cfd4ef22e2cb85e0b3b6104"
   },
   {
     "path": "src/application/session/session.types.ts",
@@ -141,7 +141,7 @@
   },
   {
     "path": "src/application/sonamu.generated.ts",
-    "checksum": "2e81f646ee381ce6514217f22aa517f93d050d2a"
+    "checksum": "539daff72970733c12db613216b990559f69f10e"
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.entity.json",
@@ -181,7 +181,7 @@
   },
   {
     "path": "src/application/user/user.entity.json",
-    "checksum": "3a4183355b50cc5c81f23c5863dd195fdecb34fd"
+    "checksum": "dd95f335c35b09a4d348e62f3d650b132f4f240f"
   },
   {
     "path": "src/application/user/user.model.ts",
@@ -189,7 +189,7 @@
   },
   {
     "path": "src/application/user/user.types.ts",
-    "checksum": "6454e6105fd10e75a24cc7244ff331991a238576"
+    "checksum": "5b870d0bf12e5b48517eea91cbf0a0443ac64b4d"
   },
   {
     "path": "src/application/user/user.workflow.ts",
@@ -217,10 +217,10 @@
   },
   {
     "path": "src/i18n/sd.generated.ts",
-    "checksum": "78548cf35bc45ba63fd4ded05271acd1cca6f98f"
+    "checksum": "49ffcc768bd80cc82687e8cf039764b856e46178"
   },
   {
     "path": "src/sonamu.config.ts",
-    "checksum": "18a6859ab166a62effa611f1c52a90ab8a7beb9c"
+    "checksum": "43e7de6d1deede826e8337be423adc23ac3a8088"
   }
 ]

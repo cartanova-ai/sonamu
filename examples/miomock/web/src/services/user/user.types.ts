@@ -13,7 +13,12 @@ export const UserListParams = UserBaseListParams.extend({
 export type UserListParams = z.infer<typeof UserListParams>;
 
 // User - SaveParams
-export const UserSaveParams = UserBaseSchema.partial({
+// ban 관련 필드(banned/ban_reason/ban_expires)는 admin 플러그인 전용이므로 일반 save 페이로드에서 제외합니다.
+export const UserSaveParams = UserBaseSchema.omit({
+  banned: true,
+  ban_reason: true,
+  ban_expires: true,
+}).partial({
   id: true,
   created_at: true,
   birth_date: true,

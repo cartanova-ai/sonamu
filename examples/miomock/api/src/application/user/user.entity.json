@@ -161,7 +161,16 @@
         "note": "2단계 인증(2FA) 활성화 여부. 대부분 false 또는 null. 보안을 중요시하는 일부 사용자(특히 admin)만 true로 설정",
         "fixtureGenerator": "faker.datatype.boolean({ probability: 0.2 })"
       }
-    }
+    },
+    {
+      "name": "banned",
+      "type": "boolean",
+      "nullable": true,
+      "dbDefault": "false",
+      "desc": "차단 여부"
+    },
+    { "name": "ban_reason", "type": "string", "nullable": true, "desc": "차단 사유" },
+    { "name": "ban_expires", "type": "date", "nullable": true, "desc": "차단 만료" }
   ],
   "indexes": [{ "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }],
   "subsets": {
@@ -176,7 +185,10 @@
         "last_login_at",
         "bio",
         "is_verified",
-        "deleted_at"
+        "deleted_at",
+        "banned",
+        "ban_reason",
+        "ban_expires"
       ],
       "cone": {
         "note": "기본 사용자 정보 서브셋. ID, 생성일, 이메일, 이름, 생년월일, 권한, 마지막 로그인, 자기소개, 인증 여부, 삭제 일시 필드를 포함"

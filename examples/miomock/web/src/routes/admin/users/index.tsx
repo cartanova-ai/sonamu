@@ -28,14 +28,18 @@ import {
 } from "@sonamu-kit/react-components/components";
 import { type Rule, type TableCol } from "@sonamu-kit/react-components/components";
 import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
+import BanIcon from "~icons/lucide/ban";
+import ShieldCheckIcon from "~icons/lucide/shield-check";
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
+import { useSonamuContext } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
 import { UserService } from "@/services/services.generated";
 import {
@@ -46,7 +50,19 @@ import {
   UserSearchField,
   UserSearchFieldLabel,
 } from "@/services/sonamu.generated";
+import { defaultCatch } from "@/services/sonamu.shared";
 import { UserListParams } from "@/services/user/user.types";
+
+// 차단 만료 프리셋(초). null 은 영구 차단을 의미합니다.
+const BAN_EXPIRES_PRESETS = [
+  { value: "permanent", label: "없음(영구)", seconds: null as number | null },
+  { value: "1h", label: "1시간", seconds: 60 * 60 },
+  { value: "1d", label: "1일", seconds: 60 * 60 * 24 },
+  { value: "7d", label: "7일", seconds: 60 * 60 * 24 * 7 },
+  { value: "30d", label: "30일", seconds: 60 * 60 * 24 * 30 },
+] as const;
+
+type BanExpiresPreset = (typeof BAN_EXPIRES_PRESETS)[number]["value"];
 
 export const Route = createFileRoute("/admin/users/")({
   head: () => ({
@@ -62,6 +78,8 @@ type UserListProps = {};
 
 function UserList({}: UserListProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { auth } = useSonamuContext();
 
   // 상태 관리
   const [selectedItems, setSelectedItems] = useState(new Set());
@@ -69,6 +87,17 @@ function UserList({}: UserListProps) {
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name?: string } | null>(null);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [appliedRules, setAppliedRules] = useState<Rule[]>([]);
+
+  // Ban/Unban 다이얼로그 상태
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [banTarget, setBanTarget] = useState<{ id: string; username: string } | null>(null);
+  const [banReason, setBanReason] = useState("");
+  const [banExpiresPreset, setBanExpiresPreset] = useState<BanExpiresPreset>("permanent");
+  const [banSubmitting, setBanSubmitting] = useState(false);
+
+  const [unbanDialogOpen, setUnbanDialogOpen] = useState(false);
+  const [unbanTarget, setUnbanTarget] = useState<{ id: string; username: string } | null>(null);
+  const [unbanSubmitting, setUnbanSubmitting] = useState(false);
 
   // 리스트 필터
   const { listParams, register, setListParams } = useListParams(UserListParams, {
@@ -148,6 +177,24 @@ function UserList({}: UserListProps) {
       fit: true,
     },
     {
+      label: SD("entity.User.banned"),
+      fit: true,
+      align: "center",
+      tc: (row) =>
+        row.banned === true ? (
+          <div className="flex flex-col items-center gap-0.5">
+            <Badge variant="destructive">차단</Badge>
+            {row.ban_expires && (
+              <span className="text-[10px] text-muted-foreground">
+                {datetimeF(row.ban_expires)}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span>-</span>
+        ),
+    },
+    {
       label: SD("common.manage"),
       fit: true,
       align: "center",
@@ -159,6 +206,21 @@ function UserList({}: UserListProps) {
             icon={<EditIcon />}
             onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
           />
+          {row.banned === true ? (
+            <Button
+              variant="outline"
+              size="xs"
+              icon={<ShieldCheckIcon />}
+              onClick={() => handleUnbanClick(row.id, row.username)}
+            />
+          ) : (
+            <Button
+              variant="outline"
+              size="xs"
+              icon={<BanIcon />}
+              onClick={() => handleBanClick(row.id, row.username)}
+            />
+          )}
           <Button
             variant="red"
             size="xs"
@@ -207,6 +269,73 @@ function UserList({}: UserListProps) {
     }
     setDeleteDialogOpen(false);
     setItemToDelete(null);
+  };
+
+  // Ban/Unban 핸들러
+  const invalidateUserList = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["User", "getUsers"] });
+  };
+
+  const handleBanClick = (id: string, username: string) => {
+    setBanTarget({ id, username });
+    setBanReason("");
+    setBanExpiresPreset("permanent");
+    setBanDialogOpen(true);
+  };
+
+  const handleConfirmBan = async () => {
+    if (!banTarget || banSubmitting) {
+      return;
+    }
+    const preset = BAN_EXPIRES_PRESETS.find((p) => p.value === banExpiresPreset);
+    const banExpiresIn = preset?.seconds ?? undefined;
+    const reason = banReason.trim();
+
+    setBanSubmitting(true);
+    try {
+      const result = await auth.admin.banUser({
+        userId: banTarget.id,
+        banReason: reason === "" ? undefined : reason,
+        banExpiresIn,
+      });
+      if (result.error) {
+        defaultCatch(result.error);
+        return;
+      }
+      setBanDialogOpen(false);
+      setBanTarget(null);
+      await invalidateUserList();
+    } catch (error) {
+      defaultCatch(error);
+    } finally {
+      setBanSubmitting(false);
+    }
+  };
+
+  const handleUnbanClick = (id: string, username: string) => {
+    setUnbanTarget({ id, username });
+    setUnbanDialogOpen(true);
+  };
+
+  const handleConfirmUnban = async () => {
+    if (!unbanTarget || unbanSubmitting) {
+      return;
+    }
+    setUnbanSubmitting(true);
+    try {
+      const result = await auth.admin.unbanUser({ userId: unbanTarget.id });
+      if (result.error) {
+        defaultCatch(result.error);
+        return;
+      }
+      setUnbanDialogOpen(false);
+      setUnbanTarget(null);
+      await invalidateUserList();
+    } catch (error) {
+      defaultCatch(error);
+    } finally {
+      setUnbanSubmitting(false);
+    }
   };
 
   return (
@@ -370,6 +499,83 @@ function UserList({}: UserListProps) {
           setAppliedRules(rules);
         }}
       />
+
+      {/* Ban Dialog */}
+      <AlertDialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>사용자 차단</AlertDialogTitle>
+            <AlertDialogDescription>
+              {banTarget
+                ? `"${banTarget.username}" 사용자의 접근을 차단합니다.`
+                : "사용자의 접근을 차단합니다."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="block text-xs text-gray-600">{SD("entity.User.ban_reason")}</label>
+              <Input
+                className="h-8 text-xs bg-white"
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+                placeholder="선택 사항"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-xs text-gray-600">{SD("entity.User.ban_expires")}</label>
+              <select
+                className="h-8 w-full text-xs bg-white border border-gray-300 rounded px-2"
+                value={banExpiresPreset}
+                onChange={(e) => setBanExpiresPreset(e.target.value as BanExpiresPreset)}
+              >
+                {BAN_EXPIRES_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={banSubmitting}>{SD("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void handleConfirmBan();
+              }}
+              disabled={banSubmitting}
+            >
+              차단
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unban Dialog */}
+      <AlertDialog open={unbanDialogOpen} onOpenChange={setUnbanDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>차단 해제</AlertDialogTitle>
+            <AlertDialogDescription>
+              {unbanTarget
+                ? `"${unbanTarget.username}" 사용자의 차단을 해제합니다.`
+                : "사용자의 차단을 해제합니다."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={unbanSubmitting}>{SD("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void handleConfirmUnban();
+              }}
+              disabled={unbanSubmitting}
+            >
+              차단 해제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

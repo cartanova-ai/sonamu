@@ -469,9 +469,16 @@ export const SessionBaseSchema = z.object({
   ip_address: z.string().nullable(),
   user_agent: z.string().nullable(),
   user_id: z.string(),
+  impersonated_by: z.string().nullable(),
 });
 export type SessionBaseSchema = z.infer<typeof SessionBaseSchema> & {
-  readonly __hasDefault__: readonly ["created_at", "ip_address", "user_agent", "id"];
+  readonly __hasDefault__: readonly [
+    "created_at",
+    "ip_address",
+    "user_agent",
+    "impersonated_by",
+    "id",
+  ];
 };
 
 // BaseSchema: SyncFixture
@@ -542,6 +549,9 @@ export const UserBaseSchema = z.object({
   image: z.string().nullable(),
   updated_at: z.date(),
   two_factor_enabled: z.boolean().nullable(),
+  banned: z.boolean().nullable(),
+  ban_reason: z.string().nullable(),
+  ban_expires: z.date().nullable(),
 });
 export type UserBaseSchema = z.infer<typeof UserBaseSchema> & {
   readonly __hasDefault__: readonly [
@@ -556,6 +566,9 @@ export type UserBaseSchema = z.infer<typeof UserBaseSchema> & {
     "image",
     "updated_at",
     "two_factor_enabled",
+    "banned",
+    "ban_reason",
+    "ban_expires",
     "id",
   ];
 };
@@ -1293,6 +1306,9 @@ export const UserSubsetA = z.object({
   bio: z.string().nullable(),
   is_verified: z.boolean(),
   deleted_at: z.date().nullable(),
+  banned: z.boolean().nullable(),
+  ban_reason: z.string().nullable(),
+  ban_expires: z.date().nullable(),
 });
 export type UserSubsetA = z.infer<typeof UserSubsetA>;
 export const UserSubsetP = z.object({

@@ -17,6 +17,12 @@
       "relationType": "BelongsToOne",
       "onDelete": "CASCADE",
       "desc": "사용자"
+    },
+    {
+      "name": "impersonated_by",
+      "type": "string",
+      "nullable": true,
+      "desc": "대리 로그인한 관리자 ID"
     }
   ],
   "indexes": [

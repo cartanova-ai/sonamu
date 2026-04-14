@@ -5,6 +5,7 @@ import { DB, Naite } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
 
+import { UserSubsetA } from "../sonamu.generated";
 import { UserModel } from "./user.model";
 
 bootstrap(vi);
@@ -458,5 +459,32 @@ describe("UserModel", () => {
       expect(await wdb("passkeys").where("user_id", userId)).toHaveLength(0);
       expect(await wdb("two_factors").where("user_id", userId)).toHaveLength(0);
     });
+  });
+});
+
+describe("User subset", () => {
+  test("should expose banned/ban_reason/ban_expires in A subset", async () => {
+    const aShapeKeys = Object.keys(UserSubsetA.shape);
+    expect(aShapeKeys).toContain("banned");
+    expect(aShapeKeys).toContain("ban_reason");
+    expect(aShapeKeys).toContain("ban_expires");
+
+    const [userId] = await UserModel.save([
+      {
+        email: "subset-ban@test.com",
+        username: "subsetbanuser",
+        password: "password123",
+        role: "normal",
+      },
+    ]);
+    assert(userId);
+
+    const user = await UserModel.findById("A", userId);
+    expect("banned" in user).toBe(true);
+    expect("ban_reason" in user).toBe(true);
+    expect("ban_expires" in user).toBe(true);
+    // 신규 생성 시 세 필드는 null/false 허용 범위
+    expect(user.ban_reason).toBeNull();
+    expect(user.ban_expires).toBeNull();
   });
 });

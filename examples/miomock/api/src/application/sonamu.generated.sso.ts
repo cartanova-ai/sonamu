@@ -654,6 +654,9 @@ export const userSubsetQueries = {
       bio: "users.bio",
       is_verified: "users.is_verified",
       deleted_at: "users.deleted_at",
+      banned: "users.banned",
+      ban_reason: "users.ban_reason",
+      ban_expires: "users.ban_expires",
     });
   },
   P: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {

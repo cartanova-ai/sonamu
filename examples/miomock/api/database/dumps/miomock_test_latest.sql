@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ClwDbSXVnC9EpuW9cgsgsF50fqfBbjEXhYfjjSGDn4htfV8R6XC5nPyxngS626h
+\restrict yXADDX04npsN3vSIe5lEekLIXYnlA94DzrWKHtJRA6k3CESLMbTuzgtau0hp5xO
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
 -- Dumped by pg_dump version 18.1
@@ -544,7 +544,8 @@ CREATE TABLE public.sessions (
     updated_at timestamp(3) with time zone NOT NULL,
     ip_address text,
     user_agent text,
-    user_id text NOT NULL
+    user_id text NOT NULL,
+    impersonated_by text
 );
 
 
@@ -651,7 +652,10 @@ CREATE TABLE public.users (
     deleted_at timestamp(3) with time zone,
     image text,
     updated_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    two_factor_enabled boolean
+    two_factor_enabled boolean,
+    ban_expires timestamp(3) with time zone,
+    ban_reason text,
+    banned boolean DEFAULT false
 );
 
 
@@ -931,6 +935,8 @@ INSERT INTO public.knex_migrations VALUES (86, '20260309160529_create__milestone
 INSERT INTO public.knex_migrations VALUES (87, '20260309160530_foreign__milestones__project_id.ts', 15, '2026-03-09 16:36:46.314+09');
 INSERT INTO public.knex_migrations VALUES (88, '20260309161828_create__audit_logs.ts', 15, '2026-03-09 16:36:46.316+09');
 INSERT INTO public.knex_migrations VALUES (89, '20260410140734_create__audit_events.ts', 16, '2026-04-13 20:01:36.37+09');
+INSERT INTO public.knex_migrations VALUES (90, '20260414130146_alter_sessions_add1_alter3.ts', 17, '2026-04-14 13:43:33.236+09');
+INSERT INTO public.knex_migrations VALUES (91, '20260414130147_alter_users_add3_alter6.ts', 17, '2026-04-14 13:43:33.237+09');
 
 
 --
@@ -2049,18 +2055,18 @@ INSERT INTO public.tags VALUES (8, '2025-11-25 00:17:02+09', 'UI/UX', 'UI/UX', '
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.users VALUES ('3', '2024-01-03 01:00:00+09', 'park@innovation.com', '박민수', 'password123', '1992-11-09 00:00:00+09', 'normal', '2024-01-13 11:45:00+09', '프론트엔드 개발자로 일하고 있습니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL);
-INSERT INTO public.users VALUES ('4', '2024-01-04 01:00:00+09', 'choi@digital.com', '최지훈', 'password123', '1985-05-30 00:00:00+09', 'normal', '2024-01-12 16:15:00+09', '데이터 분석 및 마케팅 업무를 담당합니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL);
-INSERT INTO public.users VALUES ('5', '2024-01-05 01:00:00+09', 'jung@software.com', '정수연', 'password123', '1993-09-14 00:00:00+09', 'normal', '2024-01-11 10:00:00+09', '소프트웨어 아키텍트입니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL);
-INSERT INTO public.users VALUES ('7', '2024-01-07 01:00:00+09', 'han@global.com', '한미경', 'password123', '1991-04-18 00:00:00+09', 'normal', '2024-01-09 15:40:00+09', '프로젝트 매니저 역할을 하고 있습니다.', false, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL);
-INSERT INTO public.users VALUES ('8', '2024-01-08 01:00:00+09', 'kang@innovation.com', '강태우', 'password123', '1989-08-25 00:00:00+09', 'normal', '2024-01-08 08:50:00+09', '풀스택 개발자입니다.', false, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL);
-INSERT INTO public.users VALUES ('9', '2024-01-09 01:00:00+09', 'admin@test.com', '관리자', '$2b$10$ZwmVndKfTm121TrW6dZQA..eW9xv.NCwEa3fEn/xqWG948O2ADKL2', '1980-01-01 00:00:00+09', 'admin', '2024-01-07 07:00:00+09', '시스템 관리자입니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL);
-INSERT INTO public.users VALUES ('10', '2024-01-10 01:00:00+09', 'null1@test.com', '널테스터1', 'password123', NULL, 'normal', NULL, NULL, false, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL);
-INSERT INTO public.users VALUES ('11', '2024-01-11 01:00:00+09', 'null2@test.com', '널테스터2', 'password123', NULL, 'normal', NULL, NULL, false, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL);
-INSERT INTO public.users VALUES ('12', '2023-11-01 01:00:00+09', 'deleted@test.com', '탈퇴유저', 'password123', '1992-03-10 00:00:00+09', 'normal', '2023-12-20 10:00:00+09', '탈퇴한 사용자입니다.', false, '2024-01-01 10:00:00+09', NULL, '2026-01-29 21:45:21.798+09', NULL);
-INSERT INTO public.users VALUES ('2', '2024-01-02 01:00:00+09', 'lee@global.com', '이영희', 'password123', '1988-07-22 00:00:00+10', 'normal', '2024-01-14 14:20:00+09', 'UI/UX 디자인 전문가입니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL);
-INSERT INTO public.users VALUES ('6', '2024-01-06 01:00:00+09', 'yoon@tech.com', '윤대성', 'password123', '1987-12-03 00:00:00+09', 'normal', '2024-01-10 13:25:00+09', '데브옵스 엔지니어로 근무하고 있습니다.', false, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL);
-INSERT INTO public.users VALUES ('1', '2024-01-01 01:00:00+09', 'kim@tech.com', '김철수', 'password123', '1990-03-15 00:00:00+09', 'normal', '2024-01-15 09:30:00+09', '백엔드 개발을 담당하고 있습니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL);
+INSERT INTO public.users VALUES ('3', '2024-01-03 01:00:00+09', 'park@innovation.com', '박민수', 'password123', '1992-11-09 00:00:00+09', 'normal', '2024-01-13 11:45:00+09', '프론트엔드 개발자로 일하고 있습니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL, NULL, NULL, false);
+INSERT INTO public.users VALUES ('4', '2024-01-04 01:00:00+09', 'choi@digital.com', '최지훈', 'password123', '1985-05-30 00:00:00+09', 'normal', '2024-01-12 16:15:00+09', '데이터 분석 및 마케팅 업무를 담당합니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL, NULL, NULL, false);
+INSERT INTO public.users VALUES ('5', '2024-01-05 01:00:00+09', 'jung@software.com', '정수연', 'password123', '1993-09-14 00:00:00+09', 'normal', '2024-01-11 10:00:00+09', '소프트웨어 아키텍트입니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL, NULL, NULL, false);
+INSERT INTO public.users VALUES ('7', '2024-01-07 01:00:00+09', 'han@global.com', '한미경', 'password123', '1991-04-18 00:00:00+09', 'normal', '2024-01-09 15:40:00+09', '프로젝트 매니저 역할을 하고 있습니다.', false, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL, NULL, NULL, false);
+INSERT INTO public.users VALUES ('8', '2024-01-08 01:00:00+09', 'kang@innovation.com', '강태우', 'password123', '1989-08-25 00:00:00+09', 'normal', '2024-01-08 08:50:00+09', '풀스택 개발자입니다.', false, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL, NULL, NULL, false);
+INSERT INTO public.users VALUES ('9', '2024-01-09 01:00:00+09', 'admin@test.com', '관리자', '$2b$10$ZwmVndKfTm121TrW6dZQA..eW9xv.NCwEa3fEn/xqWG948O2ADKL2', '1980-01-01 00:00:00+09', 'admin', '2024-01-07 07:00:00+09', '시스템 관리자입니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL, NULL, NULL, false);
+INSERT INTO public.users VALUES ('10', '2024-01-10 01:00:00+09', 'null1@test.com', '널테스터1', 'password123', NULL, 'normal', NULL, NULL, false, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL, NULL, NULL, false);
+INSERT INTO public.users VALUES ('11', '2024-01-11 01:00:00+09', 'null2@test.com', '널테스터2', 'password123', NULL, 'normal', NULL, NULL, false, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL, NULL, NULL, false);
+INSERT INTO public.users VALUES ('12', '2023-11-01 01:00:00+09', 'deleted@test.com', '탈퇴유저', 'password123', '1992-03-10 00:00:00+09', 'normal', '2023-12-20 10:00:00+09', '탈퇴한 사용자입니다.', false, '2024-01-01 10:00:00+09', NULL, '2026-01-29 21:45:21.798+09', NULL, NULL, NULL, false);
+INSERT INTO public.users VALUES ('2', '2024-01-02 01:00:00+09', 'lee@global.com', '이영희', 'password123', '1988-07-22 00:00:00+10', 'normal', '2024-01-14 14:20:00+09', 'UI/UX 디자인 전문가입니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL, NULL, NULL, false);
+INSERT INTO public.users VALUES ('6', '2024-01-06 01:00:00+09', 'yoon@tech.com', '윤대성', 'password123', '1987-12-03 00:00:00+09', 'normal', '2024-01-10 13:25:00+09', '데브옵스 엔지니어로 근무하고 있습니다.', false, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL, NULL, NULL, false);
+INSERT INTO public.users VALUES ('1', '2024-01-01 01:00:00+09', 'kim@tech.com', '김철수', 'password123', '1990-03-15 00:00:00+09', 'normal', '2024-01-15 09:30:00+09', '백엔드 개발을 담당하고 있습니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09', NULL, NULL, NULL, false);
 
 
 --
@@ -2073,7 +2079,7 @@ INSERT INTO public.users VALUES ('1', '2024-01-01 01:00:00+09', 'kim@tech.com', 
 -- Name: audit_events_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.audit_events_id_seq', 1, false);
+SELECT pg_catalog.setval('public.audit_events_id_seq', 1, true);
 
 
 --
@@ -2122,7 +2128,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, true);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 89, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 91, true);
 
 
 --
@@ -2644,5 +2650,5 @@ ALTER TABLE ONLY public.two_factors
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ClwDbSXVnC9EpuW9cgsgsF50fqfBbjEXhYfjjSGDn4htfV8R6XC5nPyxngS626h
+\unrestrict yXADDX04npsN3vSIe5lEekLIXYnlA94DzrWKHtJRA6k3CESLMbTuzgtau0hp5xO
 
