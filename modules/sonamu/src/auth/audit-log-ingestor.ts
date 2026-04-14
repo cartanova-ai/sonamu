@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { type Knex } from "knex";
 
-import { type AuditLogEvent } from "./audit-log-plugin";
+import { type AuditLogEvent } from "./audit-log/events";
 
 const AUDIT_EVENT_SOURCE = "better_auth";
 const AUDIT_EVENT_SOURCE_VERSION = "better-auth|@better-auth/infra";
