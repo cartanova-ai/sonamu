@@ -18,7 +18,7 @@ Puri는 TypeScript로 안전하게 SQL 쿼리를 작성할 수 있는 타입 안
     데이터 수정하기 update, increment, decrement
   </Card>
   <Card title="DELETE" icon="trash">
-    데이터 삭제하기 delete, truncate
+    데이터 삭제하기 delete
   </Card>
 </CardGroup>
 
@@ -411,19 +411,23 @@ const emails = await db
 
 </CodeGroup>
 
-## count() - 개수 세기
+## count - 개수 세기
 
-레코드 개수를 빠르게 조회합니다.
+레코드 개수를 조회하려면 `Puri.count()` 정적 메서드를 `select` 안에서 사용합니다.
 
 ```typescript
-const count = await db.table("users").where("role", "admin").count();
+const result = await db
+  .table("users")
+  .where("role", "admin")
+  .select({ total: Puri.count() })
+  .first();
 
-console.log(`Total admins: ${count}`);
+console.log(`Total admins: ${result.total}`);
 // 타입: number
 ```
 
 <Tip>
-  `count()`는 집계 함수가 아닌 간단한 개수 조회 메서드입니다. 복잡한 집계는
+  `Puri.count()`는 `SELECT` 절 안에서 사용하는 정적 메서드입니다. 더 복잡한 집계는
   [Aggregations](/ko/database/puri/aggregations) 참고
 </Tip>
 
@@ -466,10 +470,11 @@ async findUsers(params: {
     .offset((page - 1) * pageSize);
 
   // 전체 개수
-  const total = await this.getPuri("r")
+  const { total } = await this.getPuri("r")
     .table("users")
     .where("role", role)
-    .count();
+    .select({ total: Puri.count() })
+    .first();
 
   return { users, total };
 }

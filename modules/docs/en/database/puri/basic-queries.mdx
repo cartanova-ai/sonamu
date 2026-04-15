@@ -18,7 +18,7 @@ Puri is a type-safe query builder that lets you write SQL queries safely in Type
     Modify data update, increment, decrement
   </Card>
   <Card title="DELETE" icon="trash">
-    Delete data delete, truncate
+    Delete data delete
   </Card>
 </CardGroup>
 
@@ -411,19 +411,23 @@ const emails = await db
 
 </CodeGroup>
 
-## count() - Count Records
+## count - Count Records
 
-Quickly query record count.
+To query record count, use the `Puri.count()` static method inside `select`.
 
 ```typescript
-const count = await db.table("users").where("role", "admin").count();
+const result = await db
+  .table("users")
+  .where("role", "admin")
+  .select({ total: Puri.count() })
+  .first();
 
-console.log(`Total admins: ${count}`);
+console.log(`Total admins: ${result.total}`);
 // Type: number
 ```
 
 <Tip>
-  `count()` is a simple count method, not an aggregate function. For complex aggregations, see
+  `Puri.count()` is a static method used inside the `SELECT` clause. For more complex aggregations, see
   [Aggregations](/en/database/puri/aggregations).
 </Tip>
 
@@ -466,10 +470,11 @@ async findUsers(params: {
     .offset((page - 1) * pageSize);
 
   // Total count
-  const total = await this.getPuri("r")
+  const { total } = await this.getPuri("r")
     .table("users")
     .where("role", role)
-    .count();
+    .select({ total: Puri.count() })
+    .first();
 
   return { users, total };
 }
