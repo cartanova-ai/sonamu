@@ -339,7 +339,9 @@ async paginate<T>(
 
   // 전체 개수
   const countQuery = query.clone();
-  const total = await countQuery.count();
+  const { total } = await countQuery
+    .select({ total: Puri.count() })
+    .first();
 
   // 페이지 데이터
   const data = await query
