@@ -314,8 +314,8 @@ class TranscriptionModelClass extends BaseModelClass {
   @upload({ mode: "single" })
   @api({ httpMethod: "POST" })
   async transcribeAudio() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // Use first file
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
 
     if (!file) {
       throw new Error("No audio file provided");
@@ -323,7 +323,7 @@ class TranscriptionModelClass extends BaseModelClass {
 
     // Speech recognition
     const model = rtzr.transcription("whisper");
-    const buffer = await file.toBuffer();
+    const buffer = file.buffer;
 
     const result = await model.doGenerate({
       audio: buffer,
@@ -404,14 +404,14 @@ class ImageAnalysisModelClass extends BaseModelClass {
   @upload({ mode: "single" })
   @api({ httpMethod: "POST" })
   async analyzeImage() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // Use first file
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
 
     if (!file || !file.mimetype.startsWith("image/")) {
       throw new Error("An image file is required");
     }
 
-    const buffer = await file.toBuffer();
+    const buffer = file.buffer;
 
     const result = await generateText({
       model: openai("gpt-4o"),

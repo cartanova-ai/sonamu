@@ -91,7 +91,7 @@ class MyModelClass extends BaseModelClass {
     // Send completion event
     await sse.publish("complete", { result: "done" });
 
-    return sse.getResponse();
+    return sse;
   }
 }
 ```

@@ -313,8 +313,8 @@ import { rtzr } from "sonamu/ai/providers/rtzr";
 class TranscriptionModelClass extends BaseModelClass {
   @upload()
   async transcribeAudio() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
 
     if (!file) {
       throw new Error("오디오 파일이 없습니다");
@@ -322,7 +322,7 @@ class TranscriptionModelClass extends BaseModelClass {
 
     // 음성 인식
     const model = rtzr.transcription("whisper");
-    const buffer = await file.toBuffer();
+    const buffer = file.buffer;
 
     const result = await model.doGenerate({
       audio: buffer,
@@ -402,14 +402,14 @@ import { generateText } from "ai";
 class ImageAnalysisModelClass extends BaseModelClass {
   @upload()
   async analyzeImage() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
 
     if (!file || !file.mimetype.startsWith("image/")) {
       throw new Error("이미지 파일이 필요합니다");
     }
 
-    const buffer = await file.toBuffer();
+    const buffer = file.buffer;
 
     const result = await generateText({
       model: openai("gpt-4o"),
