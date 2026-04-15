@@ -5,7 +5,6 @@ import path from "path";
 
 import { hot } from "@sonamu-kit/hmr-hook";
 import chalk from "chalk";
-import inflection from "inflection";
 import { minimatch } from "minimatch";
 import { group, unique } from "radashi";
 import { type z } from "zod";
@@ -452,20 +451,11 @@ export class Syncer {
     const params: {
       namesRecord: EntityNamesRecord;
     }[] = mergedGroup.map((modelPath) => {
-      if (modelPath.endsWith(".model.ts")) {
+      if (modelPath.endsWith(".model.ts") || modelPath.endsWith(".frame.ts")) {
         const entityId = EntityManager.getEntityIdFromPath(modelPath);
         assert(entityId);
         return {
           namesRecord: EntityManager.getNamesFromId(entityId),
-        };
-      }
-      if (modelPath.endsWith(".frame.ts")) {
-        const [, frameName] = modelPath.match(/.+\/(.+)\.frame\.ts$/) ?? [];
-        assert(frameName);
-        // frameName을 PascalCase로 변환 (dashboard -> Dashboard)
-        const frameId = inflection.camelize(frameName);
-        return {
-          namesRecord: EntityManager.getNamesFromId(frameId),
         };
       }
       throw new Error("not reachable");

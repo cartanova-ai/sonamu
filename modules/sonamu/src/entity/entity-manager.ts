@@ -267,9 +267,16 @@ class EntityManagerClass {
    * @returns
    */
   getEntityIdFromPath(filePath: AbsolutePath): string {
-    const matched = filePath.match(/application\/(.+)\//);
-    assert(matched?.[1]);
-    return inflection.camelize(matched[1].replace(/-/g, "_"));
+    const fileName = path.basename(filePath);
+    const supportedSuffixes = [".model.ts", ".model.js", ".entity.json", ".frame.ts", ".frame.js"];
+    const matchedSuffix = supportedSuffixes.find((suffix) => fileName.endsWith(suffix));
+
+    assert(matchedSuffix, `지원하지 않는 entity 경로입니다: ${filePath}`);
+
+    const entityBaseName = fileName.slice(0, -matchedSuffix.length);
+    assert(entityBaseName.length > 0, `EntityId를 계산할 수 없는 경로입니다: ${filePath}`);
+
+    return inflection.camelize(entityBaseName.replace(/-/g, "_"));
   }
 
   private async registerNonEntityTypeModulePaths(): Promise<void> {

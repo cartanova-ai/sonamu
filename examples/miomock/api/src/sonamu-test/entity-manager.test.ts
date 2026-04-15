@@ -1,8 +1,12 @@
+import { join } from "path";
+
 import { Entity, EntityManager } from "sonamu";
 import { type EntityJson } from "sonamu";
 import { bootstrap } from "sonamu/test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+
+import { type AbsolutePath } from "../../../../../modules/sonamu/dist/utils/path-utils";
 
 bootstrap(vi);
 
@@ -10,6 +14,33 @@ describe("entityManager", () => {
   // 테스트 실행 후 EntityManager 초기화
   afterEach(async () => {
     await EntityManager.reload();
+  });
+
+  describe("getEntityIdFromPath", () => {
+    it("동일 디렉터리의 sub model 경로는 파일 basename 기준 entity id를 반환한다", () => {
+      const cases = [
+        [
+          join("/virtual-root", "src/application/sync-fixture/sync-fixture-sub.model.ts"),
+          "SyncFixtureSub",
+        ],
+        [
+          join("/virtual-root", "src/application/sync-fixture/sync-fixture.model.ts"),
+          "SyncFixture",
+        ],
+        [
+          join("/virtual-root", "src/application/sync-fixture/sync-fixture.entity.json"),
+          "SyncFixture",
+        ],
+        [
+          join("/virtual-root", "src/application/sync-fixture/sync-fixture-sub.frame.ts"),
+          "SyncFixtureSub",
+        ],
+      ] satisfies [string, string][];
+
+      for (const [filePath, expectedEntityId] of cases) {
+        expect(EntityManager.getEntityIdFromPath(filePath as AbsolutePath)).toBe(expectedEntityId);
+      }
+    });
   });
 
   describe("Entity.getPkType() / Entity.getPkProp()", () => {

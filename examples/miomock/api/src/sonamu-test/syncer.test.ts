@@ -1,8 +1,9 @@
 import assert from "assert";
 import { join } from "path";
+import { pathToFileURL } from "url";
 
 import { type EntityJson, type EntityProp, type TemplateKey, type TemplateOptions } from "sonamu";
-import { getEnumDefValues, Naite, Sonamu, Template } from "sonamu";
+import { getEnumDefValues, Naite, registeredApis, Sonamu, Template } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, beforeEach, describe, expect, vi } from "vitest";
 
@@ -32,6 +33,21 @@ type WriteFile = {
   path: string;
   data: string;
 };
+
+type RegisteredApi = (typeof registeredApis)[number];
+
+function createRegisteredApi(modelName: string, methodName: string): RegisteredApi {
+  return {
+    modelName,
+    methodName,
+    path: `/${modelName}/${methodName}`,
+    options: {
+      httpMethod: "GET",
+      contentType: "application/json",
+      clients: ["axios"],
+    },
+  };
+}
 
 // Mock Template 클래스 (테스트용)
 class MockTemplateClass extends Template {
@@ -846,6 +862,38 @@ describe("Syncer", () => {
     });
   });
 
+  describe("removeInvalidatedRegisteredApis", () => {
+    test("sub model 변경 시 main model API를 제거하지 않는다", () => {
+      const originalRegisteredApis = [...registeredApis];
+      const invalidatedPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture-sub.model.ts",
+      ) as AbsolutePath;
+
+      registeredApis.length = 0;
+      registeredApis.push(
+        createRegisteredApi("SyncFixtureModel", "findById"),
+        createRegisteredApi("SyncFixtureModel", "findMany"),
+        createRegisteredApi("SyncFixtureSubModel", "findById"),
+      );
+
+      try {
+        const removedApis = syncer.removeInvalidatedRegisteredApis(invalidatedPath);
+
+        expect(removedApis.map((api) => `${api.modelName}.${api.methodName}`)).toStrictEqual([
+          "SyncFixtureSubModel.findById",
+        ]);
+        expect(registeredApis.map((api) => `${api.modelName}.${api.methodName}`)).toStrictEqual([
+          "SyncFixtureModel.findById",
+          "SyncFixtureModel.findMany",
+        ]);
+      } finally {
+        registeredApis.length = 0;
+        registeredApis.push(...originalRegisteredApis);
+      }
+    });
+  });
+
   // ============================================
   // 13. 통합 시나리오
   // ============================================
@@ -1597,6 +1645,60 @@ describe("Syncer", () => {
           spy.mockRestore();
         }
       });
+    });
+  });
+
+  describe("SON-455 generation regression", () => {
+    test("sub model 변경 후 services.generated.ts에 main/sub model service가 모두 존재한다", async () => {
+      const originalRegisteredApis = [...registeredApis];
+      const webRootPath = join(apiRootPath, "../web");
+      const invalidatedPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture-sub.model.ts",
+      ) as AbsolutePath;
+
+      try {
+        await syncer.autoloadModels();
+        await syncer.autoloadTypes();
+        await syncer.autoloadApis();
+
+        expect(syncer.apis.map((api) => api.modelName)).toEqual(
+          expect.arrayContaining(["SyncFixtureModel", "SyncFixtureSubModel"]),
+        );
+
+        syncer.removeInvalidatedRegisteredApis(invalidatedPath);
+        await import(`${pathToFileURL(invalidatedPath).href}?son455=${Date.now()}`);
+        expect(registeredApis.map((api) => api.modelName)).toContain("SyncFixtureSubModel");
+
+        await syncer.handleImplementationChanges({
+          model: [invalidatedPath],
+          frame: [],
+          types: [],
+          functions: [],
+          generated: [],
+          entity: [],
+          config: [],
+          workflow: [],
+          i18n: [],
+          i18nGenerated: [],
+        });
+
+        const serviceFile = Naite.get("fs/promises:writeFile")
+          .result()
+          .find(
+            (file: WriteFileRecord) =>
+              file.path === join(webRootPath, "src/services/services.generated.ts"),
+          );
+
+        assert(serviceFile);
+        expect(typeof serviceFile.data).toBe("string");
+        assert(typeof serviceFile.data === "string");
+        expect(serviceFile.data).toContain("export namespace SyncFixtureService");
+        expect(serviceFile.data).toContain("export namespace SyncFixtureSubService");
+      } finally {
+        registeredApis.length = 0;
+        registeredApis.push(...originalRegisteredApis);
+      }
     });
   });
 });
