@@ -454,6 +454,199 @@ class UserModelClass extends BaseModelClass<
 }
 ```
 
+### @api + cacheControl/compress Options
+
+You can control caching and compression of API responses directly from the `@api` decorator.
+
+#### Cache-Control Configuration
+
+```typescript
+class PostModelClass extends BaseModelClass<
+  PostSubsetKey,
+  PostSubsetMapping,
+  typeof postSubsetQueries,
+  typeof postLoaderQueries
+> {
+  constructor() {
+    super("Post", postSubsetQueries, postLoaderQueries);
+  }
+
+  // Public post list - 1 hour cache
+  @api({
+    httpMethod: "GET",
+    cacheControl: {
+      maxAge: 3600, // Browser cache: 1 hour
+      sMaxAge: 7200, // CDN cache: 2 hours
+      staleWhileRevalidate: 86400, // Allow stale state for 24 hours
+    },
+  })
+  async getPublicPosts(): Promise<Post[]> {
+    const rdb = this.getPuri("r");
+    return rdb.table("posts").where("public", true).select("*");
+  }
+
+  // Using cache presets
+  @api({
+    httpMethod: "GET",
+    cacheControl: "5m", // 5 minute cache
+  })
+  async getTrendingPosts(): Promise<Post[]> {
+    // ...
+  }
+}
+```
+
+**Cache-Control Options**:
+
+- `maxAge`: Browser cache duration (seconds)
+- `sMaxAge`: CDN/proxy cache duration (seconds)
+- `staleWhileRevalidate`: Stale state allowance duration (seconds)
+- `public`: Public cache flag (default: true)
+- `private`: Private cache (per-user)
+
+**Preset Strings**:
+
+- Time unit strings like `"1m"`, `"5m"`, `"1h"`, `"1d"` can be used
+
+#### Compression Configuration
+
+```typescript
+class DataModelClass extends BaseModelClass<
+  DataSubsetKey,
+  DataSubsetMapping,
+  typeof dataSubsetQueries,
+  typeof dataLoaderQueries
+> {
+  constructor() {
+    super("Data", dataSubsetQueries, dataLoaderQueries);
+  }
+
+  // Large dataset - enable compression
+  @api({
+    httpMethod: "GET",
+    compress: true, // Enable gzip/deflate compression
+  })
+  async getLargeDataset(): Promise<DataPoint[]> {
+    const rdb = this.getPuri("r");
+    return rdb.table("data_points").limit(10000).select("*");
+  }
+
+  // Already compressed data - disable compression
+  @api({
+    httpMethod: "GET",
+    compress: false, // Disable compression
+  })
+  async getCompressedFile(): Promise<Buffer> {
+    // Return already compressed file
+    // ...
+  }
+}
+```
+
+**Compression Options**:
+
+- `true`: Compress response with gzip/deflate
+- `false`: Disable compression (default)
+
+#### Combined Usage
+
+```typescript
+class ApiModelClass extends BaseModelClass<
+  ApiSubsetKey,
+  ApiSubsetMapping,
+  typeof apiSubsetQueries,
+  typeof apiLoaderQueries
+> {
+  constructor() {
+    super("Api", apiSubsetQueries, apiLoaderQueries);
+  }
+
+  // Caching + compression
+  @api({
+    httpMethod: "GET",
+    cacheControl: { maxAge: 3600, sMaxAge: 7200 },
+    compress: true,
+  })
+  async getReport(reportId: number): Promise<Report> {
+    const rdb = this.getPuri("r");
+
+    // Large report data
+    const report = await rdb.table("reports").where("id", reportId).first();
+
+    if (!report) {
+      throw new Error("Report not found");
+    }
+
+    return report;
+  }
+}
+```
+
+**Practical Example: API Optimization**:
+
+```typescript
+class OptimizedApiModelClass extends BaseModelClass<
+  OptimizedApiSubsetKey,
+  OptimizedApiSubsetMapping,
+  typeof optimizedApiSubsetQueries,
+  typeof optimizedApiLoaderQueries
+> {
+  constructor() {
+    super("OptimizedApi", optimizedApiSubsetQueries, optimizedApiLoaderQueries);
+  }
+
+  // Static content: long cache + compression
+  @api({
+    httpMethod: "GET",
+    cacheControl: { maxAge: 86400, sMaxAge: 604800 }, // 1 day / 1 week
+    compress: true,
+  })
+  async getStaticContent(): Promise<Content> {
+    // ...
+  }
+
+  // Dynamic content: short cache + compression
+  @api({
+    httpMethod: "GET",
+    cacheControl: "5m",
+    compress: true,
+  })
+  async getDynamicData(): Promise<Data[]> {
+    // ...
+  }
+
+  // Private data: no cache (private)
+  @api({
+    httpMethod: "GET",
+    cacheControl: { private: true, maxAge: 0 },
+  })
+  async getUserPrivateData(userId: number): Promise<PrivateData> {
+    // ...
+  }
+
+  // Large download: compression only
+  @api({
+    httpMethod: "GET",
+    compress: true,
+  })
+  async downloadLargeFile(fileId: string): Promise<Buffer> {
+    // ...
+  }
+}
+```
+
+<Info>
+**Performance Tips**:
+- Use `cacheControl` for static or infrequently changing data
+- Use `compress: true` for responses larger than 10KB
+- Use `{ private: true, maxAge: 0 }` to prevent caching of private data
+</Info>
+
+<Warning>
+  **Caution**: - `compress: true` increases CPU usage (inefficient for small responses) - Excessively
+  long cache durations can delay update propagation - `private: true` disables CDN caching
+</Warning>
+
 ## Error Handling
 
 ### Automatic Error Conversion
