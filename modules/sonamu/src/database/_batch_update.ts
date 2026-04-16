@@ -15,7 +15,7 @@ export type RowWithId<Id extends string> = {
 
 /**
  * Batch update rows in a table. Technically its a patch since it only updates the specified columns. Any omitted columns will not be affected
- * @param db
+ * @param knex
  * @param tableName
  * @param ids
  * @param rows
