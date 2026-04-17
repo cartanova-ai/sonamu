@@ -311,6 +311,234 @@ For detailed information about SSR, see the following documents.
   </Card>
 </CardGroup>
 
+### Understanding the Service Creation Mechanism
+
+Services are **Namespace-based static function collections**.
+
+#### Services are Namespaces, Not Classes
+
+```typescript
+// services.generated.ts (auto-generated)
+
+// ❌ Not a class
+// class UserService { ... }
+
+// ✅ It's a Namespace
+export namespace UserService {
+  // Static functions
+  export async function getUser<T extends UserSubsetKey>(
+    subset: T,
+    id: number,
+  ): Promise<UserSubsetMapping[T]> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/getUser?${qs.stringify({ subset, id })}`,
+    });
+  }
+
+  export async function save(spa: UserSaveParams[]): Promise<number[]> {
+    return fetch({
+      method: "POST",
+      url: `/api/user/save`,
+      data: { spa },
+    });
+  }
+
+  // TanStack Query Hook
+  export const useUser = <T extends UserSubsetKey>(subset: T, id: number) =>
+    useQuery({
+      queryKey: ["User", "getUser", subset, id],
+      queryFn: () => getUser(subset, id),
+    });
+}
+```
+
+**Namespace Characteristics**:
+
+- **Stateless**: No instance creation needed
+- **Static calls**: Call `UserService.getUser()` directly
+- **Type-safe**: Full type inference via TypeScript Namespaces
+- **Tree-shakable**: Unused functions are excluded from the bundle
+
+#### Services Have No Dependency Injection (DI)
+
+Services are **pure functions**, so no dependencies are injected:
+
+```typescript
+// ❌ No DI (not a class)
+// new UserService(dependencies)
+
+// ✅ Direct call
+const user = await UserService.getUser("A", 123);
+```
+
+**How is Context passed?**
+
+Services **pass Context via HTTP requests**:
+
+```typescript
+// Service internals (simplified)
+export async function getUser(subset: string, id: number) {
+  return fetch({
+    method: "GET",
+    url: `/api/user/getUser?subset=${subset}&id=${id}`,
+    // Context is passed via HTTP headers
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+      Cookie: document.cookie, // Session information
+    },
+  });
+}
+```
+
+On the backend, **Context is automatically extracted from the HTTP request**:
+
+```typescript
+// Backend Model
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getUser(subset: string, id: number) {
+    // Context is automatically parsed from the HTTP request
+    const context = Sonamu.getContext();
+
+    console.log(context.user); // Authenticated user
+    console.log(context.session); // Session information
+    console.log(context.ip); // Client IP
+
+    // Authorization checks possible
+    if (!context.user) {
+      throw new UnauthorizedError();
+    }
+
+    return this.findById(id, [subset]);
+  }
+}
+```
+
+#### Service Creation Process
+
+```mermaid
+flowchart LR
+    A[Model @api] --> B[Sonamu Sync]
+    B --> C[services.generated.ts]
+    C --> D[Namespace Functions]
+    C --> E[TanStack Query Hook]
+
+    style A fill:#e3f2fd
+    style B fill:#fff9c4
+    style C fill:#e8f5e9
+    style D fill:#c8e6c9
+    style E fill:#f3e5f5
+```
+
+**Creation Steps**:
+
+1. **Backend**: Write `@api` decorator on Model
+2. **Sonamu Sync**: Run `pnpm sonamu sync`
+3. **Auto-generation**: `services.generated.ts` file created
+4. **Namespace Functions**: Each API method converted to Namespace function
+5. **Hook Generation**: GET methods automatically generate `useQuery` Hooks
+
+#### Where Are Model Instances?
+
+**Created directly in Server Components**:
+
+```typescript
+// Server Component
+export default async function UserPage() {
+  // ✅ Instantiate Model directly on the server
+  const userModel = new UserModel();
+  const user = await userModel.findById(1, ["A"]);
+
+  return <div>{user.username}</div>;
+}
+```
+
+**Why is `new UserModel()` safe?**
+
+- Models are **stateless**, so creating new instances each time is safe
+- The constructor only initializes Subset queries
+- Context is dynamically retrieved via `Sonamu.getContext()`
+
+```typescript
+// Model internals
+class UserModelClass extends BaseModelClass {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+    // No state stored
+  }
+
+  async findById(id: number, subsets: string[]) {
+    // Context is dynamically retrieved here
+    const context = Sonamu.getContext();
+
+    // Execute DB query
+    return this.getPuri("r", subsets).where("id", id).first();
+  }
+}
+```
+
+#### Service vs Model Comparison
+
+| Item              | Service (Frontend)      | Model (Backend)        |
+| ----------------- | ----------------------- | ---------------------- |
+| **Type**          | Namespace               | Class Instance         |
+| **Call Style**    | `UserService.getUser()` | `userModel.findById()` |
+| **State**         | Stateless               | Stateless              |
+| **Dependencies**  | None                    | BaseModelClass         |
+| **Context**       | Passed via HTTP headers | `Sonamu.getContext()`  |
+| **Usage Context** | Client Component        | Server Component / API |
+| **Creation**      | Auto-generated          | Developer-written      |
+
+<Warning>
+  **Cautions when creating Model instances**: 1. **Server Components only**: Models cannot be imported
+  in Client Components 2. **Create each time**: Singleton pattern unnecessary (stateless) 3. **Context
+  access**: `Sonamu.getContext()` automatically retrieves from request context
+</Warning>
+
+<Info>
+  **Recommended patterns**: - **Client Component**: Use Service - **Server Component**: Use Model
+  directly - **API endpoint**: `@api` decorator on Model
+</Info>
+
+### Client Components
+
+Services can be freely used in Client Components.
+
+```typescript
+// app/users/[id]/edit-button.tsx
+"use client";
+
+import { useState } from "react";
+import { UserService } from "@/services/services.generated";
+
+export function EditButton({ userId }: { userId: number }) {
+  const [editing, setEditing] = useState(false);
+
+  async function handleEdit() {
+    setEditing(true);
+
+    try {
+      await UserService.updateProfile({
+        username: "newname",
+      });
+
+      alert("Updated!");
+    } catch (error) {
+      alert("Failed!");
+    } finally {
+      setEditing(false);
+    }
+  }
+
+  return (
+    <button onClick={handleEdit} disabled={editing}>
+      {editing ? "Saving..." : "Edit"}
+    </button>
+  );
+}
+```
+
 ## Error Handling
 
 ### SonamuError Handling
