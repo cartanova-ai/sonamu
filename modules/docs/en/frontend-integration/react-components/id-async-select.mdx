@@ -543,11 +543,27 @@ function CompanySelectForm() {
 | `displayField`   | `string \| ((row) => string)` |          | Display field (auto-detected if omitted) |
 | `valueField`     | `string`                      |          | Value field (default: "id")              |
 | `baseListParams` | `object`                      |          | Additional parameters for search         |
+| `preload`        | `boolean`                     |          | Load full list on mount (default: `false`) |
+| `searchable`     | `boolean`                     |          | Show search filter in dropdown           |
 | `multiple`       | `boolean`                     |          | Multiple selection mode                  |
 | `placeholder`    | `string`                      |          | Placeholder text                         |
 | `clearable`      | `boolean`                     |          | Whether selection can be cleared         |
 | `disabled`       | `boolean`                     |          | Disabled state                           |
 | `className`      | `string`                      |          | Additional CSS class                     |
+
+### `preload` and `searchable` Combinations
+
+The component's rendering mode changes depending on `preload` and `searchable` values:
+
+| `preload` | `searchable` | Behavior                                                                    |
+| --------- | ------------ | --------------------------------------------------------------------------- |
+| `false`   | unset        | **Default async mode**: searches on the server as the user types a keyword  |
+| `true`    | unset        | **Sync dropdown mode**: loads full list on mount, no search input shown     |
+| `true`    | `true`       | **Hybrid mode**: loads full list on mount + shows server search filter      |
+
+<Info>
+  When `baseListParams` contains meaningful filter values, the component also behaves in sync dropdown mode, the same as `preload`.
+</Info>
 
 ## Cautions
 
