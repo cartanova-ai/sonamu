@@ -126,6 +126,10 @@ pnpm fixture gen
 
 ? Number to generate per Entity: 5
 
+? User entity is included. Select generation method:
+❯ 1. Generate loginable user fixtures
+  2. Generate dummy data (not loginable)
+
 ? Save method: (Use arrow keys)
 ❯ Save to Fixture DB
   Save to file (auto filename)
@@ -134,6 +138,52 @@ pnpm fixture gen
 
 ? Generate more realistic data with LLM? (fixtureHint-based, requires ANTHROPIC_API_KEY) No
 ```
+
+<Info>
+  The generation method prompt is only shown when User entity is included in the selection.
+  If User entity is not selected, the flow proceeds directly to the save method selection.
+</Info>
+
+**Loginable User Fixture Generation**:
+
+When you select the User entity and choose "Generate loginable user fixtures", the system creates actually loginable users through better-auth's `sign-up/email` endpoint.
+
+How this mode works:
+
+1. `FixtureGenerator` generates User data (name, email, username, etc.)
+2. Calls better-auth sign-up API via `Sonamu.auth.handler()` to register users
+3. Automatically updates `email_verified` to `true` for all created users
+4. Outputs the list of created credentials (email, password) to the console
+
+```
+Generating 5 loginable users...
+  ✅ alice@example.com created
+  ✅ bob@example.com created
+  ⚠️  carol@example.com already exists - skipping.
+  ✅ dave@example.com created
+  ✅ eve@example.com created
+
+email_verified = true update completed
+
+✅ 4 loginable users created
+
+Created accounts:
+┌─────────┬──────────────────────┬────────────┐
+│ (index) │ email                │ password   │
+├─────────┼──────────────────────┼────────────┤
+│ 0       │ alice@example.com    │ Test1234!  │
+│ 1       │ bob@example.com      │ Test1234!  │
+│ 2       │ dave@example.com     │ Test1234!  │
+│ 3       │ eve@example.com      │ Test1234!  │
+└─────────┴──────────────────────┴────────────┘
+```
+
+<Warning>
+  All generated users share the same password `Test1234!`. This feature is intended for
+  development/test environments only and should never be used against a production database.
+</Warning>
+
+Selecting "Generate dummy data (not loginable)" uses the existing `generateBatch()` flow to insert data directly into the DB. In this case, no better-auth authentication records are created, so login is not possible.
 
 **CLI options**:
 

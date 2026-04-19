@@ -543,11 +543,27 @@ function CompanySelectForm() {
 | `displayField`   | `string \| ((row) => string)` |      | 표시 필드 (생략 시 자동 탐지) |
 | `valueField`     | `string`                      |      | 값 필드 (기본: "id")          |
 | `baseListParams` | `object`                      |      | 검색 시 추가 파라미터         |
+| `preload`        | `boolean`                     |      | 마운트 시 전체 목록 즉시 로드 (기본: `false`) |
+| `searchable`     | `boolean`                     |      | 드롭다운 내 검색 필터 표시    |
 | `multiple`       | `boolean`                     |      | 다중 선택 모드                |
 | `placeholder`    | `string`                      |      | 플레이스홀더 텍스트           |
 | `clearable`      | `boolean`                     |      | 선택 해제 가능 여부           |
 | `disabled`       | `boolean`                     |      | 비활성화 여부                 |
 | `className`      | `string`                      |      | 추가 CSS 클래스               |
+
+### `preload`와 `searchable` 조합
+
+`preload`와 `searchable` 값에 따라 컴포넌트의 렌더링 모드가 달라집니다:
+
+| `preload` | `searchable` | 동작                                                                 |
+| --------- | ------------ | -------------------------------------------------------------------- |
+| `false`   | 미지정       | **기본 async 모드**: 사용자가 키워드를 입력하면 서버에서 검색        |
+| `true`    | 미지정       | **sync 드롭다운 모드**: 마운트 시 전체 목록 로드, 검색창 없이 표시   |
+| `true`    | `true`       | **하이브리드 모드**: 마운트 시 전체 목록 로드 + 서버 검색 필터 표시  |
+
+<Info>
+  `baseListParams`에 의미 있는 필터 값이 있는 경우에도 `preload`와 동일하게 sync 드롭다운 모드로 동작합니다.
+</Info>
 
 ## 주의사항
 
