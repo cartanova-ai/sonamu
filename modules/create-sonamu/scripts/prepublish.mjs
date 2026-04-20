@@ -93,7 +93,11 @@ for (const file of templateFiles) {
           deps[name] = `^${reactComponentsPkg.version}`;
           changes++;
         } else {
-          console.warn(`  ⚠️  Unknown workspace package: ${name}`);
+          console.error(`  ❌ Unknown workspace package: ${name} in ${file}`);
+          console.error(
+            `     Add a resolver for "${name}" in prepublish.mjs or remove the dependency from the template.`,
+          );
+          process.exit(1);
         }
       } else if (version === "catalog:") {
         const catalogVersion = catalog[name];
