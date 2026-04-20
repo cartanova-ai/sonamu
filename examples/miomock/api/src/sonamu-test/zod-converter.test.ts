@@ -46,7 +46,7 @@ describe("zod-converter", () => {
         ["number", z.number(), "number"],
         ["boolean", z.boolean(), "boolean"],
         ["bigint", z.bigint(), "bigint"],
-        ["date", z.date(), "date"],
+        ["date", z.date(), "Date"],
         ["null", z.null(), "null"],
         ["undefined", z.undefined(), "undefined"],
         ["any", z.any(), "any"],

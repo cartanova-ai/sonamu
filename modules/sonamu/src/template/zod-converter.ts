@@ -442,13 +442,14 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
     case "number":
     case "boolean":
     case "bigint":
-    case "date":
     case "null":
     case "undefined":
     case "any":
     case "unknown":
     case "never":
       return zt.def.type;
+    case "date":
+      return "Date";
     case "nullable":
       return `${zodTypeToTsTypeDef((zt as AnyZodNullable).def.innerType)} | null`;
     case "default":
