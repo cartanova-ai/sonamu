@@ -15,9 +15,8 @@ import qs from "qs";
 import { useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 import { type core, z } from "zod";
-import { getCurrentLocale } from "~/i18n/sd.generated";
+import { getCurrentLocale } from "@/i18n/sd.generated";
 import { ExpoEventSource as EventSource } from "@falcondev-oss/expo-event-source-polyfill";
-import { getCurrentLocale } from "../i18n/sd.generated"
 
 // AbortSignal.timeout polyfill for React Native
 if (typeof AbortSignal !== "undefined" && !AbortSignal.timeout) {
