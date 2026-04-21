@@ -9,12 +9,12 @@
 /*
   fetch
 */
-import type { AxiosRequestConfig } from "axios";
+import { type AxiosRequestConfig } from "axios";
 import axios from "axios";
 import qs from "qs";
 import { type core, z } from "zod";
 import { EventSource } from "eventsource";
-import type { InfiniteData } from "@tanstack/react-query";
+import { type InfiniteData } from "@tanstack/react-query";
 import { getCurrentLocale } from "../i18n/sd.generated";
 
 // ISO 8601 및 타임존 포맷의 날짜 문자열을 Date 객체로 변환하는 reviver
