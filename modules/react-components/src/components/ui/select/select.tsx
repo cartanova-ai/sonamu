@@ -46,12 +46,6 @@ interface SelectPropsBase<Item> {
   renderItem?: (value: ExtractValue<Item>) => React.ReactNode;
   name?: string;
   onBlur?: React.FocusEventHandler<HTMLSelectElement>;
-  // Popover/무한스크롤 훅: async 여부와 무관하게 쓸 수 있도록 base에 둡니다.
-  // 드롭다운 모드(preload/baseFilter)의 IdAsyncSelect도 검색창 없이 무한스크롤과 재오픈 리셋을 필요로 합니다.
-  onOpenChange?: (open: boolean) => void;
-  onLoadMore?: () => void;
-  hasMore?: boolean;
-  isLoadingMore?: boolean;
 }
 
 // valueKey 조건부 필수화: string | number일 때는 선택적, 그 외에는 필수
@@ -79,6 +73,13 @@ interface SingleAsyncProps<Item> {
   error?: Error;
   onSearch: (keyword: string) => void;
   searchDebounce?: number;
+  // 검색창 노출 여부. 기본은 true (async의 기존 UX 유지). false면 CommandInput을 숨깁니다.
+  searchable?: boolean;
+  // Popover/무한스크롤 훅: async 사용처에서만 의미가 있어 async props로 한정합니다.
+  onOpenChange?: (open: boolean) => void;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
 }
 
 // Multi-Sync Props
@@ -104,6 +105,13 @@ interface MultiAsyncProps<Item> {
   searchDebounce?: number;
   maxCount?: number;
   hideSelectAll?: boolean;
+  // 검색창 노출 여부. 기본은 true (async의 기존 UX 유지). false면 CommandInput을 숨깁니다.
+  searchable?: boolean;
+  // Popover/무한스크롤 훅: async 사용처에서만 의미가 있어 async props로 한정합니다.
+  onOpenChange?: (open: boolean) => void;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
 }
 
 // 통합 타입
@@ -195,9 +203,9 @@ function useSelectCommon<Item>(
   // async 모드에서 선택된 옵션 캐시
   const [reservedOptions, setReservedOptions] = useState(new Map());
 
-  // Popover 열림/닫힘 전이 감지해 외부 onOpenChange 콜백 발사
-  // async 여부와 무관하게 동작. 실제 값 변화가 있을 때만 트리거하여 불필요한 호출을 피합니다.
-  const onOpenChangeExternal = props.onOpenChange;
+  // Popover 열림/닫힘 전이 감지해 외부 onOpenChange 콜백 발사. async 모드에서만 의미가 있습니다.
+  // 실제 값 변화가 있을 때만 트리거하여 불필요한 호출을 피합니다.
+  const onOpenChangeExternal = isAsync && "onOpenChange" in props ? props.onOpenChange : undefined;
   const prevOpenRef = useRef(isPopoverOpen);
   useEffect(() => {
     if (prevOpenRef.current !== isPopoverOpen) {
@@ -419,12 +427,13 @@ function CommandBasedSelect<Item>({
     setSentinelEl(node);
   }, []);
 
-  // 무한스크롤 관련 props 추출 (base prop이므로 async/sync 모드 모두 사용 가능)
-  const onLoadMore = props.onLoadMore;
-  const hasMore = props.hasMore ?? false;
-  const isLoadingMore = props.isLoadingMore ?? false;
-  // 센티넬 렌더 여부: 호출자가 onLoadMore를 제공했을 때만 DOM을 붙이고 관찰합니다.
-  const hasInfiniteScroll = onLoadMore !== undefined;
+  // 무한스크롤 관련 props 추출. async 전용 prop이므로 async 모드에서만 끌어옵니다.
+  const onLoadMore = isAsync && "onLoadMore" in props ? props.onLoadMore : undefined;
+  const hasMore = isAsync && "hasMore" in props ? (props.hasMore ?? false) : false;
+  const isLoadingMore =
+    isAsync && "isLoadingMore" in props ? (props.isLoadingMore ?? false) : false;
+  // 센티넬 렌더 여부: async + 호출자가 onLoadMore를 제공했을 때만 DOM을 붙이고 관찰합니다.
+  const hasInfiniteScroll = isAsync && onLoadMore !== undefined;
 
   // 센티넬이 뷰포트(listEl)에 진입하면 onLoadMore 호출. 로딩 중이거나 더 불러올 게 없으면 관찰하지 않습니다.
   useEffect(() => {
@@ -449,8 +458,9 @@ function CommandBasedSelect<Item>({
     return () => observer.disconnect();
   }, [sentinelEl, listEl, onLoadMore, hasMore, isLoadingMore]);
 
-  // 검색 가능 여부 판단: Async면 무조건 true, Sync면 searchable 값 사용
-  const isSearchable = isAsync || ("searchable" in props && props.searchable === true);
+  // 검색창 노출 여부: searchable을 async/sync와 직교 축으로 다룹니다.
+  // 명시되지 않으면 기존 동작(async=true이면 true, sync면 false)을 유지합니다.
+  const isSearchable = props.searchable ?? isAsync;
 
   // Wheel 이벤트 핸들러
   const handleWheel = useCallback(

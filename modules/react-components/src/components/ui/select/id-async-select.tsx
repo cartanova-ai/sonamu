@@ -390,60 +390,18 @@ export function IdAsyncSelect<
   const hasMore = !!infiniteQuery.hasNextPage;
   const isLoadingMore = !!infiniteQuery.isFetchingNextPage;
 
-  // isDropdown + !searchable 모드는 검색창 없이 목록을 즉시 노출하는 UX입니다.
-  // UI 관점에서는 검색창이 없어야 하므로 async=false(sync)로 두되, Select base prop에 올라간
-  // 무한스크롤/닫힘 훅(onOpenChange/onLoadMore/hasMore/isLoadingMore)은 그대로 릴레이하여
-  // 바닥 도달 시 다음 페이지 로드와 닫힘 시 resetQueries가 작동하도록 합니다.
-  if (isDropdown && !searchable) {
-    if (!multiple) {
-      return (
-        <Select
-          items={items}
-          valueKey={valueKey}
-          value={singleValue ?? undefined}
-          onValueChange={(newValue: TValue | undefined) => {
-            onValueChange?.(newValue);
-            onRowChange?.((newValue ? rowMap.get(newValue) : undefined) as RowChangeParam);
-          }}
-          placeholder={placeholder ?? SD(config.placeholderKey)}
-          clearable={clearable}
-          disabled={disabled}
-          className={className}
-          multiple={false}
-          onOpenChange={handleOpenChange}
-          onLoadMore={handleLoadMore}
-          hasMore={hasMore}
-          isLoadingMore={isLoadingMore}
-        />
-      );
-    }
-
-    return (
-      <Select
-        items={items}
-        valueKey={valueKey}
-        value={(value as TValue[]) ?? []}
-        onValueChange={(newValue: TValue[]) => {
-          onValueChange?.(newValue);
-          onRowChange?.(newValue.map((val) => rowMap.get(val)).filter(Boolean) as RowChangeParam);
-        }}
-        placeholder={placeholder ?? SD(config.placeholderKey)}
-        clearable={clearable}
-        disabled={disabled}
-        className={className}
-        multiple={true}
-        onOpenChange={handleOpenChange}
-        onLoadMore={handleLoadMore}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
-      />
-    );
-  }
+  // isDropdown 모드는 검색창 없이 목록을 즉시 노출하는 UX가 기본입니다.
+  // 데이터 소스는 어느 모드든 동일하게 서버(useListInfinite)이므로 async=true 경로로 통일하고,
+  // 검색창 노출 여부만 searchable 축으로 제어합니다. 기본값은 isDropdown일 때 false, 그 외는 true이며
+  // 호출자가 searchable을 명시하면 명시값이 우선합니다.
+  const searchableDefault = !isDropdown;
+  const isSearchableVisible = searchable ?? searchableDefault;
 
   if (!multiple) {
     return (
       <Select
         items={items}
+        valueKey={valueKey}
         value={singleValue ?? undefined}
         onValueChange={(newValue: TValue | undefined) => {
           onValueChange?.(newValue);
@@ -455,6 +413,7 @@ export function IdAsyncSelect<
         className={className}
         multiple={false}
         async={true}
+        searchable={isSearchableVisible}
         loading={isLoading}
         error={error}
         onSearch={handleSearch}
@@ -469,6 +428,7 @@ export function IdAsyncSelect<
   return (
     <Select
       items={items}
+      valueKey={valueKey}
       value={(value as TValue[]) ?? []}
       onValueChange={(newValue: TValue[]) => {
         onValueChange?.(newValue);
@@ -480,6 +440,7 @@ export function IdAsyncSelect<
       className={className}
       multiple={true}
       async={true}
+      searchable={isSearchableVisible}
       loading={isLoading}
       error={error}
       onSearch={handleSearch}
