@@ -209,9 +209,13 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   };
 
   const scrollToElement = (id: string) => {
+    let attempts = 0;
+    const maxAttempts = 50;
     const interval = setInterval(() => {
+      attempts++;
       const element = document.getElementById(id);
       if (element) {
+        clearInterval(interval);
         element.scrollIntoView({ behavior: "instant", block: "center" });
         element.style.backgroundColor = "#fef3c7";
         element.style.boxShadow = "0 0 0 2px #fbbf24";
@@ -220,6 +224,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           element.style.boxShadow = "";
           element.style.transition = "background-color 1s, box-shadow 1s";
         }, 1000);
+      } else if (attempts >= maxAttempts) {
         clearInterval(interval);
       }
     }, 100);

@@ -31,11 +31,13 @@ description: "Public URL과 Signed URL"
 ```typescript
 class FileModel extends BaseModelClass {
   @upload()
-  async upload(params: { file: UploadedFile }): Promise<{
+  async upload(): Promise<{
     url: string;
     signedUrl: string;
   }> {
-    const { file } = params;
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("파일이 필요합니다");
 
     // 파일 저장
     await file.saveToDisk("fs", `uploads/${Date.now()}.${file.extname}`);
