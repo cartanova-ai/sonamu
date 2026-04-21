@@ -21,9 +21,6 @@ export { useListParams, useSelection } from "./list-helpers";
 // Modal helpers
 export { useModal } from "./modal-helpers";
 
-// Query helpers
-export { dedupeAndFlatten } from "./query-helpers";
-
 // Types
 export type {
   ControlledModalProps,
