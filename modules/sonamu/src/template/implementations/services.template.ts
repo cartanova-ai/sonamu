@@ -209,16 +209,16 @@ export const ${methodName}QueryOptions = ${typeParamsDef}(${paramsDef}) => query
           `.trim(),
           );
 
-          // useQuery hook
+          // useQuery hook (useRefreshable로 래핑해 refresh/isRefreshing을 기본 제공)
           functions.push(
             `
 export const use${inflection.camelize(hookName)} = ${typeParamsDef}(${paramsDef}${
               paramsDef ? ", " : ""
             }options?: { enabled?: boolean }) =>
-  useQuery({
+  useRefreshable(useQuery({
     ...${methodName}QueryOptions(${paramNames}),
     ...options
-  });
+  }));
           `.trim(),
           );
 
@@ -260,10 +260,10 @@ export const ${infiniteMethodName}QueryOptions = ${typeParamsDef}(${paramsDef}) 
 export const ${infiniteHookName} = ${typeParamsDef}(${paramsDef}${
                 paramsDef ? ", " : ""
               }options?: { enabled?: boolean }) =>
-  useInfiniteQuery({
+  useRefreshable(useInfiniteQuery({
     ...${infiniteMethodName}QueryOptions(${paramNames}),
     ...options
-  });
+  }));
           `.trim(),
             );
           }
@@ -388,6 +388,7 @@ export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}Subset
     // body 문자열을 기준으로 infinite 훅 생성 여부 판단 (findMany 복수형 분기에서만 참조됨)
     const bodyForImportCheck = namespaces.join("\n\n");
     const needsDedupeAndFlatten = bodyForImportCheck.includes("dedupeAndFlatten");
+    const needsUseRefreshable = bodyForImportCheck.includes("useRefreshable");
 
     const sonamuSharedImports = [
       "type ListResult",
@@ -399,6 +400,7 @@ export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}Subset
       "useSSEStream",
       "toFormData",
       ...(needsDedupeAndFlatten ? ["dedupeAndFlatten"] : []),
+      ...(needsUseRefreshable ? ["useRefreshable"] : []),
     ].join(", ");
 
     // body 구성: namespaces + asyncIdConfigs
