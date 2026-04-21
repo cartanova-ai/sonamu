@@ -385,6 +385,10 @@ export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}Subset
       .map((typeKey) => `type ${typeKey}`);
 
     // sonamu.shared에서 import할 항목들을 동적으로 구성
+    // body 문자열을 기준으로 infinite 훅 생성 여부 판단 (findMany 복수형 분기에서만 참조됨)
+    const bodyForImportCheck = namespaces.join("\n\n");
+    const needsDedupeAndFlatten = bodyForImportCheck.includes("dedupeAndFlatten");
+
     const sonamuSharedImports = [
       "type ListResult",
       "type FilterQuery",
@@ -394,6 +398,7 @@ export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}Subset
       "type SSEStreamOptions",
       "useSSEStream",
       "toFormData",
+      ...(needsDedupeAndFlatten ? ["dedupeAndFlatten"] : []),
     ].join(", ");
 
     // body 구성: namespaces + asyncIdConfigs
@@ -419,7 +424,6 @@ export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}Subset
         `import qs from 'qs';`,
         `import { ${sonamuSharedImports} } from './sonamu.shared';`,
         `import type { AsyncIdConfig } from '@sonamu-kit/react-components/components';`,
-        `import { dedupeAndFlatten } from '@sonamu-kit/react-components/lib';`,
       ],
     };
   }
