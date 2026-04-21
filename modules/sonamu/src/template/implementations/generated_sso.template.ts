@@ -152,6 +152,7 @@ export class Template__generated_sso extends Template {
       " * @generated",
       " * 직접 수정하지 마세요.",
       " */",
+      "",
       `import { ${sonamuImports} } from "sonamu";`,
     ];
     if (this.hasAuthConfig()) {

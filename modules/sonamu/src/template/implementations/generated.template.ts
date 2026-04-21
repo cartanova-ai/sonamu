@@ -130,6 +130,7 @@ export class Template__generated extends Template {
         " * @generated",
         " * 직접 수정하지 마세요.",
         " */",
+        "",
         "/* oxlint-disable */",
         "",
         `import { z } from 'zod';`,

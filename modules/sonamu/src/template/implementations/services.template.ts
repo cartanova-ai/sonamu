@@ -419,6 +419,7 @@ export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}Subset
         " * @generated",
         " * 직접 수정하지 마세요.",
         " */",
+        "",
         "/* oxlint-disable */",
         "",
         `import { queryOptions, useQuery, useInfiniteQuery, infiniteQueryOptions, useMutation, type UseMutationOptions } from '@tanstack/react-query';`,

@@ -106,6 +106,7 @@ ${functions.join("\n\n")}
             " * @generated",
             " * 직접 수정하지 마세요.",
             " */",
+            "",
             "/* oxlint-disable */",
             "",
             `import type { SSRQuery } from 'sonamu/ssr';`,
@@ -116,7 +117,15 @@ ${functions.join("\n\n")}
             `}`,
             "",
           ]
-        : ["/**", " * @generated", " * 직접 수정하지 마세요.", " */", "/* oxlint-disable */", ""],
+        : [
+            "/**",
+            " * @generated",
+            " * 직접 수정하지 마세요.",
+            " */",
+            "",
+            "/* oxlint-disable */",
+            "",
+          ],
     };
   }
 }

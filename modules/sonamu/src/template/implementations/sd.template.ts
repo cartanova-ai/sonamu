@@ -250,7 +250,7 @@ SD.enumLabels = (enumName: string): Record<string, LocalizedString> => {
       ...this.getTargetAndPath(undefined, target),
       body,
       importKeys: [],
-      customHeaders: ["/**", " * @generated", " * 직접 수정하지 마세요.", " */"],
+      customHeaders: ["/**", " * @generated", " * 직접 수정하지 마세요.", " */", ""],
     };
   }
 

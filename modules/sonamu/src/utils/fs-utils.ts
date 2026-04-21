@@ -71,13 +71,15 @@ export async function copyFileWithReplaceCoreToShared(
   })();
 
   // syncHeader가 제공된 경우 @generated 블록을 교체하거나 최상단에 추가합니다.
+  // `*/` 직후에는 항상 빈 줄 한 개를 보장하여 oxfmt가 주석을 import의 leading comment로 오인해 정렬 시 끌려가는 문제를 방지합니다.
   if (syncHeader) {
-    // 여러 줄 형식만 매칭합니다. 한 줄짜리(/** @generated */)는 매칭하지 않으므로 수동으로 축약하지 마세요.
-    const generatedBlockRegex = /\/\*\*\r?\n \* @generated\r?\n[\s\S]*?\*\/\r?\n/;
+    // 기존 @generated 블록 + 뒤이어 오는 빈 줄들(있으면 포함)을 한꺼번에 매칭하여 교체 시 빈 줄이 누적되지 않게 합니다.
+    // 한 줄짜리(/** @generated */)는 매칭하지 않으므로 수동으로 축약하지 마세요.
+    const generatedBlockRegex = /\/\*\*\r?\n \* @generated\r?\n[\s\S]*?\*\/\r?\n(\r?\n)*/;
     if (generatedBlockRegex.test(newFileContent)) {
-      newFileContent = newFileContent.replace(generatedBlockRegex, `${syncHeader}\n`);
+      newFileContent = newFileContent.replace(generatedBlockRegex, `${syncHeader}\n\n`);
     } else {
-      newFileContent = `${syncHeader}\n${newFileContent}`;
+      newFileContent = `${syncHeader}\n\n${newFileContent}`;
     }
   }
 
