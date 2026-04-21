@@ -328,7 +328,7 @@ export type EventHandlers<T> = {
   [K in keyof T]: (data: T[K]) => void;
 };
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useSSEStream<T extends Record<string, any>>(
   url: string,
@@ -619,4 +619,21 @@ export function dedupeAndFlatten<TRow extends { id?: unknown }>(
     rows,
     total,
   };
+}
+
+// TanStack Query 결과에 수동 refresh 진입점과 새로고침 중 상태를 덧붙여 줍니다.
+// isRefreshing은 query.isFetching과 독립적으로 이 함수 호출로 발생한 새로고침에 한정됩니다.
+export function useRefreshable<T extends { refetch: () => Promise<unknown> }>(
+  query: T,
+): T & { refresh: () => Promise<void>; isRefreshing: boolean } {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await query.refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [query]);
+  return { ...query, refresh, isRefreshing };
 }
