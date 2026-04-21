@@ -91,7 +91,7 @@ export function UserListPage() {
   const { listParams, register } = useListParams(UserListParams, {
     num: 24,
     page: 1,
-    search: UserSearchField.options[0],  // default: "id"
+    search: UserSearchField.options[0],  // first enum value
     keyword: "",
   });
 
