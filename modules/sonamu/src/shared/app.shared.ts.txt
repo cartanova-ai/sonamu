@@ -5,7 +5,6 @@
  */
 
 /* oxlint-disable react-hooks/exhaustive-deps */ // shared
-/* oxlint-disable @typescript-eslint/no-explicit-any */ // shared
 
 /*
   fetch
