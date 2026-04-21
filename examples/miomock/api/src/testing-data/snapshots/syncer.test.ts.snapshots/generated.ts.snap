@@ -2,6 +2,7 @@
  * @generated
  * 직접 수정하지 마세요.
  */
+
 /* oxlint-disable */
 
 import { zArrayable, SonamuQueryMode, ApplySonamuFilter, SonamuFileArraySchema } from "sonamu";
