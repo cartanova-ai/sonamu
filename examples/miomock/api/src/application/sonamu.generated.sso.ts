@@ -1,8 +1,9 @@
-import { type User } from "better-auth";
 /**
  * @generated
  * 직접 수정하지 마세요.
  */
+
+import { type User } from "better-auth";
 import {
   type PuriWrapper,
   type DatabaseSchemaExtend,

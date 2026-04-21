@@ -3,6 +3,7 @@
  * 직접 수정하지 마세요.
  */
 
+
 import { QueryClient, dehydrate } from '@tanstack/react-query';
 import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router';
 import { renderToString } from 'react-dom/server';

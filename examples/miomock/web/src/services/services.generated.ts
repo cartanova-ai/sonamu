@@ -2,16 +2,19 @@
  * @generated
  * 직접 수정하지 마세요.
  */
+
 /* oxlint-disable */
 
-import type { AsyncIdConfig } from "@sonamu-kit/react-components/components";
+import { type AsyncIdConfig } from "@sonamu-kit/react-components/components";
 import {
   queryOptions,
   useQuery,
+  useInfiniteQuery,
+  infiniteQueryOptions,
   useMutation,
   type UseMutationOptions,
 } from "@tanstack/react-query";
-import type { AxiosProgressEvent } from "axios";
+import { type AxiosProgressEvent } from "axios";
 import qs from "qs";
 
 import { AuditEventListParams, AuditEventSaveParams } from "./audit-event/audit-event.types";
@@ -63,6 +66,8 @@ import {
   type SSEStreamOptions,
   useSSEStream,
   toFormData,
+  dedupeAndFlatten,
+  useRefreshable,
 } from "./sonamu.shared";
 import { SyncFixtureListParams, SyncFixtureSaveParams } from "./sync-fixture/sync-fixture.types";
 import { TagListParams, TagSaveParams } from "./tag/tag.types";
@@ -90,10 +95,12 @@ export namespace UserService {
     id: string,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getUserQueryOptions(subset, id),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getUserQueryOptions(subset, id),
+        ...options,
+      }),
+    );
 
   export async function getUsers<T extends UserSubsetKey, LP extends UserListParams>(
     subset: T,
@@ -120,10 +127,43 @@ export namespace UserService {
     rawParams?: LP,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getUsersQueryOptions(subset, rawParams),
-      ...options,
+    useRefreshable(
+      useQuery({
+        ...getUsersQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
+
+  export const getUsersInfiniteQueryOptions = <T extends UserSubsetKey, LP extends UserListParams>(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    infiniteQueryOptions({
+      queryKey: ["User", "getUsers", "infinite", subset, rawParams],
+      queryFn: ({ pageParam }) => getUsers(subset, { ...rawParams, page: pageParam }),
+      initialPageParam: 1 as number,
+      getNextPageParam: (lastPage, allPages) => {
+        const total = (lastPage as { total?: number })?.total ?? 0;
+        const loaded = allPages.reduce(
+          (sum, p) => sum + ((p as { rows?: unknown[] })?.rows?.length ?? 0),
+          0,
+        );
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      select: dedupeAndFlatten,
     });
+
+  export const useUsersInfinite = <T extends UserSubsetKey, LP extends UserListParams>(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useInfiniteQuery({
+        ...getUsersInfiniteQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
 
   export async function save(spa: UserSaveParams[]): Promise<string[]> {
     return fetch({
@@ -165,10 +205,12 @@ export namespace UserService {
     });
 
   export const useGetMyIP = (options?: { enabled?: boolean }) =>
-    useQuery({
-      ...getMyIPQueryOptions(),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getMyIPQueryOptions(),
+        ...options,
+      }),
+    );
 
   export async function trxTest(): Promise<void> {
     return fetch({
@@ -184,10 +226,12 @@ export namespace UserService {
     });
 
   export const useTrxTest = (options?: { enabled?: boolean }) =>
-    useQuery({
-      ...trxTestQueryOptions(),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...trxTestQueryOptions(),
+        ...options,
+      }),
+    );
 }
 
 export namespace TagService {
@@ -212,10 +256,12 @@ export namespace TagService {
     id: number,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getTagQueryOptions(subset, id),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getTagQueryOptions(subset, id),
+        ...options,
+      }),
+    );
 
   export async function getTags<T extends TagSubsetKey, LP extends TagListParams>(
     subset: T,
@@ -241,10 +287,43 @@ export namespace TagService {
     rawParams?: LP,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getTagsQueryOptions(subset, rawParams),
-      ...options,
+    useRefreshable(
+      useQuery({
+        ...getTagsQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
+
+  export const getTagsInfiniteQueryOptions = <T extends TagSubsetKey, LP extends TagListParams>(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    infiniteQueryOptions({
+      queryKey: ["Tag", "getTags", "infinite", subset, rawParams],
+      queryFn: ({ pageParam }) => getTags(subset, { ...rawParams, page: pageParam }),
+      initialPageParam: 1 as number,
+      getNextPageParam: (lastPage, allPages) => {
+        const total = (lastPage as { total?: number })?.total ?? 0;
+        const loaded = allPages.reduce(
+          (sum, p) => sum + ((p as { rows?: unknown[] })?.rows?.length ?? 0),
+          0,
+        );
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      select: dedupeAndFlatten,
     });
+
+  export const useTagsInfinite = <T extends TagSubsetKey, LP extends TagListParams>(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useInfiniteQuery({
+        ...getTagsInfiniteQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
 
   export async function save(spa: TagSaveParams[]): Promise<number[]> {
     return fetch({
@@ -294,6 +373,39 @@ export namespace TagService {
   }
 }
 
+export namespace SyncFixtureSubService {
+  export async function getSyncFixtureSub<T extends SyncFixtureSubsetKey>(
+    subset: T,
+    id: number,
+  ): Promise<SyncFixtureSubsetMapping[T]> {
+    return fetch({
+      method: "GET",
+      url: `/api/syncFixtureSub/findById?${qs.stringify({ subset, id })}`,
+    });
+  }
+
+  export const getSyncFixtureSubQueryOptions = <T extends SyncFixtureSubsetKey>(
+    subset: T,
+    id: number,
+  ) =>
+    queryOptions({
+      queryKey: ["SyncFixtureSub", "getSyncFixtureSub", subset, id],
+      queryFn: () => getSyncFixtureSub(subset, id),
+    });
+
+  export const useSyncFixtureSub = <T extends SyncFixtureSubsetKey>(
+    subset: T,
+    id: number,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useQuery({
+        ...getSyncFixtureSubQueryOptions(subset, id),
+        ...options,
+      }),
+    );
+}
+
 export namespace SyncFixtureService {
   export async function getSyncFixture<T extends SyncFixtureSubsetKey>(
     subset: T,
@@ -319,10 +431,12 @@ export namespace SyncFixtureService {
     id: number,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getSyncFixtureQueryOptions(subset, id),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getSyncFixtureQueryOptions(subset, id),
+        ...options,
+      }),
+    );
 
   export async function getSyncFixtures<
     T extends SyncFixtureSubsetKey,
@@ -351,10 +465,49 @@ export namespace SyncFixtureService {
     rawParams?: LP,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getSyncFixturesQueryOptions(subset, rawParams),
-      ...options,
+    useRefreshable(
+      useQuery({
+        ...getSyncFixturesQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
+
+  export const getSyncFixturesInfiniteQueryOptions = <
+    T extends SyncFixtureSubsetKey,
+    LP extends SyncFixtureListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    infiniteQueryOptions({
+      queryKey: ["SyncFixture", "getSyncFixtures", "infinite", subset, rawParams],
+      queryFn: ({ pageParam }) => getSyncFixtures(subset, { ...rawParams, page: pageParam }),
+      initialPageParam: 1 as number,
+      getNextPageParam: (lastPage, allPages) => {
+        const total = (lastPage as { total?: number })?.total ?? 0;
+        const loaded = allPages.reduce(
+          (sum, p) => sum + ((p as { rows?: unknown[] })?.rows?.length ?? 0),
+          0,
+        );
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      select: dedupeAndFlatten,
     });
+
+  export const useSyncFixturesInfinite = <
+    T extends SyncFixtureSubsetKey,
+    LP extends SyncFixtureListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useInfiniteQuery({
+        ...getSyncFixturesInfiniteQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
 
   export async function save(spa: SyncFixtureSaveParams[]): Promise<number[]> {
     return fetch({
@@ -405,10 +558,12 @@ export namespace ProjectService {
     id: number,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getProjectQueryOptions(subset, id),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getProjectQueryOptions(subset, id),
+        ...options,
+      }),
+    );
 
   export async function getProjects<T extends ProjectSubsetKey, LP extends ProjectListParams>(
     subset: T,
@@ -434,10 +589,46 @@ export namespace ProjectService {
     rawParams?: LP,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getProjectsQueryOptions(subset, rawParams),
-      ...options,
+    useRefreshable(
+      useQuery({
+        ...getProjectsQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
+
+  export const getProjectsInfiniteQueryOptions = <
+    T extends ProjectSubsetKey,
+    LP extends ProjectListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    infiniteQueryOptions({
+      queryKey: ["Project", "getProjects", "infinite", subset, rawParams],
+      queryFn: ({ pageParam }) => getProjects(subset, { ...rawParams, page: pageParam }),
+      initialPageParam: 1 as number,
+      getNextPageParam: (lastPage, allPages) => {
+        const total = (lastPage as { total?: number })?.total ?? 0;
+        const loaded = allPages.reduce(
+          (sum, p) => sum + ((p as { rows?: unknown[] })?.rows?.length ?? 0),
+          0,
+        );
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      select: dedupeAndFlatten,
     });
+
+  export const useProjectsInfinite = <T extends ProjectSubsetKey, LP extends ProjectListParams>(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useInfiniteQuery({
+        ...getProjectsInfiniteQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
 
   export async function save(spa: ProjectSaveParams[]): Promise<number[]> {
     return fetch({
@@ -544,10 +735,12 @@ export namespace MilestoneService {
     id: number,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getMilestoneQueryOptions(subset, id),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getMilestoneQueryOptions(subset, id),
+        ...options,
+      }),
+    );
 
   export async function getMilestones<T extends MilestoneSubsetKey, LP extends MilestoneListParams>(
     subset: T,
@@ -576,10 +769,49 @@ export namespace MilestoneService {
     rawParams?: LP,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getMilestonesQueryOptions(subset, rawParams),
-      ...options,
+    useRefreshable(
+      useQuery({
+        ...getMilestonesQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
+
+  export const getMilestonesInfiniteQueryOptions = <
+    T extends MilestoneSubsetKey,
+    LP extends MilestoneListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    infiniteQueryOptions({
+      queryKey: ["Milestone", "getMilestones", "infinite", subset, rawParams],
+      queryFn: ({ pageParam }) => getMilestones(subset, { ...rawParams, page: pageParam }),
+      initialPageParam: 1 as number,
+      getNextPageParam: (lastPage, allPages) => {
+        const total = (lastPage as { total?: number })?.total ?? 0;
+        const loaded = allPages.reduce(
+          (sum, p) => sum + ((p as { rows?: unknown[] })?.rows?.length ?? 0),
+          0,
+        );
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      select: dedupeAndFlatten,
     });
+
+  export const useMilestonesInfinite = <
+    T extends MilestoneSubsetKey,
+    LP extends MilestoneListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useInfiniteQuery({
+        ...getMilestonesInfiniteQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
 
   export async function save(spa: MilestoneSaveParams[]): Promise<number[]> {
     return fetch({
@@ -656,10 +888,12 @@ export namespace FileService {
     id: number,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getFileQueryOptions(subset, id),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getFileQueryOptions(subset, id),
+        ...options,
+      }),
+    );
 
   export async function getFiles<T extends FileSubsetKey, LP extends FileListParams>(
     subset: T,
@@ -685,10 +919,43 @@ export namespace FileService {
     rawParams?: LP,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getFilesQueryOptions(subset, rawParams),
-      ...options,
+    useRefreshable(
+      useQuery({
+        ...getFilesQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
+
+  export const getFilesInfiniteQueryOptions = <T extends FileSubsetKey, LP extends FileListParams>(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    infiniteQueryOptions({
+      queryKey: ["File", "getFiles", "infinite", subset, rawParams],
+      queryFn: ({ pageParam }) => getFiles(subset, { ...rawParams, page: pageParam }),
+      initialPageParam: 1 as number,
+      getNextPageParam: (lastPage, allPages) => {
+        const total = (lastPage as { total?: number })?.total ?? 0;
+        const loaded = allPages.reduce(
+          (sum, p) => sum + ((p as { rows?: unknown[] })?.rows?.length ?? 0),
+          0,
+        );
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      select: dedupeAndFlatten,
     });
+
+  export const useFilesInfinite = <T extends FileSubsetKey, LP extends FileListParams>(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useInfiniteQuery({
+        ...getFilesInfiniteQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
 
   export async function save(spa: FileSaveParams[]): Promise<number[]> {
     return fetch({
@@ -918,10 +1185,12 @@ export namespace EmployeeService {
     id: number,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getEmployeeQueryOptions(subset, id),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getEmployeeQueryOptions(subset, id),
+        ...options,
+      }),
+    );
 
   export async function getEmployees<T extends EmployeeSubsetKey, LP extends EmployeeListParams>(
     subset: T,
@@ -950,10 +1219,46 @@ export namespace EmployeeService {
     rawParams?: LP,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getEmployeesQueryOptions(subset, rawParams),
-      ...options,
+    useRefreshable(
+      useQuery({
+        ...getEmployeesQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
+
+  export const getEmployeesInfiniteQueryOptions = <
+    T extends EmployeeSubsetKey,
+    LP extends EmployeeListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    infiniteQueryOptions({
+      queryKey: ["Employee", "getEmployees", "infinite", subset, rawParams],
+      queryFn: ({ pageParam }) => getEmployees(subset, { ...rawParams, page: pageParam }),
+      initialPageParam: 1 as number,
+      getNextPageParam: (lastPage, allPages) => {
+        const total = (lastPage as { total?: number })?.total ?? 0;
+        const loaded = allPages.reduce(
+          (sum, p) => sum + ((p as { rows?: unknown[] })?.rows?.length ?? 0),
+          0,
+        );
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      select: dedupeAndFlatten,
     });
+
+  export const useEmployeesInfinite = <T extends EmployeeSubsetKey, LP extends EmployeeListParams>(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useInfiniteQuery({
+        ...getEmployeesInfiniteQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
 
   export async function save(spa: EmployeeSaveParams[]): Promise<number[]> {
     return fetch({
@@ -1004,10 +1309,12 @@ export namespace DocumentService {
     id: number,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getDocumentQueryOptions(subset, id),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getDocumentQueryOptions(subset, id),
+        ...options,
+      }),
+    );
 
   export async function findMany<T extends DocumentSubsetKey, LP extends DocumentListParams>(
     subset: T,
@@ -1033,10 +1340,12 @@ export namespace DocumentService {
     rawParams?: LP,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...findManyQueryOptions(subset, rawParams),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...findManyQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
 
   export async function getSimilarDocumentsByVector<T extends DocumentSubsetKey>(
     subset: T,
@@ -1063,10 +1372,12 @@ export namespace DocumentService {
     params: DocumentSemanticParams,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getSimilarDocumentsByVectorQueryOptions(subset, params),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getSimilarDocumentsByVectorQueryOptions(subset, params),
+        ...options,
+      }),
+    );
 
   export async function embedQuery(
     text: string,
@@ -1095,10 +1406,12 @@ export namespace DocumentService {
     inputType: "document" | "query",
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...embedQueryQueryOptions(text, model, inputType),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...embedQueryQueryOptions(text, model, inputType),
+        ...options,
+      }),
+    );
 
   export async function save(spa: DocumentSaveParams[]): Promise<number[]> {
     return fetch({
@@ -1149,10 +1462,12 @@ export namespace DepartmentService {
     id: number,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getDepartmentQueryOptions(subset, id),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getDepartmentQueryOptions(subset, id),
+        ...options,
+      }),
+    );
 
   export async function getDepartments<
     T extends DepartmentSubsetKey,
@@ -1181,10 +1496,49 @@ export namespace DepartmentService {
     rawParams?: LP,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getDepartmentsQueryOptions(subset, rawParams),
-      ...options,
+    useRefreshable(
+      useQuery({
+        ...getDepartmentsQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
+
+  export const getDepartmentsInfiniteQueryOptions = <
+    T extends DepartmentSubsetKey,
+    LP extends DepartmentListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    infiniteQueryOptions({
+      queryKey: ["Department", "getDepartments", "infinite", subset, rawParams],
+      queryFn: ({ pageParam }) => getDepartments(subset, { ...rawParams, page: pageParam }),
+      initialPageParam: 1 as number,
+      getNextPageParam: (lastPage, allPages) => {
+        const total = (lastPage as { total?: number })?.total ?? 0;
+        const loaded = allPages.reduce(
+          (sum, p) => sum + ((p as { rows?: unknown[] })?.rows?.length ?? 0),
+          0,
+        );
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      select: dedupeAndFlatten,
     });
+
+  export const useDepartmentsInfinite = <
+    T extends DepartmentSubsetKey,
+    LP extends DepartmentListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useInfiniteQuery({
+        ...getDepartmentsInfiniteQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
 
   export async function save(spa: DepartmentSaveParams[]): Promise<number[]> {
     return fetch({
@@ -1228,10 +1582,12 @@ export namespace DashboardService {
     });
 
   export const useDashboardStats = (options?: { enabled?: boolean }) =>
-    useQuery({
-      ...getDashboardStatsQueryOptions(),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getDashboardStatsQueryOptions(),
+        ...options,
+      }),
+    );
 
   export async function getRecentActivity(period: ActivityPeriod = "7"): Promise<ActivityGroup[]> {
     return fetch({
@@ -1250,10 +1606,12 @@ export namespace DashboardService {
     period: ActivityPeriod = "7",
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getRecentActivityQueryOptions(period),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getRecentActivityQueryOptions(period),
+        ...options,
+      }),
+    );
 }
 
 export namespace CompanyService {
@@ -1278,10 +1636,12 @@ export namespace CompanyService {
     id: number,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getCompanyQueryOptions(subset, id),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getCompanyQueryOptions(subset, id),
+        ...options,
+      }),
+    );
 
   export async function getCompanies<T extends CompanySubsetKey, LP extends CompanyListParams>(
     subset: T,
@@ -1310,10 +1670,46 @@ export namespace CompanyService {
     rawParams?: LP,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getCompaniesQueryOptions(subset, rawParams),
-      ...options,
+    useRefreshable(
+      useQuery({
+        ...getCompaniesQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
+
+  export const getCompaniesInfiniteQueryOptions = <
+    T extends CompanySubsetKey,
+    LP extends CompanyListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    infiniteQueryOptions({
+      queryKey: ["Company", "getCompanies", "infinite", subset, rawParams],
+      queryFn: ({ pageParam }) => getCompanies(subset, { ...rawParams, page: pageParam }),
+      initialPageParam: 1 as number,
+      getNextPageParam: (lastPage, allPages) => {
+        const total = (lastPage as { total?: number })?.total ?? 0;
+        const loaded = allPages.reduce(
+          (sum, p) => sum + ((p as { rows?: unknown[] })?.rows?.length ?? 0),
+          0,
+        );
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      select: dedupeAndFlatten,
     });
+
+  export const useCompaniesInfinite = <T extends CompanySubsetKey, LP extends CompanyListParams>(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useInfiniteQuery({
+        ...getCompaniesInfiniteQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
 
   export async function save(spa: CompanySaveParams[]): Promise<number[]> {
     return fetch({
@@ -1364,10 +1760,12 @@ export namespace AuditLogService {
     id: number,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getAuditLogQueryOptions(subset, id),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getAuditLogQueryOptions(subset, id),
+        ...options,
+      }),
+    );
 
   export async function getAuditLogs<T extends AuditLogSubsetKey, LP extends AuditLogListParams>(
     subset: T,
@@ -1396,10 +1794,46 @@ export namespace AuditLogService {
     rawParams?: LP,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getAuditLogsQueryOptions(subset, rawParams),
-      ...options,
+    useRefreshable(
+      useQuery({
+        ...getAuditLogsQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
+
+  export const getAuditLogsInfiniteQueryOptions = <
+    T extends AuditLogSubsetKey,
+    LP extends AuditLogListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    infiniteQueryOptions({
+      queryKey: ["AuditLog", "getAuditLogs", "infinite", subset, rawParams],
+      queryFn: ({ pageParam }) => getAuditLogs(subset, { ...rawParams, page: pageParam }),
+      initialPageParam: 1 as number,
+      getNextPageParam: (lastPage, allPages) => {
+        const total = (lastPage as { total?: number })?.total ?? 0;
+        const loaded = allPages.reduce(
+          (sum, p) => sum + ((p as { rows?: unknown[] })?.rows?.length ?? 0),
+          0,
+        );
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      select: dedupeAndFlatten,
     });
+
+  export const useAuditLogsInfinite = <T extends AuditLogSubsetKey, LP extends AuditLogListParams>(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useInfiniteQuery({
+        ...getAuditLogsInfiniteQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
 }
 
 export namespace AuditEventService {
@@ -1424,10 +1858,12 @@ export namespace AuditEventService {
     id: number,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getAuditEventQueryOptions(subset, id),
-      ...options,
-    });
+    useRefreshable(
+      useQuery({
+        ...getAuditEventQueryOptions(subset, id),
+        ...options,
+      }),
+    );
 
   export async function getAuditEvents<
     T extends AuditEventSubsetKey,
@@ -1456,10 +1892,49 @@ export namespace AuditEventService {
     rawParams?: LP,
     options?: { enabled?: boolean },
   ) =>
-    useQuery({
-      ...getAuditEventsQueryOptions(subset, rawParams),
-      ...options,
+    useRefreshable(
+      useQuery({
+        ...getAuditEventsQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
+
+  export const getAuditEventsInfiniteQueryOptions = <
+    T extends AuditEventSubsetKey,
+    LP extends AuditEventListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    infiniteQueryOptions({
+      queryKey: ["AuditEvent", "getAuditEvents", "infinite", subset, rawParams],
+      queryFn: ({ pageParam }) => getAuditEvents(subset, { ...rawParams, page: pageParam }),
+      initialPageParam: 1 as number,
+      getNextPageParam: (lastPage, allPages) => {
+        const total = (lastPage as { total?: number })?.total ?? 0;
+        const loaded = allPages.reduce(
+          (sum, p) => sum + ((p as { rows?: unknown[] })?.rows?.length ?? 0),
+          0,
+        );
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      select: dedupeAndFlatten,
     });
+
+  export const useAuditEventsInfinite = <
+    T extends AuditEventSubsetKey,
+    LP extends AuditEventListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useInfiniteQuery({
+        ...getAuditEventsInfiniteQueryOptions(subset, rawParams),
+        ...options,
+      }),
+    );
 
   export async function save(spa: AuditEventSaveParams[]): Promise<number[]> {
     return fetch({
@@ -1496,6 +1971,7 @@ export const AuditEventAsyncIdConfig: AsyncIdConfig<
 > = {
   placeholderKey: "entity.AuditEvent",
   useList: AuditEventService.useAuditEvents,
+  useListInfinite: AuditEventService.useAuditEventsInfinite,
 };
 
 // AsyncIdConfig: AuditLog
@@ -1506,6 +1982,7 @@ export const AuditLogAsyncIdConfig: AsyncIdConfig<
 > = {
   placeholderKey: "entity.AuditLog",
   useList: AuditLogService.useAuditLogs,
+  useListInfinite: AuditLogService.useAuditLogsInfinite,
 };
 
 // AsyncIdConfig: Company
@@ -1516,6 +1993,7 @@ export const CompanyAsyncIdConfig: AsyncIdConfig<
 > = {
   placeholderKey: "entity.Company",
   useList: CompanyService.useCompanies,
+  useListInfinite: CompanyService.useCompaniesInfinite,
 };
 
 // AsyncIdConfig: Department
@@ -1526,6 +2004,7 @@ export const DepartmentAsyncIdConfig: AsyncIdConfig<
 > = {
   placeholderKey: "entity.Department",
   useList: DepartmentService.useDepartments,
+  useListInfinite: DepartmentService.useDepartmentsInfinite,
 };
 
 // AsyncIdConfig: Employee
@@ -1536,12 +2015,14 @@ export const EmployeeAsyncIdConfig: AsyncIdConfig<
 > = {
   placeholderKey: "entity.Employee",
   useList: EmployeeService.useEmployees,
+  useListInfinite: EmployeeService.useEmployeesInfinite,
 };
 
 // AsyncIdConfig: File
 export const FileAsyncIdConfig: AsyncIdConfig<FileSubsetKey, FileSubsetMapping, FileListParams> = {
   placeholderKey: "entity.File",
   useList: FileService.useFiles,
+  useListInfinite: FileService.useFilesInfinite,
 };
 
 // AsyncIdConfig: Milestone
@@ -1552,6 +2033,7 @@ export const MilestoneAsyncIdConfig: AsyncIdConfig<
 > = {
   placeholderKey: "entity.Milestone",
   useList: MilestoneService.useMilestones,
+  useListInfinite: MilestoneService.useMilestonesInfinite,
 };
 
 // AsyncIdConfig: Project
@@ -1562,6 +2044,7 @@ export const ProjectAsyncIdConfig: AsyncIdConfig<
 > = {
   placeholderKey: "entity.Project",
   useList: ProjectService.useProjects,
+  useListInfinite: ProjectService.useProjectsInfinite,
 };
 
 // AsyncIdConfig: SyncFixture
@@ -1572,16 +2055,19 @@ export const SyncFixtureAsyncIdConfig: AsyncIdConfig<
 > = {
   placeholderKey: "entity.SyncFixture",
   useList: SyncFixtureService.useSyncFixtures,
+  useListInfinite: SyncFixtureService.useSyncFixturesInfinite,
 };
 
 // AsyncIdConfig: Tag
 export const TagAsyncIdConfig: AsyncIdConfig<TagSubsetKey, TagSubsetMapping, TagListParams> = {
   placeholderKey: "entity.Tag",
   useList: TagService.useTags,
+  useListInfinite: TagService.useTagsInfinite,
 };
 
 // AsyncIdConfig: User
 export const UserAsyncIdConfig: AsyncIdConfig<UserSubsetKey, UserSubsetMapping, UserListParams> = {
   placeholderKey: "entity.User",
   useList: UserService.useUsers,
+  useListInfinite: UserService.useUsersInfinite,
 };

@@ -140,6 +140,13 @@ Content-Type: application/json
 
 ###
 
+GET {{baseUrl}}/api/syncFixtureSub/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
 GET {{baseUrl}}/api/syncFixture/findById
 	?subset=A
 	&id=0

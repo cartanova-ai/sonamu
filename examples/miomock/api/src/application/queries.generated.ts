@@ -2,6 +2,7 @@
  * @generated
  * 직접 수정하지 마세요.
  */
+
 /* oxlint-disable */
 
 import type { SSRQuery } from "sonamu/ssr";
@@ -68,6 +69,19 @@ export namespace TagService {
     subset: T,
     rawParams?: LP,
   ): SSRQuery => createSSRQuery("TagModel", "findMany", [subset, rawParams], ["Tag", "getTags"]);
+}
+
+export namespace SyncFixtureSubService {
+  export const getSyncFixtureSub = <T extends SyncFixtureSubsetKey>(
+    subset: T,
+    id: number,
+  ): SSRQuery =>
+    createSSRQuery(
+      "SyncFixtureSubModel",
+      "findById",
+      [subset, id],
+      ["SyncFixtureSub", "getSyncFixtureSub"],
+    );
 }
 
 export namespace SyncFixtureService {
