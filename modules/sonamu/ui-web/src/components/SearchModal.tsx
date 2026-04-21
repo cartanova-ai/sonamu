@@ -213,10 +213,6 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     const maxAttempts = 50;
     const interval = setInterval(() => {
       attempts++;
-      if (attempts >= maxAttempts) {
-        clearInterval(interval);
-        return;
-      }
       const element = document.getElementById(id);
       if (element) {
         clearInterval(interval);
@@ -228,6 +224,8 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           element.style.boxShadow = "";
           element.style.transition = "background-color 1s, box-shadow 1s";
         }, 1000);
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval);
       }
     }, 100);
   };
