@@ -422,10 +422,10 @@ export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}Subset
         "/* oxlint-disable */",
         "",
         `import { queryOptions, useQuery, useInfiniteQuery, infiniteQueryOptions, useMutation, type UseMutationOptions } from '@tanstack/react-query';`,
-        `import type { AxiosProgressEvent } from 'axios';`,
+        `import { type AxiosProgressEvent } from 'axios';`,
         `import qs from 'qs';`,
         `import { ${sonamuSharedImports} } from './sonamu.shared';`,
-        `import type { AsyncIdConfig } from '@sonamu-kit/react-components/components';`,
+        `import { type AsyncIdConfig } from '@sonamu-kit/react-components/components';`,
       ],
     };
   }
