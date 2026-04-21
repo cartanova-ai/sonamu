@@ -46,6 +46,12 @@ interface SelectPropsBase<Item> {
   renderItem?: (value: ExtractValue<Item>) => React.ReactNode;
   name?: string;
   onBlur?: React.FocusEventHandler<HTMLSelectElement>;
+  // Popover/무한스크롤 훅: async 여부와 무관하게 쓸 수 있도록 base에 둡니다.
+  // 드롭다운 모드(preload/baseFilter)의 IdAsyncSelect도 검색창 없이 무한스크롤과 재오픈 리셋을 필요로 합니다.
+  onOpenChange?: (open: boolean) => void;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
 }
 
 // valueKey 조건부 필수화: string | number일 때는 선택적, 그 외에는 필수
@@ -188,6 +194,19 @@ function useSelectCommon<Item>(
   const [searchValue, setSearchValue] = useState("");
   // async 모드에서 선택된 옵션 캐시
   const [reservedOptions, setReservedOptions] = useState(new Map());
+
+  // Popover 열림/닫힘 전이 감지해 외부 onOpenChange 콜백 발사
+  // async 여부와 무관하게 동작. 실제 값 변화가 있을 때만 트리거하여 불필요한 호출을 피합니다.
+  const onOpenChangeExternal = props.onOpenChange;
+  const prevOpenRef = useRef(isPopoverOpen);
+  useEffect(() => {
+    if (prevOpenRef.current !== isPopoverOpen) {
+      if (onOpenChangeExternal) {
+        onOpenChangeExternal(isPopoverOpen);
+      }
+      prevOpenRef.current = isPopoverOpen;
+    }
+  }, [isPopoverOpen, onOpenChangeExternal]);
 
   // 값 → 키 변환
   const getKeyForValue = useCallback(
@@ -387,23 +406,69 @@ function CommandBasedSelect<Item>({
 }: CommandBasedSelectProps<Item>) {
   type Value = ExtractValue<Item>;
   const { SD } = useSonamuBaseContext();
-  const commandListRef = useRef<HTMLDivElement>(null);
+
+  // Popover portal 마운트 타이밍 때문에 ref 콜백 + state 조합으로 DOM 노드를 구독합니다.
+  // useRef만 쓰면 첫 렌더 시 null이고 이후 재렌더 트리거가 없어 IntersectionObserver effect가
+  // 등록되지 않습니다.
+  const [listEl, setListEl] = useState<HTMLDivElement | null>(null);
+  const listRefCallback = useCallback((node: HTMLDivElement | null) => {
+    setListEl(node);
+  }, []);
+  const [sentinelEl, setSentinelEl] = useState<HTMLDivElement | null>(null);
+  const sentinelRefCallback = useCallback((node: HTMLDivElement | null) => {
+    setSentinelEl(node);
+  }, []);
+
+  // 무한스크롤 관련 props 추출 (base prop이므로 async/sync 모드 모두 사용 가능)
+  const onLoadMore = props.onLoadMore;
+  const hasMore = props.hasMore ?? false;
+  const isLoadingMore = props.isLoadingMore ?? false;
+  // 센티넬 렌더 여부: 호출자가 onLoadMore를 제공했을 때만 DOM을 붙이고 관찰합니다.
+  const hasInfiniteScroll = onLoadMore !== undefined;
+
+  // 센티넬이 뷰포트(listEl)에 진입하면 onLoadMore 호출. 로딩 중이거나 더 불러올 게 없으면 관찰하지 않습니다.
+  useEffect(() => {
+    if (!onLoadMore || !hasMore || isLoadingMore) {
+      return;
+    }
+    if (!sentinelEl || !listEl) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            onLoadMore();
+          }
+        }
+      },
+      { root: listEl, threshold: 0 },
+    );
+    observer.observe(sentinelEl);
+    return () => observer.disconnect();
+  }, [sentinelEl, listEl, onLoadMore, hasMore, isLoadingMore]);
 
   // 검색 가능 여부 판단: Async면 무조건 true, Sync면 searchable 값 사용
   const isSearchable = isAsync || ("searchable" in props && props.searchable === true);
 
   // Wheel 이벤트 핸들러
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    const target = commandListRef.current;
-    if (!target) return;
+  const handleWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      const target = listEl;
+      if (!target) {
+        return;
+      }
 
-    const canScrollDown = target.scrollTop < target.scrollHeight - target.clientHeight;
-    const canScrollUp = target.scrollTop > 0;
+      const canScrollDown = target.scrollTop < target.scrollHeight - target.clientHeight;
+      const canScrollUp = target.scrollTop > 0;
 
-    if ((e.deltaY > 0 && canScrollDown) || (e.deltaY < 0 && canScrollUp)) {
-      e.stopPropagation();
-    }
-  }, []);
+      if ((e.deltaY > 0 && canScrollDown) || (e.deltaY < 0 && canScrollUp)) {
+        e.stopPropagation();
+      }
+    },
+    [listEl],
+  );
 
   // 선택 토글 (single/multi 공용)
   const toggleOption = useCallback(
@@ -578,7 +643,7 @@ function CommandBasedSelect<Item>({
               onValueChange={handleSearchChange}
             />
           )}
-          <CommandList ref={commandListRef} onWheel={handleWheel}>
+          <CommandList ref={listRefCallback} onWheel={handleWheel}>
             {loading ? (
               <CommandEmpty>
                 <div className="flex items-center justify-center">
@@ -646,6 +711,14 @@ function CommandBasedSelect<Item>({
                     );
                   })}
                 </CommandGroup>
+                {hasInfiniteScroll && (
+                  <div
+                    ref={sentinelRefCallback}
+                    className="flex items-center justify-center py-2 text-xs text-muted-foreground"
+                  >
+                    {isLoadingMore ? <Loader2Icon className="h-3 w-3 animate-spin" /> : null}
+                  </div>
+                )}
               </>
             )}
           </CommandList>
