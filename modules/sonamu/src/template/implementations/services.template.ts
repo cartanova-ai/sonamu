@@ -221,6 +221,52 @@ export const use${inflection.camelize(hookName)} = ${typeParamsDef}(${paramsDef}
   });
           `.trim(),
           );
+
+          // infiniteQueryOptions + useInfiniteQuery (AsyncIdConfig.useListInfinite 대상 조건)
+          // 조건: resourceName이 복수형이고 methodName === "findMany"
+          const resourceName = api.options.resourceName;
+          const isInfiniteTarget =
+            !!resourceName &&
+            inflection.pluralize(resourceName) === resourceName &&
+            api.methodName === "findMany";
+
+          if (isInfiniteTarget) {
+            const infiniteMethodName = `${methodName}Infinite`;
+            const infiniteHookName = `use${inflection.camelize(hookName)}Infinite`;
+
+            functions.push(
+              `
+export const ${infiniteMethodName}QueryOptions = ${typeParamsDef}(${paramsDef}) => infiniteQueryOptions({
+  queryKey: ['${modelName}', '${methodName}', 'infinite'${paramNames ? `, ${paramNames}` : ""}],
+  queryFn: ({ pageParam }) => ${methodName}(${
+    paramNames ? paramNames.replace(/\brawParams\b/, "{ ...rawParams, page: pageParam }") : ""
+  }),
+  initialPageParam: 1 as number,
+  getNextPageParam: (lastPage, allPages) => {
+    const total = (lastPage as { total?: number })?.total ?? 0;
+    const loaded = allPages.reduce(
+      (sum, p) => sum + ((p as { rows?: unknown[] })?.rows?.length ?? 0),
+      0,
+    );
+    return loaded < total ? allPages.length + 1 : undefined;
+  },
+  select: dedupeAndFlatten,
+});
+          `.trim(),
+            );
+
+            functions.push(
+              `
+export const ${infiniteHookName} = ${typeParamsDef}(${paramsDef}${
+                paramsDef ? ", " : ""
+              }options?: { enabled?: boolean }) =>
+  useInfiniteQuery({
+    ...${infiniteMethodName}QueryOptions(${paramNames}),
+    ...options
+  });
+          `.trim(),
+            );
+          }
         }
 
         // 3. useMutation (tanstack-mutation)
@@ -315,6 +361,7 @@ ${functions.join("\n\n")}
         // resourceName에서 hook 이름 생성 (기존 로직과 동일)
         const hookName = inflection.camelize(assertDefined(listApi.options.resourceName), true);
         const useHookName = `use${inflection.camelize(hookName)}`;
+        const useHookInfiniteName = `${useHookName}Infinite`;
 
         // ListParams 타입명 구성
         const listParamsType = `${names.capital}ListParams`;
@@ -325,6 +372,7 @@ ${functions.join("\n\n")}
 export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}SubsetKey, ${names.capital}SubsetMapping, ${listParamsType}> = {
   placeholderKey: "entity.${names.capital}",
   useList: ${names.capital}Service.${useHookName},
+  useListInfinite: ${names.capital}Service.${useHookInfiniteName},
 };
           `.trim(),
         );
@@ -366,11 +414,12 @@ export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}Subset
         " */",
         "/* oxlint-disable */",
         "",
-        `import { queryOptions, useQuery, useMutation, type UseMutationOptions } from '@tanstack/react-query';`,
+        `import { queryOptions, useQuery, useInfiniteQuery, infiniteQueryOptions, useMutation, type UseMutationOptions } from '@tanstack/react-query';`,
         `import type { AxiosProgressEvent } from 'axios';`,
         `import qs from 'qs';`,
         `import { ${sonamuSharedImports} } from './sonamu.shared';`,
         `import type { AsyncIdConfig } from '@sonamu-kit/react-components/components';`,
+        `import { dedupeAndFlatten } from '@sonamu-kit/react-components/lib';`,
       ],
     };
   }
