@@ -3,20 +3,20 @@
  * 최초 1회 생성되며, 이후에는 덮어쓰지 않습니다.
  * 필요시 직접 수정할 수 있습니다.
  */
+
 /* oxlint-disable react-hooks/exhaustive-deps */ // shared
 
 /*
   fetch
 */
-import  { type AxiosRequestConfig } from "axios";
+import type { AxiosRequestConfig } from "axios";
 import axios from "axios";
-import qs from "qs";
-import { z } from 'zod';
-import  { type core } from 'zod';
 import { EventSource } from "eventsource";
+import qs from "qs";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { type core, z } from "zod";
+import { type InfiniteData } from "@tanstack/react-query";
 import { getCurrentLocale } from "@/i18n/sd.generated";
-import { useCallback } from "react";
-import  { type InfiniteData } from "@tanstack/react-query";
 
 // ISO 8601 및 타임존 포맷의 날짜 문자열을 Date 객체로 변환하는 reviver
 export function dateReviver(_key: string, value: any): any {
@@ -62,7 +62,7 @@ export async function fetch(options: AxiosRequestConfig) {
     });
     return res.data;
   } catch (e: unknown) {
-    if (axios.isAxiosError(e) && e.response && e.response.data) {
+    if (axios.isAxiosError(e) && e.response?.data) {
       const d = e.response.data as {
         message: string;
         issues: core.$ZodIssue[];
@@ -230,7 +230,7 @@ export type ApplySonamuFilter<
 export function getFieldPropType(
   fieldName: string,
   value: any,
-  numericColumns: readonly string[]
+  numericColumns: readonly string[],
 ): FilterPropType {
   // numeric 타입 체크 (명시적으로 지정된 컬럼)
   if (numericColumns.includes(fieldName)) {
@@ -330,8 +330,6 @@ export type EventHandlers<T> = {
   [K in keyof T]: (data: T[K]) => void;
 };
 
-import { useEffect, useRef, useState } from "react";
-
 export function useSSEStream<T extends Record<string, any>>(
   url: string,
   params: Record<string, any>,
@@ -380,13 +378,16 @@ export function useSSEStream<T extends Record<string, any>>(
       const fullUrl = queryString ? `${url}?${queryString}` : url;
 
       const eventSource = new EventSource(fullUrl, {
-        fetch: (url, init) =>
-          globalThis.fetch(url, {
+        // eventsource v4는 Fetch API 호환 함수 필요 (Response 객체 반환)
+        // Sonamu의 axios 기반 fetch는 파싱된 데이터를 반환하므로 네이티브 fetch 사용
+        fetch: (input, init) =>
+          globalThis.fetch(input, {
             ...init,
             headers: {
               ...init?.headers,
               "Accept-Language": getCurrentLocale(),
             },
+            credentials: "include",
           }),
       });
       eventSourceRef.current = eventSource;
@@ -415,6 +416,9 @@ export function useSSEStream<T extends Record<string, any>>(
           return; // 이미 새로운 연결이 있으면 무시
         }
 
+        // EventSource 내장 자동 재연결 방지를 위해 즉시 close
+        eventSource.close();
+
         setState((prev) => ({
           ...prev,
           isConnected: false,
@@ -422,30 +426,33 @@ export function useSSEStream<T extends Record<string, any>>(
           isEnded: false,
         }));
 
-        // 자동 재연결 시도
-        if (state.retryCount < retry) {
-          retryTimeoutRef.current = setTimeout(() => {
-            // 여전히 같은 연결인지 확인
-            if (eventSourceRef.current === eventSource) {
-              setState((prev) => ({
-                ...prev,
-                retryCount: prev.retryCount + 1,
-                isEnded: false,
-              }));
-              connect();
-            }
-          }, retryInterval);
-        } else {
-          setState((prev) => ({
-            ...prev,
-            error: `Connection failed after ${retry} attempts`,
-          }));
-        }
+        // 자체 재연결 로직 (EventSource 내장 재연결 대신)
+        setState((prev) => {
+          if (prev.retryCount < retry) {
+            retryTimeoutRef.current = setTimeout(() => {
+              // cleanup으로 정리되지 않았는지 확인
+              if (retryTimeoutRef.current !== null) {
+                setState((inner) => ({
+                  ...inner,
+                  retryCount: inner.retryCount + 1,
+                  isEnded: false,
+                }));
+                connect();
+              }
+            }, retryInterval);
+            return prev;
+          } else {
+            eventSourceRef.current = null;
+            return {
+              ...prev,
+              error: `Connection failed after ${retry} attempts`,
+            };
+          }
+        });
       };
 
       // 공통 'end' 이벤트 처리 (사용자 정의 이벤트와 별도)
       eventSource.addEventListener("end", () => {
-        console.log("SSE 연결 정상종료");
         if (eventSourceRef.current === eventSource) {
           eventSource.close();
           eventSourceRef.current = null;
@@ -515,9 +522,16 @@ export function useSSEStream<T extends Record<string, any>>(
     }
   };
 
-  // 연결 시작
+  // 연결 시작 (단일 effect로 연결 lifecycle 관리)
   useEffect(() => {
     if (enabled) {
+      // state 초기화
+      setState({
+        isConnected: false,
+        error: null,
+        retryCount: 0,
+        isEnded: false,
+      });
       connect();
     }
 
@@ -533,13 +547,6 @@ export function useSSEStream<T extends Record<string, any>>(
       }
     };
   }, [url, JSON.stringify(params), enabled]);
-
-  // 파라미터가 변경되면 재연결
-  useEffect(() => {
-    if (enabled && eventSourceRef.current) {
-      connect();
-    }
-  }, [JSON.stringify(params)]);
 
   return state;
 }
