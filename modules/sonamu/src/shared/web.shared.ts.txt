@@ -481,7 +481,7 @@ export function useSSEStream<T extends Record<string, any>>(
             }
 
             try {
-              const data = JSON.parse(event.data);
+              const data = JSON.parse(event.data, dateReviver);
               handler(data);
             } catch (error) {
               console.error(`Failed to parse SSE data for event ${eventType}:`, error);
@@ -502,7 +502,7 @@ export function useSSEStream<T extends Record<string, any>>(
         }
 
         try {
-          const data = JSON.parse(event.data);
+          const data = JSON.parse(event.data, dateReviver);
           // 'message' 핸들러가 있으면 호출
           const messageHandler = handlersRef.current["message" as keyof T];
           if (messageHandler) {
