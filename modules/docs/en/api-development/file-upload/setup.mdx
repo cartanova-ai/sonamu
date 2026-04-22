@@ -44,10 +44,11 @@ class FileModelClass extends BaseModelClass<
 
   // Single file upload
   @upload()
-  async uploadSingle(): Promise<{
+  async uploadSingle(params: { title?: string }): Promise<{
     fileId: number;
     url: string;
   }> {
+    const { title } = params;
     const { bufferedFiles } = Sonamu.getContext();
     const file = bufferedFiles?.[0];
 
@@ -74,6 +75,7 @@ class FileModelClass extends BaseModelClass<
         mime_type: file.mimetype,
         size: file.size,
         url,
+        title,
       })
       .returning({ id: "id" });
 
@@ -99,13 +101,14 @@ class FileModelClass extends BaseModelClass<
   }
 
   @upload()
-  async uploadMultiple(): Promise<{
+  async uploadMultiple(params: { category?: string }): Promise<{
     uploadedFiles: Array<{
       fileId: number;
       filename: string;
       url: string;
     }>;
   }> {
+    const { category } = params;
     const { bufferedFiles } = Sonamu.getContext();
 
     if (!bufferedFiles || bufferedFiles.length === 0) {
@@ -128,6 +131,7 @@ class FileModelClass extends BaseModelClass<
           mime_type: file.mimetype,
           size: file.size,
           url,
+          category,
         })
         .returning({ id: "id" });
 
