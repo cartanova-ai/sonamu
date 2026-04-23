@@ -74,6 +74,9 @@ function writeToStorage(history: StoredRunHistory): StorageWriteResult {
         quotaHintBytes: SESSION_STORAGE_QUOTA_HINT_BYTES,
       };
     }
+    // Quota 이외의 에러(SecurityError 등)는 sessionStorage 자체를 사용할 수 없는 환경이므로,
+    // 인메모리 상태에는 영향을 주지 않되, 개발자가 인지할 수 있도록 경고를 남깁니다.
+    console.warn("[sonamu] sessionStorage write failed:", err);
     return { ok: true };
   }
 }
