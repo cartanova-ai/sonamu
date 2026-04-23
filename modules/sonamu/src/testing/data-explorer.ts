@@ -323,7 +323,7 @@ export class DataExplorer {
     }
 
     const entity = this.entityManager.get(entityName);
-    const recordIds = records.map((r) => r.id).filter((id) => id != null);
+    const recordIds = records.map((r) => r.id).filter(Boolean);
 
     // 1. Forward references: 이 entity가 참조하는 다른 entity
     const forwardRelationProps = entity.props.filter(
@@ -346,7 +346,7 @@ export class DataExplorer {
       const foreignKeyName = `${prop.name}_id`;
       const referencedIds = records
         .map((record) => record[foreignKeyName])
-        .filter((id) => id != null) as number[];
+        .filter(Boolean) as number[];
 
       if (referencedIds.length === 0) {
         continue;

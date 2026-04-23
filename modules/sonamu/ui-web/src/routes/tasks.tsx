@@ -61,11 +61,10 @@ function formatMs(ms: number): string {
 function formatRetryPolicy(policy: WorkflowDefinitionInfo["retryPolicy"]): string {
   if (!policy) return "-";
   const parts: string[] = [];
-  if (policy.maxAttempts != null) parts.push(`최대 ${policy.maxAttempts}회`);
-  if (policy.initialIntervalMs != null) parts.push(`초기 ${formatMs(policy.initialIntervalMs)}`);
-  if (policy.backoffCoefficient != null) parts.push(`배수 ${policy.backoffCoefficient}x`);
-  if (policy.maximumIntervalMs != null)
-    parts.push(`최대간격 ${formatMs(policy.maximumIntervalMs)}`);
+  if (policy.maxAttempts) parts.push(`최대 ${policy.maxAttempts}회`);
+  if (policy.initialIntervalMs) parts.push(`초기 ${formatMs(policy.initialIntervalMs)}`);
+  if (policy.backoffCoefficient) parts.push(`배수 ${policy.backoffCoefficient}x`);
+  if (policy.maximumIntervalMs) parts.push(`최대간격 ${formatMs(policy.maximumIntervalMs)}`);
   if (policy.hasDynamicPolicy) parts.push("(+ dynamic)");
   return parts.length > 0 ? parts.join(" · ") : "-";
 }

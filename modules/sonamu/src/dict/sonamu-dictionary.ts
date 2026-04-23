@@ -631,7 +631,7 @@ export class SonamuDictionary {
     const stats: Record<string, { total: number; filled: number; percent: number }> = {};
     const total = rows.length;
     for (const locale of locales) {
-      const filled = rows.filter((row) => row[locale] != null && row[locale] !== "").length;
+      const filled = rows.filter((row) => !!row[locale]).length;
       const percent = total > 0 ? Math.round((filled / total) * 100) : 0;
       stats[locale] = { total, filled, percent };
     }

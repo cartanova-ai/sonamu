@@ -871,12 +871,7 @@ function genNormalColumnDefinition(column: MigrationColumn): string {
     chains.push(`jsonb('${column.name}')`);
   } else {
     // type, length
-    let extraType: string | undefined;
-    chains.push(
-      `${column.type}('${column.name}'${
-        column.length ? `, ${column.length}` : ""
-      }${extraType ? `, '${extraType}'` : ""})`,
-    );
+    chains.push(`${column.type}('${column.name}'${column.length ? `, ${column.length}` : ""})`);
   }
 
   // nullable

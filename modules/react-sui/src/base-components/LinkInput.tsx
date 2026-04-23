@@ -1,6 +1,14 @@
 import { Button, Input } from "semantic-ui-react";
 import { type InputProps } from "semantic-ui-react";
 
+function isValidUrl(someString: string | undefined | null): boolean {
+  if (someString === null || someString === undefined) {
+    return false;
+  }
+
+  return URL.canParse(someString);
+}
+
 export function LinkInput(
   props: InputProps & {
     handleButtonClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
@@ -14,19 +22,6 @@ export function LinkInput(
         window.open(props.value);
       }
     });
-
-  const isValidUrl = (someString: string | undefined | null) => {
-    if (someString === null || someString === undefined) {
-      return false;
-    }
-
-    try {
-      new URL(someString ?? "");
-      return true;
-    } catch {
-      return false;
-    }
-  };
 
   return (
     <Input

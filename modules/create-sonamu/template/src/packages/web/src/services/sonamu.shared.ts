@@ -9,7 +9,7 @@
 /*
   fetch
 */
-import { type AxiosRequestConfig } from "axios";
+import { type AxiosRequestConfig, isAxiosError } from "axios";
 import axios from "axios";
 import qs from "qs";
 import { type core, z } from "zod";
@@ -61,7 +61,7 @@ export async function fetch(options: AxiosRequestConfig) {
     });
     return res.data;
   } catch (e: unknown) {
-    if (axios.isAxiosError(e) && e.response && e.response.data) {
+    if (isAxiosError(e) && e.response && e.response.data) {
       const d = e.response.data as {
         message: string;
         issues: core.$ZodIssue[];
@@ -378,8 +378,8 @@ export function useSSEStream<T extends Record<string, any>>(
       const fullUrl = queryString ? `${url}?${queryString}` : url;
 
       const eventSource = new EventSource(fullUrl, {
-        fetch: (url, init) =>
-          globalThis.fetch(url, {
+        fetch: (fetchUrl, init) =>
+          globalThis.fetch(fetchUrl, {
             ...init,
             headers: {
               ...init?.headers,
@@ -397,7 +397,7 @@ export function useSSEStream<T extends Record<string, any>>(
         isEnded: false,
       }));
 
-      eventSource.onopen = () => {
+      eventSource.addEventListener("open", () => {
         setState((prev) => ({
           ...prev,
           isConnected: true,
@@ -405,9 +405,9 @@ export function useSSEStream<T extends Record<string, any>>(
           retryCount: 0,
           isEnded: false,
         }));
-      };
+      });
 
-      eventSource.onerror = (_event) => {
+      eventSource.addEventListener("error", (_event) => {
         // 이미 다른 연결로 교체되었는지 확인
         if (eventSourceRef.current !== eventSource) {
           return; // 이미 새로운 연결이 있으면 무시
@@ -439,7 +439,7 @@ export function useSSEStream<T extends Record<string, any>>(
             error: `Connection failed after ${retry} attempts`,
           }));
         }
-      };
+      });
 
       // 공통 'end' 이벤트 처리 (사용자 정의 이벤트와 별도)
       eventSource.addEventListener("end", () => {
@@ -486,7 +486,7 @@ export function useSSEStream<T extends Record<string, any>>(
       });
 
       // 기본 message 이벤트 처리 (event 타입이 없는 경우)
-      eventSource.onmessage = (event) => {
+      eventSource.addEventListener("message", (event) => {
         // 여전히 현재 연결인지 확인
         if (eventSourceRef.current !== eventSource) {
           return;
@@ -502,7 +502,7 @@ export function useSSEStream<T extends Record<string, any>>(
         } catch (error) {
           console.error("Failed to parse SSE message:", error);
         }
-      };
+      });
     } catch (error) {
       setState((prev) => ({
         ...prev,
@@ -603,7 +603,7 @@ export function dedupeAndFlatten<TRow extends { id?: unknown }>(
   for (const page of data.pages) {
     for (const row of page?.rows ?? []) {
       const id = row?.id;
-      if (id != null) {
+      if (id !== null && id !== undefined) {
         if (seen.has(id)) {
           continue;
         }

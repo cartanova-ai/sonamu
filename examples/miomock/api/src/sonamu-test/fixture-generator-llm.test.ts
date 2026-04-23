@@ -153,7 +153,7 @@ describe("FixtureGenerator LLM", () => {
     if (bioProp) {
       // bio.cone의 note를 제거하여 원래 상태로 복원
       if (bioProp.cone?.note) {
-        const { note, ...rest } = bioProp.cone;
+        const { note: _note, ...rest } = bioProp.cone;
         bioProp.cone = Object.keys(rest).length > 0 ? rest : undefined;
       }
     }

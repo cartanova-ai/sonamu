@@ -9,7 +9,7 @@
 /*
   fetch
 */
-import type { AxiosRequestConfig } from "axios";
+import  { type AxiosRequestConfig } from "axios";
 import axios from "axios";
 import { EventSource } from "eventsource";
 import qs from "qs";
@@ -612,7 +612,7 @@ export function dedupeAndFlatten<TRow extends { id?: unknown }>(
   for (const page of data.pages) {
     for (const row of page?.rows ?? []) {
       const id = row?.id;
-      if (id != null) {
+      if (id) {
         if (seen.has(id)) {
           continue;
         }

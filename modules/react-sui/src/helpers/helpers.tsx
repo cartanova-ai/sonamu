@@ -61,17 +61,17 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
   const [form, setForm] = useState<z.infer<T>>(defaultValue);
   const [errorObjs, setErrorObjs] = useState(new Map());
 
-  function getEmptyStringTo(zType: T, objPath: string): "normal" | "nullable" | "optional" {
+  function getEmptyStringTo(innerZType: T, objPath: string): "normal" | "nullable" | "optional" {
     const zTypeObjPath = objPath
       .replace(/\./g, ".shape.")
       .replace(/\[[^\]]+\]/g, ".element")
       .replace(/^\.element/, "element");
 
     let targetZType: unknown;
-    if (zType instanceof z.ZodObject) {
-      targetZType = get(zType.shape, zTypeObjPath);
-    } else if (zType instanceof z.ZodArray) {
-      targetZType = get(zType, zTypeObjPath);
+    if (innerZType instanceof z.ZodObject) {
+      targetZType = get(innerZType.shape, zTypeObjPath);
+    } else if (innerZType instanceof z.ZodArray) {
+      targetZType = get(innerZType, zTypeObjPath);
     }
 
     if (targetZType === undefined) {
@@ -185,10 +185,10 @@ export function useListParams<U extends z.ZodType<any>, T extends z.infer<U>>(
   // searchParams 변경시에 리스트 필터 변경
   useEffect(() => {
     if (options?.disableSearchParams !== true) {
-      const query = searchParamsToParams(searchParams, zType);
+      const updatedQuery = searchParamsToParams(searchParams, zType);
       const newListParams = {
         ...defaultValue,
-        ...query,
+        ...updatedQuery,
       };
       if (!equal(newListParams, listParams)) {
         setListParams(newListParams);
@@ -267,8 +267,8 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
   return {
     getSelected: (key: T) => selection.get(key) ?? false,
     toggle: (key: T) => {
-      setSelection((selection) => {
-        return new Map([...selection, [key, !(selection.get(key) ?? false)]]);
+      setSelection((prev) => {
+        return new Map([...prev, [key, !(prev.get(key) ?? false)]]);
       });
     },
     selectedKeys,

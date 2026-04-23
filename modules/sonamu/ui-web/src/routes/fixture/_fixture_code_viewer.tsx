@@ -245,14 +245,14 @@ const CodeBlock = ({
   };
 
   useEffect(() => {
-    setSelectedLines(new Array(code.split("\n").length).fill(false));
+    setSelectedLines(Array.from({ length: code.split("\n").length }, () => false));
   }, [code]);
 
   return (
     <Markdown
       children={`\`\`\`${language} ${filename ? `title="${filename}"` : ""}\n${code}\n\`\`\``}
       components={{
-        code({ children, className, node, ref, ...rest }) {
+        code({ children, className: _className, node: _node, ref: _ref, ...rest }) {
           // Remove leading/trailing newlines which might be added by the markdown parser
           const codeContent = String(children).trimEnd();
 

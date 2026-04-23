@@ -215,4 +215,3 @@ export function expectQuery(query: string, part?: QueryPart) {
   const extractedSql = extractors[part](ast);
   return expect(extractedSql);
 }
-4;

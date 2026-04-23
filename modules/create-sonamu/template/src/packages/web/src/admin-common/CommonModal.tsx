@@ -56,10 +56,10 @@ export function useCommonModal() {
   const [atomValue, setAtomValue] = useAtom(commonModalAtom);
   const { open, reactNode, onCompleted, onControlledClose } = atomValue;
 
-  const openModal = (reactNode: React.ReactNode, props?: ExtendedDialogProps) => {
+  const openModal = (modalContent: React.ReactNode, props?: ExtendedDialogProps) => {
     setAtomValue({
       open: true,
-      reactNode,
+      reactNode: modalContent,
       ...props,
     });
   };

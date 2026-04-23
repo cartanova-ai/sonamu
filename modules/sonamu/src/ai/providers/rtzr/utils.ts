@@ -23,7 +23,7 @@ export function handleFetchError({
   ) {
     const cause = (error as { cause?: Error }).cause;
 
-    if (cause != null) {
+    if (cause) {
       return new APICallError({
         message: `Cannot connect to API: ${cause.message}`,
         cause,

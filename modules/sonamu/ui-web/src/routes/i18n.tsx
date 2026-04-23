@@ -397,7 +397,7 @@ function I18nIndex() {
                       </span>
                     </TableCell>
                     {locales.map((locale) => {
-                      const isEmpty = row[locale] == null || row[locale] === "";
+                      const isEmpty = !row[locale];
                       return renderEditableCell(
                         row,
                         locale,

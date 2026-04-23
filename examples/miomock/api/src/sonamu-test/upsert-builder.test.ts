@@ -384,10 +384,11 @@ describe("Upsert Builder", () => {
       expect(empTable.rows).toHaveLength(1);
 
       const empRow = empTable.rows[0];
-      expect(isRefField(empRow?.user_id)).toBe(true);
-      expect((empRow?.user_id as UBRef).of).toBe("users");
-      expect((empRow?.user_id as UBRef).uuid).toBe(userRef.uuid);
-      expect((empRow?.user_id as UBRef).use).toBe("id");
+      expect(empRow).toBeDefined();
+      expect(isRefField(empRow!.user_id)).toBe(true);
+      expect((empRow!.user_id as UBRef).of).toBe("users");
+      expect((empRow!.user_id as UBRef).uuid).toBe(userRef.uuid);
+      expect((empRow!.user_id as UBRef).use).toBe("id");
 
       // [expect] references에 참조 정보 저장됨
       expect(empTable.references).toEqual(new Set(["users.id"]));
@@ -424,7 +425,8 @@ describe("Upsert Builder", () => {
 
       // [expect] rows에 use: "custome-value" 유지됨
       const empRow = ub.getTable("employees").rows[0];
-      expect((empRow?.user_id as UBRef).use).toBe("custome-value");
+      expect(empRow).toBeDefined();
+      expect((empRow!.user_id as UBRef).use).toBe("custome-value");
 
       // [expect] references에 "users.custome-value"로 저장됨
       const empTable = ub.getTable("employees");

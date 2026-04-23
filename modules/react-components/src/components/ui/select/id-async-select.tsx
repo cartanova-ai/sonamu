@@ -202,7 +202,7 @@ export function IdAsyncSelect<
 
   // 유틸
   const isNotEmpty = (val: unknown): boolean => {
-    if (val == null || val === "") {
+    if (val === null || val === undefined || val === "") {
       return false;
     }
     if (typeof val === "number") {
@@ -214,7 +214,7 @@ export function IdAsyncSelect<
   // baseListParams에 search/orderBy/queryMode 외의 의미 있는 필터값이 있는지 확인
   const IGNORED_FILTER_KEYS = new Set(["search", "orderBy", "queryMode", "num", "page", "keyword"]);
   const hasBaseFilter =
-    baseListParams != null &&
+    baseListParams &&
     Object.entries(baseListParams).some(([k, v]) => !IGNORED_FILTER_KEYS.has(k) && isNotEmpty(v));
 
   // preload 또는 baseFilter가 있으면 드롭다운 모드로 취급 (비검색 상태에서도 목록 즉시 노출)
@@ -248,7 +248,7 @@ export function IdAsyncSelect<
     [rows, singleValue, valueField],
   );
 
-  const shouldLoadById = singleValue != null && !selectedInRows;
+  const shouldLoadById = singleValue !== null && !selectedInRows;
   const selectedQuery = config.useList(
     subset,
     { id: singleValue, num: 1, page: 1 },
@@ -349,7 +349,7 @@ export function IdAsyncSelect<
     const itemMap = new Map<TValue, { value: TValue; label: string }>();
 
     // Single 모드: 선택된 항목 추가
-    if (!multiple && selectedRow && singleValue != null) {
+    if (!multiple && selectedRow && singleValue !== null) {
       rowMap.set(singleValue, selectedRow);
       itemMap.set(singleValue, {
         value: singleValue,

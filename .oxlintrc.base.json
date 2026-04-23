@@ -1,13 +1,14 @@
 {
   "plugins": ["typescript", "import", "react", "jsx-a11y", "unicorn"],
   "rules": {
+    "no-unused-expressions": "off",
     "no-empty-pattern": "off",
     "radix": "off",
     "@typescript-eslint/no-empty-interface": "off",
     "@typescript-eslint/ban-types": "off",
     "react/no-array-index-key": "off",
     "no-focused-tests": "warn",
-    "eqeqeq": "warn",
+    "eqeqeq": "error",
     "react/react-in-jsx-scope": "off",
     "jsx-a11y/label-has-associated-control": "off",
     "jsx-a11y/prefer-tag-over-role": "off",
@@ -26,6 +27,17 @@
     ],
     "@typescript-eslint/no-floating-promises": "off",
     "@typescript-eslint/no-unsafe-type-assertion": "off",
-    "@typescript-eslint/no-unnecessary-type-arguments": "off"
+    "@typescript-eslint/no-unnecessary-type-arguments": "off",
+    "@typescript-eslint/restrict-template-expressions": "off",
+    "@typescript-eslint/no-base-to-string": "off",
+    "@typescript-eslint/no-redundant-type-constituents": "off",
+    "@typescript-eslint/no-misused-spread": "off",
+    "@typescript-eslint/await-thenable": "off",
+    "@typescript-eslint/unbound-method": "off",
+    "@typescript-eslint/require-array-sort-compare": "off",
+    "react-hooks/exhaustive-deps": "off",
+    "import/no-unassigned-import": "off",
+    "unicorn/no-thenable": "off",
+    "jsx-a11y/heading-has-content": "off"
   }
 }

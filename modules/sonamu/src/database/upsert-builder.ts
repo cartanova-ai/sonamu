@@ -310,7 +310,7 @@ export class UpsertBuilder {
 
         // uuid를 별도로 보관하고, DB에 저장할 데이터에서 제거
         const originalUuids = dataChunk.map((r) => r.uuid as string);
-        const dataForDb = dataChunk.map(({ uuid, ...rest }) => rest);
+        const dataForDb = dataChunk.map(({ uuid: _, ...rest }) => rest);
 
         let resultRows: { id: number | string; [key: string]: unknown }[];
 
@@ -331,7 +331,7 @@ export class UpsertBuilder {
               for (const row of rowsWithoutId) {
                 const values = columns.map((col) => row[col]);
                 // null이 포함된 조건은 제외 (PostgreSQL UNIQUE는 NULL 무시)
-                if (!values.some((v) => v == null)) {
+                if (!values.some((v) => v === null || v === undefined)) {
                   conditions.push(values);
                 }
               }
@@ -448,7 +448,7 @@ export class UpsertBuilder {
 
       // 현재 register된 레코드들의 FK 값들 추출
       const fkConditions = fkColumns.map((fkCol) => {
-        const fkValues = [...new Set(table.rows.map((row) => row[fkCol]).filter((v) => v != null))];
+        const fkValues = [...new Set(table.rows.map((row) => row[fkCol]).filter(Boolean))];
         return { column: fkCol, values: fkValues };
       });
 

@@ -168,7 +168,7 @@ export function makeResolveTypeScriptPackage(fs: LoaderFileSystem) {
       if (tsConfigJson.extends !== undefined) {
         const extendsConfigPath = new URL(replaceFragmentSlashes(tsConfigJson.extends), configPath);
         const next = await read(extendsConfigPath);
-        if (next != null) {
+        if (next) {
           compilerOptions = {
             ...next.compilerOptions,
             ...tsConfigJson.compilerOptions,
