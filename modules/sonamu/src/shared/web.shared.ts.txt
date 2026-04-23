@@ -575,7 +575,7 @@ export function dedupeAndFlatten<TRow extends { id?: unknown }>(
   for (const page of data.pages) {
     for (const row of page?.rows ?? []) {
       const id = row?.id;
-      if (id != null) {
+      if (id !== null) {
         if (seen.has(id)) {
           continue;
         }
