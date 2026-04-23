@@ -4,6 +4,7 @@ import { type CacheManager } from "../cache/types";
 import { type Entity } from "../entity/entity";
 import { type EntityManager } from "../entity/entity-manager";
 import { isBelongsToOneRelationProp, isOneToOneRelationProp, isRelationProp } from "../types/types";
+import { nonNullable } from "../utils/utils";
 
 export type DataExplorerStrategy = "sample" | "ids" | "query" | "file" | "recent" | "random";
 
@@ -323,7 +324,7 @@ export class DataExplorer {
     }
 
     const entity = this.entityManager.get(entityName);
-    const recordIds = records.map((r) => r.id).filter(Boolean);
+    const recordIds = records.map((r) => r.id).filter(nonNullable);
 
     // 1. Forward references: 이 entity가 참조하는 다른 entity
     const forwardRelationProps = entity.props.filter(
