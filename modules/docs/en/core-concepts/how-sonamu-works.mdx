@@ -196,7 +196,48 @@ export const UserModel = new UserModelClass();
 
 **Syncer** is Sonamu's core engine. It detects file changes and automatically generates code.
 
-<Frame caption="📸 Needed: Syncer operation flowchart (file change detection → code generation → synchronization)"></Frame>
+```mermaid
+graph TD
+    A[File System Change] --> B{Checksum Compare}
+    B -->|Change Detected| C[Classify Changed Files]
+    B -->|No Change| Z[Sync Complete]
+
+    C --> D{File Type Detection}
+
+    D -->|entity.json| E1[Entity Processing]
+    D -->|model.ts| E2[Model Processing]
+    D -->|types.ts| E3[Types Processing]
+    D -->|workflow.ts| E4[Workflow Processing]
+
+    E1 --> F1[Type Generation<br/>sonamu.generated.ts]
+    E1 --> F2[Subset Query Generation<br/>sonamu.generated.sso.ts]
+
+    E2 --> G1[API Metadata Extraction]
+    G1 --> G2[Service Client Generation<br/>services.generated.ts]
+
+    E3 --> H1[Type File Analysis]
+    H1 --> H2[Copy to Web]
+
+    E4 --> I1[Workflow Metadata Extraction]
+    I1 --> I2[Workflow Registration]
+
+    F1 --> J[File Synchronization]
+    F2 --> J
+    G2 --> J
+    H2 --> J
+    I2 --> J
+
+    J --> K[Checksum Update<br/>sonamu.lock]
+    K --> L[HMR Notification]
+    L --> Z
+
+    style A fill:#e1f5ff
+    style B fill:#fff4e6
+    style C fill:#fff4e6
+    style J fill:#e7f5e7
+    style K fill:#e7f5e7
+    style Z fill:#f0f0f0
+```
 
 ```typescript
 // Main roles of Syncer
