@@ -28,6 +28,8 @@ export const SingleSync: StoryObj<MetaArgs> = {
 export const MultiSync: StoryObj<MetaArgs> = {
   render: function Render(args) {
     const [values, setValues] = useState<string[]>([]);
-    return <Select {...args} multiple value={values} onValueChange={(v) => setValues(v)} />;
+    return (
+      <Select {...args} multiple value={values} onValueChange={(v) => setValues(v)} clearable />
+    );
   },
 };

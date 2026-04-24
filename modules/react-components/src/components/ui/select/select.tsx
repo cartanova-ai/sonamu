@@ -564,7 +564,13 @@ function CommandBasedSelect<Item>({
             >
               {getItemLabel(value)}
               <XCircleIcon
-                className="ml-2 h-3 w-3 cursor-pointer"
+                className="ml-2 h-3 w-3 cursor-pointer !pointer-events-auto"
+                onPointerDownCapture={(e) => {
+                  e.stopPropagation();
+                }}
+                onMouseDownCapture={(e) => {
+                  e.stopPropagation();
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleOption(value);
@@ -598,6 +604,12 @@ function CommandBasedSelect<Item>({
                   <div
                     role="button"
                     tabIndex={0}
+                    onPointerDownCapture={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onMouseDownCapture={(e) => {
+                      e.stopPropagation();
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleClear();
