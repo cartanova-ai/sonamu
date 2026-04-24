@@ -32,10 +32,10 @@
     "npm-run-all": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
-    "oxlint-tsgolint": "^0.19.0",
+    "oxlint-tsgolint": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "zx": "catalog:"
   },
-  "packageManager": "pnpm@10.32.1"
+  "packageManager": "pnpm@10.33.1"
 }

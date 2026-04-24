@@ -11,7 +11,7 @@ catalog:
   "@ai-sdk/provider": ^3.0.0
   "@ai-sdk/provider-utils": ^4.0.0
   "@ai-sdk/react": ^2.0.104
-  "@aws-sdk/client-ecr-public": ^3.958.0
+  "@aws-sdk/client-ecr-public": ^3.1034.0
   "@aws-sdk/client-s3": ^3.958.0
   "@aws-sdk/ecr-public": ^3.958.0
   "@aws-sdk/lib-storage": ^3.971.0
@@ -111,7 +111,7 @@ catalog:
   "@typescript/native-preview": ^7.0.0-dev.20251225.1
   "@uiw/react-json-view": 2.0.0-alpha.41
   "@vitejs/plugin-react": 6.0.1
-  "@vitest/coverage-v8": ^4.1.2
+  "@vitest/coverage-v8": ^4.1.5
   "@xyflow/react": ^12.9.3
   agentation: ^2.3.0
   ai: ^6.0.1
@@ -128,7 +128,7 @@ catalog:
   classnames: ^2.3.2
   clsx: ^2.1.1
   cmdk: ^1.1.1
-  corepack: ^0.34.1
+  corepack: ^0.34.7
   date-fns: ^4.1.0
   date-fns-tz: ^3.2.0
   debug: ^4.3.7
@@ -166,7 +166,8 @@ catalog:
   npm-run-all: ^4.1.5
   oxc-transform: ^0.123.0
   oxfmt: ^0.43.0
-  oxlint: ^1.58.0
+  oxlint: ^1.61.0
+  oxlint-tsgolint: ^0.19.0
   p-event: ^6.0.1
   p-timeout: ^6.1.4
   parse-imports: ^2.2.1
@@ -206,8 +207,8 @@ catalog:
   ts-node: ^10.9.2
   tsdown: ^0.12.5
   tsicli: ^1.0.5
-  tsx: ^4.20.6
-  typescript: ^6.0.0
+  tsx: ^4.21.0
+  typescript: ^6.0.3
   unplugin-icons: 0.20.2
   uuid: ^13.0.0
   vaul: ^1.1.2
@@ -220,8 +221,27 @@ catalog:
   zod: ^4.3.6
   zx: ^8.8.5
 
+# 릴리즈 이후 2일 이상 된 패키지만 기본적으로 사용
+minimumReleaseAge: 2880
+# 메인 툴체인에 대해선 적용 제외
+minimumReleaseAgeExclude:
+  - oxlint*
+  - oxfmt
+  - oxc*
+  - "@oxc-project/*"
+  - vite
+  - vitest
+  - vite*
+  - vitest*
+  - "@vitejs/*"
+  - tsdown
+  - rolldown
+  - typescript
+  - "@typescript/*"
+
 onlyBuiltDependencies:
   - "@parcel/watcher"
+  - "@swc/core"
   - bcrypt
   - esbuild
   - libpq
