@@ -473,7 +473,7 @@ class UserModelClass extends BaseModelClass {
     const context = Sonamu.getContext();
 
     // Execute DB query
-    return this.getPuri("r", subsets).where("id", id).first();
+    return this.getPuri("r").table("users").where("id", id).first();
   }
 }
 ```
