@@ -256,8 +256,17 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             const entity = EntityManager.get(entityId);
             const subsetRows = entity.getSubsetRows();
 
+            // zod 인스턴스를 spread하면 JSON.stringify가 reference를 인라인으로 풀어내며 응답이 수백 MB까지 부풀어 V8 string limit를 초과한다.
+            const {
+              types: _types,
+              enums: _enums,
+              enumCones: _enumCones,
+              subsetCones: _subsetCones,
+              ...rest
+            } = entity;
+
             return {
-              ...entity,
+              ...rest,
               flattenSubsetRows: flattenSubsetRows(subsetRows),
             };
           }),
