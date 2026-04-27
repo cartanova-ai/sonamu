@@ -164,7 +164,7 @@ class UserModelClass extends BaseModelClass<
   // CRUD API
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
   async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
-    const user = await this.getPuri("r").where("id", id).first();
+    const user = await this.getPuri("r").table("users").where("id", id).first();
     return user;
   }
 
@@ -172,6 +172,7 @@ class UserModelClass extends BaseModelClass<
   @api({ httpMethod: "POST", clients: ["axios"] })
   async changePassword(userId: number, newPassword: string): Promise<void> {
     await this.getPuri("w")
+      .table("users")
       .where("id", userId)
       .update({ password: await this.hashPassword(newPassword) });
   }
@@ -354,7 +355,7 @@ export class UserService {
 ```typescript
 @api({ httpMethod: "GET" })
 async findById(id: number): Promise<Post> {
-  return await this.getPuri("r").where("id", id).first();
+  return await this.getPuri("r").table("posts").where("id", id).first();
 }
 ```
 **저장 시 자동 생성:**
@@ -497,7 +498,7 @@ type User = {
 
 // 3. Model 메서드 (타입 안전)
 async findByEmail(email: string): Promise<User> {
-  return await this.getPuri("r").where("email", email).first();
+  return await this.getPuri("r").table("users").where("email", email).first();
 }
 
 ↓
