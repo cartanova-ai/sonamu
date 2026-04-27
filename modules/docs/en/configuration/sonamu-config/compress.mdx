@@ -249,7 +249,7 @@ export class ArticleModel {
   @compress() // Large list response
   @api()
   static async list() {
-    return this.getPuri("r").select("*");
+    return this.getPuri("r").table("articles").select("*");
   }
 
   @compress() // Large detail data

@@ -298,12 +298,12 @@ class UserModelClass extends BaseModelClass<
 
   // Find user by email
   async findByEmail(email: string): Promise<User | null> {
-    return this.getPuri("r").where("email", email).first();
+    return this.getPuri("r").table("users").where("email", email).first();
   }
 
   // Find only active users
   async findActiveUsers() {
-    return this.getPuri("r").where("is_active", true).where("deleted_at", null);
+    return this.getPuri("r").table("users").where("is_active", true).where("deleted_at", null);
   }
 }
 ```

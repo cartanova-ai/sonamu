@@ -242,7 +242,7 @@ class UserModelClass extends BaseModelClass<
     // 비밀번호 변경 로직
     const hashedPassword = await this.hashPassword(newPassword);
 
-    await this.getPuri("w").where("id", userId).update({ password: hashedPassword });
+    await this.getPuri("w").table("users").where("id", userId).update({ password: hashedPassword });
   }
 
   private async hashPassword(password: string): Promise<string> {

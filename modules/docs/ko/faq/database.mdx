@@ -113,15 +113,16 @@ const result = await UserModel.getPuri()
 **WHERE IN 서브쿼리:**
 
 ```typescript
-const activeUserIds = UserModel.getPuri("r").select("id").where({ status: "active" });
+const activeUserIds = UserModel.getPuri("r").table("users").select("id").where({ status: "active" });
 
-const orders = await OrderModel.getPuri().select("*").whereIn("user_id", activeUserIds);
+const orders = await OrderModel.getPuri("r").table("orders").select("*").whereIn("user_id", activeUserIds);
 ```
 
 **FROM 서브쿼리:**
 
 ```typescript
 const subquery = UserModel.getPuri("r")
+  .table("users")
   .select("user_id", { count: Puri.count() })
   .groupBy("user_id");
 

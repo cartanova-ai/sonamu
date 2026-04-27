@@ -288,7 +288,7 @@ Use the DataLoader pattern when repeated queries are needed:
 class OrderModelClass extends BaseModelClass {
   // Orders loader by user
   private userOrdersLoader = new DataLoader(async (userIds: number[]) => {
-    const orders = await this.getPuri("r").select("*").whereIn("user_id", userIds);
+    const orders = await this.getPuri("r").table("orders").select("*").whereIn("user_id", userIds);
 
     // Group by user_id
     const grouped = userIds.map((userId) => orders.filter((o) => o.user_id === userId));
@@ -324,7 +324,7 @@ class PostModelClass extends BaseModelClass {
   // N+1 occurring
   @api({ httpMethod: "GET" })
   async listPostsSlow() {
-    const posts = await this.getPuri("r").select("id", "title", "content");
+    const posts = await this.getPuri("r").table("posts").select("id", "title", "content");
 
     // N+1 occurring!
     for (const post of posts) {

@@ -154,7 +154,7 @@ class UserModelClass extends BaseModelClass<
 
   // Add methods here
   async findByEmail(email: string): Promise<User | null> {
-    return this.getPuri("r").where("email", email).first();
+    return this.getPuri("r").table("users").where("email", email).first();
   }
 }
 ```
@@ -248,12 +248,12 @@ class ProductModelClass extends BaseModelClass<
 
   // Find products by category
   async findByCategory(categoryId: number) {
-    return this.getPuri("r").where("category_id", categoryId).where("deleted_at", null);
+    return this.getPuri("r").table("products").where("category_id", categoryId).where("deleted_at", null);
   }
 
   // Find products by price range
   async findByPriceRange(min: number, max: number) {
-    return this.getPuri("r").whereBetween("price", [min, max]);
+    return this.getPuri("r").table("products").whereBetween("price", [min, max]);
   }
 }
 ```
@@ -328,17 +328,18 @@ class UserModelClass extends BaseModelClass<
 
   // Find user by email
   async findByEmail(email: string): Promise<User | null> {
-    return this.getPuri("r").where("email", email).first();
+    return this.getPuri("r").table("users").where("email", email).first();
   }
 
   // Find only active users
   async findActiveUsers() {
-    return this.getPuri("r").where("is_active", true).where("deleted_at", null);
+    return this.getPuri("r").table("users").where("is_active", true).where("deleted_at", null);
   }
 
   // User statistics
   async getUserStats(userId: number) {
     const [stats] = await this.getPuri("r")
+      .table("users")
       .select({
         postCount: this.raw("COUNT(posts.id)"),
         commentCount: this.raw("COUNT(comments.id)"),

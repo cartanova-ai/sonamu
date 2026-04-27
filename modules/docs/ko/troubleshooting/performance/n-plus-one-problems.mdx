@@ -288,7 +288,7 @@ async function getUsersWithOrders() {
 class OrderModelClass extends BaseModelClass {
   // 사용자별 주문 로더
   private userOrdersLoader = new DataLoader(async (userIds: number[]) => {
-    const orders = await this.getPuri("r").select("*").whereIn("user_id", userIds);
+    const orders = await this.getPuri("r").table("orders").select("*").whereIn("user_id", userIds);
 
     // user_id별로 그룹화
     const grouped = userIds.map((userId) => orders.filter((o) => o.user_id === userId));
@@ -324,7 +324,7 @@ class PostModelClass extends BaseModelClass {
   // ❌ N+1 발생
   @api({ httpMethod: "GET" })
   async listPostsSlow() {
-    const posts = await this.getPuri("r").select("id", "title", "content");
+    const posts = await this.getPuri("r").table("posts").select("id", "title", "content");
 
     // N+1 발생!
     for (const post of posts) {

@@ -99,7 +99,7 @@ class UserModelClass extends BaseModelClass {
   // 5분간 캐싱
   @cache({ ttl: "5m" })
   async getActiveUsersCount(): Promise<number> {
-    const result = await this.getPuri("r").select({ count: Puri.count() }).where({ status: "active" });
+    const result = await this.getPuri("r").table("users").select({ count: Puri.count() }).where({ status: "active" });
     return result[0].count;
   }
 }
@@ -112,19 +112,19 @@ class ProductModelClass extends BaseModelClass {
   // 1시간 캐싱
   @cache({ ttl: "1h" })
   async getFeaturedProducts() {
-    return this.getPuri("r").select("*").where({ featured: true });
+    return this.getPuri("r").table("products").select("*").where({ featured: true });
   }
 
   // 1일 캐싱
   @cache({ ttl: "1d" })
   async getCategoryCounts() {
-    return this.getPuri("r").select("category", knex.raw("COUNT(*) as count")).groupBy("category");
+    return this.getPuri("r").table("products").select("category", knex.raw("COUNT(*) as count")).groupBy("category");
   }
 
   // 영구 캐싱 (수동 무효화 필요)
   @cache({ ttl: 0 })
   async getProductCategories() {
-    return this.getPuri("r").select("DISTINCT category");
+    return this.getPuri("r").table("products").select("DISTINCT category");
   }
 }
 ```
@@ -144,7 +144,7 @@ class UserModelClass extends BaseModelClass {
   // 파라미터별로 다른 캐시 생성
   @cache({ ttl: "5m" })
   async getUsersByStatus(status: string) {
-    return this.getPuri("r").select("id", "name", "email").where({ status });
+    return this.getPuri("r").table("users").select("id", "name", "email").where({ status });
   }
 }
 

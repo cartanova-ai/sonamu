@@ -295,12 +295,12 @@ class UserModelClass extends BaseModelClass<
 
   // 이메일로 사용자 찾기
   async findByEmail(email: string): Promise<User | null> {
-    return this.getPuri("r").where("email", email).first();
+    return this.getPuri("r").table("users").where("email", email).first();
   }
 
   // 활성 사용자만 조회
   async findActiveUsers() {
-    return this.getPuri("r").where("is_active", true).where("deleted_at", null);
+    return this.getPuri("r").table("users").where("is_active", true).where("deleted_at", null);
   }
 }
 ```

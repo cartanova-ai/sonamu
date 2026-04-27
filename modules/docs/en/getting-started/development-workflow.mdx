@@ -245,7 +245,7 @@ class UserModelClass extends BaseModelClass<
     // Password change logic
     const hashedPassword = await this.hashPassword(newPassword);
 
-    await this.getPuri("w").where("id", userId).update({ password: hashedPassword });
+    await this.getPuri("w").table("users").where("id", userId).update({ password: hashedPassword });
   }
 
   private async hashPassword(password: string): Promise<string> {

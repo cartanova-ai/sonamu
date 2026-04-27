@@ -459,7 +459,7 @@ export class ProductModel {
   static async list() {
     // First call: Query DB and store in cache
     // Next 10 minutes: Return from cache
-    return this.getPuri("r").select("*");
+    return this.getPuri("r").table("products").select("*");
   }
 
   @cache({ key: (id) => `product:${id}`, ttl: "1h" })

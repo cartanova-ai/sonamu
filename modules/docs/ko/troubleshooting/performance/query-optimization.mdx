@@ -311,7 +311,7 @@ import { cache } from "sonamu";
 class UserModelClass extends BaseModelClass {
   @cache({ ttl: "5m" }) // 5분 캐싱
   async getActiveUsersCount(): Promise<number> {
-    const result = await this.getPuri("r").select({ count: Puri.count() }).where({ status: "active" });
+    const result = await this.getPuri("r").table("users").select({ count: Puri.count() }).where({ status: "active" });
     return result[0].count;
   }
 }
@@ -386,7 +386,7 @@ class UserModelClass extends BaseModelClass {
   async findActiveUsers() {
     const start = Date.now();
 
-    const users = await this.getPuri("r").select("*").where({ status: "active" });
+    const users = await this.getPuri("r").table("users").select("*").where({ status: "active" });
 
     const duration = Date.now() - start;
 
