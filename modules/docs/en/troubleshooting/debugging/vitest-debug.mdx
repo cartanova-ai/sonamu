@@ -305,7 +305,8 @@ test("check mock state", () => {
 ```typescript
 test("check DB query", async () => {
   // Enable query logging (during development)
-  const result = await UserModel.getPuri()
+  const result = await UserModel.getPuri("r")
+    .table("users")
     .select("*")
     .where({ email: "test@example.com" })
     .debug() // Output query
@@ -324,7 +325,7 @@ test("verify data creation", async () => {
   await UserModel.create({ email });
 
   // Check directly from DB
-  const users = await UserModel.getPuri().select("*").getMany();
+  const users = await UserModel.getPuri("r").table("users").select("*").getMany();
 
   console.log("All users:", users);
 
