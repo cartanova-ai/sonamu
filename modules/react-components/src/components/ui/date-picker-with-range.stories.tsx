@@ -8,6 +8,9 @@ import { DatePickerWithRange } from "./date-picker";
 const meta = {
   component: DatePickerWithRange,
   tags: ["autodocs"],
+  args: {
+    CalendarIcon,
+  },
   parameters: { layout: "centered" },
 } satisfies Meta<typeof DatePickerWithRange>;
 
