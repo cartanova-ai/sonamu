@@ -31,7 +31,9 @@ describe("decorators", () => {
 
       expect(() => {
         stream({ type: "sse", events: mockEvents })(target, "findMany", { value: () => {} });
-      }).toThrow("You can use only one of @api or @stream");
+      }).toThrow(
+        "You can use only one of @api, @stream, @websocket, or @upload decorator on the same method.",
+      );
     });
 
     test("@stream 후 @api → 에러", () => {
@@ -41,7 +43,9 @@ describe("decorators", () => {
 
       expect(() => {
         api({ httpMethod: "GET", clients: ["axios"] })(target, "findMany", { value: () => {} });
-      }).toThrow("You can use only one of @api or @stream");
+      }).toThrow(
+        "You can use only one of @api, @stream, @websocket, or @upload decorator on the same method.",
+      );
     });
   });
 
