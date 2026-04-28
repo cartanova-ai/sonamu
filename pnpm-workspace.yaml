@@ -32,6 +32,7 @@ catalog:
   "@fastify/multipart": ^8
   "@fastify/passport": ^2.2.0
   "@fastify/static": ^7
+  "@fastify/websocket": ^8.3.0
   "@hookform/resolvers": ^5.2.2
   "@iconify-json/lucide": ^1.2.82
   "@iconify-json/mdi": ^1.2.3
@@ -108,6 +109,7 @@ catalog:
   "@types/react-dom": ^19.2.3
   "@types/react-syntax-highlighter": ^15.5.13
   "@types/supertest": ^6.0.3
+  "@types/ws": ^8.18.1
   "@typescript/native-preview": ^7.0.0-dev.20251225.1
   "@uiw/react-json-view": 2.0.0-alpha.41
   "@vitejs/plugin-react": 6.0.1
