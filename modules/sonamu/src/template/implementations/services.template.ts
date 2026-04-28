@@ -43,6 +43,27 @@ export class Template__services extends Template {
     const importKeys: string[] = [];
     const namespaces: string[] = [];
     let typeParamNames: string[] = [];
+    const resolveWebSocketEventTypeDef = (
+      typeRef: ApiParamType.Ref | undefined,
+      schema: Parameters<typeof zodTypeToTsTypeDef>[0],
+    ): string => {
+      if (typeRef) {
+        const candidateImportKeys: string[] = [];
+        const candidateTypeDef = apiParamTypeToTsType(typeRef, candidateImportKeys);
+
+        try {
+          for (const key of unique(candidateImportKeys)) {
+            EntityManager.getModulePath(key);
+          }
+          importKeys.push(...candidateImportKeys);
+          return candidateTypeDef;
+        } catch {
+          // 로컬 const 등 import 가능한 심볼이 아니면 기존 inline 생성으로 후퇴
+        }
+      }
+
+      return zodTypeToTsTypeDef(schema);
+    };
 
     for (const [modelName, modelApis] of apisByModel) {
       const functions: string[] = [];
@@ -80,6 +101,52 @@ export function ${methodNameStreamCamelized}(
   options: SSEStreamOptions
 ) {
   return useSSEStream<${eventsTypeDef}>(\`${apiBaseUrl}\`, params, handlers, options);
+}
+            `.trim(),
+          );
+          continue;
+        }
+
+        if (api.websocketOptions) {
+          // websocket surface는 fetch 함수 대신 typed hook을 생성함
+          const paramsWithoutContext = api.parameters.filter(
+            (param) =>
+              !ApiParamType.isContext(param.type) &&
+              !ApiParamType.isRefKnex(param.type) &&
+              !(param.optional && param.name.startsWith("_")),
+          );
+
+          const apiBaseUrl = `${Sonamu.config.api.route.prefix}${api.path}`;
+
+          const methodNameWebSocket = api.options.resourceName
+            ? `use${inflection.camelize(api.options.resourceName)}`
+            : `use${inflection.camelize(api.methodName)}`;
+          const methodNameWebSocketCamelized = inflection.camelize(methodNameWebSocket, true);
+
+          // outEvents는 수신 타입, inEvents는 send() 입력 타입으로 사용함
+          const outEventsTypeDef = resolveWebSocketEventTypeDef(
+            api.websocketOptions.outEventsTypeRef,
+            api.websocketOptions.outEvents,
+          );
+          const inEventsTypeDef = resolveWebSocketEventTypeDef(
+            api.websocketOptions.inEventsTypeRef,
+            api.websocketOptions.inEvents,
+          );
+
+          // context/refKnex/internal optional 파라미터는 클라이언트 입력에서 제외함
+          const paramsDefAsObject =
+            paramsWithoutContext.length > 0
+              ? `{ ${paramsWithoutContext.map((p) => `${p.name}: ${apiParamTypeToTsType(p.type, importKeys)}`).join(", ")} }`
+              : "{}";
+
+          functions.push(
+            `
+export function ${methodNameWebSocketCamelized}(
+  params: ${paramsDefAsObject},
+  handlers: EventHandlers<${outEventsTypeDef}>,
+  options: WebSocketChannelOptions = {}
+) {
+  return useWebSocketChannel<${outEventsTypeDef}, ${inEventsTypeDef}>(\`${apiBaseUrl}\`, params, handlers, options);
 }
             `.trim(),
           );
@@ -397,7 +464,9 @@ export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}Subset
       "fetch",
       "type EventHandlers",
       "type SSEStreamOptions",
+      "type WebSocketChannelOptions",
       "useSSEStream",
+      "useWebSocketChannel",
       "toFormData",
       ...(needsDedupeAndFlatten ? ["dedupeAndFlatten"] : []),
       ...(needsUseRefreshable ? ["useRefreshable"] : []),
