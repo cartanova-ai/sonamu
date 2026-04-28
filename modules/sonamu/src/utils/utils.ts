@@ -118,7 +118,7 @@ export function merge<T extends Record<string, any>>(defaultObj: T, userObj: T):
 
 // plain object 판별 헬퍼 함수
 // (배열, null, Date 등을 제외한 순수 객체만 true)
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return (
     value !== null &&
     typeof value === "object" &&

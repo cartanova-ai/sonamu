@@ -58,11 +58,18 @@ export function bootstrap(vi: VitestUtils, options?: BootstrapOptions) {
 
 function getMockContext(): Context {
   return {
+    transport: "http",
+    request: null as unknown as Context["request"],
+    reply: null as unknown as Context["reply"],
+    headers: {},
+    createSSE: (() => {
+      throw new Error("createSSE is not available in mock context");
+    }) as Context["createSSE"],
     session: null,
     user: null,
     naiteStore: Naite.createStore(),
     locale: "",
-  } as unknown as Context;
+  };
 }
 
 export async function runWithContext(context: Context | null, fn: () => Promise<void>) {
