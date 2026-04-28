@@ -15,11 +15,14 @@ N+1 문제는 1개의 메인 쿼리 후, N개의 추가 쿼리가 발생하는 �
 // ❌ N+1 문제 발생
 async function getUsersWithOrders() {
   // 1. 사용자 조회 (1번 쿼리)
-  const users = await UserModel.getPuri().select("id", "name"); // 100명의 사용자
+  const users = await UserModel.getPuri("r").table("users").select("id", "name"); // 100명의 사용자
 
   // 2. 각 사용자의 주문 조회 (N번 쿼리)
   for (const user of users) {
-    const orders = await OrderModel.getPuri().select("*").where({ user_id: user.id });
+    const orders = await OrderModel.getPuri("r")
+      .table("orders")
+      .select("*")
+      .where({ user_id: user.id });
 
     user.orders = orders; // 100번 쿼리!
   }
@@ -241,10 +244,13 @@ Subset이 없는 경우 whereIn으로 최적화할 수 있습니다:
 ```typescript
 // ❌ N+1 문제
 async function getUsersWithOrders() {
-  const users = await UserModel.getPuri().select("id", "name");
+  const users = await UserModel.getPuri("r").table("users").select("id", "name");
 
   for (const user of users) {
-    user.orders = await OrderModel.getPuri().select("*").where({ user_id: user.id });
+    user.orders = await OrderModel.getPuri("r")
+      .table("orders")
+      .select("*")
+      .where({ user_id: user.id });
   }
 
   return users;
@@ -253,12 +259,15 @@ async function getUsersWithOrders() {
 // ✅ whereIn으로 최적화
 async function getUsersWithOrders() {
   // 1. 사용자 조회
-  const users = await UserModel.getPuri().select("id", "name");
+  const users = await UserModel.getPuri("r").table("users").select("id", "name");
 
   const userIds = users.map((u) => u.id);
 
   // 2. 모든 주문 한 번에 조회
-  const orders = await OrderModel.getPuri().select("*").whereIn("user_id", userIds);
+  const orders = await OrderModel.getPuri("r")
+    .table("orders")
+    .select("*")
+    .whereIn("user_id", userIds);
 
   // 3. 메모리에서 매핑
   const ordersByUserId = orders.reduce(
@@ -329,7 +338,9 @@ class PostModelClass extends BaseModelClass {
     // N+1 발생!
     for (const post of posts) {
       post.author = await UserModel.findById(post.author_id);
-      post.comments = await CommentModel.getPuri().where({ post_id: post.id });
+      post.comments = await CommentModel.getPuri("r")
+        .table("comments")
+        .where({ post_id: post.id });
     }
 
     return posts;
@@ -355,15 +366,17 @@ class PostModelClass extends BaseModelClass {
 class DashboardService {
   // ❌ N+1 발생
   async getDashboardSlow() {
-    const users = await UserModel.getPuri().select("id", "name");
+    const users = await UserModel.getPuri("r").table("users").select("id", "name");
 
     const stats = [];
     for (const user of users) {
-      const orderCount = await OrderModel.getPuri()
+      const orderCount = await OrderModel.getPuri("r")
+        .table("orders")
         .select({ count: Puri.count() })
         .where({ user_id: user.id });
 
-      const totalSpent = await OrderModel.getPuri()
+      const totalSpent = await OrderModel.getPuri("r")
+        .table("orders")
         .select({ total: Puri.sum("total") })
         .where({ user_id: user.id });
 
@@ -379,7 +392,8 @@ class DashboardService {
 
   // ✅ JOIN으로 최적화
   async getDashboardFast() {
-    return UserModel.getPuri()
+    return UserModel.getPuri("r")
+      .table("users")
       .select(
         "users.id",
         "users.name",
@@ -426,7 +440,7 @@ test("N+1 문제 확인", async () => {
   // 쿼리 카운터
   let queryCount = 0;
 
-  const db = UserModel.getPuri().getDB();
+  const db = UserModel.getDB("r");
   db.on("query", () => queryCount++);
 
   // 테스트
@@ -479,7 +493,7 @@ const result = await PostModel.executeSubsetQuery({
 });
 
 // ❌ 수동 로딩
-const posts = await PostModel.getPuri();
+const posts = await PostModel.getPuri("r").table("posts").select("*");
 for (const post of posts) {
   post.author = await UserModel.findById(post.author_id);
 }

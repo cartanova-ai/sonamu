@@ -29,13 +29,14 @@ export class Puri<TSchema, TTables, TResult> implements Promise<TResult[]> {
 
 ```typescript
 // ✅ await를 직접 사용 (배열 반환)
-const users = await UserModel.getPuri().select("id", "name");
+const users = await UserModel.getPuri("r").table("users").select("id", "name");
 
 // ✅ .first()로 단일 객체 조회
-const user = await UserModel.getPuri().select("id", "name").where({ id: 1 }).first();
+const user = await UserModel.getPuri("r").table("users").select("id", "name").where({ id: 1 }).first();
 
 // ✅ Puri.count()로 카운트
-const result = await UserModel.getPuri()
+const result = await UserModel.getPuri("r")
+  .table("users")
   .select({ count: Puri.count() })
   .where({ status: "active" });
 const count = result[0].count;
@@ -55,23 +56,28 @@ const count = result[0].count;
 
 ```typescript
 // COUNT
-const result = await UserModel.getPuri()
+const result = await UserModel.getPuri("r")
+  .table("users")
   .select({ count: Puri.count() })
   .where({ status: "active" });
 const count = result[0].count;
 
 // SUM
-const result = await OrderModel.getPuri()
+const result = await OrderModel.getPuri("r")
+  .table("orders")
   .select({ total: Puri.sum("amount") })
   .where({ status: "completed" });
 const total = result[0].total;
 
 // AVG
-const result = await ProductModel.getPuri().select({ avg_price: Puri.avg("price") });
+const result = await ProductModel.getPuri("r")
+  .table("products")
+  .select({ avg_price: Puri.avg("price") });
 const avgPrice = result[0].avg_price;
 
 // COUNT + GROUP BY
-const stats = await OrderModel.getPuri()
+const stats = await OrderModel.getPuri("r")
+  .table("orders")
   .select("user_id", { count: Puri.count(), total: Puri.sum("amount") })
   .groupBy("user_id");
 ```
@@ -83,7 +89,8 @@ const stats = await OrderModel.getPuri()
 **INNER JOIN:**
 
 ```typescript
-const ordersWithUser = await OrderModel.getPuri()
+const ordersWithUser = await OrderModel.getPuri("r")
+  .table("orders")
   .select("orders.id", "orders.total", "users.name")
   .join("users", "users.id", "orders.user_id");
 ```
@@ -91,7 +98,8 @@ const ordersWithUser = await OrderModel.getPuri()
 **LEFT JOIN:**
 
 ```typescript
-const usersWithOrders = await UserModel.getPuri()
+const usersWithOrders = await UserModel.getPuri("r")
+  .table("users")
   .select("users.id", "users.name", "orders.total")
   .leftJoin("orders", "orders.user_id", "users.id");
 ```
@@ -99,7 +107,8 @@ const usersWithOrders = await UserModel.getPuri()
 **복잡한 JOIN 조건 (콜백 방식):**
 
 ```typescript
-const result = await UserModel.getPuri()
+const result = await UserModel.getPuri("r")
+  .table("users")
   .select("users.*", "orders.total")
   .leftJoin("orders", (j) => {
     j.on("orders.user_id", "users.id").on("orders.status", "=", "completed");
@@ -366,6 +375,7 @@ export async function down(knex: Knex): Promise<void> {
 ```typescript
 // metadata->>'brand' = 'Samsung'
 const products = await ProductModel.getPuri("r")
+  .table("products")
   .select({
     id: "products.id",
     name: "products.name",
@@ -380,6 +390,7 @@ const products = await ProductModel.getPuri("r")
 ```typescript
 // metadata @> '{"warranty": 2}'
 const productsWithWarranty = await ProductModel.getPuri("r")
+  .table("products")
   .select("*")
   .whereRaw("products.metadata @> ?", [JSON.stringify({ warranty: 2 })]);
 ```
@@ -389,6 +400,7 @@ const productsWithWarranty = await ProductModel.getPuri("r")
 ```typescript
 // metadata ? 'discount'
 const productsWithDiscount = await ProductModel.getPuri("r")
+  .table("products")
   .select("*")
   .whereRaw("products.metadata ?? 'discount'"); // ? 대신 ?? 사용
 ```
@@ -398,6 +410,7 @@ const productsWithDiscount = await ProductModel.getPuri("r")
 ```typescript
 // metadata->'specs'->>'cpu'
 const laptops = await ProductModel.getPuri("r")
+  .table("products")
   .select({
     id: "products.id",
     name: "products.name",
@@ -432,7 +445,8 @@ const laptops = await ProductModel.getPuri("r")
 **검색 쿼리:**
 
 ```typescript
-const posts = await PostModel.getPuri()
+const posts = await PostModel.getPuri("r")
+  .table("posts")
   .select("*")
   .whereTsSearch("search_vector", "typescript database", {
     parser: "websearch_to_tsquery",
@@ -443,7 +457,8 @@ const posts = await PostModel.getPuri()
 **하이라이팅:**
 
 ```typescript
-const posts = await PostModel.getPuri()
+const posts = await PostModel.getPuri("r")
+  .table("posts")
   .select({
     id: "posts.id",
     title: Puri.tsHighlight("posts.title", "typescript"),
