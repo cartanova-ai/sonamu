@@ -4,6 +4,9 @@
   "private": true,
   "description": "Miomock web 프로젝트입니다. 개발 서버와 빌드 명령은 api 프로젝트에서 실행해주세요 :)",
   "type": "module",
+  "scripts": {
+    "storybook": "storybook dev -p 6007"
+  },
   "dependencies": {
     "@better-auth/passkey": "catalog:",
     "@sonamu-kit/react-components": "workspace:^",
@@ -27,6 +30,9 @@
   "devDependencies": {
     "@iconify-json/lucide": "catalog:",
     "@iconify-json/mdi": "catalog:",
+    "@storybook/addon-a11y": "catalog:",
+    "@storybook/addon-docs": "catalog:",
+    "@storybook/react-vite": "catalog:",
     "@svgr/core": "catalog:",
     "@svgr/plugin-jsx": "catalog:",
     "@svgr/plugin-svgo": "catalog:",
@@ -39,7 +45,9 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "agentation": "catalog:",
     "sass": "catalog:",
+    "storybook": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "unplugin-icons": "catalog:",

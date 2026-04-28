@@ -320,7 +320,7 @@ catalogs:
       version: 6.0.1
     '@vitest/coverage-v8':
       specifier: ^4.1.5
-      version: 4.1.2
+      version: 4.1.5
     '@xyflow/react':
       specifier: ^12.9.3
       version: 12.10.0
@@ -371,7 +371,7 @@ catalogs:
       version: 1.1.1
     corepack:
       specifier: ^0.34.7
-      version: 0.34.5
+      version: 0.34.7
     date-fns:
       specifier: ^4.1.0
       version: 4.1.0
@@ -593,7 +593,7 @@ catalogs:
       version: 4.21.0
     typescript:
       specifier: ^6.0.3
-      version: 6.0.2
+      version: 6.0.3
     unplugin-icons:
       specifier: 0.20.2
       version: 0.20.2
@@ -885,6 +885,15 @@ importers:
       '@iconify-json/mdi':
         specifier: 'catalog:'
         version: 1.2.3
+      '@storybook/addon-a11y':
+        specifier: 'catalog:'
+        version: 10.2.19(storybook@10.2.19(@testing-library/dom@10.4.1)(prettier@3.7.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))
+      '@storybook/addon-docs':
+        specifier: 'catalog:'
+        version: 10.2.19(@types/react@19.2.7)(esbuild@0.27.7)(storybook@10.2.19(@testing-library/dom@10.4.1)(prettier@3.7.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(vite@8.0.5(@emnapi/core@1.7.1)(@emnapi/runtime@1.7.1)(@types/node@25.0.7)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0))
+      '@storybook/react-vite':
+        specifier: 'catalog:'
+        version: 10.2.19(esbuild@0.27.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(storybook@10.2.19(@testing-library/dom@10.4.1)(prettier@3.7.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(typescript@6.0.2)(vite@8.0.5(@emnapi/core@1.7.1)(@emnapi/runtime@1.7.1)(@types/node@25.0.7)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0))
       '@svgr/core':
         specifier: 'catalog:'
         version: 8.1.0(typescript@6.0.2)
@@ -921,9 +930,15 @@ importers:
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.0.1(vite@8.0.5(@emnapi/core@1.7.1)(@emnapi/runtime@1.7.1)(@types/node@25.0.7)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0))
+      agentation:
+        specifier: 'catalog:'
+        version: 2.3.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       sass:
         specifier: 'catalog:'
         version: 1.97.1
+      storybook:
+        specifier: 'catalog:'
+        version: 10.2.19(@testing-library/dom@10.4.1)(prettier@3.7.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       tailwindcss:
         specifier: 'catalog:'
         version: 4.1.18
@@ -1739,7 +1754,7 @@ importers:
         version: 1.143.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@uiw/react-json-view':
         specifier: 'catalog:'
-        version: 2.0.0-alpha.41(@babel/runtime@7.28.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 2.0.0-alpha.41(@babel/runtime@7.29.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.0.1(vite@8.0.5(@emnapi/core@1.7.1)(@emnapi/runtime@1.7.1)(@types/node@25.0.7)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0))
@@ -15855,9 +15870,9 @@ snapshots:
       '@typescript/native-preview-win32-arm64': 7.0.0-dev.20251226.1
       '@typescript/native-preview-win32-x64': 7.0.0-dev.20251226.1
 
-  '@uiw/react-json-view@2.0.0-alpha.41(@babel/runtime@7.28.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@uiw/react-json-view@2.0.0-alpha.41(@babel/runtime@7.29.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@babel/runtime': 7.28.4
+      '@babel/runtime': 7.29.2
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
