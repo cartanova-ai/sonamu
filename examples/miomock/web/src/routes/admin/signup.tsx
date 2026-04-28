@@ -50,7 +50,7 @@ function SignupPage() {
     });
 
     if (result.error) {
-      setError(result.error.message);
+      setError(result.error.message ?? SD("error.unauthorized"));
       return;
     }
 
