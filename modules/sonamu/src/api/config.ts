@@ -18,9 +18,10 @@ import { type CacheConfig } from "../cache/types";
 import { type SonamuDBConfig } from "../database/db";
 import { type SonamuLoggingOptions } from "../logger/configure";
 import { type StorageConfig } from "../storage/types";
+import { type WebSocketRuntimeOptions } from "../stream/ws";
 import { type WorkflowOptions } from "../tasks/workflow-manager";
 import { type Executable, type SonamuFastifyConfig } from "../types/types";
-import { type Context } from "./context";
+import { type Context, type WebSocketContext } from "./context";
 
 export type DatabaseConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.PgConnectionConfig;
@@ -180,6 +181,7 @@ export type SonamuServerOptions = {
     qs?: boolean | QsPluginOptions;
     sse?: boolean | SsePluginOptions;
     static?: boolean | FastifyStaticOptions;
+    ws?: boolean | Record<string, unknown>;
 
     custom?: (server: FastifyInstance) => void;
   };
@@ -199,6 +201,14 @@ export type SonamuServerOptions = {
       >;
     };
   };
+
+  /**
+   * WebSocket runtime 설정.
+   *
+   * 단일 인스턴스에서는 기본값으로 충분하며, 멀티 인스턴스/대규모 환경에서는
+   * presence store와 cluster bus를 여기서 주입합니다.
+   */
+  websocket?: WebSocketRuntimeOptions;
 
   apiConfig: SonamuFastifyConfig;
 
@@ -255,9 +265,24 @@ export type SonamuTaskOptions = {
   contextProvider: (
     defaultContext: Pick<
       Context,
-      "reply" | "request" | "headers" | "createSSE" | "naiteStore" | "locale" | "user" | "session"
+      | "transport"
+      | "reply"
+      | "request"
+      | "headers"
+      | "createSSE"
+      | "naiteStore"
+      | "locale"
+      | "user"
+      | "session"
     >,
   ) => Context | Promise<Context>;
+  websocketContextProvider?: (
+    defaultContext: Pick<
+      WebSocketContext,
+      "transport" | "request" | "headers" | "ws" | "naiteStore" | "locale" | "user" | "session"
+    >,
+    request: FastifyRequest,
+  ) => WebSocketContext | Promise<WebSocketContext>;
 };
 
 export type SonamuSSROptions = {

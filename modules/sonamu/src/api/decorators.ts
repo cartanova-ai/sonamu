@@ -61,6 +61,24 @@ export type StreamDecoratorOptions = {
   guards?: GuardKey[];
   description?: string;
 };
+export type WebSocketDecoratorOptions = {
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 이벤트 키별로 넘겨주는 값이므로 어떤 타입이든 상관없음
+  outEvents: z.ZodObject<any>;
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 이벤트 키별로 넘겨주는 값이므로 어떤 타입이든 상관없음
+  inEvents: z.ZodObject<any>;
+  path?: string;
+  resourceName?: string;
+  guards?: GuardKey[];
+  description?: string;
+  heartbeat?: number;
+  maxPayload?: number;
+  namespace?: string;
+};
+export type ResolvedWebSocketDecoratorOptions = WebSocketDecoratorOptions & {
+  // codegen이 타입 이름을 재사용할 수 있도록 syncer가 AST에서 보강하는 메타데이터
+  outEventsTypeRef?: ApiParamType.Ref;
+  inEventsTypeRef?: ApiParamType.Ref;
+};
 
 type BufferUploadOptions = {
   consume?: "buffer";
@@ -85,6 +103,7 @@ export const registeredApis: {
   path: string;
   options: ApiDecoratorOptions;
   streamOptions?: StreamDecoratorOptions;
+  websocketOptions?: ResolvedWebSocketDecoratorOptions;
   uploadOptions?: UploadDecoratorOptions;
 }[] = [];
 export type ExtendedApi = {
@@ -93,6 +112,7 @@ export type ExtendedApi = {
   path: string;
   options: ApiDecoratorOptions;
   streamOptions?: StreamDecoratorOptions;
+  websocketOptions?: ResolvedWebSocketDecoratorOptions;
   uploadOptions?: UploadDecoratorOptions;
   typeParameters: ApiParamType.TypeParam[];
   parameters: ApiParam[];
@@ -103,6 +123,7 @@ type DecoratorTarget = { constructor: { name: string } };
 const DECORATOR_TYPES = {
   API: Symbol("api"),
   STREAM: Symbol("stream"),
+  WEBSOCKET: Symbol("websocket"),
   UPLOAD: Symbol("upload"),
 } as const;
 
@@ -110,7 +131,7 @@ function checkSingleDecorator(target: DecoratorTarget, propertyKey: string, deco
   const method = target[propertyKey as keyof typeof target] as { __decoratorType?: symbol };
   if (method?.__decoratorType && method?.__decoratorType !== decoratorType) {
     throw new Error(
-      `@${decoratorType.description ?? String(decoratorType)} decorator can only be used once on ${target.constructor.name}.${propertyKey}. You can use only one of @api or @stream decorator on the same method.`,
+      `@${decoratorType.description ?? String(decoratorType)} decorator can only be used once on ${target.constructor.name}.${propertyKey}. You can use only one of @api, @stream, @websocket, or @upload decorator on the same method.`,
     );
   } else {
     method.__decoratorType = decoratorType;
@@ -266,6 +287,85 @@ export function stream(options: StreamDecoratorOptions) {
       if (this instanceof BaseFrameClass) {
         getLogger(convertDomainToCategory(this.frameName, "frame")).debug(
           "stream: {model}.{method}",
+          {
+            model: modelName,
+            method: methodName,
+          },
+        );
+      }
+
+      return originalMethod.apply(this, args);
+    };
+  };
+}
+
+export function websocket(options: WebSocketDecoratorOptions) {
+  return (target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
+    const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
+    assert(
+      modelName,
+      `modelName is required on @websocket decorator on ${target.constructor.name}.${propertyKey}`,
+    );
+    const methodName = propertyKey;
+
+    checkSingleDecorator(target, propertyKey, DECORATOR_TYPES.WEBSOCKET);
+
+    const defaultPath = `/${inflection.camelize(
+      modelName.replace(/Model$/, "").replace(/Frame$/, ""),
+      true,
+    )}/${inflection.camelize(propertyKey, true)}`;
+    const path = options.path ?? defaultPath;
+    const { outEvents: _outEvents, inEvents: _inEvents, ...apiOptions } = options;
+    const optionsWithDefaults = {
+      ...apiOptions,
+      httpMethod: "GET" as HTTPMethods,
+    };
+
+    const existingApi = registeredApis.find(
+      (api) => api.modelName === modelName && api.methodName === methodName,
+    );
+    if (existingApi) {
+      assertNoConflictingPath("websocket", modelName, methodName, existingApi.path, path);
+      existingApi.path = path;
+
+      assertNoConflictingOptions(
+        "websocket",
+        modelName,
+        methodName,
+        existingApi.options,
+        optionsWithDefaults,
+      );
+      existingApi.options = {
+        ...existingApi.options,
+        ...optionsWithDefaults,
+      };
+
+      existingApi.websocketOptions = options;
+    } else {
+      registeredApis.push({
+        modelName,
+        methodName,
+        path,
+        options: optionsWithDefaults,
+        websocketOptions: options,
+      });
+    }
+
+    const originalMethod = descriptor.value;
+    descriptor.value = async function (this: BaseModelClass | BaseFrameClass, ...args: unknown[]) {
+      if (this instanceof BaseModelClass) {
+        getLogger(convertDomainToCategory(this.modelName, "model")).debug(
+          "websocket: {model}.{method}",
+          {
+            model: modelName,
+            method: methodName,
+          },
+        );
+      }
+
+      if (this instanceof BaseFrameClass) {
+        getLogger(convertDomainToCategory(this.frameName, "frame")).debug(
+          "websocket: {model}.{method}",
           {
             model: modelName,
             method: methodName,

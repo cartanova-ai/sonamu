@@ -992,7 +992,8 @@ export namespace ApiParamType {
       typeof v === "object" &&
       v !== null &&
       (v as { t?: unknown }).t === "ref" &&
-      (v as { id?: unknown }).id === "Context"
+      ((v as { id?: unknown }).id === "Context" ||
+        (v as { id?: unknown }).id === "WebSocketContext")
     );
   }
   export function isRefKnex(v: unknown): v is ApiParamType.Ref {
@@ -1774,11 +1775,28 @@ export type SonamuFastifyConfig = {
   contextProvider: (
     defaultContext: Pick<
       Context,
-      "request" | "reply" | "headers" | "createSSE" | "naiteStore" | "locale" | "user" | "session"
+      | "transport"
+      | "request"
+      | "reply"
+      | "headers"
+      | "createSSE"
+      | "naiteStore"
+      | "locale"
+      | "user"
+      | "session"
     >,
     request: FastifyRequest,
     reply: FastifyReply,
   ) => Context | Promise<Context>;
+  websocketContextProvider?: (
+    defaultContext: Pick<
+      import("../api/context").WebSocketContext,
+      "transport" | "request" | "headers" | "ws" | "naiteStore" | "locale" | "user" | "session"
+    >,
+    request: FastifyRequest,
+  ) =>
+    | import("../api/context").WebSocketContext
+    | Promise<import("../api/context").WebSocketContext>;
   guardHandler: (
     guard: GuardKey,
     request: FastifyRequest,

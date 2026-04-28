@@ -5,11 +5,13 @@ import { type IncomingMessage, type Server, type ServerResponse } from "http";
 import os from "os";
 import path from "path";
 
+import type {} from "@fastify/websocket";
 import { dispose as logtapeDispose } from "@logtape/logtape";
 import { type Auth, type BetterAuthOptions } from "better-auth";
 import { type FSWatcher } from "chokidar";
 import { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import mime, { lookup as mimeLookup } from "mime-types";
+import { type WebSocket } from "ws";
 import { type ZodObject } from "zod";
 
 import { BASE_FIELD_MAPPINGS } from "../auth/better-auth-entities";
@@ -28,6 +30,7 @@ import { type StorageManager } from "../storage/storage-manager";
 import { type KeyGenerator } from "../storage/types";
 import { UploadedFile } from "../storage/uploaded-file";
 import { createMockSSEFactory } from "../stream/sse";
+import { WebSocketRuntime, type WebSocketConnection, type WebSocketEventMap } from "../stream/ws";
 import { type Syncer } from "../syncer/syncer";
 import { type WorkflowManager } from "../tasks/workflow-manager";
 import { type DevVitestManager } from "../testing/dev-vitest-manager";
@@ -37,34 +40,50 @@ import { exists, fileExists } from "../utils/fs-utils";
 import { type AbsolutePath } from "../utils/path-utils";
 import { convertFastifyHeadersToStandard, merge } from "../utils/utils";
 import { type SonamuConfig, type SonamuServerOptions, type SonamuTaskOptions } from "./config";
-import { type Context } from "./context";
+import { type Context, type RuntimeContext, type WebSocketContext } from "./context";
 import { type ExtendedApi } from "./decorators";
 import { getSecrets } from "./secret";
 import { type SonamuSecrets } from "./secret";
+import {
+  createWebSocketReplyStub,
+  resolveWebSocketCloseDescriptor,
+  resolveWebSocketPluginOptions,
+  resolveIntegratedViteHmrOptions,
+} from "./websocket-helpers";
+
+export {
+  createWebSocketReplyStub,
+  resolveWebSocketCloseDescriptor,
+  resolveWebSocketPluginOptions,
+} from "./websocket-helpers";
 
 class SonamuClass {
   public isInitialized: boolean = false;
   public forTesting: boolean = false;
   public asyncLocalStorage: AsyncLocalStorage<{
-    context: Context;
+    context: RuntimeContext;
   }> = new AsyncLocalStorage();
 
-  public getContext(): Context {
+  public getContext<T extends RuntimeContext = Context>(): T {
     const store = this.asyncLocalStorage.getStore();
     if (store?.context) {
-      return store.context;
+      return store.context as T;
     }
 
     if (process.env.NODE_ENV === "test") {
       // 테스팅 환경에서 컨텍스트가 주입되지 않은 경우 빈 컨텍스트 리턴
       return {
+        transport: "http",
         request: null,
         reply: null,
         headers: {},
         createSSE: (schema: ZodObject) => createMockSSEFactory(schema),
+        locale: "",
+        user: null,
+        session: null,
         // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 테스팅 환경에서 컨텍스트가 주입되지 않은 경우 빈 컨텍스트 리턴
         naiteStore: new Map<string, any>(),
-      } as unknown as Context;
+      } as unknown as T;
     } else {
       throw new Error("Sonamu cannot find context");
     }
@@ -164,6 +183,22 @@ class SonamuClass {
   }
   set devVitestManager(manager: DevVitestManager | null) {
     this._devVitestManager = manager;
+  }
+
+  // Sonamu가 runtime을 직접 소유해 registry/connection lifecycle을 애플리케이션 수명주기와 동기화함
+  private _websocketRuntime: WebSocketRuntime | null = null;
+  // 같은 Fastify 인스턴스에 @fastify/websocket을 중복 등록하는 것을 WeakSet으로 차단함
+  private readonly websocketPluginServers = new WeakSet<
+    FastifyInstance<Server, IncomingMessage, ServerResponse>
+  >();
+  get websocketRuntime(): WebSocketRuntime {
+    if (!this._websocketRuntime) {
+      throw new Error("WebSocket runtime has not been initialized.");
+    }
+    return this._websocketRuntime;
+  }
+  set websocketRuntime(runtime: WebSocketRuntime | null) {
+    this._websocketRuntime = runtime;
   }
 
   // HMR 처리
@@ -298,6 +333,7 @@ class SonamuClass {
           : undefined,
     });
     this.server = server;
+    this.websocketRuntime = new WebSocketRuntime(options.websocket);
 
     // Storage 설정 → StorageManager 생성
     if (options.storage) {
@@ -343,6 +379,8 @@ class SonamuClass {
     }
 
     this.server = server;
+    this.websocketRuntime ??= new WebSocketRuntime(this.config.server.websocket);
+    await this.ensureWebSocketPlugin(server);
 
     // timezone 설정
     const timezone = this.config.api.timezone;
@@ -435,6 +473,17 @@ class SonamuClass {
           throw new Error(`정의되지 않은 모델에 접근 ${api.modelName}`);
         }
 
+        // @websocket route는 wsHandler로 등록하고, 같은 path의 일반 HTTP GET은 426 응답으로 upgrade를 강제함
+        if (api.websocketOptions) {
+          server.route({
+            method: "GET",
+            url: this.config.api.route.prefix + api.path,
+            handler: this.createWebSocketUpgradeRequiredHandler(),
+            wsHandler: this.createWebSocketHandler(api, config),
+          });
+          continue;
+        }
+
         server.route({
           method: api.options.httpMethod ?? "GET",
           url: this.config.api.route.prefix + api.path,
@@ -460,16 +509,29 @@ class SonamuClass {
     request: FastifyRequest,
     config: SonamuFastifyConfig,
   ): ((request: FastifyRequest, reply: FastifyReply) => Promise<unknown>) | null {
+    const matchedApi = this.findMatchedApi(request);
+
+    if (!matchedApi) {
+      throw new NotFoundException(SD("error.api.notFound"));
+    }
+
+    // websocket route를 일반 HTTP로 직접 호출한 경우 426을 돌려줘 upgrade 없이 접근하는 것을 차단함
+    if (matchedApi.websocketOptions) {
+      return this.createWebSocketUpgradeRequiredHandler();
+    }
+
+    return this.createApiHandler(matchedApi, config);
+  }
+
+  private findMatchedApi(request: FastifyRequest): ExtendedApi | undefined {
     const url = this.getPathnameFromUrl(request.url);
     const method = request.method;
 
     if (!url.startsWith(this.config.api.route.prefix)) {
-      return null;
+      return undefined;
     }
 
-    // syncer.apis의 path는 :param 형태를 포함할 수 있으므로 세그먼트 단위로 매칭합니다.
-    // 정규식 생성 방식은 path 문자열 내 특수문자(., +, (, [ 등)로 오작동할 수 있어 사용하지 않습니다.
-    const matchedApi = this.syncer.apis.find((api) => {
+    return this.syncer.apis.find((api) => {
       if (this.syncer.models[api.modelName] === undefined) {
         return false;
       }
@@ -479,12 +541,6 @@ class SonamuClass {
       const fullPath = this.config.api.route.prefix + api.path;
       return this.isPathPatternMatch(fullPath, url);
     });
-
-    if (!matchedApi) {
-      throw new NotFoundException(SD("error.api.notFound"));
-    }
-
-    return this.createApiHandler(matchedApi, config);
   }
 
   /**
@@ -495,8 +551,9 @@ class SonamuClass {
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
     config: SonamuFastifyConfig,
   ): void {
+    // upgrade는 실질적으로 GET에서만 성립하므로 GET + wsHandler 와 그 외 method를 별도 route로 분리함
     server.route({
-      method: ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"],
+      method: "GET",
       url: `${this.config.api.route.prefix}/*`,
       handler: async (request, reply) => {
         const handler = this.handleDevApiRequest(request, config);
@@ -504,6 +561,21 @@ class SonamuClass {
           return handler(request, reply);
         }
         // 등록된 API와 일치하지 않는 요청에 대한 fallback입니다.
+        throw new NotFoundException(SD("error.api.notFound"));
+      },
+      wsHandler: async (connection, request) => {
+        await this.handleDevWebSocketRequest(connection.socket, request, config);
+      },
+    });
+
+    server.route({
+      method: ["HEAD", "POST", "PUT", "DELETE", "PATCH"],
+      url: `${this.config.api.route.prefix}/*`,
+      handler: async (request, reply) => {
+        const handler = this.handleDevApiRequest(request, config);
+        if (handler) {
+          return handler(request, reply);
+        }
         throw new NotFoundException(SD("error.api.notFound"));
       },
     });
@@ -525,14 +597,20 @@ class SonamuClass {
     await server.register((await import("@fastify/middie")).default);
 
     const vite = await import("vite");
+    // Sonamu WS route나 ws 플러그인이 존재하면 HMR websocket과 server socket이 충돌하므로 dedicated 포트로 분리함
+    const requiresDedicatedHmrServer =
+      this.syncer.apis.some((api) => api.websocketOptions !== undefined) ||
+      Boolean(this.config.server.plugins?.ws);
+    const hmr = resolveIntegratedViteHmrOptions({
+      httpServer: server.server,
+      requiresDedicatedWebSocketServer: requiresDedicatedHmrServer,
+    });
 
     this.viteServer = await vite.createServer({
       root: webPath,
       server: {
         middlewareMode: true,
-        hmr: {
-          server: server.server,
-        },
+        hmr,
       },
       appType: "custom",
     });
@@ -547,21 +625,43 @@ class SonamuClass {
       return this.viteServer.middlewares(req, res, next);
     });
 
-    // catch-all 라우트에서 동적으로 API/SSR 처리
-    // 개발 환경에서는 라우트별 compress 옵션을 포기하고 HMR 이점을 취합니다.
+    // WS upgrade 경로(GET)와 일반 HTTP 메서드를 별도 route로 분리해 websocket route가 HTML fallback에 먹히지 않도록 함
     server.route({
-      method: ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"],
-      url: "/*",
+      method: "GET",
+      url: `${this.config.api.route.prefix}/*`,
       handler: async (request, reply) => {
-        // 1. API 요청 처리
         const result = this.handleDevApiRequest(request, config);
         if (result) {
           return result(request, reply);
         }
+        throw new NotFoundException(SD("error.api.notFound"));
+      },
+      wsHandler: async (connection, request) => {
+        await this.handleDevWebSocketRequest(connection.socket, request, config);
+      },
+    });
 
+    server.route({
+      method: ["HEAD", "POST", "PUT", "DELETE", "PATCH"],
+      url: `${this.config.api.route.prefix}/*`,
+      handler: async (request, reply) => {
+        const result = this.handleDevApiRequest(request, config);
+        if (result) {
+          return result(request, reply);
+        }
+        throw new NotFoundException(SD("error.api.notFound"));
+      },
+    });
+
+    // catch-all 라우트에서 SSR/CSR 처리
+    // 개발 환경에서는 라우트별 compress 옵션을 포기하고 HMR 이점을 취합니다.
+    server.route({
+      method: ["GET", "HEAD"],
+      url: "/*",
+      handler: async (request, reply) => {
         const url = request.url;
 
-        // 2. SSR 라우트 처리
+        // 1. SSR 라우트 처리
         const { matchSSRRoute, renderSSR } = await import("../ssr");
         const ssrMatch = matchSSRRoute(url);
         if (ssrMatch) {
@@ -579,7 +679,7 @@ class SonamuClass {
           return html;
         }
 
-        // 3. CSR fallback
+        // 2. CSR fallback
         try {
           const fs = await import("node:fs/promises");
           let template = await fs.readFile(
@@ -605,6 +705,13 @@ class SonamuClass {
     });
 
     const chalk = (await import("chalk")).default;
+    if ("port" in hmr) {
+      console.log(
+        chalk.dim(
+          `✓ Vite HMR using dedicated websocket port ${hmr.port} to avoid Fastify websocket conflicts`,
+        ),
+      );
+    }
     console.log(chalk.dim("✓ Vite dev server integrated"));
   }
 
@@ -789,7 +896,12 @@ class SonamuClass {
 
       return this.asyncLocalStorage.run({ context }, async () => {
         // guards 처리
-        (api.options.guards ?? []).every((guard) => config.guardHandler(guard, request, api));
+        runGuards({
+          guards: api.options.guards,
+          config,
+          request,
+          api,
+        });
 
         // 파라미터 정보로 zod 스키마 빌드
         const { getZodObjectFromApi } = await import("./code-converters");
@@ -932,6 +1044,201 @@ class SonamuClass {
     };
   }
 
+  // WS path를 일반 HTTP GET으로 호출한 경우 426 + Upgrade 헤더로 명시적으로 websocket 접속을 유도함
+  private createWebSocketUpgradeRequiredHandler() {
+    return async (_request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+      reply.header("connection", "Upgrade").header("upgrade", "websocket").status(426).send({
+        message: "WebSocket upgrade required",
+      });
+    };
+  }
+
+  // dev 모드의 catch-all wsHandler에서 실제 WS API로 디스패치함. 매칭되는 route가 없으면 1008로 닫음
+  private async handleDevWebSocketRequest(
+    socket: WebSocket,
+    request: FastifyRequest,
+    config: SonamuFastifyConfig,
+  ): Promise<void> {
+    const matchedApi = this.findMatchedApi(request);
+    if (!matchedApi?.websocketOptions) {
+      socket.close(1008, "WebSocket route not found");
+      return;
+    }
+
+    const handler = this.createWebSocketHandler(matchedApi, config);
+    await handler({ socket }, request);
+  }
+
+  // WS route 핸들러의 실행 순서를 고정함:
+  // 1) guard를 connection 등록 이전에 돌려 인증 실패 시 부분 등록 상태를 남기지 않음
+  // 2) query param 파싱도 activation 전에 끝내 handshake 실패가 registry에 노출되지 않게 함
+  // 3) `active: false`로 먼저 등록하고, context 준비가 끝난 뒤 `activate()`해 브로드캐스트가 초기화 중간 상태를 보지 못하게 함
+  // 에러 발생 시에는 resolveWebSocketCloseDescriptor 정책에 따라 close code를 매핑함
+  private createWebSocketHandler(api: ExtendedApi, config: SonamuFastifyConfig) {
+    return async (
+      connection: {
+        socket: WebSocket;
+      },
+      request: FastifyRequest,
+    ): Promise<void> => {
+      const socket = connection.socket;
+      let wsContext: WebSocketContext | null = null;
+      let rawWs: ReturnType<WebSocketRuntime["registerConnection"]> | null = null;
+
+      try {
+        runGuards({
+          guards: api.options.guards,
+          config,
+          request,
+          api,
+        });
+
+        const reqBody = await this.parseWebSocketRequestParams(api, request);
+        rawWs = this.websocketRuntime.registerConnection(socket, {
+          outEvents: api.websocketOptions!.outEvents,
+          inEvents: api.websocketOptions!.inEvents,
+          namespace: api.websocketOptions!.namespace,
+          heartbeat: api.websocketOptions!.heartbeat,
+          maxPayload: api.websocketOptions!.maxPayload,
+          active: false,
+        });
+
+        const scopedWs = this.createScopedWebSocketConnection(rawWs, () => wsContext);
+        wsContext = await this.createWebSocketContext(config, request, scopedWs);
+        this.websocketRuntime.activateConnection(rawWs.id);
+
+        const { ApiParamType } = await import("../types/types");
+        const args = api.parameters.map((param) => {
+          if (ApiParamType.isContext(param.type)) {
+            return wsContext;
+          }
+
+          return reqBody[param.name];
+        });
+
+        await this.asyncLocalStorage.run({ context: wsContext }, async () => {
+          await this.invokeModelMethod(api, args);
+        });
+      } catch (error) {
+        const closeDescriptor = resolveWebSocketCloseDescriptor(error);
+        if (rawWs) {
+          rawWs.close(closeDescriptor.code, closeDescriptor.reason);
+        } else if (socket.readyState < 2) {
+          socket.close(closeDescriptor.code, closeDescriptor.reason);
+        }
+
+        if (this.server?.log) {
+          const payload = {
+            err: error,
+            modelName: api.modelName,
+            methodName: api.methodName,
+            path: api.path,
+          };
+          if (closeDescriptor.logLevel === "warn") {
+            this.server.log.warn(payload, closeDescriptor.reason);
+          } else {
+            this.server.log.error(payload, closeDescriptor.reason);
+          }
+        } else {
+          if (closeDescriptor.logLevel === "warn") {
+            console.warn(closeDescriptor.reason, error);
+          } else {
+            console.error(closeDescriptor.reason, error);
+          }
+        }
+      }
+    };
+  }
+
+  // onMessage/onClose처럼 다른 tick에서 실행되는 callback은 ALS context가 끊기므로 wrapper에서 `asyncLocalStorage.run`으로 다시 감싸 복원함
+  // publish/join/leave/setUserId 같은 즉시 실행 API는 단순 위임만 하고, deferred callback에만 context 복원을 적용함
+  private createScopedWebSocketConnection<
+    TOut extends WebSocketEventMap,
+    TIn extends WebSocketEventMap,
+  >(
+    ws: WebSocketConnection<TOut, TIn>,
+    getContext: () => WebSocketContext | null,
+  ): WebSocketConnection<TOut, TIn> {
+    const runInContext = <T>(callback: () => T): T => {
+      const context = getContext();
+      if (!context) {
+        return callback();
+      }
+
+      return this.asyncLocalStorage.run({ context }, callback);
+    };
+
+    return {
+      get id() {
+        return ws.id;
+      },
+      get namespace() {
+        return ws.namespace;
+      },
+      get closed() {
+        return ws.closed;
+      },
+      transport: "ws",
+      publishUntyped(event, data) {
+        ws.publishUntyped(event, data);
+      },
+      close(code, reason) {
+        ws.close(code, reason);
+      },
+      onClose(callback) {
+        ws.onClose(() => runInContext(callback));
+      },
+      onMessage(event, handler) {
+        ws.onMessage(event, (data) => runInContext(() => handler(data)));
+      },
+      publish(event, data) {
+        ws.publish(event, data);
+      },
+      waitForClose() {
+        return ws.waitForClose();
+      },
+      join(roomId) {
+        ws.join(roomId);
+      },
+      leave(roomId) {
+        ws.leave(roomId);
+      },
+      setUserId(userId) {
+        ws.setUserId(userId);
+      },
+      clearUserId() {
+        ws.clearUserId();
+      },
+    };
+  }
+
+  private async parseWebSocketRequestParams(
+    api: ExtendedApi,
+    request: FastifyRequest,
+  ): Promise<Record<string, unknown>> {
+    const { getZodObjectFromApi } = await import("./code-converters");
+    const ReqType = getZodObjectFromApi(api, this.syncer.types);
+
+    try {
+      const { fastifyCaster } = await import("./caster");
+      return fastifyCaster(ReqType).parse((request.query ?? {}) as Record<string, unknown>);
+    } catch (e) {
+      const { ZodError } = await import("zod");
+      if (e instanceof ZodError) {
+        const { humanizeZodError } = await import("../utils/zod-error");
+        const messages = humanizeZodError(e)
+          .map((issue) => issue.message)
+          .join(" ");
+        const { BadRequestException } = await import("../exceptions/so-exceptions");
+        throw new BadRequestException(messages as LocalizedString, {
+          zodError: e,
+        });
+      }
+
+      throw e;
+    }
+  }
+
   /**
    * URL에서 path params를 추출합니다.
    * 예: pattern="/admin/companies/:companyId", url="/admin/companies/123" → { companyId: "123" }
@@ -1054,15 +1361,16 @@ class SonamuClass {
     });
   }
 
+  // WS 경로에서는 HTTP reply가 없으므로 reply를 optional로 받아 공통 호출 경로를 유지함
   async invokeModelMethod(
     api: ExtendedApi,
     args: unknown[],
-    reply: FastifyReply,
+    reply?: FastifyReply,
   ): Promise<unknown> {
     const model = this.syncer.models[api.modelName];
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- model은 모델 인스턴스이므로 메서드 호출 가능
     const result = await (model as any)[api.methodName].apply(model, args);
-    reply.type(api.options.contentType ?? "application/json");
+    reply?.type(api.options.contentType ?? "application/json");
 
     return result;
   }
@@ -1089,26 +1397,99 @@ class SonamuClass {
     const headers = convertFastifyHeadersToStandard(request.headers);
     const session = (await this._auth?.api.getSession({ headers })) ?? null;
 
-    const context: Context = {
-      ...(await Promise.resolve(
-        config.contextProvider(
-          {
-            request,
-            reply,
-            headers: request.headers,
-            createSSE,
-            naiteStore: new Map(),
-            locale,
-            // auth
-            user: session?.user ?? null,
-            session: session?.session ?? null,
-          },
+    const context: Context = await Promise.resolve(
+      config.contextProvider(
+        {
+          transport: "http",
           request,
           reply,
-        ),
-      )),
-    };
+          headers: request.headers,
+          createSSE,
+          naiteStore: new Map(),
+          locale,
+          // auth
+          user: session?.user ?? null,
+          session: session?.session ?? null,
+        },
+        request,
+        reply,
+      ),
+    );
     return context;
+  }
+
+  // session/locale/store 같은 공통 state는 HTTP context와 공유하되, reply/createSSE 같은 HTTP 전용 helper는 노출하지 않음
+  // 사용자가 websocketContextProvider를 주면 그대로 위임하고, 없으면 기존 contextProvider를 reply/SSE stub과 함께 재활용함
+  async createWebSocketContext(
+    config: SonamuFastifyConfig,
+    request: FastifyRequest,
+    ws: WebSocketContext["ws"],
+  ): Promise<WebSocketContext> {
+    const locale =
+      this.detectLocale(request.headers["accept-language"], this.config.i18n.supportedLocales) ??
+      this.config.i18n.defaultLocale;
+
+    const headers = convertFastifyHeadersToStandard(request.headers);
+    const session = (await this._auth?.api.getSession({ headers })) ?? null;
+
+    const defaultContext = {
+      transport: "ws" as const,
+      request,
+      headers: request.headers,
+      ws,
+      naiteStore: new Map(),
+      locale,
+      user: session?.user ?? null,
+      session: session?.session ?? null,
+    };
+
+    if (config.websocketContextProvider) {
+      return {
+        ...(await Promise.resolve(config.websocketContextProvider(defaultContext, request))),
+      };
+    }
+
+    // reply/createSSE에 의존하는 contextProvider가 있으면 즉시 에러를 던져 transport misuse를 빨리 드러냄
+    const replyStub = createWebSocketReplyStub();
+    const createSSE = <T extends ZodObject>(_events: T) => {
+      throw new Error(
+        "createSSE is not available in websocket context. Define websocketContextProvider if your context setup depends on SSE helpers.",
+      );
+    };
+    const httpLikeContext = await Promise.resolve(
+      config.contextProvider(
+        {
+          transport: "http",
+          request,
+          reply: replyStub,
+          headers: request.headers,
+          createSSE,
+          naiteStore: defaultContext.naiteStore,
+          locale,
+          user: defaultContext.user,
+          session: defaultContext.session,
+        },
+        request,
+        replyStub,
+      ),
+    );
+
+    const {
+      transport: _transport,
+      reply: _reply,
+      createSSE: _createSSE,
+      bufferedFiles: _bufferedFiles,
+      uploadedFiles: _uploadedFiles,
+      ...rest
+    } = httpLikeContext;
+
+    return {
+      ...rest,
+      transport: "ws",
+      request,
+      headers: request.headers,
+      ws,
+    };
   }
 
   /**
@@ -1237,6 +1618,64 @@ class SonamuClass {
 
     if (plugins.custom) {
       plugins.custom(server);
+    }
+  }
+
+  // @fastify/websocket은 WS route 또는 ws plugin 옵션이 있을 때만 등록하고, 같은 server에 중복 등록되지 않도록 WeakSet으로 기록함
+  private async ensureWebSocketPlugin(
+    server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
+  ): Promise<void> {
+    if (this.websocketPluginServers.has(server)) {
+      return;
+    }
+
+    const hasWebSocketApis = this.syncer.apis.some((api) => api.websocketOptions !== undefined);
+    const pluginOption = this.config.server.plugins?.ws;
+    if (!hasWebSocketApis && !pluginOption) {
+      return;
+    }
+
+    const websocketPlugin = (await import("@fastify/websocket")).default;
+    const resolvedPluginOptions = resolveWebSocketPluginOptions({
+      rawPluginOption: pluginOption,
+      apis: this.syncer.apis,
+    });
+    if (resolvedPluginOptions) {
+      await server.register(websocketPlugin, resolvedPluginOptions);
+    } else {
+      await server.register(websocketPlugin);
+    }
+
+    this.websocketPluginServers.add(server);
+    this.warnOnPotentialWebSocketTimeoutConflicts(server);
+  }
+
+  // heartbeat interval이 Fastify keepAliveTimeout 이상이면 인프라가 먼저 idle 연결을 끊을 수 있어 경고만 남기고 넘어감
+  private warnOnPotentialWebSocketTimeoutConflicts(
+    server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
+  ): void {
+    const heartbeats = this.syncer.apis
+      .map((api) => api.websocketOptions?.heartbeat ?? 30000)
+      .filter((heartbeat) => heartbeat > 0);
+
+    if (heartbeats.length === 0) {
+      return;
+    }
+
+    const keepAliveTimeout = this.config.server.fastify?.keepAliveTimeout;
+    if (!keepAliveTimeout || keepAliveTimeout <= 0) {
+      return;
+    }
+
+    const largestHeartbeat = Math.max(...heartbeats);
+    if (largestHeartbeat >= keepAliveTimeout) {
+      server.log.warn(
+        {
+          keepAliveTimeout,
+          largestHeartbeat,
+        },
+        "WebSocket heartbeat is greater than or equal to keepAliveTimeout; align infrastructure idle timeouts to avoid unexpected disconnects.",
+      );
     }
   }
 
@@ -1457,13 +1896,16 @@ class SonamuClass {
     const { BaseModel } = await import("../database/base-model");
     // 먼저 처리해야함.
     await BaseModel.destroy();
+    // 프로세스 종료 시 살아있는 WS 연결을 먼저 정리해 이후 다른 리소스 해제 과정에서 잔여 callback이 튀지 않게 함
     await Promise.allSettled([
+      this._websocketRuntime?.shutdown() ?? Promise.resolve(),
       this._workflows?.destroy() ?? Promise.resolve(),
       this._cache?.disconnect() ?? Promise.resolve(),
       this._devVitestManager?.shutdown() ?? Promise.resolve(),
       this.watcher?.close() ?? Promise.resolve(),
       logtapeDispose(),
     ]);
+    this._websocketRuntime = null;
   }
 }
 
@@ -1487,4 +1929,21 @@ function formatTime(ms: number): string {
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 function isLocalHost(host: string): boolean {
   return LOCAL_HOSTS.has(host);
+}
+
+// `.every()`가 첫 guard 이후 순회를 멈추는 문제가 있어 `for...of`로 모든 guard를 순서대로 실행하도록 고정함
+function runGuards({
+  guards,
+  config,
+  request,
+  api,
+}: {
+  guards: ExtendedApi["options"]["guards"] | undefined;
+  config: Pick<SonamuFastifyConfig, "guardHandler">;
+  request: FastifyRequest;
+  api: ExtendedApi;
+}): void {
+  for (const guard of guards ?? []) {
+    config.guardHandler(guard, request, api);
+  }
 }

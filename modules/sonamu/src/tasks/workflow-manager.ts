@@ -288,6 +288,7 @@ export class WorkflowManager {
       }>,
     ) => {
       const baseContext = {
+        transport: "http" as const,
         request: null,
         reply: null,
         headers: {},
