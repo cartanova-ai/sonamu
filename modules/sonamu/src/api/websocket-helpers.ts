@@ -1,5 +1,6 @@
 import { type Server } from "http";
 
+import { type WebsocketPluginOptions } from "@fastify/websocket";
 import { type FastifyReply } from "fastify";
 
 import { isSoException } from "../exceptions/so-exceptions";
@@ -31,16 +32,16 @@ export function resolveWebSocketPluginOptions({
   rawPluginOption,
   apis,
 }: {
-  rawPluginOption: boolean | Record<string, unknown> | undefined;
+  rawPluginOption: boolean | WebsocketPluginOptions | undefined;
   apis: ExtendedApi[];
-}): Record<string, unknown> | undefined {
+}): WebsocketPluginOptions | undefined {
   const pluginOptions =
     rawPluginOption && rawPluginOption !== true
       ? { ...rawPluginOption }
-      : ({} as Record<string, unknown>);
+      : ({} as WebsocketPluginOptions & { maxPayload?: number });
   const serverOptions = isPlainObject(pluginOptions.options)
-    ? { ...(pluginOptions.options as Record<string, unknown>) }
-    : {};
+    ? { ...pluginOptions.options }
+    : ({} as NonNullable<WebsocketPluginOptions["options"]>);
 
   if (isPositiveNumber(pluginOptions.maxPayload) && serverOptions.maxPayload === undefined) {
     serverOptions.maxPayload = pluginOptions.maxPayload;

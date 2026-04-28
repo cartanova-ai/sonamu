@@ -380,7 +380,6 @@ class SonamuClass {
 
     this.server = server;
     this.websocketRuntime ??= new WebSocketRuntime(this.config.server.websocket);
-    await this.ensureWebSocketPlugin(server);
 
     // timezone 설정
     const timezone = this.config.api.timezone;
@@ -597,10 +596,8 @@ class SonamuClass {
     await server.register((await import("@fastify/middie")).default);
 
     const vite = await import("vite");
-    // Sonamu WS route나 ws 플러그인이 존재하면 HMR websocket과 server socket이 충돌하므로 dedicated 포트로 분리함
-    const requiresDedicatedHmrServer =
-      this.syncer.apis.some((api) => api.websocketOptions !== undefined) ||
-      Boolean(this.config.server.plugins?.ws);
+    // @fastify/websocket 플러그인이 활성화되면 HMR websocket과 server socket이 충돌하므로 dedicated 포트로 분리함
+    const requiresDedicatedHmrServer = Boolean(this.config.server.plugins?.ws);
     const hmr = resolveIntegratedViteHmrOptions({
       httpServer: server.server,
       requiresDedicatedWebSocketServer: requiresDedicatedHmrServer,
@@ -1616,12 +1613,16 @@ class SonamuClass {
       await registerPlugin(key as keyof typeof plugins, pluginName);
     }
 
+    if (plugins.ws) {
+      await this.ensureWebSocketPlugin(server);
+    }
+
     if (plugins.custom) {
       plugins.custom(server);
     }
   }
 
-  // @fastify/websocket은 WS route 또는 ws plugin 옵션이 있을 때만 등록하고, 같은 server에 중복 등록되지 않도록 WeakSet으로 기록함
+  // @fastify/websocket은 plugins.ws가 설정된 경우에만 등록하고, 같은 server에 중복 등록되지 않도록 WeakSet으로 기록함
   private async ensureWebSocketPlugin(
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
   ): Promise<void> {
@@ -1629,9 +1630,8 @@ class SonamuClass {
       return;
     }
 
-    const hasWebSocketApis = this.syncer.apis.some((api) => api.websocketOptions !== undefined);
     const pluginOption = this.config.server.plugins?.ws;
-    if (!hasWebSocketApis && !pluginOption) {
+    if (!pluginOption) {
       return;
     }
 

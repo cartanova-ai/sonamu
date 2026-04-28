@@ -3,6 +3,7 @@ import { type FastifyCorsOptions } from "@fastify/cors";
 import { type FastifyFormbodyOptions } from "@fastify/formbody";
 import { type FastifyMultipartOptions } from "@fastify/multipart";
 import { type FastifyStaticOptions } from "@fastify/static";
+import { type WebsocketPluginOptions } from "@fastify/websocket";
 import { type BetterAuthOptions } from "better-auth";
 import {
   type FastifyInstance,
@@ -181,7 +182,7 @@ export type SonamuServerOptions = {
     qs?: boolean | QsPluginOptions;
     sse?: boolean | SsePluginOptions;
     static?: boolean | FastifyStaticOptions;
-    ws?: boolean | Record<string, unknown>;
+    ws?: boolean | WebsocketPluginOptions;
 
     custom?: (server: FastifyInstance) => void;
   };
