@@ -260,7 +260,7 @@ pnpm migrate run
 ```typescript title="user.model.ts"
 class UserModelClass extends BaseModelClass {
   async updateProfileImage(userId: number, imageUrl: string) {
-    await this.getPuri("w").update({ profile_image: imageUrl }).where("id", userId);
+    await this.getPuri("w").table("users").update({ profile_image: imageUrl }).where("id", userId);
   }
 }
 ```
