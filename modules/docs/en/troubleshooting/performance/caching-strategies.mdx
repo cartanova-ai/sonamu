@@ -202,14 +202,17 @@ class StatisticsService {
   private async calculateDailyStats(date: string) {
     // Complex statistics calculation
     const [userCount, orderCount, revenue] = await Promise.all([
-      UserModel.getPuri()
+      UserModel.getPuri("r")
+        .table("users")
         .select({ count: Puri.count() })
         .then((r) => r[0].count),
-      OrderModel.getPuri()
+      OrderModel.getPuri("r")
+        .table("orders")
         .select({ count: Puri.count() })
         .where("created_at", ">=", date)
         .then((r) => r[0].count),
-      OrderModel.getPuri()
+      OrderModel.getPuri("r")
+        .table("orders")
         .select({ total: Puri.sum("total") })
         .where("created_at", ">=", date)
         .then((r) => r[0].total),
@@ -401,17 +404,21 @@ class DashboardService {
       factory: async () => {
         // Execute multiple aggregation queries in parallel
         const [totalUsers, activeUsers, totalOrders, todayRevenue] = await Promise.all([
-          UserModel.getPuri()
+          UserModel.getPuri("r")
+            .table("users")
             .select({ count: Puri.count() })
             .then((r) => r[0].count),
-          UserModel.getPuri()
+          UserModel.getPuri("r")
+            .table("users")
             .select({ count: Puri.count() })
             .where({ status: "active" })
             .then((r) => r[0].count),
-          OrderModel.getPuri()
+          OrderModel.getPuri("r")
+            .table("orders")
             .select({ count: Puri.count() })
             .then((r) => r[0].count),
-          OrderModel.getPuri()
+          OrderModel.getPuri("r")
+            .table("orders")
             .select({ total: Puri.sum("total") })
             .where("created_at", ">=", new Date().toISOString().split("T")[0])
             .then((r) => r[0].total),
