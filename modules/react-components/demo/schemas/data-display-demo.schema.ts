@@ -20,16 +20,6 @@ export const DataDisplayDemoSchema = z.object({
     })
     .optional(),
 
-  // Date Selector Multiple
-  dateValue: z
-    .object({
-      type: z.enum(["single", "range"]),
-      date: z.date().optional(),
-      from: z.date().optional(),
-      to: z.date().optional(),
-    })
-    .optional(),
-
   // Select
   selectValue: z.string().optional(),
 

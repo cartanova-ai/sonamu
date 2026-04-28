@@ -5,7 +5,6 @@ import ChevronDownIcon from "~icons/lucide/chevron-down";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { DateInput } from "@/components/ui/date-input";
-import { DateSelectorMultiple } from "@/components/ui/date-selector-multiple";
 import { MonthPickerMultiple } from "@/components/ui/month-picker-multiple";
 import { Pagination } from "@/components/ui/pagination";
 import { Progress } from "@/components/ui/progress";
@@ -34,7 +33,6 @@ function DataDisplayPage() {
     currentPage: 1,
     selectedValues: ["option1"],
     monthValue: undefined,
-    dateValue: undefined,
     selectValue: undefined,
     dateInputValue: null,
   });
@@ -89,21 +87,6 @@ function DataDisplayPage() {
         <div className="border rounded-lg p-6 bg-card">
           <div className="max-w-md">
             <DateInput {...register("dateInputValue")} />
-          </div>
-        </div>
-      </section>
-
-      {/* Date Selector */}
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Date Selector</h2>
-        <div className="border rounded-lg p-6 bg-card">
-          <div className="max-w-md">
-            <DateSelectorMultiple
-              CalendarIcon={CalendarIcon}
-              ChevronDownIcon={ChevronDownIcon}
-              {...register("dateValue")}
-              placeholder="날짜 선택"
-            />
           </div>
         </div>
       </section>
@@ -231,7 +214,6 @@ function DataDisplayPage() {
         title="Data Display State"
         sections={[
           { title: "Date Input", fields: ["dateInputValue"] },
-          { title: "Date Selector", fields: ["dateValue"] },
           { title: "Month Picker", fields: ["monthValue"] },
           { title: "Select", fields: ["selectValue"] },
           { title: "Multi Select", fields: ["selectedValues"] },
