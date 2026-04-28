@@ -6,9 +6,23 @@ import ts from "typescript";
 
 import { registeredApis } from "../api/decorators";
 import { type ExtendedApi } from "../api/decorators";
+import { type ResolvedWebSocketDecoratorOptions } from "../api/decorators";
 import { validateMethodName } from "../api/validator";
 import { type ApiParam, type ApiParamType } from "../types/types";
 import { type AbsolutePath } from "../utils/path-utils";
+
+type WebSocketTypeRefs = Pick<
+  ResolvedWebSocketDecoratorOptions,
+  "outEventsTypeRef" | "inEventsTypeRef"
+>;
+type ParsedMethod = {
+  modelName: string;
+  methodName: string;
+  typeParameters: ApiParamType.TypeParam[];
+  parameters: ApiParam[];
+  returnType: ApiParamType;
+  websocketTypeRefs: WebSocketTypeRefs;
+};
 
 /**
  * TypeScript 파일을 파싱하여 API 메소드 정보를 추출합니다.
@@ -29,7 +43,7 @@ export async function readApisFromFile(filePath: AbsolutePath): Promise<Extended
     ts.ScriptTarget.Latest,
   );
 
-  const methods: Omit<ExtendedApi, "path" | "options">[] = [];
+  const methods: ParsedMethod[] = [];
   let modelName: string = "UnknownModel";
   let methodName: string = "unknownMethod";
   const visitor = (node: ts.Node) => {
@@ -74,6 +88,7 @@ export async function readApisFromFile(filePath: AbsolutePath): Promise<Extended
         throw new Error(`리턴 타입이 기재되지 않은 메소드 ${modelName}.${methodName}`);
       }
       const returnType = resolveTypeNode(node.type);
+      const websocketTypeRefs = readWebSocketTypeRefs(node);
 
       methods.push({
         modelName,
@@ -81,6 +96,7 @@ export async function readApisFromFile(filePath: AbsolutePath): Promise<Extended
         typeParameters,
         parameters,
         returnType,
+        websocketTypeRefs,
       });
     }
     ts.forEachChild(node, visitor);
@@ -113,14 +129,109 @@ export async function readApisFromFile(filePath: AbsolutePath): Promise<Extended
     if (!foundMethod) {
       throw new Error(`API ${api.modelName}.${api.methodName} not found in ${filePath}`);
     }
+    const websocketOptions = api.websocketOptions
+      ? {
+          ...api.websocketOptions,
+          ...foundMethod.websocketTypeRefs,
+        }
+      : undefined;
+
     return {
       ...api,
+      websocketOptions,
       typeParameters: foundMethod?.typeParameters,
       parameters: foundMethod?.parameters,
       returnType: foundMethod?.returnType,
     };
   });
   return extendedApis;
+}
+
+function readWebSocketTypeRefs(node: ts.MethodDeclaration): WebSocketTypeRefs {
+  const optionsLiteral = getDecoratorOptionsObjectLiteral(node, "websocket");
+  if (!optionsLiteral) {
+    return {};
+  }
+
+  const refs: WebSocketTypeRefs = {};
+  for (const property of optionsLiteral.properties) {
+    if (!ts.isPropertyAssignment(property)) {
+      continue;
+    }
+
+    const propertyName = getPropertyNameText(property.name);
+    if (propertyName !== "outEvents" && propertyName !== "inEvents") {
+      continue;
+    }
+
+    const typeRef = resolveDecoratorTypeRef(property.initializer);
+    if (!typeRef) {
+      continue;
+    }
+
+    if (propertyName === "outEvents") {
+      refs.outEventsTypeRef = typeRef;
+    } else {
+      refs.inEventsTypeRef = typeRef;
+    }
+  }
+
+  return refs;
+}
+
+function getDecoratorOptionsObjectLiteral(
+  node: ts.MethodDeclaration,
+  decoratorName: string,
+): ts.ObjectLiteralExpression | undefined {
+  for (const modifier of node.modifiers ?? []) {
+    if (!ts.isDecorator(modifier)) {
+      continue;
+    }
+
+    const expression = modifier.expression;
+    if (!ts.isCallExpression(expression)) {
+      continue;
+    }
+
+    if (!ts.isIdentifier(expression.expression) || expression.expression.text !== decoratorName) {
+      continue;
+    }
+
+    const [firstArg] = expression.arguments;
+    if (firstArg && ts.isObjectLiteralExpression(firstArg)) {
+      return firstArg;
+    }
+  }
+
+  return undefined;
+}
+
+function getPropertyNameText(name: ts.PropertyName): string | undefined {
+  if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
+    return name.text;
+  }
+
+  return undefined;
+}
+
+function resolveDecoratorTypeRef(expression: ts.Expression): ApiParamType.Ref | undefined {
+  if (ts.isIdentifier(expression)) {
+    return {
+      t: "ref",
+      id: expression.text,
+    };
+  }
+
+  if (
+    ts.isAsExpression(expression) ||
+    ts.isParenthesizedExpression(expression) ||
+    ts.isNonNullExpression(expression) ||
+    ts.isTypeAssertionExpression(expression)
+  ) {
+    return resolveDecoratorTypeRef(expression.expression);
+  }
+
+  return undefined;
 }
 
 function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
