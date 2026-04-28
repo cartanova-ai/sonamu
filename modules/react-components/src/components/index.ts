@@ -1,7 +1,6 @@
 // NOTE: BadgeProps, ToggleProps는 인라인으로 정의되어 있어 별도 export하지 않습니다.
 
 // UI Components - Form & Input
-export type { DateRange } from "react-day-picker";
 // Hooks
 export { toast, useToast } from "../hooks/use-toast";
 export { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
