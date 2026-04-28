@@ -6,13 +6,6 @@ import { CompanySearchInput } from "./CompanySearchInput";
 const meta = {
   component: CompanySearchInput,
   tags: ["autodocs"],
-  parameters: { layout: "centered" },
-} satisfies Meta<typeof CompanySearchInput>;
-
-export default meta;
-type Story = StoryObj<typeof meta>;
-
-export const Default: Story = {
   args: {
     input: {
       value: "",
@@ -23,7 +16,13 @@ export const Default: Story = {
       onValueChange: () => {},
     },
   },
-};
+  parameters: { layout: "centered" },
+} satisfies Meta<typeof CompanySearchInput>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {};
 
 export const Controlled: Story = {
   render: function Render() {
