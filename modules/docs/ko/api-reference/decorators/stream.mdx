@@ -73,7 +73,7 @@ class NotificationModelClass extends BaseModelClass {
 type: "sse"; // Server-Sent Events (현재 유일한 옵션)
 ```
 
-<Info>향후 WebSocket 지원이 추가될 수 있습니다.</Info>
+<Info>WebSocket은 별도의 `@websocket` 데코레이터로 지원됩니다. `@stream`은 SSE 전용이며 `type` 옵션은 `"sse"`만 받습니다.</Info>
 
 ### events
 
