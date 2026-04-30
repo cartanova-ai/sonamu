@@ -305,7 +305,8 @@ test("Mock 상태 확인", () => {
 ```typescript
 test("DB 쿼리 확인", async () => {
   // 쿼리 로깅 활성화 (개발 중)
-  const result = await UserModel.getPuri()
+  const result = await UserModel.getPuri("r")
+    .table("users")
     .select("*")
     .where({ email: "test@example.com" })
     .debug() // 쿼리 출력
@@ -324,7 +325,7 @@ test("데이터 생성 확인", async () => {
   await UserModel.create({ email });
 
   // DB에서 직접 확인
-  const users = await UserModel.getPuri().select("*").getMany();
+  const users = await UserModel.getPuri("r").table("users").select("*").getMany();
 
   console.log("전체 사용자:", users);
 
