@@ -386,7 +386,7 @@ export function transactional(options: TransactionalOptions = {}) {
     const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
     assert(
       modelName,
-      `modelName is required on @stream decorator on ${target.constructor.name}.${propertyKey}`,
+      `modelName is required on @transactional decorator on ${target.constructor.name}.${propertyKey}`,
     );
     const methodName = propertyKey;
 
