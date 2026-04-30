@@ -53,7 +53,7 @@ export type ApiDecoratorOptions = {
   compress?: CompressConfig;
 };
 export type StreamDecoratorOptions = {
-  type: "sse"; // | 'ws
+  type: "sse";
   // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 이벤트 키별로 넘겨주는 값이므로 어떤 타입이든 상관없음
   events: z.ZodObject<any>;
   path?: string;
