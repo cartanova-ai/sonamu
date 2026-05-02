@@ -273,7 +273,7 @@ function spawnApiDevServer(options?: { extraEnv?: Record<string, string> }) {
       "--node-args=--enable-source-maps", // 그리고 소스맵 지원을 위한 플래그입니다.
       "--on-key=r:restart:Restart server", // r 누르면 서버 재시작하게 해줘요.
       "--on-key=c:clear:Clear screen", // c 누르면 터미널 화면을 지워줘요.
-      `--on-key=f:shell(cd ${apiRoot} && pnpm sonamu sync --force):restart:Force sync & restart`, // f 누르면 force sync 후 서버 재시작.
+      `--on-key=f:shell(rm ${path.join(apiRoot, "sonamu.lock")}):restart:Force restart`, // f 누르면 lock 제거 후 재시작 → 새 프로세스가 부트스트랩에서 풀-싱크. force sync CLI를 shell로 부르면 살아있는 서버의 watcher 폭풍이 :restart와 충돌해 상태 이상.
 
       "--on-key=enter:shell(echo hi):Key binding test", // enter를 key로 쓸 수 있음을 보이기 위한 테스트입니다.
       "--on-key=ctrl+f ctrl+f:shell(git pull && pnpm install && pnpm --filter sonamu build && echo 'Sonamu is now up-to-date!'):restart:Pull & install & build & restart", // modifier와의 조합, 그리고 두 개의 chord를 사용할 수 있음을 보이기 위한 테스트입니다.
