@@ -520,7 +520,7 @@ describe("async-utils", () => {
       ];
 
       // Promise.all로 병렬 실행
-      const results = await Promise.all(patterns.map(globAsync));
+      const results = await Promise.all(patterns.map((p) => globAsync(p)));
       const allTypePaths = results.flat();
 
       // 두 패턴의 결과가 합쳐져야 함
