@@ -55,7 +55,7 @@ export class Syncer {
     // 얘네들은 sonamu.lock에 들어가지도 않고 따라서 HMR 경로를 타지도 않는 친구들입니다.
     // 그래서 아무 때나 그냥 돌려주면 되는데, syncFromWatcher에서 매번 하는 것은 낭비이니 여기서 한 번만 합니다.
     await SyncerActions.actionCopySharedToTargetsIfNotExists();
-    await SyncerActions.actionGenerateSsrEntryServer();
+    await SyncerActions.actionGenerateSsrEntryServerIfNotExists();
 
     // 바뀐 것이 없으면 그냥 넘어가요.
     const changedFiles = await findChangedFilesUsingChecksums();

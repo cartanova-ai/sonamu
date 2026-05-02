@@ -6,6 +6,7 @@ import chalk from "chalk";
 
 import { Sonamu } from "../api/sonamu";
 import { type EntityNamesRecord } from "../entity/entity-manager";
+import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
 import { isTest } from "../utils/controller";
 import { copyFileWithReplaceCoreToShared, exists } from "../utils/fs-utils";
@@ -94,11 +95,23 @@ export async function actionGenerateSsrQueries(): Promise<AbsolutePath[]> {
 }
 
 /**
- * entry-server.generated.tsx 재생성합니다.
- * @returns 생성된 파일 경로 배열.
+ * entry-server.generated.tsx를 생성합니다.
+ * 다른 액션들과 달리, 이미 파일이 있으면 그냥 놔둡니다. 그래서 함수 이름 끝에 써놨어요 ㅎ
+ * 입력 의존 없는 정적 코드라 매번 overwrite는 mtime만 갱신하는 의미 없는 동작.
+ * 템플릿 자체가 변경된 경우(Sonamu 업그레이드)에는 사용자가 파일을 삭제한 뒤 sync로 재생성.
+ * @returns 생성된 파일 경로 배열 (이미 있으면 빈 배열).
  */
-export async function actionGenerateSsrEntryServer(): Promise<AbsolutePath[]> {
-  return generateTemplate("entry_server", {}, { overwrite: true });
+export async function actionGenerateSsrEntryServerIfNotExists(): Promise<AbsolutePath[]> {
+  try {
+    return await generateTemplate("entry_server", {}, { overwrite: false });
+  } catch (e) {
+    // generateTemplate은 overwrite: false에서 파일이 이미 있으면 예외를 던집니다.
+    // IfNotExists 의미상 "그냥 놔둔다"가 정상이므로 빈 배열로 변환합니다.
+    if (e instanceof AlreadyProcessedException) {
+      return [];
+    }
+    throw e;
+  }
 }
 
 /**
