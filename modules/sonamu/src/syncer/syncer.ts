@@ -255,7 +255,7 @@ export class Syncer {
 
     // 여기는 별로 중요한 파트는 아닙니다.
     // 아래의 if 전개를 깔끔하게 하려고 만든 DSL 같은 거라서, 무시하셔도 됩니다.
-    const { changeMatches, noMatchingChanges } = this.changeMatcher(diffTypes);
+    const { changeMatches, unhandledPaths } = this.changeMatcher(diffTypes, diffGroups);
 
     if (changeMatches("entity", "types")) {
       await this.handleTruthSourceChanges(diffGroups);
@@ -277,13 +277,16 @@ export class Syncer {
       await this.handleSonamuDictionaryRelatedChanges(diffGroups);
     }
 
-    if (noMatchingChanges()) {
-      // 여기까지 왔으면 위의 어떤 changeMatches에도 걸리지 않은 것입니다.
-      // 이런 상황은 언제 발생하느냐?
-      // checksumPatternGroup에 있어서 watcher의 관심 대상이고,
-      // 따라서 변경에 의해 doSyncActions가 호출되기는 하였으나,
-      // 저 위에서 changeMatches로 다뤄지지는 않은 경우입니다.
-      console.warn(`처리되지 않은 변경이 존재합니다.`);
+    // 파일 변경은 감지되었으나 저 위 어느 changeMatches에도 걸리지 않은 파일들이 drifts입니다.
+    // syncer는 소스의 변경에는 반응하지만 산출물의 변경(drift)에는 직접적으로 반응하지 않습니다.
+    // 대신 이 drift에 대해 경고 정도만 출력해줍니다.
+    const drifts = unhandledPaths();
+    if (drifts.length > 0) {
+      console.warn(chalk.yellow("⚠️ Sync 산출물이 변경되었습니다:"));
+      for (const p of drifts) {
+        console.warn(chalk.yellow(`  - ${path.relative(Sonamu.appRootPath, p)}`));
+      }
+      console.warn(chalk.dim("  → `pnpm sonamu sync --force`를 권장합니다."));
     }
 
     return {
@@ -309,16 +312,29 @@ export class Syncer {
     }) as unknown as DiffGroups;
   }
 
-  private changeMatcher(diffTypes: FileType[]) {
-    let everChanged = false;
-    const changeMatches = (...types: FileType[]) => {
-      const changed = types.some((t) => diffTypes.includes(t));
-      everChanged ||= changed;
-      return changed;
-    };
-    const noMatchingChanges = () => !everChanged;
+  private changeMatcher(diffTypes: FileType[], diffGroups: DiffGroups) {
+    const handled = new Set<FileType>();
 
-    return { changeMatches, noMatchingChanges };
+    /**
+     * 변경 사항이 인자로 받은 FileType들 중 하나 이상을 포함하는지 확인합니다.
+     * 가령 ["entity"]가 변경된 호출에서 changeMatches("entity")는 trye를 반환하며,
+     * ["types", "i18n"]이 변경된 호출에서 changeMatches("types", "functions")도 true를 반환하지만,
+     * ["functions"]가 변경된 호출에서 changeMatches("frame")은 false를 반환합니다.
+     * @param types
+     */
+    const changeMatches = (...types: FileType[]) => {
+      const matching = types.filter((t) => diffTypes.includes(t));
+      matching.forEach((t) => handled.add(t));
+      return matching.length > 0;
+    };
+
+    /**
+     * 어떤 changeMatches 호출에도 걸리지 않은 FileType들의 실제 파일 경로를 모아서 반환합니다.
+     */
+    const unhandledPaths = (): AbsolutePath[] =>
+      diffTypes.filter((t) => !handled.has(t)).flatMap((t) => diffGroups[t] ?? []);
+
+    return { changeMatches, unhandledPaths };
   }
 
   async handleTruthSourceChanges(diffGroups: DiffGroups): Promise<void> {

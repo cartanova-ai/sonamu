@@ -59,7 +59,7 @@ async function getCurrentChecksums(): Promise<PathAndChecksum[]> {
     )
   ).flat();
 
-  // 동일 파일이 여러 패턴에 매치될 수 있으므로(예: sd.generated.ts는 generated와 i18nGenerated에 모두 매치)
+  // 동일 파일이 여러 패턴에 매치될 수 있으므로(예: sd.generated.ts는 generated와 sdGenerated에 모두 매치)
   // 중복 제거 후 안정 정렬.
   const filePaths = Array.from(new Set(allPaths)).toSorted() as AbsolutePath[];
 

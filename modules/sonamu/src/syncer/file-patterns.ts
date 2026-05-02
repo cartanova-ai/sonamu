@@ -47,14 +47,22 @@ export function getChecksumPatternGroup() {
     // Sonamu가 출력하는 생성 파일들입니다.
     // 이 친구들도 정합성 검증 차원에서 sonamu.lock에 기록해야 하고,
     // 또한 변경시 그 사실을 syncer가 알기는 해야 합니다(비록 별다른 처리가 없는 경우도 있지만).
-    // 이 친구들은 api에 있을 수도 있고 target으로 복사/생성되기도 하므로
-    // anywhere(=api/targets 모두에 있음)로 나타내기도 합니다.
+    //
+    // 자산 본성에 따라 위치 카테고리가 다르기 때문에, 본성별로 분리해서 표기합니다.
+    // - 양쪽-필요 자산: api에 정본이 만들어진 뒤 target에 복사됨 (sonamu.generated.*, queries.generated.ts).
+    // - api 전용 자산: api에만 만들어짐 (sonamu.generated.http).
+    // - target 전용 자산: target에만 만들어짐 (services.generated.ts는 services.template의 :target 분배).
     //
     // 여기에는 Sonamu의 모든 sync 산출물이 있는 것은 아닙니다.
-    // sonamu.shared.ts와 entry-server.generated.ts와 같은
+    // sonamu.shared.ts와 entry-server.generated.tsx와 같은
     // sync 초반 1회성 부트스트랩 파일들은 관리 안 하기 때문에 여기에 리스팅도 안 합니다.
-    generated: anywhere("src/{application,services}/**/*.generated.{ts,tsx,http,sso.ts}"),
-    i18nGenerated: anywhere("src/i18n/**/sd.generated.ts"),
+    generated: api("src/application/**/*.generated.{ts,tsx,sso.ts}"),
+    generatedCopied: targets("src/services/**/{sonamu,queries}.generated.{ts,tsx,sso.ts}"),
+    httpGenerated: api("src/application/**/*.generated.http"),
+    servicesGenerated: targets("src/services/services.generated.ts"),
+    sdGenerated: anywhere("src/i18n/**/sd.generated.ts"),
+    typesCopied: targets("src/services/**/*.types.ts"),
+    functionsCopied: targets("src/services/**/*.functions.ts"),
     i18nCopied: targets("src/i18n/**/!(sd.generated).ts"),
   } satisfies Record<string, AppRelativePath>;
 }

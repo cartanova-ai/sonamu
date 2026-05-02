@@ -241,7 +241,7 @@
   },
   {
     "path": "web/src/i18n/en.ts",
-    "checksum": "2a9ea8560c1d422d0980b5086e74b9fc428532d8"
+    "checksum": "e441a676575bf9f6eb324d4ede51ce00a0ba4738"
   },
   {
     "path": "web/src/i18n/ja.ts",
@@ -256,6 +256,54 @@
     "checksum": "c304b1e6a2d7f867efb3e3618c166a1ede69437b"
   },
   {
+    "path": "web/src/services/account/account.types.ts",
+    "checksum": "fba73324d6e9ef61741cd6e3ce702868a7fb9156"
+  },
+  {
+    "path": "web/src/services/audit-event/audit-event.types.ts",
+    "checksum": "ebbd3f6453125f77ff00ba8ad1261072661847c1"
+  },
+  {
+    "path": "web/src/services/audit-log/audit-log.types.ts",
+    "checksum": "6585d69477c55a7f50b54a9a1698ffa9ac92a71f"
+  },
+  {
+    "path": "web/src/services/company/company.types.ts",
+    "checksum": "6e0907e607180c52f5bbc0de4d920c9e3e10e179"
+  },
+  {
+    "path": "web/src/services/dashboard/dashboard.types.ts",
+    "checksum": "5f5887f030339d784b14084fa0c5e8b38580c285"
+  },
+  {
+    "path": "web/src/services/department/department.types.ts",
+    "checksum": "095372330acf0df9dba166bbd89bee720a3d278a"
+  },
+  {
+    "path": "web/src/services/document/document.types.ts",
+    "checksum": "e9b9ff76272f48f50b8270577a6420f479937c68"
+  },
+  {
+    "path": "web/src/services/employee/employee.types.ts",
+    "checksum": "8147226c67b385f0c23a716a312a3e124bc25516"
+  },
+  {
+    "path": "web/src/services/file/file.types.ts",
+    "checksum": "c1faed89674f672c6395e109440a6d50b41e5190"
+  },
+  {
+    "path": "web/src/services/milestone/milestone.types.ts",
+    "checksum": "ab2984c80ad4725ff525db238721f27cc8b87b38"
+  },
+  {
+    "path": "web/src/services/passkey/passkey.types.ts",
+    "checksum": "c900002616cc8e1d61e61e6fde0b6df13ec7fe69"
+  },
+  {
+    "path": "web/src/services/project/project.types.ts",
+    "checksum": "7c9f987111a2307eafb2b000200ab8c765855b5f"
+  },
+  {
     "path": "web/src/services/queries.generated.ts",
     "checksum": "1432a400785f7c5b72671dd908896373f99e1058"
   },
@@ -264,11 +312,35 @@
     "checksum": "6dcb95130a67e3050a8c6467a8f1aca9728552f6"
   },
   {
+    "path": "web/src/services/session/session.types.ts",
+    "checksum": "5f4dbeeb82ee2b752da0e51e54e5bd30f839d4ae"
+  },
+  {
     "path": "web/src/services/sonamu.generated.sso.ts",
     "checksum": "7ba2cbd0b88c0db4dbb096488a19eac86801413d"
   },
   {
     "path": "web/src/services/sonamu.generated.ts",
     "checksum": "56ef748fb660c6e61a2d453e04b6b37b8b2d967d"
+  },
+  {
+    "path": "web/src/services/sync-fixture/sync-fixture.types.ts",
+    "checksum": "2caa2710b12e4438fada2b9f168705f20d3b3e3e"
+  },
+  {
+    "path": "web/src/services/tag/tag.types.ts",
+    "checksum": "11791f98049ed90af3e46dcb24d763263712abdd"
+  },
+  {
+    "path": "web/src/services/two-factor/two-factor.types.ts",
+    "checksum": "de5737bb83bd6caa187c593309df3cced400c64e"
+  },
+  {
+    "path": "web/src/services/user/user.types.ts",
+    "checksum": "7dafdce65e29150bdb61b8929c60986698f6f4bc"
+  },
+  {
+    "path": "web/src/services/verification/verification.types.ts",
+    "checksum": "cfc61fd9eea59a052ac5316c00a77f0fc91c7e90"
   }
 ]
