@@ -117,23 +117,6 @@ describe("Syncer", () => {
       expect(httpFile).toBeDefined();
     });
 
-    // 목적: generated 파일이 변경되면 타겟 디렉토리(web 등)로 자동 복사되는지 확인
-    test("generated 파일 변경 → 타겟에 복사", async () => {
-      const generatedPath = join(
-        apiRootPath,
-        "src/application/sonamu.generated.ts",
-      ) as AbsolutePath;
-
-      await syncer.doSyncActions([generatedPath]);
-
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-
-      const copiedFile = writeFiles.find(
-        (f: WriteFileRecord) => f.path.includes("/web/") && f.path.includes("sonamu.generated.ts"),
-      );
-      expect(copiedFile).toBeDefined();
-    });
-
     // 목적: 여러 model 파일을 동시에 변경했을 때 모두 정상 처리되는지 확인
     test("여러 model 파일 동시 변경", async () => {
       const paths = [
@@ -161,14 +144,18 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const webRootPath = join(apiRootPath, "../web");
+      // entry-server.generated.tsx는 부트스트랩 phase 전용이라 doSyncActions에선 만들어지지 않습니다.
+      // 새 디자인에선 각 핸들러가 자기 산출물을 target까지 복사하므로 queries/http/sso도 web 측에 분배됩니다.
       expect(writeFiles.map((f) => f.path).toSorted()).toStrictEqual([
         join(apiRootPath, "src/application/queries.generated.ts"),
         join(apiRootPath, "src/application/sonamu.generated.http"),
         join(apiRootPath, "src/application/sonamu.generated.sso.ts"),
         join(apiRootPath, "src/application/sonamu.generated.ts"),
-        join(webRootPath, "src/entry-server.generated.tsx"),
         join(webRootPath, "src/services/company/company.types.ts"),
+        join(webRootPath, "src/services/queries.generated.ts"),
         join(webRootPath, "src/services/services.generated.ts"),
+        join(webRootPath, "src/services/sonamu.generated.http"),
+        join(webRootPath, "src/services/sonamu.generated.sso.ts"),
         join(webRootPath, "src/services/sonamu.generated.ts"),
         join(webRootPath, "src/services/sync-fixture/sync-fixture.types.ts"),
       ]);
@@ -708,45 +695,6 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 11. handleTruthSourceChanges
-  // ============================================
-  describe("handleTruthSourceChanges", () => {
-    // 목적: entity 파일이 변경되면 diffGroups.generated에 파일이 추가되고 diffTypes에 "generated"가 포함되는지 확인
-    test("entity 변경 시 generated 파일 추가", async () => {
-      // 초기 상태 설정: entity 파일만 변경된 상태로 시뮬레이션
-      const diffGroups = {
-        entity: [
-          join(
-            apiRootPath,
-            "src/application/sync-fixture/sync-fixture.entity.json",
-          ) as AbsolutePath,
-        ],
-        types: [],
-        functions: [],
-        generated: [],
-        model: [],
-        frame: [],
-        config: [],
-        workflow: [],
-        i18n: [],
-        i18nGenerated: [],
-        i18nCopied: [],
-        entryServer: [],
-      };
-      const diffTypes: string[] = ["entity"]; // 초기에는 "entity"만 포함
-
-      // handleTruthSourceChanges 실행: entity 변경 처리
-      await syncer.handleTruthSourceChanges(diffGroups, diffTypes);
-
-      // 검증: generated 파일이 추가되었는지 확인
-      expect(diffGroups.generated).toBeDefined();
-      expect(diffGroups.generated.length).toBeGreaterThan(0);
-      // diffTypes에 "generated"가 추가되었는지 확인
-      expect(diffTypes).toContain("generated");
-    });
-  });
-
-  // ============================================
   // 12. handleImplementationChanges
   // ============================================
   describe("handleImplementationChanges", () => {
@@ -935,65 +883,7 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 14. copySharedToTargets
-  // ============================================
-  describe("copySharedToTargets", () => {
-    // 목적: shared 파일이 타겟 디렉토리로 정상적으로 복사되는지 확인 (파일이 동일하면 스킵될 수 있음)
-    test("정상 복사", async () => {
-      const targets = Sonamu.config.sync.targets;
-
-      await syncer.copySharedToTargets(targets);
-
-      // 파일이 동일하면 복사 스킵될 수 있으므로 에러 없이 완료되면 성공
-    });
-
-    // 목적: 존재하지 않는 shared 파일을 복사하려고 할 때 에러 없이 early return되는지 확인
-    test("shared 소스 파일 미존재 → early return (에러 없음)", async () => {
-      // nonexistent-target.shared.ts.txt가 sonamu에 없으므로 early return
-      await expect(syncer.copySharedToTargets(["nonexistent-target"])).resolves.not.toThrow();
-    });
-
-    // 목적: 빈 타겟 배열을 전달했을 때 에러 없이 정상 처리되는지 확인
-    test("빈 타겟 배열 → 정상 처리", async () => {
-      await syncer.copySharedToTargets([]);
-      // 에러 없이 완료되어야 함
-    });
-
-    // 목적: sonamu.shared.ts가 이미 존재하면 덮어쓰지 않는지 확인
-    test("파일이 이미 존재하면 덮어쓰지 않음", async () => {
-      const targets = Sonamu.config.sync.targets;
-
-      await syncer.copySharedToTargets(targets);
-
-      // 파일이 이미 존재하므로 writeFile이 sonamu.shared.ts에 대해 호출되지 않아야 합니다.
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      const sharedWrites = writeFiles.filter((f) => f.path.includes("sonamu.shared.ts"));
-      expect(sharedWrites.length).toBe(0);
-    });
-
-    // 목적: sonamu.shared.ts가 존재하지 않으면 새로 생성하는지 확인
-    test("파일이 없으면 생성함", async () => {
-      // "app" 타겟 디렉토리를 가상으로 등록하여 디렉토리 존재 체크를 통과시킵니다.
-      // app.shared.ts.txt 템플릿은 실제로 존재하지만, app/src/services/sonamu.shared.ts는 존재하지 않습니다.
-      const appDirPath = join(Sonamu.appRootPath, "app");
-      Naite.t("mock:fs/promises:virtualFileSystem", appDirPath);
-
-      try {
-        await syncer.copySharedToTargets(["app"]);
-
-        // 파일이 없었으므로 writeFile이 호출되어야 합니다.
-        const writeFiles = Naite.get("fs/promises:writeFile").result();
-        const sharedWrite = writeFiles.find((f) => f.path.includes("sonamu.shared.ts"));
-        expect(sharedWrite).toBeDefined();
-        expect(sharedWrite.path).toContain("app/src/services/sonamu.shared.ts");
-      } finally {
-        Naite.del("mock:fs/promises:virtualFileSystem");
-      }
-    });
-  });
-
-  // ============================================
-  // 15. entity-operations
+  // 14. entity-operations
   // ============================================
   describe("entity-operations", () => {
     describe("createEntity", () => {

@@ -104,11 +104,16 @@ export async function actionSyncFilesToTargets(tsPaths: AbsolutePath[]): Promise
   const { targets } = Sonamu.config.sync;
   const { dir: apiDir } = Sonamu.config.api;
 
+  // api 측 path만 처리합니다. 호출자가 generated 산출물 path들을 그대로 넘길 수 있도록
+  // (actionGenerateServices처럼 이미 모든 target에 분배된 산출물은 target 측 path도 포함됨)
+  // 여기서 필터링해서 self-overwrite 중복을 방지합니다.
+  const apiOnlyPaths = tsPaths.filter((p) => p.includes(`/${apiDir}/`));
+
   return (
     await Promise.all(
       targets.map(async (target) =>
         Promise.all(
-          tsPaths.map(async (realSrc) => {
+          apiOnlyPaths.map(async (realSrc) => {
             const dst = realSrc
               .replace(`/${apiDir}/`, `/${target}/`)
               .replace("/application/", "/services/");

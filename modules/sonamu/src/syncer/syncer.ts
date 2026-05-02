@@ -258,15 +258,15 @@ export class Syncer {
     const { changeMatches, noMatchingChanges } = this.changeMatcher(diffTypes);
 
     if (changeMatches("entity", "types")) {
-      await this.handleTruthSourceChanges(diffGroups, diffTypes);
-    }
-
-    if (changeMatches("types", "functions", "generated")) {
-      await this.handleSyncableFileChanges(diffGroups);
+      await this.handleTruthSourceChanges(diffGroups);
     }
 
     if (changeMatches("model", "frame")) {
-      await this.handleImplementationChanges(diffGroups, diffTypes);
+      await this.handleImplementationChanges(diffGroups);
+    }
+
+    if (changeMatches("types", "functions")) {
+      await this.handleAuthoredInputChanges(diffGroups);
     }
 
     if (changeMatches("config")) {
@@ -321,8 +321,8 @@ export class Syncer {
     return { changeMatches, noMatchingChanges };
   }
 
-  async handleTruthSourceChanges(diffGroups: DiffGroups, diffTypes: string[]): Promise<void> {
-    Naite.t("handleTruthSourceChanges", { diffGroups, diffTypes });
+  async handleTruthSourceChanges(diffGroups: DiffGroups): Promise<void> {
+    Naite.t("handleTruthSourceChanges", { diffGroups });
 
     await EntityManager.reload();
 
@@ -342,32 +342,12 @@ export class Syncer {
       }
     }
 
+    // 자기가 만든 산출물을 그 자리에서 target까지 복사. 후속 분기에 push로 떠넘기지 않음.
     const generated = await SyncerActions.actionGenerateSchemas();
-
-    diffGroups.generated = unique([...(diffGroups.generated ?? []), ...generated]);
-    diffTypes.push("generated");
+    await SyncerActions.actionSyncFilesToTargets(generated);
   }
 
-  async handleSyncableFileChanges(diffGroups: DiffGroups): Promise<FileType[]> {
-    const tsPaths = unique([
-      ...(diffGroups.types ?? []),
-      ...(diffGroups.functions ?? []),
-      ...(diffGroups.generated ?? []),
-    ]);
-    Naite.t("handleSyncableFileChanges", { diffGroups });
-
-    // console.log(
-    //   chalk.gray(
-    //     `[Processing] Handling types/functions/generated changes: ${tsPaths.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
-    //   )
-    // );
-
-    await SyncerActions.actionSyncFilesToTargets(tsPaths);
-
-    return [];
-  }
-
-  async handleImplementationChanges(diffGroups: DiffGroups, diffTypes: string[]): Promise<void> {
+  async handleImplementationChanges(diffGroups: DiffGroups): Promise<void> {
     Naite.t("handleImplementationChanges", { diffGroups });
     const mergedGroup = [...(diffGroups.model ?? []), ...(diffGroups.frame ?? [])];
 
@@ -394,10 +374,22 @@ export class Syncer {
     const http = await SyncerActions.actionGenerateHttps();
     const queries = await SyncerActions.actionGenerateSsrQueries();
 
-    diffGroups.generated = unique([...(diffGroups.generated ?? []), ...services, http, ...queries]);
-    if (!diffTypes.includes("generated")) {
-      diffTypes.push("generated");
-    }
+    // 자기가 만든 산출물을 그 자리에서 target까지 복사. 후속 분기에 push로 떠넘기지 않음.
+    await SyncerActions.actionSyncFilesToTargets([
+      ...(services as AbsolutePath[]),
+      http,
+      ...queries,
+    ]);
+  }
+
+  /**
+   * 사용자가 작성한 입력 파일(types/functions)을 target 디렉토리에 복사합니다.
+   * 산출물은 각 생성 핸들러가 자기 자리에서 직접 복사하므로 여기는 건드리지 않습니다.
+   */
+  async handleAuthoredInputChanges(diffGroups: DiffGroups): Promise<void> {
+    Naite.t("handleAuthoredInputChanges", { diffGroups });
+    const tsPaths = unique([...(diffGroups.types ?? []), ...(diffGroups.functions ?? [])]);
+    await SyncerActions.actionSyncFilesToTargets(tsPaths);
   }
 
   async handleConfigChanges(_: DiffGroups): Promise<void> {
