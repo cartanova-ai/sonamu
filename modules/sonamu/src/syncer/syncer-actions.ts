@@ -51,6 +51,14 @@ export async function actionGenerateServices(
 }
 
 /**
+ * Entity에 딸린 초기 types.ts를 만들어줍니다.
+ * @param entityId
+ */
+export async function actionGenerateInitialTypes(entityId: string): Promise<AbsolutePath[]> {
+  return generateTemplate("init_types", { entityId });
+}
+
+/**
  * sonamu.generated.ts와 sonamu.generated.sso.ts를 생성합니다.
  * @returns 생성된 파일 경로 배열.
  */
