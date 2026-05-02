@@ -44,11 +44,19 @@ describe("sonamu.lock 무결성 추적", () => {
       expect(allPatterns).not.toMatch(/entry-server\.generated/);
     });
 
-    // generated 패턴은 application/services 디렉토리로 한정. 광범위 패턴이
-    // i18nGenerated/i18nCopied 영역을 침범하던 문제를 정련한 결과의 회귀 가드.
-    test("generated 패턴은 application/services 디렉토리로 한정된다", () => {
-      const { generated } = getChecksumPatternGroup();
-      expect(generated).toContain("{application,services}");
+    // generated 계열 패턴은 i18n 영역을 침범하지 않아야 함. 광범위 패턴이
+    // sdGenerated/i18nCopied 영역을 침범하던 문제를 정리한 결과의 회귀 가드.
+    test("generated 계열 패턴은 i18n 영역을 침범하지 않는다", () => {
+      const group = getChecksumPatternGroup();
+      const generatedKeys = [
+        "generated",
+        "generatedCopied",
+        "httpGenerated",
+        "servicesGenerated",
+      ] as const;
+      for (const key of generatedKeys) {
+        expect(group[key]).not.toContain("i18n");
+      }
     });
 
     // Node 내장 fs.glob의 brace expansion은 단일 멤버 {x}를 풀지 않음.

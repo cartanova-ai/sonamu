@@ -714,9 +714,13 @@ describe("Syncer", () => {
         config: [],
         workflow: [],
         i18n: [],
-        i18nGenerated: [],
+        sdGenerated: [],
+        generatedCopied: [],
+        httpGenerated: [],
+        servicesGenerated: [],
+        typesCopied: [],
+        functionsCopied: [],
         i18nCopied: [],
-        entryServer: [],
       };
 
       // handleImplementationChanges 실행: 여러 model 처리
@@ -744,9 +748,13 @@ describe("Syncer", () => {
         config: [],
         workflow: [],
         i18n: [],
-        i18nGenerated: [],
+        sdGenerated: [],
+        generatedCopied: [],
+        httpGenerated: [],
+        servicesGenerated: [],
+        typesCopied: [],
+        functionsCopied: [],
         i18nCopied: [],
-        entryServer: [],
       });
 
       // autoload가 정상적으로 완료되었는지 확인
@@ -770,9 +778,13 @@ describe("Syncer", () => {
         config: [],
         workflow: [],
         i18n: [],
-        i18nGenerated: [],
+        sdGenerated: [],
+        generatedCopied: [],
+        httpGenerated: [],
+        servicesGenerated: [],
+        typesCopied: [],
+        functionsCopied: [],
         i18nCopied: [],
-        entryServer: [],
       });
 
       const writeFile = Naite.get("fs/promises:writeFile")
@@ -796,9 +808,13 @@ describe("Syncer", () => {
         config: [],
         workflow: [],
         i18n: [],
-        i18nGenerated: [],
+        sdGenerated: [],
+        generatedCopied: [],
+        httpGenerated: [],
+        servicesGenerated: [],
+        typesCopied: [],
+        functionsCopied: [],
         i18nCopied: [],
-        entryServer: [],
       });
 
       // 검증: actionGenerateServices에 전달된 파라미터가 올바른 namesRecord를 포함하는지 확인
@@ -1472,13 +1488,16 @@ describe("Syncer", () => {
             config: [],
             workflow: [],
             i18n: [],
-            i18nGenerated: [],
+            sdGenerated: [],
+            generatedCopied: [],
+            httpGenerated: [],
+            servicesGenerated: [],
+            typesCopied: [],
+            functionsCopied: [],
             i18nCopied: [],
-            entryServer: [],
           };
-          const diffTypes: string[] = ["entity"];
 
-          await syncer.handleTruthSourceChanges(diffGroups, diffTypes);
+          await syncer.handleTruthSourceChanges(diffGroups);
 
           // generated 파일에 커스텀 헤더가 추가되었는지 확인
           const writeFiles = Naite.get("fs/promises:writeFile").result();
@@ -1534,9 +1553,13 @@ describe("Syncer", () => {
             config: [],
             workflow: [],
             i18n: [],
-            i18nGenerated: [],
+            sdGenerated: [],
+            generatedCopied: [],
+            httpGenerated: [],
+            servicesGenerated: [],
+            typesCopied: [],
+            functionsCopied: [],
             i18nCopied: [],
-            entryServer: [],
           });
 
           const writeFiles = Naite.get("fs/promises:writeFile").result();
@@ -1584,9 +1607,13 @@ describe("Syncer", () => {
           config: [],
           workflow: [],
           i18n: [],
-          i18nGenerated: [],
+          sdGenerated: [],
+          generatedCopied: [],
+          httpGenerated: [],
+          servicesGenerated: [],
+          typesCopied: [],
+          functionsCopied: [],
           i18nCopied: [],
-          entryServer: [],
         });
 
         const serviceFile = Naite.get("fs/promises:writeFile")
