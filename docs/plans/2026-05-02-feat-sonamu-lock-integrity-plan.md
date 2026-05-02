@@ -91,9 +91,18 @@ export function getChecksumPatternGroup() {
     i18n:      api("src/i18n/**/!(sd.generated).ts"),
 
     // 출력 (sonamu 생성/복사). 부트스트랩 자산은 여기 없음 (별도 phase에서 보장).
-    generated:     anywhere("src/{application,services}/**/*.generated.{ts,tsx,http,sso.ts}"),
-    i18nGenerated: anywhere("src/i18n/**/sd.generated.ts"),
-    i18nCopied:    targets("src/i18n/**/!(sd.generated).ts"),
+    // 자산 본성에 따라 위치 카테고리가 다르기 때문에, 본성별로 분리해서 표기.
+    // - 양쪽-필요 자산: api에 정본 → target 복사 (sonamu.generated.*, queries.generated.ts)
+    // - api 전용 자산: api에만 (sonamu.generated.http)
+    // - target 전용 자산: target에만 (services.generated.ts는 services.template :target 분배)
+    generated:         api("src/application/**/*.generated.{ts,tsx,sso.ts}"),
+    generatedCopied:   targets("src/services/**/{sonamu,queries}.generated.{ts,tsx,sso.ts}"),
+    httpGenerated:     api("src/application/**/*.generated.http"),
+    servicesGenerated: targets("src/services/services.generated.ts"),
+    sdGenerated:       anywhere("src/i18n/**/sd.generated.ts"),
+    typesCopied:       targets("src/services/**/*.types.ts"),
+    functionsCopied:   targets("src/services/**/*.functions.ts"),
+    i18nCopied:        targets("src/i18n/**/!(sd.generated).ts"),
   } satisfies Record<string, AppRelativePath>;
 }
 
@@ -124,7 +133,9 @@ export type FileType = keyof ReturnType<typeof getChecksumPatternGroup>;
 - **i18n은 위치에 따라 의미가 다르다** — api 안의 `ko.ts/en.ts/ja.ts`는 사용자가 작성한 입력이고, target 안의 같은 파일은 api에서 복사된 산출물이다. 그래서 입력 패턴 `i18n`은 `api`로, 산출물 패턴 `i18nCopied`는 `targets`로 따로 잡는다
 - `FileType` 단일 소스: 함수 반환 객체 키에서 `keyof ReturnType<...>`로 자동 추론. 별도 enum/배열 동기화 지점 없음.
 - **단일 멤버 alternation 가드** (`braceJoin`): Node 내장 `fs.glob`이 `{web}` 같은 단일 멤버 brace expansion을 처리하지 못해서 alternation 없이 직접 결합.
-- **`generated` 패턴은 `application/services`로 좁힘** — 처음엔 `src/**/*.generated.*`으로 광범위하게 잡았는데, 이렇게 두면 i18nGenerated/i18nCopied 같은 별개 fileType의 영역까지 침범한다. 디렉토리로 한정해서 의도한 영역만 정확히 매치 (Design Notes #6).
+- **`generated` 산출물 fileType을 자산 본성별로 분리** — 처음엔 `src/**/*.generated.*` 단일 패턴이었다가 `src/{application,services}/**` 디렉토리 한정으로 한 단계 좁혔고, 머지 직전 한 단계 더 — 자산 본성(양쪽-필요 정본/양쪽-필요 복사본/api 전용/target 전용)에 따라 4개 fileType으로 분리. 와일드카드 충돌(target 측 `services.generated.ts`가 양쪽-필요 복사본 패턴에 끼어드는 케이스)은 명시 enumeration(`{sonamu,queries}.generated.*`)으로 해소. 비대칭이지만 *근본 원인(파일명 충돌) 실재*. Design Notes #4·#6.
+- **`i18nGenerated` → `sdGenerated` rename** — 파일명(`sd.generated.ts`)과 fileType명을 매칭. *Sonamu Dictionary*라는 도메인 약어를 키에 박음. 다른 i18n 산출물(`ko.ts`/`en.ts`의 진짜 사용자 입력 복사 = `i18nCopied`)과 prefix 차이로 *서로 다른 종류*임을 명시. anywhere로 둠 (api와 target 양쪽 위치별 직접 generate, 복사 아님).
+- **산출물 fileType 추가** (`typesCopied`/`functionsCopied`/`generatedCopied`/`httpGenerated`/`servicesGenerated`) — 양쪽-필요 자산의 target 복사본과 target 전용 자산이 lock 추적에서 누락되던 갭 해소. Design Notes #4 자산 본성 표 참조.
 - 글롭 alternation으로 의도한 디렉토리만 정확히 매치 → 와일드카드가 줄어드니까 `node_modules` 같은 데 휘말릴 위험도 거의 사라짐. 안전망으로 `GLOB_EXCLUDE`도 같이 적용.
 
 같이 해야 하는 것들:
@@ -132,7 +143,7 @@ export type FileType = keyof ReturnType<typeof getChecksumPatternGroup>;
 - **타입**: `AppRelativePath` template literal alias를 `path-utils.ts`에 추가. 기존 `ApiRelativePath`는 그대로 — 두 좌표계가 자연스럽게 공존.
 - **Lock 포맷**: `[{ path: AppRelativePath, checksum }]` — path는 appRoot 상대, **알파벳 안정 정렬** (PR diff 깔끔하라고).
 - **Lock 위치**: `<apiRoot>/sonamu.lock` 그대로 (사용자 워크플로우상 api가 home base니까).
-- **Lock 중복 path 제거**: `generated`(`*.generated.{ts,tsx,http,sso.ts}`)와 `i18nGenerated`(`**/sd.generated.ts`) 두 패턴이 둘 다 `sd.generated.ts`를 매치 → 같은 파일이 lock에 두 번 들어가는 문제. `getCurrentChecksums`에서 `Array.from(new Set(allPaths)).toSorted()`로 unique 처리.
+- **Lock 중복 path 처리**: 옛 패턴 시점엔 광범위 `generated`와 `i18nGenerated`가 둘 다 `sd.generated.ts`를 매치해서 같은 파일이 lock에 두 번 들어가는 문제가 있었음. `getCurrentChecksums`에서 `Array.from(new Set(allPaths)).toSorted()`로 unique 처리. **현재 패턴(본성별 분리)에선 generated가 `api/application` 한정, sdGenerated가 `i18n/sd.generated.ts`만 매치라 충돌 자체 사라짐**. dedup 로직은 방어적 안전망으로 잔존.
 - **Glob ignore 가드**: `globAsync(pattern, { exclude: [...] })`. 가드 값 `["**/node_modules/**", "**/dist/**", "**/build/**", "**/.turbo/**"]`. Node 내장 `fs.glob`이 `exclude` 이미 지원함.
 - **마이그레이션**: 별도 절차 없음. 옛 포맷 lock은 path 좌표계가 달라져서 전부 mismatch → 풀-싱크 → 새 포맷 자동 갱신. `checksum.ts`의 try/catch fallback과 같은 자연 복구 경로 (현장 검증 완료).
 
@@ -217,7 +228,8 @@ modules/sonamu/CLAUDE.md에 "Sonamu 내부 테스트가 제한적이라 miomock 
 
 이번 사이클에 갱신·삭제된 테스트 (의도된 동작 변경에 따름):
 
-- `examples/miomock/api/src/sonamu-test/syncer.test.ts` — `DiffGroups` literal에 새 키(`i18nCopied`) 추가, `entry-server.generated.tsx` 분배 단언 제거(부트스트랩 자산이라 doSyncActions에서 안 만들어짐), `handleTruthSourceChanges` 시그니처 변경에 따른 테스트 재구성, `copySharedToTargets` describe 제거(메서드가 `actionCopySharedToTargetsIfNotExists`로 이동).
+- `examples/miomock/api/src/sonamu-test/syncer.test.ts` — `DiffGroups` literal에 새 키들(`generatedCopied`/`httpGenerated`/`servicesGenerated`/`sdGenerated`/`typesCopied`/`functionsCopied`/`i18nCopied`) 추가, 폐기된 `entryServer` 키 제거(부트스트랩 자산이라 lock 추적 밖), `handleTruthSourceChanges`의 옛 `(diffGroups, diffTypes)` 두 번째 인자 제거(시그니처 정리 잔재), `copySharedToTargets` describe 제거(메서드가 `actionCopySharedToTargetsIfNotExists`로 이동).
+- `examples/miomock/api/src/sonamu-test/lock-integrity.test.ts` — `generated` 패턴 정합 회귀 가드를 *application/services 디렉토리 한정* 단언에서 *generated 계열 패턴은 i18n 영역을 침범하지 않는다* 단언으로 갱신. 본성별 4분리 후에도 원래 의도(i18n 영역 비침범) 보존.
 
 회귀 가드 추가는 본 사이클의 별도 follow-up으로 분리. 후속 디렉토리:
 
@@ -282,11 +294,13 @@ PR 머지 전 모두 통과:
 - **부트스트랩 자산 분리** — `sonamu.shared.ts`(IfNotExists 1회 생성)와 `entry-server.generated.tsx`(매번 overwrite generate)는 *추적 사이클 안에서 할 액션이 없는* 자산이라 패턴 그룹에서 빼고 sync()의 부트스트랩 phase로 이동. 의도된 분리. 자세히는 Design Notes #1·#8.
 - **`FileType` 단일 소스화** — 별도 `FILE_TYPES` 배열 중복 제거. `getChecksumPatternGroup` 반환 객체 키에서 `keyof ReturnType<...>` + `satisfies`로 자동 추론. 키 추가 시 함수 한 군데만 수정.
 - **단일 멤버 alternation 가드** (`braceJoin` helper) — Node 내장 `fs.glob`이 `{web}` 같은 단일 멤버 brace expansion을 처리하지 못함. `dirs.length === 1`일 때 alternation 없이 직접 결합.
-- **`generated` 패턴 좁힘** — `src/**/*.generated.*` → `src/{application,services}/**/*.generated.*`. 광범위 패턴이 i18nGenerated/i18nCopied 영역을 침범하던 문제. Design Notes #6.
-- **Lock 중복 path 제거** (`Set` based dedup) — `generated`와 `i18nGenerated` 패턴이 둘 다 `sd.generated.ts`를 매치 → 같은 파일이 lock에 두 번 들어감. `getCurrentChecksums`에서 `Array.from(new Set(allPaths)).toSorted()`로 unique 처리.
-- **Stale generated 파일도 lock에 추적** — anywhere 패턴이 광범위해서 syncer가 더 이상 만들지 않는 stale 파일도 자동 추적됨. 의도된 동작 (lock = 디스크 상태의 진실).
-- **새 FileType 키(`i18nCopied`, `i18nGenerated`)는 syncer 분기 추가 불필요** — 모두 산출물이라 사용자가 손으로 변경할 일이 없고, 변경되면 lock mismatch → 풀-싱크 → 다시 생성/복사로 자연 복구. 기존 분기(entity/types/model/frame/config/workflow/i18n/generated)의 동작에는 변화 없음.
-- **syncer 본체 디자인 정리 동반 머지** — sync() 3-phase 분리, `doSyncActions` DSL화(`changeMatcher`), 핸들러 완결화(생성+복사 한 자리), `init_types` 분배 fix, 자산 본성에 따른 분배 패턴 명시화, handler 명명 정련. *왜 그렇게 갔는지*는 Design Notes #2·#3·#4·#5·#7·#9.
+- **`generated` 산출물 fileType 본성별 분리 (3단계 진화)** — 1단계: `src/**/*.generated.*` → `src/{application,services}/**/*.generated.*` 디렉토리 한정. 2단계: 머지 직전 자산 본성(양쪽-필요 정본/양쪽-필요 복사본/api 전용/target 전용)에 따라 `generated`/`generatedCopied`/`httpGenerated`/`servicesGenerated` 4개 fileType으로 분리. 3단계: `i18nGenerated` → `sdGenerated` rename(파일명 매칭, *Sonamu Dictionary* 도메인 약어). `generatedCopied` 패턴은 와일드카드가 `services.generated.ts`(target 전용)와 충돌하므로 명시 enumeration(`{sonamu,queries}.generated.*`)으로 분리. Design Notes #4·#6.
+- **산출물 추적 갭 해소** (`typesCopied`/`functionsCopied` + 위 4개 generated 본성별) — 양쪽-필요 자산의 target 복사본(`web/src/services/*.types.ts`, `*.functions.ts`)이 lock 추적 밖이던 갭을 마저 닫음. 변경 시 syncer가 검출하고 drift 경고로 안내.
+- **출력 drift 경고 + path 안내** — `doSyncActions`의 옛 `noMatchingChanges()` 빈 분기를 *path 명시 + force sync 안내*로 채움. `changeMatcher`가 `unhandledPaths()` 반환하도록 갱신 → drift 검출 시 `⚠️ Sync 산출물이 변경되었습니다: <appRoot 상대 path>` + `→ pnpm sonamu sync --force를 권장합니다.`. trigger-based 운영 모델과 일관(자동 reconcile 안 함, 사용자 명시 액션 안내). Design Notes #10에 잔존했던 *"비어있음 + dev 노이즈 우려"* 항목 해소.
+- **Lock 중복 path 처리 — 자연 해소** (`Set` based dedup) — 옛 광범위 패턴 시점엔 `generated`와 `i18nGenerated`가 둘 다 `sd.generated.ts`를 매치해 같은 파일이 lock에 두 번 들어가는 문제가 있어 `Array.from(new Set(allPaths)).toSorted()`로 처리. 현재 패턴(본성별 분리 + sdGenerated rename)에선 충돌 자체 사라짐. dedup 로직은 방어적 안전망으로 잔존.
+- **Stale generated 파일도 lock에 추적** — 본성별 패턴이라도 lock에 있던 path는 검출 사이클에 잡힘. 의도된 동작 (lock = 디스크 상태의 진실).
+- **새 FileType 키들은 syncer 분기 추가 불필요** — 모두 산출물이라 사용자가 손으로 변경할 일이 없고, 변경되면 unhandled drift로 잡혀 경고만 출력. force sync로 자연 복구. 기존 입력 분기(entity/types/model/frame/config/workflow/i18n)의 동작 변화 없음.
+- **syncer 본체 디자인 정리 동반 머지** — sync() 3-phase 분리, `doSyncActions` DSL화(`changeMatcher` + `unhandledPaths`), 핸들러 완결화(생성+복사 한 자리), `init_types` 분배 fix, 자산 본성에 따른 분배 패턴 명시화, handler 명명 정련. *왜 그렇게 갔는지*는 Design Notes #2·#3·#4·#5·#7·#9.
 
 ### 플랜 단계 결정
 
