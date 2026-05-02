@@ -255,7 +255,10 @@ export class Syncer {
 
     // 여기는 별로 중요한 파트는 아닙니다.
     // 아래의 if 전개를 깔끔하게 하려고 만든 DSL 같은 거라서, 무시하셔도 됩니다.
-    const { changeMatches, unhandledPaths } = this.changeMatcher(diffTypes, diffGroups);
+    const { changeMatches, nothingMatches, unhandledPaths } = this.changeMatcher(
+      diffTypes,
+      diffGroups,
+    );
 
     if (changeMatches("entity", "types")) {
       await this.handleTruthSourceChanges(diffGroups);
@@ -277,16 +280,11 @@ export class Syncer {
       await this.handleSonamuDictionaryRelatedChanges(diffGroups);
     }
 
-    // 파일 변경은 감지되었으나 저 위 어느 changeMatches에도 걸리지 않은 파일들이 drifts입니다.
-    // syncer는 소스의 변경에는 반응하지만 산출물의 변경(drift)에는 직접적으로 반응하지 않습니다.
-    // 대신 이 drift에 대해 경고 정도만 출력해줍니다.
-    const drifts = unhandledPaths();
-    if (drifts.length > 0) {
-      console.warn(chalk.yellow("⚠️ Sync 산출물이 변경되었습니다:"));
-      for (const p of drifts) {
-        console.warn(chalk.yellow(`  - ${path.relative(Sonamu.appRootPath, p)}`));
-      }
-      console.warn(chalk.dim("  → `pnpm sonamu sync --force`를 권장합니다."));
+    if (nothingMatches()) {
+      // 파일 변경은 감지되었으나 저 위 어느 changeMatches에도 걸리지 않은 파일들이 drifts입니다.
+      // syncer는 소스의 변경에는 반응하지만 산출물의 변경(drift)에는 직접적으로 반응하지 않습니다.
+      // 대신 이 drift에 대해 경고 정도만 출력해줍니다.
+      await this.handleDrifts(unhandledPaths());
     }
 
     return {
@@ -329,12 +327,17 @@ export class Syncer {
     };
 
     /**
+     * changeMatches로 매칭된 것이 하나도 없는지 여부를 가져옵니다.
+     */
+    const nothingMatches = () => handled.size === 0;
+
+    /**
      * 어떤 changeMatches 호출에도 걸리지 않은 FileType들의 실제 파일 경로를 모아서 반환합니다.
      */
     const unhandledPaths = (): AbsolutePath[] =>
       diffTypes.filter((t) => !handled.has(t)).flatMap((t) => diffGroups[t] ?? []);
 
-    return { changeMatches, unhandledPaths };
+    return { changeMatches, nothingMatches, unhandledPaths };
   }
 
   async handleTruthSourceChanges(diffGroups: DiffGroups): Promise<void> {
@@ -417,6 +420,16 @@ export class Syncer {
 
   async handleSonamuDictionaryRelatedChanges(_: DiffGroups): Promise<void> {
     await SyncerActions.actionSyncSonamuDictionary();
+  }
+
+  async handleDrifts(drifts: AbsolutePath[]): Promise<void> {
+    if (drifts.length > 0) {
+      console.warn(chalk.yellow("⚠️ Sync 산출물이 변경되었습니다:"));
+      for (const p of drifts) {
+        console.warn(chalk.yellow(`  - ${path.relative(Sonamu.appRootPath, p)}`));
+      }
+      console.warn(chalk.dim("  → `pnpm sonamu sync --force`를 권장합니다."));
+    }
   }
 
   /**
