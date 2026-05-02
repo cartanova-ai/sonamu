@@ -30,6 +30,7 @@ import { generateTemplate, renderTemplate } from "./code-generator";
 import { createEntity, delEntity } from "./entity-operations";
 import { getChecksumPatternGroup, getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 import { type FileType } from "./file-patterns";
+import { isLastChangedByMe } from "./file-tracking";
 import { loadApis, loadModels, loadTypes, loadWorkflows } from "./module-loader";
 import { type LoadedApis, type LoadedModels, type LoadedTypes } from "./module-loader";
 import * as SyncerActions from "./syncer-actions";
@@ -154,9 +155,12 @@ export class Syncer {
       (pattern) => minimatch(diffFilePath, pattern),
     );
 
-    // 할 일(sync)이 있으면 합니다.
+    // 변경된 파일이 관심 대상이고, syncer 산출물이 아닌 실제 외부에 의한 파일 변경일 때에만 sync 작업을 수행합니다.
     if (isInCheckPatternGroup) {
-      await this.doSyncActions([diffFilePath]);
+      if (!(await isLastChangedByMe(diffFilePath))) {
+        // 내가 마지막으로 바꾼게 아니다? = 누군가가 손댔다 = 진자 외부 변경 = sync 필요.
+        await this.doSyncActions([diffFilePath]);
+      }
     }
 
     // 싱크 작업이 끝났으면 무지성 로드를 수행합니다.

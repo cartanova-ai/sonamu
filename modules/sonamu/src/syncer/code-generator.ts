@@ -24,6 +24,7 @@ import { formatCode } from "../utils/formatter";
 import { exists } from "../utils/fs-utils";
 import { wrapIf } from "../utils/lodash-able";
 import { type AbsolutePath } from "../utils/path-utils";
+import { trackWritten } from "./file-tracking";
 
 /**
  * 템플릿을 렌더링하고 파일로 생성합니다.
@@ -208,6 +209,9 @@ async function writeCodeToPathEachTarget(pathAndCode: PathAndCode): Promise<Abso
         await mkdir(dir, { recursive: true });
       }
       await writeFile(dstFilePath, pathAndCode.code);
+      // 방금 우리가 쓴 path를 등록 → dev watcher의 후속 change 이벤트가
+      // 외부 변경으로 오인되지 않도록 거름 가드 자료 제공.
+      await trackWritten(dstFilePath);
       !isTest() &&
         console.log(
           chalk.bold("Generated: ") + chalk.blue(`${dstFilePath.replace(`${appRootPath}/`, "")}`),

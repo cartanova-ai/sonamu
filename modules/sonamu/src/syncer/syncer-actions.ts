@@ -12,6 +12,7 @@ import { isTest } from "../utils/controller";
 import { copyFileWithReplaceCoreToShared, exists } from "../utils/fs-utils";
 import { type AbsolutePath } from "../utils/path-utils";
 import { generateTemplate } from "./code-generator";
+import { trackWritten } from "./file-tracking";
 
 // web/.sonamu.env 에 현재 설정값 저장
 export async function actionSyncConfig() {
@@ -149,6 +150,9 @@ export async function actionSyncFilesToTargets(tsPaths: AbsolutePath[]): Promise
               " */",
             ].join("\n");
             await copyFileWithReplaceCoreToShared(realSrc, dst, syncHeader);
+            // 방금 쓴 target 측 복사본을 등록 → dev watcher의 후속 change 이벤트
+            // 거름 가드 자료 제공.
+            await trackWritten(dst as AbsolutePath);
             return dst;
           }),
         ),
@@ -283,6 +287,8 @@ async function syncLocaleFiles(
       " */",
     ].join("\n");
     await copyFileWithReplaceCoreToShared(sourceFile, targetFile, syncHeader);
+    // 방금 쓴 target locale 파일을 등록 → dev watcher 거름 가드 자료 제공.
+    await trackWritten(targetFile as AbsolutePath);
     !isTest() &&
       console.log(chalk.bold("Copied: ") + chalk.cyan(`${target}/src/i18n/${locale}.ts`));
   }
