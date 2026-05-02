@@ -188,15 +188,10 @@ miomock에서 `rm api/sonamu.lock; time pnpm sonamu sync` 4회로 측정. 결과
 
 - ✅ `pnpm --filter sonamu build`
 - ✅ `pnpm --filter sonamu test:type`
-- ✅ miomock에서 lock 삭제 후 sync → 새 포맷 lock 확인 (lock 항목 57 → 70개)
-- ✅ 추가 출력물 7종 모두 lock에 자동 포함:
-  - `api/src/application/queries.generated.ts`
-  - `api/src/application/sonamu.generated.sso.ts`
-  - `api/src/application/sonamu.generated.http`
-  - `web/src/i18n/{ko,en,ja}.ts` (3개)
-  - `web/src/i18n/sd.generated.ts`
-  - `web/src/services/services.generated.ts`
-  - `web/src/services/sonamu.generated.ts`
+- ✅ miomock에서 lock 삭제 후 sync → 새 포맷 lock 확인 (lock 항목 57 → 68개, +11)
+- ✅ 추가 출력물 모두 lock에 자동 포함 (api 4종 + web 8종):
+  - api 측: `queries.generated.ts`, `sonamu.generated.sso.ts`, `sonamu.generated.http`, `i18n/sd.generated.ts`
+  - web 측: `i18n/{ko,en,ja}.ts` (3개), `i18n/sd.generated.ts`, `services/queries.generated.ts`, `services/services.generated.ts`, `services/sonamu.generated.sso.ts`, `services/sonamu.generated.ts`
 - 참고: `web/src/entry-server.generated.tsx`는 *부트스트랩 자산*으로 재분류되어 lock 추적 밖. sync()의 부트스트랩 phase에서 매번 보장됨.
 
 ### Phase 2 — B-1: write-if-different ❌ 폐기
@@ -269,6 +264,14 @@ PR 머지 전 모두 통과:
 ## Resolved Decisions
 
 플랜 수립 단계 결정은 2026-05-02 초기 컨펌. 구현 단계 결정은 같은 날 야간 자율 구현 중 추가. 더 깊은 디자인 흐름은 Design Notes 문서로 분리.
+
+### 머지 직전 발견 — lock 갱신 누락 (2026-05-02)
+
+야간 자율 구현 후 푸시된 미오목 `sonamu.lock`이 **옛 포맷(api 상대 좌표계, 57 항목) 그대로** 남아 있었음. force sync가 한 번도 돌지 않은 채 푸시 상태였고, 그 결과 acceptance "추가 출력물 모두 lock에 자동 포함"이 *코드는 동작하지만 검증 산출물이 미달*인 상태로 머지 직전에 와 있었음.
+
+`pnpm sonamu sync --force`를 직접 돌려 갱신: 좌표계가 appRoot 상대(`api/src/...`, `web/src/...`)로 정상 이행, 항목 수 57 → 68 (+11), `web/services/queries.generated.ts`와 `web/services/sonamu.generated.sso.ts` 신규 생성. **코드 자체는 의도대로 동작했고, 단순 lock 갱신 누락**이었음.
+
+추가 부수 효과: force sync 결과 `web/i18n/en.ts`에 `import { plural } from "../services/sonamu.shared";` 라인이 추가되며 oxfmt 룰 위반 1건 표면화 (import 그룹 사이 빈 줄). **SON-466의 "Sync 출력 oxlint/oxformat 준수" 항목과 정확히 일치하는 케이스**라 본 사이클에선 oxfmt fix로 임시 통과시키고 항구적 해결은 SON-466으로 이월. 다음 force sync에서 다시 같은 위반이 표면화될 수 있음 (도메인 알림 차원).
 
 ### B-1 폐기 (2026-05-02 야간 측정 후)
 
