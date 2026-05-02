@@ -1,7 +1,5 @@
-import crypto from "crypto";
-import { type BinaryLike } from "crypto";
-import { createReadStream } from "fs";
-import { type PathLike } from "fs";
+import crypto, { type BinaryLike } from "crypto";
+import { createReadStream, type PathLike } from "fs";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 
@@ -13,7 +11,7 @@ import { globAsync } from "../utils/async-utils";
 import { exists } from "../utils/fs-utils";
 import { type AbsolutePath, type AppRelativePath } from "../utils/path-utils";
 import { differenceWith } from "../utils/utils";
-import { GLOB_EXCLUDE, getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
+import { getChecksumPatternGroupInAbsolutePath, GLOB_EXCLUDE } from "./file-patterns";
 
 type PathAndChecksum = {
   path: AbsolutePath;
@@ -55,16 +53,17 @@ export async function renewChecksums(): Promise<void> {
 async function getCurrentChecksums(): Promise<PathAndChecksum[]> {
   const allPaths = (
     await Promise.all(
-      Object.entries(getChecksumPatternGroupInAbsolutePath()).map(async ([_fileType, pattern]) => {
-        return globAsync(pattern, { exclude: GLOB_EXCLUDE }) as Promise<AbsolutePath[]>;
+      Object.entries(getChecksumPatternGroupInAbsolutePath()).map(([_fileType, pattern]) => {
+        return globAsync(pattern, { exclude: GLOB_EXCLUDE });
       }),
     )
   ).flat();
+
   // 동일 파일이 여러 패턴에 매치될 수 있으므로(예: sd.generated.ts는 generated와 i18nGenerated에 모두 매치)
   // 중복 제거 후 안정 정렬.
   const filePaths = Array.from(new Set(allPaths)).toSorted() as AbsolutePath[];
 
-  const fileChecksums = await Promise.all(
+  return await Promise.all(
     filePaths.map(async (filePath) => {
       return {
         path: filePath,
@@ -72,8 +71,6 @@ async function getCurrentChecksums(): Promise<PathAndChecksum[]> {
       };
     }),
   );
-
-  return fileChecksums;
 }
 
 async function getPreviousChecksums(): Promise<PathAndChecksum[]> {
