@@ -1,6 +1,8 @@
 import { glob } from "fs/promises";
 import path from "path";
 
+import { minimatch } from "minimatch";
+
 /**
  * 비동기 조건으로 배열을 필터링합니다
  * @example
@@ -65,12 +67,24 @@ export async function reduceAsync<T, U>(
 /**
  * 비동기 glob 함수입니다.
  * AsyncIterableIterator로 날아오는 glob의 반환을 받아 끝까지 돌아서 배열로 반환합니다.
- * @param pathPattern
- * @returns
+ *
+ * @param pathPattern glob 패턴 (절대 경로 또는 상대 경로)
+ * @param options.exclude 매치에서 제외할 패턴 목록 (예: `["**\/node_modules/**"]`).
+ *   alternation을 포함하는 패턴이 의도치 않게 빌드 산출물 디렉토리를 휘말리게 하는 것을 막는 안전망.
  */
-export async function globAsync(pathPattern: string): Promise<string[]> {
+export async function globAsync(
+  pathPattern: string,
+  options?: { exclude?: string[] },
+): Promise<string[]> {
   const files: string[] = [];
-  for await (const file of glob(path.resolve(pathPattern))) {
+  const excludePatterns = options?.exclude;
+  const iter = excludePatterns
+    ? glob(path.resolve(pathPattern), {
+        exclude: (filePath: string) =>
+          excludePatterns.some((pat) => minimatch(filePath, pat, { dot: true })),
+      })
+    : glob(path.resolve(pathPattern));
+  for await (const file of iter) {
     files.push(file);
   }
   return files;

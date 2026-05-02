@@ -11,9 +11,9 @@ import { isEqual } from "radashi";
 import { Sonamu } from "../api/sonamu";
 import { globAsync } from "../utils/async-utils";
 import { exists } from "../utils/fs-utils";
-import { type AbsolutePath, type ApiRelativePath } from "../utils/path-utils";
+import { type AbsolutePath, type AppRelativePath } from "../utils/path-utils";
 import { differenceWith } from "../utils/utils";
-import { getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
+import { GLOB_EXCLUDE, getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 
 type PathAndChecksum = {
   path: AbsolutePath;
@@ -53,15 +53,16 @@ export async function renewChecksums(): Promise<void> {
 }
 
 async function getCurrentChecksums(): Promise<PathAndChecksum[]> {
-  const filePaths = (
+  const allPaths = (
     await Promise.all(
       Object.entries(getChecksumPatternGroupInAbsolutePath()).map(async ([_fileType, pattern]) => {
-        return globAsync(pattern) as Promise<AbsolutePath[]>;
+        return globAsync(pattern, { exclude: GLOB_EXCLUDE }) as Promise<AbsolutePath[]>;
       }),
     )
-  )
-    .flat()
-    .toSorted();
+  ).flat();
+  // 동일 파일이 여러 패턴에 매치될 수 있으므로(예: sd.generated.ts는 generated와 i18nGenerated에 모두 매치)
+  // 중복 제거 후 안정 정렬.
+  const filePaths = Array.from(new Set(allPaths)).toSorted() as AbsolutePath[];
 
   const fileChecksums = await Promise.all(
     filePaths.map(async (filePath) => {
@@ -83,8 +84,8 @@ async function getPreviousChecksums(): Promise<PathAndChecksum[]> {
 
   try {
     const previousChecksums = JSON.parse(await readFile(checksumFilePath, "utf-8")).map(
-      (r: { path: ApiRelativePath; checksum: string }) => ({
-        path: path.join(Sonamu.apiRootPath, r.path), // 체크섬 파일에서 읽을 때: API 상대 경로 → 절대 경로
+      (r: { path: AppRelativePath; checksum: string }) => ({
+        path: path.join(Sonamu.appRootPath, r.path), // 체크섬 파일에서 읽을 때: appRoot 상대 경로 → 절대 경로
         checksum: r.checksum,
       }),
     ) as PathAndChecksum[];
@@ -105,18 +106,14 @@ function getChecksumFilePath(): AbsolutePath {
 
 async function saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
   const checksumFilePath = getChecksumFilePath();
-  await writeFile(
-    checksumFilePath,
-    JSON.stringify(
-      checksums.map((r) => ({
-        path: path.relative(Sonamu.apiRootPath, r.path), // 체크섬 파일에 저장할 때: 절대 경로 → API 상대 경로
-        checksum: r.checksum,
-      })),
-      null,
-      2,
-    ),
-    "utf-8",
-  );
+  // appRoot 상대 경로로 직렬화 + 알파벳 안정 정렬 (PR diff 깨끗하게 유지)
+  const serialized = checksums
+    .map((r) => ({
+      path: path.relative(Sonamu.appRootPath, r.path), // 체크섬 파일에 저장할 때: 절대 경로 → appRoot 상대 경로
+      checksum: r.checksum,
+    }))
+    .sort((a, b) => a.path.localeCompare(b.path));
+  await writeFile(checksumFilePath, JSON.stringify(serialized, null, 2), "utf-8");
 }
 
 async function getChecksumOfFile(filePath: PathLike): Promise<string> {

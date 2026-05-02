@@ -1,6 +1,6 @@
 import assert from "assert";
 import { EventEmitter } from "events";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path from "path";
 
 import { hot } from "@sonamu-kit/hmr-hook";
@@ -29,7 +29,7 @@ import { runWithGracefulShutdown } from "../utils/process-utils";
 import { findChangedFilesUsingChecksums, renewChecksums } from "./checksum";
 import { generateTemplate, renderTemplate } from "./code-generator";
 import { createEntity, delEntity } from "./entity-operations";
-import { checksumPatternGroup, getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
+import { getChecksumPatternGroup, getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 import { type FileType } from "./file-patterns";
 import { loadApis, loadModels, loadTypes, loadWorkflows } from "./module-loader";
 import { type LoadedApis, type LoadedModels, type LoadedTypes } from "./module-loader";
@@ -88,6 +88,21 @@ export class Syncer {
       },
       { whenThisHappens: "SIGUSR2", waitForUpTo: 20000 },
     );
+  }
+
+  /**
+   * 강제 풀-싱크: lock을 무시하고 처음부터 다시 싱크합니다.
+   *
+   * **사용처**: git post-merge hook, CI, dev 서버의 `f` 핫키.
+   * **실패 안전성**: 도중에 프로세스가 죽어 lock 없는 상태로 남아도 무해 — 다음 sync에서
+   * lock 없으면 자연스럽게 풀-싱크가 트리거되어 새 lock이 작성됨.
+   */
+  async forceSync(): Promise<void> {
+    const lockPath = path.join(Sonamu.apiRootPath, "sonamu.lock");
+    if (await exists(lockPath)) {
+      await unlink(lockPath);
+    }
+    await this.sync();
   }
 
   /**
@@ -366,16 +381,16 @@ export class Syncer {
   }
 
   calculateDiffGroups(diffFiles: AbsolutePath[]): DiffGroups {
-    const fileTypes = Object.keys(checksumPatternGroup) as FileType[];
+    const patternGroup = getChecksumPatternGroup();
+    const fileTypes = Object.keys(patternGroup) as FileType[];
 
     return group(diffFiles, (filePath) => {
-      // 절대 경로에서 src/로 시작하는 상대 경로 부분을 추출합니다.
-      const srcIndex = filePath.indexOf("/src/");
-      if (srcIndex === -1) return "unknown";
-      const relativePath = filePath.slice(srcIndex + 1); // "src/..." 형태
+      // 절대 경로 → appRoot 기준 상대 경로 (예: "api/src/...", "web/src/...")
+      const relativePath = path.relative(Sonamu.appRootPath, filePath);
+      if (relativePath.startsWith("..")) return "unknown";
 
       for (const fileType of fileTypes) {
-        if (minimatch(relativePath, checksumPatternGroup[fileType])) {
+        if (minimatch(relativePath, patternGroup[fileType])) {
           return fileType;
         }
       }

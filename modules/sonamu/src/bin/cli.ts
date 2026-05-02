@@ -228,9 +228,17 @@ bootstrap().finally(async () => {
 /**
  * pnpm sync 하면 실행되는 함수입니다.
  * 프로젝트를 싱크합니다.
+ *
+ * `--force` 옵션이 주어지면 lock을 무시하고 풀-싱크를 수행합니다.
+ * git post-merge hook이나 CI에서 매 pull 후 자동 실행할 수 있도록 노출.
  */
 async function sync() {
-  await Sonamu.syncer.sync();
+  const { flags } = parseCliOptions();
+  if (flags.has("force")) {
+    await Sonamu.syncer.forceSync();
+  } else {
+    await Sonamu.syncer.sync();
+  }
 }
 
 /**
@@ -265,7 +273,7 @@ function spawnApiDevServer(options?: { extraEnv?: Record<string, string> }) {
       "--node-args=--enable-source-maps", // 그리고 소스맵 지원을 위한 플래그입니다.
       "--on-key=r:restart:Restart server", // r 누르면 서버 재시작하게 해줘요.
       "--on-key=c:clear:Clear screen", // c 누르면 터미널 화면을 지워줘요.
-      `--on-key=f:shell(rm ${path.join(apiRoot, "sonamu.lock")}):restart:Force restart`, // f 누르면 sonamu.lock 파일을 지우고 서버 재시작하게 해줘요.
+      `--on-key=f:shell(cd ${apiRoot} && pnpm sonamu sync --force):restart:Force sync & restart`, // f 누르면 force sync 후 서버 재시작.
 
       "--on-key=enter:shell(echo hi):Key binding test", // enter를 key로 쓸 수 있음을 보이기 위한 테스트입니다.
       "--on-key=ctrl+f ctrl+f:shell(git pull && pnpm install && pnpm --filter sonamu build && echo 'Sonamu is now up-to-date!'):restart:Pull & install & build & restart", // modifier와의 조합, 그리고 두 개의 chord를 사용할 수 있음을 보이기 위한 테스트입니다.

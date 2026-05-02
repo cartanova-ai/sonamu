@@ -91,7 +91,9 @@ export async function loadTypes(): Promise<LoadedTypes> {
     path.join(Sonamu.apiRootPath, runtimePath("src/application/**/*.types.ts")),
     path.join(Sonamu.apiRootPath, runtimePath("src/application/**/*.generated.ts")),
   ];
-  const typePaths = (await Promise.all(typePathsPatterns.map(globAsync))).flat();
+  const typePaths = (
+    await Promise.all(typePathsPatterns.map((pattern) => globAsync(pattern)))
+  ).flat();
 
   const types: LoadedTypes = {};
   for (const filePath of typePaths) {
