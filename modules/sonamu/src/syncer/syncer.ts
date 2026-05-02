@@ -1,6 +1,6 @@
 import assert from "assert";
 import { EventEmitter } from "events";
-import { mkdir, readFile, unlink, writeFile } from "fs/promises";
+import { unlink } from "fs/promises";
 import path from "path";
 
 import { hot } from "@sonamu-kit/hmr-hook";
@@ -13,7 +13,6 @@ import { registeredApis } from "../api/decorators";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import { type EntityNamesRecord } from "../entity/entity-manager";
-import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
 import { type WorkflowMetadata } from "../tasks/decorator";
 import { TemplateManager } from "../template/template-manager";
@@ -23,7 +22,7 @@ import { type TemplateOptions } from "../types/types";
 import { mapAsync, reduceAsync } from "../utils/async-utils";
 import { centerText } from "../utils/console-util";
 import { isTest } from "../utils/controller";
-import { copyFileWithReplaceCoreToShared, exists } from "../utils/fs-utils";
+import { exists } from "../utils/fs-utils";
 import { type AbsolutePath } from "../utils/path-utils";
 import { runWithGracefulShutdown } from "../utils/process-utils";
 import { findChangedFilesUsingChecksums, renewChecksums } from "./checksum";
@@ -48,35 +47,25 @@ export class Syncer {
 
   /**
    * 체크섬이 변경된 부분에 대해 싱크를 진행합니다.
-   * sonamu.shared.ts는 파일이 없을 때만 1회 생성하고, 이후에는 덮어쓰지 않습니다.
+   * dev 서버가 처음 떴을 때, sonamu sync 할 때 실행됩니다. 이후에는 syncFromWatcher 경로를 타요.
    * @returns
    */
   async sync(): Promise<void> {
-    const { targets } = Sonamu.config.sync;
+    // 초기 부트스트랩! 얘네들은 idempotent하고 가볍기 때문에 무지성 실행해도 됩니다.
+    // 얘네들은 sonamu.lock에 들어가지도 않고 따라서 HMR 경로를 타지도 않는 친구들입니다.
+    // 그래서 아무 때나 그냥 돌려주면 되는데, syncFromWatcher에서 매번 하는 것은 낭비이니 여기서 한 번만 합니다.
+    await SyncerActions.actionCopySharedToTargetsIfNotExists();
+    await SyncerActions.actionGenerateSsrEntryServer();
 
-    // sonamu.shared.ts는 파일이 없을 때만 1회 생성합니다.
-    await this.copySharedToTargets(targets);
-
-    // 그 다음부터는 변경된 파일을 찾아서 동기화 작업을 실행합니다.
+    // 바뀐 것이 없으면 그냥 넘어가요.
     const changedFiles = await findChangedFilesUsingChecksums();
     if (changedFiles.length === 0) {
       console.log(chalk.black.bgGreen(centerText("All files are synced!")));
-
-      // 변경사항이 없어도 SSR 템플릿은 생성 (초기 설정 시, 이미 존재하면 스킵)
-      try {
-        await generateTemplate("queries", {}, { overwrite: false });
-        await generateTemplate("entry_server", {}, { overwrite: false });
-      } catch (e) {
-        // 파일이 이미 존재하면 무시
-        if (!(e instanceof AlreadyProcessedException)) {
-          console.error("Failed to generate SSR templates:", e);
-        }
-      }
-
       return;
     }
 
-    // 만약 싱크 중에 프로세스가 죽으면 꼬여버리기 때문에,
+    // 여기서 실제 싱크 동작을 수행합니다.
+    // 다만 싱크 중에 프로세스가 죽으면 꼬여버리기 때문에,
     // 시그널에도 잠시 버틸 수 있는 환경 속에서 싱크를 실행합니다.
     await runWithGracefulShutdown(
       async () => {
@@ -109,22 +98,11 @@ export class Syncer {
    * Watcher가 감지한 파일 변경 사항에 대해 싱크를 진행합니다.
    * 주어진 변경 파일들 중 체크섬 관리 대상인 것들만 가져다가 싱크를 진행합니다.
    * 체크섬 파일 업데이트는 여기에서 하지 않습니다. 호출자가 합니다.
+   * @param event
    * @param diffFilePath - 변경 파일들. 프로젝트 루트부터 "src/" 또는 "dist/"로 시작하는 상대 경로입니다. 예시: "src/application/user/user.model.ts"
    */
   async syncFromWatcher(event: string, diffFilePath: AbsolutePath): Promise<void> {
     if (event !== "change" && event !== "add" && event !== "unlink") {
-      return;
-    }
-
-    // SSR 설정 파일 변경 감지
-    if (diffFilePath.includes("/src/ssr/")) {
-      console.log(chalk.bold.yellow("SSR config changed - reloading..."));
-      // SSR 파일도 invalidate 후 reload
-      if (!isTest()) {
-        await hot.invalidateFile(diffFilePath, event);
-      }
-      await this.autoloadSSRRoutes();
-      this.eventEmitter.emit("onHMRCompleted");
       return;
     }
 
@@ -181,12 +159,19 @@ export class Syncer {
       await this.doSyncActions([diffFilePath]);
     }
 
-    // 싱크 작업이 끝나면 모든 모듈을 로드합니다.
-    // hmr-hook에 의해 invalidate된 부분들이 아니라면 캐시 그대로 유지합니다.
+    // 싱크 작업이 끝났으면 무지성 로드를 수행합니다.
+    //
+    // 변경된 파일들에 대해서 새롭게 당겨오는(load) 행위는 doSyncActions에서 하지 않습니다.
+    // doSyncActions에서는 파일을 읽고 만드는 싱크 행위만 합니다.
+    // 거기서 딱 변경된 부분에 영향받는 autoload만 선별해서 수행하려면 너무 지저분하고 복잡해집니다.
+    //
+    // 퍼포먼스 영향은 무시해도 좋습니다.
+    // 어차피 hmr-hook에 의해 invalidate된 부분들이 아니라면 캐시 그대로 유지합니다.
     await this.autoloadTypes();
     await this.autoloadModels();
     await this.autoloadApis();
     await this.autoloadWorkflows();
+    await this.autoloadSsrRoutes();
 
     this.eventEmitter.emit("onHMRCompleted");
   }
@@ -210,73 +195,6 @@ export class Syncer {
     return toRemove;
   }
 
-  async copySharedToTargets(targets: string[]): Promise<void> {
-    // plural.ts 내용을 읽어서 shared 파일에 삽입합니다.
-    const dictUtilsPath = path.join(
-      import.meta.dirname.replace("/dist/", "/src/"),
-      "../dict/utils.ts",
-    );
-    const dictUtilsCode = (await exists(dictUtilsPath))
-      ? await readFile(dictUtilsPath, "utf-8")
-      : "";
-
-    // 특정 변수 치환을 위해서 사용합니다.
-    const convertMap = {
-      baseUrl:
-        Sonamu.config.server.baseUrl ??
-        `http://${Sonamu.config.server.listen?.host ?? "localhost"}:${Sonamu.config.server.listen?.port ?? 3000}`,
-      dictUtils: dictUtilsCode,
-    };
-
-    for (const target of targets) {
-      // 지금 가져가려는 이 파일은 Sonamu 코드베이스의 일부입니다.
-      // 그런데 dist 속 빌드된 소스 코드 파일이 필요한 것이 아니고, src에만 있는 텍스트 파일이 필요합니다.
-      // 따라서 /src/에서 찾습니다.
-      const srcPath = path.join(
-        import.meta.dirname.replace("/dist/", "/src/"),
-        `../shared/${target}.shared.ts.txt`,
-      );
-      if (!(await exists(srcPath))) {
-        continue;
-      }
-      if (!(await exists(path.join(Sonamu.appRootPath, target)))) {
-        throw new Error(
-          `Tried to copy sonamu.shared.ts to target '${target}' but the target directory does not exist. Please check your project directory structure.`,
-        );
-      }
-
-      const fullText = await readFile(srcPath, "utf-8");
-      const convertedText = Object.entries(convertMap).reduce(
-        (acc, [key, value]) => acc.replace(`$[[${key}]]`, value),
-        fullText,
-      );
-
-      // 이건 프로젝트에 .ts 소스 코드 파일을 생성하는 것이므로 src의 .ts 경로로 갑니다.
-      const destPath = path.join(Sonamu.appRootPath, target, "src/services/sonamu.shared.ts");
-
-      // 정말 혹시나지만 target 디렉토리는 있어도 src/services 디렉토리는 없을 수 있으므로 미리 생성해줍니다.
-      if (!(await exists(path.dirname(destPath)))) {
-        await mkdir(path.dirname(destPath), { recursive: true });
-        console.warn(`Created directory '${path.dirname(destPath)}' because it did not exist.`);
-      }
-
-      // 파일이 이미 존재하면 건너뜁니다.
-      // sonamu.shared.ts는 프로젝트에서 자유롭게 커스터마이징할 수 있어야 하므로,
-      // 최초 1회만 생성하고 이후에는 덮어쓰지 않습니다.
-      // 템플릿 내용($[[dictUtils]] 등)이 변경되었을 때 반영이 필요하면,
-      // 해당 파일을 삭제한 뒤 `pnpm sonamu sync`로 재생성하면 됩니다.
-      if (await exists(destPath)) {
-        continue;
-      }
-
-      await writeFile(destPath, convertedText);
-      !isTest() &&
-        console.log(
-          chalk.bold("Copied: ") + chalk.blue(path.relative(Sonamu.appRootPath, destPath)),
-        );
-    }
-  }
-
   async autoloadTypes() {
     this.types = await loadTypes();
   }
@@ -294,7 +212,7 @@ export class Syncer {
     await Sonamu.workflows.synchronize(this.workflows);
   }
 
-  async autoloadSSRRoutes(): Promise<void> {
+  async autoloadSsrRoutes(): Promise<void> {
     const ssrConfigPath = path.join(Sonamu.apiRootPath, "src/ssr");
 
     // 기존 routes 초기화
@@ -327,52 +245,45 @@ export class Syncer {
   /**
    * 실제 싱크를 수행하는 본체입니다.
    * 변경된 파일들을 타입별로 분류하고 각 타입에 맞는 액션을 실행합니다.
+   *
    * @param diffFilePaths - 변경된 파일들의 절대 경로 목록
    * @returns diffTypes - 변경된 파일의 타입 목록 (entity, types, model 등)
    */
-  async doSyncActions(diffFilePaths: AbsolutePath[]): Promise<{ diffTypes: string[] }> {
+  async doSyncActions(diffFilePaths: AbsolutePath[]): Promise<{ diffTypes: FileType[] }> {
     const diffGroups = this.calculateDiffGroups(diffFilePaths);
     const diffTypes = Object.keys(diffGroups) as FileType[];
 
-    // Single source of truth가 변경된 경우
-    if (diffTypes.includes("entity") || diffTypes.includes("types")) {
+    // 여기는 별로 중요한 파트는 아닙니다.
+    // 아래의 if 전개를 깔끔하게 하려고 만든 DSL 같은 거라서, 무시하셔도 됩니다.
+    const { changeMatches, noMatchingChanges } = this.changeMatcher(diffTypes);
+
+    if (changeMatches("entity", "types")) {
       await this.handleTruthSourceChanges(diffGroups, diffTypes);
     }
 
-    // 타겟으로 복사만 하면 되는 파일이 변경된 경우
-    if (
-      diffTypes.includes("types") ||
-      diffTypes.includes("functions") ||
-      diffTypes.includes("generated")
-    ) {
+    if (changeMatches("types", "functions", "generated")) {
       await this.handleSyncableFileChanges(diffGroups);
     }
 
-    // 모델/프레임 구현체가 변경된 경우
-    if (diffTypes.includes("model") || diffTypes.includes("frame")) {
-      await this.handleImplementationChanges(diffGroups);
+    if (changeMatches("model", "frame")) {
+      await this.handleImplementationChanges(diffGroups, diffTypes);
     }
 
-    // 설정 파일이 변경된 경우
-    if (diffTypes.includes("config")) {
-      await SyncerActions.actionSyncConfig();
+    if (changeMatches("config")) {
+      await this.handleConfigChanges(diffGroups);
     }
 
-    // 워크플로우 파일이 변경된 경우
-    if (diffTypes.includes("workflow")) {
-      await this.autoloadWorkflows();
+    if (changeMatches("i18n", "entity" /*레이블*/, "config" /*defaultLocale등*/)) {
+      await this.handleSonamuDictionaryRelatedChanges(diffGroups);
     }
 
-    // i18n 관련 파일이 변경된 경우
-    // - i18n/*.ts: locale 번역 파일
-    // - entity.json: entity labels
-    // - sonamu.config.ts: i18n 설정 (defaultLocale, supportedLocales)
-    if (
-      diffTypes.includes("i18n") ||
-      diffTypes.includes("entity") ||
-      diffTypes.includes("config")
-    ) {
-      await this.syncSD();
+    if (noMatchingChanges()) {
+      // 여기까지 왔으면 위의 어떤 changeMatches에도 걸리지 않은 것입니다.
+      // 이런 상황은 언제 발생하느냐?
+      // checksumPatternGroup에 있어서 watcher의 관심 대상이고,
+      // 따라서 변경에 의해 doSyncActions가 호출되기는 하였으나,
+      // 저 위에서 changeMatches로 다뤄지지는 않은 경우입니다.
+      console.warn(`처리되지 않은 변경이 존재합니다.`);
     }
 
     return {
@@ -398,6 +309,18 @@ export class Syncer {
     }) as unknown as DiffGroups;
   }
 
+  private changeMatcher(diffTypes: FileType[]) {
+    let everChanged = false;
+    const changeMatches = (...types: FileType[]) => {
+      const changed = types.some((t) => diffTypes.includes(t));
+      everChanged ||= changed;
+      return changed;
+    };
+    const noMatchingChanges = () => !everChanged;
+
+    return { changeMatches, noMatchingChanges };
+  }
+
   async handleTruthSourceChanges(diffGroups: DiffGroups, diffTypes: string[]): Promise<void> {
     Naite.t("handleTruthSourceChanges", { diffGroups, diffTypes });
 
@@ -419,12 +342,9 @@ export class Syncer {
       }
     }
 
-    await SyncerActions.actionGenerateSchemas();
+    const generated = await SyncerActions.actionGenerateSchemas();
 
-    diffGroups.generated = unique([
-      ...(diffGroups.generated ?? []),
-      path.join(Sonamu.apiRootPath, "src/application/sonamu.generated.ts") as AbsolutePath,
-    ]);
+    diffGroups.generated = unique([...(diffGroups.generated ?? []), ...generated]);
     diffTypes.push("generated");
   }
 
@@ -447,15 +367,9 @@ export class Syncer {
     return [];
   }
 
-  async handleImplementationChanges(diffGroups: DiffGroups): Promise<void> {
+  async handleImplementationChanges(diffGroups: DiffGroups, diffTypes: string[]): Promise<void> {
     Naite.t("handleImplementationChanges", { diffGroups });
     const mergedGroup = [...(diffGroups.model ?? []), ...(diffGroups.frame ?? [])];
-
-    // console.log(
-    //   chalk.gray(
-    //     `[Processing] Handling model/frame changes: ${mergedGroup.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
-    //   )
-    // );
 
     // generated_http.template.ts에서 syncer.types를 씁니다.
     // service.template.ts에서 syncer.apis를 씁니다.
@@ -476,9 +390,22 @@ export class Syncer {
       throw new Error("not reachable");
     });
 
-    await SyncerActions.actionGenerateServices(params);
-    await SyncerActions.actionGenerateHttps();
-    await SyncerActions.actionGenerateSsr();
+    const services = await SyncerActions.actionGenerateServices(params);
+    const http = await SyncerActions.actionGenerateHttps();
+    const queries = await SyncerActions.actionGenerateSsrQueries();
+
+    diffGroups.generated = unique([...(diffGroups.generated ?? []), ...services, http, ...queries]);
+    if (!diffTypes.includes("generated")) {
+      diffTypes.push("generated");
+    }
+  }
+
+  async handleConfigChanges(_: DiffGroups): Promise<void> {
+    await SyncerActions.actionSyncConfig();
+  }
+
+  async handleSonamuDictionaryRelatedChanges(_: DiffGroups): Promise<void> {
+    await SyncerActions.actionSyncSonamuDictionary();
   }
 
   /**
@@ -595,59 +522,5 @@ export class Syncer {
    */
   async renewChecksums(): Promise<void> {
     return await renewChecksums();
-  }
-
-  /**
-   * SD(Sonamu Dictionary) 템플릿을 생성합니다.
-   */
-  async syncSD(): Promise<void> {
-    const { targets } = Sonamu.config.sync;
-    const i18nConfig = Sonamu.config.i18n;
-
-    const targetList = ["api", ...targets] as ("api" | "web" | "app")[];
-
-    const apiI18nDir = path.join(Sonamu.appRootPath, Sonamu.config.api.dir, "src/i18n");
-
-    for (const target of targetList) {
-      try {
-        // web/app의 경우 locale 파일들을 api에서 복사
-        if (target !== "api") {
-          await this.syncLocaleFiles(target, apiI18nDir, i18nConfig.supportedLocales);
-        }
-
-        await generateTemplate("sd", { target }, { overwrite: true });
-      } catch (e) {
-        console.error(`Failed to generate SD template for ${target}:`, e);
-      }
-    }
-  }
-
-  /**
-   * api의 locale 파일을 web/app으로 복사합니다.
-   */
-  private async syncLocaleFiles(
-    target: string,
-    apiI18nDir: string,
-    locales: string[],
-  ): Promise<void> {
-    const targetI18nDir = path.join(Sonamu.appRootPath, target, "src/i18n");
-
-    // 디렉토리가 없으면 생성
-    await mkdir(targetI18nDir, { recursive: true });
-
-    for (const locale of locales) {
-      const sourceFile = path.join(apiI18nDir, `${locale}.ts`);
-      const targetFile = path.join(targetI18nDir, `${locale}.ts`);
-
-      const syncHeader = [
-        "/**",
-        " * @generated",
-        " * API에서 동기화된 파일입니다. 직접 수정하지 마세요.",
-        " */",
-      ].join("\n");
-      await copyFileWithReplaceCoreToShared(sourceFile, targetFile, syncHeader);
-      !isTest() &&
-        console.log(chalk.bold("Copied: ") + chalk.cyan(`${target}/src/i18n/${locale}.ts`));
-    }
   }
 }

@@ -81,7 +81,6 @@ class SonamuClass {
         locale: "",
         user: null,
         session: null,
-        // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 테스팅 환경에서 컨텍스트가 주입되지 않은 경우 빈 컨텍스트 리턴
         naiteStore: new Map<string, any>(),
       } as unknown as T;
     } else {
@@ -299,7 +298,7 @@ class SonamuClass {
     await this.syncer.autoloadWorkflows();
     const { TemplateManager } = await import("../template");
     await TemplateManager.autoload();
-    await this.syncer.autoloadSSRRoutes();
+    await this.syncer.autoloadSsrRoutes();
 
     const { isLocal, isTest, isHotReloadServer } = await import("../utils/controller");
     if (isLocal() && !isTest() && isHotReloadServer() && enableSync) {
@@ -580,7 +579,6 @@ class SonamuClass {
     });
   }
 
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- ViteDevServer 타입을 동적으로 로드해야 함
   private viteServer: any = null;
 
   /**
@@ -1333,7 +1331,6 @@ class SonamuClass {
    */
   async invokeApiForSSR(
     api: ExtendedApi,
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- SSR에서 다양한 타입의 params를 받아야 함
     params: any[],
     config: SonamuFastifyConfig,
     request: FastifyRequest,
@@ -1365,7 +1362,6 @@ class SonamuClass {
     reply?: FastifyReply,
   ): Promise<unknown> {
     const model = this.syncer.models[api.modelName];
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- model은 모델 인스턴스이므로 메서드 호출 가능
     const result = await (model as any)[api.methodName].apply(model, args);
     reply?.type(api.options.contentType ?? "application/json");
 
