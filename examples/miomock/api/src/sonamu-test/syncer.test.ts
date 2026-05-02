@@ -145,7 +145,8 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const webRootPath = join(apiRootPath, "../web");
       // entry-server.generated.tsx는 부트스트랩 phase 전용이라 doSyncActions에선 만들어지지 않습니다.
-      // 새 디자인에선 각 핸들러가 자기 산출물을 target까지 복사하므로 queries/http/sso도 web 측에 분배됩니다.
+      // sonamu.generated.http는 api 측 REST client 도구용 자산이라 분배되지 않습니다.
+      // queries/schemas는 양쪽-필요 자산이라 api 정본 + web 복사 둘 다 만들어집니다.
       expect(writeFiles.map((f) => f.path).toSorted()).toStrictEqual([
         join(apiRootPath, "src/application/queries.generated.ts"),
         join(apiRootPath, "src/application/sonamu.generated.http"),
@@ -154,7 +155,6 @@ describe("Syncer", () => {
         join(webRootPath, "src/services/company/company.types.ts"),
         join(webRootPath, "src/services/queries.generated.ts"),
         join(webRootPath, "src/services/services.generated.ts"),
-        join(webRootPath, "src/services/sonamu.generated.http"),
         join(webRootPath, "src/services/sonamu.generated.sso.ts"),
         join(webRootPath, "src/services/sonamu.generated.ts"),
         join(webRootPath, "src/services/sync-fixture/sync-fixture.types.ts"),

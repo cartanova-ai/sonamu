@@ -342,8 +342,10 @@ export class Syncer {
       }
     }
 
-    // 자기가 만든 산출물을 그 자리에서 target까지 복사. 후속 분기에 push로 떠넘기지 않음.
+    // sonamu.generated.ts가 만들어집니다.
     const generated = await SyncerActions.actionGenerateSchemas();
+
+    // 그걸 target들에도 보내요.
     await SyncerActions.actionSyncFilesToTargets(generated);
   }
 
@@ -370,16 +372,15 @@ export class Syncer {
       throw new Error("not reachable");
     });
 
-    const services = await SyncerActions.actionGenerateServices(params);
-    const http = await SyncerActions.actionGenerateHttps();
+    // services.generated.ts를 target들에, sonamu.generated.http를 api에 만들어줘요.
+    await SyncerActions.actionGenerateServices(params);
+    await SyncerActions.actionGenerateHttps();
+
+    // queries.generated.ts가 만들어집니다.
     const queries = await SyncerActions.actionGenerateSsrQueries();
 
-    // 자기가 만든 산출물을 그 자리에서 target까지 복사. 후속 분기에 push로 떠넘기지 않음.
-    await SyncerActions.actionSyncFilesToTargets([
-      ...(services as AbsolutePath[]),
-      http,
-      ...queries,
-    ]);
+    // 그걸 target들에도 보내요.
+    await SyncerActions.actionSyncFilesToTargets(queries);
   }
 
   /**

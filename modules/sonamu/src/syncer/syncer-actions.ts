@@ -94,8 +94,9 @@ export async function actionGenerateSsrEntryServer(): Promise<AbsolutePath[]> {
 }
 
 /**
- * 주어진 .ts 파일들을 모든 타겟 디렉토리의 services에 갖다 둡니다.
- * 이때 내부의 sonamu import는 sonamu.shared.ts import로 치환됩니다.
+ * 주어진 .ts 파일들(api에 있다고 가정)을 모든 타겟 디렉토리의 services에 갖다 둡니다.
+ * 이때 내부의 sonamu import는 sonamu.shared.ts import로 치환되고,
+ * 경로의 /application/은 /services/로 치환됩니다.
  *
  * @param tsPaths 복사할 파일들의 절대 경로
  * @returns 각 타겟에 복사된 파일들의 절대 경로 배열 (flat).
@@ -104,16 +105,11 @@ export async function actionSyncFilesToTargets(tsPaths: AbsolutePath[]): Promise
   const { targets } = Sonamu.config.sync;
   const { dir: apiDir } = Sonamu.config.api;
 
-  // api 측 path만 처리합니다. 호출자가 generated 산출물 path들을 그대로 넘길 수 있도록
-  // (actionGenerateServices처럼 이미 모든 target에 분배된 산출물은 target 측 path도 포함됨)
-  // 여기서 필터링해서 self-overwrite 중복을 방지합니다.
-  const apiOnlyPaths = tsPaths.filter((p) => p.includes(`/${apiDir}/`));
-
   return (
     await Promise.all(
       targets.map(async (target) =>
         Promise.all(
-          apiOnlyPaths.map(async (realSrc) => {
+          tsPaths.map(async (realSrc) => {
             const dst = realSrc
               .replace(`/${apiDir}/`, `/${target}/`)
               .replace("/application/", "/services/");
