@@ -266,7 +266,7 @@ export class Syncer {
     }
 
     if (changeMatches("types", "functions")) {
-      await this.handleAuthoredInputChanges(diffGroups);
+      await this.handleAuxiliarySymbolChanges(diffGroups);
     }
 
     if (changeMatches("config")) {
@@ -336,9 +336,12 @@ export class Syncer {
       const typeFilePath = path.join(
         Sonamu.apiRootPath,
         `src/application/${entity.names.fs}/${entity.names.fs}.types.ts`,
-      );
+      ) as AbsolutePath;
       if (entity.parentId === undefined && !(await exists(typeFilePath))) {
         await generateTemplate("init_types", { entityId });
+        // 방금 만든 types.ts는 이번 사이클의 changedFiles에 안 잡히므로
+        // (사이클 시작 시점에 디스크에 없었음) 자기가 만든 자리에서 직접 분배.
+        await SyncerActions.actionSyncFilesToTargets([typeFilePath]);
       }
     }
 
@@ -384,11 +387,12 @@ export class Syncer {
   }
 
   /**
-   * 사용자가 작성한 입력 파일(types/functions)을 target 디렉토리에 복사합니다.
+   * Truth Source/Implementation 옆의 보조 심볼 자산(types/functions)을 target에 복사합니다.
+   * types는 type 정의, functions는 helper 함수 — 클라이언트가 그대로 import해서 쓰는 코드.
    * 산출물은 각 생성 핸들러가 자기 자리에서 직접 복사하므로 여기는 건드리지 않습니다.
    */
-  async handleAuthoredInputChanges(diffGroups: DiffGroups): Promise<void> {
-    Naite.t("handleAuthoredInputChanges", { diffGroups });
+  async handleAuxiliarySymbolChanges(diffGroups: DiffGroups): Promise<void> {
+    Naite.t("handleAuxiliarySymbolChanges", { diffGroups });
     const tsPaths = unique([...(diffGroups.types ?? []), ...(diffGroups.functions ?? [])]);
     await SyncerActions.actionSyncFilesToTargets(tsPaths);
   }
