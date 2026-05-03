@@ -31,10 +31,24 @@ export async function setupWatcher(
   // 100ms 안에 들어온 변경들을 한 batch로 모아 한 사이클로 처리합니다.
   const pushFileEvent = createFileEventBatcher<"change" | "add">({
     delayMs: 100,
-    onFlush: onFileEvents,
+    onFlush: async (fileEvents) => {
+      const realChanges = new Map<AbsolutePath, "change" | "add">();
+      for (const [p, e] of fileEvents) {
+        // self-write echo는 flush 시점에 거릅니다.
+        // watcher.on에서 즉시 거르면 너무 이릅니다.
+        // 여기에서는 파일이 디스크에 쓰이고 나서 약간의 딜레이가 있기 때문에
+        // "디스크에 썼지만 아직 trackWritten이 완료되기 전 상태" 같은 문제가 사라집니다.
+        if (!(await isLastChangedByMe(p))) {
+          realChanges.set(p, e);
+        }
+      }
+      if (realChanges.size > 0) {
+        await onFileEvents(realChanges);
+      }
+    },
   });
 
-  watcher.on("all", async (event: string, filePath: string) => {
+  watcher.on("all", (event: string, filePath: string) => {
     const absolutePath = filePath as AbsolutePath;
     assert(
       absolutePath.startsWith(Sonamu.appRootPath),
@@ -51,10 +65,6 @@ export async function setupWatcher(
     }
 
     if (isOutOfScope(absolutePath)) {
-      return;
-    }
-
-    if (await isLastChangedByMe(absolutePath)) {
       return;
     }
 

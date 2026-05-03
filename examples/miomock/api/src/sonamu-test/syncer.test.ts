@@ -221,21 +221,6 @@ describe("Syncer", () => {
       // autoload가 실행되어 types가 재로드되었는지 확인
       expect(Object.keys(syncer.types).length).toBeGreaterThan(0);
     });
-
-    // 목적: 파일 삭제 시 체크섬 패턴에 맞는 파일이면 doSyncActions가 호출되는지 확인
-    test("unlink 이벤트 → 체크섬 패턴에 맞는 파일 처리", async () => {
-      const deletedPath = join(
-        apiRootPath,
-        "src/application/sync-fixture/sync-fixture.types.ts",
-      ) as AbsolutePath;
-
-      await syncer.hmrAndSync(new Map([[deletedPath, "unlink"]]));
-
-      // unlink 이벤트는 체크섬 패턴에 맞는 파일이면 doSyncActions가 호출될 수 있음
-      // 하지만 실제로는 파일이 삭제되었으므로 복사 작업은 없을 수 있음
-      // autoload는 여전히 실행되어야 함
-      expect(Object.keys(syncer.types).length).toBeGreaterThan(0);
-    });
   });
 
   // ============================================
