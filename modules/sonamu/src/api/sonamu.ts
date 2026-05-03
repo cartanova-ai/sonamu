@@ -1515,7 +1515,17 @@ class SonamuClass {
       ignoreInitial: true,
     });
 
-    this.watcher.on("all", async (event: string, filePath: string) => {
+    // 파일 경로별로 100ms 디바운스!
+    const { debounceByKey } = await import("../utils/async-utils");
+    const handleFileChangeDebounced = debounceByKey<string, [string]>(100, async (fp, event) => {
+      try {
+        await this.handleFileChange(event, fp as AbsolutePath);
+      } catch (e) {
+        console.error(e);
+      }
+    });
+
+    this.watcher.on("all", (event: string, filePath: string) => {
       const absolutePath = filePath as AbsolutePath;
       assert(
         absolutePath.startsWith(this.apiRootPath),
@@ -1526,24 +1536,21 @@ class SonamuClass {
         return;
       }
 
-      try {
-        // sonamu.config.ts 변경 시 재시작
-        const isConfigTs = filePath === path.join(this.apiRootPath, "src", "sonamu.config.ts");
-
-        if (isConfigTs) {
-          const relativePath = filePath.replace(this.apiRootPath, "api");
-          const chalk = (await import("chalk")).default;
+      // sonamu.config.ts 변경이라면 바로 재시작합니다.
+      const isConfigTs = filePath === path.join(this.apiRootPath, "src", "sonamu.config.ts");
+      if (isConfigTs) {
+        const relativePath = filePath.replace(this.apiRootPath, "api");
+        void import("chalk").then(({ default: chalk }) => {
           console.log(
             chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)} - Restarting...`),
           );
           process.kill(process.pid, "SIGUSR2");
-          return;
-        }
-
-        await this.handleFileChange(event, absolutePath);
-      } catch (e) {
-        console.error(e);
+        });
+        return;
       }
+
+      // 아니라면 디바운스 적용하여 핸들링합니다.
+      handleFileChangeDebounced(filePath, event);
     });
   }
 

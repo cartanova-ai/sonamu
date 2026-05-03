@@ -2,6 +2,7 @@ import { glob } from "fs/promises";
 import path from "path";
 
 import { minimatch } from "minimatch";
+import { debounce } from "radashi";
 
 /**
  * 비동기 조건으로 배열을 필터링합니다
@@ -88,4 +89,30 @@ export async function globAsync(
     files.push(file);
   }
   return files;
+}
+
+/**
+ * 키별로 trailing-edge debounce. 같은 key에 대해 delay 안에 여러 번 호출되면 마지막 args만
+ * delay 후에 fn 호출. key가 다르면 timer 독립적.
+ *
+ * @example
+ * const debounced = debounceByKey<string>(100, (path) => handleFileChange(path));
+ * debounced("a.ts"); debounced("a.ts"); // 100ms 후 한 번만 호출
+ * debounced("b.ts"); // a.ts와 별개로 100ms 후 호출
+ */
+export function debounceByKey<K, A extends unknown[]>(
+  delay: number,
+  fn: (key: K, ...args: A) => void | Promise<void>,
+): (key: K, ...args: A) => void {
+  const debouncersByKey = new Map<K, (key: K, ...args: A) => void>();
+  return (key, ...args) => {
+    let debounced = debouncersByKey.get(key);
+    if (!debounced) {
+      debounced = debounce({ delay }, (k: K, ...a: A) => {
+        void fn(k, ...a);
+      });
+      debouncersByKey.set(key, debounced);
+    }
+    debounced(key, ...args);
+  };
 }
