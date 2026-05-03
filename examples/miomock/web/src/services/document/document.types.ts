@@ -3,10 +3,10 @@
  * API에서 동기화된 파일입니다. 직접 수정하지 마세요.
  */
 
-import { SonamuSemanticParams } from "../sonamu.shared";
 import { z } from "zod";
 
 import { DocumentBaseListParams, DocumentBaseSchema } from "../sonamu.generated";
+import { SonamuSemanticParams } from "../sonamu.shared";
 
 // Document - SemanticParams
 export const DocumentSemanticParams = DocumentBaseListParams.extend(

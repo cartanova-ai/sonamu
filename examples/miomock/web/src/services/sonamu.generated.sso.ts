@@ -4,12 +4,6 @@
  */
 
 import { type User } from "better-auth";
-import {
-  type PuriWrapper,
-  type DatabaseSchemaExtend,
-  type PuriLoaderQueries,
-  type ManyToManyBaseSchema,
-} from "./sonamu.shared";
 
 import {
   type AccountSubsetKey,
@@ -48,6 +42,12 @@ import {
   type VerificationBaseSchema,
   type UserRole,
 } from "./sonamu.generated";
+import {
+  type PuriWrapper,
+  type DatabaseSchemaExtend,
+  type PuriLoaderQueries,
+  type ManyToManyBaseSchema,
+} from "./sonamu.shared";
 
 // SubsetQuery: Account
 export const accountSubsetQueries = {

@@ -5,8 +5,14 @@
 
 /* oxlint-disable */
 
-import { zArrayable, SonamuQueryMode, ApplySonamuFilter, SonamuFileArraySchema } from "./sonamu.shared";
 import { z } from "zod";
+
+import {
+  zArrayable,
+  SonamuQueryMode,
+  ApplySonamuFilter,
+  SonamuFileArraySchema,
+} from "./sonamu.shared";
 
 // CustomScalar: AuditEventPayload
 const AuditEventPayload = z.record(z.string(), z.unknown());
