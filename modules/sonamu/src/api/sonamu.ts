@@ -1,4 +1,3 @@
-import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
 import fs from "fs/promises";
 import { type IncomingMessage, type Server, type ServerResponse } from "http";
@@ -8,6 +7,7 @@ import path from "path";
 import type {} from "@fastify/websocket";
 import { dispose as logtapeDispose } from "@logtape/logtape";
 import { type Auth, type BetterAuthOptions } from "better-auth";
+import chalk from "chalk";
 import { type FSWatcher } from "chokidar";
 import { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import mime, { lookup as mimeLookup } from "mime-types";
@@ -35,6 +35,7 @@ import { type Syncer } from "../syncer/syncer";
 import { type WorkflowManager } from "../tasks/workflow-manager";
 import { type DevVitestManager } from "../testing/dev-vitest-manager";
 import { type SonamuFastifyConfig } from "../types/types";
+import { centerText } from "../utils/console-util";
 import { isDaemonServer } from "../utils/controller";
 import { exists, fileExists } from "../utils/fs-utils";
 import { type AbsolutePath } from "../utils/path-utils";
@@ -200,7 +201,7 @@ class SonamuClass {
     this._websocketRuntime = runtime;
   }
 
-  // HMR 처리
+  // HMR 처리: 파일 시스템 감시 + HMR/sync 사이클 실행은 watcher 모듈로 위임합니다.
   public watcher: FSWatcher | null = null;
 
   public server: FastifyInstance | null = null;
@@ -1503,64 +1504,30 @@ class SonamuClass {
   }
 
   async startWatcher(): Promise<void> {
-    // api 본인뿐 아니라 sync target들의 src도 봅니다.
-    // target 산출물(sonamu.generated, services.generated, i18n copy 등)이 외부에서 변경되는 경우를
-    // drift로 잡아 워닝을 띄우기 위함입니다.
-    const watchPath = [
-      path.join(this.apiRootPath, "src"),
-      ...this.config.sync.targets.map((t) => path.join(this.appRootPath, t, "src")),
-    ];
+    // watcher 모듈은 file-patterns → Sonamu 순환을 피하기 위해 dynamic import 합니다.
+    const { setupWatcher } = await import("../syncer/watcher");
+    this.watcher = await setupWatcher((fileEvents) => this.runHmrSyncCycle(fileEvents));
+  }
 
-    const chokidar = (await import("chokidar")).default;
-    this.watcher = chokidar.watch(watchPath, {
-      ignored: (path, stats) =>
-        !!stats?.isFile() && !path.endsWith(".ts") && !path.endsWith(".json"),
-      persistent: true,
-      ignoreInitial: true,
-    });
+  /**
+   * Watcher가 100ms batch로 모은 fileEvents 하나에 대해 한 번의 HMR/sync 사이클을 돕니다.
+   * batch 큐잉 덕에 한 시점에 하나만 실행됨이 보장됩니다 (event-batcher가 직렬화).
+   */
+  private async runHmrSyncCycle(fileEvents: Map<AbsolutePath, "change" | "add">): Promise<void> {
+    const startedAt = Date.now();
 
-    // 100ms 안에 들어온 변경들을 한 batch로 모아 한 번에 처리합니다.
-    const { createFileEventBatcher } = await import("../syncer/event-batcher");
-    const pushFileEvent = createFileEventBatcher({
-      delayMs: 100,
-      onFlush: (fileEvents) => this.runHmrSyncCycle(fileEvents),
-    });
+    for (const [filePath, event] of fileEvents) {
+      const relativePath = path.relative(this.appRootPath, filePath);
+      console.log(chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`));
+    }
 
-    this.watcher.on("all", (event: string, filePath: string) => {
-      const absolutePath = filePath as AbsolutePath;
-      assert(
-        absolutePath.startsWith(this.appRootPath),
-        "File path is not within the app root path",
-      );
+    // 본체: 변경 흡수 + 체크섬 갱신.
+    await this.syncer.hmrAndSync(fileEvents);
+    await this.syncer.renewChecksums();
 
-      if (event !== "change" && event !== "add") {
-        return;
-      }
-
-      // sonamu.config.ts 변경이라면 바로 재시작합니다.
-      const isConfigTs = filePath === path.join(this.apiRootPath, "src", "sonamu.config.ts");
-      if (isConfigTs) {
-        const relativePath = filePath.replace(this.apiRootPath, "api");
-        void import("chalk").then(({ default: chalk }) => {
-          console.log(
-            chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)} - Restarting...`),
-          );
-          process.kill(process.pid, "SIGUSR2");
-        });
-        return;
-      }
-
-      if (!this.syncer.shouldWatcherHandleThisChange(absolutePath)) {
-        // 이것은 invalidate 해야 할 HMR 관련 파일 이벤트도 아니고,
-        // doSyncActions 해야 할 sync 관련 파일 이벤트도 아님을 의미합니다.
-        // 즉슨, web/src/App.tsx같은 완전 무관한 파일 이벤트인 겁니다.
-        // 이럴 때에는 syncer가 할 일이 없습니다.
-        return;
-      }
-
-      // 100ms 안의 변경들이 한 batch로 모여 runHmrSyncCycle 한 번 호출로 묶입니다.
-      pushFileEvent(absolutePath, event);
-    });
+    const totalTime = Date.now() - startedAt;
+    const msg = `HMR Done! ${chalk.bold.white(`${totalTime}ms`)}`;
+    console.log(chalk.black.bgGreen(centerText(msg)));
   }
 
   /*
@@ -1866,35 +1833,6 @@ class SonamuClass {
         console.error(chalk.red("Failed to start server:", err));
         await shutdown();
       });
-  }
-
-  /**
-   * 파일 변경이 감지되면 가장 먼저 움직이는 곳입니다.
-   * Watcher가 100ms batch로 모은 fileEvents 하나에 대해 한 번의 HMR 사이클을 돕니다.
-   * 이 메소드는 Sonamu 인스턴스 내에서 한 번에 하나씩만 실행됩니다!
-   */
-  private async runHmrSyncCycle(fileEvents: Map<AbsolutePath, string>): Promise<void> {
-    if (fileEvents.size === 0) {
-      return;
-    }
-
-    const startedAt = Date.now();
-
-    const chalk = (await import("chalk")).default;
-    for (const [filePath, event] of fileEvents) {
-      const relativePath = path.relative(this.appRootPath, filePath);
-      console.log(chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`));
-    }
-
-    // 본체: 변경 흡수 + 체크섬 갱신.
-    await this.syncer.hmrAndSync(fileEvents);
-    await this.syncer.renewChecksums();
-
-    const totalTime = Date.now() - startedAt;
-    const { centerText } = await import("../utils/console-util");
-    const msg = `HMR Done! ${chalk.bold.white(`${totalTime}ms`)}`;
-
-    console.log(chalk.black.bgGreen(centerText(msg)));
   }
 
   async destroy(): Promise<void> {

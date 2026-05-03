@@ -30,7 +30,6 @@ import { generateTemplate, renderTemplate } from "./code-generator";
 import { createEntity, delEntity } from "./entity-operations";
 import { getChecksumPatternGroup, getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 import { type FileType } from "./file-patterns";
-import { isLastChangedByMe } from "./file-tracking";
 import { loadApis, loadModels, loadTypes, loadWorkflows } from "./module-loader";
 import { type LoadedApis, type LoadedModels, type LoadedTypes } from "./module-loader";
 import * as SyncerActions from "./syncer-actions";
@@ -96,22 +95,6 @@ export class Syncer {
   }
 
   /**
-   * File system watcher가 이 변경을 처리해야 할 지 결정합니다.
-   * api가 아닌 패키지의 변경이면서 checksumPatternGroup에도 없으면 그 변경은 무시되어야 합니다.
-   * 그 이외의 변경은 처리해야 합니다.
-   *
-   * @param filePath 변경된 파일의 절대경로.
-   */
-  shouldWatcherHandleThisChange(filePath: AbsolutePath): boolean {
-    const apiSrc = path.join(Sonamu.apiRootPath, "src");
-    if (filePath.startsWith(apiSrc)) {
-      return true;
-    }
-    const checkPatternGroup = getChecksumPatternGroupInAbsolutePath();
-    return Object.values(checkPatternGroup).some((pattern) => minimatch(filePath, pattern));
-  }
-
-  /**
    * Watcher가 batch로 모은 변경 파일들에 대해 한 번의 HMR/sync 사이클을 돕니다.
    *
    * HMR은 api/src 안에서 일어나는 모든 파일들에 대해서 수행합니다.
@@ -122,9 +105,9 @@ export class Syncer {
    * 여기에는 web/src나 app/src 같은 다른 target의 파일이 포함될 수 있습니다.
    * 이런 non-api 경로의 파일들은 HMR과는 아무 상관이 없으므로, invalidate을 하지 않습니다.
    *
-   * @param fileEvents - path → event 맵. event는 "change" | "add" | "unlink".
+   * @param fileEvents - path → event 맵. event는 "change" | "add".
    */
-  async hmrAndSync(fileEvents: Map<AbsolutePath, string>): Promise<void> {
+  async hmrAndSync(fileEvents: Map<AbsolutePath, "change" | "add">): Promise<void> {
     const hmrActionRequiredEvents = this.extractHmrActionRequiredFileEvents(fileEvents);
     const syncTriggeringPaths = await this.extractSyncTriggeringFileEventPaths(fileEvents);
 
@@ -159,14 +142,11 @@ export class Syncer {
   }
 
   private extractHmrActionRequiredFileEvents(
-    fileEvents: Map<AbsolutePath, string>,
-  ): Map<AbsolutePath, string> {
+    fileEvents: Map<AbsolutePath, "change" | "add">,
+  ): Map<AbsolutePath, "change" | "add"> {
     const apiSrc = path.join(Sonamu.apiRootPath, "src");
-    const result = new Map<AbsolutePath, string>();
+    const result = new Map<AbsolutePath, "change" | "add">();
     for (const [filePath, event] of fileEvents) {
-      if (event !== "change" && event !== "add" && event !== "unlink") {
-        continue;
-      }
       if (!filePath.startsWith(apiSrc)) {
         continue;
       }
@@ -176,22 +156,15 @@ export class Syncer {
   }
 
   private async extractSyncTriggeringFileEventPaths(
-    fileEvents: Map<AbsolutePath, string>,
+    fileEvents: Map<AbsolutePath, "change" | "add">,
   ): Promise<AbsolutePath[]> {
     const checkPatternGroup = getChecksumPatternGroupInAbsolutePath();
     const syncTriggeringPaths: AbsolutePath[] = [];
-    for (const [diffFilePath, event] of fileEvents) {
-      if (event !== "change" && event !== "add" && event !== "unlink") {
-        continue;
-      }
+    for (const [diffFilePath] of fileEvents) {
       const isInCheckPatternGroup = Object.values(checkPatternGroup).some((pattern) =>
         minimatch(diffFilePath, pattern),
       );
       if (!isInCheckPatternGroup) {
-        continue;
-      }
-      // 내가 마지막으로 바꾼게 아니다? = 누군가가 손댔다 = 진짜 외부 변경 = sync 필요.
-      if (await isLastChangedByMe(diffFilePath)) {
         continue;
       }
       syncTriggeringPaths.push(diffFilePath);
@@ -200,12 +173,10 @@ export class Syncer {
     return syncTriggeringPaths;
   }
 
-  private async invalidateDependentsAffectedByFileEvents(fileEvents: Map<AbsolutePath, string>) {
+  private async invalidateDependentsAffectedByFileEvents(
+    fileEvents: Map<AbsolutePath, "change" | "add">,
+  ) {
     for (const [diffFilePath, event] of fileEvents) {
-      if (event !== "change" && event !== "add" && event !== "unlink") {
-        continue;
-      }
-
       // 변경된 파일과 dependent 파일들을 invalidate 합니다.
       // 한 번 이상 import된 친구들에 대해서만 실제 작업이 일어납니다.
       // 그러니 안심하고 invalidate 해도 됩니다.

@@ -21,12 +21,12 @@ import { type AbsolutePath } from "../utils/path-utils";
  * push("/path/a.ts" as AbsolutePath, "change");
  * push("/path/b.ts" as AbsolutePath, "change"); // 100ms 후 둘 다 한 번에 onFlush로
  */
-export function createFileEventBatcher(options: {
+export function createFileEventBatcher<FileEventT extends string>(options: {
   delayMs: number;
-  onFlush: (fileEvents: Map<AbsolutePath, string>) => Promise<void>;
-}): (path: AbsolutePath, event: string) => void {
+  onFlush: (fileEvents: Map<AbsolutePath, FileEventT>) => Promise<void>;
+}): (path: AbsolutePath, event: FileEventT) => void {
   const { delayMs, onFlush } = options;
-  const pending = new Map<AbsolutePath, string>();
+  const pending = new Map<AbsolutePath, FileEventT>();
   let flushTimer: NodeJS.Timeout | null = null;
   let isFlushing = false;
 

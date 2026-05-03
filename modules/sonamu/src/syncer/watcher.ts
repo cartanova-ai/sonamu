@@ -17,7 +17,7 @@ import { isLastChangedByMe } from "./file-tracking";
  * 이 친구는 진짜로 syncer가 받아야 할 변경 이벤트들만 추려서 batch로 전달해줍니다.
  */
 export async function setupWatcher(
-  onFileEvents: (fileEvents: Map<AbsolutePath, string>) => Promise<void>,
+  onFileEvents: (fileEvents: Map<AbsolutePath, "change" | "add">) => Promise<void>,
 ): Promise<FSWatcher> {
   // api 본인뿐 아니라 sync target들의 src도 봅니다.
   // target 산출물(sonamu.generated, services.generated, i18n copy 등)이 외부에서
@@ -29,7 +29,7 @@ export async function setupWatcher(
   });
 
   // 100ms 안에 들어온 변경들을 한 batch로 모아 한 사이클로 처리합니다.
-  const pushFileEvent = createFileEventBatcher({
+  const pushFileEvent = createFileEventBatcher<"change" | "add">({
     delayMs: 100,
     onFlush: onFileEvents,
   });
@@ -41,7 +41,7 @@ export async function setupWatcher(
       "File path is not within the app root path",
     );
 
-    if (isUnwantedEvent(event)) {
+    if (!isWantedEvent(event)) {
       return;
     }
 
@@ -87,8 +87,8 @@ function ignoreIfExtensionIsNotOneOf(...allowedExtensions: `.${string}`[]) {
   return (p: string, stats?: Stats) => !!stats?.isFile() && !isAllowed(path.extname(p));
 }
 
-function isUnwantedEvent(event: string) {
-  return event !== "change" && event !== "add";
+function isWantedEvent(event: string): event is "change" | "add" {
+  return event === "change" || event === "add";
 }
 
 function isConfigChange(filePath: AbsolutePath): boolean {
