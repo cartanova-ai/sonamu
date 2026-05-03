@@ -9,12 +9,17 @@ const { mockAccess, mockMkdir, mockRm, mockReadFile } = vi.hoisted(() => ({
 }));
 
 // node:fs/promises 모듈을 mock (dist 파일은 node:fs/promises를 사용)
-vi.mock("node:fs/promises", () => ({
-  access: mockAccess,
-  mkdir: mockMkdir,
-  rm: mockRm,
-  readFile: mockReadFile,
-}));
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = (await importOriginal()) as typeof import("node:fs/promises");
+  return {
+    // mock 안 하는 다른 애들도 넣어는 줍니다. 테스트 환경에서 쓰일 수는 있거든요. globAsync같은..
+    ...actual,
+    access: mockAccess,
+    mkdir: mockMkdir,
+    rm: mockRm,
+    readFile: mockReadFile,
+  };
+});
 
 // fs 모듈도 mock (constants 사용)
 vi.mock("fs", async () => {
