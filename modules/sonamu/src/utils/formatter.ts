@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
-// mock없는 진짜 fs가 잠깐 필요하기 때문에 끌어다 씁니다 ㅎㅎ
-import { readFileSync, unlinkSync, writeFileSync } from "fs";
+// 테스트 환경에서는 fs/promises가 mock되지만, 아래 runOxlint이 isTest 가드로 안 도니까
+// 그냥 fs/promises 그대로 사용. (production에서만 임시파일 흐름이 돕니다.)
+import { readFile, unlink, writeFile } from "fs/promises";
 import { createRequire } from "module";
 import path, { dirname, join } from "path";
 
@@ -40,7 +41,7 @@ async function formatCodeInternal(code: string, filePath: string): Promise<strin
  * 프로젝트 설정을 찾아서 이에 맞춰서 코드를 포맷합니다.
  */
 async function runOxfmt(code: string, filePath: string): Promise<string> {
-  const result = await format(path.basename(filePath), code, loadOxfmtConfig());
+  const result = await format(path.basename(filePath), code, await loadOxfmtConfig());
 
   const errors = result.errors.filter((e) => e.severity === "Error");
   if (errors.length > 0) {
@@ -65,7 +66,7 @@ async function runOxfmt(code: string, filePath: string): Promise<string> {
 }
 
 let cachedOxfmtConfig: FormatConfig | null = null;
-function loadOxfmtConfig(): FormatConfig {
+async function loadOxfmtConfig(): Promise<FormatConfig> {
   if (cachedOxfmtConfig !== null) {
     return cachedOxfmtConfig;
   }
@@ -74,7 +75,7 @@ function loadOxfmtConfig(): FormatConfig {
   while (true) {
     const candidate = join(dir, ".oxfmtrc.json");
     try {
-      cachedOxfmtConfig = JSON.parse(readFileSync(candidate, "utf-8")) as FormatConfig;
+      cachedOxfmtConfig = JSON.parse(await readFile(candidate, "utf-8")) as FormatConfig;
       return cachedOxfmtConfig;
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
@@ -99,13 +100,19 @@ function loadOxfmtConfig(): FormatConfig {
  * 왜 이렇게 하느냐? oxlint가 node api도 안 주고 cli에서 stdin 옵션도 안 주기 때문...
  */
 async function runOxlint(code: string): Promise<string> {
+  if (isTest()) {
+    // 테스트 환경에서는 느려지기만 하고 검증할 가치도 없어서 안 합니다.
+    // GitHub Actions 환경에서 lint가 오래 걸려서 뻗기도 했어요. (https://github.com/cartanova-ai/sonamu/actions/runs/25267214027/job/74083630169)
+    return code;
+  }
+
   const tmpFile = join(
     process.cwd(),
     `.sonamu-fmt-${Date.now()}-${Math.random().toString(36).slice(2)}.ts`,
   );
 
   try {
-    writeFileSync(tmpFile, code, "utf-8");
+    await writeFile(tmpFile, code, "utf-8");
 
     try {
       await execute(resolveOxlintBin(), ["--fix", "--fix-suggestions", "--type-aware", tmpFile], {
@@ -118,10 +125,10 @@ async function runOxlint(code: string): Promise<string> {
       }
     }
 
-    return readFileSync(tmpFile, "utf-8");
+    return await readFile(tmpFile, "utf-8");
   } finally {
     try {
-      unlinkSync(tmpFile);
+      await unlink(tmpFile);
     } catch {
       // 삭제 실패해도 어차피 ignore됨.
     }
