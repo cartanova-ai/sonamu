@@ -35,14 +35,13 @@ SyntaxError: Unexpected token } in JSON at position 1
 
 ### 해결 방법
 
-#### 1. 체크섬 파일 삭제 (권장)
+#### 1. 강제 재동기화 (권장)
 
 ```bash
-rm sonamu.lock
-pnpm sonamu sync
+pnpm sonamu sync --force
 ```
 
-파일을 삭제하면 전체 재동기화가 진행됩니다. 이는 안전하며 모든 파일이 다시 생성됩니다.
+`--force` 옵션은 기존 `sonamu.lock`을 삭제하고 처음부터 풀-싱크를 수행합니다. 이는 안전하며 모든 추적 자산이 다시 정합 상태로 맞춰집니다.
 
 #### 2. 파일 내용 확인
 

@@ -35,14 +35,13 @@ The `sonamu.lock` file is corrupted. Common causes:
 
 ### Solutions
 
-#### 1. Delete Checksum File (Recommended)
+#### 1. Force Re-sync (Recommended)
 
 ```bash
-rm sonamu.lock
-pnpm sonamu sync
+pnpm sonamu sync --force
 ```
 
-Deleting the file triggers a full re-synchronization. This is safe and all files will be regenerated.
+The `--force` flag removes the existing `sonamu.lock` and performs a full sync from scratch. This is safe and brings every tracked asset back into a consistent state.
 
 #### 2. Check File Contents
 
