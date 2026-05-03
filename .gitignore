@@ -60,3 +60,6 @@ Thumbs.db
 
 .agents/
 .claude
+
+# sonamu formatter 임시파일 (formatter.ts: process kill 등 예외 시 unlink 누락 보호)
+.sonamu-fmt-*.ts
