@@ -172,7 +172,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode).toBeDefined();
     expect(alterCode?.formatted).toMatchInlineSnapshot(
       `
-      "import { type Knex } from "knex";
+      "import { Knex } from "knex";
 
       export async function up(knex: Knex): Promise<void> {
         await knex.raw(
@@ -257,7 +257,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode).toBeDefined();
     expect(alterCode?.formatted).toMatchInlineSnapshot(
       `
-      "import { type Knex } from "knex";
+      "import { Knex } from "knex";
 
       export async function up(knex: Knex): Promise<void> {
         await knex.raw(\`CREATE INDEX users_bio_index ON users USING gist(bio);\`);
@@ -301,7 +301,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode).toBeDefined();
     expect(alterCode?.formatted).toMatchInlineSnapshot(
       `
-      "import { type Knex } from "knex";
+      "import { Knex } from "knex";
 
       export async function up(knex: Knex): Promise<void> {
         await knex.raw(
@@ -337,7 +337,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode).toBeDefined();
     expect(alterCode?.formatted).toMatchInlineSnapshot(
       `
-      "import { type Knex } from "knex";
+      "import { Knex } from "knex";
 
       export async function up(knex: Knex): Promise<void> {
         await knex.raw(
@@ -374,7 +374,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode).toBeDefined();
     expect(alterCode?.formatted).toMatchInlineSnapshot(
       `
-      "import { type Knex } from "knex";
+      "import { Knex } from "knex";
 
       export async function up(knex: Knex): Promise<void> {
         await knex.raw(
@@ -413,7 +413,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode).toBeDefined();
     expect(alterCode?.formatted).toMatchInlineSnapshot(
       `
-      "import { type Knex } from "knex";
+      "import { Knex } from "knex";
 
       export async function up(knex: Knex): Promise<void> {
         await knex.raw(
