@@ -698,7 +698,9 @@ export namespace ProjectService {
     }>(`/api/project/ask`, params, handlers, options);
   }
 
-  export async function search(search: string): Promise<
+  export async function search(
+    search: string,
+  ): Promise<
     {
       name: string;
       description: string | null;

@@ -309,7 +309,7 @@
   },
   {
     "path": "web/src/services/services.generated.ts",
-    "checksum": "6dcb95130a67e3050a8c6467a8f1aca9728552f6"
+    "checksum": "df0c720ce44da03b360e63dca2acc98c9619359b"
   },
   {
     "path": "web/src/services/session/session.types.ts",
