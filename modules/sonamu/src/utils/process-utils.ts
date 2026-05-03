@@ -1,6 +1,23 @@
+import { execFile, type ExecFileOptions } from "child_process";
 import { setTimeout as setTimeoutPromises } from "timers/promises";
+import { promisify } from "util";
 
 import chalk from "chalk";
+
+const execFileAsync = promisify(execFile);
+
+/**
+ * exexFileSync의 비동기 버전입니다.
+ * exit code가 non-zero이면 reject해요.
+ */
+export async function execute(
+  bin: string,
+  args: string[],
+  options?: ExecFileOptions,
+): Promise<string> {
+  const { stdout } = await execFileAsync(bin, args, options);
+  return typeof stdout === "string" ? stdout : stdout.toString();
+}
 
 /**
  * 주어진 작업을 실행합니다.
