@@ -20,7 +20,6 @@ flowchart TD
     E --> E1[services.generated.ts]
     E --> E2[sonamu.generated.http]
     E --> E3[queries.generated.ts]
-    E --> E4[entry-server.generated.tsx]
 
     J --> J1[sonamu.generated.ts]
     J --> J2[sonamu.generated.sso.ts]
@@ -43,7 +42,6 @@ flowchart TD
     style E1 fill:#e8f5e9,stroke:#059669,stroke-width:2px
     style E2 fill:#e8f5e9,stroke:#059669,stroke-width:2px
     style E3 fill:#e8f5e9,stroke:#059669,stroke-width:2px
-    style E4 fill:#e8f5e9,stroke:#059669,stroke-width:2px
 
     style J1 fill:#fee2e2,stroke:#dc2626,stroke-width:2px
     style J2 fill:#fee2e2,stroke:#dc2626,stroke-width:2px
@@ -249,28 +247,13 @@ export const userQueries = {
 
 </Step>
 
-<Step title="4. entry-server.generated.tsx">
-SSR Entry Server code
-
-**Location**: `web/src/entry-server.generated.tsx`
-
-**Always regenerated**: ✅
-
-```tsx
-export async function loader({ params }) {
-  const queryClient = new QueryClient();
-
-  // SSR data prefetching
-  if (params.userId) {
-    await queryClient.prefetchQuery(userQueries.findById(Number(params.userId)));
-  }
-
-  return { dehydratedState: dehydrate(queryClient) };
-}
-```
-
-</Step>
 </Steps>
+
+<Note>
+  `entry-server.generated.tsx` is a static bootstrap asset that does not depend on any input. It is
+  created only on the first sync (`IfNotExists`); afterwards it lives outside the change-tracking
+  cycle and is not regenerated when a Model changes. Feel free to edit it directly when needed.
+</Note>
 
 ### Trigger Example
 
@@ -297,7 +280,6 @@ async save(params: UserSaveParams[]): Promise<number[]> {
 ✅ Generated: services.generated.ts
 ✅ Generated: sonamu.generated.http
 ✅ Generated: queries.generated.ts
-✅ Generated: entry-server.generated.tsx
 
 ✨ HMR completed in 234ms
 ````
@@ -470,13 +452,13 @@ export const SD = {
 
 A table showing file changes and regeneration relationships at a glance.
 
-| Changed File             | {entity}.types.ts   | sonamu.generated.ts | sonamu.generated.sso.ts | services.generated.ts | sonamu.generated.http | queries.generated.ts | entry-server.generated.tsx | .sonamu.env | sd.generated.ts |
-| ------------------------ | ------------------- | ------------------- | ----------------------- | --------------------- | --------------------- | -------------------- | -------------------------- | ----------- | --------------- |
-| **{entity}.entity.json** | ✅ (first creation) | ✅                  | ✅                      | -                     | -                     | -                    | -                          | -           | -               |
-| **{entity}.model.ts**    | -                   | -                   | -                       | ✅                    | ✅                    | ✅                   | ✅                         | -           | -               |
-| **{entity}.types.ts**    | _copy_              | ✅                  | ✅                      | -                     | -                     | -                    | -                          | -           | -               |
-| **sonamu.config.ts**     | -                   | -                   | -                       | -                     | -                     | -                    | -                          | ✅          | -               |
-| **i18n/{locale}.ts**     | -                   | -                   | -                       | -                     | -                     | -                    | -                          | -           | ✅              |
+| Changed File             | {entity}.types.ts   | sonamu.generated.ts | sonamu.generated.sso.ts | services.generated.ts | sonamu.generated.http | queries.generated.ts | .sonamu.env | sd.generated.ts |
+| ------------------------ | ------------------- | ------------------- | ----------------------- | --------------------- | --------------------- | -------------------- | ----------- | --------------- |
+| **{entity}.entity.json** | ✅ (first creation) | ✅                  | ✅                      | -                     | -                     | -                    | -           | -               |
+| **{entity}.model.ts**    | -                   | -                   | -                       | ✅                    | ✅                    | ✅                   | -           | -               |
+| **{entity}.types.ts**    | _copy_              | ✅                  | ✅                      | -                     | -                     | -                    | -           | -               |
+| **sonamu.config.ts**     | -                   | -                   | -                       | -                     | -                     | -                    | ✅          | -               |
+| **i18n/{locale}.ts**     | -                   | -                   | -                       | -                     | -                     | -                    | -           | ✅              |
 
 **Legend**:
 
@@ -484,6 +466,12 @@ A table showing file changes and regeneration relationships at a glance.
 - ✅ (first creation) = Only on first creation
 - _copy_ = Copied to targets
 - - = Not regenerated
+
+<Info>
+  `entry-server.generated.tsx` is intentionally omitted from the matrix above. It is a bootstrap
+  asset that is only generated on the first sync (`IfNotExists`) and lives outside the change
+  tracking cycle.
+</Info>
 
 ## Preventing Regeneration
 
@@ -554,15 +542,15 @@ async findByIdWithLog(id: number): Promise<User> {
 
 How to force regeneration when files aren't being regenerated.
 
-### Checksum Reset
+### Force Re-sync
 
 ```bash
-# Delete checksum file
-rm sonamu.lock
-
-# Full re-sync
-pnpm sonamu sync
+# Remove sonamu.lock and run a full sync
+pnpm sonamu sync --force
 ```
+
+`--force` ignores the existing lock and brings every tracked asset back into a consistent state
+from scratch. It is exposed for use in git post-merge hooks or CI to re-sync after every pull.
 
 ### Specific File Regeneration
 

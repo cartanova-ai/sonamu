@@ -20,7 +20,6 @@ flowchart TD
     E --> E1[services.generated.ts]
     E --> E2[sonamu.generated.http]
     E --> E3[queries.generated.ts]
-    E --> E4[entry-server.generated.tsx]
 
     J --> J1[sonamu.generated.ts]
     J --> J2[sonamu.generated.sso.ts]
@@ -43,7 +42,6 @@ flowchart TD
     style E1 fill:#e8f5e9,stroke:#059669,stroke-width:2px
     style E2 fill:#e8f5e9,stroke:#059669,stroke-width:2px
     style E3 fill:#e8f5e9,stroke:#059669,stroke-width:2px
-    style E4 fill:#e8f5e9,stroke:#059669,stroke-width:2px
 
     style J1 fill:#fee2e2,stroke:#dc2626,stroke-width:2px
     style J2 fill:#fee2e2,stroke:#dc2626,stroke-width:2px
@@ -249,28 +247,13 @@ export const userQueries = {
 
 </Step>
 
-<Step title="4. entry-server.generated.tsx">
-SSR Entry Server 코드
-
-**위치**: `web/src/entry-server.generated.tsx`
-
-**항상 재생성**: ✅
-
-```tsx
-export async function loader({ params }) {
-  const queryClient = new QueryClient();
-
-  // SSR 데이터 프리페칭
-  if (params.userId) {
-    await queryClient.prefetchQuery(userQueries.findById(Number(params.userId)));
-  }
-
-  return { dehydratedState: dehydrate(queryClient) };
-}
-```
-
-</Step>
 </Steps>
+
+<Note>
+  `entry-server.generated.tsx`는 입력에 의존하지 않는 정적 부트스트랩 자산입니다. 첫 sync 시 1회만
+  생성되며(`IfNotExists`), 이후에는 추적 사이클 밖에 있어 Model 변경에 따라 재생성되지 않습니다.
+  필요 시 직접 편집해도 됩니다.
+</Note>
 
 ### 트리거 예시
 
@@ -297,7 +280,6 @@ async save(params: UserSaveParams[]): Promise<number[]> {
 ✅ Generated: services.generated.ts
 ✅ Generated: sonamu.generated.http
 ✅ Generated: queries.generated.ts
-✅ Generated: entry-server.generated.tsx
 
 ✨ HMR completed in 234ms
 ````
@@ -470,13 +452,13 @@ export const SD = {
 
 파일 변경과 재생성 관계를 한눈에 보여주는 표입니다.
 
-| 변경 파일                | {entity}.types.ts | sonamu.generated.ts | sonamu.generated.sso.ts | services.generated.ts | sonamu.generated.http | queries.generated.ts | entry-server.generated.tsx | .sonamu.env | sd.generated.ts |
-| ------------------------ | ----------------- | ------------------- | ----------------------- | --------------------- | --------------------- | -------------------- | -------------------------- | ----------- | --------------- |
-| **{entity}.entity.json** | ✅ (첫 생성)      | ✅                  | ✅                      | -                     | -                     | -                    | -                          | -           | -               |
-| **{entity}.model.ts**    | -                 | -                   | -                       | ✅                    | ✅                    | ✅                   | ✅                         | -           | -               |
-| **{entity}.types.ts**    | _복사_            | ✅                  | ✅                      | -                     | -                     | -                    | -                          | -           | -               |
-| **sonamu.config.ts**     | -                 | -                   | -                       | -                     | -                     | -                    | -                          | ✅          | -               |
-| **i18n/{locale}.ts**     | -                 | -                   | -                       | -                     | -                     | -                    | -                          | -           | ✅              |
+| 변경 파일                | {entity}.types.ts | sonamu.generated.ts | sonamu.generated.sso.ts | services.generated.ts | sonamu.generated.http | queries.generated.ts | .sonamu.env | sd.generated.ts |
+| ------------------------ | ----------------- | ------------------- | ----------------------- | --------------------- | --------------------- | -------------------- | ----------- | --------------- |
+| **{entity}.entity.json** | ✅ (첫 생성)      | ✅                  | ✅                      | -                     | -                     | -                    | -           | -               |
+| **{entity}.model.ts**    | -                 | -                   | -                       | ✅                    | ✅                    | ✅                   | -           | -               |
+| **{entity}.types.ts**    | _복사_            | ✅                  | ✅                      | -                     | -                     | -                    | -           | -               |
+| **sonamu.config.ts**     | -                 | -                   | -                       | -                     | -                     | -                    | ✅          | -               |
+| **i18n/{locale}.ts**     | -                 | -                   | -                       | -                     | -                     | -                    | -           | ✅              |
 
 **범례**:
 
@@ -484,6 +466,11 @@ export const SD = {
 - ✅ (첫 생성) = 첫 생성 시에만
 - _복사_ = 타겟에 복사
 - - = 재생성 안됨
+
+<Info>
+  `entry-server.generated.tsx`는 부트스트랩 자산이라 위 매트릭스에 포함되지 않습니다. 첫 sync에서만
+  `IfNotExists`로 만들어지고, 이후 변경 추적 사이클 밖에 있어요.
+</Info>
 
 ## 재생성 방지하기
 
@@ -554,15 +541,15 @@ async findByIdWithLog(id: number): Promise<User> {
 
 파일이 재생성되지 않을 때 강제로 재생성하는 방법입니다.
 
-### Checksum 초기화
+### 강제 재동기화
 
 ```bash
-# Checksum 파일 삭제
-rm sonamu.lock
-
-# 전체 재동기화
-pnpm sonamu sync
+# sonamu.lock 제거 + 풀-싱크
+pnpm sonamu sync --force
 ```
+
+`--force`는 기존 lock을 무시하고 처음부터 모든 추적 자산을 다시 정합 상태로 맞춥니다. git
+post-merge hook이나 CI에서 매 pull 후 자동 실행할 수 있도록 노출되어 있습니다.
 
 ### 특정 파일 재생성
 
