@@ -116,3 +116,29 @@ export function debounceByKey<K, A extends unknown[]>(
     debounced(key, ...args);
   };
 }
+
+/**
+ * 같은 key에 대한 호출 결과를 캐시. 같은 key로 다시 호출되면 fn 실행 없이 캐시값 반환.
+ * 무효화는 프로세스 재시작 (또는 외부에서 invalidate). 호출자가 keyFn으로 args → string 매핑.
+ *
+ * @example
+ * const cachedFmt = cached(formatCodeInternal, (code, filePath) => `${ext(filePath)}:${sha1(code)}`);
+ * await cachedFmt(code, "a.ts"); // 실제 호출
+ * await cachedFmt(code, "a.ts"); // 캐시 hit
+ */
+export function cached<A extends unknown[], R>(
+  fn: (...args: A) => Promise<R>,
+  keyFn: (...args: A) => string,
+): (...args: A) => Promise<R> {
+  const cache = new Map<string, R>();
+  return async (...args) => {
+    const key = keyFn(...args);
+    const hit = cache.get(key);
+    if (hit !== undefined) {
+      return hit;
+    }
+    const result = await fn(...args);
+    cache.set(key, result);
+    return result;
+  };
+}

@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 // mock없는 진짜 fs가 잠깐 필요하기 때문에 끌어다 씁니다 ㅎㅎ
 import { readFileSync, unlinkSync, writeFileSync } from "fs";
 import { createRequire } from "module";
@@ -5,6 +6,7 @@ import path, { dirname, join } from "path";
 
 import { format, type FormatConfig } from "oxfmt";
 
+import { cached } from "./async-utils";
 import { isTest } from "./controller";
 import { execute } from "./process-utils";
 
@@ -12,8 +14,19 @@ const _require = createRequire(import.meta.url);
 
 /**
  * 코드를 프로젝트의 oxfmt + oxlint 설정에 맞춰 포매팅한 문자열을 반환합니다.
+ *
+ * 캐싱도 있어요 ㅎㅎ 똑같은 입력에 대해서 캐시 커버됩니다.
+ * 수명은 프로세스 죽을때까지 ㅋ
  */
-export async function formatCode(code: string, filePath: string): Promise<string> {
+export const formatCode = cached(formatCodeInternal, (code, filePath) => {
+  const ext = filePath.endsWith(".tsx") ? "tsx" : filePath.endsWith("json") ? "json" : "ts";
+  return `${ext}:${createHash("sha1").update(code).digest("hex")}`;
+});
+
+/**
+ * 캐시 없는 포맷함수 엔트리.
+ */
+async function formatCodeInternal(code: string, filePath: string): Promise<string> {
   // json은 포맷만 하면 됩니다.
   if (filePath.endsWith("json")) {
     return runOxfmt(code, filePath);
