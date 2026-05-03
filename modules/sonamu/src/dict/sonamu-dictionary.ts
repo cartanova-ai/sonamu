@@ -296,7 +296,7 @@ export class SonamuDictionary {
 
     // 파일 재생성
     const content = this.generateProjectDict(locale, existingEntries, isDefaultLocale);
-    const formatted = await formatCode(content, "typescript", filePath);
+    const formatted = await formatCode(content, filePath);
     fs.writeFileSync(filePath, formatted, "utf-8");
   }
 
@@ -418,7 +418,7 @@ export class SonamuDictionary {
     const i18nDir = this.ensureI18nDir();
     const dictPath = path.join(i18nDir, `${locale}.ts`);
     const content = this.generateProjectDict(locale, entries, isDefaultLocale);
-    const formatted = await formatCode(content, "typescript", dictPath);
+    const formatted = await formatCode(content, dictPath);
     fs.writeFileSync(dictPath, formatted, "utf-8");
   }
 

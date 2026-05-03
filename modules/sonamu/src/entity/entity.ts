@@ -943,7 +943,7 @@ export class Entity {
       `src/application/${this.names.parentFs}/${this.names.fs}.entity.json`,
     );
     const json = this.toJson();
-    await writeFile(jsonPath, await formatCode(JSON.stringify(json), "json", jsonPath));
+    await writeFile(jsonPath, await formatCode(JSON.stringify(json), jsonPath));
 
     // reload
     await EntityManager.register(json);

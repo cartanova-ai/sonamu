@@ -180,7 +180,6 @@ async function resolveRenderedTemplate(
       Naite.t("resolveRenderedTemplate:beforeFormat", { key, header, body });
       const formatted = await formatCode(
         [header, body].join("\n\n"),
-        key === "entity" ? "json" : "typescript",
         `${Sonamu.appRootPath}/${filePath}`,
       );
       Naite.t(`resolveRenderedTemplate:formatted:${key}`, formatted);

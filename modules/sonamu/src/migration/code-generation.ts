@@ -774,7 +774,7 @@ async function generateCreateCode_ColumnAndIndexes(
     table,
     type: "normal",
     title: `create__${table}`,
-    formatted: await formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`),
+    formatted: await formatCode(lines.join("\n"), `src/migration/${table}.ts`),
   };
 }
 
@@ -1094,7 +1094,7 @@ async function generateCreateCode_Foreign(
       table,
       type: "foreign",
       title: `foreign__${table}__${foreignKeysString}`,
-      formatted: await formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`),
+      formatted: await formatCode(lines.join("\n"), `src/migration/${table}.ts`),
     },
   ];
 }
@@ -1309,7 +1309,7 @@ async function generateAlterCode_ColumnAndIndexes(
     "}",
   ];
 
-  const formatted = await formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
+  const formatted = await formatCode(lines.join("\n"), `src/migration/${table}.ts`);
   const title = [
     "alter",
     table,
@@ -1754,7 +1754,7 @@ async function generateAlterCode_Foreigns(
     "}",
   ];
 
-  const formatted = await formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
+  const formatted = await formatCode(lines.join("\n"), `src/migration/${table}.ts`);
   const title = ["alter", table, "foreigns"].join("_");
 
   return [
@@ -2072,7 +2072,7 @@ async function generatePkTypeChangeMigration(
     "}",
   ];
 
-  const formatted = await formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
+  const formatted = await formatCode(lines.join("\n"), `src/migration/${table}.ts`);
 
   return [
     {
