@@ -225,7 +225,7 @@ export async function actionCopySharedToTargetsIfNotExists(): Promise<void> {
       continue;
     }
 
-    await writeFile(destPath, await formatCode(convertedText, "typescript"));
+    await writeFile(destPath, await formatCode(convertedText, destPath));
     !isTest() &&
       console.log(chalk.bold("Copied: ") + chalk.blue(path.relative(Sonamu.appRootPath, destPath)));
   }

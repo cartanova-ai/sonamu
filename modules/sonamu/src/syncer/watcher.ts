@@ -23,7 +23,7 @@ export async function setupWatcher(
   // target 산출물(sonamu.generated, services.generated, i18n copy 등)이 외부에서
   // 변경되는 경우를 drift로 잡아 워닝을 띄우기 위함입니다.
   const watcher = chokidar.watch(apiAndTargetsSrcPaths(), {
-    ignored: ignoreIfExtensionIsNotOneOf(".ts", ".json"),
+    ignored: ignoreIfExtensionIsNotOneOf(".ts", ".json", ".http"),
     persistent: true,
     ignoreInitial: true,
   });

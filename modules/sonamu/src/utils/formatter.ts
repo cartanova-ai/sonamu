@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 // 그냥 fs/promises 그대로 사용. (production에서만 임시파일 흐름이 돕니다.)
 import { readFile, unlink, writeFile } from "fs/promises";
 import { createRequire } from "module";
+import { tmpdir } from "os";
 import path, { dirname, join } from "path";
 
 import { format, type FormatConfig } from "oxfmt";
@@ -106,8 +107,10 @@ async function runOxlint(code: string): Promise<string> {
     return code;
   }
 
+  // OS tmp dir에 두는 이유: process.cwd()가 watcher 스코프(api/src 아래)일 가능성을 차단합니다.
+  // cwd가 그 위치라면 write/unlink가 짧은 순간 watcher 이벤트로 잡혀 batch에 흘러들어갈 수 있어요.
   const tmpFile = join(
-    process.cwd(),
+    tmpdir(),
     `.sonamu-fmt-${Date.now()}-${Math.random().toString(36).slice(2)}.ts`,
   );
 
