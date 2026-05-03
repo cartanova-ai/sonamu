@@ -267,16 +267,21 @@ HMR이 감지해서 재로드 시작... ← 🚨 아직 생성 중인데!
 
 ### Sonamu의 해결책
 
-Syncer가 HMR을 **직접 제어**합니다:
+Watcher가 모은 파일 이벤트들을 Syncer가 한 진입점(`hmrAndSync`)에서 받아 HMR과 sync를 영역별로
+분리해서 처리합니다:
 
 ```typescript
 // syncer.ts
-async syncFromWatcher(event: string, diffFilePath: AbsolutePath) {
-  // 1. HMR에게 파일 무효화 요청
-  const invalidatedPaths = await hot.invalidateFile(diffFilePath, event);
+async hmrAndSync(fileEvents: Map<AbsolutePath, "change" | "add">) {
+  // 1. HMR 영역: api/src 모듈 그래프 invalidate
+  //    cpg(checksum pattern group) 매칭과 무관하게 진행
+  for (const [filePath, event] of fileEvents) {
+    await hot.invalidateFile(filePath, event);
+  }
 
-  // 2. 자동 생성 코드 싱크 완료 (순서 보장!)
-  await this.doSyncActions([diffFilePath]);
+  // 2. Sync 영역: cpg에 매칭되는 파일들에 doSyncActions
+  //    (자동 생성 코드 싱크 완료 — 순서 보장!)
+  await this.doSyncActions(matchedFiles);
 
   // 3. 이제 안전하게 모듈 재로드
   await this.autoloadTypes();
@@ -294,6 +299,11 @@ async syncFromWatcher(event: string, diffFilePath: AbsolutePath) {
 1. 코드 생성이 완전히 끝난 후
 2. 재로드가 시작됨
 3. 항상 최신 코드가 로드됨 ✅
+
+<Note>
+  Watcher는 100ms 전역 batch 큐잉으로 변경 이벤트를 모은 뒤 `hmrAndSync`를 한 번 호출합니다. 한
+  시점에 사이클은 하나만 돌도록 직렬화됩니다.
+</Note>
 
 이것이 Sonamu HMR이 단순히 "빠른" 것을 넘어 **안전하고 믿을 수 있는** 이유입니다.
 
@@ -392,15 +402,20 @@ graph TD
 
 **예시**: `user.model.ts`가 변경되면 의존하는 3개 파일(`user.api.ts`, `post.api.ts`, `admin.api.ts`)도 함께 재로드됩니다.
 
-**3. Syncer**
+**3. Watcher + Syncer**
 
-파일 변경을 감지하고 HMR과 코드 생성을 조율합니다:
+`syncer/watcher.ts`(chokidar 글루)가 파일 이벤트를 4단 1차 가드로 거른 뒤 100ms 전역 batch로 큐잉,
+한 번에 모아서 Syncer의 `hmrAndSync`를 호출합니다:
 
 ```typescript
-// 파일 워처
-watcher.on("change", async (filePath) => {
-  await syncer.syncFromWatcher("change", filePath);
-});
+// 1차 가드: 무관한 변경을 watcher 진입에서 거름
+//   - isWantedEvent: "change" | "add"만 통과 (unlink 제외)
+//   - isConfigChange: sonamu.config.ts는 별도 경로
+//   - isOutOfScope: api/src 또는 cpg 매칭 안되면 컷
+//   - isLastChangedByMe: self-write echo 차단 (mtime 비교)
+const fileEvents = await collectBatch(); // 100ms 전역 trailing debounce
+
+await syncer.hmrAndSync(fileEvents);
 ```
 
 ## HMR 프로세스 상세

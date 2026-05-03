@@ -267,16 +267,21 @@ Timing mismatch → Errors occur
 
 ### Sonamu's Solution
 
-Syncer **directly controls** HMR:
+The Watcher batches file events and hands them to a single Syncer entry point (`hmrAndSync`),
+which splits the work into HMR and sync concerns:
 
 ```typescript
 // syncer.ts
-async syncFromWatcher(event: string, diffFilePath: AbsolutePath) {
-  // 1. Request file invalidation from HMR
-  const invalidatedPaths = await hot.invalidateFile(diffFilePath, event);
+async hmrAndSync(fileEvents: Map<AbsolutePath, "change" | "add">) {
+  // 1. HMR concern: invalidate the api/src module graph
+  //    (independent of the cpg — checksum pattern group — match)
+  for (const [filePath, event] of fileEvents) {
+    await hot.invalidateFile(filePath, event);
+  }
 
-  // 2. Auto-generated code sync complete (order guaranteed!)
-  await this.doSyncActions([diffFilePath]);
+  // 2. Sync concern: run doSyncActions for files matching the cpg
+  //    (auto-generated code sync completes — order guaranteed!)
+  await this.doSyncActions(matchedFiles);
 
   // 3. Now safely reload modules
   await this.autoloadTypes();
@@ -296,6 +301,11 @@ async syncFromWatcher(event: string, diffFilePath: AbsolutePath) {
 3. Latest code is always loaded ✅
 
 This is why Sonamu HMR is not just "fast" but **safe and reliable**.
+
+<Note>
+  The watcher coalesces change events with a 100ms global trailing debounce before invoking
+  `hmrAndSync` once. Only one cycle runs at a time — cycles are serialized.
+</Note>
 
 ```mermaid
 sequenceDiagram
@@ -392,15 +402,21 @@ graph TD
 
 **Example**: When `user.model.ts` changes, 3 dependent files (`user.api.ts`, `post.api.ts`, `admin.api.ts`) are also reloaded.
 
-**3. Syncer**
+**3. Watcher + Syncer**
 
-Detects file changes and coordinates HMR and code generation:
+`syncer/watcher.ts` (the chokidar glue) filters file events through a four-step first-pass guard,
+then queues them with a 100ms global batch and hands the collected events to the Syncer's
+`hmrAndSync` in a single call:
 
 ```typescript
-// File watcher
-watcher.on("change", async (filePath) => {
-  await syncer.syncFromWatcher("change", filePath);
-});
+// First-pass guard: drop irrelevant events at the watcher entry
+//   - isWantedEvent: only "change" | "add" pass through (no unlink)
+//   - isConfigChange: sonamu.config.ts is routed separately
+//   - isOutOfScope: cut unless it lives in api/src or matches the cpg
+//   - isLastChangedByMe: filter out self-write echoes (mtime check)
+const fileEvents = await collectBatch(); // 100ms global trailing debounce
+
+await syncer.hmrAndSync(fileEvents);
 ```
 
 ## HMR Process Details
