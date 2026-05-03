@@ -58,34 +58,65 @@ flowchart TD
 
 ## 감시 대상 파일
 
-Syncer가 변경을 추적하는 파일 패턴입니다:
+Syncer가 sonamu.lock에 추적하는 파일 패턴입니다. 자산 본성에 따라 **입력**과 **출력**으로 나누고,
+출력은 위치(api / target에 복사)별로 다시 분리합니다.
 
-| 파일 타입         | 패턴                                  | 용도               |
-| ----------------- | ------------------------------------- | ------------------ |
-| **Entity**        | `src/application/**/*.entity.json`    | 데이터 구조 정의   |
-| **Types**         | `src/application/**/*.types.ts`       | 타입 정의          |
-| **Model**         | `src/application/**/*.model.ts`       | 비즈니스 로직      |
-| **Frame**         | `src/application/**/*.frame.ts`       | 프레임 로직        |
-| **Functions**     | `src/application/**/*.functions.ts`   | 유틸 함수          |
-| **Generated**     | `src/application/sonamu.generated.ts` | 생성된 베이스 파일 |
-| **Config**        | `src/sonamu.config.ts`                | Sonamu 설정        |
-| **Workflow**      | `src/application/**/*.workflow.ts`    | 워크플로우 정의    |
-| **i18n**          | `src/i18n/**/!(sd.generated).ts`      | 다국어 소스 파일   |
-| **i18nGenerated** | `src/i18n/**/sd.generated.ts`         | 다국어 산출물 파일 |
+### 입력 (사용자 작성, api 한정)
 
-<Info>**파일 패턴**: `file-patterns.ts`에서 관리되며, checksum으로 변경 감지</Info>
+| 파일 타입      | 패턴                                | 용도                |
+| -------------- | ----------------------------------- | ------------------- |
+| **config**     | `src/sonamu.config.ts`              | Sonamu 설정         |
+| **entity**     | `src/application/**/*.entity.json`  | 데이터 구조 정의    |
+| **frame**      | `src/application/**/*.frame.ts`     | Entity 없는 API 프레임 |
+| **functions**  | `src/application/**/*.functions.ts` | 유틸 함수           |
+| **model**      | `src/application/**/*.model.ts`     | 비즈니스 로직       |
+| **types**      | `src/application/**/*.types.ts`     | 타입 정의           |
+| **workflow**   | `src/application/**/*.workflow.ts`  | 워크플로우 정의     |
+| **i18n**       | `src/i18n/**/!(sd.generated).ts`    | 다국어 소스 파일    |
+
+### 출력 — api에 만들어지는 산출물
+
+| 파일 타입         | 패턴                                          | 용도                                |
+| ----------------- | --------------------------------------------- | ----------------------------------- |
+| **generated**     | `src/application/**/*.generated.{ts,tsx,sso.ts}` | sonamu.generated.\*, queries.generated 등 |
+| **httpGenerated** | `src/application/**/*.generated.http`         | REST Client용 HTTP 테스트 파일       |
+
+### 출력 — target에 복사되는 산출물
+
+| 파일 타입             | 패턴                                                      | 용도                                  |
+| --------------------- | --------------------------------------------------------- | ------------------------------------- |
+| **generatedCopied**   | `src/services/**/{sonamu,queries}.generated.{ts,tsx,sso.ts}` | api 정본의 target 사본                |
+| **servicesGenerated** | `src/services/services.generated.ts`                      | API 클라이언트(target 전용 분배 산출) |
+| **sdGenerated**       | `src/i18n/**/sd.generated.ts`                             | Sonamu Dictionary (api/target 모두)   |
+| **typesCopied**       | `src/services/**/*.types.ts`                              | Entity 타입 사본                      |
+| **functionsCopied**   | `src/services/**/*.functions.ts`                          | Functions 사본                        |
+| **i18nCopied**        | `src/i18n/**/!(sd.generated).ts`                          | i18n 소스 사본                        |
+
+<Info>
+  **파일 패턴**: `syncer/file-patterns.ts`에서 단일 진실 원천(SSOT)으로 관리됩니다. 추적 자산은
+  checksum으로 변경 감지하며, `FileType`은 패턴 그룹 함수의 키에서 자동 추론됩니다.
+</Info>
+
+<Note>
+  **추적 밖 부트스트랩 자산** — `sonamu.shared.ts`(IfNotExists로 1회 생성, 사용자 커스터마이즈
+  영역)와 `entry-server.generated.tsx`(입력 의존 없는 정적 코드, IfNotExists로 1회 생성)는 sync()의
+  부트스트랩 phase에서 한 번 보장된 뒤 추적 사이클 밖에 둡니다. sonamu.lock에 기록되지 않습니다.
+</Note>
 
 ## 수동 동기화
 
 개발 서버 없이 수동으로 동기화할 수 있습니다.
 
 ```bash
-# 전체 동기화
+# 변경된 파일만 동기화 (sonamu.lock 기준)
 pnpm sonamu sync
 
-# 변경된 파일만 동기화
-pnpm sonamu sync --check
+# 강제 풀-싱크 (sonamu.lock 제거 후 처음부터 재싱크)
+pnpm sonamu sync --force
 ```
+
+`--force`는 git post-merge hook이나 CI에서 매 pull 후 자동 실행할 수 있도록 노출되어 있습니다.
+dev 서버 실행 중에는 `f` 핫키로 같은 효과(lock 제거 + 재시작)를 낼 수 있습니다.
 
 **실행 결과**:
 
@@ -324,11 +355,14 @@ Syncer는 프로그래밍 방식으로 사용할 수 있습니다.
 ```typescript
 import { Sonamu } from "sonamu";
 
-// 전체 동기화
+// 변경된 파일만 동기화 (sonamu.lock 기준)
 await Sonamu.syncer.sync();
 
-// 특정 파일 동기화
-await Sonamu.syncer.syncFromWatcher("change", "/path/to/user.entity.json");
+// 강제 풀-싱크 (sonamu.lock 제거 후 처음부터 재싱크)
+await Sonamu.syncer.forceSync();
+
+// dev watcher가 모은 batch를 한 번에 처리 (HMR + sync 영역 분리)
+await Sonamu.syncer.hmrAndSync(fileEvents);
 ```
 
 ### 템플릿 생성
@@ -463,7 +497,7 @@ Model이나 Entity를 수정하면 HMR로 즉시 반영됩니다.
 <AccordionGroup>
   <Accordion title="파일이 생성되지 않음">
     **확인 사항**: 1. 개발 서버가 실행 중인지 확인 2. 파일이 감시 대상 패턴에 포함되는지 확인 3.
-    Checksum 파일 삭제 후 재시도 ```bash rm sonamu.lock pnpm sonamu sync ```
+    강제 재동기화 시도 ```bash pnpm sonamu sync --force ```
   </Accordion>
 
 <Accordion title="타겟에 파일이 복사되지 않음">

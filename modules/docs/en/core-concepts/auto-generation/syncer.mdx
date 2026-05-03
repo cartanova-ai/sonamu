@@ -58,34 +58,67 @@ flowchart TD
 
 ## Watched File Patterns
 
-File patterns that Syncer tracks for changes:
+File patterns that Syncer tracks in `sonamu.lock`. Patterns are split into **inputs** and
+**outputs** by asset nature, and outputs are further split by location (api vs. copied to targets).
 
-| File Type         | Pattern                               | Purpose                   |
-| ----------------- | ------------------------------------- | ------------------------- |
-| **Entity**        | `src/application/**/*.entity.json`    | Data structure definition |
-| **Types**         | `src/application/**/*.types.ts`       | Type definitions          |
-| **Model**         | `src/application/**/*.model.ts`       | Business logic            |
-| **Frame**         | `src/application/**/*.frame.ts`       | Frame logic               |
-| **Functions**     | `src/application/**/*.functions.ts`   | Utility functions         |
-| **Generated**     | `src/application/sonamu.generated.ts` | Generated base file       |
-| **Config**        | `src/sonamu.config.ts`                | Sonamu configuration      |
-| **Workflow**      | `src/application/**/*.workflow.ts`    | Workflow definitions      |
-| **i18n**          | `src/i18n/**/!(sd.generated).ts`      | i18n source files         |
-| **i18nGenerated** | `src/i18n/**/sd.generated.ts`         | i18n generated files      |
+### Inputs (user-authored, api only)
 
-<Info>**File patterns**: Managed in `file-patterns.ts`, change detection via checksum</Info>
+| File Type     | Pattern                              | Purpose                       |
+| ------------- | ------------------------------------ | ----------------------------- |
+| **config**    | `src/sonamu.config.ts`               | Sonamu configuration          |
+| **entity**    | `src/application/**/*.entity.json`   | Data structure definition     |
+| **frame**     | `src/application/**/*.frame.ts`      | Entity-less API frame         |
+| **functions** | `src/application/**/*.functions.ts`  | Utility functions             |
+| **model**     | `src/application/**/*.model.ts`      | Business logic                |
+| **types**     | `src/application/**/*.types.ts`      | Type definitions              |
+| **workflow**  | `src/application/**/*.workflow.ts`   | Workflow definitions          |
+| **i18n**      | `src/i18n/**/!(sd.generated).ts`     | i18n source files             |
+
+### Outputs — produced in the api directory
+
+| File Type         | Pattern                                          | Purpose                                          |
+| ----------------- | ------------------------------------------------ | ------------------------------------------------ |
+| **generated**     | `src/application/**/*.generated.{ts,tsx,sso.ts}` | sonamu.generated.\*, queries.generated, etc.     |
+| **httpGenerated** | `src/application/**/*.generated.http`            | REST Client HTTP test files                      |
+
+### Outputs — copied into targets
+
+| File Type             | Pattern                                                      | Purpose                                            |
+| --------------------- | ------------------------------------------------------------ | -------------------------------------------------- |
+| **generatedCopied**   | `src/services/**/{sonamu,queries}.generated.{ts,tsx,sso.ts}` | Target-side copies of api originals                |
+| **servicesGenerated** | `src/services/services.generated.ts`                         | API client (target-only distribution)              |
+| **sdGenerated**       | `src/i18n/**/sd.generated.ts`                                | Sonamu Dictionary (in api and targets)             |
+| **typesCopied**       | `src/services/**/*.types.ts`                                 | Copies of entity types                             |
+| **functionsCopied**   | `src/services/**/*.functions.ts`                             | Copies of functions                                |
+| **i18nCopied**        | `src/i18n/**/!(sd.generated).ts`                             | Copies of i18n sources                             |
+
+<Info>
+  **File patterns**: Managed as a single source of truth in `syncer/file-patterns.ts`. Tracked
+  assets are change-detected via checksum, and `FileType` is inferred automatically from the keys
+  of the pattern group function.
+</Info>
+
+<Note>
+  **Bootstrap assets outside the tracking cycle** — `sonamu.shared.ts` (created once via
+  `IfNotExists`, intended for user customization) and `entry-server.generated.tsx` (static code
+  with no input dependencies, also `IfNotExists`) are guaranteed once during the bootstrap phase of
+  `sync()` and then live outside the change-tracking cycle. They are not recorded in `sonamu.lock`.
+</Note>
 
 ## Manual Synchronization
 
 You can manually sync without the development server.
 
 ```bash
-# Full sync
+# Sync only changed files (based on sonamu.lock)
 pnpm sonamu sync
 
-# Sync only changed files
-pnpm sonamu sync --check
+# Force a full sync (removes sonamu.lock and re-syncs from scratch)
+pnpm sonamu sync --force
 ```
+
+`--force` is exposed for use in git post-merge hooks or CI to re-sync after every pull. While the
+dev server is running, the `f` hotkey produces the same effect (remove the lock and restart).
 
 **Execution result**:
 
@@ -324,11 +357,15 @@ Syncer can be used programmatically.
 ```typescript
 import { Sonamu } from "sonamu";
 
-// Full sync
+// Sync only changed files (based on sonamu.lock)
 await Sonamu.syncer.sync();
 
-// Sync specific file
-await Sonamu.syncer.syncFromWatcher("change", "/path/to/user.entity.json");
+// Force a full sync (removes sonamu.lock and re-syncs from scratch)
+await Sonamu.syncer.forceSync();
+
+// Process a batch collected by the dev watcher in one call
+// (HMR and sync concerns split internally)
+await Sonamu.syncer.hmrAndSync(fileEvents);
 ```
 
 ### Template Generation
@@ -463,7 +500,7 @@ Check changes without browser refresh!
 <AccordionGroup>
   <Accordion title="Files Not Being Generated">
     **Check**: 1. Confirm development server is running 2. Verify file matches watched patterns 3.
-    Delete checksum file and retry ```bash rm sonamu.lock pnpm sonamu sync ```
+    Try a force re-sync ```bash pnpm sonamu sync --force ```
   </Accordion>
 
 <Accordion title="Files Not Being Copied to Targets">
