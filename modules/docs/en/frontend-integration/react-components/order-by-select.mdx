@@ -518,9 +518,8 @@ export const UserListParams = UserBaseListParams.extend({
 **Solution**:
 
 ```bash
-# Delete sonamu.lock and re-sync
-rm api/sonamu.lock
-pnpm sonamu sync
+# Force re-sync (removes sonamu.lock and runs a full sync)
+pnpm sonamu sync --force
 ```
 
 ### Sorting Not Applied Despite Selection

@@ -518,9 +518,8 @@ export const UserListParams = UserBaseListParams.extend({
 **해결**:
 
 ```bash
-# sonamu.lock 삭제 후 재동기화
-rm api/sonamu.lock
-pnpm sonamu sync
+# 강제 재동기화 (sonamu.lock 제거 + 풀-싱크)
+pnpm sonamu sync --force
 ```
 
 ### 선택해도 정렬이 적용되지 않음
