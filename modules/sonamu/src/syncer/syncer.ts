@@ -96,6 +96,22 @@ export class Syncer {
   }
 
   /**
+   * File system watcher가 이 변경을 처리해야 할 지 결정합니다.
+   * api가 아닌 패키지의 변경이면서 checksumPatternGroup에도 없으면 그 변경은 무시되어야 합니다.
+   * 그 이외의 변경은 처리해야 합니다.
+   *
+   * @param filePath 변경된 파일의 절대경로.
+   */
+  shouldWatcherHandleThisChange(filePath: AbsolutePath): boolean {
+    const apiSrc = path.join(Sonamu.apiRootPath, "src");
+    if (filePath.startsWith(apiSrc)) {
+      return true;
+    }
+    const checkPatternGroup = getChecksumPatternGroupInAbsolutePath();
+    return Object.values(checkPatternGroup).some((pattern) => minimatch(filePath, pattern));
+  }
+
+  /**
    * Watcher가 batch로 모은 변경 파일들에 대해 한 번의 HMR/sync 사이클을 돕니다.
    *
    * HMR은 api/src 안에서 일어나는 모든 파일들에 대해서 수행합니다.
@@ -111,14 +127,6 @@ export class Syncer {
   async hmrAndSync(fileEvents: Map<AbsolutePath, string>): Promise<void> {
     const hmrActionRequiredEvents = this.extractHmrActionRequiredFileEvents(fileEvents);
     const syncTriggeringPaths = await this.extractSyncTriggeringFileEventPaths(fileEvents);
-
-    if (hmrActionRequiredEvents.size === 0 && syncTriggeringPaths.length === 0) {
-      // invalidate 해야 할 HMR 관련 파일 이벤트도 없고,
-      // doSyncActions 해야 할 sync 관련 파일 이벤트도 없다?
-      // 그러면 web/src/App.tsx같은 완전 무관한 파일 이벤트만 들어있는 겁니다.
-      // 이럴 때에는 syncer가 할 일이 없습니다.
-      return;
-    }
 
     // HMR 영역: 파일 이벤트 중 api의 모듈 그래프에 있는 파일들에 대한 변동은 hmrActionRequiredEvents로 잡힙니다.
     // 이 친구들은 invalidate 처리해줍니다.

@@ -1523,7 +1523,7 @@ class SonamuClass {
     const { createFileEventBatcher } = await import("../syncer/event-batcher");
     const pushFileEvent = createFileEventBatcher({
       delayMs: 100,
-      onFlush: (fileEvents) => this.runHmrCycle(fileEvents),
+      onFlush: (fileEvents) => this.runHmrSyncCycle(fileEvents),
     });
 
     this.watcher.on("all", (event: string, filePath: string) => {
@@ -1550,7 +1550,15 @@ class SonamuClass {
         return;
       }
 
-      // 100ms 안의 변경들이 한 batch로 모여 runHmrCycle 한 번 호출로 묶입니다.
+      if (!this.syncer.shouldWatcherHandleThisChange(absolutePath)) {
+        // 이것은 invalidate 해야 할 HMR 관련 파일 이벤트도 아니고,
+        // doSyncActions 해야 할 sync 관련 파일 이벤트도 아님을 의미합니다.
+        // 즉슨, web/src/App.tsx같은 완전 무관한 파일 이벤트인 겁니다.
+        // 이럴 때에는 syncer가 할 일이 없습니다.
+        return;
+      }
+
+      // 100ms 안의 변경들이 한 batch로 모여 runHmrSyncCycle 한 번 호출로 묶입니다.
       pushFileEvent(absolutePath, event);
     });
   }
@@ -1865,7 +1873,7 @@ class SonamuClass {
    * Watcher가 100ms batch로 모은 fileEvents 하나에 대해 한 번의 HMR 사이클을 돕니다.
    * 이 메소드는 Sonamu 인스턴스 내에서 한 번에 하나씩만 실행됩니다!
    */
-  private async runHmrCycle(fileEvents: Map<AbsolutePath, string>): Promise<void> {
+  private async runHmrSyncCycle(fileEvents: Map<AbsolutePath, string>): Promise<void> {
     if (fileEvents.size === 0) {
       return;
     }
