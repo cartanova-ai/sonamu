@@ -3,6 +3,8 @@ import { type PathLike } from "fs";
 import { access, readFile, stat, writeFile } from "fs/promises";
 import path, { dirname } from "path";
 
+import { formatCode } from "./formatter";
+
 /**
  * fs/promises에는 exists가 없어요. 대신 access가 있습니다.
  * 근데 얘는 인터페이스가 쓰기 불편해요. 그래서 감싸주었습니다.
@@ -36,6 +38,8 @@ export async function fileExists(path: PathLike): Promise<boolean> {
  * - services/sonamu.generated.ts → ./sonamu.shared
  * - services/user/user.types.ts → ../sonamu.shared
  * - i18n/ko.ts → ../services/sonamu.shared
+ *
+ * ts/tsx 파일은 쓰기 전에 oxfmt/oxlint 한번 돌려줍니다!
  *
  * @param fromPath 원본 파일 경로
  * @param toPath 대상 파일 경로
@@ -81,6 +85,11 @@ export async function copyFileWithReplaceCoreToShared(
     } else {
       newFileContent = `${syncHeader}\n\n${newFileContent}`;
     }
+  }
+
+  // .ts/.tsx 산출물은 쓰기 전에 포맷도 해줘요 ㅎㅎ
+  if (toPath.endsWith(".ts") || toPath.endsWith(".tsx")) {
+    newFileContent = await formatCode(newFileContent, "typescript", toPath);
   }
 
   await writeFile(toPath, newFileContent);
