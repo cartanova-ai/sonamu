@@ -1505,7 +1505,13 @@ class SonamuClass {
   }
 
   async startWatcher(): Promise<void> {
-    const watchPath = [path.join(this.apiRootPath, "src")];
+    // api 본인뿐 아니라 sync target들의 src도 봅니다.
+    // target 산출물(sonamu.generated, services.generated, i18n copy 등)이 외부에서 변경되는 경우를
+    // drift로 잡아 워닝을 띄우기 위함입니다.
+    const watchPath = [
+      path.join(this.apiRootPath, "src"),
+      ...this.config.sync.targets.map((t) => path.join(this.appRootPath, t, "src")),
+    ];
 
     const chokidar = (await import("chokidar")).default;
     this.watcher = chokidar.watch(watchPath, {
@@ -1528,8 +1534,8 @@ class SonamuClass {
     this.watcher.on("all", (event: string, filePath: string) => {
       const absolutePath = filePath as AbsolutePath;
       assert(
-        absolutePath.startsWith(this.apiRootPath),
-        "File path is not within the API root path",
+        absolutePath.startsWith(this.appRootPath),
+        "File path is not within the app root path",
       );
 
       if (event !== "change" && event !== "add") {
@@ -1866,7 +1872,7 @@ class SonamuClass {
     }
     this.pendingFiles.push(filePath);
 
-    const relativePath = path.relative(this.apiRootPath, filePath);
+    const relativePath = path.relative(this.appRootPath, filePath);
     const chalk = (await import("chalk")).default;
     console.log(chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`));
 
