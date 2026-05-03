@@ -9,6 +9,7 @@ import { type EntityNamesRecord } from "../entity/entity-manager";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
 import { isTest } from "../utils/controller";
+import { formatCode } from "../utils/formatter";
 import { copyFileWithReplaceCoreToShared, exists } from "../utils/fs-utils";
 import { type AbsolutePath } from "../utils/path-utils";
 import { generateTemplate } from "./code-generator";
@@ -139,10 +140,6 @@ export async function actionSyncFilesToTargets(tsPaths: AbsolutePath[]): Promise
             if (!(await exists(dir))) {
               await mkdir(dir, { recursive: true });
             }
-            !isTest() &&
-              console.log(
-                chalk.bold("Copied: ") + chalk.blue(dst.replace(`${Sonamu.appRootPath}/`, "")),
-              );
             const syncHeader = [
               "/**",
               " * @generated",
@@ -151,6 +148,10 @@ export async function actionSyncFilesToTargets(tsPaths: AbsolutePath[]): Promise
             ].join("\n");
             await copyFileWithReplaceCoreToShared(realSrc, dst, syncHeader);
             await trackWritten(dst as AbsolutePath);
+            !isTest() &&
+              console.log(
+                chalk.bold("Copied: ") + chalk.blue(dst.replace(`${Sonamu.appRootPath}/`, "")),
+              );
             return dst;
           }),
         ),
@@ -224,7 +225,7 @@ export async function actionCopySharedToTargetsIfNotExists(): Promise<void> {
       continue;
     }
 
-    await writeFile(destPath, convertedText);
+    await writeFile(destPath, await formatCode(convertedText, "typescript"));
     !isTest() &&
       console.log(chalk.bold("Copied: ") + chalk.blue(path.relative(Sonamu.appRootPath, destPath)));
   }

@@ -89,7 +89,7 @@ export async function copyFileWithReplaceCoreToShared(
 
   // .ts/.tsx 산출물은 쓰기 전에 포맷도 해줘요 ㅎㅎ
   if (toPath.endsWith(".ts") || toPath.endsWith(".tsx")) {
-    newFileContent = await formatCode(newFileContent, "typescript", toPath);
+    newFileContent = await formatCode(newFileContent, toPath);
   }
 
   await writeFile(toPath, newFileContent);
