@@ -428,7 +428,11 @@ export class Syncer {
 
   async handleDrifts(drifts: AbsolutePath[]): Promise<void> {
     if (drifts.length > 0) {
-      console.warn(chalk.yellow("⚠️ Sync 산출물이 변경되었습니다:"));
+      console.warn(
+        chalk.yellow(
+          "⚠️ Sonamu가 자동 생성한 파일에 대한 변경이 감지되었습니다. 파일이 Sonamu watcher 외부에서 변경된 것으로 추정됩니다.",
+        ),
+      );
       for (const p of drifts) {
         console.warn(chalk.yellow(`  - ${path.relative(Sonamu.appRootPath, p)}`));
       }
