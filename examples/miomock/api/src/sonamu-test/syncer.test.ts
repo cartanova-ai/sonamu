@@ -187,7 +187,7 @@ describe("Syncer", () => {
         "src/application/sync-fixture/sync-fixture.model.ts",
       ) as AbsolutePath;
 
-      await syncer.syncFromWatcher("change", modelPath);
+      await syncer.hmrAndSync(new Map([[modelPath, "change"]]));
 
       // 1. doSyncActions가 호출되어 http 파일이 생성되었는지 확인
       const writeFiles = Naite.get("fs/promises:writeFile").result();
@@ -208,7 +208,7 @@ describe("Syncer", () => {
         "src/application/sync-fixture/sync-fixture.types.ts",
       ) as AbsolutePath;
 
-      await syncer.syncFromWatcher("add", newTypesPath);
+      await syncer.hmrAndSync(new Map([[newTypesPath, "add"]]));
 
       // types 파일이 타겟 디렉토리(web)로 복사되었는지 확인
       const writeFiles = Naite.get("fs/promises:writeFile").result();
@@ -229,7 +229,7 @@ describe("Syncer", () => {
         "src/application/sync-fixture/sync-fixture.types.ts",
       ) as AbsolutePath;
 
-      await syncer.syncFromWatcher("unlink", deletedPath);
+      await syncer.hmrAndSync(new Map([[deletedPath, "unlink"]]));
 
       // unlink 이벤트는 체크섬 패턴에 맞는 파일이면 doSyncActions가 호출될 수 있음
       // 하지만 실제로는 파일이 삭제되었으므로 복사 작업은 없을 수 있음

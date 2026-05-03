@@ -96,74 +96,44 @@ export class Syncer {
   }
 
   /**
-   * Watcher가 감지한 파일 변경 사항에 대해 싱크를 진행합니다.
-   * 주어진 변경 파일들 중 체크섬 관리 대상인 것들만 가져다가 싱크를 진행합니다.
-   * 체크섬 파일 업데이트는 여기에서 하지 않습니다. 호출자가 합니다.
-   * @param event
-   * @param diffFilePath - 변경 파일들. 프로젝트 루트부터 "src/" 또는 "dist/"로 시작하는 상대 경로입니다. 예시: "src/application/user/user.model.ts"
+   * Watcher가 batch로 모은 변경 파일들에 대해 한 번의 HMR/sync 사이클을 돕니다.
+   *
+   * HMR은 api/src 안에서 일어나는 모든 파일들에 대해서 수행합니다.
+   * checksumPatternGroup 매칭 여부와 무관하게 api/src 전체 대상입니다.
+   * 가령 api/src/utils/subset-loaders.ts 같은 파일도 변경되면 HMR은 해줍니다.
+   *
+   * Sync는 checksumPatternGroup으로 매칭되는 파일들에 대해서만 수행합니다.
+   * 여기에는 web/src나 app/src 같은 다른 target의 파일이 포함될 수 있습니다.
+   * 이런 non-api 경로의 파일들은 HMR과는 아무 상관이 없으므로, invalidate을 하지 않습니다.
+   *
+   * @param fileEvents - path → event 맵. event는 "change" | "add" | "unlink".
    */
-  async syncFromWatcher(event: string, diffFilePath: AbsolutePath): Promise<void> {
-    if (event !== "change" && event !== "add" && event !== "unlink") {
+  async hmrAndSync(fileEvents: Map<AbsolutePath, string>): Promise<void> {
+    const hmrActionRequiredEvents = this.extractHmrActionRequiredFileEvents(fileEvents);
+    const syncTriggeringPaths = await this.extractSyncTriggeringFileEventPaths(fileEvents);
+
+    if (hmrActionRequiredEvents.size === 0 && syncTriggeringPaths.length === 0) {
+      // invalidate 해야 할 HMR 관련 파일 이벤트도 없고,
+      // doSyncActions 해야 할 sync 관련 파일 이벤트도 없다?
+      // 그러면 web/src/App.tsx같은 완전 무관한 파일 이벤트만 들어있는 겁니다.
+      // 이럴 때에는 syncer가 할 일이 없습니다.
       return;
     }
 
-    // 일단 변경된 파일과 dependent 파일들을 invalidate 합니다.
-    // 한 번 이상 import된 친구들에 대해서만 실제 작업이 일어납니다.
-    // 그러니 안심하고 invalidate 해도 됩니다.
-    // 테스트 환경에서는 hot.invalidateFile시 초기 에러가 발생하기 때문에 invalidate 하지 않습니다.
-    if (!isTest()) {
-      const invalidatedPaths = (await hot.invalidateFile(diffFilePath, event)) as AbsolutePath[];
+    // HMR 영역: 파일 이벤트 중 api의 모듈 그래프에 있는 파일들에 대한 변동은 hmrActionRequiredEvents로 잡힙니다.
+    // 이 친구들은 invalidate 처리해줍니다.
+    // 이 호출은 아래 sync보다 무조건 먼저 일어나야 합니다!
+    // 왜냐하면 sync에서는 변경된 model 코드를 새로 import해서 처리해야 하는 경우도 있기 때문입니다.
+    await this.invalidateDependentsAffectedByFileEvents(hmrActionRequiredEvents);
 
-      if (invalidatedPaths.length > 0) {
-        console.log(chalk.bold(`🔄 Invalidated:`));
-
-        for (const invalidatedPath of invalidatedPaths) {
-          try {
-            // 만약 model.ts 파일이 변경(invalidate)되었다? 그러면 registeredApis 중에서 이 모델에 해당하는 api들은 지워줘요.
-            // registeredApis는 통으로 다 날려버릴 수 없습니다. registeredApis에 올라오는 친구들은 초기 로드시 또는 HMR시에만 등록되기 때문입니다.
-            // 따라서 model.ts 파일의 변경으로 다음번 새로운 eval이 예상되는 이 시점에서만, 이 모델에서 나온 registeredApis들을 지워줄 수 있습니다.
-            const removedApis = this.removeInvalidatedRegisteredApis(invalidatedPath);
-            if (removedApis.length > 0) {
-              console.log(
-                chalk.blue(`- ${path.relative(Sonamu.apiRootPath, invalidatedPath)}`),
-                chalk.gray(`(with ${removedApis.length} APIs)`),
-              );
-            } else {
-              console.log(chalk.blue(`- ${path.relative(Sonamu.apiRootPath, invalidatedPath)}`));
-            }
-          } catch (e) {
-            console.error(e);
-            console.error(
-              chalk.red(`Failed to remove invalidated registered APIs for ${invalidatedPath}`),
-            );
-          }
-        }
-      }
-    }
-
-    // devRunner 활성화 시, 변경된 소스 파일을 Vitest 모듈 그래프에서도 무효화합니다.
-    // Vite의 moduleGraph.invalidateModule()이 importer 방향으로 재귀적 cascade하므로,
-    // 소스 파일 하나만 무효화하면 이를 import하는 테스트 파일도 자동으로 무효화됩니다.
-    if (!isTest() && Sonamu.config.test?.devRunner?.enabled && Sonamu.devVitestManager) {
-      Sonamu.devVitestManager.invalidateFiles([diffFilePath]);
-      console.log(
-        chalk.dim(`Test invalidated: ${path.relative(Sonamu.apiRootPath, diffFilePath)}`),
-      );
-    }
-
-    const isInCheckPatternGroup = Object.values(getChecksumPatternGroupInAbsolutePath()).some(
-      (pattern) => minimatch(diffFilePath, pattern),
-    );
-
-    // 변경된 파일이 관심 대상이고, syncer 산출물이 아닌 실제 외부에 의한 파일 변경일 때에만 sync 작업을 수행합니다.
-    if (isInCheckPatternGroup) {
-      if (!(await isLastChangedByMe(diffFilePath))) {
-        // 내가 마지막으로 바꾼게 아니다? = 누군가가 손댔다 = 진자 외부 변경 = sync 필요.
-        await this.doSyncActions([diffFilePath]);
-      }
+    // Sync 영역: checksumPatternGroup에 명시된 파일들에 대한 변동은 syncTriggeringPaths로 잡힙니다.
+    // 이 친구들은 적절한 sync 작업으로 대응합니다.
+    if (syncTriggeringPaths.length > 0) {
+      await this.doSyncActions(syncTriggeringPaths);
     }
 
     // 싱크 작업이 끝났으면 무지성 로드를 수행합니다.
+    // 싱크를 안 한 경우에도 로드는 해야 해요. 위에서 관련있는 친구들은 다 invalidate 되었거든요!
     //
     // 변경된 파일들에 대해서 새롭게 당겨오는(load) 행위는 doSyncActions에서 하지 않습니다.
     // doSyncActions에서는 파일을 읽고 만드는 싱크 행위만 합니다.
@@ -178,6 +148,100 @@ export class Syncer {
     await this.autoloadSsrRoutes();
 
     this.eventEmitter.emit("onHMRCompleted");
+  }
+
+  private extractHmrActionRequiredFileEvents(
+    fileEvents: Map<AbsolutePath, string>,
+  ): Map<AbsolutePath, string> {
+    const apiSrc = path.join(Sonamu.apiRootPath, "src");
+    const result = new Map<AbsolutePath, string>();
+    for (const [filePath, event] of fileEvents) {
+      if (event !== "change" && event !== "add" && event !== "unlink") {
+        continue;
+      }
+      if (!filePath.startsWith(apiSrc)) {
+        continue;
+      }
+      result.set(filePath, event);
+    }
+    return result;
+  }
+
+  private async extractSyncTriggeringFileEventPaths(
+    fileEvents: Map<AbsolutePath, string>,
+  ): Promise<AbsolutePath[]> {
+    const checkPatternGroup = getChecksumPatternGroupInAbsolutePath();
+    const syncTriggeringPaths: AbsolutePath[] = [];
+    for (const [diffFilePath, event] of fileEvents) {
+      if (event !== "change" && event !== "add" && event !== "unlink") {
+        continue;
+      }
+      const isInCheckPatternGroup = Object.values(checkPatternGroup).some((pattern) =>
+        minimatch(diffFilePath, pattern),
+      );
+      if (!isInCheckPatternGroup) {
+        continue;
+      }
+      // 내가 마지막으로 바꾼게 아니다? = 누군가가 손댔다 = 진짜 외부 변경 = sync 필요.
+      if (await isLastChangedByMe(diffFilePath)) {
+        continue;
+      }
+      syncTriggeringPaths.push(diffFilePath);
+    }
+
+    return syncTriggeringPaths;
+  }
+
+  private async invalidateDependentsAffectedByFileEvents(fileEvents: Map<AbsolutePath, string>) {
+    for (const [diffFilePath, event] of fileEvents) {
+      if (event !== "change" && event !== "add" && event !== "unlink") {
+        continue;
+      }
+
+      // 변경된 파일과 dependent 파일들을 invalidate 합니다.
+      // 한 번 이상 import된 친구들에 대해서만 실제 작업이 일어납니다.
+      // 그러니 안심하고 invalidate 해도 됩니다.
+      // 테스트 환경에서는 hot.invalidateFile시 초기 에러가 발생하기 때문에 invalidate 하지 않습니다.
+      if (!isTest()) {
+        const invalidatedPaths = (await hot.invalidateFile(diffFilePath, event)) as AbsolutePath[];
+
+        if (invalidatedPaths.length > 0) {
+          console.log(chalk.bold(`🔄 Invalidated:`));
+
+          for (const invalidatedPath of invalidatedPaths) {
+            try {
+              // 만약 model.ts 파일이 변경(invalidate)되었다? 그러면 registeredApis 중에서 이 모델에 해당하는 api들은 지워줘요.
+              // registeredApis는 통으로 다 날려버릴 수 없습니다. registeredApis에 올라오는 친구들은 초기 로드시 또는 HMR시에만 등록되기 때문입니다.
+              // 따라서 model.ts 파일의 변경으로 다음번 새로운 eval이 예상되는 이 시점에서만, 이 모델에서 나온 registeredApis들을 지워줄 수 있습니다.
+              const removedApis = this.removeInvalidatedRegisteredApis(invalidatedPath);
+              if (removedApis.length > 0) {
+                console.log(
+                  chalk.blue(`- ${path.relative(Sonamu.apiRootPath, invalidatedPath)}`),
+                  chalk.gray(`(with ${removedApis.length} APIs)`),
+                );
+              } else {
+                console.log(chalk.blue(`- ${path.relative(Sonamu.apiRootPath, invalidatedPath)}`));
+              }
+            } catch (e) {
+              console.error(e);
+              console.error(
+                chalk.red(`Failed to remove invalidated registered APIs for ${invalidatedPath}`),
+              );
+            }
+          }
+        }
+      }
+
+      // devRunner 활성화 시, 변경된 소스 파일을 Vitest 모듈 그래프에서도 무효화합니다.
+      // Vite의 moduleGraph.invalidateModule()이 importer 방향으로 재귀적 cascade하므로,
+      // 소스 파일 하나만 무효화하면 이를 import하는 테스트 파일도 자동으로 무효화됩니다.
+      if (!isTest() && Sonamu.config.test?.devRunner?.enabled && Sonamu.devVitestManager) {
+        Sonamu.devVitestManager.invalidateFiles([diffFilePath]);
+        console.log(
+          chalk.dim(`Test invalidated: ${path.relative(Sonamu.apiRootPath, diffFilePath)}`),
+        );
+      }
+    }
   }
 
   removeInvalidatedRegisteredApis(

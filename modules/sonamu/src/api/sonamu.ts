@@ -202,8 +202,6 @@ class SonamuClass {
 
   // HMR 처리
   public watcher: FSWatcher | null = null;
-  private pendingFiles: string[] = [];
-  private hmrStartTime: number = 0;
 
   public server: FastifyInstance | null = null;
 
@@ -1521,14 +1519,11 @@ class SonamuClass {
       ignoreInitial: true,
     });
 
-    // 파일 경로별로 100ms 디바운스!
-    const { debounceByKey } = await import("../utils/async-utils");
-    const handleFileChangeDebounced = debounceByKey<string, [string]>(100, async (fp, event) => {
-      try {
-        await this.handleFileChange(event, fp as AbsolutePath);
-      } catch (e) {
-        console.error(e);
-      }
+    // 100ms 안에 들어온 변경들을 한 batch로 모아 한 번에 처리합니다.
+    const { createFileEventBatcher } = await import("../syncer/event-batcher");
+    const pushFileEvent = createFileEventBatcher({
+      delayMs: 100,
+      onFlush: (fileEvents) => this.runHmrCycle(fileEvents),
     });
 
     this.watcher.on("all", (event: string, filePath: string) => {
@@ -1555,8 +1550,8 @@ class SonamuClass {
         return;
       }
 
-      // 아니라면 디바운스 적용하여 핸들링합니다.
-      handleFileChangeDebounced(filePath, event);
+      // 100ms 안의 변경들이 한 batch로 모여 runHmrCycle 한 번 호출로 묶입니다.
+      pushFileEvent(absolutePath, event);
     });
   }
 
@@ -1865,37 +1860,30 @@ class SonamuClass {
       });
   }
 
-  private async handleFileChange(event: string, filePath: AbsolutePath): Promise<void> {
-    // 첫 번째 파일이면 HMR 시작 시간 기록
-    if (this.pendingFiles.length === 0) {
-      this.hmrStartTime = Date.now();
+  /**
+   * 파일 변경이 감지되면 가장 먼저 움직이는 곳입니다.
+   * Watcher가 100ms batch로 모은 fileEvents 하나에 대해 한 번의 HMR 사이클을 돕니다.
+   * 이 메소드는 Sonamu 인스턴스 내에서 한 번에 하나씩만 실행됩니다!
+   */
+  private async runHmrCycle(fileEvents: Map<AbsolutePath, string>): Promise<void> {
+    if (fileEvents.size === 0) {
+      return;
     }
-    this.pendingFiles.push(filePath);
 
-    const relativePath = path.relative(this.appRootPath, filePath);
+    const startedAt = Date.now();
+
     const chalk = (await import("chalk")).default;
-    console.log(chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`));
-
-    await this.syncer.syncFromWatcher(event, filePath);
-
-    // 처리 완료된 파일을 대기 목록에서 제거
-    this.pendingFiles = this.pendingFiles.slice(1);
-
-    // 모든 파일 처리가 완료되면 최종 메시지 출력
-    if (this.pendingFiles.length === 0) {
-      await this.finishHMR();
+    for (const [filePath, event] of fileEvents) {
+      const relativePath = path.relative(this.appRootPath, filePath);
+      console.log(chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`));
     }
-  }
 
-  private async finishHMR(): Promise<void> {
+    // 본체: 변경 흡수 + 체크섬 갱신.
+    await this.syncer.hmrAndSync(fileEvents);
     await this.syncer.renewChecksums();
 
-    const endTime = Date.now();
-    const totalTime = endTime - this.hmrStartTime;
-    const [chalk, { centerText }] = await Promise.all([
-      (await import("chalk")).default,
-      import("../utils/console-util"),
-    ]);
+    const totalTime = Date.now() - startedAt;
+    const { centerText } = await import("../utils/console-util");
     const msg = `HMR Done! ${chalk.bold.white(`${totalTime}ms`)}`;
 
     console.log(chalk.black.bgGreen(centerText(msg)));
