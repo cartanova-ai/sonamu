@@ -147,14 +147,14 @@ describe("Syncer", () => {
       // entry-server.generated.tsx는 부트스트랩 phase 전용이라 doSyncActions에선 만들어지지 않습니다.
       // sonamu.generated.http는 api 측 REST client 도구용 자산이라 분배되지 않습니다.
       // sonamu.generated.sso.ts는 service-side-only invariant이라 target에 분배되지 않습니다 (api에만 정본).
-      // queries/schemas(.ts)는 양쪽-필요 자산이라 api 정본 + web 복사 둘 다 만들어집니다.
+      // queries.generated.ts는 SSR 디스크립터 헬퍼로 api/src/ssr/routes.ts 전용이라 target에 분배되지 않습니다.
+      // sonamu.generated.ts(schemas)만 양쪽-필요 자산이라 api 정본 + web 복사 둘 다 만들어집니다.
       expect(writeFiles.map((f) => f.path).toSorted()).toStrictEqual([
         join(apiRootPath, "src/application/queries.generated.ts"),
         join(apiRootPath, "src/application/sonamu.generated.http"),
         join(apiRootPath, "src/application/sonamu.generated.sso.ts"),
         join(apiRootPath, "src/application/sonamu.generated.ts"),
         join(webRootPath, "src/services/company/company.types.ts"),
-        join(webRootPath, "src/services/queries.generated.ts"),
         join(webRootPath, "src/services/services.generated.ts"),
         join(webRootPath, "src/services/sonamu.generated.ts"),
         join(webRootPath, "src/services/sync-fixture/sync-fixture.types.ts"),

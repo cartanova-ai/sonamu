@@ -449,17 +449,9 @@ export class Syncer {
       throw new Error("not reachable");
     });
 
-    // services.generated.ts를 target들에, sonamu.generated.http를 api에 만들어줘요.
     await SyncerActions.actionGenerateServices(params);
     await SyncerActions.actionGenerateHttps();
-
-    // queries.generated.ts가 만들어집니다.
-    const queries = await SyncerActions.actionGenerateSsrQueries();
-
-    // queries는 SSR 디스크립터(sonamu/ssr 의존)이므로 web target에만 분배합니다.
-    // 다른 target(app 등)이 SSR을 안 쓰면 의미 없는 dead code일 뿐이라 보내지 않습니다.
-    // TODO(병준): web에만 가게 하기 위해서 target prefix를 지정해주었습니다. 나중에 target 시스템이 개선된다면 바꿔주세요.
-    await SyncerActions.actionSyncFilesToTargets(queries, ["web"]);
+    await SyncerActions.actionGenerateSsrQueries();
   }
 
   async handleAuxiliarySymbolChanges(diffGroups: DiffGroups): Promise<void> {

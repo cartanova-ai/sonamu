@@ -678,7 +678,14 @@ export function useWebSocketChannel<
     const baseUrl = axios.defaults.baseURL ?? "$[[baseUrl]]";
     const wsBaseUrl = baseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
     const fullUrl = new URL(queryString ? `${url}?${queryString}` : url, wsBaseUrl).toString();
-    const socket = new WebSocket(fullUrl, protocols, {
+    // RN의 WebSocket 생성자는 3번째 인자로 { headers } 옵션을 받지만 lib.dom 타입엔 없음.
+    // 명시 cast로 우회 — 결과 socket은 WebSocket 타입 그대로 유지됨.
+    const RNWebSocket = WebSocket as new (
+      url: string | URL,
+      protocols?: string | string[],
+      options?: { headers?: Record<string, string> },
+    ) => WebSocket;
+    const socket = new RNWebSocket(fullUrl, protocols, {
       headers: {
         "Accept-Language": getCurrentLocale(),
         ...(headers ?? {}),
