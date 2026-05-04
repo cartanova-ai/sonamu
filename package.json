@@ -22,13 +22,14 @@
     "check:fix": "oxlint --type-aware --fix --fix-suggestions && oxfmt",
     "verify:clean": "tsx scripts/verify.ts clean",
     "verify:fast": "tsx scripts/verify.ts fast",
-    "prepare": "git config core.hooksPath .githooks"
+    "prepare": "if [ -n \"$CI\" ] || [ \"$SKIP_LEFTHOOK\" = \"1\" ] || [ ! -d .git ]; then exit 0; fi; git config --unset-all core.hooksPath 2>/dev/null; lefthook install"
   },
   "devDependencies": {
     "@aws-sdk/client-ecr-public": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "corepack": "catalog:",
+    "lefthook": "^2.1.6",
     "npm-run-all": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
