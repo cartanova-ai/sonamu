@@ -304,10 +304,6 @@
     "checksum": "7c9f987111a2307eafb2b000200ab8c765855b5f"
   },
   {
-    "path": "web/src/services/queries.generated.ts",
-    "checksum": "1432a400785f7c5b72671dd908896373f99e1058"
-  },
-  {
     "path": "web/src/services/services.generated.ts",
     "checksum": "df0c720ce44da03b360e63dca2acc98c9619359b"
   },
