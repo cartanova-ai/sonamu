@@ -21,7 +21,7 @@ const _require = createRequire(import.meta.url);
  * 수명은 프로세스 죽을때까지 ㅋ
  */
 export const formatCode = cached(formatCodeInternal, (code, filePath) => {
-  const ext = filePath.endsWith(".tsx") ? "tsx" : filePath.endsWith("json") ? "json" : "ts";
+  const ext = filePath.endsWith(".tsx") ? "tsx" : filePath.endsWith(".json") ? "json" : "ts";
   return `${ext}:${createHash("sha1").update(code).digest("hex")}`;
 });
 
@@ -30,7 +30,7 @@ export const formatCode = cached(formatCodeInternal, (code, filePath) => {
  */
 async function formatCodeInternal(code: string, filePath: string): Promise<string> {
   // json은 포맷만 하면 됩니다.
-  if (filePath.endsWith("json")) {
+  if (filePath.endsWith(".json")) {
     return runOxfmt(code, filePath);
   }
 
