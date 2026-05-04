@@ -117,15 +117,27 @@ export async function actionGenerateSsrEntryServerIfNotExists(): Promise<Absolut
 }
 
 /**
- * 주어진 .ts 파일들(api에 있다고 가정)을 모든 타겟 디렉토리의 services에 갖다 둡니다.
+ * 주어진 .ts 파일들(api에 있다고 가정)을 타겟 디렉토리의 services에 갖다 둡니다.
  * 이때 내부의 sonamu import는 sonamu.shared.ts import로 치환되고,
  * 경로의 /application/은 /services/로 치환됩니다.
  *
+ * 기본은 Sonamu.config.sync.targets 전체를 대상으로 하며,
+ * onlyTargetsStartingWith 화이트리스트로 일부 target에만 분배할 수 있습니다.
+ * 가량 SSR-only인 queries.generated.ts같은 친구들은 "web"으로 시작하는 타겟들에만 보낼 수 있어요.
+ * ["web"]으로 넘기면 web, web-admin, webapp 등에 모두 매치됩니다.
+ *
  * @param tsPaths 복사할 파일들의 절대 경로
+ * @param onlyTargetsStartingWith 분배할 target 접두어들의 화이트리스트. 미지정 시 모든 target.
  * @returns 각 타겟에 복사된 파일들의 절대 경로 배열 (flat).
  */
-export async function actionSyncFilesToTargets(tsPaths: AbsolutePath[]): Promise<string[]> {
-  const { targets } = Sonamu.config.sync;
+export async function actionSyncFilesToTargets(
+  tsPaths: AbsolutePath[],
+  onlyTargetsStartingWith?: string[],
+): Promise<string[]> {
+  const allTargets = Sonamu.config.sync.targets;
+  const targets = onlyTargetsStartingWith
+    ? allTargets.filter((t) => onlyTargetsStartingWith.some((prefix) => t.startsWith(prefix)))
+    : allTargets;
   const { dir: apiDir } = Sonamu.config.api;
 
   return (

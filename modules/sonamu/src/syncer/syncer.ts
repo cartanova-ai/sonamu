@@ -414,11 +414,16 @@ export class Syncer {
       }
     }
 
-    // sonamu.generated.ts가 만들어집니다.
+    // sonamu.generated.ts와 sonamu.generated.sso.ts가 만들어집니다.
     const generated = await SyncerActions.actionGenerateSchemas();
 
-    // 그걸 target들에도 보내요.
-    await SyncerActions.actionSyncFilesToTargets(generated);
+    // 모든 것들을 target에 보내지는 않습니다.
+    // sonamu.generated.sso.ts는 service-side-only니까 배제합니다.
+    // TODO(병준): 이 하드코드를 누가 해결 좀 해주세요. 일단은 감당 가능하니 놔두겠습니다...
+    const distributable = generated.filter((p) => !p.endsWith(".sso.ts"));
+
+    // 이제 보낼 것들만 target에 보내요.
+    await SyncerActions.actionSyncFilesToTargets(distributable);
   }
 
   async handleImplementationChanges(diffGroups: DiffGroups): Promise<void> {
@@ -451,8 +456,10 @@ export class Syncer {
     // queries.generated.ts가 만들어집니다.
     const queries = await SyncerActions.actionGenerateSsrQueries();
 
-    // 그걸 target들에도 보내요.
-    await SyncerActions.actionSyncFilesToTargets(queries);
+    // queries는 SSR 디스크립터(sonamu/ssr 의존)이므로 web target에만 분배합니다.
+    // 다른 target(app 등)이 SSR을 안 쓰면 의미 없는 dead code일 뿐이라 보내지 않습니다.
+    // TODO(병준): web에만 가게 하기 위해서 target prefix를 지정해주었습니다. 나중에 target 시스템이 개선된다면 바꿔주세요.
+    await SyncerActions.actionSyncFilesToTargets(queries, ["web"]);
   }
 
   async handleAuxiliarySymbolChanges(diffGroups: DiffGroups): Promise<void> {
