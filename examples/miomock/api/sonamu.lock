@@ -316,10 +316,6 @@
     "checksum": "5f4dbeeb82ee2b752da0e51e54e5bd30f839d4ae"
   },
   {
-    "path": "web/src/services/sonamu.generated.sso.ts",
-    "checksum": "e503bb488d36e822c09e0736e5ef0f1c56b4beec"
-  },
-  {
     "path": "web/src/services/sonamu.generated.ts",
     "checksum": "1fc49cf4fac552fa73688df48349f05fe6ecef22"
   },
