@@ -14,10 +14,12 @@ import ArrowRightIcon from "~icons/lucide/arrow-right";
 import { useSonamuContext } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
 import {
-  type ActiveProjectItem,
   type ActivityGroup,
+  type RecentActivityOutEvents,
+  type ActiveProjectItem,
   type ActivityPeriod,
   type DocumentStats,
+  type ActivityItem,
 } from "@/services/dashboard/dashboard.types";
 import { DashboardService } from "@/services/services.generated";
 import { AuditLogActionLabel } from "@/services/sonamu.generated";
@@ -32,10 +34,34 @@ function AdminIndexPage() {
   const user = session.data?.user ?? null;
   const navigate = useNavigate();
   const [period, setPeriod] = useState<ActivityPeriod>("7");
+  const [activityGroups, setActivityGroups] = useState<ActivityGroup[]>([]);
 
   const { data: stats, isLoading: statsLoading } = DashboardService.useDashboardStats();
-  const { data: activityGroups, isLoading: activityLoading } =
-    DashboardService.useRecentActivity(period);
+
+  const channel = DashboardService.useGetRecentActivity2(
+    { initialPeriod: period },
+    {
+      ready: ({ groups }: RecentActivityOutEvents["ready"]) => setActivityGroups(groups),
+      activityCreated: (item: ActivityItem) => {
+        setActivityGroups((prev) => {
+          const dateKey = item.created_at.toISOString().split("T")[0] ?? "";
+
+          const idx = prev.findIndex((g) => g.date === dateKey);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = { ...next[idx], items: [item, ...next[idx].items] };
+            return next;
+          }
+          return [{ date: dateKey, label: "오늘", items: [item] }, ...prev];
+        });
+      },
+    },
+  );
+
+  const handleChangePeriod = (period: ActivityPeriod) => {
+    setPeriod(period);
+    channel.send("setPeriod", { period });
+  };
 
   const org = stats?.organization;
   const proj = stats?.projects;
@@ -167,15 +193,18 @@ function AdminIndexPage() {
         {/* 최근 활동 */}
         <Card className="border-border/40 shadow-sm">
           <CardHeader className="px-5 py-3 border-b border-gray-100 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium leading-none m-0">
-              {SD("dashboard.recentActivity")}
-            </CardTitle>
+            <div className="flex items-center gap-2.5">
+              <CardTitle className="text-sm font-medium leading-none m-0">
+                {SD("dashboard.recentActivity")}
+              </CardTitle>
+              <WebSocketStatus readyState={channel.readyState} />
+            </div>
             <div className="flex items-center gap-0.5 bg-gray-100 rounded p-0.5">
               {(["7", "30", "all"] as const).map((p) => (
                 <button
                   key={p}
                   type="button"
-                  onClick={() => setPeriod(p)}
+                  onClick={() => handleChangePeriod(p)}
                   className={`px-2.5 py-1 text-xs rounded transition-colors ${
                     period === p
                       ? "bg-white shadow-sm font-medium"
@@ -190,7 +219,7 @@ function AdminIndexPage() {
           <CardContent className="p-5">
             <ActivityTimeline
               groups={activityGroups ?? []}
-              loading={activityLoading}
+              loading={channel.readyState === WebSocket.CONNECTING}
               period={period}
             />
             <div className="flex justify-end mt-3 pt-3 border-t border-gray-100">
@@ -215,6 +244,34 @@ function AdminIndexPage() {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <h3 className="text-xs font-medium text-muted-foreground mb-2">{children}</h3>;
+}
+
+function WebSocketStatus({ readyState }: { readyState: number }) {
+  const config =
+    readyState === WebSocket.OPEN
+      ? { color: "bg-emerald-500", label: "연결됨", pulse: false }
+      : readyState === WebSocket.CONNECTING
+        ? { color: "bg-amber-500", label: "연결 중", pulse: true }
+        : readyState === WebSocket.CLOSING
+          ? { color: "bg-orange-500", label: "종료 중", pulse: true }
+          : { color: "bg-red-500", label: "연결 끊김", pulse: false };
+
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+      title={`WebSocket: ${config.label}`}
+    >
+      <span className="relative flex h-1.5 w-1.5">
+        {config.pulse && (
+          <span
+            className={`absolute inline-flex h-full w-full rounded-full ${config.color} opacity-60 animate-ping`}
+          />
+        )}
+        <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${config.color}`} />
+      </span>
+      {config.label}
+    </span>
+  );
 }
 
 function MetricCard({ label, value, loading }: { label: string; value: number; loading: boolean }) {

@@ -1,5 +1,6 @@
 import assert from "assert";
 
+import { omit } from "radashi";
 import {
   api,
   asArray,
@@ -7,12 +8,14 @@ import {
   BaseModelClass,
   exhaustive,
   NotFoundException,
+  Sonamu,
 } from "sonamu";
 import { type ListResult } from "sonamu";
 
 import { SD } from "../../i18n/sd.generated";
 import { type AuditLogSubsetKey, type AuditLogSubsetMapping } from "../sonamu.generated";
 import { auditLogLoaderQueries, auditLogSubsetQueries } from "../sonamu.generated.sso";
+import { UserModel } from "../user/user.model";
 import { type AuditLogListParams, type AuditLogValue } from "./audit-log.types";
 
 // log() 메서드 파라미터 타입
@@ -129,20 +132,37 @@ class AuditLogModelClass extends BaseModelClass<
     try {
       const wdb = this.getPuri("w");
 
-      const [result] = await wdb
-        .table("audit_logs")
-        .insert({
-          actor_id: params.actor_id,
-          action: params.action,
-          entity_type: params.entity_type,
-          entity_id: params.entity_id,
-          old_value: params.old_value ?? null,
-          new_value: params.new_value ?? null,
-          created_at: new Date(),
-        })
-        .returning("id");
+      const newAuditLog = {
+        actor_id: params.actor_id,
+        action: params.action,
+        entity_type: params.entity_type,
+        entity_id: params.entity_id,
+        old_value: params.old_value ?? null,
+        new_value: params.new_value ?? null,
+        created_at: new Date(),
+      };
+      const [result] = await wdb.table("audit_logs").insert(newAuditLog).returning("id");
 
       assert(result);
+
+      try {
+        const activity = {
+          id: result.id,
+          ...omit(newAuditLog, ["new_value", "old_value"]),
+        };
+        Sonamu.websocketRuntime.publishToRoom(
+          "dashboard:recent-activity:admin",
+          "activityCreated",
+          activity,
+        );
+        if (params.actor_id) {
+          const user = await UserModel.findById("A", params.actor_id);
+          if (user.role !== "admin") {
+            Sonamu.websocketRuntime.publishToUser(params.actor_id, "activityCreated", activity);
+          }
+        }
+      } catch {}
+
       return result.id;
     } catch {
       // 감사 로그 기록 실패 시 원래 작업은 성공 처리

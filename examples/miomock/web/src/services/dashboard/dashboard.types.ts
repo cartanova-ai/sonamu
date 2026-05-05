@@ -79,3 +79,17 @@ export type ActivityGroup = z.infer<typeof ActivityGroup>;
 // 기간 필터
 export const ActivityPeriod = z.enum(["7", "30", "all"]);
 export type ActivityPeriod = z.infer<typeof ActivityPeriod>;
+
+export const RecentActivityOutEvents = z.object({
+  ready: z.object({
+    period: ActivityPeriod,
+    groups: z.array(ActivityGroup),
+  }),
+  activityCreated: ActivityItem,
+});
+export type RecentActivityOutEvents = z.infer<typeof RecentActivityOutEvents>;
+
+export const RecentActivityInEvents = z.object({
+  setPeriod: z.object({ period: ActivityPeriod }),
+});
+export type RecentActivityInEvents = z.infer<typeof RecentActivityInEvents>;

@@ -1,4 +1,4 @@
-import { api, BaseFrameClass, Sonamu } from "sonamu";
+import { api, BaseFrameClass, Sonamu, websocket, type WebSocketContext } from "sonamu";
 
 import { CompanyModel } from "../company/company.model";
 import { DepartmentModel } from "../department/department.model";
@@ -6,6 +6,8 @@ import { DocumentModel } from "../document/document.model";
 import { EmployeeModel } from "../employee/employee.model";
 import { ProjectModel } from "../project/project.model";
 import {
+  RecentActivityInEvents,
+  RecentActivityOutEvents,
   type ActivityGroup,
   type ActivityItem,
   type ActivityPeriod,
@@ -132,6 +134,36 @@ class DashboardFrameClass extends BaseFrameClass {
     ]);
 
     return { organization, projects, documents };
+  }
+
+  @websocket({ outEvents: RecentActivityOutEvents, inEvents: RecentActivityInEvents })
+  async getRecentActivity2(
+    initialPeriod: ActivityPeriod = "7",
+    ctx: WebSocketContext<RecentActivityOutEvents, RecentActivityInEvents>,
+  ): Promise<void> {
+    const user = ctx.user;
+
+    if (user?.id) {
+      ctx.ws.setUserId(user.id);
+
+      if (user.role === "admin") {
+        ctx.ws.join("dashboard:recent-activity:admin");
+      }
+    }
+
+    let currentPeriod: ActivityPeriod = initialPeriod;
+
+    ctx.ws.onMessage("setPeriod", ({ period }) => {
+      console.log(period);
+      currentPeriod = period;
+    });
+
+    ctx.ws.publish("ready", {
+      period: currentPeriod,
+      groups: await this.getRecentActivity(currentPeriod),
+    });
+
+    await ctx.ws.waitForClose();
   }
 
   @api({

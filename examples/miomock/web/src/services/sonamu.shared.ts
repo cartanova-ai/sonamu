@@ -6,16 +6,17 @@
 
 /* oxlint-disable react-hooks/exhaustive-deps */ // shared
 
+import { type InfiniteData } from "@tanstack/react-query";
 /*
   fetch
 */
-import  { type AxiosRequestConfig } from "axios";
+import { type AxiosRequestConfig } from "axios";
 import axios from "axios";
 import { EventSource } from "eventsource";
 import qs from "qs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type core, z } from "zod";
-import { type InfiniteData } from "@tanstack/react-query";
+
 import { getCurrentLocale } from "@/i18n/sd.generated";
 
 // ISO 8601 및 타임존 포맷의 날짜 문자열을 Date 객체로 변환하는 reviver
@@ -223,7 +224,6 @@ export type ApplySonamuFilter<
   TNumericKeys extends Exclude<keyof TEntity, TOmitKeys> = never,
 > = FilterQuery<Omit<TEntity, TOmitKeys>, TNumericKeys>;
 
-
 /**
  * 필드명과 값을 기반으로 FilterPropType을 추론
  */
@@ -331,6 +331,7 @@ export type WebSocketChannelOptions = {
   retry?: number;
   retryInterval?: number;
   protocols?: string | string[];
+  traceProvider?: () => string | undefined;
 };
 export type WebSocketChannelState<TSend extends Record<string, any>> = {
   isConnected: boolean;
@@ -575,7 +576,7 @@ export function useWebSocketChannel<
   handlers: EventHandlers<TReceive>,
   options: WebSocketChannelOptions = {},
 ): WebSocketChannelState<TSend> {
-  const { enabled = true, retry = 3, retryInterval = 3000, protocols } = options;
+  const { enabled = true, retry = 3, retryInterval = 3000, protocols, traceProvider } = options;
 
   const [state, setState] = useState<Omit<WebSocketChannelState<TSend>, "send" | "close">>({
     isConnected: false,
@@ -616,12 +617,12 @@ export function useWebSocketChannel<
       return;
     }
 
-    socket.send(
-      JSON.stringify({
-        event,
-        data,
-      }),
-    );
+    const traceparent = traceProvider?.();
+    if (traceparent) {
+      socket.send(JSON.stringify({ event, data, meta: { traceparent } }));
+      return;
+    }
+    socket.send(JSON.stringify({ event, data }));
   };
 
   const connect = () => {
@@ -893,7 +894,7 @@ export function dedupeAndFlatten<TRow extends { id?: unknown }>(
   for (const page of data.pages) {
     for (const row of page?.rows ?? []) {
       const id = row?.id;
-      if (id) {
+      if (id !== null) {
         if (seen.has(id)) {
           continue;
         }

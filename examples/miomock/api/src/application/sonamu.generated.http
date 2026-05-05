@@ -636,6 +636,12 @@ Content-Type: application/json
 
 ###
 
+GET {{baseUrl}}/api/dashboard/getRecentActivity2
+	?initialPeriod=7
+Content-Type: application/json
+
+###
+
 GET {{baseUrl}}/api/dashboard/getRecentActivity
 	?period=7
 Content-Type: application/json

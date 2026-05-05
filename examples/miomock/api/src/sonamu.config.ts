@@ -104,6 +104,7 @@ export default defineConfig({
     baseUrl: `http://${host}:${port}`,
     listen: { port, host },
     plugins: {
+      ws: true,
       compress: {
         global: false,
         threshold: 1024,

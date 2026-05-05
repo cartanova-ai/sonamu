@@ -20,7 +20,13 @@ import qs from "qs";
 import { AuditEventListParams, AuditEventSaveParams } from "./audit-event/audit-event.types";
 import { AuditLogListParams } from "./audit-log/audit-log.types";
 import { CompanyListParams, CompanySaveParams } from "./company/company.types";
-import { DashboardStats, ActivityPeriod, ActivityGroup } from "./dashboard/dashboard.types";
+import {
+  DashboardStats,
+  RecentActivityOutEvents,
+  RecentActivityInEvents,
+  ActivityPeriod,
+  ActivityGroup,
+} from "./dashboard/dashboard.types";
 import { DepartmentListParams, DepartmentSaveParams } from "./department/department.types";
 import {
   DocumentListParams,
@@ -1592,6 +1598,19 @@ export namespace DashboardService {
         ...options,
       }),
     );
+
+  export function useGetRecentActivity2(
+    params: { initialPeriod: ActivityPeriod },
+    handlers: EventHandlers<RecentActivityOutEvents>,
+    options: WebSocketChannelOptions = {},
+  ) {
+    return useWebSocketChannel<RecentActivityOutEvents, RecentActivityInEvents>(
+      `/api/dashboard/getRecentActivity2`,
+      params,
+      handlers,
+      options,
+    );
+  }
 
   export async function getRecentActivity(period: ActivityPeriod = "7"): Promise<ActivityGroup[]> {
     return fetch({
