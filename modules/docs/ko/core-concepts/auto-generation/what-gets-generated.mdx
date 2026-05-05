@@ -442,25 +442,54 @@ export const userQueries = {
 
 ### 10. Entry Server (`entry-server.generated.tsx`)
 
+TanStack Router 기반 SSR 진입점입니다. 라우트별 `loader`가 아니라, web 측에서 호출되는 `render(url, preloadedData)` 함수를 export합니다. SSR 단계에서 미리 가져온 데이터(`preloadedData`)는 `queryClient.setQueryData(queryKey, data)`로 주입한 뒤 `dehydrate`되어 client로 hydrate됩니다.
+
 ```tsx title="web/src/entry-server.generated.tsx (자동 생성)"
-import { dehydrate, QueryClient } from "@tanstack/react-query";
-import { userQueries } from "./queries.generated";
+import { QueryClient, dehydrate } from "@tanstack/react-query";
+import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
+import { Suspense } from "react";
+import { renderToString } from "react-dom/server";
+import { routeTree } from "./routeTree.gen";
 
-export async function loader({ params }) {
-  const queryClient = new QueryClient();
+export type PreloadedData = {
+  queryKey: any[];
+  data: any;
+};
 
-  // SSR 데이터 프리페칭
-  if (params.userId) {
-    await queryClient.prefetchQuery(userQueries.findById(Number(params.userId)));
+export async function render(url: string, preloadedData: PreloadedData[] = []) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { staleTime: 5000, retry: false },
+    },
+  });
+
+  // SSR 단계에서 미리 invoke된 결과를 queryClient에 주입
+  for (const { queryKey, data } of preloadedData) {
+    queryClient.setQueryData(queryKey, data);
   }
 
-  return {
-    dehydratedState: dehydrate(queryClient),
-  };
+  const dehydratedState = dehydrate(queryClient);
+
+  const memoryHistory = createMemoryHistory({ initialEntries: [url] });
+  const router = createRouter({
+    routeTree,
+    context: { queryClient },
+    history: memoryHistory,
+    defaultPreload: "intent",
+  });
+  await router.load();
+
+  const appHtml = renderToString(
+    <Suspense fallback={null}>
+      <RouterProvider router={router} />
+    </Suspense>,
+  );
+
+  return { html: appHtml, dehydratedState };
 }
 ```
 
-**생성 시점**: Model 파일 변경 시
+**생성 시점**: 첫 sync 시 1회만 (입력에 의존하지 않는 정적 부트스트랩 자산)
 
 **수정 가능 여부**: ❌ 자동 재생성됨
 
@@ -503,7 +532,7 @@ export const SD = {
 | `services.generated.ts`      | `web/src/services/`                | Model 변경       | ❌        |
 | `sonamu.generated.http`      | `api/`                             | Model 변경       | ❌        |
 | `queries.generated.ts`       | `web/src/`                         | Model 변경       | ❌        |
-| `entry-server.generated.tsx` | `web/src/`                         | Model 변경       | ❌        |
+| `entry-server.generated.tsx` | `web/src/`                         | 첫 sync 시 1회   | ❌        |
 | `sd.generated.ts`            | `api/src/`, `web/src/`, `app/src/` | Entity/i18n 변경 | ❌        |
 | `{Entity}List.tsx`           | `web/src/pages/{entity}/`          | Scaffold         | ✅        |
 | `{Entity}Form.tsx`           | `web/src/pages/{entity}/`          | Scaffold         | ✅        |
