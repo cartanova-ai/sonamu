@@ -417,28 +417,31 @@ Files for Server-Side Rendering are auto-generated.
 
 ### 9. Queries (`queries.generated.ts`)
 
-```typescript title="web/src/queries.generated.ts (auto-generated)"
-import { queryOptions } from "@tanstack/react-query";
-import { findUserById, findManyUsers } from "./services/services.generated";
+For APIs with the `tanstack-query` client enabled, this file exports SSR-side descriptors (`SSRQuery`) grouped by model namespace. The api-side `ssr/routes.ts` uses these descriptors via `registerSSR(...)` to compose preload configs.
 
-export const userQueries = {
-  findById: (id: number) =>
-    queryOptions({
-      queryKey: ["User", "findById", id],
-      queryFn: () => findUserById(id),
-    }),
+```typescript title="api/src/application/queries.generated.ts (auto-generated)"
+import type { SSRQuery } from "sonamu/ssr";
 
-  findMany: (params?: UserListParams) =>
-    queryOptions({
-      queryKey: ["Users", "findMany", params],
-      queryFn: () => findManyUsers(params),
-    }),
-};
+function createSSRQuery(
+  modelName: string,
+  methodName: string,
+  params: any[],
+  serviceKey: [string, string],
+): SSRQuery {
+  return { modelName, methodName, params, serviceKey, __brand: "SSRQuery" } as SSRQuery;
+}
+
+export namespace UserService {
+  export const findById = (id: number): SSRQuery =>
+    createSSRQuery("UserModel", "findById", [id], ["User", "findById"]);
+}
 ```
 
 **Generated when**: Model file changes
 
 **Editable**: ❌ Auto-regenerated
+
+**Location**: An api-only asset. It is not copied into target (web/app) and is never imported directly from target code. The SSR renderer executes the descriptor server-side and only the result is hydrated on the client.
 
 ### 10. Entry Server (`entry-server.generated.tsx`)
 
@@ -531,8 +534,8 @@ export const SD = {
 | `sonamu.generated.sso.ts`    | `api/src/application/`             | Entity save        | ❌       |
 | `services.generated.ts`      | `web/src/services/`                | Model change       | ❌       |
 | `sonamu.generated.http`      | `api/`                             | Model change       | ❌       |
-| `queries.generated.ts`       | `web/src/`                         | Model change       | ❌       |
-| `entry-server.generated.tsx` | `web/src/`                         | Once on first sync | ❌       |
+| `queries.generated.ts`       | `api/src/application/`             | Model change       | ❌       |
+| `entry-server.generated.tsx` | `web/src/`                         | Once on first sync | ✅       |
 | `sd.generated.ts`            | `api/src/`, `web/src/`, `app/src/` | Entity/i18n change | ❌       |
 | `{Entity}List.tsx`           | `web/src/pages/{entity}/`          | Scaffold           | ✅       |
 | `{Entity}Form.tsx`           | `web/src/pages/{entity}/`          | Scaffold           | ✅       |

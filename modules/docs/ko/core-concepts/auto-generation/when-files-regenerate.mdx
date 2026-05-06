@@ -229,20 +229,19 @@ Content-Type: application/json
 </Step>
 
 <Step title="3. queries.generated.ts">
-SSR용 Query Options
+SSR용 Query 디스크립터
 
-**위치**: `web/src/queries.generated.ts`
+**위치**: `api/src/application/queries.generated.ts` (api 전용 — target에 복사되지 않음)
 
 **항상 재생성**: ✅
 
 ```typescript
-export const userQueries = {
-  findById: (id: number) =>
-    queryOptions({
-      queryKey: ["User", "findById", id],
-      queryFn: () => findUserById(id),
-    }),
-};
+import type { SSRQuery } from "sonamu/ssr";
+
+export namespace UserService {
+  export const findById = (id: number): SSRQuery =>
+    createSSRQuery("UserModel", "findById", [id], ["User", "findById"]);
+}
 ```
 
 </Step>

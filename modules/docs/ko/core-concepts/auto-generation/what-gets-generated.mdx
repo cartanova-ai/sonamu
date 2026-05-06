@@ -417,28 +417,31 @@ Server-Side Rendering을 위한 파일들이 자동 생성됩니다.
 
 ### 9. Queries (`queries.generated.ts`)
 
-```typescript title="web/src/queries.generated.ts (자동 생성)"
-import { queryOptions } from "@tanstack/react-query";
-import { findUserById, findManyUsers } from "./services/services.generated";
+`tanstack-query` 클라이언트가 활성화된 API에 대해, SSR이 미리 실행할 디스크립터(`SSRQuery`)를 모델별 네임스페이스로 export합니다. api 측 `ssr/routes.ts`의 `registerSSR(...)`이 이 디스크립터를 preload 설정에 사용합니다.
 
-export const userQueries = {
-  findById: (id: number) =>
-    queryOptions({
-      queryKey: ["User", "findById", id],
-      queryFn: () => findUserById(id),
-    }),
+```typescript title="api/src/application/queries.generated.ts (자동 생성)"
+import type { SSRQuery } from "sonamu/ssr";
 
-  findMany: (params?: UserListParams) =>
-    queryOptions({
-      queryKey: ["Users", "findMany", params],
-      queryFn: () => findManyUsers(params),
-    }),
-};
+function createSSRQuery(
+  modelName: string,
+  methodName: string,
+  params: any[],
+  serviceKey: [string, string],
+): SSRQuery {
+  return { modelName, methodName, params, serviceKey, __brand: "SSRQuery" } as SSRQuery;
+}
+
+export namespace UserService {
+  export const findById = (id: number): SSRQuery =>
+    createSSRQuery("UserModel", "findById", [id], ["User", "findById"]);
+}
 ```
 
 **생성 시점**: Model 파일 변경 시
 
 **수정 가능 여부**: ❌ 자동 재생성됨
+
+**위치**: api 전용 자산입니다. target(web/app) 측으로 복사되지 않으며, 직접 import할 일이 없습니다. SSR renderer가 server-side에서 디스크립터를 실행하고 client에는 결과만 hydrate합니다.
 
 ### 10. Entry Server (`entry-server.generated.tsx`)
 
@@ -531,9 +534,9 @@ export const SD = {
 | `sonamu.generated.sso.ts`    | `api/src/application/`             | Entity 저장      | ❌        |
 | `services.generated.ts`      | `web/src/services/`                | Model 변경       | ❌        |
 | `sonamu.generated.http`      | `api/`                             | Model 변경       | ❌        |
-| `queries.generated.ts`       | `web/src/`                         | Model 변경       | ❌        |
-| `entry-server.generated.tsx` | `web/src/`                         | 첫 sync 시 1회   | ❌        |
-| `sd.generated.ts`            | `api/src/`, `web/src/`, `app/src/` | Entity/i18n 변경 | ❌        |
+| `queries.generated.ts`       | `api/src/application/`             | Model 변경       | ❌        |
+| `entry-server.generated.tsx` | `web/src/`                         | 첫 sync 시 1회    | ✅        |
+| `sd.generated.ts`            | `api/src/`, `web/src/`, `app/src/` | Entity/i18n 변경 | ❌         |
 | `{Entity}List.tsx`           | `web/src/pages/{entity}/`          | Scaffold         | ✅        |
 | `{Entity}Form.tsx`           | `web/src/pages/{entity}/`          | Scaffold         | ✅        |
 | `{Entity}SearchInput.tsx`    | `web/src/pages/{entity}/`          | Scaffold         | ✅        |
