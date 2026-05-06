@@ -130,7 +130,7 @@ async save(params: UserSaveParams[]): Promise<number[]> {
   httpMethod: "POST",
   clients: ["axios-multipart"],
 })
-@upload({ mode: "single" })
+@upload()
 async uploadAvatar(): Promise<{ url: string }> {
   // ...
 }

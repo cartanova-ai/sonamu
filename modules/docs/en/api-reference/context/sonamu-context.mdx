@@ -148,7 +148,7 @@ class PostModelClass extends BaseModelClass {
 bufferedFiles?: BufferedFile[]
 ```
 
-List of files uploaded in buffer mode. This property exists when the `@upload` decorator is applied with the default mode (buffer) or `mode: "buffer"` configuration.
+List of files uploaded in buffer mode. This property exists when the `@upload` decorator is applied with the default (`consume: "buffer"`) or `@upload({ consume: "buffer" })` configuration.
 
 Each file is loaded in memory, allowing flexible operations like MD5 calculation or image processing.
 
