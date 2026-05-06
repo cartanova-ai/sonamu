@@ -116,7 +116,7 @@ For trace data details: see `naite.md`
 
 ### HMR Integration — Automatic Vitest Module Graph Invalidation on Source Changes
 
-When a source file is modified, `syncFromWatcher` in the syncer triggers both of the following simultaneously:
+When a source file is modified, `hmrAndSync` in the syncer triggers both of the following simultaneously:
 
 1. Server HMR cache invalidation (`hot.invalidateFile`)
 2. Vitest module graph invalidation (`Sonamu.devVitestManager.invalidateFiles([filePath])`)

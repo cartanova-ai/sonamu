@@ -47,13 +47,13 @@ export class Syncer {
 
   /**
    * 체크섬이 변경된 부분에 대해 싱크를 진행합니다.
-   * dev 서버가 처음 떴을 때, sonamu sync 할 때 실행됩니다. 이후에는 syncFromWatcher 경로를 타요.
+   * dev 서버가 처음 떴을 때, sonamu sync 할 때 실행됩니다. 이후에는 hmrAndSync 경로를 타요.
    * @returns
    */
   async sync(): Promise<void> {
     // 초기 부트스트랩! 얘네들은 idempotent하고 가볍기 때문에 무지성 실행해도 됩니다.
     // 얘네들은 sonamu.lock에 들어가지도 않고 따라서 HMR 경로를 타지도 않는 친구들입니다.
-    // 그래서 아무 때나 그냥 돌려주면 되는데, syncFromWatcher에서 매번 하는 것은 낭비이니 여기서 한 번만 합니다.
+    // 그래서 아무 때나 그냥 돌려주면 되는데, hmrAndSync에서 매번 하는 것은 낭비이니 여기서 한 번만 합니다.
     await SyncerActions.actionCopySharedToTargetsIfNotExists();
     await SyncerActions.actionGenerateSsrEntryServerIfNotExists();
 
