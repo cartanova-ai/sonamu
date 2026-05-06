@@ -86,7 +86,7 @@
     "build": "run-s 'build:sonamu' 'build:ui-web'",
     "build:sonamu": "tsdown && tsc --emitDeclarationOnly",
     "build:ui-web": "cd ui-web && pnpm install && pnpm build",
-    "test:type": "vitest --typecheck test-d.ts",
+    "test:type": "vitest run --typecheck test-d.ts",
     "test:unit": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
