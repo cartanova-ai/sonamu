@@ -49,8 +49,8 @@ export function getChecksumPatternGroup() {
     // 또한 변경시 그 사실을 syncer가 알기는 해야 합니다(비록 별다른 처리가 없는 경우도 있지만).
     //
     // 자산 본성에 따라 위치 카테고리가 다르기 때문에, 본성별로 분리해서 표기합니다.
-    // - 양쪽-필요 자산: api에 정본이 만들어진 뒤 target에 복사됨 (sonamu.generated.*, queries.generated.ts).
-    // - api 전용 자산: api에만 만들어짐 (sonamu.generated.http).
+    // - 양쪽-필요 자산: api에 정본이 만들어진 뒤 target에 복사됨 (sonamu.generated.{ts,tsx}).
+    // - api 전용 자산: api에만 만들어짐 (sonamu.generated.http, queries.generated.ts).
     // - target 전용 자산: target에만 만들어짐 (services.generated.ts는 services.template의 :target 분배).
     //
     // 여기에는 Sonamu의 모든 sync 산출물이 있는 것은 아닙니다.

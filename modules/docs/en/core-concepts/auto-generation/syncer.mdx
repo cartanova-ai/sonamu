@@ -85,7 +85,7 @@ File patterns that Syncer tracks in `sonamu.lock`. Patterns are split into **inp
 
 | File Type             | Pattern                                                      | Purpose                                            |
 | --------------------- | ------------------------------------------------------------ | -------------------------------------------------- |
-| **generatedCopied**   | `src/services/**/{sonamu,queries}.generated.{ts,tsx,sso.ts}` | Target-side copies of api originals                |
+| **generatedCopied**   | `src/services/**/sonamu.generated.{ts,tsx}`                  | Target-side copies of api originals                |
 | **servicesGenerated** | `src/services/services.generated.ts`                         | API client (target-only distribution)              |
 | **sdGenerated**       | `src/i18n/**/sd.generated.ts`                                | Sonamu Dictionary (in api and targets)             |
 | **typesCopied**       | `src/services/**/*.types.ts`                                 | Copies of entity types                             |

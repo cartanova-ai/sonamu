@@ -85,7 +85,7 @@ Syncer가 sonamu.lock에 추적하는 파일 패턴입니다. 자산 본성에 �
 
 | 파일 타입             | 패턴                                                      | 용도                                  |
 | --------------------- | --------------------------------------------------------- | ------------------------------------- |
-| **generatedCopied**   | `src/services/**/{sonamu,queries}.generated.{ts,tsx,sso.ts}` | api 정본의 target 사본                |
+| **generatedCopied**   | `src/services/**/sonamu.generated.{ts,tsx}`               | api 정본의 target 사본                |
 | **servicesGenerated** | `src/services/services.generated.ts`                      | API 클라이언트(target 전용 분배 산출) |
 | **sdGenerated**       | `src/i18n/**/sd.generated.ts`                             | Sonamu Dictionary (api/target 모두)   |
 | **typesCopied**       | `src/services/**/*.types.ts`                              | Entity 타입 사본                      |
