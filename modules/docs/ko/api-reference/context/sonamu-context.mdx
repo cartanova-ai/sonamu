@@ -148,7 +148,7 @@ class PostModelClass extends BaseModelClass {
 bufferedFiles?: BufferedFile[]
 ```
 
-Buffer 모드로 업로드된 파일 목록입니다. `@upload` 데코레이터가 적용된 메서드에서, 기본 모드(buffer) 또는 `mode: "buffer"`로 설정된 경우에 존재합니다.
+Buffer 모드로 업로드된 파일 목록입니다. `@upload` 데코레이터가 적용된 메서드에서, 기본값(`consume: "buffer"`) 또는 `@upload({ consume: "buffer" })`로 설정된 경우에 존재합니다.
 
 각 파일은 메모리에 로드된 상태로, MD5 계산이나 이미지 처리 등 유연한 작업이 가능합니다.
 

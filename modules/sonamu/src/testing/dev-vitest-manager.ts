@@ -159,7 +159,7 @@ export class DevVitestManager {
 
   /**
    * 변경된 파일을 Vitest 모듈 그래프에서 무효화합니다.
-   * syncFromWatcher에서 호출되어 다음 테스트 실행 시 최신 코드를 사용하도록 합니다.
+   * hmrAndSync에서 호출되어 다음 테스트 실행 시 최신 코드를 사용하도록 합니다.
    */
   invalidateFiles(filePaths: string[]): void {
     if (!this.vitest || this.closed) {

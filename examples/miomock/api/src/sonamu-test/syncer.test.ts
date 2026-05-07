@@ -176,10 +176,10 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 2. syncFromWatcher - Watcher 이벤트 처리
+  // 2. hmrAndSync - Watcher 이벤트 처리
   // sonamu 패키지 내부에서 import하므로 vi.mock 적용 안됨 skip 처리
   // ============================================
-  describe("syncFromWatcher", () => {
+  describe("hmrAndSync", () => {
     // 목적: model 파일 변경 시 doSyncActions가 호출되어 http 파일이 생성되고, autoload가 실행되어 모듈이 재로드되는지 확인
     test("change 이벤트 (model 파일) → 파일 생성 및 모듈 재로드", async () => {
       const modelPath = join(
