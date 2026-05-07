@@ -307,7 +307,7 @@ console.log(result.segments);
 ### 파일 업로드 + 음성 인식
 
 ```typescript
-import { BaseModelClass, upload, api } from "sonamu";
+import { BaseModelClass, upload } from "sonamu";
 import { rtzr } from "sonamu/ai/providers/rtzr";
 
 class TranscriptionModelClass extends BaseModelClass {
@@ -395,7 +395,7 @@ console.log(result.text);
 ### 이미지 업로드 + 분석
 
 ```typescript
-import { BaseModelClass, upload, api } from "sonamu";
+import { BaseModelClass, upload } from "sonamu";
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 

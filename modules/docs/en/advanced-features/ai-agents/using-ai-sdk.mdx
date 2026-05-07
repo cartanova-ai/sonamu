@@ -307,7 +307,7 @@ console.log(result.segments);
 ### File Upload + Speech Recognition
 
 ```typescript
-import { BaseModelClass, upload, api } from "sonamu";
+import { BaseModelClass, upload } from "sonamu";
 import { rtzr } from "sonamu/ai/providers/rtzr";
 
 class TranscriptionModelClass extends BaseModelClass {
@@ -395,7 +395,7 @@ console.log(result.text);
 ### Image Upload + Analysis
 
 ```typescript
-import { BaseModelClass, upload, api } from "sonamu";
+import { BaseModelClass, upload } from "sonamu";
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 
