@@ -27,7 +27,7 @@ export abstract class Template {
 
   /**
    * 템플릿 구현체가 있는 디렉토리의 모든 템플릿을 로드합니다.
-   * 템플릿이 필요(Template.find)해지기 전에 최소 한 번 호출해주셔야 합니다.
+   * 템플릿이 필요(TemplateManager.get)해지기 전에 최소 한 번 호출해주셔야 합니다.
    * @deprecated TemplateManager.autoload() 사용 권장
    */
   public static async autoload() {
@@ -71,7 +71,7 @@ export abstract class Template {
     const instance = Template.templates.get(key);
     if (!instance) {
       throw new Error(
-        `Template ${key} not found. It might be because you tried to find a template before loading all templates. Did you call Template.autoload()?`,
+        `Template ${key} not found. It might be because you tried to find a template before loading all templates. Did you call TemplateManager.autoload()?`,
       );
     }
     return instance;
@@ -108,7 +108,6 @@ export abstract class Template {
    * 이 템플릿이 필요로 하는 i18n dict 키를 반환합니다.
    * 스캐폴딩 시 여러 템플릿의 키를 모아서 한 번에 처리합니다.
    *
-   * @param options - 템플릿 옵션
    * @returns 필요한 dict 키 배열 또는 null (i18n 불필요 시)
    */
   public getRequiredDictKeys(): string[] | null {
