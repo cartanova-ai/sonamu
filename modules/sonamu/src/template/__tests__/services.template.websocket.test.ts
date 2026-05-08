@@ -73,7 +73,9 @@ describe("Template__services websocket event refs", () => {
     const rendered = template.render({});
 
     expect(rendered.body).toContain("handlers: EventHandlers<ChatOutEvents>");
+    expect(rendered.body).toContain("options: WebSocketChannelOptions = {}");
     expect(rendered.body).toContain("useWebSocketChannel<ChatOutEvents, ChatInEvents>");
+    expect(rendered.body).toContain("params, handlers, options");
     expect(rendered.importKeys).toEqual(expect.arrayContaining(["ChatOutEvents", "ChatInEvents"]));
   });
 });
