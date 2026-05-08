@@ -1,6 +1,7 @@
 import { Button } from "@sonamu-kit/react-components";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type React from "react";
+import ActivityIcon from "~icons/lucide/activity";
 import ArchiveIcon from "~icons/lucide/archive";
 import BuildingIcon from "~icons/lucide/building";
 import ClipboardListIcon from "~icons/lucide/clipboard-list";
@@ -9,6 +10,7 @@ import FolderIcon from "~icons/lucide/folder";
 import HandshakeIcon from "~icons/lucide/handshake";
 import HomeIcon from "~icons/lucide/home";
 import LogOutIcon from "~icons/lucide/log-out";
+import MessageCircleIcon from "~icons/lucide/message-circle";
 import TagIcon from "~icons/lucide/tag";
 import TestTubeIcon from "~icons/lucide/test-tube";
 import UploadIcon from "~icons/lucide/upload";
@@ -34,7 +36,9 @@ type MenuKey =
   | "menu.fileUploadTest"
   | "menu.selectTest"
   | "menu.document"
-  | "menu.auditLog";
+  | "menu.auditLog"
+  | "menu.telemetry"
+  | "menu.chat";
 
 interface MenuItemProps {
   titleKey: MenuKey;
@@ -53,6 +57,8 @@ const menuItems: MenuItemProps[] = [
   { titleKey: "menu.document", path: "/admin/documents", icon: FileTextIcon },
   { titleKey: "menu.file", path: "/admin/files", icon: UploadIcon },
   { titleKey: "menu.auditLog", path: "/admin/audit-logs", icon: ClipboardListIcon },
+  { titleKey: "menu.telemetry", path: "/admin/telemetry", icon: ActivityIcon },
+  { titleKey: "menu.chat", path: "/admin/chat", icon: MessageCircleIcon },
   { titleKey: "menu.fileUploadTest", path: "/admin/files/upload-test", icon: TestTubeIcon },
   { titleKey: "menu.selectTest", path: "/admin/select-test", icon: ListIcon },
 ];

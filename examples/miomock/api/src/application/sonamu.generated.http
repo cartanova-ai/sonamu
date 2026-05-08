@@ -72,6 +72,20 @@ Content-Type: application/json
 
 ###
 
+GET {{baseUrl}}/api/telemetry/getSnapshot
+	?rawParams[type]=event
+	&rawParams[name]=NAME
+	&rawParams[level]=debug
+	&rawParams[connectionId]=CONNECTIONID
+	&rawParams[namespace]=NAMESPACE
+	&rawParams[traceId]=TRACEID
+	&rawParams[since]=0
+	&rawParams[until]=0
+	&rawParams[limit]=1
+Content-Type: application/json
+
+###
+
 GET {{baseUrl}}/api/tag/findById
 	?subset=A
 	&id=0
@@ -692,6 +706,12 @@ Content-Type: application/json
     0
   ]
 }
+
+###
+
+GET {{baseUrl}}/api/chat/subscribeChat
+	?
+Content-Type: application/json
 
 ###
 

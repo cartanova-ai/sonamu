@@ -103,6 +103,20 @@ export default defineConfig({
   server: {
     baseUrl: `http://${host}:${port}`,
     listen: { port, host },
+    websocket: {
+      telemetry: {
+        defaults: {
+          maxRecords: 1_000,
+          maxBytes: 1024 * 1024,
+        },
+        events: {
+          capturePayload: "preview",
+        },
+        metrics: {
+          sampleIntervalMs: 10_000,
+        },
+      },
+    },
     plugins: {
       ws: true,
       compress: {

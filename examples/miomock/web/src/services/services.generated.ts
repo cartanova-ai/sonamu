@@ -19,6 +19,7 @@ import qs from "qs";
 
 import { AuditEventListParams, AuditEventSaveParams } from "./audit-event/audit-event.types";
 import { AuditLogListParams } from "./audit-log/audit-log.types";
+import { ChatOutEvents, ChatInEvents } from "./chat/chat.types";
 import { CompanyListParams, CompanySaveParams } from "./company/company.types";
 import {
   DashboardStats,
@@ -79,6 +80,7 @@ import {
 } from "./sonamu.shared";
 import { SyncFixtureListParams, SyncFixtureSaveParams } from "./sync-fixture/sync-fixture.types";
 import { TagListParams, TagSaveParams } from "./tag/tag.types";
+import { TelemetryQueryParams, TelemetrySnapshot } from "./telemetry/telemetry.types";
 import { UserListParams, UserSaveParams } from "./user/user.types";
 
 export namespace UserService {
@@ -237,6 +239,34 @@ export namespace UserService {
     useRefreshable(
       useQuery({
         ...trxTestQueryOptions(),
+        ...options,
+      }),
+    );
+}
+
+export namespace TelemetryService {
+  export async function getTelemetrySnapshot(
+    rawParams?: TelemetryQueryParams,
+  ): Promise<TelemetrySnapshot> {
+    return fetch({
+      method: "GET",
+      url: `/api/telemetry/getSnapshot?${qs.stringify({ rawParams })}`,
+    });
+  }
+
+  export const getTelemetrySnapshotQueryOptions = (rawParams?: TelemetryQueryParams) =>
+    queryOptions({
+      queryKey: ["Telemetry", "getTelemetrySnapshot", rawParams],
+      queryFn: () => getTelemetrySnapshot(rawParams),
+    });
+
+  export const useTelemetrySnapshot = (
+    rawParams?: TelemetryQueryParams,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useQuery({
+        ...getTelemetrySnapshotQueryOptions(rawParams),
         ...options,
       }),
     );
@@ -1759,6 +1789,21 @@ export namespace CompanyService {
     useMutation({
       mutationFn: (params: { ids: number[] }) => del(params.ids),
     });
+}
+
+export namespace ChatService {
+  export function useSubscribeChat(
+    params: {},
+    handlers: EventHandlers<ChatOutEvents>,
+    options: WebSocketChannelOptions = {},
+  ) {
+    return useWebSocketChannel<ChatOutEvents, ChatInEvents>(
+      `/api/chat/subscribeChat`,
+      params,
+      handlers,
+      options,
+    );
+  }
 }
 
 export namespace AuditLogService {

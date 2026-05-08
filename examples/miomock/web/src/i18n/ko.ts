@@ -90,6 +90,8 @@ export default {
   "menu.project": "프로젝트 관리",
   "menu.tag": "태그 관리",
   "menu.auditLog": "감사 로그",
+  "menu.telemetry": "텔레메트리",
+  "menu.chat": "채팅",
   "menu.user": "사용자 관리",
   notFound: (name: string, id: number | string) => `존재하지 않는 ${name} ID ${id}`,
   "search.invalidField": (field: string) => `구현되지 않은 검색 필드 ${field}`,

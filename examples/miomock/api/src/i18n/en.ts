@@ -121,6 +121,8 @@ export default defineLocale({
   "menu.project": "Projects",
   "menu.tag": "Tags",
   "menu.auditLog": "Audit Logs",
+  "menu.telemetry": "Telemetry",
+  "menu.chat": "Chat",
   "menu.user": "Users",
   notFound: (name: string, id: number | string) => `${name} ID ${id} not found`,
   "search.invalidField": (field: string) => `Invalid search field: ${field}`,

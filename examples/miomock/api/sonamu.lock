@@ -25,11 +25,19 @@
   },
   {
     "path": "api/src/application/audit-log/audit-log.model.ts",
-    "checksum": "81c16dea7663cdfca8f9e97318f185590d8d34fd"
+    "checksum": "e1908cc7b46f67c9df45549b3ac901e050696d78"
   },
   {
     "path": "api/src/application/audit-log/audit-log.types.ts",
     "checksum": "83fede1d0b1994e9258342233ff84f0cd6c1ce0e"
+  },
+  {
+    "path": "api/src/application/chat/chat.frame.ts",
+    "checksum": "aa9d68729b11d1c863c70fc021ab1eba42116da9"
+  },
+  {
+    "path": "api/src/application/chat/chat.types.ts",
+    "checksum": "639aafae98b2ad7cf87fc114f8c0ccbac97a6924"
   },
   {
     "path": "api/src/application/company/company.entity.json",
@@ -45,7 +53,7 @@
   },
   {
     "path": "api/src/application/dashboard/dashboard.frame.ts",
-    "checksum": "c51ed0bd046078fe622f4009d3f4fec6cbb8257a"
+    "checksum": "965b9e91e9bf882aa9cc228d2d0278d4c294cb22"
   },
   {
     "path": "api/src/application/dashboard/dashboard.types.ts",
@@ -133,7 +141,7 @@
   },
   {
     "path": "api/src/application/queries.generated.ts",
-    "checksum": "8bc3da01c6c33a07361820b9219e94f31cb93ef6"
+    "checksum": "4ead7551f36fc178b608c3a3cdf504cc15e4a80b"
   },
   {
     "path": "api/src/application/session/session.entity.json",
@@ -145,7 +153,7 @@
   },
   {
     "path": "api/src/application/sonamu.generated.http",
-    "checksum": "55f0ec0fab2d833333a41ab5c79ab6fa30f935bc"
+    "checksum": "21e346b80412d5e8d725a8d5fa12912743f9b797"
   },
   {
     "path": "api/src/application/sonamu.generated.sso.ts",
@@ -188,6 +196,14 @@
     "checksum": "53638a1f1422cc08f00718752d4dab986ace8bb8"
   },
   {
+    "path": "api/src/application/telemetry/telemetry.frame.ts",
+    "checksum": "3250d65a41b73256c69f4f8d2162af84f7f77561"
+  },
+  {
+    "path": "api/src/application/telemetry/telemetry.types.ts",
+    "checksum": "55d6ccc23464e82ef6eed8a3d50b15f459fa01cd"
+  },
+  {
     "path": "api/src/application/two-factor/two-factor.entity.json",
     "checksum": "c8ec679ddf6dbfe41074552eb92153d405ed57fc"
   },
@@ -221,7 +237,7 @@
   },
   {
     "path": "api/src/i18n/en.ts",
-    "checksum": "b817d8a689f5593d86ff9507b820ce92dbbe0792"
+    "checksum": "e941bdcb7d4092bf783d639278e2ad8987b55691"
   },
   {
     "path": "api/src/i18n/ja.ts",
@@ -229,7 +245,7 @@
   },
   {
     "path": "api/src/i18n/ko.ts",
-    "checksum": "227b9f484313f9bc2645c9991b741e1bfc4a734d"
+    "checksum": "9208f6ff0991544ad029414e92fba3c23c6030bd"
   },
   {
     "path": "api/src/i18n/sd.generated.ts",
@@ -237,11 +253,11 @@
   },
   {
     "path": "api/src/sonamu.config.ts",
-    "checksum": "9bb9c49184f473563a649a31656ef5c38548432f"
+    "checksum": "e574678ee4fb66cf992cb89e598fee0a310e18f3"
   },
   {
     "path": "web/src/i18n/en.ts",
-    "checksum": "2a9ea8560c1d422d0980b5086e74b9fc428532d8"
+    "checksum": "98aafac605ef7b01179d8fc6752b0a19c8fb376d"
   },
   {
     "path": "web/src/i18n/ja.ts",
@@ -249,7 +265,7 @@
   },
   {
     "path": "web/src/i18n/ko.ts",
-    "checksum": "484c9c0c7fb49d73ee9a55cda0dfe77159b6d4fb"
+    "checksum": "2194e85ef99dd3c4b34c8326cb7d8c425614a624"
   },
   {
     "path": "web/src/i18n/sd.generated.ts",
@@ -266,6 +282,10 @@
   {
     "path": "web/src/services/audit-log/audit-log.types.ts",
     "checksum": "6585d69477c55a7f50b54a9a1698ffa9ac92a71f"
+  },
+  {
+    "path": "web/src/services/chat/chat.types.ts",
+    "checksum": "231b82b4a6a9223a4db695ee9444677a7d3ba837"
   },
   {
     "path": "web/src/services/company/company.types.ts",
@@ -305,7 +325,7 @@
   },
   {
     "path": "web/src/services/services.generated.ts",
-    "checksum": "52b4797003666bc59f19947b5d5bc060df17946c"
+    "checksum": "55f9849c261ad4ef41739f6b206d1e3ed2242b0b"
   },
   {
     "path": "web/src/services/session/session.types.ts",
@@ -322,6 +342,10 @@
   {
     "path": "web/src/services/tag/tag.types.ts",
     "checksum": "11791f98049ed90af3e46dcb24d763263712abdd"
+  },
+  {
+    "path": "web/src/services/telemetry/telemetry.types.ts",
+    "checksum": "c688f1d2714f0059a4eca12f7fa0ea800229d854"
   },
   {
     "path": "web/src/services/two-factor/two-factor.types.ts",

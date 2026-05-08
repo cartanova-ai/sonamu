@@ -16,6 +16,7 @@ import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as Admin2faVerifyRouteImport } from './routes/admin/2fa-verify'
 import { Route as Admin2faSetupRouteImport } from './routes/admin/2fa-setup'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
+import { Route as AdminTelemetryIndexRouteImport } from './routes/admin/telemetry/index'
 import { Route as AdminTagsIndexRouteImport } from './routes/admin/tags/index'
 import { Route as AdminSelectTestIndexRouteImport } from './routes/admin/select-test/index'
 import { Route as AdminProjectsIndexRouteImport } from './routes/admin/projects/index'
@@ -24,6 +25,7 @@ import { Route as AdminEmployeesIndexRouteImport } from './routes/admin/employee
 import { Route as AdminDocumentsIndexRouteImport } from './routes/admin/documents/index'
 import { Route as AdminDepartmentsIndexRouteImport } from './routes/admin/departments/index'
 import { Route as AdminCompaniesIndexRouteImport } from './routes/admin/companies/index'
+import { Route as AdminChatIndexRouteImport } from './routes/admin/chat/index'
 import { Route as AdminAuditLogsIndexRouteImport } from './routes/admin/audit-logs/index'
 import { Route as AdminUsersFormRouteImport } from './routes/admin/users/form'
 import { Route as AdminTagsFormRouteImport } from './routes/admin/tags/form'
@@ -72,6 +74,11 @@ const AdminUsersIndexRoute = AdminUsersIndexRouteImport.update({
   path: '/admin/users/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminTelemetryIndexRoute = AdminTelemetryIndexRouteImport.update({
+  id: '/admin/telemetry/',
+  path: '/admin/telemetry/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminTagsIndexRoute = AdminTagsIndexRouteImport.update({
   id: '/admin/tags/',
   path: '/admin/tags/',
@@ -110,6 +117,11 @@ const AdminDepartmentsIndexRoute = AdminDepartmentsIndexRouteImport.update({
 const AdminCompaniesIndexRoute = AdminCompaniesIndexRouteImport.update({
   id: '/admin/companies/',
   path: '/admin/companies/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminChatIndexRoute = AdminChatIndexRouteImport.update({
+  id: '/admin/chat/',
+  path: '/admin/chat/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAuditLogsIndexRoute = AdminAuditLogsIndexRouteImport.update({
@@ -192,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/admin/tags/form': typeof AdminTagsFormRoute
   '/admin/users/form': typeof AdminUsersFormRoute
   '/admin/audit-logs': typeof AdminAuditLogsIndexRoute
+  '/admin/chat': typeof AdminChatIndexRoute
   '/admin/companies': typeof AdminCompaniesIndexRoute
   '/admin/departments': typeof AdminDepartmentsIndexRoute
   '/admin/documents': typeof AdminDocumentsIndexRoute
@@ -200,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/admin/projects': typeof AdminProjectsIndexRoute
   '/admin/select-test': typeof AdminSelectTestIndexRoute
   '/admin/tags': typeof AdminTagsIndexRoute
+  '/admin/telemetry': typeof AdminTelemetryIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
 }
 export interface FileRoutesByTo {
@@ -221,6 +235,7 @@ export interface FileRoutesByTo {
   '/admin/tags/form': typeof AdminTagsFormRoute
   '/admin/users/form': typeof AdminUsersFormRoute
   '/admin/audit-logs': typeof AdminAuditLogsIndexRoute
+  '/admin/chat': typeof AdminChatIndexRoute
   '/admin/companies': typeof AdminCompaniesIndexRoute
   '/admin/departments': typeof AdminDepartmentsIndexRoute
   '/admin/documents': typeof AdminDocumentsIndexRoute
@@ -229,6 +244,7 @@ export interface FileRoutesByTo {
   '/admin/projects': typeof AdminProjectsIndexRoute
   '/admin/select-test': typeof AdminSelectTestIndexRoute
   '/admin/tags': typeof AdminTagsIndexRoute
+  '/admin/telemetry': typeof AdminTelemetryIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
 }
 export interface FileRoutesById {
@@ -251,6 +267,7 @@ export interface FileRoutesById {
   '/admin/tags/form': typeof AdminTagsFormRoute
   '/admin/users/form': typeof AdminUsersFormRoute
   '/admin/audit-logs/': typeof AdminAuditLogsIndexRoute
+  '/admin/chat/': typeof AdminChatIndexRoute
   '/admin/companies/': typeof AdminCompaniesIndexRoute
   '/admin/departments/': typeof AdminDepartmentsIndexRoute
   '/admin/documents/': typeof AdminDocumentsIndexRoute
@@ -259,6 +276,7 @@ export interface FileRoutesById {
   '/admin/projects/': typeof AdminProjectsIndexRoute
   '/admin/select-test/': typeof AdminSelectTestIndexRoute
   '/admin/tags/': typeof AdminTagsIndexRoute
+  '/admin/telemetry/': typeof AdminTelemetryIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
 }
 export interface FileRouteTypes {
@@ -282,6 +300,7 @@ export interface FileRouteTypes {
     | '/admin/tags/form'
     | '/admin/users/form'
     | '/admin/audit-logs'
+    | '/admin/chat'
     | '/admin/companies'
     | '/admin/departments'
     | '/admin/documents'
@@ -290,6 +309,7 @@ export interface FileRouteTypes {
     | '/admin/projects'
     | '/admin/select-test'
     | '/admin/tags'
+    | '/admin/telemetry'
     | '/admin/users'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -311,6 +331,7 @@ export interface FileRouteTypes {
     | '/admin/tags/form'
     | '/admin/users/form'
     | '/admin/audit-logs'
+    | '/admin/chat'
     | '/admin/companies'
     | '/admin/departments'
     | '/admin/documents'
@@ -319,6 +340,7 @@ export interface FileRouteTypes {
     | '/admin/projects'
     | '/admin/select-test'
     | '/admin/tags'
+    | '/admin/telemetry'
     | '/admin/users'
   id:
     | '__root__'
@@ -340,6 +362,7 @@ export interface FileRouteTypes {
     | '/admin/tags/form'
     | '/admin/users/form'
     | '/admin/audit-logs/'
+    | '/admin/chat/'
     | '/admin/companies/'
     | '/admin/departments/'
     | '/admin/documents/'
@@ -348,6 +371,7 @@ export interface FileRouteTypes {
     | '/admin/projects/'
     | '/admin/select-test/'
     | '/admin/tags/'
+    | '/admin/telemetry/'
     | '/admin/users/'
   fileRoutesById: FileRoutesById
 }
@@ -370,6 +394,7 @@ export interface RootRouteChildren {
   AdminTagsFormRoute: typeof AdminTagsFormRoute
   AdminUsersFormRoute: typeof AdminUsersFormRoute
   AdminAuditLogsIndexRoute: typeof AdminAuditLogsIndexRoute
+  AdminChatIndexRoute: typeof AdminChatIndexRoute
   AdminCompaniesIndexRoute: typeof AdminCompaniesIndexRoute
   AdminDepartmentsIndexRoute: typeof AdminDepartmentsIndexRoute
   AdminDocumentsIndexRoute: typeof AdminDocumentsIndexRoute
@@ -378,6 +403,7 @@ export interface RootRouteChildren {
   AdminProjectsIndexRoute: typeof AdminProjectsIndexRoute
   AdminSelectTestIndexRoute: typeof AdminSelectTestIndexRoute
   AdminTagsIndexRoute: typeof AdminTagsIndexRoute
+  AdminTelemetryIndexRoute: typeof AdminTelemetryIndexRoute
   AdminUsersIndexRoute: typeof AdminUsersIndexRoute
 }
 
@@ -430,6 +456,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/telemetry/': {
+      id: '/admin/telemetry/'
+      path: '/admin/telemetry'
+      fullPath: '/admin/telemetry'
+      preLoaderRoute: typeof AdminTelemetryIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/tags/': {
@@ -486,6 +519,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/companies'
       fullPath: '/admin/companies'
       preLoaderRoute: typeof AdminCompaniesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/chat/': {
+      id: '/admin/chat/'
+      path: '/admin/chat'
+      fullPath: '/admin/chat'
+      preLoaderRoute: typeof AdminChatIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/audit-logs/': {
@@ -594,6 +634,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminTagsFormRoute: AdminTagsFormRoute,
   AdminUsersFormRoute: AdminUsersFormRoute,
   AdminAuditLogsIndexRoute: AdminAuditLogsIndexRoute,
+  AdminChatIndexRoute: AdminChatIndexRoute,
   AdminCompaniesIndexRoute: AdminCompaniesIndexRoute,
   AdminDepartmentsIndexRoute: AdminDepartmentsIndexRoute,
   AdminDocumentsIndexRoute: AdminDocumentsIndexRoute,
@@ -602,6 +643,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminProjectsIndexRoute: AdminProjectsIndexRoute,
   AdminSelectTestIndexRoute: AdminSelectTestIndexRoute,
   AdminTagsIndexRoute: AdminTagsIndexRoute,
+  AdminTelemetryIndexRoute: AdminTelemetryIndexRoute,
   AdminUsersIndexRoute: AdminUsersIndexRoute,
 }
 export const routeTree = rootRouteImport

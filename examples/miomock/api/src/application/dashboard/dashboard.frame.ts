@@ -154,7 +154,6 @@ class DashboardFrameClass extends BaseFrameClass {
     let currentPeriod: ActivityPeriod = initialPeriod;
 
     ctx.ws.onMessage("setPeriod", ({ period }) => {
-      console.log(period);
       currentPeriod = period;
     });
 

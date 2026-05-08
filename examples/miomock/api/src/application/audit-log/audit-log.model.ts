@@ -1,6 +1,5 @@
 import assert from "assert";
 
-import { omit } from "radashi";
 import {
   api,
   asArray,
@@ -148,7 +147,7 @@ class AuditLogModelClass extends BaseModelClass<
       try {
         const activity = {
           id: result.id,
-          ...omit(newAuditLog, ["new_value", "old_value"]),
+          ...newAuditLog,
         };
         Sonamu.websocketRuntime.publishToRoom(
           "dashboard:recent-activity:admin",

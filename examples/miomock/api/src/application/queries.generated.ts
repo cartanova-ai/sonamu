@@ -43,6 +43,7 @@ import {
 } from "./sonamu.generated";
 import { SyncFixtureListParams } from "./sync-fixture/sync-fixture.types";
 import { TagListParams } from "./tag/tag.types";
+import { TelemetryQueryParams } from "./telemetry/telemetry.types";
 import { UserListParams } from "./user/user.types";
 
 export namespace UserService {
@@ -59,6 +60,16 @@ export namespace UserService {
 
   export const trxTest = (): SSRQuery =>
     createSSRQuery("UserModel", "trxTest", [], ["User", "trxTest"]);
+}
+
+export namespace TelemetryService {
+  export const getTelemetrySnapshot = (rawParams?: TelemetryQueryParams): SSRQuery =>
+    createSSRQuery(
+      "TelemetryFrame",
+      "getSnapshot",
+      [rawParams],
+      ["Telemetry", "getTelemetrySnapshot"],
+    );
 }
 
 export namespace TagService {
