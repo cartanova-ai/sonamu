@@ -6,6 +6,17 @@ pre-commit:
       stage_fixed: true
     oxfmt:
       glob: "**/*.{js,jsx,ts,tsx,mjs,cjs,cts,mts,json,jsonc}"
+      # .oxfmtrc.json의 ignorePatterns와 동일하게 미러링 — staged 파일이 모두
+      # ignore 대상일 때 oxfmt가 빈 입력으로 종료(exit 2)되어 훅이 실패하는 걸 방지
+      exclude:
+        - "**/dist/**"
+        - "**/build/**"
+        - "**/node_modules/**"
+        - "examples/**/web/src/services/**"
+        - "modules/create-sonamu/template/**"
+        - "**/*.gen.ts"
+        - "**/*.generated.ts"
+        - "**/*.generated.tsx"
       run: pnpm exec oxfmt {staged_files}
       stage_fixed: true
     sonamu-typecheck:
