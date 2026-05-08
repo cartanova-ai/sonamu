@@ -13,6 +13,17 @@ import {
   type WebSocketRoomId,
   type WebSocketUserId,
 } from "./ws-registry";
+import {
+  type TelemetryContextProvider,
+  type WebSocketTelemetryConnectionSnapshot,
+  type WebSocketTelemetryConnectionContext,
+  type WebSocketTelemetryController,
+  type WebSocketTelemetryOptions,
+  type TelemetryInspectableConnection,
+  createWebSocketTelemetryController,
+  isPromiseLike,
+} from "./ws-telemetry";
+import { parseTraceParent, generateSpanId } from "./ws-telemetry-trace";
 
 // transport-level 상수와 queue threshold를 한 파일에 모아 lifecycle/backpressure 정책을 중앙화함
 const WS_CONNECTING = 0;
@@ -32,12 +43,22 @@ const OUTBOUND_BATCH_SIZE = 50;
 const OUTBOUND_RETRY_DELAY_MS = 5;
 
 // envelope을 `{event, data}` 형태로 고정해 server handler와 generated client가 같은 framing contract를 쓰게 함
+// meta는 optional이므로 기존 `{event, data}` 메시지도 그대로 파싱됨 (backward-compatible)
 const WebSocketEnvelopeSchema = z.object({
   event: z.string(),
   data: z.unknown(),
+  meta: z
+    .object({
+      traceparent: z.string().optional(),
+      tracestate: z.string().optional(),
+    })
+    .optional(),
 });
 
-type MessageHandler<T> = (data: T) => void | Promise<void>;
+type MessageHandler<T> = (
+  data: T,
+  telemetryContext?: WebSocketTelemetryConnectionContext,
+) => void | Promise<void>;
 type CloseHandler = () => void | Promise<void>;
 
 export type WebSocketEventMap = Record<string, unknown>;
@@ -81,34 +102,50 @@ type WebSocketConnectionOptions<TOut extends z.ZodRawShape, TIn extends z.ZodRaw
   outEvents: z.ZodObject<TOut>;
   inEvents: z.ZodObject<TIn>;
   registry: WebSocketRegistry;
+  telemetryController: WebSocketTelemetryController;
+  traceId?: string;
+  spanId?: string;
+  parentSpanId?: string;
+  sampled?: boolean;
 };
 
 export type WebSocketRuntimeOptions = {
   nodeId?: string;
   presenceStore?: WebSocketPresenceStore;
   clusterBus?: WebSocketClusterBus;
+  telemetry?: boolean | WebSocketTelemetryOptions;
 };
 
 // registry를 소유하고 connection 생성/shutdown을 담당함. Sonamu 애플리케이션 수명주기와 같이 움직이도록 설계함
 export class WebSocketRuntime {
   readonly registry: WebSocketRegistry;
+  readonly telemetryController: WebSocketTelemetryController;
 
   constructor(options: WebSocketRuntimeOptions = {}) {
+    this.telemetryController = createWebSocketTelemetryController(options.telemetry, {
+      runtimeId: randomUUID(),
+      nodeId: options.nodeId ?? "local",
+    });
     const registryOptions: WebSocketRegistryOptions = {
       nodeId: options.nodeId,
       presenceStore: options.presenceStore,
       clusterBus: options.clusterBus,
+      telemetryController: this.telemetryController,
     };
     this.registry = new WebSocketRegistry(registryOptions);
   }
 
   registerConnection<TOutSchema extends z.ZodRawShape, TInSchema extends z.ZodRawShape>(
     socket: WebSocket,
-    options: Omit<WebSocketConnectionOptions<TOutSchema, TInSchema>, "registry">,
+    options: Omit<
+      WebSocketConnectionOptions<TOutSchema, TInSchema>,
+      "registry" | "telemetryController"
+    >,
   ): WebSocketConnection<InferWebSocketEventMap<TOutSchema>, InferWebSocketEventMap<TInSchema>> {
     return new WebSocketConnectionImpl(socket, {
       ...options,
       registry: this.registry,
+      telemetryController: this.telemetryController,
     });
   }
 
@@ -138,6 +175,7 @@ export class WebSocketRuntime {
     reason = "Server shutting down",
   ): Promise<void> {
     await this.registry.shutdown(code, reason);
+    await this.telemetryController.shutdown();
   }
 }
 
@@ -145,13 +183,12 @@ export function createWebSocketRuntime(options: WebSocketRuntimeOptions = {}): W
   return new WebSocketRuntime(options);
 }
 
-class WebSocketConnectionImpl<
-  TOutSchema extends z.ZodRawShape,
-  TInSchema extends z.ZodRawShape,
-> implements WebSocketConnection<
-  InferWebSocketEventMap<TOutSchema>,
-  InferWebSocketEventMap<TInSchema>
-> {
+class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extends z.ZodRawShape>
+  implements
+    WebSocketConnection<InferWebSocketEventMap<TOutSchema>, InferWebSocketEventMap<TInSchema>>,
+    TelemetryInspectableConnection,
+    TelemetryContextProvider
+{
   readonly id = randomUUID();
   readonly transport = "ws";
   readonly namespace: string;
@@ -159,13 +196,19 @@ class WebSocketConnectionImpl<
   private readonly closeCallbacks: CloseHandler[] = [];
   private readonly messageHandlers = new Map<string, Array<MessageHandler<unknown>>>();
   private readonly pendingMessages: ParsedEnvelope[] = [];
-  private readonly pendingOutboundMessages: string[] = [];
+  private readonly pendingOutboundMessages: Array<{ payload: string; event: string }> = [];
   private readonly closePromise: Promise<void>;
   private readonly resolveClosePromise: () => void;
   private readonly heartbeatMs: number;
   private readonly maxPayload?: number;
   private readonly eventSchemasIn: Record<string, z.ZodTypeAny>;
   private readonly eventSchemasOut: Record<string, z.ZodTypeAny>;
+
+  private readonly connectionTraceId?: string;
+  private readonly connectionSpanId?: string;
+  private readonly connectionParentSpanId?: string;
+  private readonly connectionSampled?: boolean;
+  private readonly connectionStartedAt = performance.now();
 
   private closedInternal = false;
   private closeStarted = false;
@@ -181,6 +224,10 @@ class WebSocketConnectionImpl<
     this.namespace = options.namespace ?? "default";
     this.heartbeatMs = options.heartbeat ?? 30000;
     this.maxPayload = options.maxPayload;
+    this.connectionTraceId = options.traceId;
+    this.connectionSpanId = options.spanId;
+    this.connectionParentSpanId = options.parentSpanId;
+    this.connectionSampled = options.sampled;
     this.eventSchemasIn = options.inEvents.shape as unknown as Record<string, z.ZodTypeAny>;
     this.eventSchemasOut = options.outEvents.shape as unknown as Record<string, z.ZodTypeAny>;
 
@@ -248,6 +295,49 @@ class WebSocketConnectionImpl<
     this.options.registry.clearUserId(this.id);
   }
 
+  getTelemetrySnapshot(): WebSocketTelemetryConnectionSnapshot {
+    return {
+      pendingInboundMessages: this.pendingMessages.length,
+      pendingOutboundMessages: this.pendingOutboundMessages.length,
+      socketBufferedBytes: this.socket.readyState === WS_OPEN ? this.socket.bufferedAmount : 0,
+    };
+  }
+
+  getTelemetryContext(): WebSocketTelemetryConnectionContext {
+    return {
+      traceId: this.connectionTraceId,
+      spanId: this.connectionSpanId,
+      parentSpanId: this.connectionParentSpanId,
+      sampled: this.connectionSampled,
+    };
+  }
+
+  private emitInboundRejected(reason: string, event?: string): void {
+    this.options.telemetryController.emit({
+      name: "ws.message.rejected",
+      level: "warn",
+      connectionId: this.id,
+      namespace: this.namespace,
+      detail: event !== undefined ? { reason, event } : { reason },
+      traceId: this.connectionTraceId,
+      spanId: this.connectionSpanId,
+      parentSpanId: this.connectionParentSpanId,
+      sampled: this.connectionSampled,
+    });
+    this.options.telemetryController.recordMetric({
+      name: "sonamu.ws.messages",
+      kind: "counter",
+      value: 1,
+      unit: "1",
+      tags: { direction: "inbound", outcome: "rejected" },
+      namespace: this.namespace,
+      traceId: this.connectionTraceId,
+      spanId: this.connectionSpanId,
+      parentSpanId: this.connectionParentSpanId,
+      sampled: this.connectionSampled,
+    });
+  }
+
   // transport 종료 도중 예외가 나도 markClosed가 반드시 실행되도록 try/finally로 감쌈
   close(code?: number, reason?: string): void {
     if (this.closedInternal || this.closeStarted || this.socket.readyState === WS_CLOSED) {
@@ -258,7 +348,7 @@ class WebSocketConnectionImpl<
     try {
       this.closeTransport(code, reason);
     } finally {
-      this.markClosed();
+      this.markClosed(code, reason);
     }
   }
 
@@ -267,23 +357,37 @@ class WebSocketConnectionImpl<
     this.enqueueMessageTask(async () => {
       const text = normalizeMessage(raw);
       if (this.maxPayload !== undefined && Buffer.byteLength(text) > this.maxPayload) {
+        this.emitInboundRejected("maxPayload");
         this.close(WS_CLOSE_CODE_MESSAGE_TOO_BIG, "Message too large");
         return;
       }
 
       const parsedEnvelope = safeParseEnvelope(text);
       if (!parsedEnvelope) {
+        this.emitInboundRejected("invalidPayload");
         this.close(WS_CLOSE_CODE_INVALID_FRAME_PAYLOAD_DATA, "Invalid message payload");
         return;
       }
 
+      this.options.telemetryController.emit({
+        name: "ws.message.received",
+        level: "debug",
+        connectionId: this.id,
+        namespace: this.namespace,
+        detail: { event: parsedEnvelope.event },
+        traceId: this.connectionTraceId,
+        spanId: this.connectionSpanId,
+        parentSpanId: this.connectionParentSpanId,
+        sampled: this.connectionSampled,
+      });
       this.options.registry.touch(this.id);
       await this.dispatchEnvelope(parsedEnvelope);
     });
   };
 
-  private readonly handleClose = () => {
-    this.markClosed();
+  private readonly handleClose = (code?: number, reason?: Buffer | string) => {
+    const reasonText = typeof reason === "string" ? reason : reason?.toString();
+    this.markClosed(code, reasonText);
   };
 
   // 소켓이 transport error를 emit하면 즉시 1011 close로 수렴시켜 상태 누락을 막음
@@ -296,6 +400,48 @@ class WebSocketConnectionImpl<
     this.options.registry.touch(this.id);
   };
 
+  // envelope의 meta.traceparent로부터 trace context를 추출함
+  // invalid traceparent는 연결을 거부하지 않고 debug 레벨 경고만 emit함
+  private resolveMessageTraceContext(
+    envelope: ParsedEnvelope,
+  ): WebSocketTelemetryConnectionContext {
+    const messageSpanId = generateSpanId();
+
+    if (
+      this.options.telemetryController.getTraceOptions().propagateMessageTrace &&
+      envelope.meta?.traceparent
+    ) {
+      const parsed = parseTraceParent(envelope.meta.traceparent);
+      if (parsed) {
+        return {
+          traceId: parsed.traceId,
+          spanId: messageSpanId,
+          parentSpanId: parsed.parentId,
+          sampled: parsed.sampled,
+        };
+      }
+      // invalid traceparent: warn but do not reject
+      this.options.telemetryController.emit({
+        name: "ws.trace.invalid",
+        level: "debug",
+        connectionId: this.id,
+        namespace: this.namespace,
+        detail: { source: "message", traceparent: envelope.meta.traceparent },
+        traceId: this.connectionTraceId,
+        spanId: this.connectionSpanId,
+        parentSpanId: this.connectionParentSpanId,
+        sampled: this.connectionSampled,
+      });
+    }
+
+    return {
+      traceId: this.connectionTraceId,
+      spanId: messageSpanId,
+      parentSpanId: this.connectionSpanId ?? this.connectionParentSpanId,
+      sampled: this.connectionSampled,
+    };
+  }
+
   // event 존재 여부 → schema 검증 → handler 실행 순으로 분기함
   // handler가 아직 등록되지 않은 초기 메시지는 버퍼에 보관했다가 onMessage 등록 시 flush함
   // handler는 `await`으로 순차 실행해 한 connection 안의 메시지 순서를 보장함
@@ -304,26 +450,81 @@ class WebSocketConnectionImpl<
     const schema = this.eventSchemasIn[envelope.event];
 
     if (!schema) {
+      this.emitInboundRejected("unknownEvent", envelope.event);
       this.close(WS_CLOSE_CODE_POLICY_VIOLATION, "Unknown event");
       return;
     }
 
     const parsed = schema.safeParse(envelope.data);
     if (!parsed.success) {
+      this.emitInboundRejected("invalidData", envelope.event);
       this.close(WS_CLOSE_CODE_INVALID_FRAME_PAYLOAD_DATA, "Invalid event data");
       return;
     }
 
     if (!handlers || handlers.length === 0) {
       if (this.pendingMessages.length >= MAX_PENDING_MESSAGES) {
+        this.options.telemetryController.emit({
+          name: "ws.message.buffer.dropped",
+          level: "warn",
+          connectionId: this.id,
+          namespace: this.namespace,
+          detail: { event: envelope.event },
+        });
         this.pendingMessages.shift();
       }
       this.pendingMessages.push(envelope);
+      this.options.telemetryController.emit({
+        name: "ws.message.buffered",
+        level: "debug",
+        connectionId: this.id,
+        namespace: this.namespace,
+        detail: { event: envelope.event },
+      });
       return;
     }
 
-    for (const handler of handlers) {
-      await handler(parsed.data);
+    const traceCtx = this.resolveMessageTraceContext(envelope);
+    try {
+      for (const handler of handlers) {
+        await handler(parsed.data, traceCtx);
+      }
+      this.options.telemetryController.emit({
+        name: "ws.message.dispatched",
+        level: "debug",
+        connectionId: this.id,
+        namespace: this.namespace,
+        detail: { event: envelope.event },
+        traceId: traceCtx.traceId,
+        spanId: traceCtx.spanId,
+        parentSpanId: traceCtx.parentSpanId,
+        sampled: traceCtx.sampled,
+      });
+      this.options.telemetryController.recordMetric({
+        name: "sonamu.ws.messages",
+        kind: "counter",
+        value: 1,
+        unit: "1",
+        tags: { direction: "inbound", event: envelope.event, outcome: "accepted" },
+        namespace: this.namespace,
+        traceId: traceCtx.traceId,
+        spanId: traceCtx.spanId,
+        parentSpanId: traceCtx.parentSpanId,
+        sampled: traceCtx.sampled,
+      });
+    } catch (error) {
+      this.options.telemetryController.emit({
+        name: "ws.message.failed",
+        level: "error",
+        connectionId: this.id,
+        namespace: this.namespace,
+        detail: { event: envelope.event },
+        traceId: traceCtx.traceId,
+        spanId: traceCtx.spanId,
+        parentSpanId: traceCtx.parentSpanId,
+        sampled: traceCtx.sampled,
+      });
+      throw error;
     }
   }
 
@@ -353,15 +554,45 @@ class WebSocketConnectionImpl<
   private publishValidated(event: string, data: unknown): void {
     const schema = this.eventSchemasOut[event];
     if (!schema) {
+      this.options.telemetryController.emit({
+        name: "ws.publish.rejected",
+        level: "error",
+        connectionId: this.id,
+        namespace: this.namespace,
+        detail: { event, reason: "unknownEvent" },
+        traceId: this.connectionTraceId,
+        spanId: this.connectionSpanId,
+        parentSpanId: this.connectionParentSpanId,
+      });
       throw new Error(`Unknown websocket event: ${event}`);
     }
 
     const parsed = schema.safeParse(data);
     if (!parsed.success) {
+      this.options.telemetryController.emit({
+        name: "ws.publish.rejected",
+        level: "error",
+        connectionId: this.id,
+        namespace: this.namespace,
+        detail: { event, reason: "invalidPayload" },
+        traceId: this.connectionTraceId,
+        spanId: this.connectionSpanId,
+        parentSpanId: this.connectionParentSpanId,
+      });
       throw new Error(`Invalid websocket event payload: ${event}`);
     }
 
     if (this.closedInternal || this.socket.readyState !== WS_OPEN) {
+      this.options.telemetryController.emit({
+        name: "ws.publish.dropped",
+        level: "debug",
+        connectionId: this.id,
+        namespace: this.namespace,
+        detail: { event, reason: "connectionClosed" },
+        traceId: this.connectionTraceId,
+        spanId: this.connectionSpanId,
+        parentSpanId: this.connectionParentSpanId,
+      });
       return;
     }
 
@@ -370,12 +601,13 @@ class WebSocketConnectionImpl<
         event,
         data: parsed.data,
       }),
+      event,
     );
   }
 
   // listener 해제 / heartbeat 중단 / pending queue 비움 / registry unregister / onClose 실행 / waitForClose resolve 을 한 곳에 모아 원자적으로 처리함
   // async onClose가 reject해도 unhandled rejection으로 새지 않도록 catch로 격리함
-  private markClosed(): void {
+  private markClosed(code?: number, _reason?: string): void {
     if (this.closedInternal) {
       return;
     }
@@ -383,6 +615,29 @@ class WebSocketConnectionImpl<
     this.closedInternal = true;
     this.closeStarted = false;
     this.stopHeartbeat();
+    this.options.telemetryController.emit({
+      name: "ws.connection.closed",
+      level: "info",
+      connectionId: this.id,
+      namespace: this.namespace,
+      traceId: this.connectionTraceId,
+      spanId: this.connectionSpanId,
+      parentSpanId: this.connectionParentSpanId,
+    });
+    if (this.options.telemetryController.getTraceOptions().recordConnectionLifetimeSpan) {
+      this.options.telemetryController.recordSpan({
+        operationName: "ws.connection.lifetime",
+        kind: "server",
+        durationMs: performance.now() - this.connectionStartedAt,
+        status: deriveLifetimeStatus(code),
+        connectionId: this.id,
+        namespace: this.namespace,
+        traceId: this.connectionTraceId,
+        spanId: this.connectionSpanId,
+        parentSpanId: this.connectionParentSpanId,
+        sampled: this.connectionSampled,
+      });
+    }
     this.socket.off("message", this.handleMessage);
     this.socket.off("close", this.handleClose);
     this.socket.off("error", this.handleError);
@@ -418,6 +673,12 @@ class WebSocketConnectionImpl<
       }
 
       if (this.awaitingPong) {
+        this.options.telemetryController.emit({
+          name: "ws.heartbeat.timeout",
+          level: "warn",
+          connectionId: this.id,
+          namespace: this.namespace,
+        });
         this.close(WS_CLOSE_CODE_GOING_AWAY, "Heartbeat timeout");
         return;
       }
@@ -470,13 +731,32 @@ class WebSocketConnectionImpl<
   }
 
   // queue가 한계에 도달하면 1013으로 닫아 느린 소비자가 메모리를 끝없이 잡아먹지 못하게 함
-  private enqueueOutboundMessage(payload: string): void {
+  private enqueueOutboundMessage(payload: string, event: string): void {
     if (this.pendingOutboundMessages.length >= MAX_PENDING_OUTBOUND_MESSAGES) {
+      this.options.telemetryController.emit({
+        name: "ws.backpressure.overflow",
+        level: "error",
+        connectionId: this.id,
+        namespace: this.namespace,
+        traceId: this.connectionTraceId,
+        spanId: this.connectionSpanId,
+        parentSpanId: this.connectionParentSpanId,
+      });
       this.close(WS_CLOSE_CODE_TRY_AGAIN_LATER, "WebSocket backpressure overflow");
       return;
     }
 
-    this.pendingOutboundMessages.push(payload);
+    this.pendingOutboundMessages.push({ payload, event });
+    this.options.telemetryController.emit({
+      name: "ws.publish.queued",
+      level: "debug",
+      connectionId: this.id,
+      namespace: this.namespace,
+      detail: { event },
+      traceId: this.connectionTraceId,
+      spanId: this.connectionSpanId,
+      parentSpanId: this.connectionParentSpanId,
+    });
     this.scheduleOutboundFlush();
   }
 
@@ -507,6 +787,15 @@ class WebSocketConnectionImpl<
     }
 
     if (this.socket.bufferedAmount > MAX_SOCKET_BUFFERED_AMOUNT) {
+      this.options.telemetryController.emit({
+        name: "ws.backpressure.delayed",
+        level: "warn",
+        connectionId: this.id,
+        namespace: this.namespace,
+        traceId: this.connectionTraceId,
+        spanId: this.connectionSpanId,
+        parentSpanId: this.connectionParentSpanId,
+      });
       this.scheduleOutboundFlush(OUTBOUND_RETRY_DELAY_MS);
       return;
     }
@@ -517,14 +806,71 @@ class WebSocketConnectionImpl<
       this.pendingOutboundMessages.length > 0 &&
       this.socket.readyState === WS_OPEN
     ) {
-      const payload = this.pendingOutboundMessages.shift();
-      if (!payload) {
+      const next = this.pendingOutboundMessages.shift();
+      if (!next) {
         break;
       }
+      const { payload, event } = next;
 
+      const startedAt = performance.now();
       try {
         this.socket.send(payload);
-      } catch {
+        const durationMs = performance.now() - startedAt;
+        this.options.telemetryController.emit({
+          name: "ws.publish.sent",
+          level: "debug",
+          connectionId: this.id,
+          namespace: this.namespace,
+          detail: { event },
+          traceId: this.connectionTraceId,
+          spanId: this.connectionSpanId,
+          parentSpanId: this.connectionParentSpanId,
+        });
+        this.options.telemetryController.recordSpan({
+          operationName: "ws.publish.send",
+          kind: "producer",
+          durationMs,
+          status: "unset",
+          connectionId: this.id,
+          namespace: this.namespace,
+          attributes: { event },
+          traceId: this.connectionTraceId,
+          spanId: this.connectionSpanId,
+          parentSpanId: this.connectionParentSpanId,
+        });
+        this.options.telemetryController.recordMetric({
+          name: "sonamu.ws.publishes",
+          kind: "counter",
+          value: 1,
+          unit: "1",
+          tags: { outcome: "sent", event },
+          namespace: this.namespace,
+        });
+      } catch (error) {
+        const durationMs = performance.now() - startedAt;
+        this.options.telemetryController.emit({
+          name: "ws.publish.failed",
+          level: "error",
+          connectionId: this.id,
+          namespace: this.namespace,
+          detail: { event },
+          traceId: this.connectionTraceId,
+          spanId: this.connectionSpanId,
+          parentSpanId: this.connectionParentSpanId,
+        });
+        this.options.telemetryController.recordSpan({
+          operationName: "ws.publish.send",
+          kind: "producer",
+          durationMs,
+          status: "error",
+          connectionId: this.id,
+          namespace: this.namespace,
+          attributes: { event },
+          errorType: error instanceof Error ? error.name : typeof error,
+          traceId: this.connectionTraceId,
+          spanId: this.connectionSpanId,
+          parentSpanId: this.connectionParentSpanId,
+        });
         this.close(WS_CLOSE_CODE_INTERNAL_ERROR, "Outbound publish failed");
         return;
       }
@@ -586,6 +932,9 @@ function truncateCloseReason(reason?: string): string | undefined {
     : Buffer.from(reason).subarray(0, 123).toString("utf-8");
 }
 
-function isPromiseLike(value: unknown): value is Promise<void> {
-  return typeof value === "object" && value !== null && "then" in value && "catch" in value;
+// connection lifetime span의 status를 close code 기준으로 분기함 (1000/1001 정상 종료, 그 외 known code error, code 미상은 unset)
+function deriveLifetimeStatus(code: number | undefined): "ok" | "error" | "unset" {
+  if (code === undefined) return "unset";
+  if (code === 1000 || code === 1001) return "ok";
+  return "error";
 }

@@ -14,6 +14,12 @@ import {
   type WebSocketPresenceStore,
   type WebSocketSessionPresence,
 } from "./ws-presence-store";
+import {
+  type TelemetryContextProvider,
+  NoopWebSocketTelemetryController,
+  type WebSocketTelemetryConnectionContext,
+  type WebSocketTelemetryController,
+} from "./ws-telemetry";
 
 export type {
   ManagedWebSocketConnection,
@@ -27,6 +33,7 @@ export type WebSocketRegistryOptions = {
   nodeId?: string;
   presenceStore?: WebSocketPresenceStore;
   clusterBus?: WebSocketClusterBus;
+  telemetryController?: WebSocketTelemetryController;
 };
 
 export class WebSocketRegistry {
@@ -36,11 +43,14 @@ export class WebSocketRegistry {
   readonly clusterBus: WebSocketClusterBus;
   readonly audienceResolver: WebSocketAudienceResolver;
   readonly deliveryEngine: WebSocketDeliveryEngine;
+  readonly telemetryController: WebSocketTelemetryController;
 
   constructor(options: WebSocketRegistryOptions = {}) {
     this.nodeId = options.nodeId ?? "local";
     this.presenceStore = options.presenceStore ?? new InMemoryWebSocketPresenceStore();
     this.clusterBus = options.clusterBus ?? new NoopWebSocketClusterBus();
+    this.telemetryController =
+      options.telemetryController ?? new NoopWebSocketTelemetryController();
     this.audienceResolver = new WebSocketAudienceResolver({
       nodeId: this.nodeId,
       presenceStore: this.presenceStore,
@@ -50,6 +60,22 @@ export class WebSocketRegistry {
       localConnections: this.localConnections,
       audienceResolver: this.audienceResolver,
       clusterBus: this.clusterBus,
+      telemetryController: this.telemetryController,
+    });
+
+    this.telemetryController.registerMetricSource({
+      collect: (_now) => {
+        const stats = this.presenceStore.getStats();
+        const localSnapshot = this.localConnections.getTelemetrySnapshot();
+        return {
+          activeConnections: stats.totalConnections,
+          activeConnectionsByNamespace: stats.byNamespace,
+          roomCount: stats.totalRooms,
+          pendingInboundMessages: localSnapshot.pendingInboundMessages,
+          pendingOutboundMessages: localSnapshot.pendingOutboundMessages,
+          socketBufferedBytes: localSnapshot.socketBufferedBytes,
+        };
+      },
     });
   }
 
@@ -58,21 +84,66 @@ export class WebSocketRegistry {
     active: boolean = true,
   ): WebSocketConnectionMeta {
     this.localConnections.register(connection);
-    return this.presenceStore.register({
+    const meta = this.presenceStore.register({
       sessionId: connection.id,
       nodeId: this.nodeId,
       namespace: connection.namespace,
       active,
     });
+    this.telemetryController.emit({
+      name: "ws.connection.registered",
+      level: "info",
+      connectionId: connection.id,
+      namespace: connection.namespace,
+      ...getConnectionTelemetryContext(connection),
+    });
+    this.telemetryController.recordMetric({
+      name: "sonamu.ws.connections",
+      kind: "counter",
+      value: 1,
+      unit: "1",
+      tags: { outcome: "registered", namespace: connection.namespace },
+    });
+    return meta;
   }
 
   activate(connectionId: string): void {
+    if (!this.presenceStore.getConnection(connectionId)) {
+      this.emitMutationSkipped(connectionId, { operation: "activate" });
+      return;
+    }
+
     this.presenceStore.activate(connectionId);
+    this.telemetryController.emit({
+      name: "ws.connection.activated",
+      level: "info",
+      connectionId,
+      ...getConnectionTelemetryContext(this.localConnections.getConnection(connectionId)),
+    });
   }
 
   unregister(connectionId: string): void {
-    this.presenceStore.unregister(connectionId);
+    const telemetryContext = getConnectionTelemetryContext(
+      this.localConnections.getConnection(connectionId),
+    );
+    const meta = this.presenceStore.unregister(connectionId);
     this.localConnections.unregister(connectionId);
+    this.telemetryController.emit({
+      name: "ws.connection.unregistered",
+      level: "debug",
+      connectionId,
+      namespace: meta?.namespace,
+      ...telemetryContext,
+    });
+    if (meta) {
+      this.telemetryController.recordMetric({
+        name: "sonamu.ws.connections",
+        kind: "counter",
+        value: 1,
+        unit: "1",
+        tags: { outcome: "unregistered", namespace: meta.namespace },
+      });
+    }
   }
 
   touch(connectionId: string): void {
@@ -80,19 +151,92 @@ export class WebSocketRegistry {
   }
 
   setUserId(connectionId: string, userId: WebSocketUserId): void {
+    if (!this.presenceStore.getConnection(connectionId)) {
+      this.emitMutationSkipped(connectionId, { operation: "setUserId", userId });
+      return;
+    }
+
     this.presenceStore.setUserId(connectionId, userId);
+    const meta = this.presenceStore.getConnection(connectionId);
+    this.telemetryController.emit({
+      name: "ws.user.bound",
+      level: "debug",
+      connectionId,
+      namespace: meta?.namespace,
+      detail: { userId },
+      ...getConnectionTelemetryContext(this.localConnections.getConnection(connectionId)),
+    });
   }
 
   clearUserId(connectionId: string): void {
+    const meta = this.presenceStore.getConnection(connectionId);
+    if (!meta) {
+      this.emitMutationSkipped(connectionId, { operation: "clearUserId" });
+      return;
+    }
+
+    const userId = meta.userId;
     this.presenceStore.clearUserId(connectionId);
+    this.telemetryController.emit({
+      name: "ws.user.cleared",
+      level: "debug",
+      connectionId,
+      namespace: meta.namespace,
+      detail: userId !== undefined ? { userId } : undefined,
+      ...getConnectionTelemetryContext(this.localConnections.getConnection(connectionId)),
+    });
   }
 
   join(connectionId: string, roomId: WebSocketRoomId): void {
+    if (!this.presenceStore.getConnection(connectionId)) {
+      this.emitMutationSkipped(connectionId, { operation: "join", roomId });
+      return;
+    }
+
     this.presenceStore.join(connectionId, roomId);
+    const meta = this.presenceStore.getConnection(connectionId);
+    this.telemetryController.emit({
+      name: "ws.room.joined",
+      level: "debug",
+      connectionId,
+      namespace: meta?.namespace,
+      detail: { roomId },
+      ...getConnectionTelemetryContext(this.localConnections.getConnection(connectionId)),
+    });
   }
 
   leave(connectionId: string, roomId: WebSocketRoomId): void {
+    const meta = this.presenceStore.getConnection(connectionId);
+    if (!meta) {
+      this.emitMutationSkipped(connectionId, { operation: "leave", roomId });
+      return;
+    }
+
     this.presenceStore.leave(connectionId, roomId);
+    this.telemetryController.emit({
+      name: "ws.room.left",
+      level: "debug",
+      connectionId,
+      namespace: meta.namespace,
+      detail: { roomId },
+      ...getConnectionTelemetryContext(this.localConnections.getConnection(connectionId)),
+    });
+  }
+
+  private emitMutationSkipped(
+    connectionId: string,
+    detail: {
+      operation: "activate" | "setUserId" | "clearUserId" | "join" | "leave";
+      roomId?: WebSocketRoomId;
+      userId?: WebSocketUserId;
+    },
+  ): void {
+    this.telemetryController.emit({
+      name: "ws.registry.mutation.skipped",
+      level: "debug",
+      connectionId,
+      detail: { ...detail, reason: "connectionMissing" },
+    });
   }
 
   broadcast(event: string, data: unknown, namespace?: string): void {
@@ -135,4 +279,22 @@ export class WebSocketRegistry {
     this.closeAll(code, reason);
     await this.deliveryEngine.shutdown();
   }
+}
+
+function getConnectionTelemetryContext(
+  connection: ManagedWebSocketConnection | undefined,
+): WebSocketTelemetryConnectionContext {
+  if (!connection || !isTelemetryContextProvider(connection)) {
+    return {};
+  }
+
+  return connection.getTelemetryContext();
+}
+
+function isTelemetryContextProvider(
+  connection: ManagedWebSocketConnection,
+): connection is ManagedWebSocketConnection & TelemetryContextProvider {
+  return (
+    "getTelemetryContext" in connection && typeof connection.getTelemetryContext === "function"
+  );
 }

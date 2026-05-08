@@ -31,6 +31,10 @@ import { type KeyGenerator } from "../storage/types";
 import { UploadedFile } from "../storage/uploaded-file";
 import { createMockSSEFactory } from "../stream/sse";
 import { WebSocketRuntime, type WebSocketConnection, type WebSocketEventMap } from "../stream/ws";
+import {
+  type TelemetryContextProvider,
+  type WebSocketTelemetryConnectionContext,
+} from "../stream/ws-telemetry";
 import { type Syncer } from "../syncer/syncer";
 import { type WorkflowManager } from "../tasks/workflow-manager";
 import { type DevVitestManager } from "../testing/dev-vitest-manager";
@@ -1055,6 +1059,21 @@ class SonamuClass {
   ): Promise<void> {
     const matchedApi = this.findMatchedApi(request);
     if (!matchedApi?.websocketOptions) {
+      const traceContext = this.websocketRuntime.telemetryController.createConnectionContext({
+        headers: request.headers,
+      });
+      this.websocketRuntime.telemetryController.emit({
+        name: "ws.connection.rejected",
+        level: "warn",
+        detail: {
+          reason: "routeNotFound",
+          path: request.url,
+        },
+        traceId: traceContext.traceId,
+        spanId: traceContext.spanId,
+        parentSpanId: traceContext.parentSpanId,
+        sampled: traceContext.sampled,
+      });
       socket.close(1008, "WebSocket route not found");
       return;
     }
@@ -1078,8 +1097,13 @@ class SonamuClass {
       const socket = connection.socket;
       let wsContext: WebSocketContext | null = null;
       let rawWs: ReturnType<WebSocketRuntime["registerConnection"]> | null = null;
+      let preRegisterPhase: "guard" | "query" | "register" | "handler" = "guard";
+      let traceContext: WebSocketTelemetryConnectionContext = {};
 
       try {
+        traceContext = this.websocketRuntime.telemetryController.createConnectionContext({
+          headers: request.headers,
+        });
         runGuards({
           guards: api.options.guards,
           config,
@@ -1087,7 +1111,9 @@ class SonamuClass {
           api,
         });
 
+        preRegisterPhase = "query";
         const reqBody = await this.parseWebSocketRequestParams(api, request);
+        preRegisterPhase = "register";
         rawWs = this.websocketRuntime.registerConnection(socket, {
           outEvents: api.websocketOptions!.outEvents,
           inEvents: api.websocketOptions!.inEvents,
@@ -1095,11 +1121,16 @@ class SonamuClass {
           heartbeat: api.websocketOptions!.heartbeat,
           maxPayload: api.websocketOptions!.maxPayload,
           active: false,
+          traceId: traceContext.traceId,
+          spanId: traceContext.spanId,
+          parentSpanId: traceContext.parentSpanId,
+          sampled: traceContext.sampled,
         });
 
         const scopedWs = this.createScopedWebSocketConnection(rawWs, () => wsContext);
         wsContext = await this.createWebSocketContext(config, request, scopedWs);
         this.websocketRuntime.activateConnection(rawWs.id);
+        preRegisterPhase = "handler";
 
         const { ApiParamType } = await import("../types/types");
         const args = api.parameters.map((param) => {
@@ -1115,6 +1146,22 @@ class SonamuClass {
         });
       } catch (error) {
         const closeDescriptor = resolveWebSocketCloseDescriptor(error);
+        if (!rawWs) {
+          this.websocketRuntime.telemetryController.emit({
+            name: "ws.connection.rejected",
+            level: closeDescriptor.logLevel === "warn" ? "warn" : "error",
+            detail: {
+              reason: preRegisterPhase,
+              code: closeDescriptor.code,
+              path: api.path,
+            },
+            traceId: traceContext.traceId,
+            spanId: traceContext.spanId,
+            parentSpanId: traceContext.parentSpanId,
+            sampled: traceContext.sampled,
+          });
+        }
+
         if (rawWs) {
           rawWs.close(closeDescriptor.code, closeDescriptor.reason);
         } else if (socket.readyState < 2) {
@@ -1153,6 +1200,7 @@ class SonamuClass {
     ws: WebSocketConnection<TOut, TIn>,
     getContext: () => WebSocketContext | null,
   ): WebSocketConnection<TOut, TIn> {
+    const telemetryController = this._websocketRuntime?.telemetryController;
     const runInContext = <T>(callback: () => T): T => {
       const context = getContext();
       if (!context) {
@@ -1183,7 +1231,68 @@ class SonamuClass {
         ws.onClose(() => runInContext(callback));
       },
       onMessage(event, handler) {
-        ws.onMessage(event, (data) => runInContext(() => handler(data)));
+        ws.onMessage(event, (data, messageTraceContext) =>
+          runInContext(async () => {
+            const eventName = String(event);
+            const traceContext = messageTraceContext ?? getWebSocketTelemetryContext(ws);
+            const startedAt = performance.now();
+
+            telemetryController?.emit({
+              name: "ws.handler.started",
+              level: "debug",
+              connectionId: ws.id,
+              namespace: ws.namespace,
+              detail: { event: eventName },
+              ...traceContext,
+            });
+
+            try {
+              const result = await handler(data, messageTraceContext);
+              const durationMs = performance.now() - startedAt;
+              telemetryController?.emit({
+                name: "ws.handler.completed",
+                level: "debug",
+                connectionId: ws.id,
+                namespace: ws.namespace,
+                detail: { event: eventName },
+                ...traceContext,
+              });
+              telemetryController?.recordSpan({
+                operationName: "ws.message.process",
+                kind: "internal",
+                durationMs,
+                status: "unset",
+                connectionId: ws.id,
+                namespace: ws.namespace,
+                attributes: { event: eventName },
+                ...traceContext,
+              });
+              return result;
+            } catch (error) {
+              const durationMs = performance.now() - startedAt;
+              telemetryController?.emit({
+                name: "ws.handler.failed",
+                level: "error",
+                connectionId: ws.id,
+                namespace: ws.namespace,
+                detail: { event: eventName },
+                ...traceContext,
+              });
+              telemetryController?.recordSpan({
+                operationName: "ws.message.process",
+                kind: "internal",
+                durationMs,
+                status: "error",
+                connectionId: ws.id,
+                namespace: ws.namespace,
+                attributes: { event: eventName },
+                errorType: error instanceof Error ? error.name : typeof error,
+                ...traceContext,
+              });
+              throw error;
+            }
+          }),
+        );
       },
       publish(event, data) {
         ws.publish(event, data);
@@ -1839,17 +1948,37 @@ class SonamuClass {
     const { BaseModel } = await import("../database/base-model");
     // 먼저 처리해야함.
     await BaseModel.destroy();
-    // 프로세스 종료 시 살아있는 WS 연결을 먼저 정리해 이후 다른 리소스 해제 과정에서 잔여 callback이 튀지 않게 함
+    // WebSocket shutdown first to flush telemetry
+    if (this._websocketRuntime) {
+      await this._websocketRuntime.shutdown();
+    }
+    this._websocketRuntime = null;
+    // Then shut down remaining resources in parallel
     await Promise.allSettled([
-      this._websocketRuntime?.shutdown() ?? Promise.resolve(),
       this._workflows?.destroy() ?? Promise.resolve(),
       this._cache?.disconnect() ?? Promise.resolve(),
       this._devVitestManager?.shutdown() ?? Promise.resolve(),
       this.watcher?.close() ?? Promise.resolve(),
-      logtapeDispose(),
     ]);
-    this._websocketRuntime = null;
+    // LogTape dispose after WS shutdown so telemetry records are flushed first
+    await logtapeDispose();
   }
+}
+
+function getWebSocketTelemetryContext(
+  ws: WebSocketConnection<WebSocketEventMap, WebSocketEventMap>,
+): WebSocketTelemetryConnectionContext {
+  if (!isTelemetryContextProvider(ws)) {
+    return {};
+  }
+
+  return ws.getTelemetryContext();
+}
+
+function isTelemetryContextProvider(
+  ws: WebSocketConnection<WebSocketEventMap, WebSocketEventMap>,
+): ws is WebSocketConnection<WebSocketEventMap, WebSocketEventMap> & TelemetryContextProvider {
+  return "getTelemetryContext" in ws && typeof ws.getTelemetryContext === "function";
 }
 
 export const Sonamu = new SonamuClass();

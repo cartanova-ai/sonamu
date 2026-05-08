@@ -3,5 +3,8 @@ export * from "./ws-audience";
 export * from "./ws-cluster-bus";
 export * from "./ws-core";
 export * from "./ws-presence-store";
+export * from "./ws-telemetry";
+export * from "./ws-telemetry-memory";
+export * from "./ws-telemetry-trace";
 export * from "./ws";
 export * from "./ws-registry";
