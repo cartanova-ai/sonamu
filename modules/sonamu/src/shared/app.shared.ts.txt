@@ -365,6 +365,7 @@ export type WebSocketChannelOptions = {
   retryInterval?: number;
   protocols?: string | string[];
   headers?: Record<string, string>;
+  traceProvider?: () => string | undefined;
 };
 export type WebSocketChannelState<TSend extends Record<string, any>> = {
   isConnected: boolean;
@@ -606,7 +607,7 @@ export function useWebSocketChannel<
   handlers: EventHandlers<TReceive>,
   options: WebSocketChannelOptions = {},
 ): WebSocketChannelState<TSend> {
-  const { enabled = true, retry = 3, retryInterval = 3000, protocols, headers } = options;
+  const { enabled = true, retry = 3, retryInterval = 3000, protocols, headers, traceProvider } = options;
 
   const [state, setState] = useState<Omit<WebSocketChannelState<TSend>, "send" | "close">>({
     isConnected: false,
@@ -647,12 +648,12 @@ export function useWebSocketChannel<
       return;
     }
 
-    socket.send(
-      JSON.stringify({
-        event,
-        data,
-      }),
-    );
+    const traceparent = traceProvider?.();
+    if (traceparent) {
+      socket.send(JSON.stringify({ event, data, meta: { traceparent } }));
+      return;
+    }
+    socket.send(JSON.stringify({ event, data }));
   };
 
   const connect = () => {
