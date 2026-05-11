@@ -77,6 +77,7 @@ GET {{baseUrl}}/api/telemetry/getSnapshot
 	&rawParams[name]=NAME
 	&rawParams[level]=debug
 	&rawParams[connectionId]=CONNECTIONID
+	&rawParams[userId]=USERID
 	&rawParams[namespace]=NAMESPACE
 	&rawParams[traceId]=TRACEID
 	&rawParams[since]=0

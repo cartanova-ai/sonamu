@@ -153,7 +153,7 @@
   },
   {
     "path": "api/src/application/sonamu.generated.http",
-    "checksum": "21e346b80412d5e8d725a8d5fa12912743f9b797"
+    "checksum": "fa3f99082b6b70005cf5376d6f3cb56e5c15e3e1"
   },
   {
     "path": "api/src/application/sonamu.generated.sso.ts",
@@ -197,11 +197,11 @@
   },
   {
     "path": "api/src/application/telemetry/telemetry.frame.ts",
-    "checksum": "3250d65a41b73256c69f4f8d2162af84f7f77561"
+    "checksum": "bbb08c1cb9fc3c4060cfdf5b2d75e6e37dfedcd8"
   },
   {
     "path": "api/src/application/telemetry/telemetry.types.ts",
-    "checksum": "55d6ccc23464e82ef6eed8a3d50b15f459fa01cd"
+    "checksum": "9f2fc977635550b72895d7891ac5e608657d174b"
   },
   {
     "path": "api/src/application/two-factor/two-factor.entity.json",
@@ -345,7 +345,7 @@
   },
   {
     "path": "web/src/services/telemetry/telemetry.types.ts",
-    "checksum": "c688f1d2714f0059a4eca12f7fa0ea800229d854"
+    "checksum": "c50ea30b65418f2bde3eebf62e282d830added85"
   },
   {
     "path": "web/src/services/two-factor/two-factor.types.ts",

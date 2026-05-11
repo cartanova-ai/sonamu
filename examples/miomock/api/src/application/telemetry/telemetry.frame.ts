@@ -20,8 +20,9 @@ class TelemetryFrameClass extends BaseFrameClass {
     const spanStore = controller.getSpanStore();
     const storeEnabled = Boolean(eventStore ?? metricStore ?? spanStore);
 
-    const { type, name, level, connectionId, namespace, traceId, since, until, limit } = params;
-    const common = { connectionId, namespace, traceId, since, until, limit };
+    const { type, name, level, connectionId, userId, namespace, traceId, since, until, limit } =
+      params;
+    const common = { connectionId, userId, namespace, traceId, since, until, limit };
 
     const eventRecords =
       (type === undefined || type === "event") && eventStore

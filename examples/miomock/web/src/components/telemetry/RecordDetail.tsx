@@ -28,6 +28,7 @@ export function RecordDetail({ record }: RecordDetailProps) {
               <DetailItem label="Time" value={formatTimestampWithMs(record.timestamp)} />
               <DetailItem label="Name" value={getRecordName(record)} />
               <DetailItem label="Connection" value={record.connectionId ?? "-"} />
+              <DetailItem label="User" value={record.userId ?? "-"} />
               <DetailItem label="Namespace" value={record.namespace ?? "-"} />
               <DetailItem label="Trace" value={record.traceId ?? "-"} />
               {isSpanRecord(record) && (
