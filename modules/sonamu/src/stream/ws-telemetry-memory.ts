@@ -20,56 +20,66 @@ type InMemoryStoreOptions = {
 
 const DEFAULT_MAX_RECORDS = 10_000;
 const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10 MiB
-const CRITICAL_LEVEL_MIN_RESERVE = 100; // warn/error/closed/rejected를 위해 예약하는 최소 record 수
 
 type EstimateBytes<TRecord> = (record: TRecord) => number;
-type IsCritical<TRecord> = (record: TRecord) => boolean;
 
-/**
- * 3개의 신호별 InMemory store가 공유하는 ring buffer helper.
- * 외부로 export하지 않는다.
- */
+// 단일 FIFO ring buffer. critical/non-critical 우선순위는 두지 않는다 —
+// 인메모리 store는 휘발성 디버깅 용도이므로 critical 보존이 필요하면
+// 별도의 영속 sink를 등록해서 처리한다.
 class InMemoryRingBuffer<TRecord extends { timestamp: number }> {
-  private readonly records: TRecord[] = [];
-  private readonly maxRecords: number;
+  private readonly slots: Array<TRecord | undefined>;
+  private readonly slotBytes: number[];
+  private readonly capacity: number;
   private readonly maxBytes: number;
   private readonly estimateBytes: EstimateBytes<TRecord>;
-  private readonly isCritical: IsCritical<TRecord>;
+  private head = 0;
+  private count = 0;
   private currentBytes = 0;
 
-  constructor(
-    options: InMemoryStoreOptions,
-    estimateBytes: EstimateBytes<TRecord>,
-    isCritical: IsCritical<TRecord>,
-  ) {
-    this.maxRecords = options.maxRecords ?? DEFAULT_MAX_RECORDS;
+  constructor(options: InMemoryStoreOptions, estimateBytes: EstimateBytes<TRecord>) {
+    this.capacity = options.maxRecords ?? DEFAULT_MAX_RECORDS;
     this.maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
     this.estimateBytes = estimateBytes;
-    this.isCritical = isCritical;
+    this.slots = new Array(this.capacity);
+    this.slotBytes = new Array(this.capacity).fill(0);
   }
 
   push(record: TRecord): void {
-    const recordSize = this.estimateBytes(record);
-    const incomingCritical = this.isCritical(record);
+    if (this.capacity <= 0) return;
 
-    // 용량을 초과하는 동안 evict 수행
-    while (
-      (this.records.length >= this.maxRecords || this.currentBytes + recordSize > this.maxBytes) &&
-      this.records.length > 0
-    ) {
-      if (!this.evictOne(incomingCritical)) {
-        return;
-      }
+    const recordSize = this.estimateBytes(record);
+    // 단일 record가 maxBytes를 넘으면 받아들이지 않는다.
+    if (recordSize > this.maxBytes) return;
+
+    if (this.count === this.capacity) {
+      // 가장 오래된 슬롯을 덮어쓴다.
+      this.currentBytes -= this.slotBytes[this.head];
+      this.slots[this.head] = record;
+      this.slotBytes[this.head] = recordSize;
+      this.currentBytes += recordSize;
+      this.head = (this.head + 1) % this.capacity;
+    } else {
+      const tail = (this.head + this.count) % this.capacity;
+      this.slots[tail] = record;
+      this.slotBytes[tail] = recordSize;
+      this.currentBytes += recordSize;
+      this.count += 1;
     }
 
-    this.records.push(record);
-    this.currentBytes += recordSize;
+    while (this.currentBytes > this.maxBytes && this.count > 1) {
+      this.currentBytes -= this.slotBytes[this.head];
+      this.slots[this.head] = undefined;
+      this.slotBytes[this.head] = 0;
+      this.head = (this.head + 1) % this.capacity;
+      this.count -= 1;
+    }
   }
 
   filter(predicate: (record: TRecord) => boolean, limit?: number): TRecord[] {
     const matched: TRecord[] = [];
-    for (const record of this.records) {
-      if (predicate(record)) matched.push(record);
+    for (let i = 0; i < this.count; i++) {
+      const record = this.slots[(this.head + i) % this.capacity];
+      if (record !== undefined && predicate(record)) matched.push(record);
     }
     if (limit !== undefined && limit > 0 && matched.length > limit) {
       return matched.slice(-limit);
@@ -78,42 +88,13 @@ class InMemoryRingBuffer<TRecord extends { timestamp: number }> {
   }
 
   clear(): void {
-    this.records.length = 0;
+    for (let i = 0; i < this.capacity; i++) {
+      this.slots[i] = undefined;
+      this.slotBytes[i] = 0;
+    }
+    this.head = 0;
+    this.count = 0;
     this.currentBytes = 0;
-  }
-
-  private evictOne(incomingCritical: boolean): boolean {
-    const criticalCount = this.countCriticalRecords();
-    const criticalReserve = Math.min(CRITICAL_LEVEL_MIN_RESERVE, this.maxRecords);
-
-    // 우선 non-critical record부터 evict 시도
-    for (let i = 0; i < this.records.length; i++) {
-      if (!this.isCritical(this.records[i])) {
-        const removed = this.records.splice(i, 1);
-        this.currentBytes -= this.estimateBytes(removed[0]);
-        return true;
-      }
-    }
-
-    // 모든 record가 critical인 경우. 들어오는 record가 critical이라면 오래된 critical record를 대체할 수 있으나,
-    // non-critical record는 진단용으로 예약된 최소량을 침범해서는 안 됨.
-    if (incomingCritical || criticalCount > criticalReserve) {
-      const removed = this.records.shift();
-      if (removed) {
-        this.currentBytes -= this.estimateBytes(removed);
-      }
-      return true;
-    }
-
-    return false;
-  }
-
-  private countCriticalRecords(): number {
-    let count = 0;
-    for (const record of this.records) {
-      if (this.isCritical(record)) count += 1;
-    }
-    return count;
   }
 }
 
@@ -146,26 +127,12 @@ function estimateEventBytes(record: WebSocketTelemetryEventRecord): number {
   return size;
 }
 
-function isEventCritical(record: WebSocketTelemetryEventRecord): boolean {
-  if (record.level === "warn" || record.level === "error") return true;
-  if (record.name.includes("closed") || record.name.includes("rejected")) return true;
-  return false;
-}
-
 function estimateMetricBytes(_record: WebSocketTelemetryMetricRecord): number {
   return 200;
 }
 
-function isMetricCritical(_record: WebSocketTelemetryMetricRecord): boolean {
-  return false;
-}
-
 function estimateSpanBytes(_record: WebSocketTelemetrySpanRecord): number {
   return 200;
-}
-
-function isSpanCritical(record: WebSocketTelemetrySpanRecord): boolean {
-  return record.status === "error";
 }
 
 export class InMemoryEventStore implements WebSocketTelemetryEventStore {
@@ -177,10 +144,8 @@ export class InMemoryEventStore implements WebSocketTelemetryEventStore {
     this.buffer = new InMemoryRingBuffer<WebSocketTelemetryEventRecord>(
       options,
       estimateEventBytes,
-      isEventCritical,
     );
 
-    // has-a 관계: store가 sink를 구현하는 것이 아니라 sink를 보유함
     this.sink = {
       emit: (record: WebSocketTelemetryEventRecord): void => {
         this.buffer.push(record);
@@ -215,7 +180,6 @@ export class InMemoryMetricStore implements WebSocketTelemetryMetricStore {
     this.buffer = new InMemoryRingBuffer<WebSocketTelemetryMetricRecord>(
       options,
       estimateMetricBytes,
-      isMetricCritical,
     );
 
     this.sink = {
@@ -249,11 +213,7 @@ export class InMemorySpanStore implements WebSocketTelemetrySpanStore {
   private readonly buffer: InMemoryRingBuffer<WebSocketTelemetrySpanRecord>;
 
   constructor(options: InMemoryStoreOptions = {}) {
-    this.buffer = new InMemoryRingBuffer<WebSocketTelemetrySpanRecord>(
-      options,
-      estimateSpanBytes,
-      isSpanCritical,
-    );
+    this.buffer = new InMemoryRingBuffer<WebSocketTelemetrySpanRecord>(options, estimateSpanBytes);
 
     this.sink = {
       emit: (record: WebSocketTelemetrySpanRecord): void => {
