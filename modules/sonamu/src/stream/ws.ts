@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { hostname } from "node:os";
 
 import { type WebSocket } from "ws";
 import { z } from "zod";
@@ -122,12 +123,15 @@ export class WebSocketRuntime {
   readonly telemetryController: WebSocketTelemetryController;
 
   constructor(options: WebSocketRuntimeOptions = {}) {
+    // 분산 환경에서 노드 간 충돌을 막기 위해 hostname + pid로 디폴트 식별자를 만든다.
+    // 같은 호스트에 여러 프로세스가 떠 있어도 pid로 구분되며, 로그/메트릭에서도 식별이 쉬움
+    const resolvedNodeId = options.nodeId ?? `${hostname()}-${process.pid}`;
     this.telemetryController = createWebSocketTelemetryController(options.telemetry, {
       runtimeId: randomUUID(),
-      nodeId: options.nodeId ?? "local",
+      nodeId: resolvedNodeId,
     });
     const registryOptions: WebSocketRegistryOptions = {
-      nodeId: options.nodeId,
+      nodeId: resolvedNodeId,
       presenceStore: options.presenceStore,
       clusterBus: options.clusterBus,
       telemetryController: this.telemetryController,
