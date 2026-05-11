@@ -30,7 +30,8 @@ export type {
 export type WebSocketConnectionMeta = WebSocketSessionPresence;
 
 export type WebSocketRegistryOptions = {
-  nodeId?: string;
+  // 분산 환경에서 노드 간 라우팅 식별자로 쓰이므로 반드시 호출 측(WebSocketRuntime)에서 결정해 넘긴다
+  nodeId: string;
   presenceStore?: WebSocketPresenceStore;
   clusterBus?: WebSocketClusterBus;
   telemetryController?: WebSocketTelemetryController;
@@ -45,8 +46,8 @@ export class WebSocketRegistry {
   readonly deliveryEngine: WebSocketDeliveryEngine;
   readonly telemetryController: WebSocketTelemetryController;
 
-  constructor(options: WebSocketRegistryOptions = {}) {
-    this.nodeId = options.nodeId ?? "local";
+  constructor(options: WebSocketRegistryOptions) {
+    this.nodeId = options.nodeId;
     this.presenceStore = options.presenceStore ?? new InMemoryWebSocketPresenceStore();
     this.clusterBus = options.clusterBus ?? new NoopWebSocketClusterBus();
     this.telemetryController =
