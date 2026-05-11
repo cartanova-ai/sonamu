@@ -95,6 +95,7 @@ export class WebSocketRegistry {
       level: "info",
       connectionId: connection.id,
       namespace: connection.namespace,
+      userId: connection.userId,
       ...getConnectionTelemetryContext(connection),
     });
     this.telemetryController.recordMetric({
@@ -103,6 +104,7 @@ export class WebSocketRegistry {
       value: 1,
       unit: "1",
       tags: { outcome: "registered", namespace: connection.namespace },
+      userId: connection.userId,
     });
     return meta;
   }
@@ -114,18 +116,21 @@ export class WebSocketRegistry {
     }
 
     this.presenceStore.activate(connectionId);
+    const connection = this.localConnections.getConnection(connectionId);
     this.telemetryController.emit({
       name: "ws.connection.activated",
       level: "info",
       connectionId,
-      ...getConnectionTelemetryContext(this.localConnections.getConnection(connectionId)),
+      userId: connection?.userId,
+      ...getConnectionTelemetryContext(connection),
     });
   }
 
   unregister(connectionId: string): void {
-    const telemetryContext = getConnectionTelemetryContext(
-      this.localConnections.getConnection(connectionId),
-    );
+    const connection = this.localConnections.getConnection(connectionId);
+    const telemetryContext = getConnectionTelemetryContext(connection);
+    const userId =
+      connection?.userId ?? formatUserId(this.presenceStore.getConnection(connectionId)?.userId);
     const meta = this.presenceStore.unregister(connectionId);
     this.localConnections.unregister(connectionId);
     this.telemetryController.emit({
@@ -133,6 +138,7 @@ export class WebSocketRegistry {
       level: "debug",
       connectionId,
       namespace: meta?.namespace,
+      userId,
       ...telemetryContext,
     });
     if (meta) {
@@ -142,6 +148,7 @@ export class WebSocketRegistry {
         value: 1,
         unit: "1",
         tags: { outcome: "unregistered", namespace: meta.namespace },
+        userId,
       });
     }
   }
@@ -163,6 +170,7 @@ export class WebSocketRegistry {
       level: "debug",
       connectionId,
       namespace: meta?.namespace,
+      userId: String(userId),
       detail: { userId },
       ...getConnectionTelemetryContext(this.localConnections.getConnection(connectionId)),
     });
@@ -182,6 +190,7 @@ export class WebSocketRegistry {
       level: "debug",
       connectionId,
       namespace: meta.namespace,
+      userId: formatUserId(userId),
       detail: userId !== undefined ? { userId } : undefined,
       ...getConnectionTelemetryContext(this.localConnections.getConnection(connectionId)),
     });
@@ -195,13 +204,15 @@ export class WebSocketRegistry {
 
     this.presenceStore.join(connectionId, roomId);
     const meta = this.presenceStore.getConnection(connectionId);
+    const connection = this.localConnections.getConnection(connectionId);
     this.telemetryController.emit({
       name: "ws.room.joined",
       level: "debug",
       connectionId,
       namespace: meta?.namespace,
+      userId: connection?.userId ?? formatUserId(meta?.userId),
       detail: { roomId },
-      ...getConnectionTelemetryContext(this.localConnections.getConnection(connectionId)),
+      ...getConnectionTelemetryContext(connection),
     });
   }
 
@@ -213,13 +224,15 @@ export class WebSocketRegistry {
     }
 
     this.presenceStore.leave(connectionId, roomId);
+    const connection = this.localConnections.getConnection(connectionId);
     this.telemetryController.emit({
       name: "ws.room.left",
       level: "debug",
       connectionId,
       namespace: meta.namespace,
+      userId: connection?.userId ?? formatUserId(meta.userId),
       detail: { roomId },
-      ...getConnectionTelemetryContext(this.localConnections.getConnection(connectionId)),
+      ...getConnectionTelemetryContext(connection),
     });
   }
 
@@ -289,6 +302,11 @@ function getConnectionTelemetryContext(
   }
 
   return connection.getTelemetryContext();
+}
+
+// telemetry record의 userId는 string 정규화 — presence store는 number | string 그대로 보관함
+function formatUserId(userId: WebSocketUserId | undefined): string | undefined {
+  return userId === undefined ? undefined : String(userId);
 }
 
 function isTelemetryContextProvider(

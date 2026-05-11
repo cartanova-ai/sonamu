@@ -270,6 +270,8 @@ export class WebSocketDeliveryEngine {
         name: "ws.fanout.publish.failed",
         level: "error",
         connectionId: connection.id,
+        namespace: connection.namespace,
+        userId: connection.userId,
         detail: { event },
       });
       connection.close(1011, "WebSocket publish failed");

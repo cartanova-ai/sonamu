@@ -10,6 +10,9 @@ export type WebSocketTelemetryRecordBase = {
   nodeId: string;
   namespace?: string;
   connectionId?: string;
+  // userId는 connection 소유자를 식별하기 위한 opaque identifier (보통 DB PK)
+  // pseudonymous identifier로만 사용하며, 이메일/전화번호 등 PII는 들어가지 않는다고 가정함
+  userId?: string;
   traceId?: string;
   spanId?: string;
   parentSpanId?: string;
@@ -67,6 +70,7 @@ export type WebSocketTelemetryEventInput = {
   level: "debug" | "info" | "warn" | "error";
   namespace?: string;
   connectionId?: string;
+  userId?: string;
   attributes?: Record<string, string | number | boolean>;
   detail?: Record<string, unknown>;
   payload?: unknown;
@@ -84,6 +88,7 @@ export type WebSocketMetricInput = {
   tags?: Record<string, string>;
   namespace?: string;
   connectionId?: string;
+  userId?: string;
   traceId?: string;
   spanId?: string;
   parentSpanId?: string;
@@ -98,6 +103,7 @@ export type WebSocketSpanInput = {
   status: "unset" | "ok" | "error";
   namespace?: string;
   connectionId?: string;
+  userId?: string;
   attributes?: Record<string, string | number | boolean>;
   errorType?: string;
   traceId?: string;
@@ -172,6 +178,7 @@ export type WebSocketTelemetryEventQueryFilter = {
   name?: string;
   level?: "debug" | "info" | "warn" | "error";
   connectionId?: string;
+  userId?: string;
   namespace?: string;
   traceId?: string;
   since?: number;
@@ -183,6 +190,7 @@ export type WebSocketTelemetryMetricQueryFilter = {
   name?: string;
   kind?: "counter" | "histogram" | "gauge";
   connectionId?: string;
+  userId?: string;
   namespace?: string;
   traceId?: string;
   since?: number;
@@ -195,6 +203,7 @@ export type WebSocketTelemetrySpanQueryFilter = {
   kind?: "internal" | "producer" | "consumer" | "server" | "client";
   status?: "unset" | "ok" | "error";
   connectionId?: string;
+  userId?: string;
   namespace?: string;
   traceId?: string;
   since?: number;
@@ -1082,6 +1091,7 @@ class EventPipeline extends TelemetryPipeline<
       level: input.level,
       namespace: input.namespace,
       connectionId: input.connectionId,
+      userId: input.userId,
       attributes: input.attributes,
       detail: input.detail,
       traceId: input.traceId,
@@ -1192,6 +1202,7 @@ class MetricPipeline extends TelemetryPipeline<
       tags: input.tags,
       namespace: input.namespace,
       connectionId: input.connectionId,
+      userId: input.userId,
       traceId: input.traceId,
       spanId: input.spanId,
       parentSpanId: input.parentSpanId,
@@ -1368,6 +1379,7 @@ class SpanPipeline extends TelemetryPipeline<
       status: input.status,
       namespace: input.namespace,
       connectionId: input.connectionId,
+      userId: input.userId,
       attributes: input.attributes,
       errorType: input.errorType,
       traceId: input.traceId,
