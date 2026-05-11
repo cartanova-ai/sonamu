@@ -375,6 +375,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
         connectionId: this.id,
         namespace: this.namespace,
         detail: { event: parsedEnvelope.event },
+        payload: parsedEnvelope.data,
         traceId: this.connectionTraceId,
         spanId: this.connectionSpanId,
         parentSpanId: this.connectionParentSpanId,
@@ -602,6 +603,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
         data: parsed.data,
       }),
       event,
+      parsed.data,
     );
   }
 
@@ -731,7 +733,8 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   }
 
   // queue가 한계에 도달하면 1013으로 닫아 느린 소비자가 메모리를 끝없이 잡아먹지 못하게 함
-  private enqueueOutboundMessage(payload: string, event: string): void {
+  // data 인자는 telemetry payload preview 용도로만 사용하며 pendingOutboundMessages에는 저장하지 않음 (큐 메모리 보호)
+  private enqueueOutboundMessage(payload: string, event: string, data: unknown): void {
     if (this.pendingOutboundMessages.length >= MAX_PENDING_OUTBOUND_MESSAGES) {
       this.options.telemetryController.emit({
         name: "ws.backpressure.overflow",
@@ -753,6 +756,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       connectionId: this.id,
       namespace: this.namespace,
       detail: { event },
+      payload: data,
       traceId: this.connectionTraceId,
       spanId: this.connectionSpanId,
       parentSpanId: this.connectionParentSpanId,
