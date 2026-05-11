@@ -70,20 +70,18 @@ Function for creating Server-Sent Events (SSE) streams. Enables creating type-sa
 ```typescript
 import { z } from "zod";
 
+const ProcessEventsSchema = z.object({
+  progress: z.object({ percent: z.number() }),
+  complete: z.object({ result: z.string() }),
+});
+
 class MyModelClass extends BaseModelClass {
-  @api()
   @stream({
     type: "sse",
-    events: z.object({
-      progress: z.object({ percent: z.number() }),
-      complete: z.object({ result: z.string() }),
-    }),
+    events: ProcessEventsSchema,
   })
   async processData(ctx: Context) {
-    const sse = ctx.createSSE({
-      progress: z.object({ percent: z.number() }),
-      complete: z.object({ result: z.string() }),
-    });
+    const sse = ctx.createSSE(ProcessEventsSchema);
 
     // Send progress
     await sse.publish("progress", { percent: 50 });

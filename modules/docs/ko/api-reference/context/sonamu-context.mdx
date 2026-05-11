@@ -70,20 +70,18 @@ Server-Sent Events(SSE) 스트림을 생성하는 함수입니다. Zod 스키마
 ```typescript
 import { z } from "zod";
 
+const ProcessEventsSchema = z.object({
+  progress: z.object({ percent: z.number() }),
+  complete: z.object({ result: z.string() }),
+});
+
 class MyModelClass extends BaseModelClass {
-  @api()
   @stream({
     type: "sse",
-    events: z.object({
-      progress: z.object({ percent: z.number() }),
-      complete: z.object({ result: z.string() }),
-    }),
+    events: ProcessEventsSchema,
   })
   async processData(ctx: Context) {
-    const sse = ctx.createSSE({
-      progress: z.object({ percent: z.number() }),
-      complete: z.object({ result: z.string() }),
-    });
+    const sse = ctx.createSSE(ProcessEventsSchema);
 
     // 진행률 전송
     await sse.publish("progress", { percent: 50 });
