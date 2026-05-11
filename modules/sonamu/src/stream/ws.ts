@@ -210,6 +210,13 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   private readonly connectionSampled?: boolean;
   private readonly connectionStartedAt = performance.now();
 
+  // connection 수명 동안 유지되는 식별자. setUserId/clearUserId로 업데이트되며 emit hot path에서 매번 registry lookup하지 않도록 캐시함
+  private _userId?: string;
+
+  get userId(): string | undefined {
+    return this._userId;
+  }
+
   private closedInternal = false;
   private closeStarted = false;
   private awaitingPong = false;
@@ -288,10 +295,12 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   }
 
   setUserId(userId: WebSocketUserId): void {
+    this._userId = String(userId);
     this.options.registry.setUserId(this.id, userId);
   }
 
   clearUserId(): void {
+    this._userId = undefined;
     this.options.registry.clearUserId(this.id);
   }
 
@@ -312,17 +321,27 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
     };
   }
 
-  private emitInboundRejected(reason: string, event?: string): void {
-    this.options.telemetryController.emit({
-      name: "ws.message.rejected",
-      level: "warn",
+  // 모든 telemetry emit site가 공유하는 connection-level field 묶음.
+  // 향후 connection-scoped 식별자(e.g. tenantId)가 추가될 때 한 곳만 손대면 됨
+  private telemetryFields() {
+    return {
       connectionId: this.id,
       namespace: this.namespace,
-      detail: event !== undefined ? { reason, event } : { reason },
+      userId: this._userId,
       traceId: this.connectionTraceId,
       spanId: this.connectionSpanId,
       parentSpanId: this.connectionParentSpanId,
       sampled: this.connectionSampled,
+    };
+  }
+
+  private emitInboundRejected(reason: string, event?: string): void {
+    const fields = this.telemetryFields();
+    this.options.telemetryController.emit({
+      name: "ws.message.rejected",
+      level: "warn",
+      ...fields,
+      detail: event !== undefined ? { reason, event } : { reason },
     });
     this.options.telemetryController.recordMetric({
       name: "sonamu.ws.messages",
@@ -330,11 +349,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       value: 1,
       unit: "1",
       tags: { direction: "inbound", outcome: "rejected" },
-      namespace: this.namespace,
-      traceId: this.connectionTraceId,
-      spanId: this.connectionSpanId,
-      parentSpanId: this.connectionParentSpanId,
-      sampled: this.connectionSampled,
+      ...fields,
     });
   }
 
@@ -372,14 +387,9 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       this.options.telemetryController.emit({
         name: "ws.message.received",
         level: "debug",
-        connectionId: this.id,
-        namespace: this.namespace,
+        ...this.telemetryFields(),
         detail: { event: parsedEnvelope.event },
         payload: parsedEnvelope.data,
-        traceId: this.connectionTraceId,
-        spanId: this.connectionSpanId,
-        parentSpanId: this.connectionParentSpanId,
-        sampled: this.connectionSampled,
       });
       this.options.registry.touch(this.id);
       await this.dispatchEnvelope(parsedEnvelope);
@@ -425,13 +435,8 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       this.options.telemetryController.emit({
         name: "ws.trace.invalid",
         level: "debug",
-        connectionId: this.id,
-        namespace: this.namespace,
+        ...this.telemetryFields(),
         detail: { source: "message", traceparent: envelope.meta.traceparent },
-        traceId: this.connectionTraceId,
-        spanId: this.connectionSpanId,
-        parentSpanId: this.connectionParentSpanId,
-        sampled: this.connectionSampled,
       });
     }
 
@@ -468,8 +473,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
         this.options.telemetryController.emit({
           name: "ws.message.buffer.dropped",
           level: "warn",
-          connectionId: this.id,
-          namespace: this.namespace,
+          ...this.telemetryFields(),
           detail: { event: envelope.event },
         });
         this.pendingMessages.shift();
@@ -478,14 +482,23 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       this.options.telemetryController.emit({
         name: "ws.message.buffered",
         level: "debug",
-        connectionId: this.id,
-        namespace: this.namespace,
+        ...this.telemetryFields(),
         detail: { event: envelope.event },
       });
       return;
     }
 
     const traceCtx = this.resolveMessageTraceContext(envelope);
+    // message-level trace는 connection-level trace를 override함. userId / connectionId / namespace는 그대로 유지
+    const messageTraceFields = {
+      connectionId: this.id,
+      namespace: this.namespace,
+      userId: this._userId,
+      traceId: traceCtx.traceId,
+      spanId: traceCtx.spanId,
+      parentSpanId: traceCtx.parentSpanId,
+      sampled: traceCtx.sampled,
+    };
     try {
       for (const handler of handlers) {
         await handler(parsed.data, traceCtx);
@@ -493,13 +506,8 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       this.options.telemetryController.emit({
         name: "ws.message.dispatched",
         level: "debug",
-        connectionId: this.id,
-        namespace: this.namespace,
+        ...messageTraceFields,
         detail: { event: envelope.event },
-        traceId: traceCtx.traceId,
-        spanId: traceCtx.spanId,
-        parentSpanId: traceCtx.parentSpanId,
-        sampled: traceCtx.sampled,
       });
       this.options.telemetryController.recordMetric({
         name: "sonamu.ws.messages",
@@ -507,23 +515,14 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
         value: 1,
         unit: "1",
         tags: { direction: "inbound", event: envelope.event, outcome: "accepted" },
-        namespace: this.namespace,
-        traceId: traceCtx.traceId,
-        spanId: traceCtx.spanId,
-        parentSpanId: traceCtx.parentSpanId,
-        sampled: traceCtx.sampled,
+        ...messageTraceFields,
       });
     } catch (error) {
       this.options.telemetryController.emit({
         name: "ws.message.failed",
         level: "error",
-        connectionId: this.id,
-        namespace: this.namespace,
+        ...messageTraceFields,
         detail: { event: envelope.event },
-        traceId: traceCtx.traceId,
-        spanId: traceCtx.spanId,
-        parentSpanId: traceCtx.parentSpanId,
-        sampled: traceCtx.sampled,
       });
       throw error;
     }
@@ -558,12 +557,8 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       this.options.telemetryController.emit({
         name: "ws.publish.rejected",
         level: "error",
-        connectionId: this.id,
-        namespace: this.namespace,
+        ...this.telemetryFields(),
         detail: { event, reason: "unknownEvent" },
-        traceId: this.connectionTraceId,
-        spanId: this.connectionSpanId,
-        parentSpanId: this.connectionParentSpanId,
       });
       throw new Error(`Unknown websocket event: ${event}`);
     }
@@ -573,12 +568,8 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       this.options.telemetryController.emit({
         name: "ws.publish.rejected",
         level: "error",
-        connectionId: this.id,
-        namespace: this.namespace,
+        ...this.telemetryFields(),
         detail: { event, reason: "invalidPayload" },
-        traceId: this.connectionTraceId,
-        spanId: this.connectionSpanId,
-        parentSpanId: this.connectionParentSpanId,
       });
       throw new Error(`Invalid websocket event payload: ${event}`);
     }
@@ -587,12 +578,8 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       this.options.telemetryController.emit({
         name: "ws.publish.dropped",
         level: "debug",
-        connectionId: this.id,
-        namespace: this.namespace,
+        ...this.telemetryFields(),
         detail: { event, reason: "connectionClosed" },
-        traceId: this.connectionTraceId,
-        spanId: this.connectionSpanId,
-        parentSpanId: this.connectionParentSpanId,
       });
       return;
     }
@@ -617,14 +604,11 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
     this.closedInternal = true;
     this.closeStarted = false;
     this.stopHeartbeat();
+    const fields = this.telemetryFields();
     this.options.telemetryController.emit({
       name: "ws.connection.closed",
       level: "info",
-      connectionId: this.id,
-      namespace: this.namespace,
-      traceId: this.connectionTraceId,
-      spanId: this.connectionSpanId,
-      parentSpanId: this.connectionParentSpanId,
+      ...fields,
     });
     if (this.options.telemetryController.getTraceOptions().recordConnectionLifetimeSpan) {
       this.options.telemetryController.recordSpan({
@@ -632,12 +616,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
         kind: "server",
         durationMs: performance.now() - this.connectionStartedAt,
         status: deriveLifetimeStatus(code),
-        connectionId: this.id,
-        namespace: this.namespace,
-        traceId: this.connectionTraceId,
-        spanId: this.connectionSpanId,
-        parentSpanId: this.connectionParentSpanId,
-        sampled: this.connectionSampled,
+        ...fields,
       });
     }
     this.socket.off("message", this.handleMessage);
@@ -678,8 +657,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
         this.options.telemetryController.emit({
           name: "ws.heartbeat.timeout",
           level: "warn",
-          connectionId: this.id,
-          namespace: this.namespace,
+          ...this.telemetryFields(),
         });
         this.close(WS_CLOSE_CODE_GOING_AWAY, "Heartbeat timeout");
         return;
@@ -739,11 +717,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       this.options.telemetryController.emit({
         name: "ws.backpressure.overflow",
         level: "error",
-        connectionId: this.id,
-        namespace: this.namespace,
-        traceId: this.connectionTraceId,
-        spanId: this.connectionSpanId,
-        parentSpanId: this.connectionParentSpanId,
+        ...this.telemetryFields(),
       });
       this.close(WS_CLOSE_CODE_TRY_AGAIN_LATER, "WebSocket backpressure overflow");
       return;
@@ -753,13 +727,9 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
     this.options.telemetryController.emit({
       name: "ws.publish.queued",
       level: "debug",
-      connectionId: this.id,
-      namespace: this.namespace,
+      ...this.telemetryFields(),
       detail: { event },
       payload: data,
-      traceId: this.connectionTraceId,
-      spanId: this.connectionSpanId,
-      parentSpanId: this.connectionParentSpanId,
     });
     this.scheduleOutboundFlush();
   }
@@ -794,11 +764,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       this.options.telemetryController.emit({
         name: "ws.backpressure.delayed",
         level: "warn",
-        connectionId: this.id,
-        namespace: this.namespace,
-        traceId: this.connectionTraceId,
-        spanId: this.connectionSpanId,
-        parentSpanId: this.connectionParentSpanId,
+        ...this.telemetryFields(),
       });
       this.scheduleOutboundFlush(OUTBOUND_RETRY_DELAY_MS);
       return;
@@ -817,30 +783,23 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       const { payload, event } = next;
 
       const startedAt = performance.now();
+      const fields = this.telemetryFields();
       try {
         this.socket.send(payload);
         const durationMs = performance.now() - startedAt;
         this.options.telemetryController.emit({
           name: "ws.publish.sent",
           level: "debug",
-          connectionId: this.id,
-          namespace: this.namespace,
+          ...fields,
           detail: { event },
-          traceId: this.connectionTraceId,
-          spanId: this.connectionSpanId,
-          parentSpanId: this.connectionParentSpanId,
         });
         this.options.telemetryController.recordSpan({
           operationName: "ws.publish.send",
           kind: "producer",
           durationMs,
           status: "unset",
-          connectionId: this.id,
-          namespace: this.namespace,
+          ...fields,
           attributes: { event },
-          traceId: this.connectionTraceId,
-          spanId: this.connectionSpanId,
-          parentSpanId: this.connectionParentSpanId,
         });
         this.options.telemetryController.recordMetric({
           name: "sonamu.ws.publishes",
@@ -848,32 +807,24 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
           value: 1,
           unit: "1",
           tags: { outcome: "sent", event },
-          namespace: this.namespace,
+          ...fields,
         });
       } catch (error) {
         const durationMs = performance.now() - startedAt;
         this.options.telemetryController.emit({
           name: "ws.publish.failed",
           level: "error",
-          connectionId: this.id,
-          namespace: this.namespace,
+          ...fields,
           detail: { event },
-          traceId: this.connectionTraceId,
-          spanId: this.connectionSpanId,
-          parentSpanId: this.connectionParentSpanId,
         });
         this.options.telemetryController.recordSpan({
           operationName: "ws.publish.send",
           kind: "producer",
           durationMs,
           status: "error",
-          connectionId: this.id,
-          namespace: this.namespace,
+          ...fields,
           attributes: { event },
           errorType: error instanceof Error ? error.name : typeof error,
-          traceId: this.connectionTraceId,
-          spanId: this.connectionSpanId,
-          parentSpanId: this.connectionParentSpanId,
         });
         this.close(WS_CLOSE_CODE_INTERNAL_ERROR, "Outbound publish failed");
         return;

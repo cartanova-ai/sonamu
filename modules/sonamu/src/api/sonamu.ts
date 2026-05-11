@@ -1220,6 +1220,9 @@ class SonamuClass {
       get closed() {
         return ws.closed;
       },
+      get userId() {
+        return ws.userId;
+      },
       transport: "ws",
       publishUntyped(event, data) {
         ws.publishUntyped(event, data);
@@ -1242,6 +1245,7 @@ class SonamuClass {
               level: "debug",
               connectionId: ws.id,
               namespace: ws.namespace,
+              userId: ws.userId,
               detail: { event: eventName },
               ...traceContext,
             });
@@ -1254,6 +1258,7 @@ class SonamuClass {
                 level: "debug",
                 connectionId: ws.id,
                 namespace: ws.namespace,
+                userId: ws.userId,
                 detail: { event: eventName },
                 ...traceContext,
               });
@@ -1264,6 +1269,7 @@ class SonamuClass {
                 status: "unset",
                 connectionId: ws.id,
                 namespace: ws.namespace,
+                userId: ws.userId,
                 attributes: { event: eventName },
                 ...traceContext,
               });
@@ -1275,6 +1281,7 @@ class SonamuClass {
                 level: "error",
                 connectionId: ws.id,
                 namespace: ws.namespace,
+                userId: ws.userId,
                 detail: { event: eventName },
                 ...traceContext,
               });
@@ -1285,6 +1292,7 @@ class SonamuClass {
                 status: "error",
                 connectionId: ws.id,
                 namespace: ws.namespace,
+                userId: ws.userId,
                 attributes: { event: eventName },
                 errorType: error instanceof Error ? error.name : typeof error,
                 ...traceContext,

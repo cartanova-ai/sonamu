@@ -159,6 +159,7 @@ export class InMemoryEventStore implements WebSocketTelemetryEventStore {
       if (filter.level !== undefined && record.level !== filter.level) return false;
       if (filter.connectionId !== undefined && record.connectionId !== filter.connectionId)
         return false;
+      if (filter.userId !== undefined && record.userId !== filter.userId) return false;
       if (filter.namespace !== undefined && record.namespace !== filter.namespace) return false;
       if (filter.traceId !== undefined && record.traceId !== filter.traceId) return false;
       if (!applyTimeWindow(record, filter.since, filter.until)) return false;
@@ -195,6 +196,7 @@ export class InMemoryMetricStore implements WebSocketTelemetryMetricStore {
       if (filter.kind !== undefined && record.kind !== filter.kind) return false;
       if (filter.connectionId !== undefined && record.connectionId !== filter.connectionId)
         return false;
+      if (filter.userId !== undefined && record.userId !== filter.userId) return false;
       if (filter.namespace !== undefined && record.namespace !== filter.namespace) return false;
       if (filter.traceId !== undefined && record.traceId !== filter.traceId) return false;
       if (!applyTimeWindow(record, filter.since, filter.until)) return false;
@@ -230,6 +232,7 @@ export class InMemorySpanStore implements WebSocketTelemetrySpanStore {
       if (filter.status !== undefined && record.status !== filter.status) return false;
       if (filter.connectionId !== undefined && record.connectionId !== filter.connectionId)
         return false;
+      if (filter.userId !== undefined && record.userId !== filter.userId) return false;
       if (filter.namespace !== undefined && record.namespace !== filter.namespace) return false;
       if (filter.traceId !== undefined && record.traceId !== filter.traceId) return false;
       if (!applyTimeWindow(record, filter.since, filter.until)) return false;
