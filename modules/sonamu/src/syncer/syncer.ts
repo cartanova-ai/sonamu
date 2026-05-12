@@ -226,12 +226,16 @@ export class Syncer {
   removeInvalidatedRegisteredApis(
     invalidatedPath: AbsolutePath,
   ): (typeof registeredApis)[number][] {
-    if (!invalidatedPath.endsWith(".model.ts" /*소스 코드를 다루는 상황이니 .ts 경로로 봅니다.*/)) {
+    // 소스 코드를 다루는 상황이니 .ts 경로로 봅니다.
+    const isModel = invalidatedPath.endsWith(".model.ts");
+    const isFrame = invalidatedPath.endsWith(".frame.ts");
+    if (!isModel && !isFrame) {
       return [];
     }
 
     const entityId = EntityManager.getEntityIdFromPath(invalidatedPath);
-    const toRemove = registeredApis.filter((api) => api.modelName === `${entityId}Model`);
+    const targetModelName = `${entityId}${isModel ? "Model" : "Frame"}`;
+    const toRemove = registeredApis.filter((api) => api.modelName === targetModelName);
     for (const api of toRemove) {
       const idx = registeredApis.indexOf(api);
       if (idx !== -1) {
