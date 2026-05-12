@@ -1,0 +1,378 @@
+---
+title: "@websocket"
+description: "양방향 WebSocket 채널 API 생성 데코레이터"
+---
+
+`@websocket` 데코레이터는 클라이언트와 서버 사이에 양방향 메시지 채널을 만드는 WebSocket API를 정의합니다. SSE 전용인 `@stream`과 달리 클라이언트가 보내는 이벤트(`inEvents`)도 처리할 수 있고, 같은 namespace/room에 묶인 다른 연결로 메시지를 브로드캐스트할 수 있습니다.
+
+## 기본 사용법
+
+```typescript
+import { BaseFrameClass, Sonamu, websocket, type WebSocketContext } from "sonamu";
+import { z } from "zod";
+
+const ChatOutEvents = z.object({
+  newMessage: z.object({
+    id: z.number(),
+    content: z.string(),
+    userId: z.string(),
+  }),
+  typingUsers: z.array(z.object({ id: z.string(), name: z.string() })),
+});
+
+const ChatInEvents = z.object({
+  send: z.object({ content: z.string() }),
+  typing: z.object({ active: z.boolean() }),
+});
+
+class ChatFrameClass extends BaseFrameClass {
+  @websocket({
+    namespace: "chat",
+    heartbeat: 30_000,
+    guards: ["user"],
+    outEvents: ChatOutEvents,
+    inEvents: ChatInEvents,
+  })
+  async subscribeChat(
+    ctx: WebSocketContext<typeof ChatOutEvents.shape, typeof ChatInEvents.shape>,
+  ): Promise<void> {
+    const user = ctx.user;
+    if (!user) throw new Error("unauthenticated");
+
+    ctx.ws.join("global");
+    ctx.ws.setUserId(user.id);
+
+    ctx.ws.onMessage("send", (data) => {
+      Sonamu.websocketRuntime.publishToRoom(
+        "global",
+        "newMessage",
+        { id: Date.now(), content: data.content, userId: user.id },
+        "chat",
+      );
+    });
+
+    ctx.ws.onClose(() => {
+      ctx.ws.leave("global");
+    });
+
+    await ctx.ws.waitForClose();
+  }
+}
+```
+
+## 옵션
+
+### outEvents
+
+서버 → 클라이언트로 보낼 이벤트의 타입을 Zod 스키마로 정의합니다.
+
+**필수 옵션**
+
+```typescript
+import { z } from "zod";
+
+const OutEvents = z.object({
+  ready: z.object({ history: z.array(z.string()) }),
+  newMessage: z.object({ id: z.number(), content: z.string() }),
+});
+```
+
+### inEvents
+
+클라이언트 → 서버로 들어올 이벤트의 타입을 Zod 스키마로 정의합니다.
+
+**필수 옵션**
+
+```typescript
+const InEvents = z.object({
+  send: z.object({ content: z.string() }),
+  setPeriod: z.object({ period: z.enum(["7", "30", "all"]) }),
+});
+```
+
+<Info>들어온 이벤트는 envelope을 거쳐 자동 검증됩니다. 스키마에 없는 이벤트나 형식이 맞지 않는 페이로드는 처리되지 않고 정책 위반으로 처리됩니다.</Info>
+
+### path
+
+WebSocket 엔드포인트 경로를 지정합니다.
+
+**기본값:** `/{modelName}/{methodName}` (camelCase)
+
+```typescript
+@websocket({
+  outEvents,
+  inEvents,
+  path: "/realtime/chat",
+})
+async subscribeChat(ctx: WebSocketContext) {}
+```
+
+### namespace
+
+같은 서버 안에서 라우팅·브로드캐스트의 범위를 가르는 논리적 그룹입니다. `Sonamu.websocketRuntime.publishToRoom(roomId, event, data, namespace)`로 보낼 때 같은 namespace의 연결에만 전달됩니다.
+
+**기본값:** `"default"`
+
+```typescript
+@websocket({ outEvents, inEvents, namespace: "chat" })
+```
+
+### heartbeat
+
+연결 유지를 위한 ping 간격(밀리초)입니다.
+
+**기본값:** `30000` (30초)
+
+```typescript
+@websocket({ outEvents, inEvents, heartbeat: 15_000 })
+```
+
+### guards
+
+접근 권한을 지정합니다.
+
+```typescript
+type GuardKey = "query" | "admin" | "user";
+```
+
+```typescript
+@websocket({ outEvents, inEvents, guards: ["user"] })
+```
+
+가드 실패는 핸드셰이크 단계에서 차단되어 `1008 Policy Violation`으로 close됩니다.
+
+### description
+
+WebSocket API 설명을 추가합니다.
+
+```typescript
+@websocket({
+  outEvents,
+  inEvents,
+  description: "전역 채팅 채널을 구독합니다.",
+})
+```
+
+### resourceName
+
+생성되는 서비스 파일의 리소스 이름을 지정합니다.
+
+```typescript
+@websocket({ outEvents, inEvents, resourceName: "Chat" })
+```
+
+## WebSocketContext
+
+데코레이터가 적용된 메서드는 마지막 인자로 `WebSocketContext<TOut, TIn>`을 받습니다.
+
+```typescript
+type WebSocketContext<TOut, TIn> = BaseContext & {
+  transport: "ws";
+  ws: WebSocketConnection<TOut, TIn>;
+};
+```
+
+### ctx.ws.publish
+
+해당 연결로만 이벤트를 전송합니다.
+
+```typescript
+ctx.ws.publish("ready", { history: ["hello", "world"] });
+```
+
+### ctx.ws.onMessage
+
+클라이언트가 보낸 이벤트를 처리합니다.
+
+```typescript
+ctx.ws.onMessage("send", async (data) => {
+  // data는 inEvents.send 스키마로 검증되어 들어옴
+});
+```
+
+### ctx.ws.onClose
+
+연결이 닫힐 때 정리 작업을 수행합니다.
+
+```typescript
+ctx.ws.onClose(() => {
+  ctx.ws.leave("global");
+});
+```
+
+### ctx.ws.waitForClose
+
+연결이 끝날 때까지 핸들러를 살아있게 유지합니다. WebSocket 메서드는 보통 이 promise를 await하며 마무리됩니다.
+
+```typescript
+await ctx.ws.waitForClose();
+```
+
+### ctx.ws.join / ctx.ws.leave
+
+브로드캐스트 단위인 room에 연결을 가입/탈퇴시킵니다.
+
+```typescript
+ctx.ws.join("room-1");
+ctx.ws.leave("room-1");
+```
+
+### ctx.ws.setUserId / ctx.ws.clearUserId
+
+연결에 사용자 식별자를 붙여 `publishToUser`의 타겟이 되게 합니다.
+
+```typescript
+ctx.ws.setUserId(user.id);
+```
+
+## 브로드캐스트
+
+핸들러 밖에서도 `Sonamu.websocketRuntime`을 통해 같은 채널의 다른 연결에 메시지를 보낼 수 있습니다.
+
+```typescript
+import { Sonamu } from "sonamu";
+
+Sonamu.websocketRuntime.publishToRoom(
+  "global",
+  "newMessage",
+  { id: 1, content: "hello" },
+  "chat", // namespace
+);
+
+Sonamu.websocketRuntime.publishToUser(
+  userId,
+  "notify",
+  { kind: "mention" },
+  "chat",
+);
+```
+
+## 다른 데코레이터와 함께 사용
+
+`@websocket`은 `@api`, `@stream`, `@upload`와 같은 메서드에 동시에 사용할 수 없습니다. WebSocket으로 구독하면서 동일 데이터를 일반 HTTP로도 조회하고 싶다면, 메서드를 분리해 한쪽은 `@api`로, 다른 한쪽은 `@websocket`으로 노출하세요.
+
+```typescript
+class DashboardFrameClass extends BaseFrameClass {
+  @api({ httpMethod: "GET" })
+  async getRecentActivity(period: ActivityPeriod = "7"): Promise<ActivityGroup[]> {
+    // ...
+  }
+
+  @websocket({ outEvents, inEvents })
+  async getRecentActivityStream(
+    initialPeriod: ActivityPeriod = "7",
+    ctx: WebSocketContext<typeof outEvents.shape, typeof inEvents.shape>,
+  ): Promise<void> {
+    // ...
+  }
+}
+```
+
+## 제약사항
+
+### 1. @api / @stream / @upload와 중복 사용 불가
+
+```
+@websocket decorator can only be used once on Chat.subscribe.
+You can use only one of @api, @stream, @websocket, or @upload decorator on the same method.
+```
+
+### 2. httpMethod는 항상 GET
+
+`@websocket`은 자동으로 `httpMethod: "GET"`을 설정합니다. WebSocket upgrade는 GET 요청에서 시작되기 때문입니다.
+
+### 3. createSSE / reply에 의존하는 contextProvider 사용 시 주의
+
+WebSocket 경로에서는 SSE 헬퍼나 FastifyReply 접근이 의미가 없어 접근하면 즉시 에러가 발생합니다. 컨텍스트가 SSE/reply에 의존한다면 `websocketContextProvider`를 별도로 정의하세요.
+
+## 클라이언트 사용 (Web)
+
+`@websocket`이 붙은 메서드에 대해 Sonamu는 `useWebSocketChannel` 훅을 자동 생성합니다.
+
+```typescript
+import { ChatService } from "@/services/ChatService";
+
+function ChatRoom() {
+  const channel = ChatService.useSubscribeChat(
+    {},
+    {
+      newMessage: (msg) => {
+        // outEvents.newMessage 데이터
+      },
+      typingUsers: (users) => {
+        // outEvents.typingUsers 데이터
+      },
+    },
+  );
+
+  return (
+    <div>
+      <div>{channel.isConnected ? "connected" : "disconnected"}</div>
+      <button onClick={() => channel.send("send", { content: "hi" })}>send</button>
+    </div>
+  );
+}
+```
+
+`useWebSocketChannel`이 반환하는 상태:
+
+```typescript
+type WebSocketChannelState<TSend> = {
+  isConnected: boolean;
+  error: string | null;
+  retryCount: number;
+  readyState: number;
+  send<K extends keyof TSend>(event: K, data: TSend[K]): void;
+  close(code?: number, reason?: string): void;
+};
+```
+
+옵션:
+
+```typescript
+type WebSocketChannelOptions = {
+  enabled?: boolean;
+  retry?: number;
+  retryInterval?: number;
+  protocols?: string | string[];
+  traceProvider?: () => string | undefined;
+};
+```
+
+## 로깅
+
+`@websocket` 데코레이터는 호출 시 자동으로 디버그 로그를 남깁니다.
+
+```
+[DEBUG] websocket: ChatFrame.subscribeChat
+```
+
+## @stream과의 차이
+
+| 항목 | `@stream` (SSE) | `@websocket` |
+| --- | --- | --- |
+| 방향 | 서버 → 클라이언트 (단방향) | 양방향 |
+| 클라이언트 이벤트 처리 | 불가 | `inEvents` 스키마로 수신 |
+| 브로드캐스트 | SSE 연결마다 수동 발행 | `room` / `userId` 기반 라우팅 지원 |
+| HTTP 메서드 | GET (자동) | GET (자동, upgrade) |
+| 자동 생성 클라이언트 | `eventSource` 헬퍼 | `useWebSocketChannel` 훅 |
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="@stream" icon="signal-stream" href="/ko/api-reference/decorators/stream">
+    단방향 SSE 스트리밍이 필요할 때
+  </Card>
+
+  <Card title="@api" icon="plug" href="/ko/api-reference/decorators/api">
+    일반 REST API 만들기
+  </Card>
+
+  <Card title="@transactional" icon="arrows-rotate" href="/ko/api-reference/decorators/transactional">
+    트랜잭션으로 일관성 보장
+  </Card>
+
+  <Card title="@cache" icon="database" href="/ko/api-reference/decorators/cache">
+    결과 캐싱으로 성능 향상
+  </Card>
+</CardGroup>

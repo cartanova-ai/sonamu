@@ -473,6 +473,7 @@
                 "pages": [
                   "ko/api-reference/decorators/api",
                   "ko/api-reference/decorators/stream",
+                  "ko/api-reference/decorators/websocket",
                   "ko/api-reference/decorators/transactional",
                   "ko/api-reference/decorators/upload",
                   "ko/api-reference/decorators/cache",
@@ -1027,6 +1028,7 @@
                 "pages": [
                   "en/api-reference/decorators/api",
                   "en/api-reference/decorators/stream",
+                  "en/api-reference/decorators/websocket",
                   "en/api-reference/decorators/transactional",
                   "en/api-reference/decorators/upload",
                   "en/api-reference/decorators/cache",
