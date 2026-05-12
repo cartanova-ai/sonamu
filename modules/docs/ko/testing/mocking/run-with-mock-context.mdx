@@ -53,10 +53,10 @@ test("Context 접근 테스트", async () => {
   // test() 함수가 자동으로 runWithMockContext를 호출하므로
   // 바로 Context에 접근할 수 있습니다
   const context = Sonamu.getContext();
-  
-  expect(context.ip).toBe("127.0.0.1");
+
   expect(context.user).toBeNull();
-  expect(context.session).toEqual({});
+  expect(context.session).toBeNull();
+  expect(context.locale).toBe("");
 });
 ```
 
@@ -70,9 +70,10 @@ import { Sonamu } from "sonamu";
 
 await runWithMockContext(async () => {
   const context = Sonamu.getContext();
-  
+
   // 이 블록 내에서는 Mock Context가 활성화됩니다
-  console.log(context.ip); // "127.0.0.1"
+  console.log(context.user); // null (미인증)
+  console.log(context.session); // null
 });
 ```
 
@@ -185,14 +186,14 @@ import { test } from "sonamu/test";
 import { Sonamu } from "sonamu";
 import { expect } from "vitest";
 
-test("특정 IP에서의 접근 테스트", async () => {
+test("locale별 응답 테스트", async () => {
   const context = Sonamu.getContext();
-  
+
   // Context 속성 수정
-  context.ip = "192.168.1.100";
-  
-  const result = await someService.checkIPRestriction();
-  expect(result.allowed).toBe(true);
+  context.locale = "ko";
+
+  const result = await someService.getLocalizedGreeting();
+  expect(result).toBe("안녕하세요");
 });
 ```
 

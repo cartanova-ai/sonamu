@@ -106,22 +106,26 @@ describe("PostModel", () => {
 });
 ```
 
-For tests that need actual Context, use `runWithMockContext`:
+For tests that need actual Context, use `runWithMockContext`, or `testAs` when you need to specify user info:
 
 ```typescript
-import { runWithMockContext } from "sonamu/test";
+import { runWithMockContext, testAs } from "sonamu/test";
 
-it("should use context in test", async () => {
-  await runWithMockContext(
-    {
-      user: { id: 1, email: "test@example.com" },
-    },
-    async () => {
-      const ctx = Sonamu.getContext();
-      expect(ctx.user?.id).toBe(1);
-    },
-  );
+it("should use mock context in test", async () => {
+  await runWithMockContext(async () => {
+    const ctx = Sonamu.getContext();
+    expect(ctx.user).toBeNull();
+  });
 });
+
+testAs(
+  { id: 1, email: "test@example.com" },
+  "should use context with user",
+  async () => {
+    const ctx = Sonamu.getContext();
+    expect(ctx.user?.id).toBe(1);
+  },
+);
 ```
 
 ## File Upload Context

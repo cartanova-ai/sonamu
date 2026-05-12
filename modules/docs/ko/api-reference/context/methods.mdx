@@ -106,22 +106,26 @@ describe("PostModel", () => {
 });
 ```
 
-실제 Context가 필요한 테스트에서는 `runWithMockContext`를 사용하세요:
+실제 Context가 필요한 테스트에서는 `runWithMockContext`를, 사용자 정보까지 지정하려면 `testAs`를 사용하세요:
 
 ```typescript
-import { runWithMockContext } from "sonamu/test";
+import { runWithMockContext, testAs } from "sonamu/test";
 
-it("should use context in test", async () => {
-  await runWithMockContext(
-    {
-      user: { id: 1, email: "test@example.com" },
-    },
-    async () => {
-      const ctx = Sonamu.getContext();
-      expect(ctx.user?.id).toBe(1);
-    },
-  );
+it("should use mock context in test", async () => {
+  await runWithMockContext(async () => {
+    const ctx = Sonamu.getContext();
+    expect(ctx.user).toBeNull();
+  });
 });
+
+testAs(
+  { id: 1, email: "test@example.com" },
+  "should use context with user",
+  async () => {
+    const ctx = Sonamu.getContext();
+    expect(ctx.user?.id).toBe(1);
+  },
+);
 ```
 
 ## 파일 업로드 컨텍스트
