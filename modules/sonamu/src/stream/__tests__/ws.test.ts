@@ -618,7 +618,6 @@ describe("WebSocketRuntime", () => {
       outEvents: OutEvents,
       inEvents: InEvents,
       namespace: "chat",
-      maxPayload: 128,
     });
 
     socket.emit(

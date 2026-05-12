@@ -34,7 +34,6 @@ const WS_CLOSED = 3;
 const WS_CLOSE_CODE_GOING_AWAY = 1001;
 const WS_CLOSE_CODE_INVALID_FRAME_PAYLOAD_DATA = 1007;
 const WS_CLOSE_CODE_POLICY_VIOLATION = 1008;
-const WS_CLOSE_CODE_MESSAGE_TOO_BIG = 1009;
 const WS_CLOSE_CODE_INTERNAL_ERROR = 1011;
 const WS_CLOSE_CODE_TRY_AGAIN_LATER = 1013;
 const MAX_PENDING_MESSAGES = 100;
@@ -98,7 +97,6 @@ type ParsedEnvelope = z.infer<typeof WebSocketEnvelopeSchema>;
 type WebSocketConnectionOptions<TOut extends z.ZodRawShape, TIn extends z.ZodRawShape> = {
   namespace?: string;
   heartbeat?: number;
-  maxPayload?: number;
   active?: boolean;
   outEvents: z.ZodObject<TOut>;
   inEvents: z.ZodObject<TIn>;
@@ -204,7 +202,6 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   private readonly closePromise: Promise<void>;
   private readonly resolveClosePromise: () => void;
   private readonly heartbeatMs: number;
-  private readonly maxPayload?: number;
   private readonly eventSchemasIn: Record<string, z.ZodTypeAny>;
   private readonly eventSchemasOut: Record<string, z.ZodTypeAny>;
 
@@ -234,7 +231,6 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   ) {
     this.namespace = options.namespace ?? "default";
     this.heartbeatMs = options.heartbeat ?? 30000;
-    this.maxPayload = options.maxPayload;
     this.connectionTraceId = options.traceId;
     this.connectionSpanId = options.spanId;
     this.connectionParentSpanId = options.parentSpanId;
@@ -371,16 +367,10 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
     }
   }
 
-  // 인바운드 메시지를 순차 처리 큐에 올림. payload size → envelope 파싱 순으로 transport 레벨 검증을 우선 수행함
+  // 인바운드 메시지를 순차 처리 큐에 올림. Sonamu envelope 검증 수행
   private readonly handleMessage = (raw: unknown) => {
     this.enqueueMessageTask(async () => {
       const text = normalizeMessage(raw);
-      if (this.maxPayload !== undefined && Buffer.byteLength(text) > this.maxPayload) {
-        this.emitInboundRejected("maxPayload");
-        this.close(WS_CLOSE_CODE_MESSAGE_TOO_BIG, "Message too large");
-        return;
-      }
-
       const parsedEnvelope = safeParseEnvelope(text);
       if (!parsedEnvelope) {
         this.emitInboundRejected("invalidPayload");

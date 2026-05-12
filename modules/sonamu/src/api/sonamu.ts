@@ -1119,7 +1119,6 @@ class SonamuClass {
           inEvents: api.websocketOptions!.inEvents,
           namespace: api.websocketOptions!.namespace,
           heartbeat: api.websocketOptions!.heartbeat,
-          maxPayload: api.websocketOptions!.maxPayload,
           active: false,
           traceId: traceContext.traceId,
           spanId: traceContext.spanId,
@@ -1734,7 +1733,6 @@ class SonamuClass {
     const websocketPlugin = (await import("@fastify/websocket")).default;
     const resolvedPluginOptions = resolveWebSocketPluginOptions({
       rawPluginOption: pluginOption,
-      apis: this.syncer.apis,
     });
     if (resolvedPluginOptions) {
       await server.register(websocketPlugin, resolvedPluginOptions);

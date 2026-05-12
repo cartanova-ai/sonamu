@@ -72,7 +72,6 @@ export type WebSocketDecoratorOptions = {
   guards?: GuardKey[];
   description?: string;
   heartbeat?: number;
-  maxPayload?: number;
   namespace?: string;
 };
 export type ResolvedWebSocketDecoratorOptions = WebSocketDecoratorOptions & {

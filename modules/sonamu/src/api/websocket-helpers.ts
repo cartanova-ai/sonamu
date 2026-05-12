@@ -5,7 +5,6 @@ import { type FastifyReply } from "fastify";
 
 import { isSoException } from "../exceptions/so-exceptions";
 import { isPlainObject } from "../utils/utils";
-import { type ExtendedApi } from "./decorators";
 
 // Fastify websocket route와 Vite HMR websocket이 같은 server socket을 두고 충돌하는 것을 방지하기 위해,
 // WS route가 존재하면 HMR을 별도 포트로 분리해 띄움
@@ -26,37 +25,16 @@ export function resolveIntegratedViteHmrOptions({
   return Number.isFinite(parsedPort) && parsedPort > 0 ? { port: parsedPort } : { port: 24678 };
 }
 
-// route-level maxPayload를 서버 plugin options으로 승격시켜, 큰 frame을 받은 뒤 닫는 대신
-// transport 레벨에서 먼저 제한되도록 함
+// @fastify/websocket transport option은 server.plugins.ws에 명시된 값만 사용함.
 export function resolveWebSocketPluginOptions({
   rawPluginOption,
-  apis,
 }: {
   rawPluginOption: boolean | WebsocketPluginOptions | undefined;
-  apis: ExtendedApi[];
 }): WebsocketPluginOptions | undefined {
-  const pluginOptions =
-    rawPluginOption && rawPluginOption !== true
-      ? { ...rawPluginOption }
-      : ({} as WebsocketPluginOptions & { maxPayload?: number });
+  const pluginOptions = rawPluginOption && rawPluginOption !== true ? { ...rawPluginOption } : {};
   const serverOptions = isPlainObject(pluginOptions.options)
     ? { ...pluginOptions.options }
     : ({} as NonNullable<WebsocketPluginOptions["options"]>);
-
-  if (isPositiveNumber(pluginOptions.maxPayload) && serverOptions.maxPayload === undefined) {
-    serverOptions.maxPayload = pluginOptions.maxPayload;
-    delete pluginOptions.maxPayload;
-  }
-
-  if (serverOptions.maxPayload === undefined) {
-    const routeMaxPayloads = apis
-      .map((api) => api.websocketOptions?.maxPayload)
-      .filter(isPositiveNumber);
-
-    if (routeMaxPayloads.length > 0) {
-      serverOptions.maxPayload = Math.max(...routeMaxPayloads);
-    }
-  }
 
   if (Object.keys(serverOptions).length > 0) {
     pluginOptions.options = serverOptions;
@@ -115,8 +93,4 @@ export function createWebSocketReplyStub(): FastifyReply {
       );
     },
   });
-}
-
-function isPositiveNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
