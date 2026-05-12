@@ -18,6 +18,7 @@ import { convertDomainToCategory } from "../logger/category";
 import { type DriverKey } from "../storage/drivers";
 import { type KeyGenerator } from "../storage/types";
 import { type ApiParam, type ApiParamType } from "../types/types";
+import { getModelNameFromClassName } from "../utils/class-name";
 import { BaseFrameClass } from "./base-frame";
 
 export interface GuardKeys {
@@ -147,7 +148,7 @@ export function api(options: ApiDecoratorOptions = {}) {
   };
 
   return (target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
-    const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
+    const modelName = getModelNameFromClassName(target.constructor.name);
     assert(
       modelName,
       `modelName is required on @api decorator on ${target.constructor.name}.${propertyKey}`,
@@ -218,7 +219,7 @@ export function api(options: ApiDecoratorOptions = {}) {
 
 export function stream(options: StreamDecoratorOptions) {
   return (target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
-    const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
+    const modelName = getModelNameFromClassName(target.constructor.name);
     assert(
       modelName,
       `modelName is required on @stream decorator on ${target.constructor.name}.${propertyKey}`,
@@ -301,7 +302,7 @@ export function stream(options: StreamDecoratorOptions) {
 
 export function websocket(options: WebSocketDecoratorOptions) {
   return (target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
-    const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
+    const modelName = getModelNameFromClassName(target.constructor.name);
     assert(
       modelName,
       `modelName is required on @websocket decorator on ${target.constructor.name}.${propertyKey}`,
@@ -383,7 +384,7 @@ export function transactional(options: TransactionalOptions = {}) {
 
   return (target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
-    const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
+    const modelName = getModelNameFromClassName(target.constructor.name);
     assert(
       modelName,
       `modelName is required on @transactional decorator on ${target.constructor.name}.${propertyKey}`,
@@ -448,7 +449,7 @@ export function transactional(options: TransactionalOptions = {}) {
 export function upload(options: UploadDecoratorOptions = { consume: "buffer" }) {
   return (target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
-    const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
+    const modelName = getModelNameFromClassName(target.constructor.name);
     assert(
       modelName,
       `modelName is required on @upload decorator on ${target.constructor.name}.${propertyKey}`,

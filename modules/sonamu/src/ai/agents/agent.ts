@@ -9,6 +9,7 @@ import { ToolLoopAgent } from "ai";
 import inflection from "inflection";
 
 import { convertDomainToCategory } from "../../logger/category";
+import { getModelNameFromClassName } from "../../utils/class-name";
 import {
   type AgentConfig,
   type RegisteredToolDefinition,
@@ -76,7 +77,7 @@ export function tools<INPUT, OUTPUT = unknown>(options: ToolDecoratorOptions<INP
       throw new Error("Target must be a subclass of BaseAgentClass");
     }
 
-    const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
+    const modelName = getModelNameFromClassName(target.constructor.name);
     const methodName = propertyKey;
 
     const originalMethod = descriptor.value;
