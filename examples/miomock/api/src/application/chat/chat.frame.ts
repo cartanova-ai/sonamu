@@ -17,7 +17,6 @@ class ChatFrameClass extends BaseFrameClass {
   @websocket({
     namespace: CHAT_NAMESPACE,
     heartbeat: 30_000,
-    maxPayload: 64 * 1024,
     guards: ["user"],
     outEvents: ChatOutEvents,
     inEvents: ChatInEvents,

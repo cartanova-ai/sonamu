@@ -33,7 +33,7 @@
   },
   {
     "path": "api/src/application/chat/chat.frame.ts",
-    "checksum": "aa9d68729b11d1c863c70fc021ab1eba42116da9"
+    "checksum": "ed97104fba8ba92b85e392afa6398079afb4fbd0"
   },
   {
     "path": "api/src/application/chat/chat.types.ts",
@@ -253,7 +253,7 @@
   },
   {
     "path": "api/src/sonamu.config.ts",
-    "checksum": "e574678ee4fb66cf992cb89e598fee0a310e18f3"
+    "checksum": "5454845b8be0953ff906177f93f67eb0d02a5949"
   },
   {
     "path": "web/src/i18n/en.ts",

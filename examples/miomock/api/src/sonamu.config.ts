@@ -118,7 +118,11 @@ export default defineConfig({
       },
     },
     plugins: {
-      ws: true,
+      ws: {
+        options: {
+          maxPayload: 64 * 1024,
+        },
+      },
       compress: {
         global: false,
         threshold: 1024,
