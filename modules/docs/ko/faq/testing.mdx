@@ -338,31 +338,36 @@ describe("User API Errors", () => {
 <Accordion title="트랜잭션을 테스트하려면?">
 
 ```typescript
+import { Puri } from "sonamu";
+
 describe("Transactions", () => {
   test("트랜잭션 성공", async () => {
-    await UserModel.transaction(async (trx) => {
-      const user = await UserModel.save({ name: "Tx User" }, { trx });
-      const profile = await ProfileModel.save({ user_id: user.id, bio: "Bio" }, { trx });
+    const wdb = UserModel.getPuri("w");
 
-      expect(user.id).toBeGreaterThan(0);
-      expect(profile.user_id).toBe(user.id);
+    await wdb.transaction(async () => {
+      // 트랜잭션 컨텍스트 안에서 호출하는 Model.save() 도 동일 트랜잭션에 자동 합류합니다.
+      const [userId] = await UserModel.save([{ name: "Tx User" }]);
+      const [profileId] = await ProfileModel.save([{ user_id: userId, bio: "Bio" }]);
+
+      expect(userId).toBeGreaterThan(0);
+      expect(profileId).toBeGreaterThan(0);
     });
   });
 
   test("트랜잭션 롤백", async () => {
-    const initialCount = await UserModel.count();
+    const rdb = UserModel.getPuri("r");
+    const before = await rdb.table("users").select({ total: Puri.count() }).first();
 
-    try {
-      await UserModel.transaction(async (trx) => {
-        await UserModel.save({ name: "Rollback User" }, { trx });
+    const wdb = UserModel.getPuri("w");
+    await expect(
+      wdb.transaction(async () => {
+        await UserModel.save([{ name: "Rollback User" }]);
         throw new Error("강제 에러");
-      });
-    } catch (error) {
-      // 에러 무시
-    }
+      }),
+    ).rejects.toThrow("강제 에러");
 
-    const finalCount = await UserModel.count();
-    expect(finalCount).toBe(initialCount); // 변화 없음
+    const after = await rdb.table("users").select({ total: Puri.count() }).first();
+    expect(after?.total).toBe(before?.total); // 변화 없음
   });
 });
 ```
