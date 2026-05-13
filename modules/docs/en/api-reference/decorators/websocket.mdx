@@ -1,0 +1,378 @@
+---
+title: "@websocket"
+description: "Bidirectional WebSocket channel API decorator"
+---
+
+The `@websocket` decorator defines a WebSocket API that opens a bidirectional message channel between client and server. Unlike `@stream` (SSE-only), it can also handle events sent by the client (`inEvents`) and broadcast messages to other connections in the same namespace/room.
+
+## Basic Usage
+
+```typescript
+import { BaseFrameClass, Sonamu, websocket, type WebSocketContext } from "sonamu";
+import { z } from "zod";
+
+const ChatOutEvents = z.object({
+  newMessage: z.object({
+    id: z.number(),
+    content: z.string(),
+    userId: z.string(),
+  }),
+  typingUsers: z.array(z.object({ id: z.string(), name: z.string() })),
+});
+
+const ChatInEvents = z.object({
+  send: z.object({ content: z.string() }),
+  typing: z.object({ active: z.boolean() }),
+});
+
+class ChatFrameClass extends BaseFrameClass {
+  @websocket({
+    namespace: "chat",
+    heartbeat: 30_000,
+    guards: ["user"],
+    outEvents: ChatOutEvents,
+    inEvents: ChatInEvents,
+  })
+  async subscribeChat(
+    ctx: WebSocketContext<typeof ChatOutEvents.shape, typeof ChatInEvents.shape>,
+  ): Promise<void> {
+    const user = ctx.user;
+    if (!user) throw new Error("unauthenticated");
+
+    ctx.ws.join("global");
+    ctx.ws.setUserId(user.id);
+
+    ctx.ws.onMessage("send", (data) => {
+      Sonamu.websocketRuntime.publishToRoom(
+        "global",
+        "newMessage",
+        { id: Date.now(), content: data.content, userId: user.id },
+        "chat",
+      );
+    });
+
+    ctx.ws.onClose(() => {
+      ctx.ws.leave("global");
+    });
+
+    await ctx.ws.waitForClose();
+  }
+}
+```
+
+## Options
+
+### outEvents
+
+Defines server → client event types using a Zod schema.
+
+**Required option**
+
+```typescript
+import { z } from "zod";
+
+const OutEvents = z.object({
+  ready: z.object({ history: z.array(z.string()) }),
+  newMessage: z.object({ id: z.number(), content: z.string() }),
+});
+```
+
+### inEvents
+
+Defines client → server event types using a Zod schema.
+
+**Required option**
+
+```typescript
+const InEvents = z.object({
+  send: z.object({ content: z.string() }),
+  setPeriod: z.object({ period: z.enum(["7", "30", "all"]) }),
+});
+```
+
+<Info>Inbound messages are validated against `inEvents` via the envelope contract. Events not declared in the schema, or payloads that fail validation, are not delivered to handlers and are treated as policy violations.</Info>
+
+### path
+
+WebSocket endpoint path.
+
+**Default:** `/{modelName}/{methodName}` (camelCase)
+
+```typescript
+@websocket({
+  outEvents,
+  inEvents,
+  path: "/realtime/chat",
+})
+async subscribeChat(ctx: WebSocketContext) {}
+```
+
+### namespace
+
+A logical group that scopes routing/broadcast inside the same server. `Sonamu.websocketRuntime.publishToRoom(roomId, event, data, namespace)` only delivers to connections in the same namespace.
+
+**Default:** `"default"`
+
+```typescript
+@websocket({ outEvents, inEvents, namespace: "chat" })
+```
+
+### heartbeat
+
+Heartbeat (ping) interval in milliseconds.
+
+**Default:** `30000` (30 seconds)
+
+```typescript
+@websocket({ outEvents, inEvents, heartbeat: 15_000 })
+```
+
+### guards
+
+Restricts who can connect.
+
+```typescript
+type GuardKey = "query" | "admin" | "user";
+```
+
+```typescript
+@websocket({ outEvents, inEvents, guards: ["user"] })
+```
+
+Guard failures are rejected during the handshake and close with `1008 Policy Violation`.
+
+### description
+
+Adds a description for the WebSocket API.
+
+```typescript
+@websocket({
+  outEvents,
+  inEvents,
+  description: "Subscribes to the global chat channel.",
+})
+```
+
+### resourceName
+
+Specifies the resource name for the generated service file.
+
+```typescript
+@websocket({ outEvents, inEvents, resourceName: "Chat" })
+```
+
+## WebSocketContext
+
+A `@websocket`-decorated method receives `WebSocketContext<TOut, TIn>` as its last argument.
+
+```typescript
+type WebSocketContext<TOut, TIn> = BaseContext & {
+  transport: "ws";
+  ws: WebSocketConnection<TOut, TIn>;
+};
+```
+
+### ctx.ws.publish
+
+Sends an event to this connection only.
+
+```typescript
+ctx.ws.publish("ready", { history: ["hello", "world"] });
+```
+
+### ctx.ws.onMessage
+
+Handles events sent by the client.
+
+```typescript
+ctx.ws.onMessage("send", async (data) => {
+  // data is validated against inEvents.send
+});
+```
+
+### ctx.ws.onClose
+
+Runs cleanup when the connection closes.
+
+```typescript
+ctx.ws.onClose(() => {
+  ctx.ws.leave("global");
+});
+```
+
+### ctx.ws.waitForClose
+
+Keeps the handler alive until the connection closes. WebSocket methods typically `await` this promise to wrap up.
+
+```typescript
+await ctx.ws.waitForClose();
+```
+
+### ctx.ws.join / ctx.ws.leave
+
+Joins or leaves a room, which is the broadcast unit.
+
+```typescript
+ctx.ws.join("room-1");
+ctx.ws.leave("room-1");
+```
+
+### ctx.ws.setUserId / ctx.ws.clearUserId
+
+Attaches a user identifier to the connection so it can be targeted by `publishToUser`.
+
+```typescript
+ctx.ws.setUserId(user.id);
+```
+
+## Broadcast
+
+From outside the handler you can also push messages to other connections via `Sonamu.websocketRuntime`.
+
+```typescript
+import { Sonamu } from "sonamu";
+
+Sonamu.websocketRuntime.publishToRoom(
+  "global",
+  "newMessage",
+  { id: 1, content: "hello" },
+  "chat", // namespace
+);
+
+Sonamu.websocketRuntime.publishToUser(
+  userId,
+  "notify",
+  { kind: "mention" },
+  "chat",
+);
+```
+
+## Combining With Other Decorators
+
+`@websocket` cannot share a method with `@api`, `@stream`, or `@upload`. If you want to expose the same data via both a WebSocket subscription and a plain HTTP endpoint, split them into two methods — one with `@api`, the other with `@websocket`.
+
+```typescript
+class DashboardFrameClass extends BaseFrameClass {
+  @api({ httpMethod: "GET" })
+  async getRecentActivity(period: ActivityPeriod = "7"): Promise<ActivityGroup[]> {
+    // ...
+  }
+
+  @websocket({ outEvents, inEvents })
+  async getRecentActivityStream(
+    initialPeriod: ActivityPeriod = "7",
+    ctx: WebSocketContext<typeof outEvents.shape, typeof inEvents.shape>,
+  ): Promise<void> {
+    // ...
+  }
+}
+```
+
+## Constraints
+
+### 1. Cannot be combined with @api / @stream / @upload
+
+```
+@websocket decorator can only be used once on Chat.subscribe.
+You can use only one of @api, @stream, @websocket, or @upload decorator on the same method.
+```
+
+### 2. httpMethod is always GET
+
+`@websocket` automatically sets `httpMethod: "GET"` because the WebSocket upgrade starts from a GET request.
+
+### 3. Watch out for context providers that depend on createSSE / reply
+
+In the WebSocket path, SSE helpers and `FastifyReply` access are meaningless and raise an error immediately. If your context setup depends on them, define a dedicated `websocketContextProvider`.
+
+## Client Usage (Web)
+
+For each `@websocket` method, Sonamu auto-generates a `useWebSocketChannel` hook.
+
+```typescript
+import { ChatService } from "@/services/ChatService";
+
+function ChatRoom() {
+  const channel = ChatService.useSubscribeChat(
+    {},
+    {
+      newMessage: (msg) => {
+        // outEvents.newMessage data
+      },
+      typingUsers: (users) => {
+        // outEvents.typingUsers data
+      },
+    },
+  );
+
+  return (
+    <div>
+      <div>{channel.isConnected ? "connected" : "disconnected"}</div>
+      <button onClick={() => channel.send("send", { content: "hi" })}>send</button>
+    </div>
+  );
+}
+```
+
+State returned from `useWebSocketChannel`:
+
+```typescript
+type WebSocketChannelState<TSend> = {
+  isConnected: boolean;
+  error: string | null;
+  retryCount: number;
+  readyState: number;
+  send<K extends keyof TSend>(event: K, data: TSend[K]): void;
+  close(code?: number, reason?: string): void;
+};
+```
+
+Options:
+
+```typescript
+type WebSocketChannelOptions = {
+  enabled?: boolean;
+  retry?: number;
+  retryInterval?: number;
+  protocols?: string | string[];
+  traceProvider?: () => string | undefined;
+};
+```
+
+## Logging
+
+The `@websocket` decorator emits a debug log on each invocation.
+
+```
+[DEBUG] websocket: ChatFrame.subscribeChat
+```
+
+## Compared to @stream
+
+| Item | `@stream` (SSE) | `@websocket` |
+| --- | --- | --- |
+| Direction | Server → client (one-way) | Bidirectional |
+| Client events | Not supported | Validated against `inEvents` |
+| Broadcast | Per-SSE publish only | `room` / `userId` routing built-in |
+| HTTP method | GET (auto) | GET (auto, upgrade) |
+| Generated client | `eventSource` helpers | `useWebSocketChannel` hook |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="@stream" icon="signal-stream" href="/en/api-reference/decorators/stream">
+    When one-way SSE streaming is enough
+  </Card>
+
+  <Card title="@api" icon="plug" href="/en/api-reference/decorators/api">
+    Build a standard REST endpoint
+  </Card>
+
+  <Card title="@transactional" icon="arrows-rotate" href="/en/api-reference/decorators/transactional">
+    Wrap mutations in a transaction
+  </Card>
+
+  <Card title="@cache" icon="database" href="/en/api-reference/decorators/cache">
+    Improve performance with caching
+  </Card>
+</CardGroup>
