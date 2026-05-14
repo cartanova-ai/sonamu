@@ -402,29 +402,17 @@ class FileModelClass extends BaseModelClass {
 
 ## Storage Manager API
 
-### use(diskName?)
+### use(diskName)
 
-디스크 인스턴스를 반환합니다.
+지정한 디스크 이름의 인스턴스를 반환합니다. `diskName`은 `config.server.storage.drivers`에 등록된 키(`DriverKey = "fs" | "s3"`) 중 하나로 필수 인자입니다.
 
 ```typescript
-// 기본 디스크
-const disk = Sonamu.storage.use();
-
-// 특정 디스크
+// drivers에 등록된 디스크 지정
 const s3 = Sonamu.storage.use("s3");
 const fs = Sonamu.storage.use("fs");
 ```
 
 **반환값**: `Disk` 인스턴스 (Flydrive)
-
-### defaultDisk
-
-기본 디스크 이름을 반환합니다.
-
-```typescript
-const defaultName = Sonamu.storage.defaultDisk;
-// => 'fs' 또는 's3' 등
-```
 
 ## Disk API (Flydrive)
 
@@ -433,7 +421,7 @@ Storage Manager가 반환하는 Disk는 Flydrive의 Disk 인스턴스입니다.
 ### 주요 메서드
 
 ```typescript
-const disk = Sonamu.storage.use();
+const disk = Sonamu.storage.use("fs");
 
 // 파일 저장
 await disk.put("path/to/file.txt", "content");
