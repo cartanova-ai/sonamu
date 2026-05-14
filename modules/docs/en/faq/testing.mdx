@@ -338,31 +338,36 @@ describe("User API Errors", () => {
 <Accordion title="How do I test transactions?">
 
 ```typescript
+import { Puri } from "sonamu";
+
 describe("Transactions", () => {
   test("transaction success", async () => {
-    await UserModel.transaction(async (trx) => {
-      const user = await UserModel.save({ name: "Tx User" }, { trx });
-      const profile = await ProfileModel.save({ user_id: user.id, bio: "Bio" }, { trx });
+    const wdb = UserModel.getPuri("w");
 
-      expect(user.id).toBeGreaterThan(0);
-      expect(profile.user_id).toBe(user.id);
+    await wdb.transaction(async () => {
+      // Model.save() calls inside the callback automatically join the same transaction.
+      const [userId] = await UserModel.save([{ name: "Tx User" }]);
+      const [profileId] = await ProfileModel.save([{ user_id: userId, bio: "Bio" }]);
+
+      expect(userId).toBeGreaterThan(0);
+      expect(profileId).toBeGreaterThan(0);
     });
   });
 
   test("transaction rollback", async () => {
-    const initialCount = await UserModel.count();
+    const rdb = UserModel.getPuri("r");
+    const before = await rdb.table("users").select({ total: Puri.count() }).first();
 
-    try {
-      await UserModel.transaction(async (trx) => {
-        await UserModel.save({ name: "Rollback User" }, { trx });
+    const wdb = UserModel.getPuri("w");
+    await expect(
+      wdb.transaction(async () => {
+        await UserModel.save([{ name: "Rollback User" }]);
         throw new Error("Forced error");
-      });
-    } catch (error) {
-      // Ignore error
-    }
+      }),
+    ).rejects.toThrow("Forced error");
 
-    const finalCount = await UserModel.count();
-    expect(finalCount).toBe(initialCount); // No change
+    const after = await rdb.table("users").select({ total: Puri.count() }).first();
+    expect(after?.total).toBe(before?.total); // No change
   });
 });
 ```

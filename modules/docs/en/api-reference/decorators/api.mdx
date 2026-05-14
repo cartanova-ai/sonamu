@@ -607,10 +607,14 @@ Logs are recorded through LogTape, with categories in `[model:user]` or `[frame:
         guards: ["admin"]
       })
       async dashboard() {
-        // Admin only
+        // Admin only — use findMany with queryMode: "count" for aggregation only
+        const [users, orders] = await Promise.all([
+          UserModel.findMany("A", { queryMode: "count" }),
+          OrderModel.findMany("A", { queryMode: "count" })
+        ]);
         return {
-          users: await UserModel.count(),
-          orders: await OrderModel.count()
+          users: users.total ?? 0,
+          orders: orders.total ?? 0
         };
       }
 

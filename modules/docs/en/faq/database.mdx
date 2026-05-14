@@ -481,28 +481,43 @@ const posts = await PostModel.getPuri("r")
 <AccordionGroup>
 <Accordion title="How do I use transactions?">
 
-**Method 1: Model's transaction method**
+**Method 1: Manual transaction (`getPuri("w").transaction()`)**
 
 ```typescript
-await UserModel.transaction(async (trx) => {
-  const user = await UserModel.save({ name: "John" }, { trx });
-  const profile = await ProfileModel.save({ user_id: user.id }, { trx });
-  return user;
-});
+class UserModel extends BaseModelClass {
+  async createWithProfile(data: { name: string; bio: string }) {
+    const wdb = this.getPuri("w");
+
+    return wdb.transaction(async (trx) => {
+      trx.ubRegister("users", { name: data.name });
+      const [userId] = await trx.ubUpsert("users");
+
+      trx.ubRegister("profiles", { user_id: userId, bio: data.bio });
+      await trx.ubUpsert("profiles");
+
+      return userId;
+    });
+  }
+}
 ```
 
-**Method 2: DB.transact**
+**Method 2: `@transactional()` decorator**
 
 ```typescript
-import { DB } from "sonamu";
+import { transactional } from "sonamu";
 
-await DB.transact("w", async (trx) => {
-  await trx("users").insert({ name: "John" });
-  await trx("profiles").insert({ user_id: 1 });
-});
+class UserModel extends BaseModelClass {
+  @transactional()
+  async createWithProfile(data: { name: string; bio: string }) {
+    // The entire method body runs inside a transaction automatically.
+    const [userId] = await UserModel.save([{ name: data.name }]);
+    await ProfileModel.save([{ user_id: userId, bio: data.bio }]);
+    return userId;
+  }
+}
 ```
 
-**Auto-rollback on error.**
+**Auto-rollback on error.** See [Manual Transactions](/en/database/transactions/manual-transactions) and [@transactional Decorator](/en/database/transactions/transactional-decorator) for details.
 
 </Accordion>
 </AccordionGroup>

@@ -481,28 +481,43 @@ const posts = await PostModel.getPuri("r")
 <AccordionGroup>
 <Accordion title="트랜잭션을 사용하려면?">
 
-**방법 1: Model의 transaction 메서드**
+**방법 1: 수동 트랜잭션 (`getPuri("w").transaction()`)**
 
 ```typescript
-await UserModel.transaction(async (trx) => {
-  const user = await UserModel.save({ name: "John" }, { trx });
-  const profile = await ProfileModel.save({ user_id: user.id }, { trx });
-  return user;
-});
+class UserModel extends BaseModelClass {
+  async createWithProfile(data: { name: string; bio: string }) {
+    const wdb = this.getPuri("w");
+
+    return wdb.transaction(async (trx) => {
+      trx.ubRegister("users", { name: data.name });
+      const [userId] = await trx.ubUpsert("users");
+
+      trx.ubRegister("profiles", { user_id: userId, bio: data.bio });
+      await trx.ubUpsert("profiles");
+
+      return userId;
+    });
+  }
+}
 ```
 
-**방법 2: DB.transact**
+**방법 2: `@transactional()` 데코레이터**
 
 ```typescript
-import { DB } from "sonamu";
+import { transactional } from "sonamu";
 
-await DB.transact("w", async (trx) => {
-  await trx("users").insert({ name: "John" });
-  await trx("profiles").insert({ user_id: 1 });
-});
+class UserModel extends BaseModelClass {
+  @transactional()
+  async createWithProfile(data: { name: string; bio: string }) {
+    // 메서드 본문 전체가 자동으로 트랜잭션 안에서 실행됩니다.
+    const [userId] = await UserModel.save([{ name: data.name }]);
+    await ProfileModel.save([{ user_id: userId, bio: data.bio }]);
+    return userId;
+  }
+}
 ```
 
-**에러 발생 시 자동 롤백됩니다.**
+**에러 발생 시 자동 롤백됩니다.** 더 자세한 내용은 [수동 트랜잭션](/ko/database/transactions/manual-transactions) 및 [@transactional 데코레이터](/ko/database/transactions/transactional-decorator) 문서를 참고하세요.
 
 </Accordion>
 </AccordionGroup>

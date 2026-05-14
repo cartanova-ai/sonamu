@@ -607,10 +607,14 @@ async findById(id: number) {
         guards: ["admin"]
       })
       async dashboard() {
-        // 관리자만 접근 가능
+        // 관리자만 접근 가능 — findMany의 queryMode: "count"로 집계만 수행
+        const [users, orders] = await Promise.all([
+          UserModel.findMany("A", { queryMode: "count" }),
+          OrderModel.findMany("A", { queryMode: "count" })
+        ]);
         return {
-          users: await UserModel.count(),
-          orders: await OrderModel.count()
+          users: users.total ?? 0,
+          orders: orders.total ?? 0
         };
       }
 
