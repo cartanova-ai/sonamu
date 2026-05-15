@@ -169,11 +169,8 @@ async uploadProfileImage(ctx: Context) {
   }
 
   // Save image
-  return Sonamu.storage.save({
-    file: file.buffer,
-    filename: file.filename,
-    bucket: "profile-images"
-  });
+  const key = `profile-images/${Date.now()}-${file.filename}`;
+  return file.saveToDisk("s3", key);
 }
 ```
 

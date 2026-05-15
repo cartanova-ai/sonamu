@@ -407,29 +407,17 @@ class FileModelClass extends BaseModelClass {
 
 ## Storage Manager API
 
-### use(diskName?)
+### use(diskName)
 
-Returns a disk instance.
+Returns the disk instance for the given name. `diskName` is a required argument and must be one of the keys registered in `config.server.storage.drivers` (`DriverKey = "fs" | "s3"`).
 
 ```typescript
-// Default disk
-const disk = Sonamu.storage.use();
-
-// Specific disk
+// Pick a disk registered under drivers
 const s3 = Sonamu.storage.use("s3");
 const fs = Sonamu.storage.use("fs");
 ```
 
 **Return value**: `Disk` instance (Flydrive)
-
-### defaultDisk
-
-Returns the default disk name.
-
-```typescript
-const defaultName = Sonamu.storage.defaultDisk;
-// => 'fs' or 's3', etc.
-```
 
 ## Disk API (Flydrive)
 
@@ -438,7 +426,7 @@ The Disk returned by Storage Manager is a Flydrive Disk instance.
 ### Key Methods
 
 ```typescript
-const disk = Sonamu.storage.use();
+const disk = Sonamu.storage.use("fs");
 
 // Save file
 await disk.put("path/to/file.txt", "content");
