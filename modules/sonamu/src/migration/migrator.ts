@@ -12,10 +12,11 @@ import { type SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
+import { getSonamuEnvironment } from "../env";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
 import { type GenMigrationCode, type MigrationSet } from "../types/types";
-import { isTest } from "../utils/controller";
+import { isLocal, isTest } from "../utils/controller";
 import { exists } from "../utils/fs-utils";
 import { generateAlterCode, generateCreateCode } from "./code-generation";
 import { getMigrationSetFromEntity } from "./migration-set";
@@ -29,6 +30,19 @@ export type MigrationResult = {
 }[];
 
 export class Migrator {
+  private getMigrationTargetKeys(): (keyof SonamuDBConfig)[] {
+    const connKeys = Object.keys(Sonamu.dbConfig).filter(
+      (key) => !key.endsWith("_readonly"),
+    ) as (keyof SonamuDBConfig)[];
+
+    if (isLocal()) {
+      return connKeys;
+    }
+
+    const environment = getSonamuEnvironment();
+    return connKeys.filter((key) => key === environment);
+  }
+
   private async runMigrationsSequentially(
     conns: { connKey: keyof SonamuDBConfig; knex: Knex }[],
     action: "apply" | "rollback",
@@ -83,9 +97,7 @@ export class Migrator {
     const codes = await this.getMigrationCodes();
     Naite.t("migrator:getStatus:codes", codes);
 
-    const connKeys = Object.keys(Sonamu.dbConfig).filter(
-      (key) => !key.endsWith("_slave"),
-    ) as (keyof typeof Sonamu.dbConfig)[];
+    const connKeys = this.getMigrationTargetKeys();
 
     let migrationStatusError: string | undefined;
 
@@ -130,7 +142,7 @@ export class Migrator {
           const connection = knexOptions.connection as Knex.PgConnectionConfig;
 
           return {
-            name: connKey.replace("_master", ""),
+            name: connKey,
             connKey,
             connString: `pg://${connection.user ?? ""}@${connection.host}:${
               connection.port
@@ -192,6 +204,14 @@ export class Migrator {
   ): Promise<MigrationResult> {
     Naite.t("migrator:runAction:action", action);
     Naite.t("migrator:runAction:targets", targets);
+
+    const allowedTargets = new Set(this.getMigrationTargetKeys());
+    const disallowedTargets = targets.filter((target) => !allowedTargets.has(target));
+    if (disallowedTargets.length > 0) {
+      throw new Error(
+        `Migration targets are not allowed in NODE_ENV=${getSonamuEnvironment()}: ${disallowedTargets.join(", ")}`,
+      );
+    }
 
     // get uniq knex configs
     const configs = unique(

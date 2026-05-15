@@ -338,31 +338,15 @@ overrides:
     }
 
     const env = `# Database Configuration
-DB_HOST=0.0.0.0
-DB_PORT=5432
-DB_USER=${answers.DB_USER ?? "postgres"}
-DB_PASSWORD=${answers.DB_PASSWORD}
+SONAMU_DB_HOST=0.0.0.0
+SONAMU_DB_PORT=5432
+SONAMU_DB_USER=${answers.DB_USER ?? "postgres"}
+SONAMU_DB_PASSWORD=${answers.DB_PASSWORD}
 CONTAINER_NAME=${answers.CONTAINER_NAME}
-DATABASE_NAME=${answers.DATABASE_NAME}
-PROJECT_NAME=${targetDir}
+PROJECT_NAME=${answers.DATABASE_NAME}
 `;
 
     fs.writeFileSync(path.join(targetRoot, "packages", "api", ".env"), env);
-
-    // init.sql 변수 치환
-    const initSqlPath = path.join(
-      targetRoot,
-      "packages",
-      "api",
-      "database",
-      "fixtures",
-      "init.sql",
-    );
-    if (fs.existsSync(initSqlPath)) {
-      let initSql = fs.readFileSync(initSqlPath, "utf-8");
-      initSql = initSql.replace(/\$\{DATABASE_NAME\}/g, answers.DATABASE_NAME);
-      fs.writeFileSync(initSqlPath, initSql);
-    }
   } else {
     console.log(`\nTo set up a database using Docker, run the following commands:\n`);
     console.log(chalk.gray(`  $ cd ${targetRoot}/packages/api/database`));

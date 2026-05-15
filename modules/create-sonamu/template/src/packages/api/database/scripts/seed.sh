@@ -2,21 +2,32 @@
 # fixture DB에 덤프 적용하는 스크립트
 # Usage: pnpm seed
 
-source .env
+load_dotenv() {
+  if [ -f "$1" ]; then
+    set -a
+    source "$1"
+    set +a
+  fi
+}
+
+load_dotenv .env
+load_dotenv .env.test
+load_dotenv .env.local
 
 set -e # 에러 발생 시 즉시 중단
 
-SOURCE_DB="${DATABASE_NAME}_test"
-FIXTURE_DB="${DATABASE_NAME}_fixture"
-DUMP_FILE="database/dumps/${DATABASE_NAME}_test_latest.sql"
+BASE_NAME=$(echo "${PROJECT_NAME:-sonamu}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/_/g; s/^_+//; s/_+$//')
+SOURCE_DB="${BASE_NAME}_test"
+FIXTURE_DB="${BASE_NAME}_fixture"
+DUMP_FILE="database/dumps/${BASE_NAME}_test_latest.sql"
 
 # DB 설정 (환경변수 또는 기본값)
-DB_HOST="${DB_HOST:-0.0.0.0}"
-DB_PORT="${DB_PORT:-5432}"
-DB_USER="${DB_USER:-postgres}"
+DB_HOST="${SONAMU_DB_HOST:-0.0.0.0}"
+DB_PORT="${SONAMU_DB_PORT:-5432}"
+DB_USER="${SONAMU_DB_USER:-postgres}"
 
 # PostgreSQL 패스워드 환경변수 설정
-export PGPASSWORD="${DB_PASSWORD}"
+export PGPASSWORD="${SONAMU_DB_PASSWORD}"
 
 if [ ! -f "${DUMP_FILE}" ]; then
   echo "❌ Dump file not found: ${DUMP_FILE}"

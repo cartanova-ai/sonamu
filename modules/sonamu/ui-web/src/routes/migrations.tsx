@@ -54,20 +54,25 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
   const [isAllCodeViewerOpen, setAllCodeViewerOpen] = useState(false);
 
   const toggleConnKeys = (preset: "ALL" | "LOCAL" | "REMOTE" | "TESTING" | "FIXTURE") => {
-    const targetKeys: (keyof SonamuDBConfig)[] = (() => {
+    const availableConnKeys = new Set((conns ?? []).map((conn) => conn.connKey));
+    const presetTargetKeys: (keyof SonamuDBConfig)[] = (() => {
       switch (preset) {
         case "ALL":
-          return ["test", "fixture", "development_master", "production_master"];
+          return ["test", "fixture", "development", "staging", "production"];
         case "LOCAL":
           return ["test"];
         case "REMOTE":
-          return ["fixture", "development_master", "production_master"];
+          return ["development", "staging", "production"];
         case "TESTING":
           return ["test", "fixture"];
         case "FIXTURE":
           return ["fixture"];
       }
     })();
+    const targetKeys = presetTargetKeys.filter((key) => availableConnKeys.has(key));
+    if (targetKeys.length === 0) {
+      return;
+    }
 
     if (targetKeys.filter((key) => selectedConnKeys.includes(key)).length === targetKeys.length) {
       setSelectedConnKeys(selectedConnKeys.filter((key) => !targetKeys.includes(key)));

@@ -28,8 +28,8 @@ describe.skip("Migrator - runAction", () => {
       const result = await migrator.runAction("apply", [
         "test",
         "fixture",
-        "development_master",
-        "production_master",
+        "development",
+        "production",
       ]);
 
       // development와 production은 동일한 DB를 가리키고 있기 때문에 총 3개의 DB가 적용되어야 함
@@ -40,7 +40,7 @@ describe.skip("Migrator - runAction", () => {
       expect(result[1]?.connKey).toBe("fixture_remote");
       expect(result[1]?.batchNo).toBeGreaterThan(1);
 
-      expect(result[2]?.connKey).toBe("development_master");
+      expect(result[2]?.connKey).toBe("development");
       expect(result[2]?.batchNo).toBeGreaterThan(1);
     });
   });

@@ -17,6 +17,7 @@ import { type Knex } from "knex";
 
 import { type CacheConfig } from "../cache/types";
 import { type SonamuDBConfig } from "../database/db";
+import { loadCurrentEnvironmentDotenv } from "../env";
 import { type SonamuLoggingOptions } from "../logger/configure";
 import { type StorageConfig } from "../storage/types";
 import { type WebSocketRuntimeOptions } from "../stream/ws";
@@ -94,19 +95,8 @@ export type SonamuConfig<TSinkId extends string = string, TFilterId extends stri
   database: {
     // 데이터베이스(pg는 pg 모듈, pgnative는 pg-native 모듈의 설치가 필요합니다.)
     database?: "pg" | "pgnative";
-    // 기본 데이터베이스 이름
-    name: string;
     // 모든 환경에 적용될 기본 Knex 옵션
-    defaultOptions: DatabaseConfig;
-    // 환경별 설정
-    environments?: {
-      development?: DatabaseConfig;
-      development_slave?: DatabaseConfig;
-      production?: DatabaseConfig;
-      production_slave?: DatabaseConfig;
-      fixture?: DatabaseConfig;
-      test?: DatabaseConfig;
-    };
+    defaultOptions?: DatabaseConfig;
   };
 
   logging?: false | SonamuLoggingOptions<TSinkId, TFilterId>;
@@ -319,6 +309,8 @@ export function defineConfig(config: Executable<SonamuConfig>): Promise<SonamuCo
  * @returns
  */
 export async function loadConfig(rootPath: string): Promise<SonamuConfig> {
+  loadCurrentEnvironmentDotenv(rootPath);
+
   const shouldLoadSourceConfig = process.env.HOT === "yes" || process.env.VITEST === "true";
   const configPath = shouldLoadSourceConfig
     ? `${rootPath}/src/sonamu.config.ts`
