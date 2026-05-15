@@ -2,19 +2,22 @@
 # fixture DB에 덤프 적용하는 스크립트
 # Usage: pnpm seed
 
-# 환경변수
-source .env
+set -a
+[ -f .env ] && source .env
+[ -f .env.test ] && source .env.test
+[ -f .env.local ] && source .env.local
+set +a
 
 set -e # 에러 발생 시 즉시 중단
 
-FIXTURE_DB="miomock_fixture"
+FIXTURE_DB="${SONAMU_DB_FIXTURE_NAME:-miomock_fixture}"
 DUMP_FILE="database/dumps/miomock_test_latest.sql"
 
 # sonamu.config.ts의 DB 설정 사용
-DB_HOST="${MIOMOCK_DB_HOST:-0.0.0.0}"
-DB_PORT="${MIOMOCK_DB_PORT:-5432}"
-DB_USER="${MIOMOCK_DB_USER:-postgres}"
-DB_PASSWORD="${MIOMOCK_DB_PASSWORD:-miomock123}"
+DB_HOST="${SONAMU_DB_FIXTURE_HOST:-${SONAMU_DB_HOST:-0.0.0.0}}"
+DB_PORT="${SONAMU_DB_FIXTURE_PORT:-${SONAMU_DB_PORT:-5432}}"
+DB_USER="${SONAMU_DB_FIXTURE_USER:-${SONAMU_DB_USER:-postgres}}"
+DB_PASSWORD="${SONAMU_DB_FIXTURE_PASSWORD:-${SONAMU_DB_PASSWORD:-miomock123}}"
 
 # PostgreSQL 패스워드 환경변수 설정
 export PGPASSWORD="${DB_PASSWORD}"

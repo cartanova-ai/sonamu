@@ -79,11 +79,11 @@ export class FixtureManagerClass {
     if (this._tdb !== null) {
       return;
     }
-    if (Sonamu.dbConfig.test && Sonamu.dbConfig.production_master) {
+    if (Sonamu.dbConfig.test && Sonamu.dbConfig.production) {
       const tConn = Sonamu.dbConfig.test.connection as Knex.ConnectionConfig & {
         port?: number;
       };
-      const pConn = Sonamu.dbConfig.production_master.connection as Knex.ConnectionConfig & {
+      const pConn = Sonamu.dbConfig.production.connection as Knex.ConnectionConfig & {
         port?: number;
       };
       if (
@@ -229,8 +229,7 @@ export class FixtureManagerClass {
 
     // 픽스쳐DB, 실DB
     const fixtureDatabase = (Sonamu.dbConfig.fixture.connection as Knex.ConnectionConfig).database;
-    const realDatabase = (Sonamu.dbConfig.production_master.connection as Knex.ConnectionConfig)
-      .database;
+    const realDatabase = (Sonamu.dbConfig.production.connection as Knex.ConnectionConfig).database;
 
     const selfQuery = `INSERT IGNORE INTO \`${fixtureDatabase}\`.\`${entity.table}\` (SELECT * FROM \`${realDatabase}\`.\`${entity.table}\` WHERE \`id\` = ${id})`;
 

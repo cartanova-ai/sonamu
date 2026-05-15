@@ -136,6 +136,7 @@ describe("loadConfig", () => {
   const tempRoots: string[] = [];
   const originalHot = process.env.HOT;
   const originalVitest = process.env.VITEST;
+  const originalNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {
     vi.resetModules();
@@ -160,6 +161,12 @@ describe("loadConfig", () => {
       delete process.env.VITEST;
     } else {
       process.env.VITEST = originalVitest;
+    }
+
+    if (originalNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = originalNodeEnv;
     }
 
     await Promise.all(

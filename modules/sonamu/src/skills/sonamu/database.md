@@ -80,7 +80,7 @@ const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
 const generator = new FixtureGenerator(fixtureDb, fixtureDb, "fixture", EntityManager);
 
 // fixture fetch: production → fixture DB
-const sourceDb = DB.getDB("r"); // production_master
+const sourceDb = DB.getDB("r"); // current NODE_ENV readonly DB
 const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
 const generator = new FixtureGenerator(sourceDb, fixtureDb, "fixture", EntityManager);
 ```

@@ -1,12 +1,10 @@
+import path from "path";
+
 import { getConsoleSink } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
-import dotenv from "dotenv";
-import path from "path";
 import { CachePresets, defineConfig } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
-
-dotenv.config({ path: path.join(import.meta.dirname, "../.env") });
 
 const host = "localhost";
 const port = 34900;
@@ -29,13 +27,12 @@ export default defineConfig({
   },
   database: {
     database: "pg",
-    name: process.env.DATABASE_NAME ?? "database_name",
     defaultOptions: {
       connection: {
-        host: process.env.DB_HOST || "0.0.0.0",
-        port: Number(process.env.DB_PORT) || 5432,
-        user: process.env.DB_USER || "postgres",
-        password: process.env.DB_PASSWORD,
+        host: process.env.SONAMU_DB_HOST || "0.0.0.0",
+        port: Number(process.env.SONAMU_DB_PORT) || 5432,
+        user: process.env.SONAMU_DB_USER || "postgres",
+        password: process.env.SONAMU_DB_PASSWORD,
       },
     },
   },
@@ -43,7 +40,7 @@ export default defineConfig({
   slackConfirm:
     process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID
       ? {
-          targets: ["development_master", "production_master"],
+          targets: ["staging", "production"],
           botToken: process.env.SLACK_BOT_TOKEN ?? "",
           channelId: process.env.SLACK_CHANNEL_ID ?? "",
         }

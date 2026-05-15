@@ -24,6 +24,7 @@ import { DB } from "../database/db";
 import { type SonamuDBConfig } from "../database/db";
 import { SD, setSDConfig } from "../dict/sd";
 import { type LocalizedString } from "../dict/types";
+import { getSonamuEnvironment, loadAllEnvironmentSnapshots } from "../env";
 import { NotFoundException } from "../exceptions/so-exceptions";
 import { BufferedFile } from "../storage/buffered-file";
 import { type StorageManager } from "../storage/storage-manager";
@@ -231,6 +232,7 @@ class SonamuClass {
     // API 루트 패스
     const { findApiRootPath } = await import("../utils/utils");
     this.apiRootPath = apiRootPath ?? findApiRootPath();
+    const baseEnvBeforeConfigLoad = { ...process.env };
 
     // 설정을 로딩하는 것부터 시작
     const configStart = performance.now();
@@ -240,6 +242,7 @@ class SonamuClass {
     setSDConfig(this.config.i18n);
     // sonamu.config.ts 기본값 설정
     this.config.database.database = this.config.database.database ?? "pg";
+    this.config.database.defaultOptions = this.config.database.defaultOptions ?? {};
     this.config.database.defaultOptions.client = this.config.database.database ?? "pg";
 
     // 로깅 설정
@@ -252,7 +255,15 @@ class SonamuClass {
 
     // DB 로드
     const { DB } = await import("../database/db");
-    this.dbConfig = DB.generateDBConfig(this.config.database);
+    const { isLocal: isLocalEnvironment } = await import("../utils/controller");
+    const environmentSnapshots = isLocalEnvironment()
+      ? loadAllEnvironmentSnapshots(this.apiRootPath, baseEnvBeforeConfigLoad)
+      : undefined;
+    this.dbConfig = DB.generateDBConfig(
+      this.config.database,
+      this.config.projectName,
+      environmentSnapshots,
+    );
     DB.setConfig(this.dbConfig);
 
     // Entity 로드
@@ -1825,8 +1836,7 @@ class SonamuClass {
 
   private async printStartupSummary() {
     const chalk = (await import("chalk")).default;
-    const env = process.env.NODE_ENV ?? "development";
-    const activePreset = env === "production" ? "production_master" : "development_master";
+    const activePreset = getSonamuEnvironment();
 
     const dim = (msg: string) => console.log(chalk.dim(`✓ ${msg}`));
     const green = (msg: string) => console.log(chalk.green(`✓ ${msg}`));
@@ -1843,7 +1853,7 @@ class SonamuClass {
         | { host?: string; port?: number; database?: string }
         | undefined;
       const host = conn?.host ?? "localhost";
-      const addr = `@ ${host}:${conn?.port ?? 5432}/${conn?.database ?? this.config.database.name}`;
+      const addr = `@ ${host}:${conn?.port ?? 5432}/${conn?.database ?? "(unknown)"}`;
       const padded = name.padEnd(maxLen);
       const remoteTag = isLocal() && !isLocalHost(host) ? chalk.yellow(` \u26a0 remote`) : "";
 

@@ -4,13 +4,10 @@ import { AsyncLocalStorage } from "async_hooks";
 import { type Knex } from "knex";
 
 import { type DatabaseConfig, type SonamuConfig } from "../api/config";
+import { getSonamuEnvironment, type EnvironmentSnapshots, type SonamuEnvironment } from "../env";
 import { createKnexInstance } from "./knex";
 import { TransactionContext } from "./transaction-context";
 
-/**
- * 여러 설정 객체를 순차적으로 deep merge합니다.
- * undefined/null인 인자는 무시됩니다.
- */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -44,20 +41,115 @@ function mergeConfigs<T extends object>(...configs: (Partial<T> | undefined | nu
   return merged as T;
 }
 
-export type DBPreset = "w" | "r";
+export type SonamuMainDBPreset = "test" | "fixture" | SonamuEnvironment;
+export type SonamuReadonlyDBPreset =
+  | "test_readonly"
+  | "development_readonly"
+  | "staging_readonly"
+  | "production_readonly";
+export type SonamuDBPreset = SonamuMainDBPreset | SonamuReadonlyDBPreset;
+export type DBPreset = "w" | "r" | SonamuDBPreset;
 
-export type SonamuDBConfig = {
-  development_master: Knex.Config;
-  development_slave: Knex.Config;
-  production_master: Knex.Config;
-  production_slave: Knex.Config;
-  fixture: Knex.Config;
-  test: Knex.Config;
-};
+export type SonamuDBConfig = Record<SonamuDBPreset, Knex.Config>;
+
+function isConcretePreset(value: DBPreset): value is SonamuDBPreset {
+  return value !== "w" && value !== "r";
+}
+
+function getReadonlyPreset(environment: SonamuEnvironment): SonamuReadonlyDBPreset {
+  return `${environment}_readonly` as SonamuReadonlyDBPreset;
+}
+
+function getProjectDatabaseBaseName(projectName?: string): string {
+  return (projectName ?? "sonamu")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function numberFromEnv(value: string | undefined, fallback: number): number {
+  if (value === undefined || value === "") {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  if (Number.isNaN(parsed)) {
+    throw new Error(`Invalid database port: ${value}`);
+  }
+
+  return parsed;
+}
+
+function connectionFromEnv(options: {
+  baseName: string;
+  suffix: SonamuMainDBPreset;
+  baseConnection?: Knex.PgConnectionConfig;
+  prefix?: "SONAMU_DB_READONLY" | "SONAMU_DB_FIXTURE";
+  env?: NodeJS.ProcessEnv;
+}): Knex.PgConnectionConfig {
+  const {
+    baseName,
+    suffix,
+    baseConnection = {},
+    prefix = "SONAMU_DB",
+    env = process.env,
+  } = options;
+  const read = (key: "HOST" | "PORT" | "USER" | "PASSWORD" | "NAME") => {
+    const prefixedValue = env[`${prefix}_${key}`];
+    if (prefixedValue !== undefined) {
+      return prefixedValue;
+    }
+    if (prefix === "SONAMU_DB_FIXTURE" && key === "NAME") {
+      return undefined;
+    }
+
+    return env[`SONAMU_DB_${key}`];
+  };
+
+  return {
+    ...baseConnection,
+    host: read("HOST") ?? baseConnection.host ?? "0.0.0.0",
+    port: numberFromEnv(read("PORT"), baseConnection.port ?? 5432),
+    user: read("USER") ?? baseConnection.user ?? "postgres",
+    password: read("PASSWORD") ?? baseConnection.password,
+    database: read("NAME") ?? `${baseName}_${suffix}`,
+  };
+}
+
+function neutralizeEnvironmentConnectionFields(
+  connection: Knex.PgConnectionConfig | undefined,
+): Knex.PgConnectionConfig | undefined {
+  if (connection === undefined) {
+    return undefined;
+  }
+
+  const neutralConnection = { ...connection };
+  delete neutralConnection.host;
+  delete neutralConnection.port;
+  delete neutralConnection.user;
+  delete neutralConnection.password;
+  delete neutralConnection.database;
+
+  return neutralConnection;
+}
+
+function assertNoLegacyDatabaseConfig(config: SonamuConfig["database"]): void {
+  const legacyConfig = config as SonamuConfig["database"] & {
+    name?: unknown;
+    environments?: unknown;
+  };
+
+  if (legacyConfig.name !== undefined || legacyConfig.environments !== undefined) {
+    throw new Error(
+      "Sonamu database.name and database.environments were removed. Use SONAMU_DB_* dotenv variables instead.",
+    );
+  }
+}
 
 export class DBClass {
   private wdb?: Knex;
   private rdb?: Knex;
+  private presetDBs: Map<SonamuDBPreset, Knex> = new Map();
   private workerDBs: Map<number, Knex> = new Map();
   private currentConfig: SonamuDBConfig | null = null;
 
@@ -86,14 +178,21 @@ export class DBClass {
   getDB(which: DBPreset): Knex {
     const dbConfig = this.getCurrentConfig();
 
-    // 테스트 트랜잭션 격리
-    if (process.env.NODE_ENV === "test") {
-      // 병렬 테스트 모드: worker별 DB 사용
+    if (isConcretePreset(which)) {
+      if (!this.presetDBs.has(which)) {
+        this.presetDBs.set(which, createKnexInstance(dbConfig[which]));
+      }
+
+      const db = this.presetDBs.get(which);
+      assert(db, `DB preset ${which} not found`);
+      return db;
+    }
+
+    if (getSonamuEnvironment() === "test") {
       if (process.env.SONAMU_WORKER_DB === "true") {
         return this.getWorkerDB(dbConfig);
       }
 
-      // 기존 단일 테스트 로직
       if (this.testTransaction) {
         return this.testTransaction;
       } else if (this.wdb) {
@@ -101,7 +200,6 @@ export class DBClass {
       } else {
         this.wdb = createKnexInstance({
           ...dbConfig.test,
-          // 단일 풀
           pool: {
             min: 1,
             max: 1,
@@ -121,19 +219,13 @@ export class DBClass {
     return this[instanceName];
   }
 
-  /**
-   * 병렬 테스트에서 worker별 DB 인스턴스를 반환합니다.
-   * VITEST_POOL_ID 환경변수로 worker를 식별하여 해당 DB에 연결합니다.
-   */
   private getWorkerDB(dbConfig: SonamuDBConfig): Knex {
-    // 트랜잭션이 있으면 트랜잭션 반환
     if (this.testTransaction) {
       return this.testTransaction;
     }
 
     const workerId = parseInt(process.env.VITEST_POOL_ID ?? "1", 10);
 
-    // Worker별 DB 인스턴스 캐싱
     if (!this.workerDBs.has(workerId)) {
       const baseTestConfig = dbConfig.test;
       const connection = baseTestConfig.connection as { database: string };
@@ -158,29 +250,24 @@ export class DBClass {
 
   getDBConfig(which: DBPreset): Knex.Config {
     const dbConfig = this.getCurrentConfig();
-    if (process.env.NODE_ENV === "test") {
+
+    if (isConcretePreset(which)) {
+      return dbConfig[which];
+    }
+
+    const environment = getSonamuEnvironment();
+    if (environment === "test") {
+      const target = which === "w" ? dbConfig.test : dbConfig.test_readonly;
       return {
-        ...dbConfig.test,
-        // 단일 풀
+        ...target,
         pool: {
           min: 1,
           max: 1,
         },
       };
     }
-    switch (process.env.NODE_ENV ?? "development") {
-      case "development":
-      case "staging":
-        return which === "w"
-          ? dbConfig.development_master
-          : (dbConfig.development_slave ?? dbConfig.development_master);
-      case "production":
-        return which === "w"
-          ? dbConfig.production_master
-          : (dbConfig.production_slave ?? dbConfig.production_master);
-      default:
-        throw new Error(`현재 ENV ${process.env.NODE_ENV}에는 설정 가능한 DB설정이 없습니다.`);
-    }
+
+    return which === "w" ? dbConfig[environment] : dbConfig[getReadonlyPreset(environment)];
   }
 
   async destroy(): Promise<void> {
@@ -192,17 +279,27 @@ export class DBClass {
       await this.rdb.destroy();
       this.rdb = undefined;
     }
-    // 병렬 테스트용 worker DB들도 정리
+    for (const db of this.presetDBs.values()) {
+      await db.destroy();
+    }
+    this.presetDBs.clear();
     for (const db of this.workerDBs.values()) {
       await db.destroy();
     }
     this.workerDBs.clear();
   }
 
-  public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
+  public generateDBConfig(
+    config: SonamuConfig["database"],
+    projectName?: string,
+    snapshots?: EnvironmentSnapshots,
+  ): SonamuDBConfig {
+    assertNoLegacyDatabaseConfig(config);
+
+    const baseName = getProjectDatabaseBaseName(projectName);
     const defaultKnexConfig = mergeConfigs<Partial<DatabaseConfig>>(
       {
-        client: "postgresql",
+        client: config.database === "pgnative" ? "pgnative" : "postgresql",
         pool: {
           min: 1,
           max: 5,
@@ -210,42 +307,67 @@ export class DBClass {
         migrations: {
           directory: "./src/migrations",
         },
-        connection: {
-          database: config.name,
-        },
       },
       config.defaultOptions,
     );
+    const baseConnection = defaultKnexConfig.connection as Knex.PgConnectionConfig | undefined;
+    const environmentFallbackConnection = snapshots
+      ? neutralizeEnvironmentConnectionFields(baseConnection)
+      : baseConnection;
 
-    // oxfmt-ignore -- 설정 구조 가독성을 위해 여러 줄로 유지
+    const envForPreset = (preset: SonamuMainDBPreset): NodeJS.ProcessEnv => {
+      if (!snapshots) {
+        return process.env;
+      }
+      if (preset === "fixture") {
+        return snapshots.test;
+      }
+      return snapshots[preset];
+    };
+
+    const mainConfig = (preset: SonamuMainDBPreset): Knex.Config =>
+      mergeConfigs(defaultKnexConfig, {
+        connection: connectionFromEnv({
+          baseName,
+          suffix: preset,
+          baseConnection: environmentFallbackConnection,
+          env: envForPreset(preset),
+        }),
+      });
+    const readonlyConfig = (environment: SonamuEnvironment): Knex.Config =>
+      mergeConfigs<Knex.Config>(defaultKnexConfig, mainConfig(environment), {
+        connection: connectionFromEnv({
+          baseName,
+          suffix: environment,
+          baseConnection: mainConfig(environment).connection as Knex.PgConnectionConfig,
+          prefix: "SONAMU_DB_READONLY",
+          env: envForPreset(environment),
+        }),
+      });
+
+    const test = mainConfig("test");
+
     return {
-      // 여기에 나열한 순서대로 Sonamu UI의 DB Migration 탭에 표시됩니다.
-      test: mergeConfigs(
-        defaultKnexConfig,
-        { connection: { database: `${config.name}_test` } },
-        config.environments?.test,
-      ),
-      fixture: mergeConfigs(
-        defaultKnexConfig,
-        { connection: { database: `${config.name}_fixture` } },
-        config.environments?.fixture,
-      ),
-      development_master: mergeConfigs(defaultKnexConfig, config.environments?.development),
-      development_slave: mergeConfigs(
-        defaultKnexConfig,
-        config.environments?.development,
-        config.environments?.development_slave,
-      ),
-      production_master: mergeConfigs(defaultKnexConfig, config.environments?.production),
-      production_slave: mergeConfigs(
-        defaultKnexConfig,
-        config.environments?.production,
-        config.environments?.production_slave,
-      ),
+      test,
+      test_readonly: readonlyConfig("test"),
+      fixture: mergeConfigs(defaultKnexConfig, {
+        connection: connectionFromEnv({
+          baseName,
+          suffix: "fixture",
+          baseConnection: environmentFallbackConnection,
+          prefix: "SONAMU_DB_FIXTURE",
+          env: envForPreset("fixture"),
+        }),
+      }),
+      development: mainConfig("development"),
+      development_readonly: readonlyConfig("development"),
+      staging: mainConfig("staging"),
+      staging_readonly: readonlyConfig("staging"),
+      production: mainConfig("production"),
+      production_readonly: readonlyConfig("production"),
     };
   }
 
-  // Test 환경에서 트랜잭션 사용
   public testTransaction: Knex.Transaction | null = null;
   async createTestTransaction(): Promise<Knex.Transaction> {
     const db = this.getDB("w");

@@ -21,6 +21,7 @@ import { isValidPluginId, SUPPORTED_PLUGIN_IDS } from "../auth/plugins/entity-de
 import { type BetterAuthPluginId } from "../auth/plugins/entity-definitions";
 import { type SonamuDBConfig } from "../database/db";
 import { EntityManager } from "../entity/entity-manager";
+import { getSonamuEnvironment } from "../env";
 import { Migrator } from "../migration/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
 import {
@@ -144,8 +145,9 @@ async function bootstrap() {
           name: "#targets",
           message: "Please input #targets",
           choices: [
-            { title: "Development", value: "development_master" },
-            { title: "Production", value: "production_master" },
+            { title: "Development", value: "development" },
+            { title: "Staging", value: "staging" },
+            { title: "Production", value: "production" },
             { title: "Fixture", value: "fixture" },
             { title: "Test", value: "test" },
           ],
@@ -284,7 +286,7 @@ function spawnApiDevServer(options?: { extraEnv?: Record<string, string> }) {
       stdio: "inherit",
       env: {
         ...process.env,
-        NODE_ENV: "development",
+        NODE_ENV: process.env.NODE_ENV ?? "development",
         HOT: "yes", // 얘가 있어야 HMR이 활성화됩니다.
         API_ROOT_PATH: apiRoot, // 이 경로가 hmr-hook의 루트 디렉토리가 됩니다.
         ...options?.extraEnv,
@@ -553,15 +555,7 @@ async function migrate_apply(targets: (keyof SonamuDBConfig)[]) {
 
 async function migrate_run() {
   await setupMigrator();
-  const localHosts = ["localhost", "127.0.0.1", "0.0.0.0", "::1"];
-  const targets = Object.keys(Sonamu.dbConfig).filter((target) => {
-    const targetConfig = Sonamu.dbConfig[target as keyof SonamuDBConfig];
-    const host = (targetConfig?.connection as { host?: string })?.host ?? "localhost";
-    return localHosts.includes(host.toLowerCase());
-  });
-
-  // 로컬 데이터베이스에 대해서만 전체 마이그레이션에서 동작
-  await migrator.runAction("apply", targets as (keyof SonamuDBConfig)[]);
+  await migrator.runAction("apply", [getSonamuEnvironment()]);
 }
 
 async function migrate_generate() {
@@ -598,7 +592,7 @@ async function migrate_status() {
 }
 
 async function fixture_init() {
-  const srcConfig = Sonamu.dbConfig.development_master;
+  const srcConfig = Sonamu.dbConfig[getSonamuEnvironment()];
   const targets = [
     {
       label: "(REMOTE) Fixture DB",

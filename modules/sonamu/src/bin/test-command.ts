@@ -9,7 +9,9 @@ import { findApiRootPath } from "../utils/utils";
 
 async function loadTestConfig(): Promise<SonamuConfig> {
   const prevVitest = process.env.VITEST;
+  const prevNodeEnv = process.env.NODE_ENV;
   process.env.VITEST = "true";
+  process.env.NODE_ENV = "test";
   try {
     const apiRootPath = findApiRootPath();
     return await loadConfig(apiRootPath);
@@ -18,6 +20,11 @@ async function loadTestConfig(): Promise<SonamuConfig> {
       delete process.env.VITEST;
     } else {
       process.env.VITEST = prevVitest;
+    }
+    if (prevNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = prevNodeEnv;
     }
   }
 }

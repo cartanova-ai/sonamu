@@ -2,13 +2,24 @@
 # 테스트 DB 덤프 스크립트
 # Usage: pnpm dump
 
-source .env
+load_dotenv() {
+  if [ -f "$1" ]; then
+    set -a
+    source "$1"
+    set +a
+  fi
+}
+
+load_dotenv .env
+load_dotenv .env.test
+load_dotenv .env.local
 
 set -e
 
-DB_NAME="${DATABASE_NAME}_test"
+BASE_NAME=$(echo "${PROJECT_NAME:-sonamu}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/_/g; s/^_+//; s/_+$//')
+DB_NAME="${BASE_NAME}_test"
 DUMP_DIR="database/dumps"
-DUMP_FILE="${DUMP_DIR}/${DATABASE_NAME}_test_latest.sql"
+DUMP_FILE="${DUMP_DIR}/${BASE_NAME}_test_latest.sql"
 
 mkdir -p ${DUMP_DIR}
 
@@ -44,7 +55,7 @@ echo "🐳 Using container: ${CONTAINER_NAME}"
 
 # Docker 컨테이너 내부의 pg_dump 사용
 docker exec ${CONTAINER_NAME} pg_dump \
-  --username=${DB_USER:-postgres} \
+  --username=${SONAMU_DB_USER:-postgres} \
   --dbname=${DB_NAME} \
   --no-owner \
   --no-privileges \

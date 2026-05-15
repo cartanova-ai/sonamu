@@ -34,7 +34,7 @@ export const Route = createFileRoute("/fixture")({
   component: FixtureIndex,
 });
 
-const DB_NAMES = ["development_master", "production_master", "fixture_remote", "test"];
+const DB_NAMES = ["development", "staging", "production", "fixture", "test"];
 
 /**
  * 중복 확인 옵션 타입
@@ -46,7 +46,7 @@ type DuplicateCheckColumns = {
 function FixtureIndex() {
   const { SD } = useSonamuContext();
   const { data: entitiesData, isLoading: entitiesLoading } = SonamuUIService.useEntities();
-  const [sourceDB, setSourceDB] = useState("development_master");
+  const [sourceDB, setSourceDB] = useState("development");
   const [targetDB, setTargetDB] = useState("test");
 
   const [fixtureRecords, setFixtureRecords] = useState<FixtureRecord[]>([]);
@@ -283,8 +283,8 @@ function FixtureIndex() {
             <div className="grow min-w-[150px]">
               <Select
                 value={sourceDB}
-                onValueChange={(value) => setSourceDB(value ?? "development_master")}
-                items={DB_NAMES.map((db) => ({ value: db, label: db.replace("_master", "") }))}
+                onValueChange={(value) => setSourceDB(value ?? "development")}
+                items={DB_NAMES.map((db) => ({ value: db, label: db }))}
                 placeholder={SD("fixture.selectSourceDb")}
               />
             </div>

@@ -1,4 +1,5 @@
 import { loadConfig } from "../api/config";
+import { DB } from "../database/db";
 import { ParallelDBManager } from "./parallel-db-manager";
 
 /**
@@ -32,12 +33,13 @@ export function createGlobalSetup() {
     }
 
     const maxWorkers = config.test.maxWorkers ?? 4;
-    const templateDb = `${config.database.name}_test`;
+    const dbConfig = DB.generateDBConfig(config.database, config.projectName);
+    const testConnection = dbConfig.test.connection;
+    const templateDb = (testConnection as { database: string }).database;
 
     const connectionConfig = {
       client: config.database.database ?? ("pg" as const),
-      connection:
-        config.database.environments?.test?.connection ?? config.database.defaultOptions.connection,
+      connection: testConnection,
     };
 
     const manager = new ParallelDBManager(maxWorkers, connectionConfig, templateDb);

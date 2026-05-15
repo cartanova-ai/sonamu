@@ -8,6 +8,8 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pgroonga;
 
-CREATE DATABASE miomock;
+CREATE DATABASE miomock_development;
+CREATE DATABASE miomock_staging;
+CREATE DATABASE miomock_production;
 CREATE DATABASE miomock_fixture;
 CREATE DATABASE miomock_test;

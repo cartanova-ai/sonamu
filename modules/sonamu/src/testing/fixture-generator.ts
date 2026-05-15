@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import { type Knex } from "knex";
 
+import { type SonamuDBPreset } from "../database/db";
 import { type Entity } from "../entity/entity";
 import { type EntityManager } from "../entity/entity-manager";
 import { type EntityProp, type FixtureImportResult, type FixtureRecord } from "../types/types";
@@ -45,7 +46,7 @@ export class FixtureGenerator {
     // FixtureManager.insertFixtures가 dbName 문자열을 받기 때문에 직접 사용하지 않습니다
     // 미래 확장성을 위해 API 시그니처에는 포함시켰습니다
     _targetDb: Knex,
-    private targetDbName: "fixture" | "test" | "production_master",
+    private targetDbName: SonamuDBPreset,
     private entityManager: typeof EntityManager,
     options?: FixtureGeneratorOptions,
   ) {

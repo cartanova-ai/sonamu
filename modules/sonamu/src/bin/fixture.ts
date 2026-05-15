@@ -4,6 +4,7 @@ import prompts from "prompts";
 import { Sonamu } from "../api/sonamu";
 import { DB } from "../database/db";
 import { createKnexInstance } from "../database/knex";
+import { getSonamuEnvironment } from "../env";
 import { EntityManager } from "../entity/entity-manager";
 import { DataExplorer } from "../testing/data-explorer";
 import { type DataExplorerStrategy } from "../testing/data-explorer";
@@ -129,12 +130,12 @@ export async function fixtureGenCommand(options: FixtureCommandOptions) {
         const enableLLMCache = !options["no-cache"];
         const DEFAULT_PASSWORD = "Test1234!";
 
-        // 로그인 가능 경로에서는 sourceDb로 development_master 사용
+        // 로그인 가능 경로에서는 현재 환경의 읽기 DB를 sourceDb로 사용
         const sourceDb = DB.getDB("r");
         const generator = new FixtureGenerator(
           sourceDb,
           sourceDb,
-          "production_master",
+          getSonamuEnvironment(),
           EntityManager,
           { useLLM, enableLLMCache },
         );
@@ -395,8 +396,8 @@ export async function fixtureFetchCommand(options: FixtureCommandOptions) {
     const strategy: DataExplorerStrategy = options.strategy ?? "recent";
     const limit = options.limit ? Number.parseInt(options.limit, 10) : 10;
 
-    // fixture fetch: production 데이터를 fixture DB로 import합니다
-    const sourceDb = DB.getDB("r"); // production_master (또는 development_master)
+    // fixture fetch: 현재 환경 데이터를 fixture DB로 import합니다
+    const sourceDb = DB.getDB("r");
     const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
     const generator = new FixtureGenerator(sourceDb, fixtureDb, "fixture", EntityManager);
 

@@ -343,7 +343,7 @@ export default defineConfig({
 
 ### Activation Conditions
 
-DevRunner is registered in `sonamu.ts` under the condition `isLocal() && config.test?.devRunner?.enabled`. `isLocal()` returns true when the `LR` environment variable is undefined or `"local"` (`controller.ts`). It only works in local development environments and is disabled in remote (production/staging) environments.
+DevRunner is registered in `sonamu.ts` under the condition `isLocal() && config.test?.devRunner?.enabled`. `isLocal()` returns true when `NODE_ENV` is `development` or `test` (`controller.ts`). It works in local development and test environments and is disabled in staging/production environments.
 
 ### Parallel Test DB Flow
 

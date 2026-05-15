@@ -65,7 +65,7 @@ describe("Migrator - getStatus", () => {
   test("각 db의 connections 확인", async () => {
     await migrator.getStatus();
 
-    const dbUser = Sonamu.config.database.defaultOptions.connection?.user ?? "root";
+    const dbUser = Sonamu.config.database.defaultOptions?.connection?.user ?? "root";
     expect(Naite.get("migrator:getStatus:conns").first()).toMatchObject([
       // 이거 아래에 나타나는 순서가 중요한 테스트입니다!
       // 이 순서는 Sonamu UI의 DB Migration 탭에 표시되는 순서와 동일합니다.
@@ -86,16 +86,24 @@ describe("Migrator - getStatus", () => {
         status: 0,
       },
       {
-        connKey: "development_master",
-        connString: `pg://${dbUser}@0.0.0.0:5432/miomock`,
+        connKey: "development",
+        connString: `pg://${dbUser}@0.0.0.0:5432/miomock_development`,
         currentVersion: expect.any(String),
         name: "development",
         pending: [],
         status: 0,
       },
       {
-        connKey: "production_master",
-        connString: `pg://${dbUser}@0.0.0.0:5432/miomock`,
+        connKey: "staging",
+        connString: `pg://${dbUser}@0.0.0.0:5432/miomock_staging`,
+        currentVersion: expect.any(String),
+        name: "staging",
+        pending: [],
+        status: 0,
+      },
+      {
+        connKey: "production",
+        connString: `pg://${dbUser}@0.0.0.0:5432/miomock_production`,
         currentVersion: expect.any(String),
         name: "production",
         pending: [],
@@ -103,7 +111,7 @@ describe("Migrator - getStatus", () => {
       },
     ]);
 
-    // production, development, test, fixture_remote
-    expect(Naite.get("migrator:getStatus:conns").first()).toHaveLength(4);
+    // test, fixture, development, staging, production
+    expect(Naite.get("migrator:getStatus:conns").first()).toHaveLength(5);
   });
 });

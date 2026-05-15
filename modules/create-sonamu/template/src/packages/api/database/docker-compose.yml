@@ -9,10 +9,10 @@ services:
     volumes:
       - ./fixtures/init.sh:/docker-entrypoint-initdb.d/init.sh
     environment:
-      DATABASE_NAME: ${DATABASE_NAME}
+      PROJECT_NAME: ${PROJECT_NAME}
       POSTGRES_DB: template1
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${SONAMU_DB_USER}
+      POSTGRES_PASSWORD: ${SONAMU_DB_PASSWORD}
       TZ: Asia/Seoul
     ports:
-      - "${DB_PORT}:5432"
+      - "${SONAMU_DB_PORT}:5432"

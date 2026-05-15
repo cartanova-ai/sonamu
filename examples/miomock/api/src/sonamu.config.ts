@@ -2,12 +2,9 @@ import path from "path";
 
 import { getConsoleSink } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
-import dotenv from "dotenv";
 import { admin, CachePresets, defineConfig, passkey, sonamuAuditLog, twoFactor } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
-
-dotenv.config({ path: path.join(import.meta.dirname, "../.env") });
 
 const host = "localhost";
 const port = 10280;
@@ -30,13 +27,12 @@ export default defineConfig({
   },
   database: {
     database: "pg",
-    name: "miomock",
     defaultOptions: {
       connection: {
-        host: process.env.MIOMOCK_DB_HOST ?? "0.0.0.0",
-        port: Number(process.env.MIOMOCK_DB_PORT ?? 5432),
-        user: process.env.MIOMOCK_DB_USER ?? "postgres",
-        password: process.env.MIOMOCK_DB_PASSWORD ?? "miomock123",
+        host: process.env.SONAMU_DB_HOST ?? "0.0.0.0",
+        port: Number(process.env.SONAMU_DB_PORT ?? 5432),
+        user: process.env.SONAMU_DB_USER ?? "postgres",
+        password: process.env.SONAMU_DB_PASSWORD ?? "miomock123",
       },
     },
   },
@@ -44,7 +40,7 @@ export default defineConfig({
   slackConfirm:
     process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID
       ? {
-          targets: ["development_master", "production_master"],
+          targets: ["staging", "production"],
           botToken: process.env.SLACK_BOT_TOKEN ?? "",
           channelId: process.env.SLACK_CHANNEL_ID ?? "",
         }
