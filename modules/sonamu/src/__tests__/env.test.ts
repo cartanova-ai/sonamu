@@ -33,9 +33,28 @@ describe("loadAllEnvironmentSnapshots", () => {
     });
 
     expect(snapshots.development.SONAMU_DB_HOST).toBe("development.example.com");
-    expect(snapshots.development.SONAMU_DB_PASSWORD).toBe("development_password");
+    expect(snapshots.development.SONAMU_DB_PASSWORD).toBe("shell_password");
     expect(snapshots.staging.SONAMU_DB_HOST).toBe("staging.example.com");
     expect(snapshots.staging.SONAMU_DB_PASSWORD).toBe("shell_password");
     expect(snapshots.staging.SONAMU_DB_USER).toBe("base_user");
+  });
+
+  it("keeps exported environment variables over dotenv file values", async () => {
+    const rootPath = await mkdtemp(path.join(os.tmpdir(), "sonamu-env-test-"));
+    tempRoots.push(rootPath);
+
+    await writeFile(
+      path.join(rootPath, ".env.development"),
+      "SONAMU_DB_HOST=file-host\nSONAMU_DB_PASSWORD=file-password\n",
+    );
+
+    const snapshots = loadAllEnvironmentSnapshots(rootPath, {
+      SONAMU_DB_HOST: "runtime-host",
+      SONAMU_DB_PASSWORD: "runtime-password",
+    });
+
+    expect(snapshots.development.SONAMU_DB_HOST).toBe("runtime-host");
+    expect(snapshots.development.SONAMU_DB_PASSWORD).toBe("runtime-password");
+    expect(snapshots.development.NODE_ENV).toBe("development");
   });
 });

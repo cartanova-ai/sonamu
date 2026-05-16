@@ -25,10 +25,29 @@ export type SlackConfirmPendingResult = {
 export class SlackConfirm {
   private config = Sonamu.config.slackConfirm;
 
+  private validateConfiguredTargets(): void {
+    if (!this.config) {
+      return;
+    }
+
+    const validTargets = Object.keys(Sonamu.dbConfig);
+    const invalidTargets = this.config.targets.filter((target) => !validTargets.includes(target));
+
+    if (invalidTargets.length > 0) {
+      assert.fail(
+        SD("sonamu.error.slackConfirmInvalidTargets")(
+          invalidTargets.join(", "),
+          validTargets.join(", "),
+        ),
+      );
+    }
+  }
+
   /**
    * 설정이 있는지 확인합니다.
    */
   isConfigured(): boolean {
+    this.validateConfiguredTargets();
     return !!(this.config?.botToken && this.config?.channelId);
   }
 
@@ -36,6 +55,7 @@ export class SlackConfirm {
    * 해당 target이 승인 대상인지 확인합니다.
    */
   isTargetRequiresApproval(target: keyof SonamuDBConfig): boolean {
+    this.validateConfiguredTargets();
     return this.config?.targets?.includes(target) ?? false;
   }
 
@@ -98,6 +118,7 @@ export class SlackConfirm {
     requestor?: string,
   ): Promise<{ channel: string; ts: string }> {
     assert(this.config, SD("sonamu.error.slackConfirmNotConfigured"));
+    this.validateConfiguredTargets();
 
     const response = await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",

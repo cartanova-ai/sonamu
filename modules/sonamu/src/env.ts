@@ -43,10 +43,10 @@ export function loadEnvironmentSnapshot(
   baseEnv: NodeJS.ProcessEnv = process.env,
 ): EnvironmentSnapshot {
   return {
-    ...baseEnv,
     ...readDotenvFile(path.join(rootPath, ".env")),
     ...readDotenvFile(path.join(rootPath, `.env.${environment}`)),
     ...readDotenvFile(path.join(rootPath, ".env.local")),
+    ...baseEnv,
     NODE_ENV: environment,
   };
 }

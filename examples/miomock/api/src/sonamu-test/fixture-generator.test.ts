@@ -1,5 +1,4 @@
-import { DB, EntityManager } from "sonamu";
-import { type DBPreset } from "sonamu";
+import { DB, type DBPreset, EntityManager } from "sonamu";
 import { bootstrap, DataExplorer, FixtureGenerator, test } from "sonamu/test";
 import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
 
@@ -240,7 +239,7 @@ describe("FixtureGenerator", () => {
 
     test("DB에 Account가 실제 저장되었는지 확인", async () => {
       const generator = getGenerator();
-      const db = DB.getDB("test" as DBPreset);
+      const db = DB.getDB("w");
 
       const results = await generator.generateBatch([{ entity: "User", count: 1 }]);
 

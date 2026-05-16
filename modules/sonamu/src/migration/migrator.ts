@@ -30,6 +30,19 @@ export type MigrationResult = {
 }[];
 
 export class Migrator {
+  private isMissingMigrationTableError(error: unknown): boolean {
+    if (typeof error !== "object" || error === null) {
+      return false;
+    }
+
+    const maybePostgresError = error as { code?: unknown; message?: unknown };
+    return (
+      maybePostgresError.code === "42P01" &&
+      typeof maybePostgresError.message === "string" &&
+      maybePostgresError.message.includes("knex_migrations")
+    );
+  }
+
   private getMigrationTargetKeys(): (keyof SonamuDBConfig)[] {
     const connKeys = Object.keys(Sonamu.dbConfig).filter(
       (key) => !key.endsWith("_readonly"),
@@ -111,6 +124,10 @@ export class Migrator {
             try {
               return await tConn.migrate.status();
             } catch (err) {
+              if (this.isMissingMigrationTableError(err)) {
+                return codes.length;
+              }
+
               console.warn(
                 chalk.yellow(
                   `${connKey}의 마이그레이션 상태를 가져오는 데에 실패하였습니다. 데이터베이스가 올바르게 구성되지 않은 것 같습니다. 확인하시고 다시 시도해주세요.\n시도한 연결 설정:\n${JSON.stringify(knexOptions.connection, null, 2)}\n발생한 에러:\n${err}\n`,
@@ -125,6 +142,10 @@ export class Migrator {
               const [, fdList] = await tConn.migrate.list();
               return fdList.map((fd: { file: string }) => fd.file.replace(".ts", ""));
             } catch (err) {
+              if (this.isMissingMigrationTableError(err)) {
+                return codes.map((code) => code.name);
+              }
+
               migrationStatusError = err instanceof Error ? err.message : String(err);
               return [];
             }
@@ -133,6 +154,10 @@ export class Migrator {
             try {
               return await tConn.migrate.currentVersion();
             } catch (_err) {
+              if (this.isMissingMigrationTableError(_err)) {
+                return "none";
+              }
+
               migrationStatusError = _err instanceof Error ? _err.message : String(_err);
               return "error";
             }
@@ -379,9 +404,12 @@ export class Migrator {
     // 조인테이블 포함하여 MigrationSet 배열
     const entitySets: MigrationSet[] = [...entitySetsWithJoinTable, ...joinTables];
 
-    const codes: GenMigrationCode[] = (
-      await Promise.all(
-        entitySets.map(async (entitySet) => {
+    const codes: GenMigrationCode[] = [];
+    const batchSize = 4;
+
+    for (let i = 0; i < entitySets.length; i += batchSize) {
+      const batchCodes = await Promise.all(
+        entitySets.slice(i, i + batchSize).map(async (entitySet) => {
           const dbSet = await PostgreSQLSchemaReader.getMigrationSetFromDB(
             compareDB,
             entitySet.table,
@@ -397,8 +425,10 @@ export class Migrator {
             return await generateAlterCode(entitySet, dbSet, compareDB);
           }
         }),
-      )
-    ).flat();
+      );
+
+      codes.push(...batchCodes.flat());
+    }
 
     // normal 타입이 앞으로, foreign이 뒤로
     codes.sort((codeA, codeB) => {
@@ -422,20 +452,27 @@ export class Migrator {
    * @returns Shadow DB 테스트 결과
    */
   async runShadowTest(): Promise<MigrationResult> {
-    const tdbConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
-    const shadowDatabase = `${tdbConn.database}__migration_shadow`;
+    const baseTestConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
+    const workerId = process.env.SONAMU_WORKER_DB === "true" ? process.env.VITEST_POOL_ID : null;
+    const templateDatabase =
+      workerId !== null ? `${baseTestConn.database}_${workerId ?? "1"}` : baseTestConn.database;
+    const tdbConn = { ...baseTestConn, database: templateDatabase };
+    const shadowDatabase = `${templateDatabase}__migration_shadow`;
 
     // 테스트 상황에서는 트랜잭션을 초기화하고, 새 데이터베이스 커넥션을 가져와야 함
     if (isTest()) {
       await DB.clearTestTransaction();
-      // 병렬 테스트 모드에서는 worker DB 연결 유지
-      if (process.env.SONAMU_WORKER_DB !== "true") {
-        await DB.destroy();
-      }
+      await DB.destroy();
     }
 
     // 기존 Shadow DB 삭제 후 Shadow DB 생성
-    const tdb = createKnexInstance(Sonamu.dbConfig.test);
+    const tdb = createKnexInstance({
+      ...Sonamu.dbConfig.test,
+      connection: {
+        ...baseTestConn,
+        database: "postgres",
+      },
+    });
     try {
       !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
       await tdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase}`);

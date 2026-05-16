@@ -4,6 +4,18 @@ import { loadConfig } from "../api/config";
 
 type VitestConfig = ViteUserConfig["test"];
 
+function restoreProcessEnv(snapshot: NodeJS.ProcessEnv): void {
+  for (const key of Object.keys(process.env)) {
+    if (!(key in snapshot)) {
+      delete process.env[key];
+    }
+  }
+
+  for (const [key, value] of Object.entries(snapshot)) {
+    process.env[key] = value;
+  }
+}
+
 /**
  * sonamu.config.ts의 test 설정을 기반으로 vitest 테스트 설정을 반환합니다.
  *
@@ -22,7 +34,9 @@ type VitestConfig = ViteUserConfig["test"];
  */
 export async function getSonamuTestConfig(options?: VitestConfig): Promise<VitestConfig> {
   const { findApiRootPath } = await import("../utils/utils");
+  const envBeforeConfigLoad = { ...process.env };
   const config = await loadConfig(findApiRootPath());
+  restoreProcessEnv(envBeforeConfigLoad);
 
   const isParallel = config.test?.parallel ?? false;
   const maxWorkers = config.test?.maxWorkers ?? 4;

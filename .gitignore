@@ -1,5 +1,9 @@
 .env*
 !.env.example
+!examples/miomock/api/.env.development
+!examples/miomock/api/.env.staging
+!examples/miomock/api/.env.production
+!examples/miomock/api/.env.test
 
 # Zero-install
 .yarn/*
