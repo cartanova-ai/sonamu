@@ -721,7 +721,7 @@ describe("Worker", () => {
     expect(sleeping?.workerId).toBeNull();
 
     // wait for sleep duration
-    await sleep(100);
+    await sleep(250);
 
     // verify workflow can be claimed again
     const claimed = await backend.claimWorkflowRun({

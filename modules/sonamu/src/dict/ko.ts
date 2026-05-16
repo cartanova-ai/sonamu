@@ -81,6 +81,8 @@ export default {
   "sonamu.error.keyNotFound": (key: string) => `키를 찾을 수 없습니다: ${key}`,
   "sonamu.error.migrationRejected": "마이그레이션이 거절되었습니다",
   "sonamu.error.slackConfirmNotConfigured": "Slack Confirm이 설정되지 않았습니다",
+  "sonamu.error.slackConfirmInvalidTargets": (targets: string, validTargets: string) =>
+    `Slack Confirm targets에 알 수 없는 DB 키가 포함되어 있습니다: ${targets}. 유효한 대상: ${validTargets}`,
   "sonamu.error.devRunner.notEnabled":
     "devRunner가 활성화되지 않았습니다. sonamu.config.ts에서 test.devRunner.enabled: true 설정이 필요합니다",
   "sonamu.error.devRunner.notReady": "Vitest 인스턴스가 아직 준비되지 않았습니다",

@@ -17,9 +17,9 @@ load_dotenv .env.local
 set -e
 
 BASE_NAME=$(echo "${PROJECT_NAME:-sonamu}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/_/g; s/^_+//; s/_+$//')
-DB_NAME="${BASE_NAME}_test"
+DB_NAME="${SONAMU_DB_NAME:-${BASE_NAME}_test}"
 DUMP_DIR="database/dumps"
-DUMP_FILE="${DUMP_DIR}/${BASE_NAME}_test_latest.sql"
+DUMP_FILE="${DUMP_DIR}/${DB_NAME}_latest.sql"
 
 mkdir -p ${DUMP_DIR}
 

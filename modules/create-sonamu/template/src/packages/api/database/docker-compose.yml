@@ -10,6 +10,8 @@ services:
       - ./fixtures/init.sh:/docker-entrypoint-initdb.d/init.sh
     environment:
       PROJECT_NAME: ${PROJECT_NAME}
+      SONAMU_DB_NAME: ${SONAMU_DB_NAME:-}
+      SONAMU_DB_FIXTURE_NAME: ${SONAMU_DB_FIXTURE_NAME:-}
       POSTGRES_DB: template1
       POSTGRES_USER: ${SONAMU_DB_USER}
       POSTGRES_PASSWORD: ${SONAMU_DB_PASSWORD}
