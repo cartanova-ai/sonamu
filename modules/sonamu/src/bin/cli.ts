@@ -37,6 +37,7 @@ import { findApiRootPath, findAppRootPath } from "../utils/utils";
 import { API_ARTIFACTS, WEB_ARTIFACTS } from "./build-config";
 import { type BuildArtifact } from "./build-config";
 import { fixtureExploreCommand, fixtureFetchCommand, fixtureGenCommand } from "./fixture";
+import { getMigrateRunTargets } from "./migrate-targets";
 import { testCommand } from "./test-command";
 
 let migrator: Migrator;
@@ -555,7 +556,7 @@ async function migrate_apply(targets: (keyof SonamuDBConfig)[]) {
 
 async function migrate_run() {
   await setupMigrator();
-  await migrator.runAction("apply", [getSonamuEnvironment()]);
+  await migrator.runAction("apply", getMigrateRunTargets());
 }
 
 async function migrate_generate() {
