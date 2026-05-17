@@ -120,7 +120,7 @@ class UserModel extends BaseModelClass {
     // 커밋된 데이터만 읽기 (Non-repeatable Read 가능)
   }
 
-  // REPEATABLE READ (기본값)
+  // REPEATABLE READ
   @transactional({ isolation: "repeatable read" })
   async repeatableRead() {
     const wdb = this.getPuri("w");
