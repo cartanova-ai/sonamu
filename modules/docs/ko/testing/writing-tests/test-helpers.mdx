@@ -37,45 +37,45 @@ import { PostModel } from "@/models/post.model";
 export const loadFixtures = createFixtureLoader({
   // 사용자 fixtures
   user01: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "john",
       email: "john@example.com",
       password: "password123",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
   user02: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "jane",
       email: "jane@example.com",
       password: "password456",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
   admin: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "admin",
       email: "admin@example.com",
       password: "admin123",
       role: "admin",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
   // 게시글 fixtures
   post01: async () => {
-    const postModel = new PostModel();
-    const { post } = await postModel.create({
+    const params = {
       title: "First Post",
       content: "Content of first post",
       author_id: 1,
-    });
-    return post;
+    };
+    const [id] = await PostModel.save([params]);
+    return { id, ...params };
   },
 });
 ```
@@ -96,8 +96,7 @@ test("사용자의 게시글 조회", async () => {
   const { user01, post01 } = await loadFixtures(["user01", "post01"]);
 
   // 테스트
-  const postModel = new PostModel();
-  const { posts } = await postModel.getPostsByUser(user01.id);
+  const { posts } = await PostModel.getPostsByUser(user01.id);
 
   expect(posts).toHaveLength(1);
   expect(posts[0].id).toBe(post01.id);
@@ -156,26 +155,26 @@ const { user01, user02 } = await loadFixtures(["user01", "user02"]);
 // api/src/testing/fixture.ts
 export const loadFixtures = createFixtureLoader({
   author: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "author",
       email: "author@example.com",
       password: "password",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
   authorPost: async () => {
     // author fixture 먼저 로드
     const { author } = await loadFixtures(["author"]);
 
-    const postModel = new PostModel();
-    const { post } = await postModel.create({
+    const params = {
       title: "Author's Post",
       content: "Content",
       author_id: author.id, // 관계 설정
-    });
-    return post;
+    };
+    const [id] = await PostModel.save([params]);
+    return { id, ...params };
   },
 });
 ```
@@ -196,30 +195,24 @@ test("작성자와 게시글 관계", async () => {
 export const loadFixtures = createFixtureLoader({
   // 파라미터를 받는 fixture
   userWithEmail: async (email: string) => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: email.split("@")[0],
       email,
       password: "password",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
   // 여러 데이터 생성
   users10: async () => {
-    const userModel = new UserModel();
-    const users = [];
-
-    for (let i = 1; i <= 10; i++) {
-      const { user } = await userModel.create({
-        username: `user${i}`,
-        email: `user${i}@example.com`,
-        password: "password",
-      });
-      users.push(user);
-    }
-
-    return users;
+    const paramsList = Array.from({ length: 10 }, (_, i) => ({
+      username: `user${i + 1}`,
+      email: `user${i + 1}@example.com`,
+      password: "password",
+    }));
+    const ids = await UserModel.save(paramsList);
+    return paramsList.map((params, i) => ({ id: ids[i], ...params }));
   },
 });
 ```
@@ -298,62 +291,60 @@ import { PostModel } from "@/models/post.model";
 export const loadFixtures = createFixtureLoader({
   // 1. 단순 데이터
   guestUser: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "guest",
       email: "guest@example.com",
       password: "password",
       role: "guest",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
-  // 2. 여러 데이터
+  // 2. 여러 데이터 (배열을 한 번에 전달)
   testUsers: async () => {
-    const userModel = new UserModel();
-    const users = await Promise.all([
-      userModel.create({
+    const paramsList = [
+      {
         username: "user1",
         email: "user1@example.com",
         password: "password",
-      }),
-      userModel.create({
+      },
+      {
         username: "user2",
         email: "user2@example.com",
         password: "password",
-      }),
-    ]);
-    return users.map(({ user }) => user);
+      },
+    ];
+    const ids = await UserModel.save(paramsList);
+    return paramsList.map((params, i) => ({ id: ids[i], ...params }));
   },
 
   // 3. 관계가 있는 데이터
   userWithPosts: async () => {
-    const userModel = new UserModel();
-    const postModel = new PostModel();
-
-    const { user } = await userModel.create({
+    const userParams = {
       username: "blogger",
       email: "blogger@example.com",
       password: "password",
-    });
+    };
+    const [userId] = await UserModel.save([userParams]);
+    const user = { id: userId, ...userParams };
 
-    const posts = await Promise.all([
-      postModel.create({
+    const postParamsList = [
+      {
         title: "Post 1",
         content: "Content 1",
         author_id: user.id,
-      }),
-      postModel.create({
+      },
+      {
         title: "Post 2",
         content: "Content 2",
         author_id: user.id,
-      }),
-    ]);
+      },
+    ];
+    const postIds = await PostModel.save(postParamsList);
+    const posts = postParamsList.map((params, i) => ({ id: postIds[i], ...params }));
 
-    return {
-      user,
-      posts: posts.map(({ post }) => post),
-    };
+    return { user, posts };
   },
 });
 ```
@@ -374,17 +365,17 @@ test("댓글 작성 및 조회", async () => {
   const { userWithPosts } = await loadFixtures(["userWithPosts"]);
   const { user, posts } = userWithPosts;
 
-  const commentModel = new CommentModel();
-
   // 댓글 작성
-  const { comment } = await commentModel.create({
-    content: "Great post!",
-    post_id: posts[0].id,
-    author_id: user.id,
-  });
+  const [commentId] = await CommentModel.save([
+    {
+      content: "Great post!",
+      post_id: posts[0].id,
+      author_id: user.id,
+    },
+  ]);
 
   // 댓글 조회
-  const { comments } = await commentModel.getCommentsByPost(posts[0].id);
+  const { comments } = await CommentModel.getCommentsByPost(posts[0].id);
 
   expect(comments).toHaveLength(1);
   expect(comments[0].content).toBe("Great post!");
@@ -433,21 +424,20 @@ export const loadFixtures = createFixtureLoader({
 // ✅ 올바른 방법: 필요한 필드만
 export const loadFixtures = createFixtureLoader({
   basicUser: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "user",
       email: "user@example.com",
       password: "password",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 });
 
 // ❌ 잘못된 방법: 불필요한 필드까지
 export const loadFixtures = createFixtureLoader({
   complexUser: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "user",
       email: "user@example.com",
       password: "password",
@@ -457,8 +447,9 @@ export const loadFixtures = createFixtureLoader({
         /* ... */
       },
       // ... 너무 많은 필드
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 });
 ```
@@ -469,24 +460,24 @@ export const loadFixtures = createFixtureLoader({
 // ✅ 올바른 방법: 다른 fixture에서 재사용
 export const loadFixtures = createFixtureLoader({
   user: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "user",
       email: "user@example.com",
       password: "password",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
   userPost: async () => {
     const { user } = await loadFixtures(["user"]);
-    const postModel = new PostModel();
-    const { post } = await postModel.create({
+    const params = {
       title: "Post",
       content: "Content",
       author_id: user.id,
-    });
-    return post;
+    };
+    const [id] = await PostModel.save([params]);
+    return { id, ...params };
   },
 });
 ```
@@ -533,13 +524,13 @@ describe("PostModel with error handling", () => {
 export const loadFixtures = createFixtureLoader({
   user01: async () => {
     try {
-      const userModel = new UserModel();
-      const { user } = await userModel.create({
+      const params = {
         username: "john",
         email: "john@example.com",
         password: "password123",
-      });
-      return user;
+      };
+      const [id] = await UserModel.save([params]);
+      return { id, ...params };
     } catch (error) {
       // 에러 로깅 및 재전파
       console.error("Failed to create user01 fixture:", error);
@@ -557,13 +548,13 @@ export const loadFixtures = createFixtureLoader({
     }
 
     try {
-      const postModel = new PostModel();
-      const { post } = await postModel.create({
+      const params = {
         title: "Post",
         content: "Content",
         author_id: user.id,
-      });
-      return post;
+      };
+      const [id] = await PostModel.save([params]);
+      return { id, ...params };
     } catch (error) {
       throw new Error(`Failed to create post: ${error.message}`);
     }
@@ -629,20 +620,19 @@ test("환경별 fixture", async () => {
 ```typescript
 export const loadFixtures = createFixtureLoader({
   resilientUser: async () => {
-    const userModel = new UserModel();
-
     // 재시도 로직
     const maxRetries = 3;
     let lastError;
 
     for (let i = 0; i < maxRetries; i++) {
       try {
-        const { user } = await userModel.create({
+        const params = {
           username: `user_${Date.now()}`, // 충돌 방지
           email: `user_${Date.now()}@example.com`,
           password: "password123",
-        });
-        return user;
+        };
+        const [id] = await UserModel.save([params]);
+        return { id, ...params };
       } catch (error) {
         lastError = error;
         console.warn(`Retry ${i + 1}/${maxRetries} failed:`, error);
