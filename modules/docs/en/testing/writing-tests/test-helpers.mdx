@@ -37,45 +37,45 @@ import { PostModel } from "@/models/post.model";
 export const loadFixtures = createFixtureLoader({
   // User fixtures
   user01: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "john",
       email: "john@example.com",
       password: "password123",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
   user02: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "jane",
       email: "jane@example.com",
       password: "password456",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
   admin: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "admin",
       email: "admin@example.com",
       password: "admin123",
       role: "admin",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
   // Post fixtures
   post01: async () => {
-    const postModel = new PostModel();
-    const { post } = await postModel.create({
+    const params = {
       title: "First Post",
       content: "Content of first post",
       author_id: 1,
-    });
-    return post;
+    };
+    const [id] = await PostModel.save([params]);
+    return { id, ...params };
   },
 });
 ```
@@ -96,8 +96,7 @@ test("Get user's posts", async () => {
   const { user01, post01 } = await loadFixtures(["user01", "post01"]);
 
   // Test
-  const postModel = new PostModel();
-  const { posts } = await postModel.getPostsByUser(user01.id);
+  const { posts } = await PostModel.getPostsByUser(user01.id);
 
   expect(posts).toHaveLength(1);
   expect(posts[0].id).toBe(post01.id);
@@ -156,26 +155,26 @@ const { user01, user02 } = await loadFixtures(["user01", "user02"]);
 // api/src/testing/fixture.ts
 export const loadFixtures = createFixtureLoader({
   author: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "author",
       email: "author@example.com",
       password: "password",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
   authorPost: async () => {
     // Load author fixture first
     const { author } = await loadFixtures(["author"]);
 
-    const postModel = new PostModel();
-    const { post } = await postModel.create({
+    const params = {
       title: "Author's Post",
       content: "Content",
       author_id: author.id, // Set relationship
-    });
-    return post;
+    };
+    const [id] = await PostModel.save([params]);
+    return { id, ...params };
   },
 });
 ```
@@ -196,30 +195,24 @@ test("Author and post relationship", async () => {
 export const loadFixtures = createFixtureLoader({
   // Fixture that takes parameters
   userWithEmail: async (email: string) => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: email.split("@")[0],
       email,
       password: "password",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
   // Create multiple data
   users10: async () => {
-    const userModel = new UserModel();
-    const users = [];
-
-    for (let i = 1; i <= 10; i++) {
-      const { user } = await userModel.create({
-        username: `user${i}`,
-        email: `user${i}@example.com`,
-        password: "password",
-      });
-      users.push(user);
-    }
-
-    return users;
+    const paramsList = Array.from({ length: 10 }, (_, i) => ({
+      username: `user${i + 1}`,
+      email: `user${i + 1}@example.com`,
+      password: "password",
+    }));
+    const ids = await UserModel.save(paramsList);
+    return paramsList.map((params, i) => ({ id: ids[i], ...params }));
   },
 });
 ```
@@ -298,62 +291,60 @@ import { PostModel } from "@/models/post.model";
 export const loadFixtures = createFixtureLoader({
   // 1. Simple data
   guestUser: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "guest",
       email: "guest@example.com",
       password: "password",
       role: "guest",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
-  // 2. Multiple data
+  // 2. Multiple data (pass array at once)
   testUsers: async () => {
-    const userModel = new UserModel();
-    const users = await Promise.all([
-      userModel.create({
+    const paramsList = [
+      {
         username: "user1",
         email: "user1@example.com",
         password: "password",
-      }),
-      userModel.create({
+      },
+      {
         username: "user2",
         email: "user2@example.com",
         password: "password",
-      }),
-    ]);
-    return users.map(({ user }) => user);
+      },
+    ];
+    const ids = await UserModel.save(paramsList);
+    return paramsList.map((params, i) => ({ id: ids[i], ...params }));
   },
 
   // 3. Data with relationships
   userWithPosts: async () => {
-    const userModel = new UserModel();
-    const postModel = new PostModel();
-
-    const { user } = await userModel.create({
+    const userParams = {
       username: "blogger",
       email: "blogger@example.com",
       password: "password",
-    });
+    };
+    const [userId] = await UserModel.save([userParams]);
+    const user = { id: userId, ...userParams };
 
-    const posts = await Promise.all([
-      postModel.create({
+    const postParamsList = [
+      {
         title: "Post 1",
         content: "Content 1",
         author_id: user.id,
-      }),
-      postModel.create({
+      },
+      {
         title: "Post 2",
         content: "Content 2",
         author_id: user.id,
-      }),
-    ]);
+      },
+    ];
+    const postIds = await PostModel.save(postParamsList);
+    const posts = postParamsList.map((params, i) => ({ id: postIds[i], ...params }));
 
-    return {
-      user,
-      posts: posts.map(({ post }) => post),
-    };
+    return { user, posts };
   },
 });
 ```
@@ -374,17 +365,17 @@ test("Create and retrieve comments", async () => {
   const { userWithPosts } = await loadFixtures(["userWithPosts"]);
   const { user, posts } = userWithPosts;
 
-  const commentModel = new CommentModel();
-
   // Create comment
-  const { comment } = await commentModel.create({
-    content: "Great post!",
-    post_id: posts[0].id,
-    author_id: user.id,
-  });
+  const [commentId] = await CommentModel.save([
+    {
+      content: "Great post!",
+      post_id: posts[0].id,
+      author_id: user.id,
+    },
+  ]);
 
   // Get comments
-  const { comments } = await commentModel.getCommentsByPost(posts[0].id);
+  const { comments } = await CommentModel.getCommentsByPost(posts[0].id);
 
   expect(comments).toHaveLength(1);
   expect(comments[0].content).toBe("Great post!");
@@ -433,21 +424,20 @@ export const loadFixtures = createFixtureLoader({
 // ✅ Correct: Only needed fields
 export const loadFixtures = createFixtureLoader({
   basicUser: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "user",
       email: "user@example.com",
       password: "password",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 });
 
 // ❌ Wrong: Unnecessary fields
 export const loadFixtures = createFixtureLoader({
   complexUser: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "user",
       email: "user@example.com",
       password: "password",
@@ -457,8 +447,9 @@ export const loadFixtures = createFixtureLoader({
         /* ... */
       },
       // ... too many fields
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 });
 ```
@@ -469,24 +460,24 @@ export const loadFixtures = createFixtureLoader({
 // ✅ Correct: Reuse in other fixtures
 export const loadFixtures = createFixtureLoader({
   user: async () => {
-    const userModel = new UserModel();
-    const { user } = await userModel.create({
+    const params = {
       username: "user",
       email: "user@example.com",
       password: "password",
-    });
-    return user;
+    };
+    const [id] = await UserModel.save([params]);
+    return { id, ...params };
   },
 
   userPost: async () => {
     const { user } = await loadFixtures(["user"]);
-    const postModel = new PostModel();
-    const { post } = await postModel.create({
+    const params = {
       title: "Post",
       content: "Content",
       author_id: user.id,
-    });
-    return post;
+    };
+    const [id] = await PostModel.save([params]);
+    return { id, ...params };
   },
 });
 ```

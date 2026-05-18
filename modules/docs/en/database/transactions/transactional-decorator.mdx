@@ -120,7 +120,7 @@ class UserModel extends BaseModelClass {
     // Only read committed data (Non-repeatable Read possible)
   }
 
-  // REPEATABLE READ (default)
+  // REPEATABLE READ
   @transactional({ isolation: "repeatable read" })
   async repeatableRead() {
     const wdb = this.getPuri("w");
