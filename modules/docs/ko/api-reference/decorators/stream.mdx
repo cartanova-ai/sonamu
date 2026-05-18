@@ -337,7 +337,9 @@ async process() {
 
 ## 제약사항
 
-### 1. @api와 중복 사용 불가
+### 1. 다른 라우팅 데코레이터(@api, @websocket, @upload)와 중복 사용 불가
+
+같은 메서드에 `@api`, `@stream`, `@websocket`, `@upload` 중 둘 이상을 함께 사용할 수 없습니다.
 
 ```typescript
 // ❌ 에러 발생
@@ -350,7 +352,7 @@ async subscribe() {}
 
 ```
 @stream decorator can only be used once on NotificationModel.subscribe.
-You can use only one of @api or @stream decorator on the same method.
+You can use only one of @api, @stream, @websocket, or @upload decorator on the same method.
 ```
 
 ### 2. events는 필수

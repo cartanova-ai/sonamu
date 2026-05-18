@@ -339,7 +339,9 @@ async process() {
 
 ## Constraints
 
-### 1. Cannot be used with @api
+### 1. Cannot be combined with other routing decorators (@api, @websocket, @upload)
+
+`@api`, `@stream`, `@websocket`, and `@upload` cannot be combined on the same method.
 
 ```typescript
 // ❌ Error
@@ -352,7 +354,7 @@ async subscribe() {}
 
 ```
 @stream decorator can only be used once on NotificationModel.subscribe.
-You can use only one of @api or @stream decorator on the same method.
+You can use only one of @api, @stream, @websocket, or @upload decorator on the same method.
 ```
 
 ### 2. events is required
