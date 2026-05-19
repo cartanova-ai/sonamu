@@ -228,8 +228,11 @@ function extractCallStack(): StackFrame[] {
     .map(parseStackFrame)
     .filter((frame) => frame !== null);
 
-  // runWithContext 발견 시 종료
-  const contextIndex = frames.findIndex((f) => f.functionName?.includes("runWithContext"));
+  // runWithContext/runWithMockContext 발견 시 거기서 자르기
+  const contextIndex = frames.findIndex(
+    (f) =>
+      f.functionName?.includes("runWithContext") || f.functionName?.includes("runWithMockContext"),
+  );
 
   return contextIndex >= 0 ? frames.slice(0, contextIndex + 1) : frames;
 }
