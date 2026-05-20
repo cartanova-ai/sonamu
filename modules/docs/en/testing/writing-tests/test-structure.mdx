@@ -222,9 +222,16 @@ test("Get user", async () => {
 The `test` function automatically injects Mock Context.
 
 ```typescript
-// Internal operation
+// Internal operation (src/testing/bootstrap.ts)
 function getMockContext(): Context {
   return {
+    transport: "http",
+    request: null as unknown as Context["request"],
+    reply: null as unknown as Context["reply"],
+    headers: {},
+    createSSE: (() => {
+      throw new Error("createSSE is not available in mock context");
+    }) as Context["createSSE"],
     session: null,
     user: null,  // Default: not logged in
     naiteStore: Naite.createStore(),
@@ -240,6 +247,124 @@ export const test = async (title: string, fn: TestFunction) => {
   });
 };
 ```
+
+### Full Mock Context Properties
+
+Mock Context is composed of the minimum values that satisfy the actual `Context` type (`src/api/context.ts`). The `request`/`reply` fields, which are populated from real HTTP requests, are not used in the Mock.
+
+#### Base Properties
+
+| Property | Type | Mock Value | Description |
+|------|------|---------|------|
+| `transport` | `"http"` | `"http"` | Transport channel (always `http` in Mock) |
+| `headers` | `IncomingHttpHeaders` | `{}` | Request headers (empty in Mock) |
+| `locale` | `string` | `""` | Current request locale (falls back via i18n config) |
+
+#### Authentication
+
+| Property | Type | Mock Value | Description |
+|------|------|---------|------|
+| `user` | `User \| null` | `null` | Authenticated user (set by `testAs`) |
+| `session` | `Session \| null` | `null` | Session info (set by `testAs`) |
+
+#### Naite Logging
+
+| Property | Type | Mock Value | Description |
+|------|------|---------|------|
+| `naiteStore` | `NaiteStore` | `Naite.createStore()` | Naite log store |
+
+#### Disabled in Mock
+
+| Property | Type | Mock Behavior | Description |
+|------|------|----------|------|
+| `request` | `FastifyRequest` | `null` (type-asserted) | Real Fastify Request — do not access in Mock |
+| `reply` | `FastifyReply` | `null` (type-asserted) | Real Fastify Reply — do not access in Mock |
+| `createSSE` | `(events) => SSE` | Throws on call | SSE is not supported in Mock context |
+
+#### Context Usage Example
+
+```typescript
+import { test } from "sonamu/test";
+import { Sonamu } from "sonamu";
+import { expect } from "vitest";
+
+test("Access Context properties", async () => {
+  const context = Sonamu.getContext();
+
+  // Authentication state (unauthenticated under test())
+  expect(context.user).toBeNull();
+  expect(context.session).toBeNull();
+
+  // Base properties
+  expect(context.transport).toBe("http");
+  expect(context.headers).toEqual({});
+  expect(context.locale).toBe("");
+
+  // Naite log store
+  expect(context.naiteStore).toBeDefined();
+});
+```
+
+#### Context under testAs
+
+```typescript
+import { testAs } from "sonamu/test";
+import { Sonamu } from "sonamu";
+import { expect } from "vitest";
+
+testAs(
+  { id: 1, username: "testuser", role: "admin" } as any,
+  "Authenticated Context",
+  async () => {
+    const context = Sonamu.getContext();
+
+    // user is set
+    expect(context.user).not.toBeNull();
+    expect(context.user?.id).toBe(1);
+
+    // session is set as well
+    expect(context.session).not.toBeNull();
+
+    // Rest is identical to test()
+    expect(context.locale).toBeDefined();
+    expect(context.naiteStore).toBeDefined();
+  }
+);
+```
+
+#### Customizing Context
+
+You can directly modify mutable Mock Context properties when needed:
+
+```typescript
+import { test } from "sonamu/test";
+import { Sonamu } from "sonamu";
+
+test("Force locale", async () => {
+  const context = Sonamu.getContext();
+
+  // Modify Context property directly (not recommended)
+  context.locale = "ko";
+
+  // Verify locale-based behavior
+  console.log(context.locale);  // "ko"
+});
+```
+
+<Warning>
+**Cautions**:
+1. **Mock Context is for tests**: it may differ from real HTTP requests.
+2. **No session persistence**: all state is reset when the test ends.
+3. **Direct mutation discouraged**: prefer `testAs()` over hand-editing Context.
+</Warning>
+
+<Info>
+**Context property summary**:
+- **Base**: transport, headers, locale
+- **Auth**: user, session
+- **Naite**: naiteStore
+- **HTTP-only (disabled in Mock)**: request, reply, createSSE
+</Info>
 
 ## testAs Function
 
@@ -464,10 +589,10 @@ import { Sonamu } from "sonamu";
 
 test("Check user info in Context", async () => {
   const context = Sonamu.getContext();
-  
-  // Mock context so user is null
+
+  // Mock context so user/session are null
   expect(context.user).toBeNull();
-  expect(context.ip).toBe("127.0.0.1");
+  expect(context.session).toBeNull();
 });
 ```
 
