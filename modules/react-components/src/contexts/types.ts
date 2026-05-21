@@ -2,13 +2,20 @@
 
 /**
  * ⚠️ 이 타입은 sonamu/types.ts와 동기화되어야 함
+ *
+ * 프로젝트별 도메인 필드를 추가하려면 `SonamuFileExtend`를 확장합니다.
+ * (`declare module "@sonamu-kit/react-components"`)
  */
-export type SonamuFile = {
+export interface SonamuFileExtend {}
+
+export type SonamuFileBase = {
   name: string;
   url: string;
   mime_type: string;
   size: number;
 };
+
+export type SonamuFile = SonamuFileBase & SonamuFileExtend;
 
 // Dictionary type - 모든 i18n dictionary의 기본 타입
 export type Dictionary = Record<string, string | ((...args: any[]) => string)>;

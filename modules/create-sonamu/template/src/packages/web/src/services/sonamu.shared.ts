@@ -293,15 +293,21 @@ export type SQLDateTimeString = z.infer<typeof SQLDateTimeString>;
 
 /**
  * SonamuFile Types
+ *
+ * 프로젝트별 도메인 필드를 추가하려면 `SonamuFileExtend`를 확장합니다.
  */
-export interface SonamuFile {
+export interface SonamuFileExtend {}
+
+export type SonamuFileBase = {
   name: string;
   url: string;
   mime_type: string;
   size: number;
-}
+};
 
-export const SonamuFileSchema = z.object({
+export type SonamuFile = SonamuFileBase & SonamuFileExtend;
+
+export const SonamuFileSchema = z.looseObject({
   name: z.string(),
   url: z.string(),
   mime_type: z.string(),

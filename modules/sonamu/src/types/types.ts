@@ -316,16 +316,23 @@ export type EntityProp =
  *
  * 파일 업로드를 위한 JSON 타입입니다.
  * Entity의 json 속성에서 id로 "SonamuFile" 또는 "SonamuFile[]"을 지정하여 사용합니다.
+ *
+ * 프로젝트별 도메인 필드를 추가하려면 `SonamuFileExtend`를 확장합니다.
+ * (Context의 `ContextExtend`와 동일한 declaration merging 패턴)
  */
-export interface SonamuFile {
+export interface SonamuFileExtend {}
+
+export type SonamuFileBase = {
   name: string;
   url: string;
   mime_type: string;
   size: number;
-}
+};
+
+export type SonamuFile = SonamuFileBase & SonamuFileExtend;
 
 export const SonamuFileSchema = z
-  .object({
+  .looseObject({
     name: z.string(),
     url: z.string(),
     mime_type: z.string(),
