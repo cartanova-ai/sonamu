@@ -295,21 +295,29 @@ async getMyProfile(): Promise<User> {
 ```typescript
 const context = Sonamu.getContext();
 
-// 사용자 정보
-context.user; // 로그인한 사용자 객체
-context.userId; // 사용자 ID
+// 인증 정보 (better-auth)
+context.user; // 로그인한 사용자 (null이면 미인증)
+context.session; // 세션 (null이면 미인증)
+context.user?.id; // 사용자 ID
 
 // 요청 정보
-context.ip; // 클라이언트 IP
-context.userAgent; // User-Agent 헤더
+context.transport; // "http" | "ws"
+context.headers; // 요청 헤더 (IncomingHttpHeaders)
+context.headers["user-agent"]; // User-Agent
+context.locale; // 현재 요청의 locale
 
-// Fastify 객체
-context.request; // Fastify Request
-context.reply; // Fastify Reply
+// Fastify 객체 (transport === "http"일 때)
+context.request; // FastifyRequest (context.request.ip로 클라이언트 IP)
+context.reply; // FastifyReply
 
-// 세션
-context.session; // 세션 객체
+// Naite 로그 스토어
+context.naiteStore;
 ```
+
+<Info>
+  `userId`/`ip`/`userAgent`는 Context의 최상위 속성이 아닙니다. 각각 `context.user?.id`,
+  `context.request.ip`, `context.headers["user-agent"]`로 접근하세요.
+</Info>
 
 </Accordion>
 
