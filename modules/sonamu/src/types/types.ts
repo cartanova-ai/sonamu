@@ -332,12 +332,13 @@ export type SonamuFileBase = {
 export type SonamuFile = SonamuFileBase & SonamuFileExtend;
 
 export const SonamuFileSchema = z
-  .looseObject({
+  .object({
     name: z.string(),
     url: z.string(),
     mime_type: z.string(),
     size: z.number(),
   })
+  .and(z.custom<SonamuFileExtend>())
   .describe("SonamuFile");
 
 export const SonamuFileArraySchema = z.array(SonamuFileSchema).describe("SonamuFile[]");

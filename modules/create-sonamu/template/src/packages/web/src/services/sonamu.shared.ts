@@ -307,12 +307,14 @@ export type SonamuFileBase = {
 
 export type SonamuFile = SonamuFileBase & SonamuFileExtend;
 
-export const SonamuFileSchema = z.looseObject({
-  name: z.string(),
-  url: z.string(),
-  mime_type: z.string(),
-  size: z.number(),
-});
+export const SonamuFileSchema = z
+  .object({
+    name: z.string(),
+    url: z.string(),
+    mime_type: z.string(),
+    size: z.number(),
+  })
+  .and(z.custom<SonamuFileExtend>());
 
 export const SonamuFileArraySchema = z.array(SonamuFileSchema);
 
