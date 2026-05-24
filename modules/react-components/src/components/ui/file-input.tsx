@@ -6,7 +6,7 @@ import Loader2Icon from "~icons/lucide/loader2";
 import UploadIcon from "~icons/lucide/upload";
 import XIcon from "~icons/lucide/x";
 
-import { type SonamuFile } from "@/contexts";
+import { type SonamuFile, type UploadParams } from "@/contexts";
 import { useSonamuBaseContext } from "@/contexts";
 import { cn, useObjectUrls } from "@/lib/utils";
 
@@ -38,6 +38,7 @@ type BaseProps = {
   disabled?: boolean;
   className?: string;
   previewSize?: PreviewSize;
+  uploadParams?: UploadParams;
   onBlur?: React.FocusEventHandler<HTMLInputElement>;
 };
 
@@ -64,6 +65,7 @@ export function FileInput(props: FileInputProps) {
     previewSize = "md",
     uploadMode,
     viewMode,
+    uploadParams,
     onBlur,
   } = props;
 
@@ -145,8 +147,7 @@ export function FileInput(props: FileInputProps) {
       if (uploadMode === "eager") {
         setIsUploading(true);
         try {
-          // uploader는 File[] 배열을 받아서 SonamuFile[] 배열을 반환해야 합니다
-          const uploadedFiles = await uploader(filesToAdd);
+          const uploadedFiles = await uploader(filesToAdd, uploadParams);
 
           if (isMultiple) {
             // Multiple 파일 업로드
@@ -176,7 +177,7 @@ export function FileInput(props: FileInputProps) {
         }
       }
     },
-    [disabled, totalCount, maxFiles, isMultiple, uploadMode, values, props, uploader],
+    [disabled, totalCount, maxFiles, isMultiple, uploadMode, uploadParams, values, props, uploader],
   );
 
   const handleInputChange = useCallback(

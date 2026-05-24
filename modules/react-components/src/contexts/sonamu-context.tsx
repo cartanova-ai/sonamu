@@ -7,7 +7,7 @@ import { type ReactNode } from "react";
 
 import { rcKeysEn } from "../i18n/rc-keys";
 import { type RCKeyName, type RCKeys } from "../i18n/rc-keys";
-import { type Dictionary, type SDReturnType, type SonamuFile } from "./types";
+import { type Dictionary, type SDReturnType, type SonamuFile, type UploadParams } from "./types";
 
 /** createAuthClient의 반환 타입을 옵션으로부터 추론하는 유틸리티 타입 */
 export type SonamuAuthClient<O extends BetterAuthClientOptions> = ReturnType<
@@ -18,7 +18,7 @@ export interface SonamuContextValue<
   D extends Dictionary = Dictionary,
   O extends BetterAuthClientOptions = BetterAuthClientOptions,
 > {
-  uploader?: (files: File[]) => Promise<SonamuFile[]>;
+  uploader?: (files: File[], params?: UploadParams) => Promise<SonamuFile[]>;
   auth?: SonamuAuthClient<O>;
   SD?: <K extends keyof D>(key: K) => SDReturnType<D, K>;
 }

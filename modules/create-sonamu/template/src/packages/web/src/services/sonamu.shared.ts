@@ -307,6 +307,13 @@ export type SonamuFileBase = {
 
 export type SonamuFile = SonamuFileBase & SonamuFileExtend;
 
+/**
+ * UploadParams
+ *
+ * 프로젝트별 업로드 파라미터를 추가하려면 declaration merging으로 확장합니다.
+ */
+export interface UploadParams {}
+
 export const SonamuFileSchema = z
   .object({
     name: z.string(),

@@ -17,6 +17,14 @@ export type SonamuFileBase = {
 
 export type SonamuFile = SonamuFileBase & SonamuFileExtend;
 
+/**
+ * ⚠️ 이 타입은 sonamu/types.ts와 동기화되어야 함
+ *
+ * 프로젝트별 업로드 파라미터를 추가하려면 `UploadParams`를 확장합니다.
+ * (`declare module "@sonamu-kit/react-components"`)
+ */
+export interface UploadParams {}
+
 // Dictionary type - 모든 i18n dictionary의 기본 타입
 export type Dictionary = Record<string, string | ((...args: any[]) => string)>;
 
