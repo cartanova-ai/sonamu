@@ -3,7 +3,7 @@ title: "Custom Context"
 description: "Extending Context for your project"
 ---
 
-You can extend SonamuContext to add custom data needed for your project.
+You can extend the ContextExtend interface to add custom data to the Context for your project.
 
 ## Context Extension Overview
 
@@ -53,12 +53,7 @@ declare module "sonamu" {
 // types/context.ts
 
 declare module "sonamu" {
-  interface SonamuContext {
-    // Base fields
-    request: FastifyRequest;
-    reply: FastifyReply;
-    user?: ContextUser;
-
+  interface ContextExtend {
     // Add custom fields
     tenant?: {
       id: number;
@@ -67,14 +62,6 @@ declare module "sonamu" {
       features: string[];
     };
 
-    session?: {
-      id: string;
-      createdAt: Date;
-      expiresAt: Date;
-      data: Record<string, any>;
-    };
-
-    locale: string;
     timezone: string;
     requestId: string;
   }
@@ -82,8 +69,9 @@ declare module "sonamu" {
 ```
 
 <Info>
-  Use TypeScript's Declaration Merging to extend types. This enables IDE autocomplete and type
-  checking.
+  Use TypeScript's Declaration Merging to extend the `ContextExtend` interface.
+  Base fields such as `request`, `reply`, `user`, `session`, and `locale` are already included in the `Context` type,
+  so you don't need to redeclare them here. This enables IDE autocomplete and type checking.
 </Info>
 
 ## Injecting Data with Middleware
