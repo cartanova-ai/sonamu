@@ -1,6 +1,6 @@
 {
   "name": "@sonamu-kit/react-components",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "license": "MIT",
   "author": "CartaNova <dev@cartanova.ai>",
   "repository": {
@@ -91,6 +91,7 @@
     "qs": "catalog:",
     "radashi": "catalog:",
     "react-day-picker": "catalog:",
+    "react-file-icon": "^1.6.0",
     "react-hook-form": "catalog:",
     "react-resizable-panels": "catalog:",
     "sonner": "catalog:",
@@ -110,6 +111,7 @@
     "@types/inflection": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@types/react-file-icon": "^1.0.5",
     "@vitejs/plugin-react": "catalog:",
     "agentation": "catalog:",
     "autoprefixer": "catalog:",
