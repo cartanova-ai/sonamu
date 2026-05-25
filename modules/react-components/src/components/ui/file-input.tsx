@@ -1,6 +1,6 @@
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
-import FileIcon from "~icons/lucide/file";
+import { FileIcon as ReactFileIcon, defaultStyles } from "react-file-icon";
 import ImageIcon from "~icons/lucide/image";
 import Loader2Icon from "~icons/lucide/loader2";
 import UploadIcon from "~icons/lucide/upload";
@@ -13,6 +13,31 @@ import { cn, useObjectUrls } from "@/lib/utils";
 import { Button } from "./button";
 
 export type PreviewSize = "sm" | "md" | "lg" | "xl";
+
+function getFileExtension(filename: string): string {
+  const parts = filename.split(".");
+  if (parts.length < 2) return "";
+  return parts[parts.length - 1].toLowerCase();
+}
+
+const fileIconSizes: Record<PreviewSize, number> = {
+  sm: 14,
+  md: 18,
+  lg: 22,
+  xl: 26,
+};
+
+function FileTypeIcon({ filename, size = "md" }: { filename: string; size?: PreviewSize }) {
+  const ext = getFileExtension(filename);
+  const styleProps =
+    ext && ext in defaultStyles ? defaultStyles[ext as keyof typeof defaultStyles] : {};
+
+  return (
+    <div className="shrink-0 self-center" style={{ width: fileIconSizes[size], marginTop: -2 }}>
+      <ReactFileIcon extension={ext || undefined} {...styleProps} />
+    </div>
+  );
+}
 
 // 이미지용: 정사각형
 const imageSizeClasses: Record<PreviewSize, string> = {
@@ -279,7 +304,7 @@ export function FileInput(props: FileInputProps) {
                 />
               ) : (
                 <div className="flex items-center gap-2 px-3 h-full w-full min-w-0 overflow-hidden">
-                  <FileIcon className="h-6 w-6 text-muted-foreground shrink-0" />
+                  <FileTypeIcon filename={item.name} size={previewSize} />
                   <span
                     className={cn(
                       "text-xs truncate min-w-0",
@@ -351,7 +376,7 @@ export function FileInput(props: FileInputProps) {
                 "h-full w-full",
               )}
             >
-              <FileIcon className="h-6 w-6 text-muted-foreground shrink-0" />
+              <FileTypeIcon filename={item.name} size={previewSize} />
               <span
                 className={cn(
                   "text-xs truncate min-w-0",
