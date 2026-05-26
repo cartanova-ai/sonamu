@@ -17,7 +17,7 @@ import { type Knex } from "knex";
 
 import { type CacheConfig } from "../cache/types";
 import { type SonamuDBConfig } from "../database/db";
-import { loadCurrentEnvironmentDotenv } from "../env";
+import { applyCurrentSnapshotToProcessEnv } from "../env";
 import { type SonamuLoggingOptions } from "../logger/configure";
 import { type StorageConfig } from "../storage/types";
 import { type WebSocketRuntimeOptions } from "../stream/ws";
@@ -309,7 +309,7 @@ export function defineConfig(config: Executable<SonamuConfig>): Promise<SonamuCo
  * @returns
  */
 export async function loadConfig(rootPath: string): Promise<SonamuConfig> {
-  loadCurrentEnvironmentDotenv(rootPath);
+  applyCurrentSnapshotToProcessEnv(rootPath);
 
   const shouldLoadSourceConfig = process.env.HOT === "yes" || process.env.VITEST === "true";
   const configPath = shouldLoadSourceConfig

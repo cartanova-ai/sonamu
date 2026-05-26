@@ -24,7 +24,7 @@ import { DB } from "../database/db";
 import { type SonamuDBConfig } from "../database/db";
 import { SD, setSDConfig } from "../dict/sd";
 import { type LocalizedString } from "../dict/types";
-import { getSonamuEnvironment, loadAllEnvironmentSnapshots } from "../env";
+import { getSonamuEnvironment, readAllEnvironmentSnapshots } from "../env";
 import { NotFoundException } from "../exceptions/so-exceptions";
 import { BufferedFile } from "../storage/buffered-file";
 import { type StorageManager } from "../storage/storage-manager";
@@ -257,7 +257,7 @@ class SonamuClass {
     const { DB } = await import("../database/db");
     const { isLocal: isLocalEnvironment } = await import("../utils/controller");
     const environmentSnapshots = isLocalEnvironment()
-      ? loadAllEnvironmentSnapshots(this.apiRootPath, baseEnvBeforeConfigLoad)
+      ? readAllEnvironmentSnapshots(this.apiRootPath, baseEnvBeforeConfigLoad)
       : undefined;
     this.dbConfig = DB.generateDBConfig(
       this.config.database,
