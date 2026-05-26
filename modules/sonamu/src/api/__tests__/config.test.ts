@@ -21,7 +21,9 @@ function resetRegisterState() {
 }
 
 async function createTempRoot(): Promise<string> {
-  return mkdtemp(path.join(os.tmpdir(), "sonamu-config-test-"));
+  const rootPath = await mkdtemp(path.join(os.tmpdir(), "sonamu-config-test-"));
+  await writeFile(path.join(rootPath, ".env"), "SONAMU_DB_HOST=localhost\n");
+  return rootPath;
 }
 
 async function writeSourceFixture(rootPath: string): Promise<void> {

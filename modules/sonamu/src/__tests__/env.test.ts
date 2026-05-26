@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { loadAllEnvironmentSnapshots } from "../env";
+import { loadAllEnvironmentSnapshots, loadEnvironmentSnapshot } from "../env";
 
 describe("loadAllEnvironmentSnapshots", () => {
   const tempRoots: string[] = [];
@@ -39,6 +39,40 @@ describe("loadAllEnvironmentSnapshots", () => {
     expect(snapshots.staging.SONAMU_DB_USER).toBe("base_user");
   });
 
+  it("throws when both common and environment dotenv files are missing", async () => {
+    const rootPath = await mkdtemp(path.join(os.tmpdir(), "sonamu-env-test-"));
+    tempRoots.push(rootPath);
+
+    await writeFile(path.join(rootPath, ".env.local"), "SONAMU_DB_HOST=local.example.com\n");
+
+    expect(() => loadAllEnvironmentSnapshots(rootPath)).toThrow(
+      /Missing Sonamu dotenv file.*\.env.*\.env\.test/,
+    );
+  });
+
+  it("allows environment snapshots when only the common dotenv file exists", async () => {
+    const rootPath = await mkdtemp(path.join(os.tmpdir(), "sonamu-env-test-"));
+    tempRoots.push(rootPath);
+
+    await writeFile(path.join(rootPath, ".env"), "SONAMU_DB_HOST=common.example.com\n");
+
+    const snapshots = loadAllEnvironmentSnapshots(rootPath);
+
+    expect(snapshots.development.SONAMU_DB_HOST).toBe("common.example.com");
+    expect(snapshots.production.SONAMU_DB_HOST).toBe("common.example.com");
+  });
+
+  it("allows an environment snapshot when only the environment dotenv file exists", async () => {
+    const rootPath = await mkdtemp(path.join(os.tmpdir(), "sonamu-env-test-"));
+    tempRoots.push(rootPath);
+
+    await writeFile(path.join(rootPath, ".env.development"), "SONAMU_DB_HOST=dev.example.com\n");
+
+    const snapshot = loadEnvironmentSnapshot(rootPath, "development");
+
+    expect(snapshot.SONAMU_DB_HOST).toBe("dev.example.com");
+  });
+
   it("keeps exported environment variables over dotenv file values", async () => {
     const rootPath = await mkdtemp(path.join(os.tmpdir(), "sonamu-env-test-"));
     tempRoots.push(rootPath);
@@ -48,13 +82,13 @@ describe("loadAllEnvironmentSnapshots", () => {
       "SONAMU_DB_HOST=file-host\nSONAMU_DB_PASSWORD=file-password\n",
     );
 
-    const snapshots = loadAllEnvironmentSnapshots(rootPath, {
+    const snapshot = loadEnvironmentSnapshot(rootPath, "development", {
       SONAMU_DB_HOST: "runtime-host",
       SONAMU_DB_PASSWORD: "runtime-password",
     });
 
-    expect(snapshots.development.SONAMU_DB_HOST).toBe("runtime-host");
-    expect(snapshots.development.SONAMU_DB_PASSWORD).toBe("runtime-password");
-    expect(snapshots.development.NODE_ENV).toBe("development");
+    expect(snapshot.SONAMU_DB_HOST).toBe("runtime-host");
+    expect(snapshot.SONAMU_DB_PASSWORD).toBe("runtime-password");
+    expect(snapshot.NODE_ENV).toBe("development");
   });
 });
