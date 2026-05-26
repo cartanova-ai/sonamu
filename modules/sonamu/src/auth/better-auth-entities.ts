@@ -22,7 +22,6 @@ export const betterAuthV1: EntityJson[] = [
         type: "string",
         desc: "ID",
         cone: {
-          fixtureStrategy: "sequence",
           fixtureCompanions: [
             {
               entity: "Account",

@@ -12,8 +12,7 @@
       "desc": "ID",
       "type": "string",
       "cone": {
-        "note": "사용자 고유 식별자. DB sequence로 자동 생성되는 숫자를 text로 저장",
-        "fixtureStrategy": "sequence",
+        "note": "사용자 고유 식별자. better-auth의 generateId()가 생성하는 32자 alphanumeric 랜덤 문자열",
         "fixtureCompanions": [
           {
             "entity": "Account",

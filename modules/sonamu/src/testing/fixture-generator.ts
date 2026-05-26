@@ -92,12 +92,20 @@ export class FixtureGenerator {
 
       // id prop 처리
       if (prop.name === "id") {
-        if ("cone" in prop && prop.cone?.fixtureStrategy === "sequence") {
-          // DB sequence가 자동 할당하므로 스킵 (User 등)
+        // DB sequence가 자동 할당: integer/bigInteger이거나, string이지만 dbDefault에 nextval이 있는 경우
+        const hasDbSequence =
+          prop.type === "integer" ||
+          prop.type === "bigInteger" ||
+          (prop.type === "string" &&
+            "dbDefault" in prop &&
+            typeof prop.dbDefault === "string" &&
+            prop.dbDefault.includes("nextval"));
+        if (hasDbSequence) {
+          // generateBatch에서 처리하므로 여기선 스킵
           continue;
         }
         if (prop.type === "string") {
-          // DB DEFAULT 없는 string PK: alphanumeric 32자 생성 (better-auth 스타일)
+          // string PK: alphanumeric 32자 생성 (better-auth 스타일)
           const { faker: _faker } = await import("@faker-js/faker");
           fixture[prop.name] = _faker.string.alphanumeric(32);
           continue;
@@ -107,7 +115,6 @@ export class FixtureGenerator {
           fixture[prop.name] = _faker.string.uuid();
           continue;
         }
-        // integer/bigInteger PK: generateBatch에서 tempId를 넣으므로 여기선 스킵
         continue;
       }
 
@@ -802,7 +809,7 @@ export class FixtureGenerator {
       const llmProps = entity.props.filter((p) => {
         if (isRelationProp(p)) return false;
         if (p.cone?.fixtureGenerator) return false;
-        if (p.name === "id" && p.cone?.fixtureStrategy === "sequence") return false;
+        if (p.name === "id") return false;
         return !!p.cone?.note;
       });
 
@@ -1520,14 +1527,18 @@ Rules:
       const entity = this.entityManager.get(entityName);
 
       // integer/bigInteger PK는 임시 ID 생성 (DB 시퀀스가 실제 ID 할당)
-      // string PK는 generate()에서 이미 생성된 id 값을 그대로 사용
+      // string PK with dbDefault nextval도 동일하게 처리
+      // 그 외 string/uuid PK는 generate()에서 이미 생성된 id 값을 그대로 사용
       // parentId 엔티티는 부모의 실제 id를 그대로 사용 (시퀀스 미사용)
       const idProp = entity.props.find((p) => p.name === "id");
       const usesSequence =
         !explicitId &&
         (idProp?.type === "integer" ||
           idProp?.type === "bigInteger" ||
-          idProp?.cone?.fixtureStrategy === "sequence");
+          (idProp?.type === "string" &&
+            "dbDefault" in (idProp ?? {}) &&
+            typeof (idProp as { dbDefault?: unknown })?.dbDefault === "string" &&
+            ((idProp as { dbDefault?: string })?.dbDefault ?? "").includes("nextval")));
 
       const dataForRecord = usesSequence
         ? { ...data, id: Math.floor(Math.random() * 1000000) }
@@ -1600,7 +1611,10 @@ Rules:
         const usesSequence =
           companionIdProp?.type === "integer" ||
           companionIdProp?.type === "bigInteger" ||
-          companionIdProp?.cone?.fixtureStrategy === "sequence";
+          (companionIdProp?.type === "string" &&
+            "dbDefault" in (companionIdProp ?? {}) &&
+            typeof (companionIdProp as { dbDefault?: unknown })?.dbDefault === "string" &&
+            ((companionIdProp as { dbDefault?: string })?.dbDefault ?? "").includes("nextval"));
         const companionCount = companion.count ?? 1;
 
         // 각 parent result에 대해 companion fixture 생성
