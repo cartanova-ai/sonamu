@@ -515,7 +515,7 @@ class UserModelClass extends BaseModelClass {
 
     console.log(context.user); // 인증된 사용자
     console.log(context.session); // 세션 정보
-    console.log(context.ip); // 클라이언트 IP
+    console.log(context.request.ip); // 클라이언트 IP
 
     // 권한 체크 등 가능
     if (!context.user) {

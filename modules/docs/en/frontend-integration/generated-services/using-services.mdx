@@ -403,7 +403,7 @@ class UserModelClass extends BaseModelClass {
 
     console.log(context.user); // Authenticated user
     console.log(context.session); // Session information
-    console.log(context.ip); // Client IP
+    console.log(context.request.ip); // Client IP
 
     // Authorization checks possible
     if (!context.user) {

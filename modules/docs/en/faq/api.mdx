@@ -295,21 +295,30 @@ async getMyProfile(): Promise<User> {
 ```typescript
 const context = Sonamu.getContext();
 
-// User info
-context.user; // Logged-in user object
-context.userId; // User ID
+// Auth info (better-auth)
+context.user; // Logged-in user (null if unauthenticated)
+context.session; // Session (null if unauthenticated)
+context.user?.id; // User ID
 
 // Request info
-context.ip; // Client IP
-context.userAgent; // User-Agent header
+context.transport; // "http" | "ws"
+context.headers; // Request headers (IncomingHttpHeaders)
+context.headers["user-agent"]; // User-Agent
+context.locale; // Locale of the current request
 
-// Fastify objects
-context.request; // Fastify Request
-context.reply; // Fastify Reply
+// Fastify objects (when transport === "http")
+context.request; // FastifyRequest (use context.request.ip for client IP)
+context.reply; // FastifyReply
 
-// Session
-context.session; // Session object
+// Naite log store
+context.naiteStore;
 ```
+
+<Info>
+  `userId`/`ip`/`userAgent` are not top-level properties on Context. Use
+  `context.user?.id`, `context.request.ip`, and `context.headers["user-agent"]`
+  respectively.
+</Info>
 
 </Accordion>
 

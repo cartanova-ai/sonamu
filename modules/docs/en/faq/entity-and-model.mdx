@@ -339,7 +339,7 @@ class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async getMyIP(): Promise<{ ip: string }> {
     const context = Sonamu.getContext();
-    return { ip: context.ip };
+    return { ip: context.request.ip };
   }
 
   @api({ httpMethod: "POST" })
