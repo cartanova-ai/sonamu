@@ -37,11 +37,24 @@ function readDotenvFile(filePath: string): EnvironmentSnapshot {
   return dotenv.parse(readFileSync(filePath));
 }
 
+function assertEnvironmentDotenvExists(rootPath: string, environment: SonamuEnvironment): void {
+  const commonEnvPath = path.join(rootPath, ".env");
+  const environmentEnvPath = path.join(rootPath, `.env.${environment}`);
+
+  if (!existsSync(commonEnvPath) && !existsSync(environmentEnvPath)) {
+    throw new Error(
+      `Missing Sonamu dotenv file. Create ${commonEnvPath} or ${environmentEnvPath}.`,
+    );
+  }
+}
+
 export function loadEnvironmentSnapshot(
   rootPath: string,
   environment: SonamuEnvironment,
   baseEnv: NodeJS.ProcessEnv = process.env,
 ): EnvironmentSnapshot {
+  assertEnvironmentDotenvExists(rootPath, environment);
+
   return {
     ...readDotenvFile(path.join(rootPath, ".env")),
     ...readDotenvFile(path.join(rootPath, `.env.${environment}`)),
