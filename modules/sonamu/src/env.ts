@@ -48,7 +48,7 @@ function assertEnvironmentDotenvExists(rootPath: string, environment: SonamuEnvi
   }
 }
 
-export function loadEnvironmentSnapshot(
+export function readEnvironmentSnapshot(
   rootPath: string,
   environment: SonamuEnvironment,
   baseEnv: NodeJS.ProcessEnv = process.env,
@@ -64,27 +64,27 @@ export function loadEnvironmentSnapshot(
   };
 }
 
-export function loadCurrentEnvironmentDotenv(rootPath: string): EnvironmentSnapshot {
-  const environment = getSonamuEnvironment();
-  const snapshot = loadEnvironmentSnapshot(rootPath, environment);
-
-  for (const [key, value] of Object.entries(snapshot)) {
-    process.env[key] = value;
-  }
-
-  return snapshot;
-}
-
-export function loadAllEnvironmentSnapshots(
+export function readAllEnvironmentSnapshots(
   rootPath: string,
   baseEnv: NodeJS.ProcessEnv = {},
 ): EnvironmentSnapshots {
   return Object.fromEntries(
     SONAMU_ENVIRONMENTS.map((environment) => [
       environment,
-      loadEnvironmentSnapshot(rootPath, environment, baseEnv),
+      readEnvironmentSnapshot(rootPath, environment, baseEnv),
     ]),
   ) as EnvironmentSnapshots;
+}
+
+export function applyCurrentSnapshotToProcessEnv(rootPath: string): EnvironmentSnapshot {
+  const environment = getSonamuEnvironment();
+  const snapshot = readEnvironmentSnapshot(rootPath, environment);
+
+  for (const [key, value] of Object.entries(snapshot)) {
+    process.env[key] = value;
+  }
+
+  return snapshot;
 }
 
 export function isDevelopmentEnvironment(): boolean {
