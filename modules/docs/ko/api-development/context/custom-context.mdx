@@ -3,7 +3,7 @@ title: "커스텀 Context"
 description: "프로젝트에 맞게 Context 확장하기"
 ---
 
-SonamuContext를 확장하여 프로젝트에 필요한 커스텀 데이터를 추가할 수 있습니다.
+ContextExtend 인터페이스를 확장하여 프로젝트에 필요한 커스텀 데이터를 Context에 추가할 수 있습니다.
 
 ## Context 확장 개요
 
@@ -53,12 +53,7 @@ declare module "sonamu" {
 // types/context.ts
 
 declare module "sonamu" {
-  interface SonamuContext {
-    // 기본 필드
-    request: FastifyRequest;
-    reply: FastifyReply;
-    user?: ContextUser;
-
+  interface ContextExtend {
     // 커스텀 필드 추가
     tenant?: {
       id: number;
@@ -67,14 +62,6 @@ declare module "sonamu" {
       features: string[];
     };
 
-    session?: {
-      id: string;
-      createdAt: Date;
-      expiresAt: Date;
-      data: Record<string, any>;
-    };
-
-    locale: string;
     timezone: string;
     requestId: string;
   }
@@ -82,8 +69,9 @@ declare module "sonamu" {
 ```
 
 <Info>
-  TypeScript의 Declaration Merging을 사용하여 타입을 확장합니다. 이렇게 하면 IDE에서 자동완성과 타입
-  체크가 작동합니다.
+  TypeScript의 Declaration Merging을 사용하여 `ContextExtend` 인터페이스를 확장합니다.
+  `request`, `reply`, `user`, `session`, `locale` 등 기본 필드는 이미 `Context` 타입에 포함되어 있으므로
+  여기서 다시 선언할 필요가 없습니다. 이렇게 하면 IDE에서 자동완성과 타입 체크가 작동합니다.
 </Info>
 
 ## 미들웨어로 데이터 주입
