@@ -4,4 +4,4 @@ export {
   SonamuProvider,
   useSonamuBaseContext,
 } from "./sonamu-context";
-export type { Dictionary, SDReturnType, SonamuFile, UploadParams } from "./types";
+export * from "./types";

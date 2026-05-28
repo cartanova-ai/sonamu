@@ -15,7 +15,7 @@ export type SonamuFileBase = {
   size: number;
 };
 
-export type SonamuFile = SonamuFileBase & SonamuFileExtend;
+export interface SonamuFile extends SonamuFileBase, SonamuFileExtend {}
 
 /**
  * ⚠️ 이 타입은 sonamu/types.ts와 동기화되어야 함

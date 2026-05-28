@@ -305,7 +305,7 @@ export type SonamuFileBase = {
   size: number;
 };
 
-export type SonamuFile = SonamuFileBase & SonamuFileExtend;
+export interface SonamuFile extends SonamuFileBase, SonamuFileExtend {}
 
 /**
  * UploadParams
