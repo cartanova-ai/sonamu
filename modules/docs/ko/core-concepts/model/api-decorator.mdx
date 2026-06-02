@@ -102,6 +102,7 @@ async findById(id: number) { }
 | `axios-multipart` | 파일 업로드용 Axios | 이미지 업로드 |
 | `tanstack-query` | Query hook | 데이터 조회 |
 | `tanstack-mutation` | Mutation hook | 데이터 변경 |
+| `tanstack-mutation-multipart` | 파일 업로드용 Mutation hook | 파일 업로드 변경 |
 | `window-fetch` | Fetch API | 브라우저 네이티브 |
 
 <CodeGroup>
@@ -126,12 +127,9 @@ async save(params: UserSaveParams[]): Promise<number[]> {
 ```
 
 ```typescript title="파일 업로드"
-@api({
-  httpMethod: "POST",
-  clients: ["axios-multipart"],
-})
 @upload()
 async uploadAvatar(): Promise<{ url: string }> {
+  // clients: ["axios-multipart", "tanstack-mutation-multipart"] 자동 설정
   // ...
 }
 ```

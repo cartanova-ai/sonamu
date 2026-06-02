@@ -102,6 +102,7 @@ Specifies which client code types to generate.
 | `axios-multipart` | Axios for file uploads | Image uploads |
 | `tanstack-query` | Query hook | Data retrieval |
 | `tanstack-mutation` | Mutation hook | Data modification |
+| `tanstack-mutation-multipart` | Mutation hook for file uploads | File upload mutations |
 | `window-fetch` | Fetch API | Browser native |
 
 <CodeGroup>
@@ -126,12 +127,9 @@ async save(params: UserSaveParams[]): Promise<number[]> {
 ```
 
 ```typescript title="File Upload"
-@api({
-  httpMethod: "POST",
-  clients: ["axios-multipart"],
-})
 @upload()
 async uploadAvatar(): Promise<{ url: string }> {
+  // clients: ["axios-multipart", "tanstack-mutation-multipart"] auto-configured
   // ...
 }
 ```
