@@ -184,6 +184,8 @@ export class DevVitestManager {
       }
     }
 
+    this.eventListeners.clear();
+
     if (this.vitest) {
       await this.vitest.close();
       this.vitest = null;
