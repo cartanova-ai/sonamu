@@ -231,15 +231,47 @@ export function Header() {
 ### Uploader Interface
 
 ```typescript
-type Uploader = (files: File[]) => Promise<SonamuFile[]>;
+type Uploader = (files: File[], params?: UploadParams) => Promise<SonamuFile[]>;
 
-type SonamuFile = {
+interface SonamuFileExtend {}
+
+type SonamuFileBase = {
   name: string;
   url: string;
   mime_type: string;
   size: number;
 };
+
+interface SonamuFile extends SonamuFileBase, SonamuFileExtend {}
+
+interface UploadParams {}
 ```
+
+<Info>
+**Extending SonamuFile and UploadParams**
+
+Both `SonamuFile` and `UploadParams` can be extended with project-specific fields via TypeScript declaration merging.
+
+```typescript
+// src/types/sonamu-file-extend.d.ts
+import "sonamu";
+
+declare module "sonamu" {
+  interface SonamuFileExtend {
+    thumbnailUrl?: string;
+    category?: string;
+  }
+
+  interface UploadParams {
+    directory?: string;
+    maxWidth?: number;
+  }
+}
+```
+
+This follows the same declaration merging pattern as `ContextExtend`.
+
+</Info>
 
 ### FileService Integration
 
