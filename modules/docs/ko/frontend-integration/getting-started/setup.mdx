@@ -231,15 +231,47 @@ export function Header() {
 ### Uploader 인터페이스
 
 ```typescript
-type Uploader = (files: File[]) => Promise<SonamuFile[]>;
+type Uploader = (files: File[], params?: UploadParams) => Promise<SonamuFile[]>;
 
-type SonamuFile = {
+interface SonamuFileExtend {}
+
+type SonamuFileBase = {
   name: string;
   url: string;
   mime_type: string;
   size: number;
 };
+
+interface SonamuFile extends SonamuFileBase, SonamuFileExtend {}
+
+interface UploadParams {}
 ```
+
+<Info>
+**SonamuFile과 UploadParams 확장하기**
+
+`SonamuFile`과 `UploadParams`는 TypeScript의 declaration merging을 통해 프로젝트별 필드를 추가할 수 있습니다.
+
+```typescript
+// src/types/sonamu-file-extend.d.ts
+import "sonamu";
+
+declare module "sonamu" {
+  interface SonamuFileExtend {
+    thumbnailUrl?: string;
+    category?: string;
+  }
+
+  interface UploadParams {
+    directory?: string;
+    maxWidth?: number;
+  }
+}
+```
+
+이 패턴은 `ContextExtend`와 동일한 declaration merging 방식입니다.
+
+</Info>
 
 ### FileService 통합
 
