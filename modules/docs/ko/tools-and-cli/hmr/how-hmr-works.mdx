@@ -231,7 +231,7 @@ async create(body: PostForm) {
   const user = await UserModel.findById(body.userId);
 
   if (!user.isActive()) {  // 👈 방금 추가한 메서드 바로 사용!
-    throw new BadRequestError("User is not active");
+    throw new BadRequestException("User is not active");
   }
 
   return PostModel.save(body);

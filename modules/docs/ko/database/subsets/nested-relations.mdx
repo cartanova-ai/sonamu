@@ -857,7 +857,7 @@ class EmployeeModelClass extends BaseModelClass {
   ): EmployeeTreeNode {
     const employee = employeeMap.get(employeeId);
     if (!employee) {
-      throw new NotFoundError(`직원 ${employeeId}를 찾을 수 없습니다`);
+      throw new NotFoundException(`직원 ${employeeId}를 찾을 수 없습니다`);
     }
 
     // 직속 부하 찾기
