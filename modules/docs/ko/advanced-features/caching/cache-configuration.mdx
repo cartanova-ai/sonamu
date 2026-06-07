@@ -24,7 +24,8 @@ BentoCache는 Multi-tier 캐싱을 지원하는 TypeScript 캐시 라이브러�
 `sonamu.config.ts`의 `server.cache` 필드에 캐시 설정을 추가합니다:
 
 ```typescript
-import { drivers, store, type SonamuConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+import type { SonamuConfig } from "sonamu";
 
 export const config: SonamuConfig = {
   // ... 기타 설정
@@ -355,7 +356,7 @@ export const config: SonamuConfig = {
 drivers.memory({
   maxSize: "100mb", // 최대 크기 (문자열 또는 바이트 수)
   maxItems: 1000, // 최대 항목 수
-  maxItemSize: "10mb", // 항목당 최대 크기
+  maxEntrySize: "10mb", // 항목당 최대 크기
 });
 ```
 
@@ -375,7 +376,7 @@ const redis = new Redis({
 
 drivers.redis({
   connection: redis,
-  keyPrefix: "cache:", // 키 접두사 (선택)
+  prefix: "cache:", // 키 접두사 (선택)
 });
 ```
 
@@ -414,7 +415,7 @@ CREATE TABLE cache_items (
 ```typescript
 drivers.redisBus({
   connection: redis,
-  channelPrefix: "cache:", // 채널 접두사 (선택)
+  retryQueue: { enabled: true }, // 재시도 큐 (선택)
 });
 ```
 

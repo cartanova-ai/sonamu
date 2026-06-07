@@ -24,7 +24,8 @@ BentoCache is a TypeScript cache library that supports multi-tier caching.
 Add cache configuration to the `server.cache` field in `sonamu.config.ts`:
 
 ```typescript
-import { drivers, store, type SonamuConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+import type { SonamuConfig } from "sonamu";
 
 export const config: SonamuConfig = {
   // ... other settings
@@ -358,7 +359,7 @@ export const config: SonamuConfig = {
 drivers.memory({
   maxSize: "100mb", // Maximum size (string or bytes)
   maxItems: 1000, // Maximum number of items
-  maxItemSize: "10mb", // Maximum size per item
+  maxEntrySize: "10mb", // Maximum size per entry
 });
 ```
 
@@ -378,7 +379,7 @@ const redis = new Redis({
 
 drivers.redis({
   connection: redis,
-  keyPrefix: "cache:", // Key prefix (optional)
+  prefix: "cache:", // Key prefix (optional)
 });
 ```
 
@@ -417,7 +418,7 @@ CREATE TABLE cache_items (
 ```typescript
 drivers.redisBus({
   connection: redis,
-  channelPrefix: "cache:", // Channel prefix (optional)
+  retryQueue: { enabled: true }, // Retry queue (optional)
 });
 ```
 
