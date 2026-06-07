@@ -1916,7 +1916,6 @@ class SonamuClass {
 
     server.addHook("onClose", async () => {
       await options.lifecycle?.onShutdown?.(server);
-      await this.workflows.destroy();
       await this.destroy();
     });
 
