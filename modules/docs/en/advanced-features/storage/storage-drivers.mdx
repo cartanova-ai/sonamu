@@ -23,7 +23,8 @@ Stores files in the **local file system**.
 ### Basic Configuration
 
 ```typescript
-import { drivers, type SonamuConfig } from "sonamu";
+import type { SonamuConfig } from "sonamu";
+import { drivers } from "sonamu/storage";
 
 export const config: SonamuConfig = {
   server: {
@@ -179,7 +180,8 @@ Stores files in **AWS S3** or compatible storage.
 ### Basic Configuration
 
 ```typescript
-import { drivers, type SonamuConfig } from "sonamu";
+import type { SonamuConfig } from "sonamu";
+import { drivers } from "sonamu/storage";
 
 export const config: SonamuConfig = {
   server: {

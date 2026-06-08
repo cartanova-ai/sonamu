@@ -79,7 +79,8 @@ const fsDisk = Sonamu.storage.use("fs");
 ### sonamu.config.ts
 
 ```typescript
-import { drivers, type SonamuConfig } from "sonamu";
+import type { SonamuConfig } from "sonamu";
+import { drivers } from "sonamu/storage";
 
 export const config: SonamuConfig = {
   server: {
