@@ -1,5 +1,6 @@
 import { describe, expectTypeOf, it } from "vitest";
 
+import { type Puri } from "./puri";
 import {
   type AvailableColumns,
   type ExtractColumnType,
@@ -454,5 +455,25 @@ describe("AvailableColumns", () => {
 
     expectTypeOf(valid1).toExtend<Result>();
     expectTypeOf(valid2).toExtend<Result>();
+  });
+});
+
+describe("Puri locking methods", () => {
+  it("forUpdate 체이닝 후 first 결과 타입을 유지한다", () => {
+    type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    const query = {} as Query;
+
+    const result = query.where("id", 1).forUpdate().first();
+
+    expectTypeOf(result).resolves.toEqualTypeOf<MockSchema["users"]>();
+  });
+
+  it("forShare 체이닝 후 first 결과 타입을 유지한다", () => {
+    type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    const query = {} as Query;
+
+    const result = query.where("id", 1).forShare().first();
+
+    expectTypeOf(result).resolves.toEqualTypeOf<MockSchema["users"]>();
   });
 });

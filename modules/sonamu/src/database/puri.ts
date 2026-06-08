@@ -852,6 +852,16 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this;
   }
 
+  forUpdate(): this {
+    this.knexQuery.forUpdate();
+    return this;
+  }
+
+  forShare(): this {
+    this.knexQuery.forShare();
+    return this;
+  }
+
   /**
    * 벡터 유사도 검색 설정
    *
