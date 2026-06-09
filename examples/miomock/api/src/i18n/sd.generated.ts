@@ -564,30 +564,95 @@ type LocalizedBaseColumn<T> = {
  * @example
  * localizedColumn(tag, "name")
  */
+type LocalizedColumnScalarValue = string | number | boolean | bigint;
+type LocalizedColumnValue = string | string[];
+type NestedLocalizedColumnValueFrom<V> = V extends string
+  ? string
+  : V extends readonly string[]
+    ? string[]
+    : never;
+type LocalizedColumnValueFrom<V> = V extends string
+  ? string
+  : V extends readonly string[]
+    ? string[]
+    : V extends number | boolean | bigint
+      ? string
+      : V extends Partial<Record<(typeof SUPPORTED_LOCALES)[number], infer LV>>
+        ? NestedLocalizedColumnValueFrom<LV>
+        : never;
+type LocalizedColumnCandidate<T, K extends string> =
+  | (K extends keyof T ? T[K] : never)
+  | {
+      [L in (typeof SUPPORTED_LOCALES)[number]]: `${K}_${L}` extends keyof T
+        ? T[`${K}_${L}`]
+        : never;
+    }[(typeof SUPPORTED_LOCALES)[number]];
+type LocalizedColumnReturn<T, K extends string> =
+  | LocalizedColumnValueFrom<LocalizedColumnCandidate<T, K>>
+  | undefined;
+type LocaleValueMap = Partial<Record<(typeof SUPPORTED_LOCALES)[number], unknown>>;
+
+function isLocalizedColumnValue(value: unknown): value is LocalizedColumnValue {
+  return (
+    typeof value === "string" ||
+    (Array.isArray(value) && value.every((item) => typeof item === "string"))
+  );
+}
+
+function isLocalizedColumnScalarValue(value: unknown): value is LocalizedColumnScalarValue {
+  return ["string", "number", "boolean", "bigint"].includes(typeof value);
+}
+
+function isEmptyLocalizedColumnValue(value: unknown): value is null | undefined | "" {
+  return value === null || value === undefined || value === "";
+}
+
+function getNestedLocaleValue<T extends Record<string, unknown>, K extends LocalizedBaseColumn<T>>(
+  row: T,
+  column: K,
+  locale: (typeof SUPPORTED_LOCALES)[number],
+): unknown {
+  const columnValue = row[column];
+  if (columnValue === null || typeof columnValue !== "object" || Array.isArray(columnValue)) {
+    return undefined;
+  }
+
+  return (columnValue as LocaleValueMap)[locale];
+}
+
 export function localizedColumn<
   T extends Record<string, unknown>,
   K extends LocalizedBaseColumn<T>,
->(row: T, column: K): string | undefined {
-  const locale = getCurrentLocale();
+>(row: T, column: K): LocalizedColumnReturn<T, K> {
+  const currentLocale = getCurrentLocale();
+  const locale = SUPPORTED_LOCALES.includes(currentLocale) ? currentLocale : DEFAULT_LOCALE;
   const otherLocales = SUPPORTED_LOCALES.filter(
     (l: string) => l !== locale && l !== DEFAULT_LOCALE,
   );
   const localizedKey = (column: K, locale: (typeof SUPPORTED_LOCALES)[number]) =>
     `${column}_${locale}`;
-  const keys = [
-    localizedKey(column, locale),
-    column,
-    localizedKey(column, DEFAULT_LOCALE),
-    ...otherLocales.map((l) => localizedKey(column, l)),
+  const values = [
+    { value: row[localizedKey(column, locale)], source: "direct" },
+    { value: getNestedLocaleValue(row, column, locale), source: "nested" },
+    { value: row[column], source: "direct" },
+    { value: row[localizedKey(column, DEFAULT_LOCALE)], source: "direct" },
+    { value: getNestedLocaleValue(row, column, DEFAULT_LOCALE), source: "nested" },
+    ...otherLocales.flatMap((l) => [
+      { value: row[localizedKey(column, l)], source: "direct" },
+      { value: getNestedLocaleValue(row, column, l), source: "nested" },
+    ]),
   ];
 
-  for (const key of keys) {
-    if (!(key in row)) {
-      continue;
+  for (const { value, source } of values) {
+    if (!isEmptyLocalizedColumnValue(value) && isLocalizedColumnValue(value)) {
+      return value as LocalizedColumnReturn<T, K>;
     }
-
-    if (row[key] !== null && row[key] !== undefined && row[key] !== "") {
-      return String(row[key]);
+    if (
+      source === "direct" &&
+      !isEmptyLocalizedColumnValue(value) &&
+      isLocalizedColumnScalarValue(value)
+    ) {
+      return String(value) as LocalizedColumnReturn<T, K>;
     }
   }
 

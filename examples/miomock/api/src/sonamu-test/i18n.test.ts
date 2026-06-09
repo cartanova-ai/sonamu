@@ -6,7 +6,7 @@ import { Sonamu } from "sonamu";
 import { createFormat, josa, plural, sonamuDictionary } from "sonamu/dict";
 import { type DictEntry } from "sonamu/dict";
 import { bootstrap, runWithContext } from "sonamu/test";
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, expectTypeOf, test, vi } from "vitest";
 
 import { BadRequestException } from "../../../../../modules/sonamu/dist/exceptions/so-exceptions";
 import { localizedColumn, SD } from "../i18n/sd.generated";
@@ -23,6 +23,49 @@ describe("i18n", () => {
     const tagWithoutDefaultName = {
       name_ko: "test_ko",
       name_en: "test_en",
+    };
+
+    const tagWithArrayName = {
+      name: ["test"],
+      name_ko: ["test_ko"],
+      name_en: ["test_en"],
+    };
+
+    const tagWithNumericSuffixName = {
+      name: "test",
+      name_ko: 123,
+      name_en: "test_en",
+    };
+
+    const tagWithNestedLocaleName = {
+      name: {
+        ko: "test_ko",
+        en: "test_en",
+        ja: "test_ja",
+      },
+    };
+
+    const tagWithNestedArrayLocaleName = {
+      name: {
+        ko: ["test_ko"],
+        en: ["test_en"],
+        ja: ["test_ja"],
+      },
+    };
+
+    const tagWithEmptyCurrentLocale = {
+      name: {
+        ko: "test_ko",
+        en: "",
+        ja: "test_ja",
+      },
+    };
+
+    const tagWithUnsupportedNestedLocaleName = {
+      name: {
+        ko: "test_ko",
+        fr: "test_fr",
+      },
     };
 
     test("ko locale인 경우, name_ko 반환", async () => {
@@ -49,14 +92,14 @@ describe("i18n", () => {
       );
     });
 
-    test("unknown locale인 경우, name 반환", async () => {
+    test("지원하지 않는 locale은 default locale suffix 값을 반환한다", async () => {
       await runWithContext(
         {
           ...Sonamu.getContext(),
-          locale: "ja",
+          locale: "fr",
         },
         async () => {
-          expect(localizedColumn(tag, "name")).toBe("test");
+          expect(localizedColumn(tag, "name")).toBe("test_ko");
         },
       );
     });
@@ -71,6 +114,92 @@ describe("i18n", () => {
           expect(localizedColumn(tagWithoutDefaultName, "name")).toBe("test_ko");
         },
       );
+    });
+
+    test("suffix 컬럼 값이 string[]이면 배열을 그대로 반환한다", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "ko",
+        },
+        async () => {
+          expect(localizedColumn(tagWithArrayName, "name")).toEqual(["test_ko"]);
+        },
+      );
+    });
+
+    test("suffix 컬럼 값이 number이면 문자열로 변환하고 base보다 우선한다", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "ko",
+        },
+        async () => {
+          expect(localizedColumn(tagWithNumericSuffixName, "name")).toBe("123");
+        },
+      );
+    });
+
+    test("nested locale map에서 현재 locale 값을 반환한다", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "en",
+        },
+        async () => {
+          expect(localizedColumn(tagWithNestedLocaleName, "name")).toBe("test_en");
+        },
+      );
+    });
+
+    test("nested locale map 값이 string[]이면 배열을 그대로 반환한다", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "ja",
+        },
+        async () => {
+          expect(localizedColumn(tagWithNestedArrayLocaleName, "name")).toEqual(["test_ja"]);
+        },
+      );
+    });
+
+    test("현재 locale 값이 비어 있으면 기존 우선순위로 fallback한다", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "en",
+        },
+        async () => {
+          expect(localizedColumn(tagWithEmptyCurrentLocale, "name")).toBe("test_ko");
+        },
+      );
+    });
+
+    test("지원하지 않는 locale은 nested locale map의 unsupported 값을 반환하지 않는다", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "fr",
+        },
+        async () => {
+          expect(localizedColumn(tagWithUnsupportedNestedLocaleName, "name")).toBe("test_ko");
+        },
+      );
+    });
+
+    test("반환 타입이 입력 값에 따라 string 또는 string[]를 보존한다", () => {
+      expectTypeOf(localizedColumn(tag, "name")).toEqualTypeOf<string | undefined>();
+      expectTypeOf(localizedColumn(tagWithArrayName, "name")).toEqualTypeOf<string[] | undefined>();
+      expectTypeOf(localizedColumn(tagWithNumericSuffixName, "name")).toEqualTypeOf<
+        string | undefined
+      >();
+      expectTypeOf(localizedColumn(tagWithNestedLocaleName, "name")).toEqualTypeOf<
+        string | undefined
+      >();
+      expectTypeOf(localizedColumn(tagWithNestedArrayLocaleName, "name")).toEqualTypeOf<
+        string[] | undefined
+      >();
     });
   });
 

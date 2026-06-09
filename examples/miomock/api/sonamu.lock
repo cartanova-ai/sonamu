@@ -249,7 +249,7 @@
   },
   {
     "path": "api/src/i18n/sd.generated.ts",
-    "checksum": "49ffcc768bd80cc82687e8cf039764b856e46178"
+    "checksum": "f9d3ddeb8fc25d332790f46299fa9305a4174bec"
   },
   {
     "path": "api/src/sonamu.config.ts",
@@ -269,7 +269,7 @@
   },
   {
     "path": "web/src/i18n/sd.generated.ts",
-    "checksum": "c304b1e6a2d7f867efb3e3618c166a1ede69437b"
+    "checksum": "27807de5b1e34ebe32677800330b3a5aab362c85"
   },
   {
     "path": "web/src/services/account/account.types.ts",

@@ -1,9 +1,9 @@
 ---
 title: "다국어 DB 컬럼"
-description: "name_ko, name_en 같은 locale별 컬럼 처리"
+description: "name_ko, name_en 또는 locale map 형태의 다국어 컬럼 처리"
 ---
 
-데이터베이스에 다국어 값을 저장해야 할 때, `name`, `name_ko`, `name_en`처럼 locale별 컬럼을 사용할 수 있습니다. Sonamu는 `localizedColumn()` 함수로 현재 locale에 맞는 값을 자동으로 선택합니다.
+데이터베이스에 다국어 값을 저장해야 할 때, `name`, `name_ko`, `name_en`처럼 locale별 컬럼을 두거나 `name: { ko: "...", en: "..." }` 형태의 locale map을 사용할 수 있습니다. Sonamu는 `localizedColumn()` 함수로 현재 locale에 맞는 값을 자동으로 선택합니다.
 
 ## localizedColumn 함수
 
@@ -17,14 +17,24 @@ const tag = {
   name_en: "Tag",
 };
 
+const nestedTag = {
+  id: 2,
+  name: {
+    ko: "태그",
+    en: "Tag",
+  },
+};
+
 // Context locale이 "ko"일 때
 localizedColumn(tag, "name"); // "태그"
+localizedColumn(nestedTag, "name"); // "태그"
 
 // Context locale이 "en"일 때
 localizedColumn(tag, "name"); // "Tag"
+localizedColumn(nestedTag, "name"); // "Tag"
 
-// Context locale이 "ja"일 때 (지원하지 않는 locale)
-localizedColumn(tag, "name"); // "default" (기본 컬럼으로 폴백)
+// Context locale이 "fr"일 때 (지원하지 않는 locale)
+localizedColumn(tag, "name"); // "태그" (default locale 사용)
 ```
 
 ## 우선순위
@@ -36,7 +46,7 @@ localizedColumn(tag, "name"); // "default" (기본 컬럼으로 폴백)
 | `ko`        | `name_ko` → `name` → `name_en` |
 | `en`        | `name_en` → `name` → `name_ko` |
 
-빈 문자열(`""`)이나 `null`은 건너뛰고 다음 우선순위를 확인합니다.
+Suffix 컬럼과 locale map이 모두 있으면 현재 locale의 suffix 컬럼을 먼저 확인한 뒤 locale map 값을 확인합니다. 빈 문자열(`""`)이나 `null`은 건너뛰고 다음 우선순위를 확인합니다.
 
 ## Entity 정의
 
@@ -107,7 +117,18 @@ function TagBadge({ tag }: { tag: Tag }) {
 }
 ```
 
-## 컬럼 네이밍 패턴
+## 지원하는 값 형태
+
+`localizedColumn()`은 두 가지 저장 형태를 지원합니다:
+
+| 형태       | 예시                                        | 설명 |
+| ---------- | ------------------------------------------- | ---- |
+| Suffix 컬럼 | `name`, `name_ko`, `name_en`                | locale별 컬럼을 각각 둡니다. |
+| Locale map | `{ name: { ko: "태그", en: "Tag" } }`       | 기본 컬럼 안에 locale별 값을 객체로 둡니다. |
+
+선택된 값은 `string` 또는 `string[]`일 수 있습니다. `string[]`는 문자열로 변환하지 않고 배열 그대로 반환합니다. Suffix 컬럼이나 기본 컬럼에 `number`, `boolean`, `bigint` 같은 scalar 값이 들어오면 기존 호환성을 위해 문자열로 변환해 반환합니다.
+
+## Suffix 컬럼 네이밍 패턴
 
 | 기본 컬럼     | locale 컬럼                        | 설명 |
 | ------------- | ---------------------------------- | ---- |
@@ -117,7 +138,7 @@ function TagBadge({ tag }: { tag: Tag }) {
 | `content`     | `content_ko`, `content_en`         | 내용 |
 
 <Note>
-  컬럼 이름은 반드시 `{기본컬럼}_{locale}` 형식이어야 합니다. 예: `name_ko`, `title_en`
+  Suffix 컬럼을 사용할 때는 `{기본컬럼}_{locale}` 형식을 사용합니다. Locale map을 사용할 때는 기본 컬럼 값에 locale별 객체를 저장할 수 있습니다.
 </Note>
 
 ## 주의사항
@@ -125,6 +146,7 @@ function TagBadge({ tag }: { tag: Tag }) {
 - `localizedColumn`은 단순히 컬럼 값을 선택하는 함수입니다. 쿼리 최적화(필요한 컬럼만 SELECT)는 별도로 처리해야 합니다.
 - 모든 locale 컬럼이 `null`이고 기본 컬럼도 빈 값이면 `undefined`를 반환합니다.
 - Context에 locale이 설정되지 않으면 `defaultLocale`을 사용합니다.
+- Context locale이 지원하지 않는 값이면 `defaultLocale` 기준으로 값을 찾습니다.
 
 <CardGroup cols={2}>
   <Card title="i18n 설정" icon="gear" href="/ko/advanced-features/i18n/setup">

@@ -1,9 +1,9 @@
 ---
 title: "Localized DB Columns"
-description: "Handling locale-specific columns like name_ko, name_en"
+description: "Handling localized columns such as name_ko, name_en or locale maps"
 ---
 
-When you need to store multilingual values in the database, you can use locale-specific columns like `name`, `name_ko`, `name_en`. Sonamu automatically selects the appropriate value for the current locale using the `localizedColumn()` function.
+When you need to store multilingual values in the database, you can use locale-specific columns like `name`, `name_ko`, `name_en`, or a locale map like `name: { ko: "...", en: "..." }`. Sonamu automatically selects the appropriate value for the current locale using the `localizedColumn()` function.
 
 ## localizedColumn Function
 
@@ -17,14 +17,24 @@ const tag = {
   name_en: "Tag",
 };
 
+const nestedTag = {
+  id: 2,
+  name: {
+    ko: "태그",
+    en: "Tag",
+  },
+};
+
 // When Context locale is "ko"
 localizedColumn(tag, "name"); // "태그"
+localizedColumn(nestedTag, "name"); // "태그"
 
 // When Context locale is "en"
 localizedColumn(tag, "name"); // "Tag"
+localizedColumn(nestedTag, "name"); // "Tag"
 
-// When Context locale is "ja" (unsupported locale)
-localizedColumn(tag, "name"); // "default" (falls back to base column)
+// When Context locale is "fr" (unsupported locale)
+localizedColumn(tag, "name"); // "태그" (uses the default locale)
 ```
 
 ## Priority Order
@@ -36,7 +46,7 @@ localizedColumn(tag, "name"); // "default" (falls back to base column)
 | `ko`           | `name_ko` → `name` → `name_en` |
 | `en`           | `name_en` → `name` → `name_ko` |
 
-Empty strings (`""`) and `null` are skipped, and the next priority is checked.
+When suffix columns and a locale map both exist, the suffix column for the current locale is checked first, then the locale map value. Empty strings (`""`) and `null` are skipped, and the next priority is checked.
 
 ## Entity Definition
 
@@ -107,7 +117,18 @@ function TagBadge({ tag }: { tag: Tag }) {
 }
 ```
 
-## Column Naming Patterns
+## Supported Value Shapes
+
+`localizedColumn()` supports two storage shapes:
+
+| Shape          | Example                                     | Description |
+| -------------- | ------------------------------------------- | ----------- |
+| Suffix columns | `name`, `name_ko`, `name_en`                | Store one column per locale. |
+| Locale map     | `{ name: { ko: "태그", en: "Tag" } }`       | Store locale-specific values in the base column object. |
+
+The selected value can be a `string` or `string[]`. `string[]` values are returned as arrays and are not stringified. For suffix columns or base columns, scalar values such as `number`, `boolean`, or `bigint` are stringified for backward compatibility.
+
+## Suffix Column Naming Patterns
 
 | Base column   | Locale columns                     | Description |
 | ------------- | ---------------------------------- | ----------- |
@@ -117,7 +138,7 @@ function TagBadge({ tag }: { tag: Tag }) {
 | `content`     | `content_ko`, `content_en`         | Content     |
 
 <Note>
-  Column names must follow the `{base_column}_{locale}` format. Example: `name_ko`, `title_en`
+  When using suffix columns, use the `{base_column}_{locale}` format. When using a locale map, the base column value can store the locale-specific object.
 </Note>
 
 ## Important Notes
@@ -125,6 +146,7 @@ function TagBadge({ tag }: { tag: Tag }) {
 - `localizedColumn` is simply a function that selects column values. Query optimization (SELECTing only necessary columns) must be handled separately.
 - If all locale columns are `null` and the base column is also empty, `undefined` is returned.
 - If locale is not set in Context, `defaultLocale` is used.
+- If Context locale is unsupported, values are resolved from `defaultLocale`.
 
 <CardGroup cols={2}>
   <Card title="i18n Setup" icon="gear" href="/en/advanced-features/i18n/setup">
