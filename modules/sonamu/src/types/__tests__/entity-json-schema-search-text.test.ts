@@ -60,6 +60,45 @@ describe("EntityJsonSchema searchText/opclass validation", () => {
     expect(legacyResult.success).toBe(true);
   });
 
+  test("index where predicate는 raw SQL 문자열로 허용하되 빈 문자열은 거부해야 한다", () => {
+    const baseEntity = createBaseEntity();
+    const partialIndex = {
+      ...baseEntity,
+      indexes: [
+        {
+          ...baseEntity.indexes[0],
+          where: "deleted_at IS NULL",
+        },
+      ],
+    };
+    const partialResult = EntityJsonSchema.safeParse(partialIndex);
+    expect(partialResult.success).toBe(true);
+
+    const emptyPredicate = {
+      ...baseEntity,
+      indexes: [
+        {
+          ...baseEntity.indexes[0],
+          where: "",
+        },
+      ],
+    };
+    const emptyResult = EntityJsonSchema.safeParse(emptyPredicate);
+    expect(emptyResult.success).toBe(false);
+
+    const blankPredicate = {
+      ...baseEntity,
+      indexes: [
+        {
+          ...baseEntity.indexes[0],
+          where: "   ",
+        },
+      ],
+    };
+    const blankResult = EntityJsonSchema.safeParse(blankPredicate);
+    expect(blankResult.success).toBe(false);
+  });
+
   test("searchText source column 존재/타입 검증이 동작해야 한다", () => {
     const unknownSource = createBaseEntity();
     unknownSource.props[4] = {

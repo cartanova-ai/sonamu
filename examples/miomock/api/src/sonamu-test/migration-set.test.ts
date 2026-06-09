@@ -1,12 +1,13 @@
 import { type Knex } from "knex";
 import {
   EntityManager,
+  generateAlterCode,
   getAlterIndexesTo,
   getMigrationSetFromEntity,
   PostgreSQLSchemaReader,
   setMigrationIndexDefaults,
 } from "sonamu";
-import { type MigrationIndex, type PgColumn } from "sonamu";
+import { type MigrationIndex, type MigrationSet, type PgColumn } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeEach, describe, expect, vi } from "vitest";
 
@@ -433,6 +434,74 @@ describe("migration-set.ts", () => {
           expect(col).not.toHaveProperty("nullsFirst");
         });
       }
+    });
+  });
+
+  describe("PostgreSQLSchemaReader - partial index roundtrip", () => {
+    const tableName = "partial_index_roundtrip_tests";
+
+    afterEach(async () => {
+      const wdb = UserModel.getPuri("w").knex;
+      await wdb.raw(`DROP TABLE IF EXISTS ${tableName}`);
+    });
+
+    test("실제 partial unique index를 introspection한 뒤 migration diff가 no-op이어야 한다", async () => {
+      const wdb = UserModel.getPuri("w").knex;
+      await wdb.raw(`DROP TABLE IF EXISTS ${tableName}`);
+      await wdb.raw(`
+        CREATE TABLE ${tableName} (
+          id integer NOT NULL,
+          email text NOT NULL,
+          deleted_at timestamptz(3) NULL
+        )
+      `);
+      await wdb.raw(`
+        CREATE UNIQUE INDEX partial_index_roundtrip_email_active_unique
+        ON ${tableName} USING btree(email ASC NULLS LAST)
+        NULLS NOT DISTINCT
+        WHERE deleted_at IS NULL
+      `);
+
+      const entitySet: MigrationSet = {
+        table: tableName,
+        columns: [
+          { name: "id", type: "integer", nullable: false },
+          { name: "email", type: "string", nullable: false },
+          { name: "deleted_at", type: "date", nullable: true },
+        ],
+        indexes: [
+          {
+            type: "unique",
+            name: "partial_index_roundtrip_email_active_unique",
+            using: "btree",
+            columns: [{ name: "email", sortOrder: "ASC", nullsFirst: false }],
+            nullsNotDistinct: true,
+            where: "deleted_at IS NULL",
+          },
+        ],
+        foreigns: [],
+      };
+
+      const dbSet = await PostgreSQLSchemaReader.getMigrationSetFromDB(wdb, tableName);
+
+      expect(dbSet).not.toBeNull();
+      if (dbSet === null) {
+        throw new Error("partial index roundtrip table was not introspected");
+      }
+
+      expect(dbSet?.indexes[0]).toMatchObject({
+        type: "unique",
+        name: "partial_index_roundtrip_email_active_unique",
+        using: "btree",
+        nullsNotDistinct: true,
+        columns: [{ name: "email", sortOrder: "ASC", nullsFirst: false }],
+        where: "(deleted_at IS NULL)",
+      });
+      expect(getAlterIndexesTo(entitySet.indexes, dbSet?.indexes ?? [])).toEqual({
+        add: [],
+        drop: [],
+      });
+      await expect(generateAlterCode(entitySet, dbSet)).resolves.toEqual([]);
     });
   });
 

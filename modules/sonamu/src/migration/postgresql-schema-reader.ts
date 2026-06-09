@@ -56,6 +56,7 @@ type PgIndex = {
   nulls_not_distinct: boolean;
   column_order: number;
   index_definition: string;
+  predicate?: string | null;
 };
 
 type PgForeign = {
@@ -203,6 +204,7 @@ class PostgreSQLSchemaReaderClass {
         })),
 
         nullsNotDistinct: firstIndex.nulls_not_distinct,
+        ...(firstIndex.predicate ? { where: firstIndex.predicate } : {}),
         ...(using ? { using } : {}),
         ...this.parseVectorIndexOptions(restoredIndexType, parsedIndexDefinition.withOptions),
       };
@@ -310,7 +312,8 @@ class PostgreSQLSchemaReaderClass {
           END AS sort_order,
           ix.indnullsnotdistinct AS nulls_not_distinct,
           u.ord AS column_order,
-          pg_get_indexdef(ix.indexrelid) AS index_definition
+          pg_get_indexdef(ix.indexrelid) AS index_definition,
+          pg_get_expr(ix.indpred, ix.indrelid) AS predicate
       FROM pg_class t
       JOIN pg_index ix ON t.oid = ix.indrelid
       JOIN pg_class i ON i.oid = ix.indexrelid

@@ -325,14 +325,27 @@ table.foreign("user_id")
 {
   "indexes": [
     { "type": "unique", "column": "email" },
-    { "type": "index", "columns": ["username", "created_at"] }
+    { "type": "index", "columns": ["username", "created_at"] },
+    {
+      "type": "unique",
+      "name": "users_email_active_unique",
+      "columns": ["email"],
+      "where": "deleted_at IS NULL"
+    }
   ]
 }
 
 // Migration
 table.unique(["email"], "users_email_unique");
 table.index(["username", "created_at"], "users_username_created_at_index");
+await knex.raw(
+  `CREATE UNIQUE INDEX users_email_active_unique ON users (email) WHERE deleted_at IS NULL`,
+);
 ```
+
+`where`는 PostgreSQL partial index를 만들기 위한 raw SQL predicate입니다. Sonamu는 DB
+introspection으로 읽은 predicate와 entity.json의 predicate를 비교하여 같은 조건이면 추가 migration을
+생성하지 않습니다.
 
 ## 고급 기능
 

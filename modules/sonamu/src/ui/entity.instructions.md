@@ -336,8 +336,11 @@
 2. 모든 엔티티는 `EntityNameOrderBy`, `EntityNameSearchField` Enum을 필수로 포함해야 합니다.
 3. 엔티티 내에서 사용하는 Enum ID는 엔티티 이름을 접두어로 사용합니다. (예: UserStatus, ProductType)
 4. indexes가 지정되지 않으면 빈 배열로 반환합니다.
-5. subsets이 지정되지 않으면 `{ "A": ["id"] }`로 반환합니다.
-6. relation 필드명은 `_id` 접미어 대신 관련 엔티티를 나타내는 이름을 사용합니다. (예: "user", "author", "category")
+5. partial index가 필요하면 index에 `where`를 raw SQL predicate로 지정합니다. (예:
+   `"where": "deleted_at IS NULL"`)
+6. `where`는 PostgreSQL partial index predicate로 그대로 사용되므로 사용자 입력을 조합하지 않습니다.
+7. subsets이 지정되지 않으면 `{ "A": ["id"] }`로 반환합니다.
+8. relation 필드명은 `_id` 접미어 대신 관련 엔티티를 나타내는 이름을 사용합니다. (예: "user", "author", "category")
 
 ### Property Rules
 
@@ -511,7 +514,8 @@
     {
       "name": "products_status_index",
       "type": "index",
-      "columns": [{ "name": "status" }]
+      "columns": [{ "name": "status" }],
+      "where": "status = 'active'"
     }
   ],
   "subsets": {

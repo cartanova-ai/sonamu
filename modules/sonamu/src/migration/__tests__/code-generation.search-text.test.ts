@@ -3,10 +3,11 @@ import { describe, expect, test } from "vitest";
 import { Sonamu } from "../../api";
 import { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
-import { type MigrationSet } from "../../types/types";
+import { type MigrationIndex, type MigrationSet } from "../../types/types";
 import {
   generateAlterCode,
   generateCreateCode,
+  getAlterIndexesTo,
   setMigrationIndexDefaults,
 } from "../code-generation";
 import { getMigrationSetFromEntity } from "../migration-set";
@@ -385,5 +386,149 @@ describe("code-generation searchText/opclass DDL", () => {
       "CREATE INDEX code_generation_search_text_rollback_dropped_search_text_index ON",
     );
     expect(migration.formatted).toContain("USING gin(search_text gin_trgm_ops);");
+  });
+});
+
+describe("code-generation partial index DDL", () => {
+  test("unique partial index WHERE predicate를 출력해야 한다", async () => {
+    const migrationSet: MigrationSet = {
+      table: "partial_index_users",
+      columns: [
+        { name: "id", type: "integer", nullable: false },
+        { name: "email", type: "string", nullable: false },
+        { name: "deleted_at", type: "date", nullable: true },
+      ],
+      indexes: [
+        {
+          type: "unique",
+          name: "partial_index_users_email_active_unique",
+          columns: [{ name: "email" }],
+          nullsNotDistinct: true,
+          where: "deleted_at IS NULL",
+        },
+      ],
+      foreigns: [],
+    };
+
+    const [migration] = await generateCreateCode(migrationSet);
+
+    expect(migration.formatted).toContain(
+      "CREATE UNIQUE INDEX partial_index_users_email_active_unique ON",
+    );
+    expect(migration.formatted).toContain("NULLS NOT DISTINCT WHERE deleted_at IS NULL;");
+  });
+
+  test("vector partial index WHERE predicate를 출력해야 한다", async () => {
+    const migrationSet: MigrationSet = {
+      table: "partial_index_vectors",
+      columns: [
+        { name: "id", type: "integer", nullable: false },
+        { name: "embedding", type: "vector", dimensions: 1536, nullable: true },
+      ],
+      indexes: [
+        {
+          type: "hnsw",
+          name: "partial_index_vectors_embedding_hnsw",
+          columns: [{ name: "embedding", vectorOps: "vector_cosine_ops" }],
+          where: "embedding IS NOT NULL",
+        },
+      ],
+      foreigns: [],
+    };
+
+    const [migration] = await generateCreateCode(migrationSet);
+
+    expect(migration.formatted).toContain(
+      "USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64) WHERE embedding IS NOT NULL",
+    );
+  });
+
+  test("pgroonga partial index WHERE predicate를 출력해야 한다", async () => {
+    const entity = await registerEntity({
+      id: "CodeGenerationPgroongaPartial",
+      table: "code_generation_pgroonga_partial",
+      props: [
+        { name: "id", type: "integer" },
+        { name: "title", type: "string" },
+        { name: "deleted_at", type: "date", nullable: true },
+      ],
+      indexes: [
+        {
+          type: "index",
+          name: "code_generation_pgroonga_partial_title_index",
+          using: "pgroonga",
+          columns: [{ name: "title" }],
+          where: "deleted_at IS NULL",
+        },
+      ],
+    });
+
+    const [migration] = await generateCreateCode(getMigrationSetFromEntity(entity));
+
+    expect(migration.formatted).toContain(
+      "USING pgroonga (title) WITH (tokenizer='TokenMecab') WHERE deleted_at IS NULL;",
+    );
+  });
+
+  test("partial index predicate의 바깥 괄호 차이는 alter diff에서 no-op이어야 한다", () => {
+    const entityIndex: MigrationIndex = {
+      type: "index",
+      name: "partial_index_users_email_active_index",
+      columns: [{ name: "email" }],
+      where: "deleted_at IS NULL",
+    };
+    const dbIndex: MigrationIndex = {
+      ...setMigrationIndexDefaults(entityIndex),
+      where: "(deleted_at IS NULL)",
+    };
+
+    const alterIndexesTo = getAlterIndexesTo([entityIndex], [dbIndex]);
+
+    expect(alterIndexesTo.add).toHaveLength(0);
+    expect(alterIndexesTo.drop).toHaveLength(0);
+  });
+
+  test("partial index predicate 변경은 alter diff에서 drop/add 대상이어야 한다", async () => {
+    const previousIndex: MigrationIndex = {
+      type: "index",
+      name: "partial_index_users_email_active_index",
+      columns: [{ name: "email" }],
+      where: "deleted_at IS NULL",
+    };
+    const nextIndex: MigrationIndex = {
+      ...previousIndex,
+      where: "archived_at IS NULL",
+    };
+
+    const alterIndexesTo = getAlterIndexesTo(
+      [nextIndex],
+      [setMigrationIndexDefaults(previousIndex)],
+    );
+
+    expect(alterIndexesTo.add).toHaveLength(1);
+    expect(alterIndexesTo.drop).toHaveLength(1);
+
+    const entitySet: MigrationSet = {
+      table: "partial_index_users",
+      columns: [
+        { name: "id", type: "integer", nullable: false },
+        { name: "email", type: "string", nullable: false },
+        { name: "deleted_at", type: "date", nullable: true },
+        { name: "archived_at", type: "date", nullable: true },
+      ],
+      indexes: [nextIndex],
+      foreigns: [],
+    };
+    const dbSet: MigrationSet = {
+      ...entitySet,
+      indexes: [setMigrationIndexDefaults(previousIndex)],
+    };
+
+    const [migration] = await generateAlterCode(entitySet, dbSet);
+
+    expect(migration.formatted).toContain(
+      'table.dropIndex(["email"], "partial_index_users_email_active_index")',
+    );
+    expect(migration.formatted).toContain("WHERE archived_at IS NULL;");
   });
 });

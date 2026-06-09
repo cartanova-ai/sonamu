@@ -410,6 +410,8 @@ export type EntityIndex = {
   name: string;
   using?: "btree" | "hash" | "gin" | "gist" | "pgroonga";
   nullsNotDistinct?: boolean; // unique index only
+  /** PostgreSQL partial index predicate. Raw SQL WHERE expression without the WHERE keyword. */
+  where?: string;
   /**
    * HNSW (Hierarchical Navigable Small World) 인덱스: 각 노드의 최대 연결 수
    *
@@ -832,6 +834,8 @@ export type MigrationIndex = {
   name: string;
   using?: "btree" | "hash" | "gin" | "gist" | "pgroonga";
   nullsNotDistinct?: boolean;
+  /** PostgreSQL partial index predicate. Raw SQL WHERE expression without the WHERE keyword. */
+  where?: string;
   /** HNSW (Hierarchical Navigable Small World): 각 노드의 최대 연결 수 */
   m?: number;
   /** HNSW (Hierarchical Navigable Small World): 구성 시 탐색 범위 */
@@ -1495,6 +1499,7 @@ const EntityIndexSchema = z
     name: z.string().min(1).max(63),
     using: z.enum(["btree", "hash", "gin", "gist", "pgroonga"]).optional(),
     nullsNotDistinct: z.boolean().optional(),
+    where: z.string().trim().min(1).optional(),
     m: z.number().optional(),
     efConstruction: z.number().optional(),
     lists: z.number().optional(),

@@ -101,6 +101,7 @@ Click the **[×]** button on the Property row.
 | ---------- | ----------------------------------------- | ----------------------------- |
 | **Fields** | Index target fields (multiple selectable) | `email`, `created_at`         |
 | **Type**   | Index type                                | `index`, `unique`, `fulltext` |
+| **Where**  | Raw SQL predicate for partial indexes     | `deleted_at IS NULL`          |
 
 **Index types**:
 
@@ -116,8 +117,12 @@ Select multiple fields to create a composite index:
 indexes: [
   { fields: ["user_id", "created_at"], type: "index" },
   { fields: ["email"], type: "unique" },
+  { fields: ["email"], type: "unique", where: "deleted_at IS NULL" },
 ];
 ```
+
+`where` is emitted as a PostgreSQL partial index predicate. Treat it as raw SQL: do not build it from
+user input.
 
 ## Managing Relations
 

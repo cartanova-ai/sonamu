@@ -963,6 +963,7 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
       : "";
 
   const usingClause = index.using === undefined ? "" : `USING ${index.using}`;
+  const whereClause = getIndexWhereClause(index);
 
   return `await knex.raw(
   \`CREATE ${methodMap[index.type]} ${index.name} ON ${table} ${usingClause}(${index.columns
@@ -982,12 +983,13 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
         col.nullsFirst === undefined ? "" : ` NULLS ${col.nullsFirst ? "FIRST" : "LAST"}`;
       return `${col.name}${opclassClause}${sortOrderClause}${nullsFirstClause}`;
     })
-    .join(", ")})${nullsNotDistinctClause};\`
+    .join(", ")})${nullsNotDistinctClause}${whereClause};\`
   );`;
 }
 
 function genPgroongaIndexDefinition(index: MigrationIndex, table: string) {
   const entity = EntityManager.getByTable(table);
+  const whereClause = getIndexWhereClause(index);
 
   // 복합 인덱스인 경우 ARRAY 사용
   const columnClause = (() => {
@@ -1001,7 +1003,7 @@ function genPgroongaIndexDefinition(index: MigrationIndex, table: string) {
   })();
 
   return `await knex.raw(
-  \`CREATE INDEX ${index.name} ON ${table} USING pgroonga (${columnClause}) WITH (tokenizer='TokenMecab');\`
+  \`CREATE INDEX ${index.name} ON ${table} USING pgroonga (${columnClause}) WITH (tokenizer='TokenMecab')${whereClause};\`
   )`;
 }
 
@@ -1035,21 +1037,27 @@ function getPgroongaColumnOption(column: EntityProp) {
 function genVectorIndexDefinition(index: MigrationIndex, table: string): string {
   const column = index.columns[0];
   const vectorOps = getIndexColumnOpclass(column) ?? "vector_cosine_ops";
+  const whereClause = getIndexWhereClause(index);
 
   // HNSW (Hierarchical Navigable Small World) - 권장: 빠른 검색, 높은 정확도
   if (index.type === "hnsw") {
     const m = index.m ?? 16;
     const efConstruction = index.efConstruction ?? 64;
-    return `await knex.raw(\`CREATE INDEX ${index.name} ON ${table} USING hnsw (${column.name} ${vectorOps}) WITH (m = ${m}, ef_construction = ${efConstruction})\`);`;
+    return `await knex.raw(\`CREATE INDEX ${index.name} ON ${table} USING hnsw (${column.name} ${vectorOps}) WITH (m = ${m}, ef_construction = ${efConstruction})${whereClause}\`);`;
   }
 
   // IVFFlat (Inverted File with Flat Compression) - 대용량, 비용 중요 시
   if (index.type === "ivfflat") {
     const lists = index.lists ?? 100;
-    return `await knex.raw(\`CREATE INDEX ${index.name} ON ${table} USING ivfflat (${column.name} ${vectorOps}) WITH (lists = ${lists})\`);`;
+    return `await knex.raw(\`CREATE INDEX ${index.name} ON ${table} USING ivfflat (${column.name} ${vectorOps}) WITH (lists = ${lists})${whereClause}\`);`;
   }
 
   throw new Error(`Unknown raw SQL index type: ${index.type}`);
+}
+
+function getIndexWhereClause(index: MigrationIndex): string {
+  const where = normalizeIndexWherePredicate(index.where);
+  return where ? ` WHERE ${where}` : "";
 }
 
 /**
@@ -1602,9 +1610,11 @@ export function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: Mi
       .join("//");
   };
 
+  const normalizedEntityIndexes = entityIndexes.map(setMigrationIndexDefaults);
+  const normalizedDbIndexes = dbIndexes.map(setMigrationIndexDefaults);
   const extraIndexes = {
-    db: diff(dbIndexes, entityIndexes.map(setMigrationIndexDefaults), identity),
-    entity: diff(entityIndexes.map(setMigrationIndexDefaults), dbIndexes, identity),
+    db: diff(normalizedDbIndexes, normalizedEntityIndexes, identity),
+    entity: diff(normalizedEntityIndexes, normalizedDbIndexes, identity),
   };
   if (extraIndexes.entity.length > 0) {
     indexesTo.add = indexesTo.add.concat(extraIndexes.entity);
@@ -1632,6 +1642,7 @@ export function setMigrationIndexDefaults(index: MigrationIndex): MigrationIndex
   const isVectorIndex = index.type === "hnsw" || index.type === "ivfflat";
   const supportsOrdering = !isVectorIndex && (!index.using || index.using === "btree");
   const normalizedUsing = isVectorIndex ? index.using : (index.using ?? "btree");
+  const normalizedWhere = normalizeIndexWherePredicate(index.where);
 
   return {
     ...index,
@@ -1647,7 +1658,75 @@ export function setMigrationIndexDefaults(index: MigrationIndex): MigrationIndex
     })),
     nullsNotDistinct: index.nullsNotDistinct ?? false,
     ...(normalizedUsing ? { using: normalizedUsing } : {}),
+    ...(normalizedWhere ? { where: normalizedWhere } : {}),
   };
+}
+
+function normalizeIndexWherePredicate(where: string | undefined): string | undefined {
+  if (!where) {
+    return undefined;
+  }
+
+  const trimmed = where.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  if (trimmed.startsWith("(") && trimmed.endsWith(")")) {
+    const closeIndex = findMatchingParenthesisInSql(trimmed, 0);
+    if (closeIndex === trimmed.length - 1) {
+      return trimmed.slice(1, -1).trim();
+    }
+  }
+
+  return trimmed;
+}
+
+function findMatchingParenthesisInSql(source: string, openIndex: number): number {
+  let depth = 0;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+
+  for (let index = openIndex; index < source.length; index += 1) {
+    const char = source[index];
+    const nextChar = source[index + 1];
+
+    if (char === "'" && !inDoubleQuote) {
+      if (inSingleQuote && nextChar === "'") {
+        index += 1;
+        continue;
+      }
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+
+    if (char === '"' && !inSingleQuote) {
+      if (inDoubleQuote && nextChar === '"') {
+        index += 1;
+        continue;
+      }
+      inDoubleQuote = !inDoubleQuote;
+      continue;
+    }
+
+    if (inSingleQuote || inDoubleQuote) {
+      continue;
+    }
+
+    if (char === "(") {
+      depth += 1;
+      continue;
+    }
+
+    if (char === ")") {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+
+  return -1;
 }
 
 /**

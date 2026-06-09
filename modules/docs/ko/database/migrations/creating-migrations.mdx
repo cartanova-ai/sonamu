@@ -225,7 +225,13 @@ export async function down(knex: Knex): Promise<void> {
 {
   "indexes": [
     { "type": "unique", "column": "email" },
-    { "type": "index", "column": "username" } // ← 추가
+    { "type": "index", "column": "username" }, // ← 추가
+    {
+      "type": "unique",
+      "name": "users_email_active_unique",
+      "columns": [{ "name": "email" }],
+      "where": "deleted_at IS NULL"
+    }
   ]
 }
 ```
@@ -238,14 +244,22 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     table.index(["username"], "users_username_index");
   });
+  await knex.raw(
+    `CREATE UNIQUE INDEX users_email_active_unique ON users (email) WHERE deleted_at IS NULL`,
+  );
 }
 
 export async function down(knex: Knex): Promise<void> {
+  await knex.raw(`DROP INDEX IF EXISTS users_email_active_unique`);
   await knex.schema.alterTable("users", (table) => {
     table.dropIndex(["username"], "users_username_index");
   });
 }
 ```
+
+`where`는 PostgreSQL partial index predicate로 그대로 사용되는 raw SQL입니다. 사용자 입력을 조합하지
+말고, stable한 컬럼 조건만 선언하세요. PostgreSQL introspection이 predicate를 괄호로 감싸 반환하는
+경우에도 migration diff에서는 같은 조건으로 처리됩니다.
 
 ### 외래 키 추가
 
