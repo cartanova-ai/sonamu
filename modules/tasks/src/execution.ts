@@ -13,7 +13,7 @@ import {
   getCachedStepAttempt,
   normalizeStepOutput,
 } from "./core/step";
-import { type WorkflowRun } from "./core/workflow";
+import { isTerminalStatus, type WorkflowRun } from "./core/workflow";
 
 /**
  * Config for an individual step defined with `step.run()`.
@@ -308,11 +308,20 @@ export async function executeWorkflow(params: Readonly<ExecuteWorkflowParams>): 
   } catch (error) {
     // handle sleep signal by setting workflow to sleeping status
     if (error instanceof SleepSignal) {
-      await backend.sleepWorkflowRun({
-        workflowRunId: workflowRun.id,
-        workerId,
-        availableAt: error.resumeAt,
-      });
+      try {
+        await backend.sleepWorkflowRun({
+          workflowRunId: workflowRun.id,
+          workerId,
+          availableAt: error.resumeAt,
+        });
+      } catch (sleepError) {
+        const currentRun = await backend.getWorkflowRun({ workflowRunId: workflowRun.id });
+        if (currentRun && isTerminalStatus(currentRun.status)) {
+          return;
+        }
+
+        throw sleepError;
+      }
 
       return;
     }

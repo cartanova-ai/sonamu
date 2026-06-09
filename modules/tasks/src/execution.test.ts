@@ -105,7 +105,7 @@ describe("StepExecutor", () => {
 
     const worker = client.newWorker();
     // Use deadline to force immediate failure without retries
-    const handle = await workflow.run({}, { deadlineAt: new Date() });
+    const handle = await workflow.run({}, { deadlineAt: new Date(Date.now() - 1000) });
     await worker.tick();
     await sleep(100);
 
@@ -254,7 +254,7 @@ describe("executeWorkflow", () => {
 
       const worker = client.newWorker();
       // Use deadline to skip retries - fails with deadline exceeded
-      const handle = await workflow.run({}, { deadlineAt: new Date() });
+      const handle = await workflow.run({}, { deadlineAt: new Date(Date.now() - 1000) });
       await worker.tick();
       await sleep(100);
 
@@ -272,7 +272,7 @@ describe("executeWorkflow", () => {
       });
 
       const worker = client.newWorker();
-      const handle = await workflow.run({}, { deadlineAt: new Date() });
+      const handle = await workflow.run({}, { deadlineAt: new Date(Date.now() - 1000) });
       await worker.tick();
       await sleep(100);
 

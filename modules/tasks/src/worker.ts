@@ -31,6 +31,7 @@ export class Worker {
   private readonly workerIds: string[];
   private readonly registry: WorkflowRegistry;
   private readonly activeExecutions = new Set<WorkflowExecution>();
+  private readonly activeSubscriptionCallbacks = new Set<Promise<void>>();
   private running = false;
   private loopPromise: Promise<void> | null = null;
   private subscribed = false;
@@ -71,6 +72,11 @@ export class Worker {
 
     // wait for the poll loop to stop
     if (this.loopPromise) await this.loopPromise;
+
+    // wait for in-flight pub/sub callbacks to finish their delayed tick checks
+    while (this.activeSubscriptionCallbacks.size > 0) {
+      await Promise.all(this.activeSubscriptionCallbacks);
+    }
 
     // wait for all active executions to finish
     while (this.activeExecutions.size > 0) await sleep(100);
@@ -115,12 +121,11 @@ export class Worker {
     if (this.usePubSub && !this.subscribed) {
       this.subscribed = true;
       this.backend.subscribe(async (result) => {
-        if (!result.ok || !this.running) {
-          return;
-        }
-
-        await sleep(this.listenDelay);
-        await this.tick();
+        const callbackPromise = this.handleSubscriptionEvent(result);
+        this.activeSubscriptionCallbacks.add(callbackPromise);
+        await callbackPromise.finally(() => {
+          this.activeSubscriptionCallbacks.delete(callbackPromise);
+        });
       });
     }
 
@@ -135,6 +140,23 @@ export class Worker {
         console.error("Worker tick failed:", error);
         await sleep(DEFAULT_POLL_INTERVAL_MS);
       }
+    }
+  }
+
+  private async handleSubscriptionEvent(result: Readonly<{ ok: boolean }>): Promise<void> {
+    if (!result.ok || !this.running) {
+      return;
+    }
+
+    await sleep(this.listenDelay);
+    if (!this.running) {
+      return;
+    }
+
+    try {
+      await this.tick();
+    } catch (error) {
+      console.error("Worker tick failed:", error);
     }
   }
 

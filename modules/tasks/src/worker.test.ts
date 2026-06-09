@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
 
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { type Backend } from "./backend";
 import { declareWorkflow, OpenWorkflow } from "./client";
+import { ok } from "./core/result";
 import { BackendPostgres } from "./database/backend";
+import { type OnSubscribed } from "./database/pubsub";
 import { KNEX_GLOBAL_CONFIG } from "./testing/connection";
 
 describe("Worker", () => {
@@ -862,26 +865,36 @@ describe("Worker", () => {
 
   test("cancels a sleeping workflow", async () => {
     const client = new OpenWorkflow({ backend });
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const workflow = client.defineWorkflow({ name: "cancel-sleeping" }, async ({ step }) => {
-      await step.sleep("sleep-1", "1h");
-      return { completed: true };
-    });
-    const worker = client.newWorker();
+    try {
+      const workflow = client.defineWorkflow({ name: "cancel-sleeping" }, async ({ step }) => {
+        await step.sleep("sleep-1", "1h");
+        return { completed: true };
+      });
+      const worker = client.newWorker();
 
-    const handle = await workflow.run();
-    await worker.tick();
+      const handle = await workflow.run();
+      await worker.tick();
 
-    // cancel while sleeping
-    await handle.cancel();
+      // cancel while sleeping
+      await handle.cancel();
+      await worker.stop();
 
-    const canceled = await backend.getWorkflowRun({
-      workflowRunId: handle.workflowRun.id,
-    });
-    expect(canceled?.status).toBe("canceled");
-    expect(canceled?.finishedAt).not.toBeNull();
-    expect(canceled?.availableAt).toBeNull();
-    expect(canceled?.workerId).toBeNull();
+      const canceled = await backend.getWorkflowRun({
+        workflowRunId: handle.workflowRun.id,
+      });
+      expect(canceled?.status).toBe("canceled");
+      expect(canceled?.finishedAt).not.toBeNull();
+      expect(canceled?.availableAt).toBeNull();
+      expect(canceled?.workerId).toBeNull();
+      expect(consoleError).not.toHaveBeenCalledWith(
+        expect.stringContaining("Critical error during workflow execution"),
+        expect.anything(),
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   test("cannot cancel a completed workflow", async () => {
@@ -1133,6 +1146,86 @@ describe("Worker", () => {
       const result = await handle.result();
       expect(result).toBe("v1");
     });
+  });
+});
+
+describe("Worker pubsub", () => {
+  test("pubsub wakeup does not claim work after worker stops", async () => {
+    const subscribedCallbacks: OnSubscribed[] = [];
+    let claimCount = 0;
+
+    const backend = {
+      async subscribe(callback) {
+        subscribedCallbacks.push(callback);
+      },
+      async publish() {},
+      async createWorkflowRun() {
+        throw new Error("Unexpected createWorkflowRun call");
+      },
+      async getWorkflowRun() {
+        throw new Error("Unexpected getWorkflowRun call");
+      },
+      async listWorkflowRuns() {
+        throw new Error("Unexpected listWorkflowRuns call");
+      },
+      async claimWorkflowRun() {
+        claimCount++;
+        return null;
+      },
+      async extendWorkflowRunLease() {
+        throw new Error("Unexpected extendWorkflowRunLease call");
+      },
+      async sleepWorkflowRun() {
+        throw new Error("Unexpected sleepWorkflowRun call");
+      },
+      async completeWorkflowRun() {
+        throw new Error("Unexpected completeWorkflowRun call");
+      },
+      async failWorkflowRun() {
+        throw new Error("Unexpected failWorkflowRun call");
+      },
+      async cancelWorkflowRun() {
+        throw new Error("Unexpected cancelWorkflowRun call");
+      },
+      async pauseWorkflowRun() {
+        throw new Error("Unexpected pauseWorkflowRun call");
+      },
+      async resumeWorkflowRun() {
+        throw new Error("Unexpected resumeWorkflowRun call");
+      },
+      async createStepAttempt() {
+        throw new Error("Unexpected createStepAttempt call");
+      },
+      async getStepAttempt() {
+        throw new Error("Unexpected getStepAttempt call");
+      },
+      async listStepAttempts() {
+        throw new Error("Unexpected listStepAttempts call");
+      },
+      async completeStepAttempt() {
+        throw new Error("Unexpected completeStepAttempt call");
+      },
+      async failStepAttempt() {
+        throw new Error("Unexpected failStepAttempt call");
+      },
+    } satisfies Backend;
+
+    const client = new OpenWorkflow({ backend });
+    const worker = client.newWorker({ usePubSub: true, listenDelay: 25 });
+
+    await worker.start();
+    const subscribedCallback = subscribedCallbacks[0];
+    if (!subscribedCallback) {
+      throw new Error("Worker did not subscribe to backend notifications");
+    }
+
+    const subscriptionCallbackDone = Promise.resolve(subscribedCallback(ok(null)));
+    const claimCountBeforeStop = claimCount;
+
+    await worker.stop();
+    await subscriptionCallbackDone;
+
+    expect(claimCount).toBe(claimCountBeforeStop);
   });
 });
 

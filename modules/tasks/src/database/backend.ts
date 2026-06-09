@@ -564,6 +564,8 @@ export class BackendPostgres implements Backend {
       ? `${customDelayMs} * INTERVAL '1 millisecond'`
       : `LEAST(${initialIntervalMs} * POWER(${backoffCoefficient}, "attempts" - 1), ${maximumIntervalMs}) * INTERVAL '1 millisecond'`;
     const deadlineExceededCondition = `"deadline_at" IS NOT NULL AND NOW() + (${retryIntervalExpr}) >= "deadline_at"`;
+    const serializedError = JSON.stringify(error);
+    const deadlineExceededError = JSON.stringify({ message: "Workflow run deadline exceeded" });
 
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
@@ -582,7 +584,10 @@ export class BackendPostgres implements Backend {
         finished_at: this.knex.raw(
           `CASE WHEN ${deadlineExceededCondition} THEN NOW() ELSE NULL END`,
         ),
-        error: JSON.stringify(error),
+        error: this.knex.raw(
+          `CASE WHEN ${deadlineExceededCondition} THEN ?::jsonb ELSE ?::jsonb END`,
+          [deadlineExceededError, serializedError],
+        ),
         worker_id: null,
         started_at: null,
         updated_at: this.knex.fn.now(),
