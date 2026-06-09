@@ -40,6 +40,25 @@ import {
 } from "./puri.types";
 import { FUZZY_OPERATORS } from "./puri.types";
 
+type PuriOrderByDirection = "asc" | "desc";
+type PuriOrderByNulls = "first" | "last";
+type PuriOrderByExpression = SqlExpression<"number"> | SqlExpression<"string">;
+type PuriOrderByItem<TColumn extends string> = {
+  column: TColumn | PuriOrderByExpression;
+  order?: PuriOrderByDirection;
+  nulls?: PuriOrderByNulls;
+};
+type PuriOrderByEntry<TColumn extends string> =
+  | TColumn
+  | PuriOrderByExpression
+  | PuriOrderByItem<TColumn>;
+type PuriOrderByRuntimeItem = {
+  column: string | PuriOrderByExpression;
+  order?: PuriOrderByDirection;
+  nulls?: PuriOrderByNulls;
+};
+type PuriOrderByRuntimeEntry = string | PuriOrderByExpression | PuriOrderByRuntimeItem;
+
 function normalizeFuzzyOperator(operator?: string): FuzzyOperator {
   const normalized = operator?.trim() ?? "<%";
   const fuzzyOperator = FUZZY_OPERATORS.find((candidate) => candidate === normalized);
@@ -49,6 +68,42 @@ function normalizeFuzzyOperator(operator?: string): FuzzyOperator {
   }
 
   return fuzzyOperator;
+}
+
+function normalizeOrderByDirection(direction: PuriOrderByDirection = "asc"): PuriOrderByDirection {
+  if (direction !== "asc" && direction !== "desc") {
+    throw new Error(`Invalid order direction: ${direction}`);
+  }
+
+  return direction;
+}
+
+function normalizeOrderByNulls(nulls?: PuriOrderByNulls): PuriOrderByNulls | undefined {
+  if (nulls === undefined) {
+    return undefined;
+  }
+
+  if (nulls !== "first" && nulls !== "last") {
+    throw new Error(`Invalid order nulls: ${nulls}`);
+  }
+
+  return nulls;
+}
+
+function formatNullsSuffix(nulls?: PuriOrderByNulls): string {
+  if (!nulls) {
+    return "";
+  }
+
+  return ` NULLS ${nulls.toUpperCase()}`;
+}
+
+function isOrderByEntries(value: unknown): value is readonly PuriOrderByRuntimeEntry[] {
+  return Array.isArray(value);
+}
+
+function isSqlExpression(value: PuriOrderByRuntimeEntry): value is PuriOrderByExpression {
+  return typeof value === "object" && "_type" in value && value._type === "sql_expression";
 }
 
 export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
@@ -837,19 +892,49 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
 
   // ORDER BY (SqlExpression으로도 할 수 있어야 함)
   orderBy<TColumn extends ResultAvailableColumns<TTables, TResult>>(
-    column: TColumn | SqlExpression<"number"> | SqlExpression<"string">,
-    direction: "asc" | "desc",
+    column: TColumn | PuriOrderByExpression,
+    direction?: PuriOrderByDirection,
+    nulls?: PuriOrderByNulls,
+  ): this;
+  orderBy<TColumn extends ResultAvailableColumns<TTables, TResult>>(
+    columns: readonly PuriOrderByEntry<TColumn>[],
   ): this;
   orderBy(
-    column: string | SqlExpression<"number"> | SqlExpression<"string">,
-    direction: "asc" | "desc" = "asc",
+    columnOrColumns: string | PuriOrderByExpression | readonly PuriOrderByRuntimeEntry[],
+    direction: PuriOrderByDirection = "asc",
+    nulls?: PuriOrderByNulls,
   ): this {
-    if (typeof column === "object") {
-      this.knexQuery.orderByRaw(`${column._sql} ${direction}`, column._params);
-    } else {
-      this.knexQuery.orderBy(column, direction);
+    if (isOrderByEntries(columnOrColumns)) {
+      for (const entry of columnOrColumns) {
+        if (typeof entry === "string" || isSqlExpression(entry)) {
+          this.applyOrderBy(entry);
+        } else {
+          this.applyOrderBy(entry.column, entry.order, entry.nulls);
+        }
+      }
+      return this;
     }
+
+    this.applyOrderBy(columnOrColumns, direction, nulls);
     return this;
+  }
+
+  private applyOrderBy(
+    column: string | PuriOrderByExpression,
+    direction?: PuriOrderByDirection,
+    nulls?: PuriOrderByNulls,
+  ): void {
+    const normalizedDirection = normalizeOrderByDirection(direction);
+    const normalizedNulls = normalizeOrderByNulls(nulls);
+
+    if (typeof column === "object") {
+      this.knexQuery.orderByRaw(
+        `${column._sql} ${normalizedDirection}${formatNullsSuffix(normalizedNulls)}`,
+        column._params,
+      );
+    } else {
+      this.knexQuery.orderBy(column, normalizedDirection, normalizedNulls);
+    }
   }
 
   forUpdate(): this {

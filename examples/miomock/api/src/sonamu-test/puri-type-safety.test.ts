@@ -701,6 +701,7 @@ describe("Puri Type Safety", () => {
       // 유효한 단일 orderBy
       db.table("users").orderBy("id", "asc");
       db.table("users").orderBy("username", "desc");
+      db.table("users").orderBy("birth_date", "asc", "last");
 
       // 유효한 다중 orderBy 체이닝
       db.table("users").orderBy("role", "asc").orderBy("created_at", "desc");
@@ -717,10 +718,19 @@ describe("Puri Type Safety", () => {
       db.table("users").orderBy("nonexistent", "asc");
 
       // @ts-expect-error - asc/desc가 아닌 값
-      db.table("users").orderBy("id", "ascending");
+      expect(() => db.table("users").orderBy("id", "ascending")).toThrow(
+        "Invalid order direction: ascending",
+      );
 
       // @ts-expect-error - asc/desc가 아닌 값
-      db.table("users").orderBy("id", "DESC");
+      expect(() => db.table("users").orderBy("id", "DESC")).toThrow(
+        "Invalid order direction: DESC",
+      );
+
+      // @ts-expect-error - nulls는 first/last만 허용
+      expect(() => db.table("users").orderBy("birth_date", "asc", "middle")).toThrow(
+        "Invalid order nulls: middle",
+      );
 
       // JOIN 후 orderBy
       const joinQuery = db.table("employees").join("users", "employees.user_id", "users.id");

@@ -477,3 +477,73 @@ describe("Puri locking methods", () => {
     expectTypeOf(result).resolves.toEqualTypeOf<MockSchema["users"]>();
   });
 });
+
+describe("Puri orderBy methods", () => {
+  it("단일 컬럼 null ordering과 체이닝 타입을 지원한다", () => {
+    type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    const query = {} as Query;
+
+    expectTypeOf(query.orderBy("id")).toEqualTypeOf<Query>();
+    expectTypeOf(query.orderBy("id", "asc")).toEqualTypeOf<Query>();
+    expectTypeOf(query.orderBy("id", "desc", "last")).toEqualTypeOf<Query>();
+    expectTypeOf(query.orderBy("users.department_id", "asc", "first")).toEqualTypeOf<Query>();
+  });
+
+  it("여러 컬럼 orderBy item 배열을 지원한다", () => {
+    type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    const query = {} as Query;
+
+    expectTypeOf(query.orderBy(["name", "email"])).toEqualTypeOf<Query>();
+    expectTypeOf(
+      query.orderBy([
+        { column: "name" },
+        { column: "email", order: "asc" },
+        { column: "users.department_id", order: "desc", nulls: "last" },
+      ]),
+    ).toEqualTypeOf<Query>();
+  });
+
+  it("select 결과 컬럼을 orderBy에 사용할 수 있다", () => {
+    type Result = { post_count: number };
+    type Query = Puri<MockSchema, { users: MockSchema["users"] }, Result>;
+    const query = {} as Query;
+
+    expectTypeOf(query.orderBy("post_count", "desc", "last")).toEqualTypeOf<Query>();
+    expectTypeOf(query.orderBy(["post_count"])).toEqualTypeOf<Query>();
+    expectTypeOf(
+      query.orderBy([{ column: "post_count", order: "desc", nulls: "last" }]),
+    ).toEqualTypeOf<Query>();
+  });
+
+  it("SqlExpression orderBy를 지원한다", () => {
+    type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    const query = {} as Query;
+    const expression = Puri.rawNumber("COUNT(*)");
+
+    expectTypeOf(query.orderBy(expression, "desc", "last")).toEqualTypeOf<Query>();
+    expectTypeOf(query.orderBy([expression])).toEqualTypeOf<Query>();
+    expectTypeOf(
+      query.orderBy([{ column: expression, order: "desc", nulls: "first" }]),
+    ).toEqualTypeOf<Query>();
+  });
+
+  it("잘못된 direction, nulls, column은 거부한다", () => {
+    type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    const query = {} as Query;
+
+    // @ts-expect-error direction은 asc/desc만 허용한다.
+    query.orderBy("id", "ascending");
+
+    // @ts-expect-error nulls는 first/last만 허용한다.
+    query.orderBy("id", "asc", "middle");
+
+    // @ts-expect-error typed Puri에서는 존재하지 않는 컬럼을 허용하지 않는다.
+    query.orderBy("missing_column", "asc");
+
+    // @ts-expect-error 배열 item의 column도 typed Puri 컬럼 제약을 따른다.
+    query.orderBy([{ column: "missing_column", order: "asc" }]);
+
+    // @ts-expect-error string 배열도 typed Puri 컬럼 제약을 따른다.
+    query.orderBy(["name", "missing_column"]);
+  });
+});
