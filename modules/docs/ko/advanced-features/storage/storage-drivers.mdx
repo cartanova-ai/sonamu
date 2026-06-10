@@ -23,7 +23,8 @@ Sonamu는 **Flydrive** 기반으로 여러 스토리지 드라이버를 지원�
 ### 기본 설정
 
 ```typescript
-import { drivers, type SonamuConfig } from "sonamu";
+import type { SonamuConfig } from "sonamu";
+import { drivers } from "sonamu/storage";
 
 export const config: SonamuConfig = {
   server: {
@@ -176,7 +177,8 @@ http://localhost:3000/uploads/avatars/user-1.png
 ### 기본 설정
 
 ```typescript
-import { drivers, type SonamuConfig } from "sonamu";
+import type { SonamuConfig } from "sonamu";
+import { drivers } from "sonamu/storage";
 
 export const config: SonamuConfig = {
   server: {
