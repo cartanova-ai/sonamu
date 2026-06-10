@@ -49,6 +49,74 @@ const users = await puri
 2. Second `orderBy` - Secondary sort (when primary is same)
 3. Third `orderBy` - Tertiary sort (when secondary is also same)
 
+## NULL Sort Order (nulls)
+
+The third argument `nulls` specifies where NULL values should be placed in the sort order.
+
+```typescript
+// NULL at the end
+const users = await puri
+  .table("users")
+  .select({ id: "users.id", name: "users.name", last_login: "users.last_login" })
+  .orderBy("users.last_login", "desc", "last");
+
+// ORDER BY users.last_login DESC NULLS LAST
+```
+
+```typescript
+// NULL first
+const posts = await puri
+  .table("posts")
+  .select({ id: "posts.id", title: "posts.title", deleted_at: "posts.deleted_at" })
+  .orderBy("posts.deleted_at", "asc", "first");
+
+// ORDER BY posts.deleted_at ASC NULLS FIRST
+```
+
+**`nulls` options:**
+
+| Value | Description |
+|---|---|
+| `"first"` | Place NULL values at the beginning of results |
+| `"last"` | Place NULL values at the end of results |
+| omitted | Database default behavior (PostgreSQL: ASC → NULLS LAST, DESC → NULLS FIRST) |
+
+## Array-style orderBy
+
+You can pass multiple sort conditions as an array in a single call.
+
+```typescript
+const products = await puri
+  .table("products")
+  .select({
+    id: "products.id",
+    name: "products.name",
+    price: "products.price",
+    rating: "products.rating",
+  })
+  .orderBy([
+    { column: "products.rating", order: "desc", nulls: "last" },
+    { column: "products.price", order: "asc" },
+  ]);
+
+// ORDER BY products.rating DESC NULLS LAST, products.price ASC
+```
+
+Each array item can be one of the following:
+
+- **string**: Column name only (defaults to ASC)
+- **SqlExpression**: SQL expression
+- **object**: `{ column, order?, nulls? }` for detailed specification
+
+```typescript
+// Mix different forms
+.orderBy([
+  "products.featured",                                         // string: ASC
+  { column: "products.rating", order: "desc" },                // object: DESC
+  { column: "products.price", order: "asc", nulls: "last" },  // object + nulls
+])
+```
+
 ## Practical Examples
 
 <Tabs>
@@ -152,14 +220,14 @@ const users = await puri
 
   <Tab title="NULL Handling" icon="ban">
     ```typescript
-    // NULL at the end
+    // Use the nulls option to explicitly control NULL placement
     const users = await puri.table("users")
       .select({
         id: "users.id",
         name: "users.name",
         last_login: "users.last_login"
       })
-      .orderBy("users.last_login", "desc");  // NULL automatically at the end
+      .orderBy("users.last_login", "desc", "last");  // NULL at the end
 
     // NULL first
     const posts = await puri.table("posts")
@@ -168,7 +236,7 @@ const users = await puri
         title: "posts.title",
         deleted_at: "posts.deleted_at"
       })
-      .orderBy("posts.deleted_at", "asc");  // NULL comes first
+      .orderBy("posts.deleted_at", "asc", "first");  // NULL comes first
     ```
 
   </Tab>
@@ -385,8 +453,9 @@ CREATE INDEX idx_products_category_price ON products(category, price);
 // PostgreSQL: NULL LAST (default)
 .orderBy("users.last_login", "desc")
 
-// To specify explicitly, use raw SQL
-.whereRaw("ORDER BY users.last_login DESC NULLS FIRST")
+// Use the nulls option to specify explicitly
+.orderBy("users.last_login", "desc", "first")  // NULLS FIRST
+.orderBy("users.last_login", "desc", "last")   // NULLS LAST
 ```
 
 ### 3. Case Sensitivity
