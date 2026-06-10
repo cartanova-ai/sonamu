@@ -46,7 +46,7 @@ export function nonNullable<T>(value: T): value is NonNullable<T> {
   return value !== null && value !== undefined;
 }
 
-export function exhaustive(_param: never) {
+export function exhaustive(_param: never): never {
   throw new Error(`exhaustive`);
 }
 
