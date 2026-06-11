@@ -196,10 +196,10 @@ const inserted = await db
     password: "hashed_password",
     role: "normal",
   })
-  .returning({ id: "id", name: "username" });
+  .returning(["id", "username"]);
 
 console.log(inserted);
-// [{ id: 1, name: "john" }]
+// [{ id: 1, username: "john" }]
 ```
 
 ### 여러 레코드 추가
@@ -497,11 +497,7 @@ async createPost(data: {
       status: "draft",
       created_at: new Date(),
     })
-    .returning({
-      id: "id",
-      title: "title",
-      createdAt: "created_at",
-    });
+    .returning(["id", "title", "created_at"]);
 
   return inserted[0];
 }

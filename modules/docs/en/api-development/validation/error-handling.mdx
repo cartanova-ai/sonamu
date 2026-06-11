@@ -123,7 +123,7 @@ class UserModel extends BaseModelClass {
     }
 
     const wdb = this.getPuri("w");
-    const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
+    const [user] = await wdb.table("users").insert(params).returning("id");
 
     return { userId: user.id };
   }
@@ -201,7 +201,7 @@ class UserModel extends BaseModelClass {
     const validated = result.data;
 
     const wdb = this.getPuri("w");
-    const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+    const [user] = await wdb.table("users").insert(validated).returning("id");
 
     return { userId: user.id };
   }
@@ -327,7 +327,7 @@ class UserModel extends BaseModelClass {
 
     // 4. Create
     const wdb = this.getPuri("w");
-    const [user] = await wdb.table("users").insert(data).returning({ id: "id" });
+    const [user] = await wdb.table("users").insert(data).returning("id");
 
     return { userId: user.id };
   }

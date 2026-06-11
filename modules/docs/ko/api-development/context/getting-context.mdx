@@ -85,7 +85,7 @@ class PostModelClass extends BaseModelClass<
         user_id: context.user.id,
         author: context.user.username,
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return { postId: post.id };
   }

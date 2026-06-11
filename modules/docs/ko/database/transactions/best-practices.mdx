@@ -88,7 +88,7 @@ class OrderModel extends BaseModelClass {
     await this.sendEmail(user.email);
 
     // 실제 데이터 저장
-    const [orderId] = await wdb.table("orders").insert({ user_id: userId }).returning({ id: "id" });
+    const [orderId] = await wdb.table("orders").insert({ user_id: userId }).returning("id");
 
     return orderId.id;
   }
@@ -223,7 +223,7 @@ class OrderModel extends BaseModelClass {
     const [orderId] = await wdb
       .table("orders")
       .insert({ user_id: userId, status: "pending" })
-      .returning({ id: "id" });
+      .returning("id");
 
     // 2. 주문 아이템 생성 (부분 트랜잭션)
     for (const item of items) {

@@ -320,7 +320,7 @@ class ProductModel extends BaseModelClass {
         ...params,
         tenant_id: context.tenant.id,
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return { productId: product.id };
   }
@@ -353,7 +353,7 @@ class UserModel extends BaseModelClass {
     this.requirePermission("user:create");
 
     const wdb = this.getPuri("w");
-    const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
+    const [user] = await wdb.table("users").insert(params).returning("id");
 
     return { userId: user.id };
   }
@@ -448,7 +448,7 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
+    const [user] = await wdb.table("users").insert(params).returning("id");
 
     // Auto audit log
     await this.audit("CREATE", "user", user.id, { email: params.email });

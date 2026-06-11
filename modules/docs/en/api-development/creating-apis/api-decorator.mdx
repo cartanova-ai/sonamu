@@ -88,7 +88,7 @@ class UserModelClass extends BaseModelClass<
   @api({ httpMethod: "POST" })
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    const [userId] = await wdb.table("users").insert(params).returning({ id: "id" });
+    const [userId] = await wdb.table("users").insert(params).returning("id");
 
     return { userId: userId.id };
   }
@@ -289,7 +289,7 @@ class OrderModelClass extends BaseModelClass<
         shipping_address: shippingAddress,
         status: "pending",
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     // Save order items
     for (const item of items) {
@@ -681,7 +681,7 @@ class UserModelClass extends BaseModelClass<
     const wdb = this.getPuri("w");
 
     try {
-      const [userId] = await wdb.table("users").insert(params).returning({ id: "id" });
+      const [userId] = await wdb.table("users").insert(params).returning("id");
 
       return { userId: userId.id };
     } catch (error) {
@@ -851,7 +851,7 @@ class OrderModelClass extends BaseModelClass<
         payment_method: params.paymentMethod,
         status: "pending",
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     // 4. Create order items
     for (const item of params.items) {
@@ -911,7 +911,7 @@ class UserModelClass extends BaseModelClass<
         password: params.password,
         role: params.role,
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return { userId: userId.id };
   }

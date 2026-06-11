@@ -435,7 +435,7 @@ class UserModel extends BaseModelClass {
         mime_type: image.mimetype,
         size: image.size,
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return {
       imageId: record.id,
@@ -513,7 +513,7 @@ class FileModel extends BaseModelClass {
           url,
           category,
         })
-        .returning({ id: "id" });
+        .returning("id");
 
       uploadedFiles.push({
         fileId: record.id,

@@ -68,7 +68,7 @@ class UserModelClass extends BaseModelClass<
     const validated = CreateUserSchema.parse(params);
 
     const wdb = this.getPuri("w");
-    const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+    const [user] = await wdb.table("users").insert(validated).returning("id");
 
     return { userId: user.id };
   }
@@ -95,7 +95,7 @@ class UserModelClass extends BaseModelClass<
       const validated = CreateUserSchema.parse(params);
 
       const wdb = this.getPuri("w");
-      const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+      const [user] = await wdb.table("users").insert(validated).returning("id");
 
       return { userId: user.id };
     } catch (error) {
@@ -284,7 +284,7 @@ class AuthModelClass extends BaseModelClass<
         ...userData,
         role: "normal",
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return { userId: user.id };
   }
@@ -590,7 +590,7 @@ class UserModelClass extends BaseModelClass<
     const validated = result.data;
 
     const wdb = this.getPuri("w");
-    const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+    const [user] = await wdb.table("users").insert(validated).returning("id");
 
     return { userId: user.id };
   }
