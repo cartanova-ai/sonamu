@@ -2006,7 +2006,7 @@ function formatTime(ms: number): string {
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 function isLocalHost(host: string): boolean {
-  return LOCAL_HOSTS.has(host);
+  return LOCAL_HOSTS.has(host) || host.endsWith(".local");
 }
 
 // `.every()`가 첫 guard 이후 순회를 멈추는 문제가 있어 `for...of`로 모든 guard를 순서대로 실행하도록 고정함
