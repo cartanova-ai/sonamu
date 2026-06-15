@@ -114,6 +114,71 @@ await puri.table("posts").where("posts.id", 123).increment("posts.views", 1);
 await puri.table("products").where("products.id", 456).decrement("products.stock", 5);
 ```
 
+## Row Locking
+
+Acquire locks on SELECTed rows within a transaction to prevent concurrent modifications by other transactions.
+
+### forUpdate
+
+Acquires an exclusive lock on selected rows, preventing other transactions from modifying or locking those rows.
+
+```typescript
+@transactional()
+async deductBalance(userId: number, amount: number) {
+  const wdb = this.getPuri("w");
+
+  const user = await wdb
+    .table("users")
+    .select({ id: "users.id", balance: "users.balance" })
+    .where("users.id", userId)
+    .forUpdate()
+    .first();
+
+  if (!user || user.balance < amount) {
+    throw new Error("Insufficient balance");
+  }
+
+  await wdb.table("users").where("users.id", userId).update({
+    balance: user.balance - amount,
+  });
+}
+
+// SELECT users.id, users.balance FROM users WHERE users.id = ? FOR UPDATE
+```
+
+### forShare
+
+Acquires a shared lock on selected rows, preventing other transactions from modifying those rows while still allowing reads.
+
+```typescript
+@transactional()
+async getBalanceSnapshot(userId: number) {
+  const wdb = this.getPuri("w");
+
+  const user = await wdb
+    .table("users")
+    .select({ id: "users.id", balance: "users.balance" })
+    .where("users.id", userId)
+    .forShare()
+    .first();
+
+  return user;
+}
+
+// SELECT users.id, users.balance FROM users WHERE users.id = ? FOR SHARE
+```
+
+**forUpdate vs forShare:**
+
+| Lock Type | Other Transaction Reads | Other Transaction Writes | When to Use |
+|---|---|---|---|
+| `forUpdate()` | Blocked | Blocked | When reading then modifying |
+| `forShare()` | Allowed | Blocked | When only read consistency is needed |
+
+<Warning>
+  `forUpdate()` and `forShare()` are only meaningful within a transaction. Without a transaction, the lock is released immediately.
+</Warning>
+
 ## Fetching Results
 
 ### first

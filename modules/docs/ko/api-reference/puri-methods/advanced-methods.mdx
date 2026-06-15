@@ -114,6 +114,71 @@ await puri.table("posts").where("posts.id", 123).increment("posts.views", 1);
 await puri.table("products").where("products.id", 456).decrement("products.stock", 5);
 ```
 
+## 행 잠금 (Row Locking)
+
+트랜잭션 내에서 SELECT한 행에 잠금을 걸어 다른 트랜잭션의 동시 수정을 방지합니다.
+
+### forUpdate
+
+선택된 행에 배타적 잠금(exclusive lock)을 걸어 다른 트랜잭션이 해당 행을 수정하거나 잠글 수 없도록 합니다.
+
+```typescript
+@transactional()
+async deductBalance(userId: number, amount: number) {
+  const wdb = this.getPuri("w");
+
+  const user = await wdb
+    .table("users")
+    .select({ id: "users.id", balance: "users.balance" })
+    .where("users.id", userId)
+    .forUpdate()
+    .first();
+
+  if (!user || user.balance < amount) {
+    throw new Error("Insufficient balance");
+  }
+
+  await wdb.table("users").where("users.id", userId).update({
+    balance: user.balance - amount,
+  });
+}
+
+// SELECT users.id, users.balance FROM users WHERE users.id = ? FOR UPDATE
+```
+
+### forShare
+
+선택된 행에 공유 잠금(shared lock)을 걸어 다른 트랜잭션이 해당 행을 수정할 수 없지만 읽기는 허용합니다.
+
+```typescript
+@transactional()
+async getBalanceSnapshot(userId: number) {
+  const wdb = this.getPuri("w");
+
+  const user = await wdb
+    .table("users")
+    .select({ id: "users.id", balance: "users.balance" })
+    .where("users.id", userId)
+    .forShare()
+    .first();
+
+  return user;
+}
+
+// SELECT users.id, users.balance FROM users WHERE users.id = ? FOR SHARE
+```
+
+**forUpdate vs forShare:**
+
+| 잠금 유형 | 다른 트랜잭션의 읽기 | 다른 트랜잭션의 수정 | 사용 시점 |
+|---|---|---|---|
+| `forUpdate()` | 대기 | 대기 | 읽은 뒤 수정할 때 |
+| `forShare()` | 허용 | 대기 | 읽기 일관성만 필요할 때 |
+
+<Warning>
+  `forUpdate()`와 `forShare()`는 트랜잭션 내에서만 의미가 있습니다. 트랜잭션 없이 사용하면 잠금이 즉시 해제됩니다.
+</Warning>
+
 ## 결과 가져오기
 
 ### first

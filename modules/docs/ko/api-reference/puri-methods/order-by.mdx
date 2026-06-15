@@ -49,6 +49,74 @@ const users = await puri
 2. 두 번째 `orderBy` - 부 정렬 (주 정렬이 같을 때)
 3. 세 번째 `orderBy` - 삼차 정렬 (부 정렬도 같을 때)
 
+## NULL 정렬 순서 (nulls)
+
+세 번째 인자 `nulls`로 NULL 값의 정렬 위치를 명시할 수 있습니다.
+
+```typescript
+// NULL을 마지막으로
+const users = await puri
+  .table("users")
+  .select({ id: "users.id", name: "users.name", last_login: "users.last_login" })
+  .orderBy("users.last_login", "desc", "last");
+
+// ORDER BY users.last_login DESC NULLS LAST
+```
+
+```typescript
+// NULL을 먼저
+const posts = await puri
+  .table("posts")
+  .select({ id: "posts.id", title: "posts.title", deleted_at: "posts.deleted_at" })
+  .orderBy("posts.deleted_at", "asc", "first");
+
+// ORDER BY posts.deleted_at ASC NULLS FIRST
+```
+
+**`nulls` 옵션:**
+
+| 값 | 설명 |
+|---|---|
+| `"first"` | NULL 값을 결과의 맨 앞에 배치 |
+| `"last"` | NULL 값을 결과의 맨 뒤에 배치 |
+| 생략 | 데이터베이스 기본 동작 (PostgreSQL: ASC → NULLS LAST, DESC → NULLS FIRST) |
+
+## 배열 형태의 orderBy
+
+여러 정렬 조건을 배열로 한 번에 전달할 수 있습니다.
+
+```typescript
+const products = await puri
+  .table("products")
+  .select({
+    id: "products.id",
+    name: "products.name",
+    price: "products.price",
+    rating: "products.rating",
+  })
+  .orderBy([
+    { column: "products.rating", order: "desc", nulls: "last" },
+    { column: "products.price", order: "asc" },
+  ]);
+
+// ORDER BY products.rating DESC NULLS LAST, products.price ASC
+```
+
+배열의 각 항목은 다음 형태 중 하나입니다:
+
+- **문자열**: 컬럼명만 전달 (기본 ASC)
+- **SqlExpression**: SQL 표현식
+- **객체**: `{ column, order?, nulls? }` 형태로 상세 지정
+
+```typescript
+// 다양한 형태 혼합
+.orderBy([
+  "products.featured",                                         // 문자열: ASC
+  { column: "products.rating", order: "desc" },                // 객체: DESC
+  { column: "products.price", order: "asc", nulls: "last" },  // 객체 + nulls
+])
+```
+
 ## 실전 예시
 
 <Tabs>
@@ -152,14 +220,14 @@ const users = await puri
 
   <Tab title="NULL 처리" icon="ban">
     ```typescript
-    // NULL을 마지막으로
+    // nulls 옵션으로 NULL 위치를 명시적으로 지정
     const users = await puri.table("users")
       .select({
         id: "users.id",
         name: "users.name",
         last_login: "users.last_login"
       })
-      .orderBy("users.last_login", "desc");  // NULL은 자동으로 마지막
+      .orderBy("users.last_login", "desc", "last");  // NULL을 마지막으로
 
     // NULL을 먼저
     const posts = await puri.table("posts")
@@ -168,7 +236,7 @@ const users = await puri
         title: "posts.title",
         deleted_at: "posts.deleted_at"
       })
-      .orderBy("posts.deleted_at", "asc");  // NULL이 먼저 옴
+      .orderBy("posts.deleted_at", "asc", "first");  // NULL을 먼저
     ```
 
   </Tab>
@@ -385,8 +453,9 @@ CREATE INDEX idx_products_category_price ON products(category, price);
 // PostgreSQL: NULL LAST (기본)
 .orderBy("users.last_login", "desc")
 
-// 명시적으로 지정하려면 raw SQL
-.whereRaw("ORDER BY users.last_login DESC NULLS FIRST")
+// nulls 옵션으로 명시적으로 지정 가능
+.orderBy("users.last_login", "desc", "first")  // NULLS FIRST
+.orderBy("users.last_login", "desc", "last")   // NULLS LAST
 ```
 
 ### 3. 대소문자 구분
