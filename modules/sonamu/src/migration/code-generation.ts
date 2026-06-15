@@ -15,6 +15,10 @@ import {
 import { isSearchTextProp } from "../types/types";
 import { formatCode } from "../utils/formatter";
 import { differenceWith, intersectionBy } from "../utils/utils";
+import {
+  normalizeIndexWherePredicate,
+  normalizeIndexWherePredicateForComparison,
+} from "./index-where-predicate";
 import { PostgreSQLSchemaReader } from "./postgresql-schema-reader";
 
 /**
@@ -1612,15 +1616,28 @@ export function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: Mi
 
   const normalizedEntityIndexes = entityIndexes.map(setMigrationIndexDefaults);
   const normalizedDbIndexes = dbIndexes.map(setMigrationIndexDefaults);
+  // 비교에는 정규화된 predicate를 쓰되, 실제 migration 출력은 원본 SQL을 보존한다.
+  const comparisonEntityIndexes = entityIndexes.map(setMigrationIndexComparisonDefaults);
+  const comparisonDbIndexes = dbIndexes.map(setMigrationIndexComparisonDefaults);
   const extraIndexes = {
-    db: diff(normalizedDbIndexes, normalizedEntityIndexes, identity),
-    entity: diff(normalizedEntityIndexes, normalizedDbIndexes, identity),
+    db: diff(comparisonDbIndexes, comparisonEntityIndexes, identity),
+    entity: diff(comparisonEntityIndexes, comparisonDbIndexes, identity),
   };
   if (extraIndexes.entity.length > 0) {
-    indexesTo.add = indexesTo.add.concat(extraIndexes.entity);
+    const addIdentities = new Set(extraIndexes.entity.map(identity));
+    indexesTo.add = indexesTo.add.concat(
+      normalizedEntityIndexes.filter((_, index) =>
+        addIdentities.has(identity(comparisonEntityIndexes[index])),
+      ),
+    );
   }
   if (extraIndexes.db.length > 0) {
-    indexesTo.drop = indexesTo.drop.concat(extraIndexes.db);
+    const dropIdentities = new Set(extraIndexes.db.map(identity));
+    indexesTo.drop = indexesTo.drop.concat(
+      normalizedDbIndexes.filter((_, index) =>
+        dropIdentities.has(identity(comparisonDbIndexes[index])),
+      ),
+    );
   }
 
   return indexesTo;
@@ -1639,10 +1656,24 @@ function genIndexDropDefinition(index: MigrationIndex) {
  * DB 조회 결과와 비교하기 위한 인덱스 기본값 설정
  */
 export function setMigrationIndexDefaults(index: MigrationIndex): MigrationIndex {
+  return setMigrationIndexDefaultsBase(index, false);
+}
+
+function setMigrationIndexComparisonDefaults(index: MigrationIndex): MigrationIndex {
+  // DB canonical SQL과 entity SQL의 표현 차이를 diff identity에서만 흡수한다.
+  return setMigrationIndexDefaultsBase(index, true);
+}
+
+function setMigrationIndexDefaultsBase(
+  index: MigrationIndex,
+  normalizeWhereForComparison: boolean,
+): MigrationIndex {
   const isVectorIndex = index.type === "hnsw" || index.type === "ivfflat";
   const supportsOrdering = !isVectorIndex && (!index.using || index.using === "btree");
   const normalizedUsing = isVectorIndex ? index.using : (index.using ?? "btree");
-  const normalizedWhere = normalizeIndexWherePredicate(index.where);
+  const normalizedWhere = normalizeWhereForComparison
+    ? normalizeIndexWherePredicateForComparison(index.where)
+    : normalizeIndexWherePredicate(index.where);
 
   return {
     ...index,
@@ -1660,73 +1691,6 @@ export function setMigrationIndexDefaults(index: MigrationIndex): MigrationIndex
     ...(normalizedUsing ? { using: normalizedUsing } : {}),
     ...(normalizedWhere ? { where: normalizedWhere } : {}),
   };
-}
-
-function normalizeIndexWherePredicate(where: string | undefined): string | undefined {
-  if (!where) {
-    return undefined;
-  }
-
-  const trimmed = where.trim();
-  if (trimmed.length === 0) {
-    return undefined;
-  }
-
-  if (trimmed.startsWith("(") && trimmed.endsWith(")")) {
-    const closeIndex = findMatchingParenthesisInSql(trimmed, 0);
-    if (closeIndex === trimmed.length - 1) {
-      return trimmed.slice(1, -1).trim();
-    }
-  }
-
-  return trimmed;
-}
-
-function findMatchingParenthesisInSql(source: string, openIndex: number): number {
-  let depth = 0;
-  let inSingleQuote = false;
-  let inDoubleQuote = false;
-
-  for (let index = openIndex; index < source.length; index += 1) {
-    const char = source[index];
-    const nextChar = source[index + 1];
-
-    if (char === "'" && !inDoubleQuote) {
-      if (inSingleQuote && nextChar === "'") {
-        index += 1;
-        continue;
-      }
-      inSingleQuote = !inSingleQuote;
-      continue;
-    }
-
-    if (char === '"' && !inSingleQuote) {
-      if (inDoubleQuote && nextChar === '"') {
-        index += 1;
-        continue;
-      }
-      inDoubleQuote = !inDoubleQuote;
-      continue;
-    }
-
-    if (inSingleQuote || inDoubleQuote) {
-      continue;
-    }
-
-    if (char === "(") {
-      depth += 1;
-      continue;
-    }
-
-    if (char === ")") {
-      depth -= 1;
-      if (depth === 0) {
-        return index;
-      }
-    }
-  }
-
-  return -1;
 }
 
 /**

@@ -488,6 +488,46 @@ describe("code-generation partial index DDL", () => {
     expect(alterIndexesTo.drop).toHaveLength(0);
   });
 
+  test("partial index predicate의 text cast 위치 차이는 alter diff에서 no-op이어야 한다", () => {
+    const entityIndex: MigrationIndex = {
+      type: "index",
+      name: "file_descriptions_idx_context_created_at",
+      using: "btree",
+      columns: [{ name: "context" }, { name: "created_at" }],
+      where:
+        "(context)::text = ANY ((ARRAY['ast_result'::character varying, 'culture_result'::character varying])::text[])",
+    };
+    const dbIndex: MigrationIndex = {
+      ...setMigrationIndexDefaults(entityIndex),
+      where:
+        "context = ANY (ARRAY[('ast_result'::character varying)::text, ('culture_result'::character varying)::text])",
+    };
+
+    const alterIndexesTo = getAlterIndexesTo([entityIndex], [dbIndex]);
+
+    expect(alterIndexesTo.add).toHaveLength(0);
+    expect(alterIndexesTo.drop).toHaveLength(0);
+  });
+
+  test("partial index predicate의 IN과 ANY 동치 표현은 alter diff에서 no-op이어야 한다", () => {
+    const entityIndex: MigrationIndex = {
+      type: "index",
+      name: "file_descriptions_idx_context_created_at",
+      columns: [{ name: "context" }, { name: "created_at" }],
+      where: "context IN ('ast_result', 'culture_result')",
+    };
+    const dbIndex: MigrationIndex = {
+      ...setMigrationIndexDefaults(entityIndex),
+      where:
+        "context = ANY (ARRAY[('ast_result'::character varying)::text, ('culture_result'::character varying)::text])",
+    };
+
+    const alterIndexesTo = getAlterIndexesTo([entityIndex], [dbIndex]);
+
+    expect(alterIndexesTo.add).toHaveLength(0);
+    expect(alterIndexesTo.drop).toHaveLength(0);
+  });
+
   test("partial index predicate 변경은 alter diff에서 drop/add 대상이어야 한다", async () => {
     const previousIndex: MigrationIndex = {
       type: "index",
