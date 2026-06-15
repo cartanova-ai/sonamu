@@ -314,14 +314,13 @@ export interface SonamuFile extends SonamuFileBase, SonamuFileExtend {}
  */
 export interface UploadParams {}
 
-export const SonamuFileSchema = z
-  .object({
+export const SonamuFileSchema: z.ZodType<SonamuFile> = z
+  .looseObject({
     name: z.string(),
     url: z.string(),
     mime_type: z.string(),
     size: z.number(),
-  })
-  .and(z.custom<SonamuFileExtend>());
+  });
 
 export const SonamuFileArraySchema = z.array(SonamuFileSchema);
 
