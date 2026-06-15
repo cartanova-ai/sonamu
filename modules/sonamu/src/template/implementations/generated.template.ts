@@ -92,14 +92,14 @@ export class Template__generated extends Template {
 
         return [
           `// CustomScalar: ${importKey}`,
-          `const ${importKey} = ${zodTypeToZodCode(zodType)};`,
+          `const ${importKey} = ${zodTypeToZodCode(zodType, sourceCode.importKeys)};`,
           `type ${importKey} = z.infer<typeof ${importKey}>`,
           "",
         ];
       });
       sourceCode.lines = [...customScalarLines, ...sourceCode.lines];
-      sourceCode.importKeys = sourceCode.importKeys.filter(
-        (importKey) => !cdImportKeys.includes(importKey),
+      sourceCode.importKeys = unique(
+        sourceCode.importKeys.filter((importKey) => !cdImportKeys.includes(importKey)),
       );
     }
 

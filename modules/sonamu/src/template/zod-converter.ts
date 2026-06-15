@@ -92,6 +92,11 @@ export const BUILT_IN_TYPES = {
   },
 } as const;
 
+function getBuiltInSchemaName(zodType: z.ZodType): string | undefined {
+  const matched = Object.entries(BUILT_IN_TYPES).find(([typeId]) => zodType.description === typeId);
+  return matched?.[1].schemaName;
+}
+
 /**
  * zodFormat을 Zod 4 코드 문자열로 변환합니다.
  * Zod 4에서는 z.email(), z.uuid() 등 독립적인 함수 형태를 사용합니다.
@@ -537,7 +542,13 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
 /**
  * Zod 타입 인스턴스를 해당하는 Zod 코드 문자열로 변환합니다.
  */
-export function zodTypeToZodCode(zt: z.ZodType): string {
+export function zodTypeToZodCode(zt: z.ZodType, injectImportKeys: string[] = []): string {
+  const builtInSchemaName = getBuiltInSchemaName(zt);
+  if (builtInSchemaName) {
+    injectImportKeys.push(builtInSchemaName);
+    return builtInSchemaName;
+  }
+
   switch (zt.def.type) {
     case "string":
       return "z.string()";
@@ -560,15 +571,16 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
     case "never":
       return "z.never()";
     case "nullable":
-      return `${zodTypeToZodCode((zt as AnyZodNullable).def.innerType)}.nullable()`;
+      return `${zodTypeToZodCode((zt as AnyZodNullable).def.innerType, injectImportKeys)}.nullable()`;
     case "default": {
       const zDefaultDef = (zt as AnyZodDefault).def;
-      return `${zodTypeToZodCode(zDefaultDef.innerType)}.default(${zDefaultDef.defaultValue})`;
+      return `${zodTypeToZodCode(zDefaultDef.innerType, injectImportKeys)}.default(${zDefaultDef.defaultValue})`;
     }
     case "record": {
       const zRecordDef = (zt as AnyZodRecord).def;
-      return `z.record(${zodTypeToZodCode(zRecordDef.keyType)}, ${zodTypeToZodCode(
+      return `z.record(${zodTypeToZodCode(zRecordDef.keyType, injectImportKeys)}, ${zodTypeToZodCode(
         zRecordDef.valueType,
+        injectImportKeys,
       )})`;
     }
     case "literal": {
@@ -595,7 +607,7 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
     }
     case "union":
       return `z.union([${(zt as AnyZodUnion).def.options
-        .map((option: z.ZodType) => zodTypeToZodCode(option))
+        .map((option: z.ZodType) => zodTypeToZodCode(option, injectImportKeys))
         .join(",")}])`;
     case "enum":
       // NOTE: z.enum(["A", "B"])도 z.enum({ A: "A", B: "B" })로 처리됨.
@@ -603,17 +615,19 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
         .map(([key, val]) => (typeof val === "string" ? `${key}: "${val}"` : `${key}: ${val}`))
         .join(", ")}})`;
     case "array":
-      return `z.array(${zodTypeToZodCode((zt as z.ZodArray<z.ZodType>).def.element)})`;
+      return `z.array(${zodTypeToZodCode((zt as z.ZodArray<z.ZodType>).def.element, injectImportKeys)})`;
     case "object": {
       const shape = (zt as AnyZodObject).shape;
       return [
         "z.object({",
-        ...Object.keys(shape).map((key) => `${key}: ${zodTypeToZodCode(shape[key])},`),
+        ...Object.keys(shape).map(
+          (key) => `${key}: ${zodTypeToZodCode(shape[key], injectImportKeys)},`,
+        ),
         "})",
       ].join("\n");
     }
     case "optional":
-      return `${zodTypeToZodCode((zt as z.ZodOptional<z.ZodType>).def.innerType)}.optional()`;
+      return `${zodTypeToZodCode((zt as z.ZodOptional<z.ZodType>).def.innerType, injectImportKeys)}.optional()`;
     case "file":
       return `z.file()`;
     case "template_literal": {
@@ -632,7 +646,7 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
         }
         // ZodType - 재귀적으로 변환
         if (part && typeof part === "object" && (part as z.ZodType)._zod) {
-          return zodTypeToZodCode(part as z.ZodType);
+          return zodTypeToZodCode(part as z.ZodType, injectImportKeys);
         }
 
         // 폴백
@@ -643,7 +657,10 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
     }
     case "intersection": {
       const zIntersectionDef = (zt as z.ZodIntersection<z.ZodType, z.ZodType>).def;
-      return `z.intersection(${zodTypeToZodCode(zIntersectionDef.left)}, ${zodTypeToZodCode(zIntersectionDef.right)})`;
+      return `z.intersection(${zodTypeToZodCode(
+        zIntersectionDef.left,
+        injectImportKeys,
+      )}, ${zodTypeToZodCode(zIntersectionDef.right, injectImportKeys)})`;
     }
     default:
       throw new Error(`처리되지 않은 ZodType ${zt.def.type}`);

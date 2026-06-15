@@ -1,10 +1,12 @@
 import { describe, expect, test } from "vitest";
+import { z } from "zod";
 
 import { Sonamu } from "../../api";
 import { EntityManager } from "../../entity/entity-manager";
+import { SonamuFileArraySchema, SonamuFileSchema } from "../../types/types";
 import { Template__generated } from "../implementations/generated.template";
 import { Template__init_types } from "../implementations/init_types.template";
-import { propToZodType, propToZodTypeDef } from "../zod-converter";
+import { propToZodType, propToZodTypeDef, zodTypeToZodCode } from "../zod-converter";
 
 const TEST_API_ROOT = "/Users/Nebuleto/Workspace/sonamu/modules/sonamu";
 
@@ -50,7 +52,68 @@ async function registerEntity() {
   return EntityManager.get(entity.id);
 }
 
+async function registerEntityWithFileCustomScalar() {
+  entitySeq += 1;
+
+  const typeId = `GeneratedTemplateFileProps${entitySeq}`;
+  const entity = {
+    id: `GeneratedTemplateFile${entitySeq}`,
+    title: `GeneratedTemplateFile${entitySeq}`,
+    table: `generated_template_file_${entitySeq}`,
+    props: [
+      { name: "id", type: "integer" as const },
+      {
+        name: "file_props",
+        type: "json" as const,
+        id: typeId,
+      },
+    ],
+    indexes: [],
+    subsets: {
+      A: ["id", "file_props"],
+    },
+    enums: {},
+  };
+
+  await EntityManager.register(entity);
+
+  const registeredEntity = EntityManager.get(entity.id);
+  registeredEntity.types[typeId] = z.object({
+    image: SonamuFileSchema.nullable(),
+  });
+
+  return { typeId };
+}
+
 describe("Template__generated searchText", () => {
+  test("SonamuFileSchema를 중첩 Zod 코드에서 내장 스키마 import로 유지해야 한다", () => {
+    const importKeys: string[] = [];
+    const code = zodTypeToZodCode(
+      z.object({
+        image: SonamuFileSchema.nullable(),
+        attachments: SonamuFileArraySchema.optional(),
+      }),
+      importKeys,
+    );
+
+    expect(code).toContain("image: SonamuFileSchema.nullable(),");
+    expect(code).toContain("attachments: SonamuFileArraySchema.optional(),");
+    expect(importKeys).toEqual(["SonamuFileSchema", "SonamuFileArraySchema"]);
+  });
+
+  test("custom scalar 안의 SonamuFileSchema를 inline할 때 sonamu import를 유지해야 한다", async () => {
+    const { typeId } = await registerEntityWithFileCustomScalar();
+    const template = new Template__generated();
+    template.getTargetAndPath = () => ({ target: "", path: "" });
+
+    const rendered = template.render();
+    const headers = rendered.customHeaders.join("\n");
+
+    expect(rendered.body).toContain(`const ${typeId} = z.object({`);
+    expect(rendered.body).toContain("image: SonamuFileSchema.nullable(),");
+    expect(headers).toContain("SonamuFileSchema");
+  });
+
   test("searchText를 문자열 스키마로 변환해야 한다", async () => {
     const prop = {
       name: "search_text",
