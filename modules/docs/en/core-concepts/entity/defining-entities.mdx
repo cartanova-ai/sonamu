@@ -155,6 +155,25 @@ Defines database indexes.
 - `hnsw` - HNSW index for Vector search
 - `ivfflat` - IVFFlat index for Vector search
 
+**Partial Index**:
+
+Use the `where` field to define a PostgreSQL partial index. A partial index covers only rows matching the given condition, reducing index size and improving performance.
+
+```json
+{
+  "indexes": [
+    {
+      "type": "unique",
+      "name": "users_email_active_unique",
+      "columns": [{ "name": "email" }],
+      "where": "deleted_at IS NULL"
+    }
+  ]
+}
+```
+
+The `where` value is a raw SQL predicate without the `WHERE` keyword. It is used as-is in the generated migration, so never concatenate user input into this field.
+
 ### subsets
 
 Defines field combinations for API responses.
