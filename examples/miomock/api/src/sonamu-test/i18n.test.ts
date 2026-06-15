@@ -277,6 +277,13 @@ describe("i18n", () => {
   });
 
   describe("SD.enumLabels", () => {
+    test("Symbol key 접근 시 예외 없이 undefined 반환", () => {
+      const labels = SD.enumLabels("TagOrderBy");
+
+      expect(() => Reflect.get(labels, Symbol.toStringTag)).not.toThrow();
+      expect(Reflect.get(labels, Symbol.toStringTag)).toBeUndefined();
+    });
+
     test("ko locale인 경우, 한국어 라벨 반환", async () => {
       await runWithContext(
         {

@@ -294,7 +294,11 @@ export function localizedColumn<T extends Record<string, unknown>, K extends Loc
  */
 SD.enumLabels = (enumName: string): Record<string, LocalizedString> => {
   return new Proxy({} as Record<string, LocalizedString>, {
-    get(_, key: string) {
+    get(_, key: string | symbol) {
+      if (typeof key === "symbol") {
+        return undefined;
+      }
+
       const dictKey = \`enum.\${enumName}.\${key}\` as DictKey;
       return getDictValue(dictKey, getCurrentLocale());
     }
