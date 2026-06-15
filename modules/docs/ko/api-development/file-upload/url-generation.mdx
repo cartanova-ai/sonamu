@@ -500,7 +500,7 @@ class FileModel extends BaseModelClass {
         size,
         url: await disk.getUrl(key),
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return {
       fileId: record.id,

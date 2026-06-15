@@ -200,7 +200,7 @@ class UserModel extends BaseModelClass {
         password: params.password, // 실제로는 해시 필요
         role: params.role,
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return { userId: user.id };
   }

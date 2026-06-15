@@ -200,7 +200,7 @@ class UserModel extends BaseModelClass {
         password: params.password, // Should be hashed in practice
         role: params.role,
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return { userId: user.id };
   }

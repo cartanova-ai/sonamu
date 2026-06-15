@@ -526,7 +526,7 @@ class FileModel extends BaseModelClass {
         tags: tags ? JSON.stringify(tags) : null,
         uploaded_at: new Date(),
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return {
       fileId: record.id,

@@ -78,7 +78,7 @@ class UserModel extends BaseModelClass {
 
     return wdb.transaction(async (trx) => {
       // 1. Create User
-      const [user] = await trx.table("users").insert(userData).returning({ id: "id" });
+      const [user] = await trx.table("users").insert(userData).returning("id");
 
       // 2. Update Profile
       await trx.table("users").where("id", user.id).update({ bio: profileData.bio });
@@ -112,7 +112,7 @@ class OrderModel extends BaseModelClass {
       const [order] = await trx
         .table("orders")
         .insert({ user_id: userId, status: "pending" })
-        .returning({ id: "id" });
+        .returning("id");
 
       // 3. Decrement stock
       for (const item of items) {
@@ -259,7 +259,7 @@ class OrderModel extends BaseModelClass {
       const [order] = await trx
         .table("orders")
         .insert({ user_id: userId, status: "pending" })
-        .returning({ id: "id" });
+        .returning("id");
 
       // 2. Validation
       const totalAmount = await this.calculateTotal(items);
@@ -358,7 +358,7 @@ class UserModel extends BaseModelClass {
         }
 
         // Create User
-        const [user] = await trx.table("users").insert(data).returning({ id: "id" });
+        const [user] = await trx.table("users").insert(data).returning("id");
 
         return user.id;
       });
@@ -431,7 +431,7 @@ class UserModel extends BaseModelClass {
       .transaction(async (trx) => {
         console.log("[TRX] Inside transaction");
 
-        const [userId] = await trx.table("users").insert(data).returning({ id: "id" });
+        const [userId] = await trx.table("users").insert(data).returning("id");
 
         console.log("[TRX] User created:", userId);
 
@@ -536,7 +536,7 @@ class UserModel extends BaseModelClass {
     return wdb.transaction(async (trx) => {
       // Conditional work
       if (await this.shouldCreateUser(data)) {
-        const [id] = await trx.table("users").insert(data).returning({ id: "id" });
+        const [id] = await trx.table("users").insert(data).returning("id");
         return id.id;
       }
 

@@ -116,7 +116,7 @@ class UserModel extends BaseModelClass {
 
     // User 생성
     const wdb = this.getPuri("w");
-    const [userId] = await wdb.table("users").insert(params).returning({ id: "id" });
+    const [userId] = await wdb.table("users").insert(params).returning("id");
 
     return { userId: userId.id };
   }
@@ -169,7 +169,7 @@ class PostModel extends BaseModelClass {
         user_id: context.user.id,
         author: context.user.username,
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return { postId: post.id };
   }
@@ -265,7 +265,7 @@ class OrderModel extends BaseModelClass {
         user_id: context.user!.id,
         ip_address: context.request.ip,
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return { orderId: order.id };
   }

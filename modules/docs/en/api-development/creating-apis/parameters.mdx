@@ -107,7 +107,7 @@ class UserModel extends BaseModelClass {
         password: params.password,
         role: params.role,
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return { userId: user.id };
   }
@@ -462,7 +462,7 @@ class UserModel extends BaseModelClass {
         age: validated.age,
         role: validated.role,
       })
-      .returning({ id: "id" });
+      .returning("id");
 
     return { userId: user.id };
   }
