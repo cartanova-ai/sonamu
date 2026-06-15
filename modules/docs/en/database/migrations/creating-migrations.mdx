@@ -223,7 +223,13 @@ export async function down(knex: Knex): Promise<void> {
 {
   "indexes": [
     { "type": "unique", "column": "email" },
-    { "type": "index", "column": "username" } // ← Added
+    { "type": "index", "column": "username" }, // ← Added
+    {
+      "type": "unique",
+      "name": "users_email_active_unique",
+      "columns": [{ "name": "email" }],
+      "where": "deleted_at IS NULL"
+    }
   ]
 }
 ```
@@ -236,14 +242,22 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     table.index(["username"], "users_username_index");
   });
+  await knex.raw(
+    `CREATE UNIQUE INDEX users_email_active_unique ON users (email) WHERE deleted_at IS NULL`,
+  );
 }
 
 export async function down(knex: Knex): Promise<void> {
+  await knex.raw(`DROP INDEX IF EXISTS users_email_active_unique`);
   await knex.schema.alterTable("users", (table) => {
     table.dropIndex(["username"], "users_username_index");
   });
 }
 ```
+
+`where` is a raw SQL predicate used directly as a PostgreSQL partial index condition. Do not combine it
+with user input — only declare stable column conditions. Even when PostgreSQL introspection returns
+the predicate wrapped in parentheses, Sonamu treats it as the same condition in migration diffs.
 
 ### Adding Foreign Key
 
