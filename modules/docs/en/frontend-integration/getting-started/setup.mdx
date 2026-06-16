@@ -254,9 +254,9 @@ Both `SonamuFile` and `UploadParams` can be extended with project-specific field
 
 ```typescript
 // src/types/sonamu-file-extend.d.ts
-import "sonamu";
+import "@sonamu-kit/react-components";
 
-declare module "sonamu" {
+declare module "@sonamu-kit/react-components" {
   interface SonamuFileExtend {
     thumbnailUrl?: string;
     category?: string;
@@ -269,7 +269,7 @@ declare module "sonamu" {
 }
 ```
 
-This follows the same declaration merging pattern as `ContextExtend`.
+Since the frontend imports `SonamuFile` and `UploadParams` from `@sonamu-kit/react-components`, the declaration merging target must be the same module.
 
 </Info>
 

@@ -254,9 +254,9 @@ interface UploadParams {}
 
 ```typescript
 // src/types/sonamu-file-extend.d.ts
-import "sonamu";
+import "@sonamu-kit/react-components";
 
-declare module "sonamu" {
+declare module "@sonamu-kit/react-components" {
   interface SonamuFileExtend {
     thumbnailUrl?: string;
     category?: string;
@@ -269,7 +269,7 @@ declare module "sonamu" {
 }
 ```
 
-이 패턴은 `ContextExtend`와 동일한 declaration merging 방식입니다.
+프론트엔드에서 `SonamuFile`과 `UploadParams`는 `@sonamu-kit/react-components`에서 import하므로, declaration merging 대상도 동일한 모듈이어야 합니다.
 
 </Info>
 
