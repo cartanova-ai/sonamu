@@ -109,7 +109,7 @@ async downloadFile(fileId: number, ctx: Context) {
     .first();
 
   if (!file) {
-    throw new NotFoundError("File not found");
+    throw new NotFoundException("File not found");
   }
 
   // Read file from storage

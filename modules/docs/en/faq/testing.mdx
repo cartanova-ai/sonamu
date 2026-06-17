@@ -303,7 +303,7 @@ describe("User API", () => {
 <Accordion title="How do I test errors?">
 
 ```typescript
-import { BadRequestError, NotFoundError } from "sonamu";
+import { BadRequestException, NotFoundException, UnauthorizedException } from "sonamu";
 
 describe("User API Errors", () => {
   test("createUser - duplicate email", async () => {
@@ -312,17 +312,17 @@ describe("User API Errors", () => {
         name: "Test",
         email: "john@example.com", // Already exists
       }),
-    ).rejects.toThrow(BadRequestError);
+    ).rejects.toThrow(BadRequestException);
   });
 
   test("findById - non-existent ID", async () => {
-    await expect(UserModel.findById(99999)).rejects.toThrow(NotFoundError);
+    await expect(UserModel.findById(99999)).rejects.toThrow(NotFoundException);
   });
 
   test("deleteUser - no permission", async () => {
     await expect(
       UserModel.deleteUser(1), // Permission check fails
-    ).rejects.toThrow(ForbiddenError);
+    ).rejects.toThrow(UnauthorizedException);
   });
 });
 ```

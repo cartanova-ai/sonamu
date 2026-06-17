@@ -303,7 +303,7 @@ describe("User API", () => {
 <Accordion title="에러를 테스트하려면?">
 
 ```typescript
-import { BadRequestError, NotFoundError } from "sonamu";
+import { BadRequestException, NotFoundException, UnauthorizedException } from "sonamu";
 
 describe("User API Errors", () => {
   test("createUser - 이메일 중복", async () => {
@@ -312,17 +312,17 @@ describe("User API Errors", () => {
         name: "Test",
         email: "john@example.com", // 이미 존재
       }),
-    ).rejects.toThrow(BadRequestError);
+    ).rejects.toThrow(BadRequestException);
   });
 
   test("findById - 존재하지 않는 ID", async () => {
-    await expect(UserModel.findById(99999)).rejects.toThrow(NotFoundError);
+    await expect(UserModel.findById(99999)).rejects.toThrow(NotFoundException);
   });
 
   test("deleteUser - 권한 없음", async () => {
     await expect(
       UserModel.deleteUser(1), // 권한 체크 실패
-    ).rejects.toThrow(ForbiddenError);
+    ).rejects.toThrow(UnauthorizedException);
   });
 });
 ```

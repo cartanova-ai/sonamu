@@ -325,7 +325,7 @@ export class ProductModel extends BaseModelClass {
 
   async reserveStock(quantity: number) {
     if (!this.hasStock(quantity)) {
-      throw new BadRequestError("Out of stock");
+      throw new BadRequestException("Out of stock");
     }
 
     await this.update({ stock: this.stock - quantity });
