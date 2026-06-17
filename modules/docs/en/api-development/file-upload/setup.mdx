@@ -28,7 +28,6 @@ Sonamu allows you to easily handle file uploads through the `@upload` decorator.
 
 ```typescript
 import { BaseModelClass, api, upload } from "sonamu";
-import type { UploadedFile } from "sonamu";
 import type { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
 import { fileLoaderQueries, fileSubsetQueries } from "../sonamu.generated.sso";
 
@@ -155,7 +154,7 @@ Sonamu provides a Storage Manager that manages multiple storages in an integrate
 
 ```typescript
 // storage.config.ts
-import type { StorageConfig } from "sonamu";
+import type { StorageConfig } from "sonamu/storage";
 
 export const storageConfig: StorageConfig = {
   default: "local", // Default disk

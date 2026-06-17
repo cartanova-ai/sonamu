@@ -29,8 +29,6 @@ Learn how to save files to local, S3, GCS, and other storage using Sonamu's Stor
 The `saveToDisk()` method of `UploadedFile` is the simplest way to save files.
 
 ```typescript
-import type { UploadedFile } from "sonamu";
-
 class FileModel extends BaseModelClass {
   @upload()
   async upload(): Promise<{ url: string }> {
@@ -130,7 +128,7 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 // storage.config.ts
-import type { StorageConfig } from "sonamu";
+import type { StorageConfig } from "sonamu/storage";
 
 export const storageConfig: StorageConfig = {
   default: "local", // Default disk

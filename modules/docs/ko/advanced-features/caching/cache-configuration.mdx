@@ -24,7 +24,8 @@ BentoCache는 Multi-tier 캐싱을 지원하는 TypeScript 캐시 라이브러�
 `sonamu.config.ts`의 `server.cache` 필드에 캐시 설정을 추가합니다:
 
 ```typescript
-import { drivers, store, type SonamuConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+import type { SonamuConfig } from "sonamu";
 
 export const config: SonamuConfig = {
   // ... 기타 설정
