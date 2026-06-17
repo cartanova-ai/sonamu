@@ -12,7 +12,7 @@ SSE 엔드포인트를 정의하는 데코레이터입니다.
 ### 기본 사용법
 
 ```typescript
-import { BaseModelClass, stream, z } from "sonamu";
+import { type Context, BaseModelClass, stream, z } from "sonamu";
 
 class NotificationModelClass extends BaseModelClass {
   @stream({
@@ -24,7 +24,7 @@ class NotificationModelClass extends BaseModelClass {
       }),
     }),
   })
-  async streamNotifications(userId: number, ctx: Context) {
+  async streamNotifications(userId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         notification: z.object({
@@ -42,8 +42,6 @@ class NotificationModelClass extends BaseModelClass {
 
     // 연결 종료
     await sse.end();
-
-    return sse;
   }
 }
 ```

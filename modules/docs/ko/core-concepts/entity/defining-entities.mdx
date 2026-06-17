@@ -152,6 +152,25 @@ Entity의 속성(컬럼) 배열입니다. 각 속성은 타입과 옵션을 정�
 - `hnsw` - Vector 검색용 HNSW 인덱스
 - `ivfflat` - Vector 검색용 IVFFlat 인덱스
 
+**Partial Index (조건부 인덱스)**:
+
+`where` 필드를 사용하면 PostgreSQL partial index를 정의할 수 있습니다. 특정 조건을 만족하는 행에만 인덱스를 생성하여 인덱스 크기를 줄이고 성능을 높일 수 있습니다.
+
+```json
+{
+  "indexes": [
+    {
+      "type": "unique",
+      "name": "users_email_active_unique",
+      "columns": [{ "name": "email" }],
+      "where": "deleted_at IS NULL"
+    }
+  ]
+}
+```
+
+`where`에는 `WHERE` 키워드를 제외한 SQL 조건식을 입력합니다. 이 값은 마이그레이션 생성 시 그대로 사용되므로 사용자 입력을 조합하지 마세요.
+
 ### subsets
 
 API 응답에서 사용할 필드 조합을 정의합니다.

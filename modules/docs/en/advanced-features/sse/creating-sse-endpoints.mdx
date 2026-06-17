@@ -12,7 +12,7 @@ A decorator for defining SSE endpoints.
 ### Basic Usage
 
 ```typescript
-import { BaseModelClass, stream, z } from "sonamu";
+import { type Context, BaseModelClass, stream, z } from "sonamu";
 
 class NotificationModelClass extends BaseModelClass {
   @stream({
@@ -24,7 +24,7 @@ class NotificationModelClass extends BaseModelClass {
       }),
     }),
   })
-  async streamNotifications(userId: number, ctx: Context) {
+  async streamNotifications(userId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         notification: z.object({
@@ -42,8 +42,6 @@ class NotificationModelClass extends BaseModelClass {
 
     // Close connection
     await sse.end();
-
-    return sse;
   }
 }
 ```
