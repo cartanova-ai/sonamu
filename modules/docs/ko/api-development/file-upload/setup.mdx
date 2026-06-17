@@ -28,7 +28,6 @@ Sonamu는 `@upload` 데코레이터를 통해 파일 업로드를 간편하게 �
 
 ```typescript
 import { BaseModelClass, api, upload } from "sonamu";
-import type { UploadedFile } from "sonamu";
 import type { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
 import { fileLoaderQueries, fileSubsetQueries } from "../sonamu.generated.sso";
 
@@ -155,7 +154,7 @@ Sonamu는 여러 스토리지를 통합 관리하는 Storage Manager를 제공�
 
 ```typescript
 // storage.config.ts
-import type { StorageConfig } from "sonamu";
+import type { StorageConfig } from "sonamu/storage";
 
 export const storageConfig: StorageConfig = {
   default: "local", // 기본 디스크

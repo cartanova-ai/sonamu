@@ -24,7 +24,8 @@ BentoCache is a TypeScript cache library that supports multi-tier caching.
 Add cache configuration to the `server.cache` field in `sonamu.config.ts`:
 
 ```typescript
-import { drivers, store, type SonamuConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+import type { SonamuConfig } from "sonamu";
 
 export const config: SonamuConfig = {
   // ... other settings

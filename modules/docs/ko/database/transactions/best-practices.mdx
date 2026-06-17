@@ -695,7 +695,7 @@ class InventoryModelClass extends BaseModelClass {
       const product = await wdb.table("products").where("id", item.productId).first();
 
       if (!product || product.stock < item.quantity) {
-        throw new BadRequestError(`상품 ${item.productId}의 재고가 부족합니다.`);
+        throw new BadRequestException(`상품 ${item.productId}의 재고가 부족합니다.`);
       }
 
       // 재고 차감
@@ -836,11 +836,11 @@ class ProductModelClass extends BaseModelClass {
       .first();
 
     if (!product) {
-      throw new NotFoundError("상품을 찾을 수 없습니다");
+      throw new NotFoundException("상품을 찾을 수 없습니다");
     }
 
     if (product.stock < quantity) {
-      throw new BadRequestError("재고가 부족합니다");
+      throw new BadRequestException("재고가 부족합니다");
     }
 
     // 재고 차감
@@ -947,7 +947,7 @@ class PaymentModelClass extends BaseModelClass {
     // 1. 주문 정보 조회 (읽기 전용)
     const order = await this.findOrderById(orderId);
     if (!order) {
-      throw new NotFoundError("주문을 찾을 수 없습니다");
+      throw new NotFoundException("주문을 찾을 수 없습니다");
     }
 
     // 2. 외부 결제 API 호출 (트랜잭션 밖)
