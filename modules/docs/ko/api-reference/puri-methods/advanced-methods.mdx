@@ -170,10 +170,14 @@ async getBalanceSnapshot(userId: number) {
 
 **forUpdate vs forShare:**
 
-| 잠금 유형 | 다른 트랜잭션의 읽기 | 다른 트랜잭션의 수정 | 사용 시점 |
-|---|---|---|---|
-| `forUpdate()` | 대기 | 대기 | 읽은 뒤 수정할 때 |
-| `forShare()` | 허용 | 대기 | 읽기 일관성만 필요할 때 |
+| 잠금 유형 | 일반 SELECT | 다른 잠금 요청 (FOR UPDATE / FOR SHARE) | 수정 (UPDATE / DELETE) | 사용 시점 |
+|---|---|---|---|---|
+| `forUpdate()` | 허용 | 대기 | 대기 | 읽은 뒤 수정할 때 |
+| `forShare()` | 허용 | FOR UPDATE만 대기 | 대기 | 읽기 일관성만 필요할 때 |
+
+<Note>
+  PostgreSQL MVCC 하에서 행 잠금(`FOR UPDATE` / `FOR SHARE`)은 일반 `SELECT` 읽기를 차단하지 않습니다. 차단되는 것은 같은 행에 대한 다른 잠금 요청과 수정 작업입니다.
+</Note>
 
 <Warning>
   `forUpdate()`와 `forShare()`는 트랜잭션 내에서만 의미가 있습니다. 트랜잭션 없이 사용하면 잠금이 즉시 해제됩니다.

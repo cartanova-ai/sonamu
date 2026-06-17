@@ -170,10 +170,14 @@ async getBalanceSnapshot(userId: number) {
 
 **forUpdate vs forShare:**
 
-| Lock Type | Other Transaction Reads | Other Transaction Writes | When to Use |
-|---|---|---|---|
-| `forUpdate()` | Blocked | Blocked | When reading then modifying |
-| `forShare()` | Allowed | Blocked | When only read consistency is needed |
+| Lock Type | Plain SELECT | Other Lock Requests (FOR UPDATE / FOR SHARE) | Writes (UPDATE / DELETE) | When to Use |
+|---|---|---|---|---|
+| `forUpdate()` | Allowed | Blocked | Blocked | When reading then modifying |
+| `forShare()` | Allowed | FOR UPDATE only | Blocked | When only read consistency is needed |
+
+<Note>
+  Under PostgreSQL MVCC, row-level locks (`FOR UPDATE` / `FOR SHARE`) do not block plain `SELECT` reads. Only other lock requests and write operations on the same rows are blocked.
+</Note>
 
 <Warning>
   `forUpdate()` and `forShare()` are only meaningful within a transaction. Without a transaction, the lock is released immediately.
