@@ -19,6 +19,12 @@ export const rtzrTranscriptionResultResponseSchema = lazySchema(() =>
     z.object({
       id: z.string(),
       status: z.enum(["transcribing", "completed", "failed"]),
+      error: z
+        .object({
+          code: z.union([z.string(), z.number()]).nullish(),
+          message: z.string().nullish(),
+        })
+        .nullish(),
       results: z
         .object({
           utterances: z.array(

@@ -11,6 +11,8 @@ import {
   mediaTypeToExtension,
   parseProviderOptions,
   postFormDataToApi,
+  safeParseJSON,
+  zodSchema,
 } from "@ai-sdk/provider-utils";
 import { type FetchFunction } from "@ai-sdk/provider-utils";
 import { isEmpty } from "radashi";
@@ -20,9 +22,18 @@ import {
   rtzrTranscriptionResponseSchema,
   rtzrTranscriptionResultResponseSchema,
 } from "./api";
-import { RtzrClientError, rtzrFailedResponseHandler } from "./error";
+import {
+  formatRtzrErrorData,
+  formatRtzrErrorResponseBody,
+  RtzrClientError,
+  rtzrFailedResponseHandler,
+} from "./error";
 import { rtzrTranscriptionProviderOptions } from "./options";
 import { type RtzrTranscriptionModelId, type RtzrTranscriptionProviderOptions } from "./options";
+
+function isNullish(value: unknown): value is null | undefined {
+  return value === null || value === undefined;
+}
 
 export type RtzrTranscriptionCallOptions = Omit<
   TranscriptionModelV3CallOptions,
@@ -78,17 +89,25 @@ export class RtzrTranscriptionModel implements TranscriptionModelV3 {
       },
     );
 
+    const responseBody = await response.text();
     if (!response.ok) {
-      throw new RtzrClientError(`Failed to authorize: ${response.status}`);
+      const detail = await formatRtzrErrorResponseBody(responseBody);
+      throw new RtzrClientError(
+        `Failed to authorize RTZR: HTTP ${response.status}${
+          isNullish(detail) ? "" : `: ${detail}`
+        }`,
+      );
     }
 
-    const data = await response.json();
-    const parsedData = rtzrAuthResponseSchema.safeParse(data);
+    const parsedData = await safeParseJSON({
+      text: responseBody,
+      schema: zodSchema(rtzrAuthResponseSchema),
+    });
     if (!parsedData.success) {
-      throw new RtzrClientError(`Validation failed: ${parsedData.error.message}`);
+      throw new RtzrClientError(`Invalid RTZR auth response: ${parsedData.error.message}`);
     }
 
-    return parsedData.data.access_token;
+    return parsedData.value.access_token;
   }
 
   private async getArgs({ audio, mediaType, providerOptions }: RtzrTranscriptionCallOptions) {
@@ -144,10 +163,10 @@ export class RtzrTranscriptionModel implements TranscriptionModelV3 {
     });
 
     const { value: response, rawValue } = await (async () => {
-      // transcription이 끝날 떄까지 0.5초마다 체크.
+      // transcription이 끝날 때까지 RTZR 권장 간격인 5초마다 체크.
       // timeout을 따로 지정하지 않는 이유는 애초에 AbortSignal을 사용하고 있음.
       while (true) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         const data = await getFromApi({
           url: this.config.url({
             path: `/transcribe/${transcriptionId}`,
@@ -166,6 +185,18 @@ export class RtzrTranscriptionModel implements TranscriptionModelV3 {
         }
       }
     })();
+
+    if (response.status === "failed") {
+      const detail = isNullish(response.error)
+        ? "unknown RTZR transcription error"
+        : formatRtzrErrorData({
+            error: response.error,
+          });
+      throw new RtzrClientError(
+        `RTZR transcription failed for id ${response.id}: status ${response.status}: ` +
+          `provider ${this.provider}: model ${this.modelId}: ${detail}`,
+      );
+    }
 
     const segments = response.results?.utterances ?? [];
 
