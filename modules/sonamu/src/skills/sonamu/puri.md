@@ -180,6 +180,28 @@ db.table("orders")
 db.orderBy("created_at", "desc").limit(20).offset(40); // Page 3
 ```
 
+### NULLS position & array form
+
+`orderBy` has two overloads:
+
+1. Single column: `orderBy(column, direction?, nulls?)` — `nulls` is `"first" | "last"`
+2. Array: `orderBy(entries[])` — each entry is a column string, a `Puri.raw*` SQL expression, or an object `{ column, order?, nulls? }`
+
+```typescript
+// Single column with NULLS position
+db.orderBy("published_at", "desc", "last");
+
+// Array form: multiple sort keys, per-key direction and NULLS
+db.orderBy([
+  { column: "is_pinned", order: "desc" },
+  { column: "published_at", order: "desc", nulls: "last" },
+  "title", // bare string defaults to asc
+]);
+
+// Sort by a SQL expression
+db.orderBy([Puri.rawNumber("view_count * 2"), { column: "id", order: "desc" }]);
+```
+
 ## GROUP BY & HAVING
 
 ```typescript

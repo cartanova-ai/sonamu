@@ -1,6 +1,6 @@
 ---
 name: sonamu-upsert
-description: Saving complex relational data with Sonamu UpsertBuilder. ubRegister, ubUpsert, insertOnly, updateBatch patterns, FK ordering, cleanOrphans. Use when saving related data with foreign key dependencies.
+description: Saving complex relational data with Sonamu UpsertBuilder. ubRegister, ubUpsert, ubInsertOnly, ubUpdateBatch, bulk insert/upsert patterns, FK ordering, cleanOrphans. Use when saving related data with foreign key dependencies.
 ---
 
 # UpsertBuilder
@@ -178,15 +178,62 @@ await wdb.transaction(async (trx) => {
 });
 ```
 
-## insertOnly (INSERT Only)
+## Bulk Insert / Bulk Upsert (Large Datasets)
+
+**Principle (same as regular saves):** call `ubRegister` for every row **outside** the transaction, then call only `ubUpsert` / `ubInsertOnly` **inside** the transaction. Split large datasets with `chunkSize`. Calling `ubRegister` inside the transaction is reserved for the special case where a row depends on the real id produced by a preceding `ubUpsert`.
+
+### (a) Bulk insert inside a Model
+
+```typescript
+async createMany(params: PostCreateParams[]): Promise<number[]> {
+  const wdb = this.getPuri("w");
+  params.forEach((p) => wdb.ubRegister("posts", p));
+
+  return wdb.transaction(async (trx) => {
+    return trx.ubInsertOnly("posts", { chunkSize: 5000 });
+  });
+}
+```
+
+### (b) Standalone Puri (seed / batch scripts outside a Model)
+
+Outside a Model there is no `this.getPuri("w")`, so build a `PuriWrapper` directly. Use `DB.getDB("w")` only in this script context — inside Models always use `getPuri("w")`.
+
+```typescript
+import { DB, PuriWrapper, UpsertBuilder } from "sonamu";
+
+const puri = new PuriWrapper(DB.getDB("w"), new UpsertBuilder());
+for (const row of rows) puri.ubRegister("audit_logs", row);
+
+await puri.transaction(async (trx) => {
+  await trx.ubInsertOnly("audit_logs", { chunkSize: 5000 }); // or ubUpsert
+});
+```
+
+### (c) Multiple tables in one transaction (FK order)
+
+Register every table outside the transaction, then upsert parents before children.
+
+```typescript
+const puri = new PuriWrapper(DB.getDB("w"), new UpsertBuilder());
+for (const row of postRows) puri.ubRegister("posts", row);
+for (const row of tagRows) puri.ubRegister("post_tags", row);
+
+await puri.transaction(async (trx) => {
+  await trx.ubInsertOnly("posts", { chunkSize: 5000 }); // parent first
+  await trx.ubInsertOnly("post_tags", { chunkSize: 5000 }); // child next
+});
+```
+
+## ubInsertOnly (INSERT Only)
 
 Perform INSERT without UPDATE:
 
 ```typescript
-await trx.insertOnly("logs", { chunkSize: 1000 });
+await trx.ubInsertOnly("logs", { chunkSize: 1000 });
 ```
 
-## updateBatch (Batch Update)
+## ubUpdateBatch (Batch Update)
 
 Bulk UPDATE operations:
 
@@ -197,14 +244,14 @@ wdb.ubRegister("users", { id: 2, status: "active" });
 wdb.ubRegister("users", { id: 3, status: "inactive" });
 
 await wdb.transaction(async (trx) => {
-  await trx.updateBatch("users", {
+  await trx.ubUpdateBatch("users", {
     chunkSize: 500, // batch size (default: 500)
     where: "id", // WHERE condition column (default: "id")
   });
 });
 
 // Composite key for WHERE condition
-await trx.updateBatch("user_settings", {
+await trx.ubUpdateBatch("user_settings", {
   where: ["user_id", "setting_key"],
 });
 ```

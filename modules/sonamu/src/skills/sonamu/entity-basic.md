@@ -436,6 +436,37 @@ SQL expressions per source column type:
 }
 ```
 
+### Partial index (`where`)
+
+`where` declares a PostgreSQL partial index predicate. Provide a raw SQL condition **without** the `WHERE` keyword; it is appended to the generated `CREATE INDEX`. Works for every index type (`index`, `unique`, `hnsw`, `ivfflat`, pgroonga).
+
+```json
+{
+  "name": "uniq_users_email_active",
+  "type": "unique",
+  "columns": [{ "name": "email" }],
+  "where": "deleted_at IS NULL"
+}
+```
+
+→ `CREATE UNIQUE INDEX uniq_users_email_active ON users (email) WHERE deleted_at IS NULL;`
+(Enforces email uniqueness only among non-deleted rows.)
+
+### `nullsNotDistinct` (unique only)
+
+By default PostgreSQL treats `NULL`s as distinct, so a unique index allows multiple `NULL` rows. Set `nullsNotDistinct: true` to emit `NULLS NOT DISTINCT`, treating `NULL`s as equal (at most one `NULL` allowed).
+
+```json
+{
+  "name": "uniq_accounts_external_id",
+  "type": "unique",
+  "columns": [{ "name": "external_id" }],
+  "nullsNotDistinct": true
+}
+```
+
+→ `CREATE UNIQUE INDEX uniq_accounts_external_id ON accounts (external_id) NULLS NOT DISTINCT;`
+
 ### IMPORTANT: Use the actual DB column name in indexes
 
 **The way FK columns are referenced differs between indexes and subsets. Do not confuse them.**
