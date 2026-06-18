@@ -740,16 +740,14 @@ async findMany<T extends UserSubsetKey>(
 
 ```typescript
 async getStatistics(): Promise<UserStatistics> {
-  const rdb = this.getDB("r");
-
-  const [stats] = await rdb("users")
-    .select([
-      rdb.raw("COUNT(*) as total_users"),
-      rdb.raw("COUNT(CASE WHEN is_active THEN 1 END) as active_users"),
-      rdb.raw("COUNT(CASE WHEN role = 'admin' THEN 1 END) as admin_count"),
-      rdb.raw("AVG(age) as average_age"),
-    ])
-    .first();
+  const [stats] = await this.getPuri("r")
+    .table("users")
+    .select({
+      total_users: Puri.count(),
+      active_users: Puri.rawNumber("COUNT(CASE WHEN is_active THEN 1 END)"),
+      admin_count: Puri.rawNumber("COUNT(CASE WHEN role = 'admin' THEN 1 END)"),
+      average_age: Puri.avg("age"),
+    });
 
   return {
     total_users: Number(stats.total_users),
