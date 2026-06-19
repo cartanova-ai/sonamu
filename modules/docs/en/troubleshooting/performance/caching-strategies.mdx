@@ -118,7 +118,7 @@ class ProductModelClass extends BaseModelClass {
   // Cache for 1 day
   @cache({ ttl: "1d" })
   async getCategoryCounts() {
-    return this.getPuri("r").table("products").select("category", knex.raw("COUNT(*) as count")).groupBy("category");
+    return this.getPuri("r").table("products").select({ category: "category", count: Puri.count() }).groupBy("category");
   }
 
   // Permanent cache (requires manual invalidation)

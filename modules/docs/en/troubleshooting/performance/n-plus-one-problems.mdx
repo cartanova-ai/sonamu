@@ -394,12 +394,12 @@ class DashboardService {
   async getDashboardFast() {
     return UserModel.getPuri("r")
       .table("users")
-      .select(
-        "users.id",
-        "users.name",
-        knex.raw("COUNT(orders.id) as order_count"),
-        knex.raw("COALESCE(SUM(orders.total), 0) as total_spent"),
-      )
+      .select({
+        id: "users.id",
+        name: "users.name",
+        order_count: Puri.count("orders.id"),
+        total_spent: Puri.rawNumber("COALESCE(SUM(orders.total), 0)"),
+      })
       .leftJoin("orders", "orders.user_id", "users.id")
       .groupBy("users.id");
   }

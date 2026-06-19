@@ -655,7 +655,7 @@ Virtual fields not stored in the database.
     // Used in {entity}.model.ts subset queries
     const { qb } = this.getSubsetQueries(subset);
     qb.appendSelect({
-      full_name: this.getPuri("r").raw("first_name || ' ' || last_name"),
+      full_name: Puri.rawString("first_name || ' ' || last_name"),
     });
     ```
     

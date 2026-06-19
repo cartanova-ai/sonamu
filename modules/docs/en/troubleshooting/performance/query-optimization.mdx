@@ -173,10 +173,14 @@ const count = result[0].count;
 ```typescript
 // Order statistics
 const orderStats = await OrderModel.getPuri("r").table("orders")
-  .select("user_id", knex.raw("COUNT(*) as order_count"), knex.raw("SUM(total) as total_amount"))
+  .select({
+    user_id: "user_id",
+    order_count: Puri.count(),
+    total_amount: Puri.sum("total"),
+  })
   .where({ status: "completed" })
   .groupBy("user_id")
-  .having(knex.raw("COUNT(*) > ?", [10])); // More than 10 orders
+  .having("order_count", ">", 10); // More than 10 orders
 ```
 
 ## Pagination Optimization
@@ -246,15 +250,19 @@ const usersWithOrders = await UserModel.getPuri("r").table("users")
 
 ```typescript
 // Subquery - avoid
-const users = await UserModel.getPuri("r").table("users").select(
-  "id",
-  "name",
-  knex.raw("(SELECT COUNT(*) FROM orders WHERE orders.user_id = users.id) as order_count"),
-);
+const users = await UserModel.getPuri("r").table("users").select({
+  id: "id",
+  name: "name",
+  order_count: Puri.rawNumber("(SELECT COUNT(*) FROM orders WHERE orders.user_id = users.id)"),
+});
 
 // LEFT JOIN + GROUP BY (faster)
 const users = await UserModel.getPuri("r").table("users")
-  .select("users.id", "users.name", knex.raw("COUNT(orders.id) as order_count"))
+  .select({
+    id: "users.id",
+    name: "users.name",
+    order_count: Puri.count("orders.id"),
+  })
   .leftJoin("orders", "orders.user_id", "users.id")
   .groupBy("users.id");
 ```

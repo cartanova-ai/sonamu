@@ -653,7 +653,7 @@ export type ProductMetadata = {
     // {entity}.model.ts의 subset 쿼리에서 사용
     const { qb } = this.getSubsetQueries(subset);
     qb.appendSelect({
-      full_name: this.getPuri("r").raw("first_name || ' ' || last_name"),
+      full_name: Puri.rawString("first_name || ' ' || last_name"),
     });
     ```
     
