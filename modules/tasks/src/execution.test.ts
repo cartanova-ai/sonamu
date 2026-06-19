@@ -1,17 +1,21 @@
 import { randomUUID } from "node:crypto";
 
+import knex from "knex";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { BackendPostgres } from ".";
 import { OpenWorkflow } from "./client";
+import { DEFAULT_SCHEMA } from "./database/base";
 import { KNEX_GLOBAL_CONFIG } from "./testing/connection";
 
 describe("StepExecutor", () => {
+  const namespaceId = randomUUID();
+  const db = knex(KNEX_GLOBAL_CONFIG);
   let backend: BackendPostgres;
 
   beforeAll(async () => {
     backend = new BackendPostgres(KNEX_GLOBAL_CONFIG, {
-      namespaceId: randomUUID(),
+      namespaceId,
       runMigrations: false,
     });
     await backend.initialize();
@@ -19,6 +23,7 @@ describe("StepExecutor", () => {
 
   afterAll(async () => {
     await backend.stop();
+    await db.destroy();
   });
 
   test("executes step and returns result", async () => {
@@ -160,6 +165,66 @@ describe("StepExecutor", () => {
 
     const result = await handle.result();
     expect(result).toBe(15);
+  });
+
+  test("re-execution after reclaim leaves no duplicate running function attempts", async () => {
+    const client = new OpenWorkflow({ backend });
+
+    const workflow = client.defineWorkflow(
+      { name: "reclaim-stale-function-step" },
+      async ({ step }) => {
+        return await step.run({ name: "work" }, () => "done");
+      },
+    );
+
+    const handle = await workflow.run();
+    const firstWorker = randomUUID();
+    const claimed = await backend.claimWorkflowRun({
+      workerId: firstWorker,
+      leaseDurationMs: 5,
+    });
+    if (!claimed) {
+      throw new Error("expected workflow run to be claimed");
+    }
+    await backend.createStepAttempt({
+      workflowRunId: claimed.id,
+      workerId: firstWorker,
+      stepName: "work",
+      kind: "function",
+      config: {},
+      context: null,
+    });
+
+    const [expired] = await db
+      .withSchema(DEFAULT_SCHEMA)
+      .table("workflow_runs")
+      .where("namespace_id", namespaceId)
+      .where("id", claimed.id)
+      .update({
+        available_at: db.raw("NOW() - INTERVAL '1 second'"),
+        updated_at: db.fn.now(),
+      })
+      .returning("*");
+    if (!expired) {
+      throw new Error("expected workflow run fixture to expire");
+    }
+
+    const worker = client.newWorker();
+    await worker.tick();
+
+    const result = await handle.result();
+    expect(result).toBe("done");
+
+    const attempts = await backend.listStepAttempts({
+      workflowRunId: handle.workflowRun.id,
+    });
+    const workAttempts = attempts.data.filter(
+      (attempt) => attempt.stepName === "work" && attempt.kind === "function",
+    );
+    const runningFunctionAttempts = workAttempts.filter((attempt) => attempt.status === "running");
+
+    expect(workAttempts).toHaveLength(2);
+    expect(runningFunctionAttempts).toHaveLength(0);
   });
 });
 

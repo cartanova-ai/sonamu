@@ -239,6 +239,121 @@ export function testBackend(options: TestBackendOptions): void {
       // because claims involve timing and leases, we create and teardown a new
       // namespaced backend instance for each test
 
+      test("closes stale running function step attempts when reclaiming an expired running workflow", async () => {
+        const backend = await setup();
+        const firstWorker = randomUUID();
+        const secondWorker = randomUUID();
+
+        await createPendingWorkflowRun(backend);
+        const claimed = await backend.claimWorkflowRun({
+          workerId: firstWorker,
+          leaseDurationMs: 5,
+        });
+        if (!claimed) {
+          throw new Error("expected workflow run to be claimed");
+        }
+
+        const staleFunction = await backend.createStepAttempt({
+          workflowRunId: claimed.id,
+          workerId: firstWorker,
+          stepName: "stale-function",
+          kind: "function",
+          config: {},
+          context: null,
+        });
+        const runningSleep = await backend.createStepAttempt({
+          workflowRunId: claimed.id,
+          workerId: firstWorker,
+          stepName: "running-sleep",
+          kind: "sleep",
+          config: {},
+          context: { kind: "sleep", resumeAt: new Date(Date.now() + 60_000).toISOString() },
+        });
+
+        await sleep(10);
+        const reclaimed = await backend.claimWorkflowRun({
+          workerId: secondWorker,
+          leaseDurationMs: 100,
+        });
+        expect(reclaimed?.id).toBe(claimed.id);
+
+        const staleAfterReclaim = await backend.getStepAttempt({
+          stepAttemptId: staleFunction.id,
+        });
+        const sleepAfterReclaim = await backend.getStepAttempt({
+          stepAttemptId: runningSleep.id,
+        });
+
+        expect(staleAfterReclaim?.status).toBe("failed");
+        expect(staleAfterReclaim?.finishedAt).not.toBeNull();
+        expect(staleAfterReclaim?.error).toEqual({ message: "Workflow run lease expired" });
+        expect(sleepAfterReclaim?.status).toBe("running");
+        expect(sleepAfterReclaim?.finishedAt).toBeNull();
+
+        await teardown(backend);
+      });
+
+      test("leaves completed and failed function step attempts unchanged when reclaiming", async () => {
+        const backend = await setup();
+        const firstWorker = randomUUID();
+
+        await createPendingWorkflowRun(backend);
+        const claimed = await backend.claimWorkflowRun({
+          workerId: firstWorker,
+          leaseDurationMs: 5,
+        });
+        if (!claimed) {
+          throw new Error("expected workflow run to be claimed");
+        }
+
+        const completedStep = await backend.createStepAttempt({
+          workflowRunId: claimed.id,
+          workerId: firstWorker,
+          stepName: "completed-step",
+          kind: "function",
+          config: {},
+          context: null,
+        });
+        const completed = await backend.completeStepAttempt({
+          workflowRunId: claimed.id,
+          stepAttemptId: completedStep.id,
+          workerId: firstWorker,
+          output: { ok: true },
+        });
+        if (!completed) {
+          throw new Error("expected step attempt to complete");
+        }
+
+        const failedStep = await backend.createStepAttempt({
+          workflowRunId: claimed.id,
+          workerId: firstWorker,
+          stepName: "failed-step",
+          kind: "function",
+          config: {},
+          context: null,
+        });
+        const failed = await backend.failStepAttempt({
+          workflowRunId: claimed.id,
+          stepAttemptId: failedStep.id,
+          workerId: firstWorker,
+          error: { message: "already failed" },
+        });
+        if (!failed) {
+          throw new Error("expected step attempt to fail");
+        }
+
+        await sleep(10);
+        await backend.claimWorkflowRun({
+          workerId: randomUUID(),
+          leaseDurationMs: 100,
+        });
+
+        expect(await backend.getStepAttempt({ stepAttemptId: completed.id })).toEqual(completed);
+        expect(await backend.getStepAttempt({ stepAttemptId: failed.id })).toEqual(failed);
+
+        await teardown(backend);
+      });
+
       test("claims workflow runs and respects leases, reclaiming if lease expires", async () => {
         const backend = await setup();
 
@@ -697,6 +812,26 @@ export function testBackend(options: TestBackendOptions): void {
         expected.createdAt = created.createdAt;
         expected.updatedAt = created.updatedAt;
         expect(created).toEqual(expected);
+      });
+
+      test("rejects stale workers when creating step attempts", async () => {
+        const claimed = await createClaimedWorkflowRun(backend);
+
+        await expect(
+          backend.createStepAttempt({
+            workflowRunId: claimed.id,
+            workerId: randomUUID(),
+            stepName: randomUUID(),
+            kind: "function",
+            config: {},
+            context: null,
+          }),
+        ).rejects.toThrow("Failed to create step attempt");
+
+        const attempts = await backend.listStepAttempts({
+          workflowRunId: claimed.id,
+        });
+        expect(attempts.data).toHaveLength(0);
       });
     });
 

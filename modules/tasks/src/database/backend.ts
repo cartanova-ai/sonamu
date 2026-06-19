@@ -331,59 +331,77 @@ export class BackendPostgres implements Backend {
       workerId: params.workerId,
       leaseDurationMs: params.leaseDurationMs,
     });
-    const claimed = await this.knex
-      .with("expired", (qb) =>
-        qb
+    return await this.knex.transaction(async (trx) => {
+      await trx
+        .withSchema(DEFAULT_SCHEMA)
+        .table("workflow_runs")
+        .update({
+          status: "failed",
+          error: JSON.stringify({ message: "Workflow run deadline exceeded" }),
+          worker_id: null,
+          available_at: null,
+          finished_at: trx.raw("NOW()"),
+          updated_at: trx.raw("NOW()"),
+        })
+        .where("namespace_id", this.namespaceId)
+        .whereIn("status", ["pending", "running", "sleeping"])
+        .whereNotNull("deadline_at")
+        .where("deadline_at", "<=", trx.raw("NOW()"));
+
+      const [candidate] = await trx
+        .withSchema(DEFAULT_SCHEMA)
+        .table("workflow_runs")
+        .select("id", "status")
+        .where("namespace_id", this.namespaceId)
+        .whereIn("status", ["pending", "running", "sleeping"])
+        .where("available_at", "<=", trx.raw("NOW()"))
+        .where((qb) => {
+          qb.whereNull("deadline_at").orWhere("deadline_at", ">", trx.raw("NOW()"));
+        })
+        .orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+        .orderBy("available_at", "asc")
+        .orderBy("created_at", "asc")
+        .limit(1)
+        .forUpdate()
+        .skipLocked();
+
+      if (!candidate) {
+        return null;
+      }
+
+      if (candidate.status === "running") {
+        await trx
           .withSchema(DEFAULT_SCHEMA)
-          .table("workflow_runs")
+          .table("step_attempts")
+          .where("namespace_id", this.namespaceId)
+          .where("workflow_run_id", candidate.id)
+          .where("status", "running")
+          .where("kind", "function")
           .update({
             status: "failed",
-            error: JSON.stringify({ message: "Workflow run deadline exceeded" }),
-            worker_id: null,
-            available_at: null,
-            finished_at: this.knex.raw("NOW()"),
-            updated_at: this.knex.raw("NOW()"),
-          })
-          .where("namespace_id", this.namespaceId)
-          .whereIn("status", ["pending", "running", "sleeping"])
-          .whereNotNull("deadline_at")
-          .where("deadline_at", "<=", this.knex.raw("NOW()"))
-          .returning("id"),
-      )
-      .with("candidate", (qb) =>
-        qb
-          .withSchema(DEFAULT_SCHEMA)
-          .select("id")
-          .from("workflow_runs")
-          .where("namespace_id", this.namespaceId)
-          .whereIn("status", ["pending", "running", "sleeping"])
-          .where("available_at", "<=", this.knex.raw("NOW()"))
-          .where((qb2) => {
-            qb2.whereNull("deadline_at").orWhere("deadline_at", ">", this.knex.raw("NOW()"));
-          })
-          .orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
-          .orderBy("available_at", "asc")
-          .orderBy("created_at", "asc")
-          .limit(1)
-          .forUpdate()
-          .skipLocked(),
-      )
-      .withSchema(DEFAULT_SCHEMA)
-      .table("workflow_runs as wr")
-      .where("wr.namespace_id", this.namespaceId)
-      .where("wr.id", this.knex.ref("candidate.id"))
-      .update({
-        status: "running",
-        attempts: this.knex.raw("wr.attempts + 1"),
-        worker_id: params.workerId,
-        available_at: this.knex.raw(`NOW() + ${params.leaseDurationMs} * INTERVAL '1 millisecond'`),
-        started_at: this.knex.raw("COALESCE(wr.started_at, NOW())"),
-        updated_at: this.knex.raw("NOW()"),
-      })
-      .updateFrom("candidate")
-      .returning("wr.*");
+            error: JSON.stringify({ message: "Workflow run lease expired" }),
+            finished_at: trx.fn.now(),
+            updated_at: trx.fn.now(),
+          });
+      }
 
-    return claimed[0] ?? null;
+      const [claimed] = await trx
+        .withSchema(DEFAULT_SCHEMA)
+        .table("workflow_runs")
+        .where("namespace_id", this.namespaceId)
+        .where("id", candidate.id)
+        .update({
+          status: "running",
+          attempts: trx.raw("attempts + 1"),
+          worker_id: params.workerId,
+          available_at: trx.raw("NOW() + ? * INTERVAL '1 millisecond'", [params.leaseDurationMs]),
+          started_at: trx.raw("COALESCE(started_at, NOW())"),
+          updated_at: trx.raw("NOW()"),
+        })
+        .returning("*");
+
+      return claimed ?? null;
+    });
   }
 
   async extendWorkflowRunLease(params: ExtendWorkflowRunLeaseParams): Promise<WorkflowRun> {
@@ -773,26 +791,64 @@ export class BackendPostgres implements Backend {
       kind: params.kind,
     });
 
-    const [stepAttempt] = await this.knex
-      .withSchema(DEFAULT_SCHEMA)
-      .table("step_attempts")
-      .insert({
-        namespace_id: this.namespaceId,
-        id: crypto.randomUUID(),
-        workflow_run_id: params.workflowRunId,
-        step_name: params.stepName,
-        kind: params.kind,
-        status: "running",
-        config: JSON.stringify(params.config),
-        context: JSON.stringify(params.context),
-        started_at: this.knex.fn.now(),
-        created_at: this.knex.raw("date_trunc('milliseconds', NOW())"),
-        updated_at: this.knex.fn.now(),
-      })
-      .returning("*");
+    const stepAttemptId = crypto.randomUUID();
+    const insertResult = await this.knex.raw<{ rowCount?: number }>(
+      `
+        INSERT INTO ${DEFAULT_SCHEMA}.step_attempts (
+          namespace_id,
+          id,
+          workflow_run_id,
+          step_name,
+          kind,
+          status,
+          config,
+          context,
+          started_at,
+          created_at,
+          updated_at
+        )
+        SELECT
+          ?,
+          ?,
+          wr.id,
+          ?,
+          ?,
+          ?,
+          ?::jsonb,
+          ?::jsonb,
+          NOW(),
+          date_trunc('milliseconds', NOW()),
+          NOW()
+        FROM ${DEFAULT_SCHEMA}.workflow_runs AS wr
+        WHERE wr.namespace_id = ?
+          AND wr.id = ?
+          AND wr.status = ?
+          AND wr.worker_id = ?
+        FOR UPDATE OF wr
+      `,
+      [
+        this.namespaceId,
+        stepAttemptId,
+        params.stepName,
+        params.kind,
+        "running",
+        JSON.stringify(params.config),
+        JSON.stringify(params.context),
+        this.namespaceId,
+        params.workflowRunId,
+        "running",
+        params.workerId,
+      ],
+    );
 
-    if (!stepAttempt) {
+    if (insertResult.rowCount !== 1) {
       logger.error("Failed to create step attempt: {params}", { params });
+      throw new Error("Failed to create step attempt");
+    }
+
+    const stepAttempt = await this.getStepAttempt({ stepAttemptId });
+    if (!stepAttempt) {
+      logger.error("Failed to load created step attempt: {params}", { params });
       throw new Error("Failed to create step attempt");
     }
 

@@ -331,6 +331,11 @@ export async function executeWorkflow(params: Readonly<ExecuteWorkflowParams>): 
       return;
     }
 
+    const currentRun = await backend.getWorkflowRun({ workflowRunId: workflowRun.id });
+    if (currentRun && isTerminalStatus(currentRun.status)) {
+      return;
+    }
+
     // claimWorkflowRun에서 이미 attempts가 증가된 상태입니다.
     let forceComplete = false;
     let customDelayMs: number | undefined;
