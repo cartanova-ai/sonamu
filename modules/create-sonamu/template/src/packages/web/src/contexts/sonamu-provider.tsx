@@ -4,6 +4,7 @@ import {
   useSonamuBaseContext,
 } from "@sonamu-kit/react-components";
 import type { ReactNode } from "react";
+
 import type { DictKey, MergedDictionary } from "@/i18n/sd.generated";
 import { SD } from "@/i18n/sd.generated";
 

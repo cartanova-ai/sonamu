@@ -56,6 +56,7 @@ pnpm dev
 ```
 
 개발 서버가 시작되면 다음 주소로 접속할 수 있습니다:
+
 - **API + Web (통합)**: http://localhost:34900
 - **Sonamu UI**: http://localhost:34900/sonamu-ui (엔티티 관리)
 
@@ -81,6 +82,7 @@ http://localhost:34900 을 열어서 앱을 확인하세요!
 첫 번째 엔티티를 생성하면 다음 파일들이 자동으로 생성됩니다:
 
 ### API 측
+
 ```
 api/src/application/
 ├── user/
@@ -93,6 +95,7 @@ api/src/application/
 ```
 
 ### Web 측
+
 ```
 web/src/services/
 ├── user/
@@ -104,11 +107,11 @@ web/src/services/
 
 ## 🌐 포트 구성
 
-| 서비스             | 포트                     | URL                             |
-| ------------------ | ------------------------ | ------------------------------- |
-| API + Web (통합)   | `BASE_PORT` (기본 34900) | http://localhost:34900           |
-| Sonamu UI          | -                        | http://localhost:34900/sonamu-ui |
-| PostgreSQL         | 5432                     | -                               |
+| 서비스           | 포트                     | URL                              |
+| ---------------- | ------------------------ | -------------------------------- |
+| API + Web (통합) | `BASE_PORT` (기본 34900) | http://localhost:34900           |
+| Sonamu UI        | -                        | http://localhost:34900/sonamu-ui |
+| PostgreSQL       | 5432                     | -                                |
 
 ## 📜 주요 스크립트
 
@@ -122,30 +125,30 @@ web/src/services/
 
 ### API (`packages/api/`)
 
-| 명령어              | 설명                                       |
-| ------------------- | ------------------------------------------ |
-| `pnpm dev`          | 통합 개발 서버 시작 (= `sonamu dev all`)   |
-| `pnpm build`        | 전체 프로덕션 빌드 (= `sonamu build all`)  |
-| `pnpm build api`    | API만 빌드 (= `sonamu build api`)          |
-| `pnpm build web`    | Web만 빌드 (= `sonamu build web`)          |
-| `pnpm start`        | 프로덕션 서버 시작                         |
-| `pnpm test`         | 테스트 실행                                |
-| `pnpm docker:up`    | Docker DB 시작                             |
-| `pnpm docker:down`  | Docker DB 중지                             |
-| `pnpm docker:reset` | Docker DB 초기화 (볼륨 삭제 후 재시작)     |
-| `pnpm dump`         | 테스트 DB 덤프 생성                        |
-| `pnpm seed`         | 덤프를 fixture DB에 적용                   |
-| `pnpm sonamu skills sync` | 공식 Skills 동기화                   |
-| `pnpm sonamu skills create <name>` | 커스텀 Skill 생성             |
+| 명령어                             | 설명                                      |
+| ---------------------------------- | ----------------------------------------- |
+| `pnpm dev`                         | 통합 개발 서버 시작 (= `sonamu dev all`)  |
+| `pnpm build`                       | 전체 프로덕션 빌드 (= `sonamu build all`) |
+| `pnpm build api`                   | API만 빌드 (= `sonamu build api`)         |
+| `pnpm build web`                   | Web만 빌드 (= `sonamu build web`)         |
+| `pnpm start`                       | 프로덕션 서버 시작                        |
+| `pnpm test`                        | 테스트 실행                               |
+| `pnpm docker:up`                   | Docker DB 시작                            |
+| `pnpm docker:down`                 | Docker DB 중지                            |
+| `pnpm docker:reset`                | Docker DB 초기화 (볼륨 삭제 후 재시작)    |
+| `pnpm dump`                        | 테스트 DB 덤프 생성                       |
+| `pnpm seed`                        | 덤프를 fixture DB에 적용                  |
+| `pnpm sonamu skills sync`          | 공식 Skills 동기화                        |
+| `pnpm sonamu skills create <name>` | 커스텀 Skill 생성                         |
 
 ### 개발 서버 모드
 
-| 명령어                                 | 설명                           |
-| -------------------------------------- | ------------------------------ |
-| `sonamu dev` / `sonamu dev all`        | 통합 모드 (one-port: API + Web) |
-| `sonamu dev api`                       | API-only 모드                  |
-| `sonamu dev web`                       | Vite 단독 실행                 |
-| `sonamu dev web -- --port 3028 --host 0.0.0.0` | Vite 옵션 전달         |
+| 명령어                                         | 설명                            |
+| ---------------------------------------------- | ------------------------------- |
+| `sonamu dev` / `sonamu dev all`                | 통합 모드 (one-port: API + Web) |
+| `sonamu dev api`                               | API-only 모드                   |
+| `sonamu dev web`                               | Vite 단독 실행                  |
+| `sonamu dev web -- --port 3028 --host 0.0.0.0` | Vite 옵션 전달                  |
 
 ## 🛠️ 개발 워크플로우
 
@@ -258,6 +261,7 @@ pnpm sonamu skills sync
 ```
 
 이 명령은:
+
 - 최신 공식 Skills를 `.claude/skills/sonamu`로 동기화
 - `CLAUDE.md`의 Sonamu 관련 섹션을 업데이트
 
@@ -297,33 +301,34 @@ await knex.schema.createTable('users', ...)
 
 // 2. posts 테이블 나중에 생성 (users 참조)
 await knex.schema.createTable('posts', (table) => {
-  table.integer('user_id').references('users.id')
+table.integer('user_id').references('users.id')
 })
 \`\`\`
 ```
 
 **파일명 규칙**:
+
 - 자동으로 안전한 이름으로 변환됩니다
 - 예: `"bug fix"` → `bug-fix.md`
 - 예: `"마이그레이션/헬퍼"` → `마이그레이션-헬퍼.md`
 
 ### 주요 Skills
 
-| Skill | 설명 |
-|-------|------|
-| **project-init** | 프로젝트 생성 및 초기화 |
-| **entity-basic** | Entity 생성/수정 기본 |
+| Skill                | 설명                                        |
+| -------------------- | ------------------------------------------- |
+| **project-init**     | 프로젝트 생성 및 초기화                     |
+| **entity-basic**     | Entity 생성/수정 기본                       |
 | **entity-relations** | Entity 관계 정의 (BelongsToOne, HasMany 등) |
-| **model** | Model 클래스 작성 패턴 |
-| **api** | @api 데코레이터로 API 노출 |
-| **puri** | 타입 안전 쿼리 빌더 사용법 |
-| **subset** | API 응답 필드 범위 정의 |
-| **upsert** | 관계 데이터 저장 (UpsertBuilder) |
-| **testing** | 테스트 작성 (bootstrap, test, testAs) |
-| **migration** | 데이터베이스 마이그레이션 |
-| **frontend** | 프론트엔드에서 API 호출 |
-| **i18n** | 다국어 지원 |
-| **workflow** | 전체 개발 워크플로우 |
+| **model**            | Model 클래스 작성 패턴                      |
+| **api**              | @api 데코레이터로 API 노출                  |
+| **puri**             | 타입 안전 쿼리 빌더 사용법                  |
+| **subset**           | API 응답 필드 범위 정의                     |
+| **upsert**           | 관계 데이터 저장 (UpsertBuilder)            |
+| **testing**          | 테스트 작성 (bootstrap, test, testAs)       |
+| **migration**        | 데이터베이스 마이그레이션                   |
+| **frontend**         | 프론트엔드에서 API 호출                     |
+| **i18n**             | 다국어 지원                                 |
+| **workflow**         | 전체 개발 워크플로우                        |
 
 ### Claude Code 사용 예시
 
@@ -355,15 +360,16 @@ Claude는 `.claude/skills/sonamu`의 지식을 활용하여 Sonamu 방식에 맞
 
 ### 데이터베이스 구성
 
-| DB 이름            | 용도            |
-| ------------------ | --------------- |
-| `{name}`           | 메인 개발 DB    |
-| `{name}_fixture`   | fixture DB      |
-| `{name}_test`      | 테스트 실행용   |
+| DB 이름          | 용도          |
+| ---------------- | ------------- |
+| `{name}`         | 메인 개발 DB  |
+| `{name}_fixture` | fixture DB    |
+| `{name}_test`    | 테스트 실행용 |
 
 ## 🔧 기술 스택
 
 ### 백엔드
+
 - **Sonamu** - 엔티티 중심 프레임워크
 - **Fastify** - 빠르고 오버헤드가 적은 웹 프레임워크
 - **Knex.js** - SQL 쿼리 빌더
@@ -371,6 +377,7 @@ Claude는 `.claude/skills/sonamu`의 지식을 활용하여 Sonamu 방식에 맞
 - **Vitest** - 테스팅 프레임워크
 
 ### 프론트엔드
+
 - **React 19** - UI 라이브러리
 - **Vite** - 빌드 도구
 - **TanStack Router** - 타입 안전 라우팅

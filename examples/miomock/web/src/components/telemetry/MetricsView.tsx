@@ -63,6 +63,7 @@ export function MetricsView({ records }: MetricsViewProps) {
                 <button
                   key={s.key}
                   type="button"
+                  aria-label={`View metric ${s.label}`}
                   onClick={() => setActiveKey(s.key)}
                   className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 ${
                     isActive ? "bg-gray-50" : ""

@@ -446,6 +446,7 @@ function RunHistorySidebar({
         {liveRun && (
           <button
             type="button"
+            aria-label={SD("testResults.liveRunning")}
             className={classNames(
               "w-full text-left px-2 py-1.5 rounded text-sm cursor-pointer transition-colors mb-2",
               {

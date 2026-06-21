@@ -1,9 +1,9 @@
 {
   "name": "create-sonamu-web",
-  "private": true,
   "version": "1.0.0",
-  "type": "module",
+  "private": true,
   "description": "Sonamu web client",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

@@ -40,8 +40,8 @@ class InMemoryRingBuffer<TRecord extends { timestamp: number }> {
     this.capacity = options.maxRecords ?? DEFAULT_MAX_RECORDS;
     this.maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
     this.estimateBytes = estimateBytes;
-    this.slots = new Array(this.capacity);
-    this.slotBytes = new Array(this.capacity).fill(0);
+    this.slots = Array.from({ length: this.capacity });
+    this.slotBytes = Array.from({ length: this.capacity }, () => 0);
   }
 
   push(record: TRecord): void {

@@ -1,7 +1,9 @@
 import { hydrate, QueryClient } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
+
 import { routeTree } from "./routeTree.gen";
+
 import "./styles/tailwind.css";
 import { dateReviver } from "./services/sonamu.shared";
 
@@ -28,15 +30,15 @@ const queryClient = new QueryClient({
 });
 
 // SSR 데이터 복원
-const dehydratedState = window.__SONAMU_SSR__
-  ? JSON.parse(JSON.stringify(window.__SONAMU_SSR__), dateReviver)
+const dehydratedState = window["__SONAMU_SSR__"]
+  ? JSON.parse(JSON.stringify(window["__SONAMU_SSR__"]), dateReviver)
   : undefined;
 if (dehydratedState) {
   hydrate(queryClient, dehydratedState);
 }
 
 // SSR Config 확인
-const ssrConfig = window.__SONAMU_SSR_CONFIG__;
+const ssrConfig = window["__SONAMU_SSR_CONFIG__"];
 
 // Router 생성
 const router = createRouter({
@@ -79,4 +81,4 @@ declare global {
     __TANSTACK_QUERY_CLIENT__: typeof queryClient;
   }
 }
-window.__TANSTACK_QUERY_CLIENT__ = queryClient;
+window["__TANSTACK_QUERY_CLIENT__"] = queryClient;
