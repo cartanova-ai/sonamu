@@ -16,7 +16,7 @@ const migrationEntries = Object.fromEntries(
 export default defineConfig({
   clean: true,
   dts: {
-    sourcemap: true,
+    sourcemap: false,
   },
   entry: {
     index: "src/index.ts",

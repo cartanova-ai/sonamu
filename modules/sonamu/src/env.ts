@@ -48,18 +48,37 @@ function assertEnvironmentDotenvExists(rootPath: string, environment: SonamuEnvi
   }
 }
 
+function removePreloadedCommonDotenvValues(
+  baseEnv: NodeJS.ProcessEnv,
+  commonEnv: EnvironmentSnapshot,
+  environmentEnv: EnvironmentSnapshot,
+): NodeJS.ProcessEnv {
+  const runtimeEnv = { ...baseEnv };
+
+  for (const [key, commonValue] of Object.entries(commonEnv)) {
+    if (environmentEnv[key] !== undefined && runtimeEnv[key] === commonValue) {
+      delete runtimeEnv[key];
+    }
+  }
+
+  return runtimeEnv;
+}
+
 export function readEnvironmentSnapshot(
   rootPath: string,
   environment: SonamuEnvironment,
   baseEnv: NodeJS.ProcessEnv = process.env,
 ): EnvironmentSnapshot {
   assertEnvironmentDotenvExists(rootPath, environment);
+  const commonEnv = readDotenvFile(path.join(rootPath, ".env"));
+  const environmentEnv = readDotenvFile(path.join(rootPath, `.env.${environment}`));
+  const runtimeEnv = removePreloadedCommonDotenvValues(baseEnv, commonEnv, environmentEnv);
 
   return {
-    ...readDotenvFile(path.join(rootPath, ".env")),
-    ...readDotenvFile(path.join(rootPath, `.env.${environment}`)),
+    ...commonEnv,
+    ...environmentEnv,
     ...readDotenvFile(path.join(rootPath, ".env.local")),
-    ...baseEnv,
+    ...runtimeEnv,
     NODE_ENV: environment,
   };
 }

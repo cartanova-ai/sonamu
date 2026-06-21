@@ -29,7 +29,7 @@
     "tag": "latest"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && tsc --emitDeclarationOnly",
     "check": "tsc --noEmit && oxlint src && oxfmt --check src",
     "check:type": "tsc --noEmit",
     "check:format": "oxfmt src",

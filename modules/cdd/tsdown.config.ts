@@ -2,9 +2,7 @@ import { defineConfig } from "tsdown";
 
 export default defineConfig({
   clean: true,
-  dts: {
-    sourcemap: true,
-  },
+  dts: false,
   entry: {
     index: "src/index.ts",
     lib: "src/lib.ts",
