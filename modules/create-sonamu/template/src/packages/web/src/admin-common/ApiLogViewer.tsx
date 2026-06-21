@@ -22,6 +22,7 @@ type ApiLog = {
 export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
   const [apiLogs, setApiLogs] = useState<ApiLog[]>([]);
   const requestStartTimes = useRef<Map<string, number>>(new Map());
+  const requestLogIds = useRef<WeakMap<object, string>>(new WeakMap());
 
   // Axios interceptor 설정
   useEffect(() => {
@@ -47,7 +48,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
         }
 
         setApiLogs((prev) => [log, ...prev]);
-        (config).__logId = logId;
+        requestLogIds.current.set(config, logId);
 
         return config;
       },
@@ -58,10 +59,12 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
 
     const responseInterceptor = axios.interceptors.response.use(
       (response) => {
-        const logId = (response.config).__logId;
-        const startTime = requestStartTimes.current.get(logId);
+        const logId = requestLogIds.current.get(response.config);
+        const startTime = logId ? requestStartTimes.current.get(logId) : undefined;
         const duration = startTime ? Date.now() - startTime : undefined;
-        requestStartTimes.current.delete(logId);
+        if (logId) {
+          requestStartTimes.current.delete(logId);
+        }
 
         setApiLogs((prev) =>
           prev.map((log) =>
@@ -80,7 +83,10 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
         return response;
       },
       (error) => {
-        const logId = (error.config)?.__logId;
+        const logId =
+          typeof error.config === "object" && error.config !== null
+            ? requestLogIds.current.get(error.config)
+            : undefined;
         const startTime = logId ? requestStartTimes.current.get(logId) : undefined;
         const duration = startTime ? Date.now() - startTime : undefined;
         if (logId) {

@@ -178,6 +178,7 @@ export default defineConfig({
             // CSR fallback (index.html): 1분 캐시
             return CachePresets.shortLived;
         }
+        return CachePresets.noCache;
       },
     },
 

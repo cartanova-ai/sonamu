@@ -1,8 +1,9 @@
+import path from "path";
+
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import dotenv from "dotenv";
-import path from "path";
 import Icons from "unplugin-icons/vite";
 import { defineConfig } from "vite";
 
@@ -47,6 +48,7 @@ export default defineConfig(({ command, isSsrBuild }) => ({
               if (id.includes("react-dom") || id.includes("react/")) return "vendor-react";
               if (id.includes("@tanstack/react-query") || id.includes("@tanstack/react-router"))
                 return "vendor-tanstack";
+              return undefined;
             },
           },
     },

@@ -2,6 +2,7 @@
   "include": ["index.ts"],
   "compilerOptions": {
     "strict": false,
+    "strictNullChecks": true,
     "resolveJsonModule": true,
     "moduleResolution": "bundler",
     "module": "ESNext",

@@ -10,8 +10,8 @@ import { readdir, readFile, writeFile, stat, rename, mkdir } from "fs/promises";
 import { join, dirname, basename } from "path";
 import { fileURLToPath } from "url";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DOCS_DIR = join(__dirname, "..");
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const DOCS_DIR = join(currentDir, "..");
 const IMAGES_DIR = join(DOCS_DIR, "images");
 const ARCHIVE_DIR = join(IMAGES_DIR, "at-s3-bucket");
 const BUCKET = "sonamu-docs";

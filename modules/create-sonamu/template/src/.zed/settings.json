@@ -8,85 +8,75 @@
           "run": "onType",
           "disableNestedConfig": false,
           "fixKind": "safe_fix",
-          "unusedDisableDirectives": "deny",
-        },
-      },
+          "unusedDisableDirectives": "deny"
+        }
+      }
     },
     "oxfmt": {
       "initialization_options": {
         "settings": {
           "fmt.configPath": null,
-          "run": "onSave",
-        },
-      },
-    },
+          "run": "onSave"
+        }
+      }
+    }
   },
   "languages": {
     "JavaScript": {
       "format_on_save": "on",
       "code_actions_on_format": {
         "source.organizeImports.oxc": true,
-        "source.fixAll.oxc": true,
+        "source.fixAll.oxc": true
       },
       "prettier": { "allowed": false },
       "formatter": {
         "language_server": {
-          "name": "oxfmt",
-        },
+          "name": "oxfmt"
+        }
       },
-      "language_servers": [
-        "!typescript-language-server",
-        "!biome",
-        "vtsls",
-        "oxfmt",
-      ],
+      "language_servers": ["!typescript-language-server", "!biome", "vtsls", "oxfmt"]
     },
     "TypeScript": {
       "format_on_save": "on",
       "code_actions_on_format": {
         "source.organizeImports.oxc": true,
-        "source.fixAll.oxc": true,
+        "source.fixAll.oxc": true
       },
       "prettier": { "allowed": false },
       "formatter": {
         "language_server": {
-          "name": "oxfmt",
-        },
+          "name": "oxfmt"
+        }
       },
-      "language_servers": [
-        "!typescript-language-server",
-        "!biome",
-        "vtsls",
-        "oxfmt",
-      ],
+      "language_servers": ["!typescript-language-server", "!biome", "vtsls", "oxfmt"]
     },
     "TSX": {
       "format_on_save": "on",
       "code_actions_on_format": {
         "source.organizeImports.oxc": true,
-        "source.fixAll.oxc": true,
+        "source.fixAll.oxc": true
       },
       "prettier": { "allowed": false },
       "formatter": {
         "language_server": {
-          "name": "oxfmt",
-        },
+          "name": "oxfmt"
+        }
       },
       "language_servers": [
         "!typescript-language-server",
         "vtsls",
         "oxfmt",
-        "tailwindcss-language-server",
-      ],
+        "tailwindcss-language-server"
+      ]
     },
     "JSON": {
       "format_on_save": "on",
       "formatter": {
         "language_server": {
-          "name": "oxfmt",
-        },
+          "name": "oxfmt"
+        }
       },
-      "language_servers": ["oxfmt", "!biome"],
-    },
-  },
+      "language_servers": ["oxfmt", "!biome"]
+    }
+  }
 }

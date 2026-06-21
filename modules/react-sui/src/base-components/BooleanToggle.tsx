@@ -14,7 +14,7 @@ export function BooleanToggle(
       toggle
       {...props}
       value={props.value ? "1" : "0"}
-      checked={!!props.value}
+      checked={props.value}
       onChange={(e, data) => {
         if (props.onChange) {
           return props.onChange(e, {

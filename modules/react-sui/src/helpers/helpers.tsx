@@ -26,6 +26,7 @@ export function searchParamsToParams<T extends z.ZodType<any>>(
   return caster(paramsSchema, obj);
 }
 
+// oxlint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- 공개 헬퍼 호출부에서 입력 타입을 보존하도록 제네릭 시그니처 유지
 export function paramsToSearchParams<T>(params: T): {
   [key in string]: string | string[];
 } {
@@ -54,6 +55,44 @@ type ErrorObj = {
   content: string;
   pointing?: "above" | "below" | "left" | "right";
 };
+
+function getEmptyStringTo(
+  innerZType: z.ZodObject<any> | z.ZodArray<any>,
+  objPath: string,
+): "normal" | "nullable" | "optional" {
+  const zTypeObjPath = objPath
+    .replace(/\./g, ".shape.")
+    .replace(/\[[^\]]+\]/g, ".element")
+    .replace(/^\.element/, "element");
+
+  let targetZType: unknown;
+  if (innerZType instanceof z.ZodObject) {
+    targetZType = get(innerZType.shape, zTypeObjPath);
+  } else if (innerZType instanceof z.ZodArray) {
+    targetZType = get(innerZType, zTypeObjPath);
+  }
+
+  if (targetZType === undefined) {
+    return "normal";
+  } else if (targetZType instanceof z.ZodOptional) {
+    return "optional";
+  } else if (targetZType instanceof z.ZodNullable) {
+    return "nullable";
+  }
+  return "normal";
+}
+
+function formatValue(value: unknown): string {
+  if (value === undefined || value === null) {
+    return "";
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return format(value, "yyyy-MM-dd'T'HH:mm");
+  }
+  return value as string;
+}
+
+// oxlint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- defaultValue의 구체 타입을 보존하기 위해 U를 유지
 export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U extends z.infer<T>>(
   zType: T,
   defaultValue: U,
@@ -61,45 +100,12 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
   const [form, setForm] = useState<z.infer<T>>(defaultValue);
   const [errorObjs, setErrorObjs] = useState(new Map());
 
-  function getEmptyStringTo(innerZType: T, objPath: string): "normal" | "nullable" | "optional" {
-    const zTypeObjPath = objPath
-      .replace(/\./g, ".shape.")
-      .replace(/\[[^\]]+\]/g, ".element")
-      .replace(/^\.element/, "element");
-
-    let targetZType: unknown;
-    if (innerZType instanceof z.ZodObject) {
-      targetZType = get(innerZType.shape, zTypeObjPath);
-    } else if (innerZType instanceof z.ZodArray) {
-      targetZType = get(innerZType, zTypeObjPath);
-    }
-
-    if (targetZType === undefined) {
-      return "normal";
-    } else if (targetZType instanceof z.ZodOptional) {
-      return "optional";
-    } else if (targetZType instanceof z.ZodNullable) {
-      return "nullable";
-    }
-    return "normal";
-  }
-
   return {
     form,
     setForm,
     register: (objPath: string, _emptyStringTo?: "normal" | "nullable" | "optional"): any => {
       const emptyStringTo = _emptyStringTo ?? getEmptyStringTo(zType, objPath);
       const srcValue = get(form, objPath) as unknown;
-
-      const formatValue = (value: unknown): string => {
-        if (value === undefined || value === null) {
-          return "";
-        }
-        if (value instanceof Date && !Number.isNaN(value.getTime())) {
-          return format(value, "yyyy-MM-dd'T'HH:mm");
-        }
-        return value as string;
-      };
 
       const error = errorObjs.get(objPath);
       return {

@@ -13,8 +13,8 @@ import { existsSync, linkSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = join(__dirname, "..");
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const rootDir = join(currentDir, "..");
 
 const hardlinkConfigs = [
   {

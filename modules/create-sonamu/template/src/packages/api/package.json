@@ -1,10 +1,10 @@
 {
   "name": "create-sonamu-api",
   "version": "1.0.0",
+  "description": "Sonamu API server",
+  "license": "MIT",
   "type": "module",
   "main": "index.js",
-  "license": "MIT",
-  "description": "Sonamu API server",
   "scripts": {
     "dev": "sonamu dev",
     "build": "sonamu build",

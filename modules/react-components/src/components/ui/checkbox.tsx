@@ -96,17 +96,19 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
       return (
         <div className="flex items-center gap-2">
           {checkboxElement}
-          <label
+          <button
+            type="button"
             id={labelId}
             className={cn(
-              "text-sm cursor-pointer select-none",
+              "text-sm cursor-pointer select-none border-0 bg-transparent p-0 text-left font-[inherit] text-inherit",
               disabled && "cursor-not-allowed opacity-50",
               labelClassName,
             )}
             onClick={handleLabelClick}
+            disabled={disabled}
           >
             {label}
-          </label>
+          </button>
         </div>
       );
     }
