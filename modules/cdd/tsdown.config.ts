@@ -9,6 +9,7 @@ export default defineConfig({
     index: "src/index.ts",
     lib: "src/lib.ts",
   },
+  fixedExtension: false,
   format: "esm",
   platform: "node",
   sourcemap: "inline",

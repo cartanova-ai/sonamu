@@ -112,8 +112,8 @@ catalog:
   "@types/ws": ^8.18.1
   "@typescript/native-preview": ^7.0.0-dev.20251225.1
   "@uiw/react-json-view": 2.0.0-alpha.41
-  "@vitejs/plugin-react": 6.0.1
-  "@vitest/coverage-v8": ^4.1.5
+  "@vitejs/plugin-react": 6.0.2
+  "@vitest/coverage-v8": ^4.1.9
   "@xyflow/react": ^12.9.3
   agentation: ^2.3.0
   ai: ^6.0.1
@@ -167,9 +167,9 @@ catalog:
   nodemon: ^3.1.10
   npm-run-all: ^4.1.5
   oxc-transform: ^0.123.0
-  oxfmt: ^0.43.0
-  oxlint: ^1.61.0
-  oxlint-tsgolint: ^0.19.0
+  oxfmt: ^0.55.0
+  oxlint: ^1.70.0
+  oxlint-tsgolint: ^0.23.0
   p-event: ^6.0.1
   p-timeout: ^6.1.4
   parse-imports: ^2.2.1
@@ -207,17 +207,17 @@ catalog:
   tailwind-merge: ^3.4.0
   tailwindcss: ^4.0.0
   ts-node: ^10.9.2
-  tsdown: ^0.12.5
+  tsdown: ^0.22.3
   tsicli: ^1.0.5
   tsx: ^4.21.0
   typescript: ^6.0.3
   unplugin-icons: 0.20.2
   uuid: ^13.0.0
   vaul: ^1.1.2
-  vite: 8.0.5
-  vite-plugin-dts: 4.5.4
-  vite-tsconfig-paths: ^5.1.4
-  vitest: ^4.1.2
+  vite: 8.0.16
+  vite-plugin-dts: 5.0.2
+  vite-tsconfig-paths: ^6.1.1
+  vitest: ^4.1.9
   voyageai: ^0.0.8
   xlsx: ^0.18.5
   zod: ^4.3.6

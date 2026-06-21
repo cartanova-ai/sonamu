@@ -40,8 +40,14 @@ function collectEntries(directory: string): Record<string, string> {
 
 export default defineConfig({
   clean: true,
+  deps: {
+    neverBundle: [/^sonamu(?:\/.*)?$/],
+  },
+  dts: false,
   entry: collectEntries(srcRoot),
+  fixedExtension: false,
   format: "esm",
+  outDir: path.resolve(process.cwd(), "dist"),
   platform: "node",
   sourcemap: "inline",
   target: "esnext",

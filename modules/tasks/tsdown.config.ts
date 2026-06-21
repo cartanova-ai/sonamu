@@ -23,6 +23,7 @@ export default defineConfig({
     internal: "src/internal.ts",
     ...migrationEntries,
   },
+  fixedExtension: false,
   format: "esm",
   platform: "node",
   sourcemap: true,
