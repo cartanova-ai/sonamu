@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { BackendPostgres } from ".";
 import { OpenWorkflow } from "./client";
+import { type WorkflowRun } from "./core/workflow";
 import { DEFAULT_SCHEMA } from "./database/base";
 import { KNEX_GLOBAL_CONFIG } from "./testing/connection";
 
@@ -128,11 +129,8 @@ describe("StepExecutor", () => {
     const handle = await workflow.run();
     const worker = client.newWorker();
     await worker.tick();
-    await sleep(50); // Wait for sleep step to complete
 
-    const workflowRun = await backend.getWorkflowRun({
-      workflowRunId: handle.workflowRun.id,
-    });
+    const workflowRun = await waitForWorkflowStatus(backend, handle.workflowRun.id, "sleeping");
     expect(workflowRun?.status).toBe("sleeping");
     expect(workflowRun?.availableAt).not.toBeNull();
   });
@@ -151,10 +149,7 @@ describe("StepExecutor", () => {
 
     // First tick - hits sleep
     await worker.tick();
-    await sleep(50); // Wait for tick to complete
-    const sleeping = await backend.getWorkflowRun({
-      workflowRunId: handle.workflowRun.id,
-    });
+    const sleeping = await waitForWorkflowStatus(backend, handle.workflowRun.id, "sleeping");
     expect(sleeping?.status).toBe("sleeping");
 
     // Wait for sleep to elapse
@@ -376,11 +371,8 @@ describe("executeWorkflow", () => {
       const handle = await workflow.run();
       const worker = client.newWorker();
       await worker.tick();
-      await sleep(50); // Wait for sleep step to complete
 
-      const workflowRun = await backend.getWorkflowRun({
-        workflowRunId: handle.workflowRun.id,
-      });
+      const workflowRun = await waitForWorkflowStatus(backend, handle.workflowRun.id, "sleeping");
       expect(workflowRun?.status).toBe("sleeping");
     });
 
@@ -401,11 +393,8 @@ describe("executeWorkflow", () => {
 
       // first tick - hits sleep
       await worker.tick();
-      await sleep(50);
 
-      const sleeping = await backend.getWorkflowRun({
-        workflowRunId: handle.workflowRun.id,
-      });
+      const sleeping = await waitForWorkflowStatus(backend, handle.workflowRun.id, "sleeping");
       expect(sleeping?.status).toBe("sleeping");
 
       // wait for sleep
@@ -689,4 +678,20 @@ describe("executeWorkflow with dynamic retryPolicy", () => {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForWorkflowStatus(
+  backend: BackendPostgres,
+  workflowRunId: string,
+  status: WorkflowRun["status"],
+): Promise<Awaited<ReturnType<BackendPostgres["getWorkflowRun"]>>> {
+  const deadline = Date.now() + 2_000;
+  let workflowRun = await backend.getWorkflowRun({ workflowRunId });
+
+  while (workflowRun?.status !== status && Date.now() < deadline) {
+    await sleep(20);
+    workflowRun = await backend.getWorkflowRun({ workflowRunId });
+  }
+
+  return workflowRun;
 }

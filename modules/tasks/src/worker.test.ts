@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { type Backend } from "./backend";
 import { declareWorkflow, OpenWorkflow } from "./client";
 import { ok } from "./core/result";
+import { type WorkflowRun } from "./core/workflow";
 import { BackendPostgres } from "./database/backend";
 import { type OnSubscribed } from "./database/pubsub";
 import { KNEX_GLOBAL_CONFIG } from "./testing/connection";
@@ -473,7 +474,7 @@ describe("Worker", () => {
     // - step-b fails
     // - step-c never runs (workflow fails at step-b)
     await worker.tick();
-    await sleep(100);
+    await waitFor(() => executionCounts.stepB === 1);
     expect(executionCounts.stepA).toBe(1);
     expect(executionCounts.stepB).toBe(1);
     expect(executionCounts.stepC).toBe(0);
@@ -486,7 +487,7 @@ describe("Worker", () => {
     // - step-b should be re-executed (failed previously)
     // - step-c should execute for first time
     await worker.tick();
-    await sleep(100);
+    await waitFor(() => executionCounts.stepC === 1);
     expect(executionCounts.stepA).toBe(1); // still 1, was cached
     expect(executionCounts.stepB).toBe(2); // incremented, was retried
     expect(executionCounts.stepC).toBe(1); // incremented, first execution
@@ -524,13 +525,11 @@ describe("Worker", () => {
 
     // first execution - runs before-sleep, then sleeps
     await worker.tick();
-    await sleep(50); // wait for processing
+    await waitFor(() => stepCount === 1);
     expect(stepCount).toBe(1);
 
     // verify workflow was postponed with sleeping status
-    const slept = await backend.getWorkflowRun({
-      workflowRunId: handle.workflowRun.id,
-    });
+    const slept = await waitForWorkflowStatus(backend, handle.workflowRun.id, "sleeping");
     expect(slept?.status).toBe("sleeping");
     expect(slept?.workerId).toBeNull(); // released during sleep
     expect(slept?.availableAt).not.toBeNull();
@@ -551,7 +550,7 @@ describe("Worker", () => {
 
     // second execution (after sleep)
     await worker.tick();
-    await sleep(50); // wait for processing
+    await waitFor(() => stepCount === 2);
     expect(stepCount).toBe(2);
 
     // verify sleep step is now "completed"
@@ -653,36 +652,48 @@ describe("Worker", () => {
 
     // first execution: step-1, then sleep-1
     await worker.tick();
-    await sleep(50);
+    await waitFor(() => executionCount === 1);
     expect(executionCount).toBe(1);
 
     // verify first sleep is running
-    const attempts1 = await backend.listStepAttempts({
-      workflowRunId: handle.workflowRun.id,
-    });
-    expect(attempts1.data.find((a) => a.stepName === "sleep-1")?.status).toBe("running");
+    const sleep1 = await waitForStepAttemptStatus(
+      backend,
+      handle.workflowRun.id,
+      "sleep-1",
+      "running",
+    );
+    expect(sleep1?.status).toBe("running");
 
     // wait for first sleep
     await sleep(100);
 
     // second execution: sleep-1 completed, step-2, then sleep-2
     await worker.tick();
-    await sleep(50);
+    await waitFor(() => executionCount === 2);
     expect(executionCount).toBe(2);
 
     // verify second sleep is running
-    const attempts2 = await backend.listStepAttempts({
-      workflowRunId: handle.workflowRun.id,
-    });
-    expect(attempts2.data.find((a) => a.stepName === "sleep-1")?.status).toBe("completed");
-    expect(attempts2.data.find((a) => a.stepName === "sleep-2")?.status).toBe("running");
+    const completedSleep1 = await waitForStepAttemptStatus(
+      backend,
+      handle.workflowRun.id,
+      "sleep-1",
+      "completed",
+    );
+    const sleep2 = await waitForStepAttemptStatus(
+      backend,
+      handle.workflowRun.id,
+      "sleep-2",
+      "running",
+    );
+    expect(completedSleep1?.status).toBe("completed");
+    expect(sleep2?.status).toBe("running");
 
     // wait for second sleep
     await sleep(100);
 
     // third execution: sleep-2 completed, step-3, complete
     await worker.tick();
-    await sleep(50);
+    await waitFor(() => executionCount === 3);
     expect(executionCount).toBe(3);
 
     const result = await handle.result();
@@ -972,7 +983,7 @@ describe("Worker", () => {
 
     // start processing in the background
     const tickPromise = worker.tick();
-    await sleep(25);
+    await waitFor(() => stepExecuted);
 
     // cancel while step is executing
     await handle.cancel();
@@ -1231,4 +1242,50 @@ describe("Worker pubsub", () => {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitFor(predicate: () => boolean, timeoutMs = 2_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (!predicate() && Date.now() < deadline) {
+    await sleep(20);
+  }
+}
+
+async function waitForWorkflowStatus(
+  backend: BackendPostgres,
+  workflowRunId: string,
+  status: WorkflowRun["status"],
+): Promise<Awaited<ReturnType<BackendPostgres["getWorkflowRun"]>>> {
+  const deadline = Date.now() + 2_000;
+  let workflowRun = await backend.getWorkflowRun({ workflowRunId });
+
+  while (workflowRun?.status !== status && Date.now() < deadline) {
+    await sleep(20);
+    workflowRun = await backend.getWorkflowRun({ workflowRunId });
+  }
+
+  return workflowRun;
+}
+
+async function waitForStepAttemptStatus(
+  backend: BackendPostgres,
+  workflowRunId: string,
+  stepName: string,
+  status: "running" | "completed" | "failed",
+) {
+  const deadline = Date.now() + 2_000;
+  let attempt = await getStepAttempt(backend, workflowRunId, stepName);
+
+  while (attempt?.status !== status && Date.now() < deadline) {
+    await sleep(20);
+    attempt = await getStepAttempt(backend, workflowRunId, stepName);
+  }
+
+  return attempt;
+}
+
+async function getStepAttempt(backend: BackendPostgres, workflowRunId: string, stepName: string) {
+  const attempts = await backend.listStepAttempts({ workflowRunId });
+  return attempts.data.find((attempt) => attempt.stepName === stepName);
 }

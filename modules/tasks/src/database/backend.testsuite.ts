@@ -359,7 +359,7 @@ export function testBackend(options: TestBackendOptions): void {
 
         await createPendingWorkflowRun(backend);
 
-        const firstLeaseMs = 30;
+        const firstLeaseMs = 500;
         const firstWorker = randomUUID();
         const claimed = await backend.claimWorkflowRun({
           workerId: firstWorker,
@@ -377,7 +377,7 @@ export function testBackend(options: TestBackendOptions): void {
         });
         expect(blocked).toBeNull();
 
-        await sleep(firstLeaseMs + 5); // small buffer for timing variability
+        await sleep(firstLeaseMs + 50); // small buffer for timing variability
 
         const reclaimed = await backend.claimWorkflowRun({
           workerId: secondWorker,
