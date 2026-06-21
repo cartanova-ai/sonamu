@@ -3,443 +3,137 @@ title: ".env Setup"
 description: "Creating and managing environment variable files"
 ---
 
-Sonamu uses `.env` files to apply different settings for each environment. Sensitive information such as database connection details, API keys, and session secrets should be stored in `.env` files and referenced from `sonamu.config.ts`.
+Before importing `sonamu.config.ts`, Sonamu reads dotenv files from the API package root. Put
+shared defaults in `.env`, environment-specific values in `.env.<environment>`, and machine-local
+overrides in `.env.local`.
 
 <Warning>
-  Never commit `.env` files to Git! Make sure `.env` is included in your `.gitignore`.
+  Never commit secret `.env` files. Commit only examples or templates that do not contain real
+  credentials.
 </Warning>
 
-## Quick Start
+## Loading Order
 
-<Steps>
-  <Step title="Copy .env.example" icon="copy">
-    Copy `.env.example` from the project root to create a `.env` file.
-    
-    ```bash
-    cp .env.example .env
-    ```
-  </Step>
+For the active `NODE_ENV`, Sonamu applies sources in this order:
 
-<Step title="Set Environment Variables" icon="pen">
-  Open the `.env` file and modify it with actual values. ```bash # Example DB_HOST=localhost
-  DB_PORT=5432 DB_USER=postgres DB_PASSWORD=your-db-password ```
-</Step>
+1. `.env`
+2. `.env.${NODE_ENV}`
+3. `.env.local`
+4. Exported process environment variables
 
-  <Step title="Reference in Config File" icon="code">
-    Read environment variables using `process.env` in `sonamu.config.ts`.
-    
-    ```typescript
-    database: {
-      defaultOptions: {
-        connection: {
-          host: process.env.DB_HOST || "0.0.0.0",
-          password: process.env.DB_PASSWORD,
-        },
-      },
-    }
-    ```
-  </Step>
-</Steps>
+Each source can override values loaded before it. If `NODE_ENV` is not set, Sonamu uses
+`development`. Allowed values are `test`, `development`, `staging`, and `production`.
 
-## .env File Structure
-
-The `.env` file is written in `KEY=VALUE` format.
+## File Layout
 
 ```bash
-# Project Settings
-PROJECT_NAME=MyProject
-
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=your-db-password
-
-# Session
-SESSION_SECRET=your-session-secret  # Minimum 64 characters
-SESSION_SALT=your-session-salt  # Minimum 16 characters
-
-# Storage (fs or s3)
-DRIVE_DISK=fs
-
-# AWS S3 (when DRIVE_DISK=s3)
-AWS_ACCESS_KEY_ID=your-aws-access-key-id
-AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
-S3_REGION=ap-northeast-2
-S3_BUCKET=my-bucket
-
-# External APIs
-OPENAI_API_KEY=your-openai-api-key
-
-# Worker
-DISABLE_WORKER=false
+packages/api/.env
+packages/api/.env.development
+packages/api/.env.staging
+packages/api/.env.production
+packages/api/.env.test
+packages/api/.env.local
 ```
 
-<Info>Comments start with `#`. Blank lines are ignored.</Info>
+The common `.env` file is optional when the current environment has its own file. One of `.env` or
+`.env.${NODE_ENV}` must exist.
 
-## Environment-Specific Settings
+## Common Values
+
+```bash title=".env"
+# Shared defaults
+PROJECT_NAME=MyProject
+CONTAINER_NAME=myproject-postgres
+
+# Database defaults. Environment files can override these values.
+SONAMU_DB_HOST=127.0.0.1
+SONAMU_DB_PORT=5432
+SONAMU_DB_USER=postgres
+SONAMU_DB_PASSWORD=your-db-password
+
+# Secrets and external services
+SESSION_SECRET=your-session-secret
+SESSION_SALT=your-session-salt
+OPENAI_API_KEY=your-openai-api-key
+```
+
+## Environment Values
 
 <Tabs>
   <Tab title="Development" icon="laptop-code">
     ```bash title=".env.development"
-    # Local development settings
-    PROJECT_NAME=MyProject-Dev
-    
-    DB_HOST=localhost
-    DB_PORT=5432
-    DB_USER=postgres
-    DB_PASSWORD=your-dev-password
-    DATABASE_NAME=myproject_dev
-    
-    SESSION_SECRET=your-dev-session-secret
-    SESSION_SALT=your-dev-session-salt
-    
-    DRIVE_DISK=fs
-    
-    # Development OpenAI (optional)
-    OPENAI_API_KEY=sk-***
-    
-    DISABLE_WORKER=false
+    SONAMU_DB_HOST=127.0.0.1
+    SONAMU_DB_PORT=5432
+    SONAMU_DB_USER=postgres
+    SONAMU_DB_PASSWORD=your-dev-password
+    SONAMU_DB_NAME=myproject_development
     ```
-    
-    **Characteristics:**
-    - Uses local database
-    - File system storage
-    - Simple secret keys (security not required)
   </Tab>
 
-<Tab title="Staging" icon="flask">
-  ```bash title=".env.staging" # Test server settings PROJECT_NAME=MyProject-Staging
-  DB_HOST=staging-db.example.com DB_PORT=5432 DB_USER=myproject_user
-  DB_PASSWORD=your-staging-password # Minimum 32 characters DATABASE_NAME=myproject_staging
-  SESSION_SECRET=your-staging-session-secret # Minimum 64 characters
-  SESSION_SALT=your-staging-session-salt DRIVE_DISK=s3 AWS_ACCESS_KEY_ID=your-staging-aws-key-id
-  AWS_SECRET_ACCESS_KEY=your-staging-aws-secret-key S3_REGION=ap-northeast-2
-  S3_BUCKET=myproject-staging OPENAI_API_KEY=your-staging-openai-key DISABLE_WORKER=false ```
-  **Characteristics:** - Remote database - S3 storage - Production-like environment
-</Tab>
+  <Tab title="Staging" icon="flask">
+    ```bash title=".env.staging"
+    SONAMU_DB_HOST=staging-db.example.com
+    SONAMU_DB_PORT=5432
+    SONAMU_DB_USER=myproject_staging
+    SONAMU_DB_PASSWORD=your-staging-password
+    SONAMU_DB_NAME=myproject_staging
+    ```
+  </Tab>
 
   <Tab title="Production" icon="server">
     ```bash title=".env.production"
-    # Production server settings
-    PROJECT_NAME=MyProject
-    
-    DB_HOST=prod-db.example.com
-    DB_PORT=5432
-    DB_USER=myproject_prod
-    DB_PASSWORD=your-production-password  # Minimum 64 characters
-    DATABASE_NAME=myproject_prod
-    
-    SESSION_SECRET=your-production-session-secret  # Minimum 64 characters
-    SESSION_SALT=your-production-session-salt
-    
-    DRIVE_DISK=s3
-    AWS_ACCESS_KEY_ID=your-production-aws-key-id
-    AWS_SECRET_ACCESS_KEY=your-production-aws-secret-key
-    S3_REGION=ap-northeast-2
-    S3_BUCKET=myproject-production
-    
-    OPENAI_API_KEY=your-production-openai-key
-    
-    DISABLE_WORKER=false
+    SONAMU_DB_HOST=prod-db.example.com
+    SONAMU_DB_PORT=5432
+    SONAMU_DB_USER=myproject_prod
+    SONAMU_DB_PASSWORD=your-production-password
+    SONAMU_DB_NAME=myproject_production
     ```
-    
-    **Characteristics:**
-    - High-availability database
-    - S3 storage (scalability)
-    - Strong security keys
+  </Tab>
+
+  <Tab title="Test" icon="flask-conical">
+    ```bash title=".env.test"
+    SONAMU_DB_HOST=127.0.0.1
+    SONAMU_DB_PORT=5432
+    SONAMU_DB_USER=postgres
+    SONAMU_DB_PASSWORD=your-test-password
+    SONAMU_DB_NAME=myproject_test
+    SONAMU_DB_FIXTURE_NAME=myproject_fixture
+    ```
   </Tab>
 </Tabs>
 
-## sonamu.config.ts Integration
+## sonamu.config.ts
 
-How to use environment variables in `sonamu.config.ts`.
+`sonamu.config.ts` can read `process.env` directly. Sonamu loads the current environment before it
+imports the config file.
 
-### Basic Pattern
-
-```typescript
+```typescript title="sonamu.config.ts"
 import { defineConfig } from "sonamu";
 
 export default defineConfig({
-  projectName: process.env.PROJECT_NAME ?? "DefaultName",
-
+  projectName: process.env.PROJECT_NAME ?? "MyProject",
   database: {
-    name: process.env.DATABASE_NAME ?? "database_name",
+    database: "pg",
     defaultOptions: {
-      connection: {
-        host: process.env.DB_HOST || "0.0.0.0",
-        port: Number(process.env.DB_PORT) || 5432,
-        user: process.env.DB_USER || "postgres",
-        password: process.env.DB_PASSWORD,
+      pool: {
+        min: 1,
+        max: 10,
       },
     },
   },
-
-  // ...
 });
 ```
 
-### Nullish Coalescing vs OR
-
-<CodeGroup>
-```typescript Nullish Coalescing (??)
-// Recommended: Only replaces undefined/null
-const name = process.env.PROJECT_NAME ?? "DefaultName";
-
-// undefined, null → "DefaultName"
-// ""(empty string) → "" preserved
-// 0 → 0 preserved
-
-````
-
-```typescript Logical OR (||)
-// Caution: Replaces all falsy values
-const name = process.env.PROJECT_NAME || "DefaultName";
-
-// undefined, null, "", 0, false → "DefaultName"
-// Empty strings are also replaced with default
-````
-
-</CodeGroup>
-
-<Tip>
-  Use `??` when you only want to use the default value if the environment variable is not set. `||`
-  treats empty strings as falsy.
-</Tip>
-
-### Number Conversion
-
-```typescript
-// ✅ Correct method
-port: Number(process.env.DB_PORT) || 5432;
-
-// ❌ Incorrect method
-port: process.env.DB_PORT || 5432; // Can become string "5432"
-```
-
-### Boolean Conversion
-
-```typescript
-// ✅ Correct method
-enableWorker: !["true", "1"].includes(process.env.DISABLE_WORKER ?? "false");
-
-// Or
-enableCache: process.env.ENABLE_CACHE === "true";
-
-// ❌ Incorrect method
-enableCache: process.env.ENABLE_CACHE || false; // "false" is also truthy
-```
-
-## Security Best Practices
-
-<Accordion title="Secret Key Generation" icon="key">
-  ### Generating Strong Secret Keys
-
-```bash
-# Generate 64-character random string
-openssl rand -base64 48
-
-# Or
-node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
-```
-
-**SESSION_SECRET example:**
-
-```bash
-SESSION_SECRET=your-64-character-random-session-secret-change-in-production
-```
-
-**Minimum lengths:**
-
-- SESSION_SECRET: 64+ characters
-- SESSION_SALT: 16+ characters
-- DB_PASSWORD: 32+ characters (production)
-  </Accordion>
-
-<Accordion title="Git Security" icon="git-alt">
-  ### .gitignore Configuration
-
-```bash title=".gitignore"
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Never commit production environment variables
-.env.production
-
-# Test environments may be allowed (if no sensitive info)
-# .env.test
-```
-
-### Maintaining .env.example
-
-```bash title=".env.example"
-# List keys only without actual values
-PROJECT_NAME=
-
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=
-DB_PASSWORD=
-
-SESSION_SECRET=
-SESSION_SALT=
-```
-
-  <Info>
-  Commit `.env.example` to Git so team members can reference it.
-  </Info>
-</Accordion>
-
-<Accordion title="Permission Management" icon="shield">
-  ### File Permission Settings
-
-```bash
-# Set .env file permissions to owner read/write only
-chmod 600 .env
-
-# Verify
-ls -la .env
-# -rw------- 1 user user 512 Jan 09 10:00 .env
-```
-
-### Restricting Environment Variable Access
-
-```typescript
-// ✅ Access only where needed
-const dbPassword = process.env.DB_PASSWORD;
-
-// ❌ Never output to logs
-console.log("Password:", process.env.DB_PASSWORD);
-
-// ❌ Never expose to client
-res.send({ secret: process.env.SESSION_SECRET });
-```
-
-</Accordion>
-
-<Accordion title="CI/CD Environment Variables" icon="gears">
-  ### GitHub Actions
-
-```yaml title=".github/workflows/deploy.yml"
-jobs:
-  deploy:
-    steps:
-      - name: Deploy
-        env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-        run: |
-          npm run deploy
-```
-
-### Vercel/Netlify
-
-1. Project Settings → Environment Variables
-2. Add each variable individually
-3. Set different values per environment (Production/Preview/Development)
-
-  <Warning>
-  Never use production secrets in development/staging environments!
-  </Warning>
-</Accordion>
-
-## Troubleshooting
-
-<Accordion title="Environment Variable is undefined" icon="circle-question">
-  **Symptom:** `process.env.DB_PASSWORD` is `undefined`
-
-**Causes:**
-
-1. `.env` file doesn't exist
-2. `.env` file is in wrong location
-3. Typo in variable name
-4. Server not restarted
-
-**Solution:**
-
-```bash
-# 1. Check .env file
-cat .env | grep DB_PASSWORD
-
-# 2. Verify .env file location (project root)
-ls -la .env
-
-# 3. Restart server
-npm run dev
-```
-
-</Accordion>
-
-<Accordion title="Environment Variable Changes Not Applied" icon="rotate">
-  **Symptom:** Changed environment variable but still using old value
-
-**Cause:**
-
-- Node.js only reads `.env` file when the process starts
-- Server restart required after file changes
-
-**Solution:**
-
-```bash
-# Restart development server
-# Stop with Ctrl+C then
-npm run dev
-```
-
-  <Info>
-  HMR (Hot Module Replacement) only auto-reloads code; environment variables require a restart to apply.
-  </Info>
-</Accordion>
-
-<Accordion title="Environment Variables Fail to Load in Production" icon="server">
-  **Symptom:** Works locally but `undefined` in production
-
-**Causes:**
-
-- `.env` file doesn't exist on production server
-- Hosting platform environment variables not configured
-
-**Solutions:**
-
-**Method 1: Deploy .env file to server**
-
-```bash
-# After SSH connection
-cd /path/to/app
-nano .env
-# Paste content and save
-```
-
-**Method 2: Use hosting platform environment variables**
-
-- Vercel: Project Settings → Environment Variables
-- AWS EC2: `/etc/environment` or `~/.bashrc`
-- Docker: `docker run -e DB_HOST=... -e DB_PASSWORD=...`
-  </Accordion>
-
-## Next Steps
-
-<CardGroup cols={2}>
-  <Card
-    title="Database Credentials"
-    icon="database"
-    href="/en/configuration/environment-variables/database-credentials"
-  >
-    Set up DB connection information securely
-  </Card>
-
-<Card title="API Key Management" icon="key" href="/en/configuration/environment-variables/api-keys">
-  Manage external service API keys securely
-</Card>
-
-<Card title="sonamu.config.ts" icon="gear" href="/en/configuration/sonamu-config">
-  Configure your entire project settings
-</Card>
-
-  <Card title="Authentication Setup" icon="shield" href="/en/api-development/authentication/setup">
-    Set up authentication and session security
-  </Card>
-</CardGroup>
+Do not use the removed `database.name` or `database.environments` fields. Database names and
+environment-specific connections now come from `SONAMU_DB_*` variables and `projectName`.
+
+## Conversion Tips
+
+- Replace `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DATABASE_NAME` with
+  `SONAMU_DB_HOST`, `SONAMU_DB_PORT`, `SONAMU_DB_USER`, `SONAMU_DB_PASSWORD`, and
+  `SONAMU_DB_NAME`.
+- Use `SONAMU_DB_READONLY_*` for read-only replicas. Any missing read-only field uses the current
+  environment's main DB value.
+- Use `SONAMU_DB_FIXTURE_*` only for the test fixture database.
+- Use `.env.local` for machine-local overrides that should apply after the shared and
+  environment-specific files.

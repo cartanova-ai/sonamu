@@ -161,39 +161,13 @@ Sonamu can manage multiple databases simultaneously.
 
 ```typescript title="sonamu.config.ts"
 export default {
+  projectName: process.env.PROJECT_NAME ?? "MyApp",
   database: {
-    // Development environment - master
-    development_master: {
-      client: "mysql2",
-      connection: {
-        host: "localhost",
-        database: "myapp_dev",
-        user: "root",
-        password: "password",
-      },
-    },
-    // Development environment - slave (read-only)
-    development_slave: {
-      // Slaves are automatically ignored
-    },
-    // Test environment
-    test: {
-      client: "mysql2",
-      connection: {
-        host: "localhost",
-        database: "myapp_test",
-        user: "root",
-        password: "password",
-      },
-    },
-    // Production environment
-    production: {
-      client: "mysql2",
-      connection: {
-        host: "prod-db.example.com",
-        database: "myapp_prod",
-        user: "root",
-        password: process.env.DB_PASSWORD,
+    database: "pg",
+    defaultOptions: {
+      pool: {
+        min: 1,
+        max: 10,
       },
     },
   },
@@ -202,7 +176,9 @@ export default {
 
 **Migration targets**:
 
-- Databases ending with `_master`
+- The current `NODE_ENV` preset by default
+- Explicit presets such as `development`, `staging`, `production`, and `test`
+- Read-only presets are skipped
 - All databases not ending with `_slave`
 
 ### Batch Application
@@ -277,7 +253,7 @@ import { Migrator } from "sonamu";
 const migrator = new Migrator();
 
 // Rollback (last batch)
-await migrator.runAction("rollback", ["development_master"]);
+await migrator.runAction("rollback", ["development"]);
 
 // Select specific databases only
 await migrator.runAction("apply", ["test"]);
@@ -296,7 +272,7 @@ Sonamu.runScript(async () => {
   const migrator = new Migrator();
 
   console.log("Rolling back last migration batch...");
-  await migrator.runAction("rollback", ["development_master", "test"]);
+  await migrator.runAction("rollback", ["development", "test"]);
   console.log("Rollback completed!");
 });
 ```
@@ -382,13 +358,13 @@ When there are foreign key references, referenced tables must be created first.
 ```typescript
 // Rollback
 const migrator = new Migrator();
-await migrator.runAction("rollback", ["development_master"]);
+await migrator.runAction("rollback", ["development"]);
 
 // Modify migration filename (adjust timestamp)
 // 20240116_110230_*.ts → 20240116_110231_*.ts
 
 // Reapply
-await migrator.runAction("apply", ["development_master"]);
+await migrator.runAction("apply", ["development"]);
 ```
 
 **Fix method 2: Adjust Entity definition order**

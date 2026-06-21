@@ -96,10 +96,10 @@ catalog:
 - `tsconfig.schemas.json`: Zod 스키마 생성 전용
 - `tsconfig.types.json`: 타입 정의 생성 전용
 
-**.env**
+**.env / .env.<environment>**
 
-- 데이터베이스 연결 정보 (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD)
-- 프로젝트 설정 변수 (DATABASE_NAME, CONTAINER_NAME, PROJECT_NAME)
+- 데이터베이스 연결 정보 (`SONAMU_DB_HOST`, `SONAMU_DB_PORT`, `SONAMU_DB_USER`, `SONAMU_DB_PASSWORD`)
+- 프로젝트와 DB 이름 변수 (`PROJECT_NAME`, `CONTAINER_NAME`, `SONAMU_DB_NAME`)
 - `pnpm create sonamu` 실행 시 자동 생성
 
 </Accordion>
@@ -249,7 +249,7 @@ catalog:
 
 - 데이터베이스 초기화 쉘 스크립트
 - pgvector 확장 설치 및 데이터베이스 생성
-- 환경변수로 데이터베이스 이름 지정 (`DATABASE_NAME`, `_fixture`, `_test`)
+- `PROJECT_NAME`, `SONAMU_DB_NAME`, `SONAMU_DB_FIXTURE_NAME`으로 환경별 DB 생성
 - `pnpm create sonamu` 실행 시 자동 생성
 
 **dumps/**

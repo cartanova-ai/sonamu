@@ -3,7 +3,7 @@ title: "설치하기"
 description: "Sonamu 설치 및 개발 환경 설정"
 ---
 
-Sonamu는 `create-sonamu` 패키지를 통해 프로젝트를 손쉽게 시작할 수 있습니다.
+`create-sonamu` 패키지로 새 Sonamu 프로젝트를 생성할 수 있습니다.
 
 ## 시스템 요구사항
 
@@ -249,13 +249,10 @@ export default defineConfig({
   },
   database: {
     database: "pg",
-    name: process.env.DATABASE_NAME ?? "database_name",
     defaultOptions: {
-      connection: {
-        host: process.env.DB_HOST || "0.0.0.0",
-        port: Number(process.env.DB_PORT) || 5432,
-        user: process.env.DB_USER || "postgres",
-        password: process.env.DB_PASSWORD,
+      pool: {
+        min: 1,
+        max: 10,
       },
     },
   },
@@ -290,13 +287,15 @@ services:
     volumes:
       - ./fixtures/init.sh:/docker-entrypoint-initdb.d/init.sh
     environment:
-      DATABASE_NAME: ${DATABASE_NAME}
+      PROJECT_NAME: ${PROJECT_NAME}
+      SONAMU_DB_NAME: ${SONAMU_DB_NAME:-}
+      SONAMU_DB_FIXTURE_NAME: ${SONAMU_DB_FIXTURE_NAME:-}
       POSTGRES_DB: template1
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${SONAMU_DB_USER}
+      POSTGRES_PASSWORD: ${SONAMU_DB_PASSWORD}
       TZ: Asia/Seoul
     ports:
-      - "${DB_PORT}:5432"
+      - "${SONAMU_DB_PORT}:5432"
 ```
 
 ### 프론트엔드 설정

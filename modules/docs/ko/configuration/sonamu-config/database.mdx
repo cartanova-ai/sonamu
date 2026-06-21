@@ -3,7 +3,8 @@ title: "데이터베이스"
 description: "PostgreSQL 연결 및 환경별 설정"
 ---
 
-데이터베이스 연결 설정을 다룹니다. Sonamu는 PostgreSQL을 기본 데이터베이스로 사용하며, 환경별로 다른 데이터베이스 설정을 지원합니다.
+Sonamu는 `NODE_ENV`, `projectName`, `SONAMU_DB_*` 환경변수로 DB preset을 생성합니다. 기존
+`database.name`과 `database.environments` 필드는 더 이상 지원하지 않습니다.
 
 ## 기본 구조
 
@@ -11,27 +12,16 @@ description: "PostgreSQL 연결 및 환경별 설정"
 import { defineConfig } from "sonamu";
 
 export default defineConfig({
+  projectName: process.env.PROJECT_NAME ?? "MyProject",
   database: {
     database: "pg",
-    name: "mydb",
     defaultOptions: {
-      connection: {
-        host: "localhost",
-        port: 5432,
-        user: "postgres",
-        password: "password",
-      },
-    },
-    environments: {
-      development: {
-        /* ... */
-      },
-      production: {
-        /* ... */
+      pool: {
+        min: 1,
+        max: 10,
       },
     },
   },
-  // ...
 });
 ```
 
@@ -39,584 +29,122 @@ export default defineConfig({
 
 사용할 PostgreSQL 드라이버를 지정합니다.
 
-**타입**: `"pg" | "pgnative"` (선택적)
+**타입**: `"pg" | "pgnative"` (선택)
 
 **기본값**: `"pg"`
 
-```typescript
-export default defineConfig({
-  database: {
-    database: "pg", // 기본 pg 모듈 사용
-    // ...
-  },
-});
-```
-
-### pg vs pgnative
-
-- **`"pg"`**: 순수 JavaScript로 구현된 PostgreSQL 드라이버 (권장)
-  - 설치: `pnpm add pg`
-  - 크로스 플랫폼 지원
-  - 대부분의 경우 충분한 성능
-  - Sonamu가 자동으로 Node.js TCP 소켓 레벨 keepAlive를 설정합니다 (`keepAlive: true`, `keepAliveInitialDelayMillis: 10000`)
-
-- **`"pgnative"`**: C 바인딩을 사용하는 네이티브 드라이버
-  - 설치: `pnpm add pg-native`
-  - 더 빠른 성능 (특히 대량 데이터 처리)
-  - 컴파일 필요, 플랫폼 의존성
-  - Sonamu가 자동으로 connection 객체를 libpq 연결 문자열로 변환하며, TCP keepAlive 파라미터(`keepalives=1`, `keepalives_idle=10`, `keepalives_interval=10`, `keepalives_count=5`)를 포함합니다
-
-<Tip>특별한 성능 요구사항이 없다면 `"pg"`를 사용하세요. 설치와 배포가 간단합니다.</Tip>
-
-## name
-
-데이터베이스 이름을 지정합니다.
-
-**타입**: `string` (필수)
-
-```typescript
-export default defineConfig({
-  database: {
-    database: "pg",
-    name: "ecommerce", // 연결할 데이터베이스 이름
-    // ...
-  },
-});
-```
-
-**환경 변수 사용**:
-
-```typescript
-export default defineConfig({
-  database: {
-    database: "pg",
-    name: process.env.DATABASE_NAME ?? "mydb",
-    // ...
-  },
-});
-```
+- `"pg"`: 순수 JavaScript PostgreSQL 드라이버입니다. 대부분의 프로젝트에 권장합니다.
+- `"pgnative"`: C 바인딩 기반 네이티브 드라이버입니다. 필요한 경우와 플랫폼 요구사항을 감당할 수
+  있는 경우에만 사용하세요.
 
 ## defaultOptions
 
-모든 환경에 공통으로 적용될 데이터베이스 설정입니다. Knex 설정 옵션을 사용합니다.
-
-**타입**: `DatabaseConfig` (필수)
-
-```typescript
-type DatabaseConfig = Omit<Knex.Config, "connection"> & {
-  connection?: Knex.PgConnectionConfig;
-};
-```
-
-### connection 설정
-
-데이터베이스 연결 정보를 설정합니다.
+생성되는 모든 preset에 공통으로 적용할 Knex 옵션입니다.
 
 ```typescript
 export default defineConfig({
   database: {
     database: "pg",
-    name: "mydb",
     defaultOptions: {
-      connection: {
-        host: "localhost", // 데이터베이스 호스트
-        port: 5432, // PostgreSQL 포트
-        user: "postgres", // 사용자 이름
-        password: "password", // 비밀번호
-      },
-    },
-  },
-});
-```
-
-**환경 변수로 안전하게 관리**:
-
-```typescript
-export default defineConfig({
-  database: {
-    database: "pg",
-    name: process.env.DATABASE_NAME ?? "mydb",
-    defaultOptions: {
-      connection: {
-        host: process.env.DB_HOST ?? "localhost",
-        port: Number(process.env.DB_PORT ?? 5432),
-        user: process.env.DB_USER ?? "postgres",
-        password: process.env.DB_PASSWORD,
-      },
-    },
-  },
-});
-```
-
-<Warning>
-  데이터베이스 비밀번호는 반드시 환경 변수로 관리하세요. 코드에 직접 작성하지 마세요!
-</Warning>
-
-### 추가 Knex 옵션
-
-connection 외에도 다양한 Knex 옵션을 설정할 수 있습니다:
-
-```typescript
-export default defineConfig({
-  database: {
-    database: "pg",
-    name: "mydb",
-    defaultOptions: {
-      connection: {
-        /* ... */
-      },
-
-      // 커넥션 풀 설정
       pool: {
         min: 2,
         max: 10,
       },
-
-      // 쿼리 타임아웃
       acquireConnectionTimeout: 10000,
-
-      // 디버그 모드
       debug: process.env.NODE_ENV === "development",
     },
   },
 });
 ```
 
-Sonamu는 내부적으로 다음 pool 옵션을 자동 설정합니다. 사용자가 별도로 지정하지 않아도 적용되며, 사용자 설정이 있을 경우 아래 값으로 덮어씁니다:
+Sonamu는 connection 필드를 `SONAMU_DB_*`에서 채웁니다. `defaultOptions.connection`에는 SSL
+설정처럼 모든 환경에 공통으로 적용할 연결 옵션만 두세요. host, port, user, password, database
+값은 로드된 환경 안에서만 사용됩니다.
 
-| 옵션                   | 기본값  | 설명                                           |
-| ---------------------- | ------- | ---------------------------------------------- |
-| `propagateCreateError` | `false` | 커넥션 생성 에러를 풀 전체로 전파하지 않습니다 |
-| `idleTimeoutMillis`    | `10000` | 유휴 커넥션이 10초 후 자동으로 해제됩니다      |
-| `reapIntervalMillis`   | `1000`  | 유휴 커넥션 정리 주기를 1초로 설정합니다       |
-| `acquireTimeoutMillis` | `30000` | 커넥션 획득 대기 시간을 30초로 제한합니다      |
-| `createTimeoutMillis`  | `30000` | 커넥션 생성 대기 시간을 30초로 제한합니다      |
+## Dotenv 로딩
 
-또한 pool의 `afterCreate` 콜백에서 각 커넥션에 대해 소켓 레벨 keepAlive 설정과 에러 핸들러를 등록합니다. 에러가 발생한 커넥션은 자동으로 풀에서 제외됩니다.
+`sonamu.config.ts`를 import하기 전에 Sonamu는 현재 환경에 대해 다음 순서로 dotenv 값을 적용합니다.
 
-## environments
+1. `.env`
+2. `.env.${NODE_ENV}`
+3. `.env.local`
+4. export된 process 환경변수
 
-환경별로 다른 데이터베이스 설정을 지정합니다. `defaultOptions`를 오버라이드합니다.
+허용되는 `NODE_ENV` 값은 `test`, `development`, `staging`, `production`입니다. 값이 없으면
+`development`를 사용합니다.
 
-**타입**: (선택적)
+## 데이터베이스 변수
+
+```bash
+SONAMU_DB_HOST=127.0.0.1
+SONAMU_DB_PORT=5432
+SONAMU_DB_USER=postgres
+SONAMU_DB_PASSWORD=password
+SONAMU_DB_NAME=myproject_development
+```
+
+데이터베이스 이름 결정 순서:
+
+1. `SONAMU_DB_NAME`이 있으면 그 값을 사용합니다.
+2. 없으면 `${projectName}_${environment}`를 생성합니다.
+3. fixture DB는 `${projectName}_fixture`를 사용합니다.
+
+## Preset
+
+Sonamu는 다음 preset을 생성합니다.
+
+| Preset | 용도 |
+| --- | --- |
+| `test` | 테스트 실행 DB |
+| `test_readonly` | `test` 값을 사용하는 테스트 읽기 전용 DB |
+| `fixture` | fixture sync의 원본 DB |
+| `development` | 개발 런타임 DB |
+| `development_readonly` | 개발 읽기 전용 DB |
+| `staging` | 스테이징 런타임 DB |
+| `staging_readonly` | 스테이징 읽기 전용 DB |
+| `production` | 프로덕션 런타임 DB |
+| `production_readonly` | 프로덕션 읽기 전용 DB |
+
+`DB.getDB("w")`는 현재 환경의 main preset으로 해석됩니다. `DB.getDB("r")`은 현재 환경의
+read-only preset으로 해석됩니다.
+
+## 읽기 전용 replica
+
+읽기 전용 replica는 `SONAMU_DB_READONLY_*` 변수를 사용합니다. 없는 read-only 필드는 현재 환경의
+main connection 값을 사용합니다.
+
+```bash title=".env.production"
+SONAMU_DB_HOST=prod-db-primary.example.com
+SONAMU_DB_NAME=myproject_production
+
+SONAMU_DB_READONLY_HOST=prod-db-replica.example.com
+SONAMU_DB_READONLY_NAME=myproject_production
+```
+
+## Fixture DB
+
+Fixture DB 설정은 `SONAMU_DB_FIXTURE_*` prefix를 사용합니다.
+
+```bash title=".env.test"
+SONAMU_DB_NAME=myproject_test
+SONAMU_DB_FIXTURE_NAME=myproject_fixture
+```
+
+fixture 전용 host, port, user, password가 없으면 test 환경의 일반 `SONAMU_DB_*` 값을 사용합니다.
+
+## 제거된 필드
+
+다음 필드는 더 이상 지원하지 않습니다.
 
 ```typescript
-environments?: {
-  development?: DatabaseConfig;
-  development_slave?: DatabaseConfig;
-  production?: DatabaseConfig;
-  production_slave?: DatabaseConfig;
-  fixture?: DatabaseConfig;
-  test?: DatabaseConfig;
+database: {
+  name: "mydb",
+  environments: {
+    production: {},
+    production_slave: {},
+  },
 }
 ```
 
-### 환경별 설정 예시
-
-```typescript
-export default defineConfig({
-  database: {
-    database: "pg",
-    name: "mydb",
-    defaultOptions: {
-      connection: {
-        host: "localhost",
-        port: 5432,
-        user: "postgres",
-        password: "dev-password",
-      },
-    },
-    environments: {
-      // 개발 환경 (기본값 사용)
-      development: {
-        connection: {
-          host: "localhost",
-          port: 5432,
-          user: "dev_user",
-          password: "dev_password",
-        },
-      },
-
-      // 프로덕션 환경
-      production: {
-        connection: {
-          host: process.env.PROD_DB_HOST,
-          port: Number(process.env.PROD_DB_PORT),
-          user: process.env.PROD_DB_USER,
-          password: process.env.PROD_DB_PASSWORD,
-        },
-        pool: {
-          min: 5,
-          max: 30, // 프로덕션에서는 더 큰 풀
-        },
-      },
-
-      // 테스트 환경
-      test: {
-        connection: {
-          host: "localhost",
-          port: 5432,
-          user: "test_user",
-          password: "test_password",
-          database: "mydb_test", // 별도의 테스트 DB
-        },
-      },
-    },
-  },
-});
-```
-
-### 현재 환경 결정
-
-Sonamu는 다음 순서로 현재 환경을 결정합니다:
-
-1. `NODE_ENV` 환경 변수
-2. 기본값: `development`
-
-```bash
-# 개발 환경
-NODE_ENV=development pnpm dev
-
-# 프로덕션 환경
-NODE_ENV=production pnpm start
-
-# 테스트 환경
-NODE_ENV=test pnpm test
-```
-
-### Slave DB 설정
-
-읽기 전용 복제본(slave)을 사용하는 경우:
-
-```typescript
-export default defineConfig({
-  database: {
-    database: "pg",
-    name: "mydb",
-    defaultOptions: {
-      /* ... */
-    },
-    environments: {
-      production: {
-        connection: {
-          host: "master.db.example.com",
-          port: 5432,
-          user: "master_user",
-          password: process.env.MASTER_DB_PASSWORD,
-        },
-      },
-      production_slave: {
-        connection: {
-          host: "slave.db.example.com",
-          port: 5432,
-          user: "slave_user",
-          password: process.env.SLAVE_DB_PASSWORD,
-        },
-      },
-    },
-  },
-});
-```
-
-<Note>Slave DB는 읽기 전용 쿼리에 사용되어 마스터 DB의 부하를 분산시킵니다.</Note>
-
-## 실전 예시
-
-### 기본 로컬 개발 설정
-
-```typescript
-import { defineConfig } from "sonamu";
-
-export default defineConfig({
-  database: {
-    database: "pg",
-    name: "myapp",
-    defaultOptions: {
-      connection: {
-        host: "localhost",
-        port: 5432,
-        user: "postgres",
-        password: "postgres",
-      },
-    },
-  },
-  // ...
-});
-```
-
-### 환경 변수 활용 (권장)
-
-```typescript
-import { defineConfig } from "sonamu";
-
-export default defineConfig({
-  database: {
-    database: "pg",
-    name: process.env.DATABASE_NAME ?? "myapp",
-    defaultOptions: {
-      connection: {
-        host: process.env.DB_HOST ?? "localhost",
-        port: Number(process.env.DB_PORT ?? 5432),
-        user: process.env.DB_USER ?? "postgres",
-        password: process.env.DB_PASSWORD,
-      },
-      pool: {
-        min: 2,
-        max: 10,
-      },
-    },
-  },
-  // ...
-});
-```
-
-**.env 파일**:
-
-```bash
-DATABASE_NAME=myapp
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=your-password-here
-```
-
-### 다중 환경 설정
-
-```typescript
-import { defineConfig } from "sonamu";
-
-const isDev = process.env.NODE_ENV === "development";
-const isProd = process.env.NODE_ENV === "production";
-
-export default defineConfig({
-  database: {
-    database: "pg",
-    name: "ecommerce",
-    defaultOptions: {
-      connection: {
-        host: process.env.DB_HOST ?? "localhost",
-        port: Number(process.env.DB_PORT ?? 5432),
-        user: process.env.DB_USER ?? "postgres",
-        password: process.env.DB_PASSWORD,
-      },
-      debug: isDev,
-    },
-    environments: {
-      development: {
-        connection: {
-          host: "localhost",
-          port: 5432,
-          user: "dev_user",
-          password: "dev_password",
-          database: "ecommerce_dev",
-        },
-        pool: {
-          min: 2,
-          max: 10,
-        },
-      },
-
-      production: {
-        connection: {
-          host: process.env.PROD_DB_HOST,
-          port: Number(process.env.PROD_DB_PORT),
-          user: process.env.PROD_DB_USER,
-          password: process.env.PROD_DB_PASSWORD,
-          database: "ecommerce_prod",
-        },
-        pool: {
-          min: 5,
-          max: 30,
-        },
-        acquireConnectionTimeout: 60000,
-      },
-
-      production_slave: {
-        connection: {
-          host: process.env.PROD_SLAVE_DB_HOST,
-          port: Number(process.env.PROD_SLAVE_DB_PORT),
-          user: process.env.PROD_SLAVE_DB_USER,
-          password: process.env.PROD_SLAVE_DB_PASSWORD,
-          database: "ecommerce_prod",
-        },
-        pool: {
-          min: 3,
-          max: 20,
-        },
-      },
-
-      test: {
-        connection: {
-          host: "localhost",
-          port: 5432,
-          user: "test_user",
-          password: "test_password",
-          database: "ecommerce_test",
-        },
-        pool: {
-          min: 1,
-          max: 5,
-        },
-      },
-
-      fixture: {
-        connection: {
-          host: "localhost",
-          port: 5432,
-          user: "fixture_user",
-          password: "fixture_password",
-          database: "ecommerce_fixture",
-        },
-      },
-    },
-  },
-  // ...
-});
-```
-
-### Docker Compose 환경
-
-```typescript
-import { defineConfig } from "sonamu";
-
-export default defineConfig({
-  database: {
-    database: "pg",
-    name: "myapp",
-    defaultOptions: {
-      connection: {
-        // Docker Compose의 서비스 이름 사용
-        host: process.env.DB_HOST ?? "postgres",
-        port: Number(process.env.DB_PORT ?? 5432),
-        user: process.env.DB_USER ?? "postgres",
-        password: process.env.DB_PASSWORD ?? "postgres",
-      },
-    },
-  },
-  // ...
-});
-```
-
-**docker-compose.yml**:
-
-```yaml
-services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_DB: myapp
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-
-  api:
-    build: .
-    environment:
-      DB_HOST: postgres # 서비스 이름
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DATABASE_NAME: myapp
-```
-
-## 연결 테스트
-
-데이터베이스 설정이 올바른지 확인하려면:
-
-```bash
-# 개발 서버 시작
-pnpm dev
-
-# 연결 성공 시 콘솔에 표시됨
-# ✅ Database connected: myapp
-```
-
-연결 실패 시 일반적인 오류:
-
-```bash
-# 1. 비밀번호 오류
-❌ password authentication failed for user "postgres"
-
-# 2. 호스트 연결 실패
-❌ connect ECONNREFUSED 127.0.0.1:5432
-
-# 3. 데이터베이스가 존재하지 않음
-❌ database "myapp" does not exist
-```
-
-<Tip>
-연결 문제가 발생하면 PostgreSQL이 실행 중인지 확인하세요:
-```bash
-# macOS
-brew services list
-
-# Linux
-
-systemctl status postgresql
-
-# Docker
-
-docker ps
-
-````
-</Tip>
-
-## 주의사항
-
-### 1. 비밀번호 보안
-
-```typescript
-// ❌ 나쁜 예: 코드에 비밀번호 직접 작성
-export default defineConfig({
-  database: {
-    defaultOptions: {
-      connection: {
-        password: "super-secret-password",  // 절대 금지!
-      },
-    },
-  },
-});
-
-// ✅ 좋은 예: 환경 변수 사용
-export default defineConfig({
-  database: {
-    defaultOptions: {
-      connection: {
-        password: process.env.DB_PASSWORD,
-      },
-    },
-  },
-});
-````
-
-### 2. 포트 번호 타입
-
-```typescript
-// ❌ 나쁜 예: 문자열로 포트 지정
-port: process.env.DB_PORT,  // "5432" (string)
-
-// ✅ 좋은 예: 숫자로 변환
-port: Number(process.env.DB_PORT ?? 5432),  // 5432 (number)
-```
-
-### 3. 커넥션 풀 크기
-
-```typescript
-// 개발 환경: 작은 풀
-pool: { min: 2, max: 10 }
-
-// 프로덕션: 트래픽에 맞게 조정
-pool: { min: 5, max: 30 }
-
-// 테스트: 최소한으로
-pool: { min: 1, max: 5 }
-```
-
-## 다음 단계
-
-데이터베이스 설정을 완료했다면:
-
-- [server](/ko/configuration/sonamu-config/server) - 서버 옵션 및 플러그인 설정
-- [database/migrations](/ko/database/migrations/how-migrations-work) - 마이그레이션으로 스키마 관리
-- [troubleshooting](/ko/troubleshooting/common-errors/database-connection) - 연결 문제 해결
+이 값들은 `.env`, `.env.development`, `.env.staging`, `.env.production`, `.env.test`의
+`SONAMU_DB_*`, `SONAMU_DB_READONLY_*`, `SONAMU_DB_FIXTURE_*` 변수로 옮기세요.
