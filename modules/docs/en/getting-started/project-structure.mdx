@@ -96,10 +96,10 @@ catalog:
 - `tsconfig.schemas.json`: Dedicated for Zod schema generation
 - `tsconfig.types.json`: Dedicated for type definition generation
 
-**.env**
+**.env / .env.<environment>**
 
-- Database connection info (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD)
-- Project configuration variables (DATABASE_NAME, CONTAINER_NAME, PROJECT_NAME)
+- Database connection info (`SONAMU_DB_HOST`, `SONAMU_DB_PORT`, `SONAMU_DB_USER`, `SONAMU_DB_PASSWORD`)
+- Project and database naming variables (`PROJECT_NAME`, `CONTAINER_NAME`, `SONAMU_DB_NAME`)
 - Auto-generated when running `pnpm create sonamu`
 
 </Accordion>
@@ -249,7 +249,7 @@ When you first create a project, the `application/` folder is empty. The folder 
 
 - Database initialization shell script
 - Installs pgvector extension and creates databases
-- Creates databases using environment variables (`DATABASE_NAME`, `_fixture`, `_test`)
+- Creates environment databases from `PROJECT_NAME`, `SONAMU_DB_NAME`, and `SONAMU_DB_FIXTURE_NAME`
 - Auto-generated when running `pnpm create sonamu`
 
 **dumps/**

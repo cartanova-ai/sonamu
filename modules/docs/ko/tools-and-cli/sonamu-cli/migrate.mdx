@@ -161,39 +161,13 @@ Sonamu는 여러 데이터베이스를 동시에 관리할 수 있습니다.
 
 ```typescript title="sonamu.config.ts"
 export default {
+  projectName: process.env.PROJECT_NAME ?? "MyApp",
   database: {
-    // 개발 환경 - 마스터
-    development_master: {
-      client: "mysql2",
-      connection: {
-        host: "localhost",
-        database: "myapp_dev",
-        user: "root",
-        password: "password",
-      },
-    },
-    // 개발 환경 - 슬레이브 (읽기 전용)
-    development_slave: {
-      // 슬레이브는 자동으로 무시됨
-    },
-    // 테스트 환경
-    test: {
-      client: "mysql2",
-      connection: {
-        host: "localhost",
-        database: "myapp_test",
-        user: "root",
-        password: "password",
-      },
-    },
-    // 프로덕션 환경
-    production: {
-      client: "mysql2",
-      connection: {
-        host: "prod-db.example.com",
-        database: "myapp_prod",
-        user: "root",
-        password: process.env.DB_PASSWORD,
+    database: "pg",
+    defaultOptions: {
+      pool: {
+        min: 1,
+        max: 10,
       },
     },
   },
@@ -202,7 +176,9 @@ export default {
 
 **마이그레이션 대상**:
 
-- `_master`로 끝나는 데이터베이스
+- 기본값은 현재 `NODE_ENV` preset
+- `development`, `staging`, `production`, `test` 같은 명시적 preset
+- 읽기 전용 preset은 제외
 - `_slave`가 아닌 모든 데이터베이스
 
 ### 일괄 적용
@@ -277,7 +253,7 @@ import { Migrator } from "sonamu";
 const migrator = new Migrator();
 
 // 롤백 (마지막 배치)
-await migrator.runAction("rollback", ["development_master"]);
+await migrator.runAction("rollback", ["development"]);
 
 // 특정 데이터베이스만 선택
 await migrator.runAction("apply", ["test"]);
@@ -296,7 +272,7 @@ Sonamu.runScript(async () => {
   const migrator = new Migrator();
 
   console.log("Rolling back last migration batch...");
-  await migrator.runAction("rollback", ["development_master", "test"]);
+  await migrator.runAction("rollback", ["development", "test"]);
   console.log("Rollback completed!");
 });
 ```
@@ -382,13 +358,13 @@ Error: Foreign key constraint violation
 ```typescript
 // 롤백
 const migrator = new Migrator();
-await migrator.runAction("rollback", ["development_master"]);
+await migrator.runAction("rollback", ["development"]);
 
 // 마이그레이션 파일명 수정 (타임스탬프 조정)
 // 20240116_110230_*.ts → 20240116_110231_*.ts
 
 // 재적용
-await migrator.runAction("apply", ["development_master"]);
+await migrator.runAction("apply", ["development"]);
 ```
 
 **수정 방법 2: Entity 정의 순서 조정**

@@ -28,7 +28,7 @@ Sonamu uses multiple databases:
 
 ```mermaid
 flowchart TD
-    D["💾 development_master<br/>━━━━━━━━━━<br/>(local dev data)"]
+    D["💾 development<br/>━━━━━━━━━━<br/>(local dev data)"]
     F["📦 fixture DB<br/>━━━━━━━━━━<br/>(shared test data)"]
     T["🧪 test DB<br/>━━━━━━━━━━<br/>(test execution)"]
 
@@ -42,7 +42,7 @@ flowchart TD
 
 **Roles**:
 
-- **development_master**: DB used during development
+- **development**: DB used during development
 - **fixture**: Stores common data for testing (team shareable)
 - **test**: DB where actual tests run (transaction-based)
 
@@ -53,7 +53,7 @@ flowchart TD
 ```json
 {
   "db": {
-    "development_master": {
+    "development": {
       "client": "pg",
       "connection": {
         "host": "localhost",
@@ -89,14 +89,14 @@ flowchart TD
 
 **Warning**:
 
-- `test` and `production_master` must **never use the same DB**
+- `test` and `production` must **never use the same DB**
 - Sonamu automatically validates this during initialization
 
 ```typescript
 // sonamu/src/testing/fixture-manager.ts
-if (Sonamu.dbConfig.test && Sonamu.dbConfig.production_master) {
+if (Sonamu.dbConfig.test && Sonamu.dbConfig.production) {
   const tConn = Sonamu.dbConfig.test.connection;
-  const pConn = Sonamu.dbConfig.production_master.connection;
+  const pConn = Sonamu.dbConfig.production.connection;
 
   if (
     `${tConn.host ?? "localhost"}:${tConn.port ?? 5432}/${tConn.database}` ===
@@ -267,14 +267,14 @@ test("next test has clean DB", async () => {
 ```json
 // ✅ Correct: Separate DBs
 {
-  "development_master": { "database": "myapp_dev" },
+  "development": { "database": "myapp_dev" },
   "fixture": { "database": "myapp_fixture" },
   "test": { "database": "myapp_test" }
 }
 
 // ❌ Wrong: Same DB
 {
-  "development_master": { "database": "myapp" },
+  "development": { "database": "myapp" },
   "test": { "database": "myapp" }  // Dangerous!
 }
 ```

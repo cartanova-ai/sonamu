@@ -28,7 +28,7 @@ pnpm fixture init
 
 ```
 DUMP...
-  ✓ Schema dumped from development_master
+  ✓ Schema dumped from development
 
 SYNC to (REMOTE) Fixture DB...
   ✓ Database myapp_fixture created
@@ -214,7 +214,7 @@ pnpm fixture gen --include User,Post --count 10 --save-to db
 각 필드의 값을 생성할 때 아래 순서대로 적용됩니다. 먼저 매칭되는 전략이 사용되고, 이후 단계는 건너뜁니다.
 
 1. **Relation** — 외래키 관계가 있는 필드는 자동으로 관련 레코드를 생성/참조합니다.
-2. **cone.note + LLM** — `--use-llm` 옵션이 켜져 있고, 해당 필드의 cone에 `note`가 지정된 경우 LLM이 `note` 내용을 기반으로 현실적인 값을 생성합니다. LLM 호출이 실패하면 다음 단계로 폴백합니다.
+2. **cone.note + LLM** — `--use-llm` 옵션이 켜져 있고, 해당 필드의 cone에 `note`가 지정된 경우 LLM이 `note` 내용을 기반으로 현실적인 값을 생성합니다. LLM 호출이 실패하면 다음 단계로 넘어갑니다.
 3. **cone.fixtureGenerator** — cone에 `fixtureGenerator`(Faker 표현식 등)가 지정된 경우 이를 실행합니다.
 4. **cone.fixtureDefault** — cone에 `fixtureDefault` 고정값이 지정된 경우 이를 사용합니다.
 5. **타입별 기본 생성** — 위 어떤 전략도 해당하지 않으면 필드 타입(string, number, date 등)에 따라 자동 생성합니다.
@@ -621,20 +621,12 @@ Error: connect ECONNREFUSED
 
 **해결**:
 
-```typescript title="sonamu.config.ts"
-export default {
-  database: {
-    fixture: {
-      client: "pg",
-      connection: {
-        host: "fixture-db.example.com", // 올바른 호스트
-        database: "myapp_fixture",
-        user: "postgres",
-        password: process.env.FIXTURE_DB_PASSWORD,
-      },
-    },
-  },
-};
+```bash title=".env.test"
+SONAMU_DB_FIXTURE_HOST=fixture-db.example.com
+SONAMU_DB_FIXTURE_PORT=5432
+SONAMU_DB_FIXTURE_USER=postgres
+SONAMU_DB_FIXTURE_PASSWORD=your-fixture-password
+SONAMU_DB_FIXTURE_NAME=myapp_fixture
 ```
 
 ### 관계 데이터 누락

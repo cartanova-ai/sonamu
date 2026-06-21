@@ -28,7 +28,7 @@ pnpm fixture init
 
 ```
 DUMP...
-  ✓ Schema dumped from development_master
+  ✓ Schema dumped from development
 
 SYNC to (REMOTE) Fixture DB...
   ✓ Database myapp_fixture created
@@ -622,20 +622,12 @@ Error: connect ECONNREFUSED
 
 **Solution**:
 
-```typescript title="sonamu.config.ts"
-export default {
-  database: {
-    fixture: {
-      client: "pg",
-      connection: {
-        host: "fixture-db.example.com", // Correct host
-        database: "myapp_fixture",
-        user: "postgres",
-        password: process.env.FIXTURE_DB_PASSWORD,
-      },
-    },
-  },
-};
+```bash title=".env.test"
+SONAMU_DB_FIXTURE_HOST=fixture-db.example.com
+SONAMU_DB_FIXTURE_PORT=5432
+SONAMU_DB_FIXTURE_USER=postgres
+SONAMU_DB_FIXTURE_PASSWORD=your-fixture-password
+SONAMU_DB_FIXTURE_NAME=myapp_fixture
 ```
 
 ### Missing Relationship Data
