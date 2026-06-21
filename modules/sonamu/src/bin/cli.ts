@@ -1,8 +1,3 @@
-import chalk from "chalk";
-import dotenv from "dotenv";
-
-dotenv.config();
-
 import assert from "assert";
 import { execSync, spawn } from "child_process";
 import { cp, mkdir, readdir, readFile, rm, symlink, writeFile } from "fs/promises";
@@ -11,6 +6,7 @@ import os from "os";
 import path from "path";
 import process from "process";
 
+import chalk from "chalk";
 import knex from "knex";
 import { type Knex } from "knex";
 import { tsicli } from "tsicli";

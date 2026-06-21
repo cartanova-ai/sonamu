@@ -91,4 +91,37 @@ describe("readAllEnvironmentSnapshots", () => {
     expect(snapshot.SONAMU_DB_PASSWORD).toBe("runtime-password");
     expect(snapshot.NODE_ENV).toBe("development");
   });
+
+  it("lets environment dotenv values override common dotenv values", async () => {
+    const rootPath = await mkdtemp(path.join(os.tmpdir(), "sonamu-env-test-"));
+    tempRoots.push(rootPath);
+
+    await writeFile(path.join(rootPath, ".env"), "SONAMU_DB_HOST=common.example.com\n");
+    await writeFile(path.join(rootPath, ".env.production"), "SONAMU_DB_HOST=prod.example.com\n");
+
+    const snapshot = readEnvironmentSnapshot(rootPath, "production");
+
+    expect(snapshot.SONAMU_DB_HOST).toBe("prod.example.com");
+    expect(snapshot.NODE_ENV).toBe("production");
+  });
+
+  it("does not let preloaded common dotenv values override environment dotenv values", async () => {
+    const rootPath = await mkdtemp(path.join(os.tmpdir(), "sonamu-env-test-"));
+    tempRoots.push(rootPath);
+
+    await writeFile(
+      path.join(rootPath, ".env"),
+      "SONAMU_DB_HOST=common.example.com\nSONAMU_DB_USER=common_user\n",
+    );
+    await writeFile(path.join(rootPath, ".env.production"), "SONAMU_DB_HOST=prod.example.com\n");
+
+    const snapshot = readEnvironmentSnapshot(rootPath, "production", {
+      SONAMU_DB_HOST: "common.example.com",
+      SONAMU_DB_USER: "shell_user",
+    });
+
+    expect(snapshot.SONAMU_DB_HOST).toBe("prod.example.com");
+    expect(snapshot.SONAMU_DB_USER).toBe("shell_user");
+    expect(snapshot.NODE_ENV).toBe("production");
+  });
 });

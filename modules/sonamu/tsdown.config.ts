@@ -40,6 +40,7 @@ function collectEntries(directory: string): Record<string, string> {
 
 export default defineConfig({
   clean: true,
+  dts: false,
   entry: collectEntries(srcRoot),
   fixedExtension: false,
   format: "esm",
