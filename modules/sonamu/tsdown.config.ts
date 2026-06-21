@@ -41,6 +41,7 @@ function collectEntries(directory: string): Record<string, string> {
 export default defineConfig({
   clean: true,
   entry: collectEntries(srcRoot),
+  fixedExtension: false,
   format: "esm",
   platform: "node",
   sourcemap: "inline",
