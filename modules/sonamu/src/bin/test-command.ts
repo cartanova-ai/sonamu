@@ -7,11 +7,9 @@ import { loadConfig } from "../api/config";
 import { type RunResult, type TestCaseResult } from "../testing";
 import { findApiRootPath } from "../utils/utils";
 
-async function loadTestConfig(): Promise<SonamuConfig> {
+async function loadDevServerConfig(): Promise<SonamuConfig> {
   const prevVitest = process.env.VITEST;
-  const prevNodeEnv = process.env.NODE_ENV;
   process.env.VITEST = "true";
-  process.env.NODE_ENV = "test";
   try {
     const apiRootPath = findApiRootPath();
     return await loadConfig(apiRootPath);
@@ -20,11 +18,6 @@ async function loadTestConfig(): Promise<SonamuConfig> {
       delete process.env.VITEST;
     } else {
       process.env.VITEST = prevVitest;
-    }
-    if (prevNodeEnv === undefined) {
-      delete process.env.NODE_ENV;
-    } else {
-      process.env.NODE_ENV = prevNodeEnv;
     }
   }
 }
@@ -44,7 +37,7 @@ function resolveTestBaseUrl(config: SonamuConfig): {
 export async function testCommand(): Promise<void> {
   const args = process.argv.slice(3);
 
-  const config = await loadTestConfig();
+  const config = await loadDevServerConfig();
 
   // process.argv 파싱: sonamu test [file...] --pattern "이름" --traces --status
   const files: string[] = [];

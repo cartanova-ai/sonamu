@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const originalArgv = process.argv;
+const originalNodeEnv = process.env.NODE_ENV;
+const originalVitest = process.env.VITEST;
+const originalFetch = globalThis.fetch;
 
 // process.argv 파싱 로직을 검증하는 유닛 테스트
 // test-command.ts의 파싱 로직을 동일하게 구현하여 독립 검증
@@ -81,5 +86,81 @@ describe("test-command argument parsing", () => {
     expect(files).toEqual(["a.test.ts"]);
     expect(pattern).toBe("desc");
     expect(showTraces).toBe(true);
+  });
+});
+
+describe("test-command dev server endpoint resolution", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+    process.argv = [process.execPath, "sonamu", "test", "--status"];
+    process.env.NODE_ENV = "development";
+    delete process.env.VITEST;
+  });
+
+  afterEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+    process.argv = originalArgv;
+    globalThis.fetch = originalFetch;
+
+    if (originalNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+
+    if (originalVitest === undefined) {
+      delete process.env.VITEST;
+    } else {
+      process.env.VITEST = originalVitest;
+    }
+  });
+
+  it("status 명령은 NODE_ENV=test로 바꾸지 않고 dev server 설정의 endpoint를 호출한다", async () => {
+    const loadConfig = vi.fn(async () => {
+      expect(process.env.NODE_ENV).toBe("development");
+      expect(process.env.VITEST).toBe("true");
+      return {
+        server: {
+          listen: {
+            host: "127.0.0.1",
+            port: 4401,
+          },
+        },
+        test: {
+          devRunner: {
+            enabled: true,
+            routePrefix: "/__dev_test__",
+          },
+        },
+      };
+    });
+    const fetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          ready: true,
+          running: false,
+          lastRunAt: null,
+          sseAvailable: true,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    });
+
+    vi.doMock("../../api/config", () => ({ loadConfig }));
+    vi.doMock("../../utils/utils", () => ({ findApiRootPath: () => "/tmp/api" }));
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    globalThis.fetch = fetch as typeof globalThis.fetch;
+
+    const { testCommand } = await import("../test-command");
+    await testCommand();
+
+    expect(loadConfig).toHaveBeenCalledWith("/tmp/api");
+    expect(fetch).toHaveBeenCalledWith("http://127.0.0.1:4401/__dev_test__/status");
+    expect(process.env.NODE_ENV).toBe("development");
   });
 });
