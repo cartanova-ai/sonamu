@@ -1115,12 +1115,6 @@ class SonamuClass {
         traceContext = this.websocketRuntime.telemetryController.createConnectionContext({
           headers: request.headers,
         });
-        runGuards({
-          guards: api.options.guards,
-          config,
-          request,
-          api,
-        });
 
         preRegisterPhase = "query";
         const reqBody = await this.parseWebSocketRequestParams(api, request);
@@ -1139,6 +1133,16 @@ class SonamuClass {
 
         const scopedWs = this.createScopedWebSocketConnection(rawWs, () => wsContext);
         wsContext = await this.createWebSocketContext(config, request, scopedWs);
+
+        await this.asyncLocalStorage.run({ context: wsContext }, async () => {
+          runGuards({
+            guards: api.options.guards,
+            config,
+            request,
+            api,
+          });
+        });
+
         this.websocketRuntime.activateConnection(rawWs.id);
         preRegisterPhase = "handler";
 
