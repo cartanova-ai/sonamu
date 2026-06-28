@@ -81,22 +81,22 @@ server {
 <AccordionGroup>
 <Accordion title="환경 변수를 설정하려면?">
 
-**.env 파일 생성:**
+Sonamu는 `NODE_ENV`에 따라 `.env.{environment}` 파일을 자동으로 로드합니다.
+
+**`.env.production` 파일 생성:**
 
 ```bash
 # api/.env.production
-NODE_ENV=production
+
+# Database (SONAMU_DB_ 접두사 사용)
+SONAMU_DB_HOST=prod-db.example.com
+SONAMU_DB_PORT=5432
+SONAMU_DB_NAME=myapp_production
+SONAMU_DB_USER=postgres
+SONAMU_DB_PASSWORD=secure_password
+
+# Server
 PORT=34900
-
-# Database
-DB_HOST=prod-db.example.com
-DB_PORT=5432
-DB_NAME=sonamu_prod
-DB_USER=postgres
-DB_PASSWORD=secure_password
-
-# Session
-SESSION_SECRET=your-super-secret-key
 
 # CORS
 CORS_ORIGIN=https://example.com
@@ -107,30 +107,26 @@ REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
 ```
 
-**sonamu.config.ts에서 사용:**
+Sonamu가 `SONAMU_DB_*` 환경변수를 읽어 DB 연결을 자동으로 구성하므로, `sonamu.config.ts`에서 직접 연결 정보를 지정할 필요가 없습니다. 기본값을 오버라이드하고 싶다면 `database.defaultOptions`를 사용합니다:
 
 ```typescript
-export default {
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  // ...
+  database: {
+    database: "pg",
+    defaultOptions: {
+      pool: { min: 2, max: 10 },
+    },
+  },
   server: {
     listen: {
       port: Number(process.env.PORT) || 34900,
     },
+    // ...
   },
-  database: {
-    connections: {
-      main: {
-        host: process.env.DB_HOST,
-        port: Number(process.env.DB_PORT),
-        database: process.env.DB_NAME,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-      },
-    },
-  },
-  session: {
-    secret: process.env.SESSION_SECRET,
-  },
-} satisfies SonamuConfig;
+});
 ```
 
 </Accordion>
@@ -503,11 +499,11 @@ services:
     build: ./api
     environment:
       NODE_ENV: production
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: sonamu_prod
-      DB_USER: postgres
-      DB_PASSWORD: ${DB_PASSWORD}
+      SONAMU_DB_HOST: postgres
+      SONAMU_DB_PORT: 5432
+      SONAMU_DB_NAME: sonamu_production
+      SONAMU_DB_USER: postgres
+      SONAMU_DB_PASSWORD: ${SONAMU_DB_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
     ports:
