@@ -1,4 +1,4 @@
-import crypto, { type BinaryLike } from "crypto";
+import crypto from "crypto";
 import { createReadStream, type PathLike } from "fs";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
@@ -114,15 +114,10 @@ async function saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
 }
 
 async function getChecksumOfFile(filePath: PathLike): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const hash = crypto.createHash("sha1");
-    const input = createReadStream(filePath);
-    input.on("error", reject);
-    input.on("data", (chunk: BinaryLike) => {
-      hash.update(chunk);
-    });
-    input.on("close", () => {
-      resolve(hash.digest("hex"));
-    });
-  });
+  const hash = crypto.createHash("sha1");
+  const input = createReadStream(filePath);
+  for await (const chunk of input) {
+    hash.update(chunk);
+  }
+  return hash.digest("hex");
 }
