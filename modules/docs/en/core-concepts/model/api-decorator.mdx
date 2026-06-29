@@ -284,7 +284,7 @@ export default {
       throw new UnauthorizedException("Login required");
     }
     if (guard === "admin" && request.user?.role !== "admin") {
-      throw new ForbiddenException("Admin permission required");
+      throw new UnauthorizedException("Admin permission required");
     }
   },
 };

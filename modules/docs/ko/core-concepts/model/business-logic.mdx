@@ -165,7 +165,7 @@ async save(params: UserSaveParams[]): Promise<number[]> {
     if (param.role && param.role !== "normal") {
       const context = Sonamu.getContext();
       if (context.user?.role !== "admin") {
-        throw new ForbiddenException(
+        throw new UnauthorizedException(
           "관리자만 역할을 변경할 수 있습니다"
         );
       }
@@ -302,7 +302,7 @@ async updateStatus(
   if (newStatus === "cancelled") {
     // 사용자는 pending만 취소 가능
     if (order.status !== "pending" && context.user?.role !== "admin") {
-      throw new ForbiddenException(
+      throw new UnauthorizedException(
         "관리자만 확정된 주문을 취소할 수 있습니다"
       );
     }
@@ -311,7 +311,7 @@ async updateStatus(
   if (newStatus === "delivered") {
     // 배송 완료는 배송 담당자만 가능
     if (context.user?.role !== "delivery") {
-      throw new ForbiddenException(
+      throw new UnauthorizedException(
         "배송 담당자만 배송 완료 처리할 수 있습니다"
       );
     }
@@ -500,7 +500,7 @@ async login(params: LoginParams): Promise<{ user: User }> {
   }
 
   if (!user.is_verified) {
-    throw new ForbiddenException(
+    throw new UnauthorizedException(
       "이메일 인증이 완료되지 않았습니다. 인증 메일을 확인해주세요."
     );
   }

@@ -165,7 +165,7 @@ async save(params: UserSaveParams[]): Promise<number[]> {
     if (param.role && param.role !== "normal") {
       const context = Sonamu.getContext();
       if (context.user?.role !== "admin") {
-        throw new ForbiddenException(
+        throw new UnauthorizedException(
           "Only admins can change roles"
         );
       }
@@ -302,7 +302,7 @@ async updateStatus(
   if (newStatus === "cancelled") {
     // Users can only cancel pending orders
     if (order.status !== "pending" && context.user?.role !== "admin") {
-      throw new ForbiddenException(
+      throw new UnauthorizedException(
         "Only admins can cancel confirmed orders"
       );
     }
@@ -311,7 +311,7 @@ async updateStatus(
   if (newStatus === "delivered") {
     // Only delivery staff can mark as delivered
     if (context.user?.role !== "delivery") {
-      throw new ForbiddenException(
+      throw new UnauthorizedException(
         "Only delivery staff can mark as delivered"
       );
     }
@@ -500,7 +500,7 @@ async login(params: LoginParams): Promise<{ user: User }> {
   }
 
   if (!user.is_verified) {
-    throw new ForbiddenException(
+    throw new UnauthorizedException(
       "Email verification not complete. Please check your verification email."
     );
   }
