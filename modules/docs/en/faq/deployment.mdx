@@ -81,22 +81,22 @@ server {
 <AccordionGroup>
 <Accordion title="How do I set environment variables?">
 
-**Create .env file:**
+Sonamu automatically loads `.env.{environment}` files based on `NODE_ENV`.
+
+**Create `.env.production` file:**
 
 ```bash
 # api/.env.production
-NODE_ENV=production
+
+# Database (use SONAMU_DB_ prefix)
+SONAMU_DB_HOST=prod-db.example.com
+SONAMU_DB_PORT=5432
+SONAMU_DB_NAME=myapp_production
+SONAMU_DB_USER=postgres
+SONAMU_DB_PASSWORD=secure_password
+
+# Server
 PORT=34900
-
-# Database
-DB_HOST=prod-db.example.com
-DB_PORT=5432
-DB_NAME=sonamu_prod
-DB_USER=postgres
-DB_PASSWORD=secure_password
-
-# Session
-SESSION_SECRET=your-super-secret-key
 
 # CORS
 CORS_ORIGIN=https://example.com
@@ -107,30 +107,26 @@ REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
 ```
 
-**Use in sonamu.config.ts:**
+Sonamu reads `SONAMU_DB_*` environment variables to automatically configure DB connections, so you don't need to specify connection details directly in `sonamu.config.ts`. Use `database.defaultOptions` to override defaults:
 
 ```typescript
-export default {
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  // ...
+  database: {
+    database: "pg",
+    defaultOptions: {
+      pool: { min: 2, max: 10 },
+    },
+  },
   server: {
     listen: {
       port: Number(process.env.PORT) || 34900,
     },
+    // ...
   },
-  database: {
-    connections: {
-      main: {
-        host: process.env.DB_HOST,
-        port: Number(process.env.DB_PORT),
-        database: process.env.DB_NAME,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-      },
-    },
-  },
-  session: {
-    secret: process.env.SESSION_SECRET,
-  },
-} satisfies SonamuConfig;
+});
 ```
 
 </Accordion>
@@ -503,11 +499,11 @@ services:
     build: ./api
     environment:
       NODE_ENV: production
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: sonamu_prod
-      DB_USER: postgres
-      DB_PASSWORD: ${DB_PASSWORD}
+      SONAMU_DB_HOST: postgres
+      SONAMU_DB_PORT: 5432
+      SONAMU_DB_NAME: sonamu_production
+      SONAMU_DB_USER: postgres
+      SONAMU_DB_PASSWORD: ${SONAMU_DB_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
     ports:
