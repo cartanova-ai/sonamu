@@ -491,14 +491,12 @@ import.meta.hot?.decline();
 
 ```typescript
 // database.config.ts
-import { Sonamu } from "@sonamu-kit/sonamu";
-
 export const dbPool = new Pool({
-  host: Sonamu.config.database.host,
-  port: Sonamu.config.database.port,
-  user: Sonamu.config.database.user,
-  password: Sonamu.config.database.password,
-  database: Sonamu.config.database.database,
+  host: process.env.SONAMU_DB_HOST,
+  port: parseInt(process.env.SONAMU_DB_PORT ?? "5432"),
+  user: process.env.SONAMU_DB_USER,
+  password: process.env.SONAMU_DB_PASSWORD,
+  database: process.env.SONAMU_DB_NAME,
 });
 
 // DB 연결 설정 변경은 재시작 필요
