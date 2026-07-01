@@ -18,6 +18,35 @@ await this.getPuri("w").table("users").where("id", 1).update({ is_active: false 
 const users = await db.table({ u: "users" }).select({ id: "u.id" });
 ```
 
+### Where to obtain a Puri instance
+
+Route every query — reads and writes alike — through Puri. Do NOT run queries directly on a raw `getDB()` knex handle (the only exceptions are migration files, `db.ts`, tests, and the `.knex` escape hatch below).
+
+```typescript
+// Inside a Model
+const rows = await this.getPuri("r").table("users").select({ id: "id" });
+
+// Inside a Frame — Frame has no getPuri (only getDB / getUpsertBuilder),
+// so use the associated Model's getPuri
+const rows = await UserModel.getPuri("r").table("users").select({ id: "id" });
+
+// Outside a Model (seed / batch / monitoring scripts) — wrap knex in a PuriWrapper
+import { DB, PuriWrapper, UpsertBuilder } from "sonamu";
+const puri = new PuriWrapper(DB.getDB("r"), new UpsertBuilder());
+const rows = await puri.table("users").select({ id: "id" });
+```
+
+> `UpsertBuilder` is a required constructor argument even for read-only wrappers; it simply stays unused for pure reads.
+
+### Escape hatch: `.knex` for non-entity / framework-internal tables
+
+Puri's typed `.table()` only knows registered entity tables. For framework-internal or unregistered tables (e.g. `workflow_runs`), reach the raw knex handle via `puri.knex` instead of calling `DB.getDB()` directly:
+
+```typescript
+const puri = new PuriWrapper(DB.getDB("r"), new UpsertBuilder());
+const runs = await puri.knex.table("workflow_runs").where("status", "running").select("*");
+```
+
 ## SELECT
 
 > **CRITICAL: `.select()` must always be used with an object argument.**
@@ -558,6 +587,10 @@ const results = await this.getPuri("r")
 
 ## Rules
 
+- Puri is the standard for BOTH reads and writes in ALL contexts (Model, Frame, scripts) — do NOT run queries on a raw `DB.getDB()` handle (exceptions: migration files, `db.ts`, tests, and the `.knex` escape hatch)
+- Inside a Frame, use the associated Model's `getPuri` (Frame exposes only `getDB` / `getUpsertBuilder`, not `getPuri`)
+- Outside a Model, wrap knex with `new PuriWrapper(DB.getDB(which), new UpsertBuilder())`
+- Use the `puri.knex` escape hatch only for non-entity / framework-internal tables (e.g. `workflow_runs`)
 - MUST use `getPuri("r")` for read queries, `getPuri("w")` for write queries
 - MUST include WHERE condition for UPDATE/DELETE operations
 - MUST use `transaction()` for multiple write operations
