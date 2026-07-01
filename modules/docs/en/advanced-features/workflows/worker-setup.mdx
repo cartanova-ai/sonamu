@@ -220,11 +220,11 @@ CREATE TABLE workflow_steps (
 ### Check Running Workflows
 
 ```typescript
-// Direct DB query
-import { DB } from "sonamu";
+// Query via Puri (workflow_runs is a framework-internal table, not an entity, so use the .knex escape hatch)
+import { DB, PuriWrapper, UpsertBuilder } from "sonamu";
 
-const knex = DB.getDB("r");
-const runs = await knex("workflow_runs").where("status", "running").select("*");
+const puri = new PuriWrapper(DB.getDB("r"), new UpsertBuilder());
+const runs = await puri.knex.table("workflow_runs").where("status", "running").select("*");
 ```
 
 ### Logging
