@@ -223,7 +223,7 @@ CREATE TABLE workflow_steps (
 // DB 직접 조회
 import { DB } from "sonamu";
 
-const knex = DB.getDB();
+const knex = DB.getDB("r");
 const runs = await knex("workflow_runs").where("status", "running").select("*");
 ```
 
