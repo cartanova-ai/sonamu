@@ -109,7 +109,7 @@ class HealthFrame extends BaseFrameClass {
     let dbResponseTime: number | undefined;
 
     try {
-      const rdb = this.getPuri("r");
+      const rdb = this.getDB("r");
       const dbStart = Date.now();
       await rdb.raw("SELECT 1");
       dbResponseTime = Date.now() - dbStart;
@@ -594,7 +594,7 @@ class AdminStatsFrame extends BaseFrameClass {
 
   @api({ httpMethod: "GET" })
   async dashboard(): Promise<DashboardStats> {
-    const rdb = this.getPuri("r");
+    const rdb = this.getDB("r");
 
     // Date calculations
     const today = new Date();

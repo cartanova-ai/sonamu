@@ -112,7 +112,7 @@ class HealthFrame extends BaseFrameClass {
     let dbStatus: "connected" | "disconnected" = "disconnected";
 
     try {
-      const rdb = this.getPuri("r");
+      const rdb = this.getDB("r");
       await rdb.raw("SELECT 1");
       dbStatus = "connected";
     } catch (error) {
@@ -383,7 +383,7 @@ class StatsFrame extends BaseFrameClass {
     totalPosts: number;
     totalComments: number;
   }> {
-    const rdb = this.getPuri("r");
+    const rdb = this.getDB("r");
 
     const [{ userCount }] = await rdb.table("users").count({ userCount: "*" });
 
@@ -411,7 +411,7 @@ class AdminFrame extends BaseFrameClass {
   async clearOldLogs(params: { beforeDate: Date }): Promise<{
     deletedCount: number;
   }> {
-    const wdb = this.getPuri("w");
+    const wdb = this.getDB("w");
 
     const deletedCount = await wdb
       .table("logs")
