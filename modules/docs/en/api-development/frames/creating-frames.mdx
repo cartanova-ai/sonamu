@@ -90,6 +90,8 @@ export const HealthFrameInstance = new HealthFrame();
 ```typescript
 // health.frame.ts
 import { BaseFrameClass, api } from "sonamu";
+// Frames have no getPuri, so use an associated Model's getPuri.
+import { UserModel } from "./user/user.model";
 
 interface HealthCheckResponse {
   status: "ok" | "error";
@@ -112,7 +114,7 @@ class HealthFrame extends BaseFrameClass {
     let dbStatus: "connected" | "disconnected" = "disconnected";
 
     try {
-      const rdb = this.getPuri("r");
+      const rdb = UserModel.getPuri("r");
       await rdb.raw("SELECT 1");
       dbStatus = "connected";
     } catch (error) {
@@ -369,7 +371,13 @@ export const WeatherFrameInstance = new WeatherFrame();
 
 ## DB Access
 
-Frame can also access DB.
+Frame can also access DB. Frame classes have no `getPuri`, so use an associated Model's `getPuri` to obtain the Puri query builder.
+
+<Info>
+  The handle returned by `getPuri` is not bound to a specific table, so no matter which
+  Model's `getPuri` you use, you can query every registered table. The examples below assume
+  `import { UserModel } from "./user/user.model";` and `import { Puri } from "sonamu";`.
+</Info>
 
 ### Read Operations
 
@@ -383,13 +391,22 @@ class StatsFrame extends BaseFrameClass {
     totalPosts: number;
     totalComments: number;
   }> {
-    const rdb = this.getPuri("r");
+    const rdb = UserModel.getPuri("r");
 
-    const [{ userCount }] = await rdb.table("users").count({ userCount: "*" });
+    const { userCount } = await rdb
+      .table("users")
+      .select({ userCount: Puri.count() })
+      .first();
 
-    const [{ postCount }] = await rdb.table("posts").count({ postCount: "*" });
+    const { postCount } = await rdb
+      .table("posts")
+      .select({ postCount: Puri.count() })
+      .first();
 
-    const [{ commentCount }] = await rdb.table("comments").count({ commentCount: "*" });
+    const { commentCount } = await rdb
+      .table("comments")
+      .select({ commentCount: Puri.count() })
+      .first();
 
     return {
       totalUsers: userCount,
@@ -411,7 +428,7 @@ class AdminFrame extends BaseFrameClass {
   async clearOldLogs(params: { beforeDate: Date }): Promise<{
     deletedCount: number;
   }> {
-    const wdb = this.getPuri("w");
+    const wdb = UserModel.getPuri("w");
 
     const deletedCount = await wdb
       .table("logs")

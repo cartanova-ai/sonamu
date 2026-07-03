@@ -109,7 +109,8 @@ class HealthFrame extends BaseFrameClass {
     let dbResponseTime: number | undefined;
 
     try {
-      const rdb = this.getPuri("r");
+      // Frame엔 getPuri가 없어 연관 Model(UserModel 등)의 getPuri를 사용
+      const rdb = UserModel.getPuri("r");
       const dbStart = Date.now();
       await rdb.raw("SELECT 1");
       dbResponseTime = Date.now() - dbStart;
@@ -594,7 +595,8 @@ class AdminStatsFrame extends BaseFrameClass {
 
   @api({ httpMethod: "GET" })
   async dashboard(): Promise<DashboardStats> {
-    const rdb = this.getPuri("r");
+    // Frame엔 getPuri가 없어 연관 Model(UserModel 등)의 getPuri를 사용
+    const rdb = UserModel.getPuri("r");
 
     // 날짜 계산
     const today = new Date();
@@ -607,33 +609,39 @@ class AdminStatsFrame extends BaseFrameClass {
     monthAgo.setMonth(monthAgo.getMonth() - 1);
 
     // 사용자 통계
-    const [{ totalUsers }] = await rdb.table("users").count({ totalUsers: "*" });
+    const { totalUsers } = await rdb
+      .table("users")
+      .select({ totalUsers: Puri.count() })
+      .first();
 
-    const [{ activeUsers }] = await rdb
+    const { activeUsers } = await rdb
       .table("users")
       .where("is_active", true)
-      .count({ activeUsers: "*" });
+      .select({ activeUsers: Puri.count() })
+      .first();
 
-    const [{ newToday }] = await rdb
+    const { newToday } = await rdb
       .table("users")
       .where("created_at", ">=", today)
-      .count({ newToday: "*" });
+      .select({ newToday: Puri.count() })
+      .first();
 
-    const [{ newThisWeek }] = await rdb
+    const { newThisWeek } = await rdb
       .table("users")
       .where("created_at", ">=", weekAgo)
-      .count({ newThisWeek: "*" });
+      .select({ newThisWeek: Puri.count() })
+      .first();
 
-    const [{ newThisMonth }] = await rdb
+    const { newThisMonth } = await rdb
       .table("users")
       .where("created_at", ">=", monthAgo)
-      .count({ newThisMonth: "*" });
+      .select({ newThisMonth: Puri.count() })
+      .first();
 
     // 역할별 통계
     const roleStats = await rdb
       .table("users")
-      .select({ role: "role" })
-      .count({ count: "*" })
+      .select({ role: "role", count: Puri.count() })
       .groupBy("role");
 
     const byRole = {
@@ -643,19 +651,27 @@ class AdminStatsFrame extends BaseFrameClass {
     };
 
     // 콘텐츠 통계
-    const [{ totalPosts }] = await rdb.table("posts").count({ totalPosts: "*" });
+    const { totalPosts } = await rdb
+      .table("posts")
+      .select({ totalPosts: Puri.count() })
+      .first();
 
-    const [{ totalComments }] = await rdb.table("comments").count({ totalComments: "*" });
+    const { totalComments } = await rdb
+      .table("comments")
+      .select({ totalComments: Puri.count() })
+      .first();
 
-    const [{ postsToday }] = await rdb
+    const { postsToday } = await rdb
       .table("posts")
       .where("created_at", ">=", today)
-      .count({ postsToday: "*" });
+      .select({ postsToday: Puri.count() })
+      .first();
 
-    const [{ commentsToday }] = await rdb
+    const { commentsToday } = await rdb
       .table("comments")
       .where("created_at", ">=", today)
-      .count({ commentsToday: "*" });
+      .select({ commentsToday: Puri.count() })
+      .first();
 
     // 참여도 통계
     const averagePostsPerUser = totalUsers > 0 ? totalPosts / totalUsers : 0;
@@ -665,12 +681,12 @@ class AdminStatsFrame extends BaseFrameClass {
     // 가장 활동적인 사용자
     const mostActiveUsers = await rdb
       .table("posts")
-      .select({
-        userId: "user_id",
-        username: "users.username",
-      })
-      .count({ postCount: "*" })
       .join("users", "posts.user_id", "users.id")
+      .select({
+        userId: "posts.user_id",
+        username: "users.username",
+        postCount: Puri.count(),
+      })
       .groupBy("posts.user_id", "users.username")
       .orderBy("postCount", "desc")
       .limit(5);

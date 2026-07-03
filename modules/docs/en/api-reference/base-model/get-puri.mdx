@@ -227,7 +227,7 @@ The `getPuri` method works internally as follows:
 
 ```typescript
 // Internal logic of getPuri (for reference)
-async getPuri(which: DBPreset): PuriWrapper {
+getPuri(which: DBPreset): PuriWrapper {
   // 1. Attempt to get transaction from transaction context
   const trx = DB.getTransactionContext().getTransaction(which);
 

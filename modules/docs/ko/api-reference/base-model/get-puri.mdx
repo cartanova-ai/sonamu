@@ -227,7 +227,7 @@ async transferPoints(fromUserId: number, toUserId: number, points: number) {
 
 ```typescript
 // getPuri 내부 로직 (참고용)
-async getPuri(which: DBPreset): PuriWrapper {
+getPuri(which: DBPreset): PuriWrapper {
   // 1. 트랜잭션 컨텍스트에서 트랜잭션 획득 시도
   const trx = DB.getTransactionContext().getTransaction(which);
 

@@ -234,7 +234,8 @@ class HealthFrame extends BaseFrameClass {
     let dbStatus: "connected" | "disconnected" = "disconnected";
 
     try {
-      const rdb = this.getPuri("r");
+      // Frame엔 getPuri가 없어 연관 Model(UserModel 등)의 getPuri를 사용
+      const rdb = UserModel.getPuri("r");
       await rdb.raw("SELECT 1");
       dbStatus = "connected";
     } catch (error) {
