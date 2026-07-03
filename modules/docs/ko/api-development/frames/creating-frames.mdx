@@ -90,6 +90,8 @@ export const HealthFrameInstance = new HealthFrame();
 ```typescript
 // health.frame.ts
 import { BaseFrameClass, api } from "sonamu";
+// Frame에는 getPuri가 없으므로 연관 Model의 getPuri를 사용합니다.
+import { UserModel } from "./user/user.model";
 
 interface HealthCheckResponse {
   status: "ok" | "error";
@@ -112,7 +114,7 @@ class HealthFrame extends BaseFrameClass {
     let dbStatus: "connected" | "disconnected" = "disconnected";
 
     try {
-      const rdb = this.getDB("r");
+      const rdb = UserModel.getPuri("r");
       await rdb.raw("SELECT 1");
       dbStatus = "connected";
     } catch (error) {
@@ -369,7 +371,13 @@ export const WeatherFrameInstance = new WeatherFrame();
 
 ## DB 접근
 
-Frame에서도 DB에 접근할 수 있습니다.
+Frame에서도 DB에 접근할 수 있습니다. Frame 클래스에는 `getPuri`가 없으므로, 연관된 Model의 `getPuri`를 통해 Puri 쿼리 빌더를 사용합니다.
+
+<Info>
+  `getPuri`가 반환하는 핸들은 특정 테이블에 묶이지 않으므로, 어떤 Model의 `getPuri`를
+  사용하든 등록된 모든 테이블을 조회할 수 있습니다. 아래 예제는 `import { UserModel } from
+  "./user/user.model";`와 `import { Puri } from "sonamu";`를 전제로 합니다.
+</Info>
 
 ### 읽기 작업
 
@@ -383,13 +391,22 @@ class StatsFrame extends BaseFrameClass {
     totalPosts: number;
     totalComments: number;
   }> {
-    const rdb = this.getDB("r");
+    const rdb = UserModel.getPuri("r");
 
-    const [{ userCount }] = await rdb.table("users").count({ userCount: "*" });
+    const { userCount } = await rdb
+      .table("users")
+      .select({ userCount: Puri.count() })
+      .first();
 
-    const [{ postCount }] = await rdb.table("posts").count({ postCount: "*" });
+    const { postCount } = await rdb
+      .table("posts")
+      .select({ postCount: Puri.count() })
+      .first();
 
-    const [{ commentCount }] = await rdb.table("comments").count({ commentCount: "*" });
+    const { commentCount } = await rdb
+      .table("comments")
+      .select({ commentCount: Puri.count() })
+      .first();
 
     return {
       totalUsers: userCount,
@@ -411,7 +428,7 @@ class AdminFrame extends BaseFrameClass {
   async clearOldLogs(params: { beforeDate: Date }): Promise<{
     deletedCount: number;
   }> {
-    const wdb = this.getDB("w");
+    const wdb = UserModel.getPuri("w");
 
     const deletedCount = await wdb
       .table("logs")
