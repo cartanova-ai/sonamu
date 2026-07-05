@@ -190,7 +190,7 @@ async findById(id: number) {
 }
 
 // 캐시 무효화
-await Sonamu.cache.deleteByTags(["products"]);
+await Sonamu.cache.deleteByTag({ tags: ["products"] });
 ```
 
 ### grace
@@ -262,7 +262,7 @@ class ProductModelClass extends BaseModelClass {
     const result = await this.insert(wdb, data);
 
     // "products" 태그의 모든 캐시 무효화
-    await Sonamu.cache.deleteByTags(["products"]);
+    await Sonamu.cache.deleteByTag({ tags: ["products"] });
 
     return result;
   }
@@ -273,10 +273,10 @@ class ProductModelClass extends BaseModelClass {
 
 ```typescript
 // 특정 키 삭제
-await Sonamu.cache.delete("Product.findById:123");
+await Sonamu.cache.delete({ key: "Product.findById:123" });
 
-// 패턴 매칭으로 삭제
-await Sonamu.cache.deleteMany("Product.findById:*");
+// 여러 키 삭제
+await Sonamu.cache.deleteMany({ keys: ["Product.findById:123", "Product.findById:456"] });
 ```
 
 ### 전체 무효화
@@ -507,7 +507,7 @@ export default defineConfig({
         const result = await this.insert(wdb, data);
 
         // 캐시 무효화
-        await Sonamu.cache.deleteByTags(["products"]);
+        await Sonamu.cache.deleteByTag({ tags: ["products"] });
 
         return result;
       }
@@ -547,7 +547,7 @@ export default defineConfig({
         await this.upsert(wdb, { id, ...data });
 
         // 해당 사용자 캐시만 무효화
-        await Sonamu.cache.delete(`user:profile:${id}`);
+        await Sonamu.cache.delete({ key: `user:profile:${id}` });
 
         return this.getProfile(id);
       }
@@ -638,7 +638,7 @@ export default defineConfig({
       @api({ httpMethod: "DELETE" })
       async clearSearchCache() {
         // 검색 캐시 전체 무효화
-        await Sonamu.cache.deleteByTags(["search"]);
+        await Sonamu.cache.deleteByTag({ tags: ["search"] });
         return { success: true };
       }
     }

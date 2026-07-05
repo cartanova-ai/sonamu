@@ -592,7 +592,7 @@ async findById(id: number) {
         const result = await this.upsert(wdb, { id, ...data });
 
         // 캐시 무효화
-        await Sonamu.cache.deleteByTags(["products"]);
+        await Sonamu.cache.deleteByTag({ tags: ["products"] });
 
         return result;
       }
