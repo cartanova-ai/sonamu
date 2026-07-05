@@ -411,9 +411,9 @@ class AnalyticsFrame extends BaseFrameClass {
   async track(params: TrackParams): Promise<void> {
     const context = Sonamu.getContext();
 
-    const wdb = this.getPuri("w");
+    const wdb = this.getDB("w");
 
-    await wdb.table("analytics").insert({
+    await wdb("analytics").insert({
       event_type: params.eventType,
       event_data: JSON.stringify(params.data),
       user_id: context.user?.id,

@@ -82,7 +82,7 @@ declare module "sonamu" {
 // middleware/auth.middleware.ts
 import { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
-import { Sonamu } from "sonamu";
+import { Sonamu, DB } from "sonamu";
 
 export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
   // Extract token from Authorization header
@@ -105,8 +105,8 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     };
 
     // Get user info from DB
-    const rdb = Sonamu.getPuri("r");
-    const user = await rdb.table("users").where("id", payload.userId).first();
+    const rdb = DB.getDB("r");
+    const user = await rdb("users").where("id", payload.userId).first();
 
     if (!user) {
       reply.status(401);
@@ -141,7 +141,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
 ```typescript
 // middleware/tenant.middleware.ts
 import { FastifyRequest } from "fastify";
-import { Sonamu } from "sonamu";
+import { Sonamu, DB } from "sonamu";
 
 export async function tenantMiddleware(request: FastifyRequest) {
   const context = Sonamu.getContext();
@@ -154,11 +154,10 @@ export async function tenantMiddleware(request: FastifyRequest) {
     return; // No tenant info
   }
 
-  const rdb = Sonamu.getPuri("r");
+  const rdb = DB.getDB("r");
 
   // Get tenant
-  const tenant = await rdb
-    .table("tenants")
+  const tenant = await rdb("tenants")
     .where((qb) => {
       if (subdomain) {
         qb.where("subdomain", subdomain);
