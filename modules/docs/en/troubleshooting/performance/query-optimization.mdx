@@ -182,7 +182,7 @@ const orderStats = await OrderModel.getPuri("r").table("orders")
   })
   .where({ status: "completed" })
   .groupBy("user_id")
-  .having("order_count", ">", 10); // More than 10 orders
+  .having("COUNT(*)", ">", 10); // More than 10 orders
 ```
 
 ## Pagination Optimization
