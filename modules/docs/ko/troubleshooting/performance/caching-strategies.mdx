@@ -237,8 +237,8 @@ class UserModelClass extends BaseModelClass {
     const user = await this.save(params);
 
     // 관련 캐시 무효화
-    await Sonamu.cache.delete("users:active:count");
-    await Sonamu.cache.delete("users:stats");
+    await Sonamu.cache.delete({ key: "users:active:count" });
+    await Sonamu.cache.delete({ key: "users:stats" });
 
     return user;
   }
@@ -459,7 +459,7 @@ class AuthService {
 
   // 로그아웃
   async logout(token: string) {
-    await Sonamu.cache.delete(`session:${token}`);
+    await Sonamu.cache.delete({ key: `session:${token}` });
   }
 }
 ```
@@ -492,8 +492,8 @@ class ProductModelClass extends BaseModelClass {
 
   private async invalidateProductCaches() {
     // 개별 삭제
-    await Sonamu.cache.delete("featured:products");
-    await Sonamu.cache.delete("stats:products");
+    await Sonamu.cache.delete({ key: "featured:products" });
+    await Sonamu.cache.delete({ key: "stats:products" });
   }
 }
 ```

@@ -375,7 +375,7 @@ class UserModelClass extends BaseModelClass {
         const [result] = await rdb.raw(`
           WITH monthly_sales AS (
             SELECT
-              DATE_FORMAT(created_at, '%Y-%m') as month,
+              to_char(created_at, 'YYYY-MM') as month,
               COUNT(*) as order_count,
               SUM(total_amount) as total
             FROM orders

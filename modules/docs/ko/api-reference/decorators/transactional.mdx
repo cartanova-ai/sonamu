@@ -594,18 +594,18 @@ async save() {
 
         // 1. 매출 집계
         const sales = await rdb.table("orders")
-          .whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [month])
+          .whereRaw("to_char(created_at, 'YYYY-MM') = ?", [month])
           .sum("total_amount as total");
 
         // 2. 신규 회원 수
         const newUsers = await rdb.table("users")
-          .whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [month])
+          .whereRaw("to_char(created_at, 'YYYY-MM') = ?", [month])
           .count("* as count");
 
         // 3. 상품별 판매량
         const productSales = await rdb.table("order_items")
           .join("orders", "orders.id", "order_items.order_id")
-          .whereRaw("DATE_FORMAT(orders.created_at, '%Y-%m') = ?", [month])
+          .whereRaw("to_char(orders.created_at, 'YYYY-MM') = ?", [month])
           .groupBy("order_items.product_id")
           .select(
             "order_items.product_id",
