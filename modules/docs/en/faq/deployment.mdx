@@ -482,9 +482,9 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: sonamu_prod
+      POSTGRES_DB: sonamu_production
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: ${SONAMU_DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
