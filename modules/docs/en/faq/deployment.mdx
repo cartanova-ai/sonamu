@@ -233,29 +233,26 @@ gunzip < backup.sql.gz | psql -h prod-db.example.com -U postgres -d sonamu_prod
 <AccordionGroup>
 <Accordion title="How do I set up logging?">
 
-**Using Winston:**
+Sonamu provides structured logging based on [LogTape](https://github.com/dahlia/logtape).
+Configure it via the `logging` option in `sonamu.config.ts`:
 
 ```typescript
 // sonamu.config.ts
-import winston from "winston";
+import { defineConfig } from "sonamu";
 
-export default {
-  server: {
-    logger: winston.createLogger({
-      level: process.env.LOG_LEVEL || "info",
-      format: winston.format.json(),
-      transports: [
-        new winston.transports.File({
-          filename: "logs/error.log",
-          level: "error",
-        }),
-        new winston.transports.File({
-          filename: "logs/combined.log",
-        }),
-      ],
-    }),
+export default defineConfig({
+  // ...
+  logging: {
+    sinks: {
+      console: { type: "console" },
+      file: { type: "file", path: "logs/app.log" },
+    },
+    filters: {
+      all: { sinkId: "console", level: "info" },
+      fileAll: { sinkId: "file", level: "warning" },
+    },
   },
-} satisfies SonamuConfig;
+});
 ```
 
 **Using the logger:**
@@ -277,6 +274,8 @@ class UserModelClass extends BaseModelClass {
   }
 }
 ```
+
+See [LogTape Setup](/en/configuration/logging/logtape-setup) for detailed configuration.
 
 </Accordion>
 
@@ -323,6 +322,7 @@ export const HealthFrame = new HealthFrameClass();
 ```typescript
 // sonamu.config.ts
 import * as Sentry from "@sentry/node";
+import { defineConfig } from "sonamu";
 
 if (process.env.NODE_ENV === "production") {
   Sentry.init({
@@ -332,8 +332,10 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-export default {
+export default defineConfig({
+  // ...
   server: {
+    // ...
     lifecycle: {
       async onStart() {
         console.log("Server started");
@@ -345,7 +347,7 @@ export default {
       },
     },
   },
-} satisfies SonamuConfig;
+});
 ```
 
 </Accordion>
@@ -361,61 +363,63 @@ export default {
 **1. Connection Pool settings:**
 
 ```typescript
-export default {
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  // ...
   database: {
-    connections: {
-      main: {
-        pool: {
-          min: 2,
-          max: 10,
-          acquireTimeoutMillis: 30000,
-          idleTimeoutMillis: 30000,
-        },
+    database: "pg",
+    defaultOptions: {
+      pool: {
+        min: 2,
+        max: 10,
       },
     },
   },
-} satisfies SonamuConfig;
+});
 ```
 
 **2. Enable caching:**
 
 ```typescript
-import { bentostore } from "bentocache";
-import { redisDriver } from "bentocache/drivers/redis";
+import { defineConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
 
-export default {
+export default defineConfig({
+  // ...
   server: {
+    // ...
     cache: {
       default: "redis",
       stores: {
-        redis: bentostore().useL1Layer(
-          redisDriver({
+        redis: store().useL1Layer(
+          drivers.redis({
             connection: {
               host: process.env.REDIS_HOST,
-              port: 6379,
+              port: Number(process.env.REDIS_PORT) || 6379,
             },
           }),
         ),
       },
     },
   },
-} satisfies SonamuConfig;
+});
 ```
 
 **3. Enable compression:**
 
 ```typescript
-import compress from "@fastify/compress";
+import { defineConfig } from "sonamu";
 
-export default {
+export default defineConfig({
+  // ...
   server: {
-    lifecycle: {
-      async onStart(fastify) {
-        await fastify.register(compress);
-      },
+    // ...
+    plugins: {
+      compress: true,
     },
   },
-} satisfies SonamuConfig;
+});
 ```
 
 </Accordion>
@@ -639,15 +643,21 @@ server {
 
 ```typescript
 // sonamu.config.ts
-export default {
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  // ...
   server: {
-    cors: {
-      origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-      credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    // ...
+    plugins: {
+      cors: {
+        origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+      },
     },
   },
-} satisfies SonamuConfig;
+});
 ```
 
 </Accordion>
@@ -656,19 +666,22 @@ export default {
 
 ```typescript
 import rateLimit from "@fastify/rate-limit";
+import { defineConfig } from "sonamu";
 
-export default {
+export default defineConfig({
+  // ...
   server: {
-    lifecycle: {
-      async onStart(fastify) {
-        await fastify.register(rateLimit, {
-          max: 100, // 100 requests
+    // ...
+    plugins: {
+      custom: async (server) => {
+        await server.register(rateLimit, {
+          max: 100,
           timeWindow: "1 minute",
         });
       },
     },
   },
-} satisfies SonamuConfig;
+});
 ```
 
 </Accordion>
@@ -702,7 +715,7 @@ export default {
 
 - [ ] Health check endpoint
 - [ ] Error monitoring (Sentry)
-- [ ] Log collection (Winston)
+- [ ] Log collection (LogTape)
 - [ ] DB backup automation
 
 **Deployment:**
