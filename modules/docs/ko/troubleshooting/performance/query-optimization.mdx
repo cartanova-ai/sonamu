@@ -182,7 +182,7 @@ const orderStats = await OrderModel.getPuri("r").table("orders")
   })
   .where({ status: "completed" })
   .groupBy("user_id")
-  .having("order_count", ">", 10); // 주문 10개 이상
+  .having("COUNT(*)", ">", 10); // 주문 10개 이상
 ```
 
 ## 페이지네이션 최적화
