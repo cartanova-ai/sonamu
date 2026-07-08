@@ -41,10 +41,7 @@ Sonamu로 웹 앱을 만들다 보면 이런 기능을 구현하게 됩니다:
 // sonamu.config.ts
 export default defineConfig({
   database: {
-    client: "pg",
-    connection: {
-      /* ... */
-    },
+    database: "pg",
   },
 });
 ```
@@ -179,23 +176,15 @@ OPENAI_API_KEY=sk-...
 import { defineConfig } from "sonamu";
 
 export default defineConfig({
+  projectName: "myapp",
   database: {
-    name: "myapp",
-    defaultOptions: {
-      client: "pg",
-      connection: {
-        host: "localhost",
-        port: 5432,
-        user: "postgres",
-        password: "postgres",
-        database: "myapp",
-      },
-    },
+    database: "pg",
   },
 });
 ```
 
-Sonamu는 이미 PostgreSQL을 쓰고 있습니다. 추가 설정 불필요합니다.
+Sonamu는 이미 PostgreSQL을 쓰고 있습니다. DB 연결 정보는 `SONAMU_DB_*` 환경변수에서 자동으로
+로드되므로 추가 설정이 불필요합니다.
 
 ### 3. Knex Migration으로 테이블 생성
 

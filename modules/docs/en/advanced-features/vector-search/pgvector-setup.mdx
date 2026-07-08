@@ -41,10 +41,7 @@ To implement vector search, you need a database that can store and search vector
 // sonamu.config.ts
 export default defineConfig({
   database: {
-    client: "pg",
-    connection: {
-      /* ... */
-    },
+    database: "pg",
   },
 });
 ```
@@ -215,23 +212,15 @@ OPENAI_API_KEY=sk-...
 import { defineConfig } from "sonamu";
 
 export default defineConfig({
+  projectName: "myapp",
   database: {
-    name: "myapp",
-    defaultOptions: {
-      client: "pg",
-      connection: {
-        host: "localhost",
-        port: 5432,
-        user: "postgres",
-        password: "postgres",
-        database: "myapp",
-      },
-    },
+    database: "pg",
   },
 });
 ```
 
-Sonamu already uses PostgreSQL. No additional configuration needed.
+Sonamu already uses PostgreSQL. DB connection details are automatically loaded from
+`SONAMU_DB_*` environment variables, so no additional configuration is needed.
 
 ### 3. Create Table with Knex Migration
 
