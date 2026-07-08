@@ -325,20 +325,20 @@ pnpm migrate run
 **문제**: DB 연결 실패
 
 ```
-Error: connect ECONNREFUSED 127.0.0.1:3306
+Error: connect ECONNREFUSED 127.0.0.1:5432
 ```
 
 **해결**:
 
 ```bash
-# 1. MySQL 실행 확인
-mysql -u root -p -e "SHOW DATABASES;"
+# 1. PostgreSQL 실행 확인
+psql -U postgres -c "\l"
 
 # 2. 연결 정보 확인
 cat sonamu.config.ts
 
 # 3. 데이터베이스 생성
-mysql -u root -p -e "CREATE DATABASE myapp_dev;"
+createdb -U postgres myapp_dev
 ```
 
 ### 마이그레이션 순서 오류
@@ -397,7 +397,7 @@ pnpm migrate run
 
 ```bash
 # 프로덕션 마이그레이션 전 백업
-mysqldump -u root -p myapp_prod > backup_$(date +%Y%m%d).sql
+pg_dump -U postgres myapp_prod > backup_$(date +%Y%m%d).sql
 
 # 마이그레이션 적용
 pnpm migrate run

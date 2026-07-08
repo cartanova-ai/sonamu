@@ -144,11 +144,7 @@ export const config: SonamuConfig = {
 ```
 
 ```bash Create Test DB
-# PostgreSQL
 createdb myapp_test
-
-# MySQL
-mysql -u root -e "CREATE DATABASE myapp_test;"
 ```
 
 </CodeGroup>
@@ -455,8 +451,7 @@ Some operations execute outside transaction scope, so caution is needed:
      await DB.getDB("w").schema.createTable("temp", (t) => {
        t.increments("id");
      });
-     // PostgreSQL: ✅ Rolled back
-     // MySQL: ❌ Not rolled back (DDL commits immediately)
+     // PostgreSQL: ✅ DDL inside transactions is also rolled back
    });
    ```
 
@@ -557,9 +552,7 @@ export default defineConfig({
 
 3. **Clean up external resources**: Files, external API calls, etc. must be cleaned up manually.
 
-4. **DDL caution**: In MySQL, DDL statements commit immediately and are not rolled back. Avoid table creation/deletion in tests.
-
-5. **Limit parallel execution**: Sequential test execution is recommended for transaction isolation.
+4. **Limit parallel execution**: Sequential test execution is recommended for transaction isolation.
    </Warning>
 
 ## Next Steps

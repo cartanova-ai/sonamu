@@ -672,16 +672,11 @@ CREATE UNIQUE INDEX idx_users_email ON users(email);
 .onConflict(["email"], ...)
 ```
 
-### 3. returning is PostgreSQL Only
+### 3. returning
 
 ```typescript
-// ✅ PostgreSQL
 .insert({ ... })
 .returning("*")
-
-// ❌ MySQL: RETURNING not supported
-// Instead, ID returned after insert
-const [id] = await puri.table("users").insert({ ... });
 ```
 
 ### 4. vectorSimilarity Requires pgvector

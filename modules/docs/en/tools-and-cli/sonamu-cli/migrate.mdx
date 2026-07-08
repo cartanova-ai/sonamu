@@ -325,20 +325,20 @@ pnpm migrate run
 **Problem**: DB connection failed
 
 ```
-Error: connect ECONNREFUSED 127.0.0.1:3306
+Error: connect ECONNREFUSED 127.0.0.1:5432
 ```
 
 **Solution**:
 
 ```bash
-# 1. Check MySQL is running
-mysql -u root -p -e "SHOW DATABASES;"
+# 1. Check PostgreSQL is running
+psql -U postgres -c "\l"
 
 # 2. Check connection info
 cat sonamu.config.ts
 
 # 3. Create database
-mysql -u root -p -e "CREATE DATABASE myapp_dev;"
+createdb -U postgres myapp_dev
 ```
 
 ### Migration Order Error
@@ -397,7 +397,7 @@ pnpm migrate run
 
 ```bash
 # Backup before production migration
-mysqldump -u root -p myapp_prod > backup_$(date +%Y%m%d).sql
+pg_dump -U postgres myapp_prod > backup_$(date +%Y%m%d).sql
 
 # Apply migration
 pnpm migrate run

@@ -144,11 +144,7 @@ export const config: SonamuConfig = {
 ```
 
 ```bash 테스트 DB 생성
-# PostgreSQL
 createdb myapp_test
-
-# MySQL
-mysql -u root -e "CREATE DATABASE myapp_test;"
 ```
 
 </CodeGroup>
@@ -457,8 +453,7 @@ test("수동 트랜잭션 제어", async () => {
      await DB.getDB("w").schema.createTable("temp", (t) => {
        t.increments("id");
      });
-     // PostgreSQL: ✅ 롤백됨
-     // MySQL: ❌ 롤백 안됨 (DDL은 즉시 커밋)
+     // PostgreSQL: ✅ 트랜잭션 내 DDL도 롤백됨
    });
    ```
 
@@ -559,9 +554,7 @@ export default defineConfig({
 
 3. **외부 리소스 정리**: 파일, 외부 API 호출 등은 수동으로 정리해야 합니다.
 
-4. **DDL 주의**: MySQL에서는 DDL 문이 즉시 커밋되어 롤백되지 않습니다. 테스트에서 테이블 생성/삭제는 피하세요.
-
-5. **병렬 실행 제한**: 트랜잭션 격리를 위해 테스트는 순차 실행이 권장됩니다.
+4. **병렬 실행 제한**: 트랜잭션 격리를 위해 테스트는 순차 실행이 권장됩니다.
    </Warning>
 
 ## 다음 단계
