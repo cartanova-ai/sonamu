@@ -14,24 +14,24 @@ class UserModelClass extends BaseModelClass<UserSubsetKey, UserSubsetMapping, Us
   @api({ httpMethod: "POST" })
   @transactional()
   async create(data: UserCreateParams) {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
 
     // 모든 작업이 트랜잭션 내에서 실행됨
-    const user = await this.insert(wdb, data);
-    await this.createProfile(user.id);
-    await this.sendWelcomeEmail(user.id);
+    const user = await wdb.table("users").insert(data).returning("*");
+    await this.createProfile(user[0].id);
+    await this.sendWelcomeEmail(user[0].id);
 
     // 모두 성공하면 commit, 하나라도 실패하면 rollback
-    return user;
+    return user[0];
   }
 
   @api({ httpMethod: "PUT" })
   @transactional()
   async update(id: number, data: UserUpdateParams) {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
 
     // 트랜잭션 보장
-    await this.upsert(wdb, { id, ...data });
+    await wdb.table("users").where("id", id).update(data);
     await this.updateRelatedData(id);
 
     return this.findById(id);
@@ -128,8 +128,8 @@ async generateReport(startDate: Date, endDate: Date) {
 @transactional({ dbPreset: "w" })
 async saveData(data: SaveParams) {
   // 쓰기용 DB 사용 (기본값)
-  const wdb = this.getDB("w");
-  return this.insert(wdb, data);
+  const wdb = this.getPuri("w");
+  return wdb.table("items").insert(data).returning("id");
 }
 
 @transactional({ dbPreset: "r", readOnly: true })
@@ -161,7 +161,7 @@ async criticalOperation(data: OperationParams) {
 ```typescript
 @transactional()
 async transfer(fromId: number, toId: number, amount: number) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
   // 1. 출금
   await wdb.table("accounts")
@@ -191,19 +191,19 @@ async transfer(fromId: number, toId: number, amount: number) {
 class UserModelClass extends BaseModelClass {
   @transactional()
   async createUser(data: UserCreateParams) {
-    const wdb = this.getDB("w");
-    const user = await this.insert(wdb, data);
+    const wdb = this.getPuri("w");
+    const user = await wdb.table("users").insert(data).returning("*");
 
     // 이 메서드도 @transactional이지만
     // 같은 트랜잭션을 재사용함
-    await this.createProfile(user.id);
+    await this.createProfile(user[0].id);
 
-    return user;
+    return user[0];
   }
 
   @transactional()
   async createProfile(userId: number) {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
     // createUser의 트랜잭션 재사용
     return wdb.table("profiles").insert({ user_id: userId });
   }
@@ -227,7 +227,7 @@ class UserModelClass extends BaseModelClass {
 ```typescript
 @transactional({ dbPreset: "w" })
 async saveData(data: SaveParams) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
   await wdb.table("logs").insert(data);
 
   // 다른 preset은 별도 트랜잭션
@@ -281,7 +281,7 @@ async findWithRelations(id: number) {
 async uploadAvatar() {
   const { files } = Sonamu.getContext();
   const file = files?.[0]; // 첫 번째 파일 사용
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
   // 파일 저장 + DB 업데이트를 트랜잭션으로
   const url = await this.saveFile(file);
@@ -333,7 +333,7 @@ async child() {
 ```typescript
 @transactional()
 async processOrder(orderId: number) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
   try {
     await wdb.table("orders")
@@ -357,9 +357,9 @@ async processOrder(orderId: number) {
 ```typescript
 @transactional()
 async validateAndSave(data: SaveParams) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
-  const result = await this.insert(wdb, data);
+  const result = await wdb.table("items").insert(data).returning("*");
 
   // 검증 실패 시 롤백
   if (!this.validate(result)) {
@@ -395,7 +395,7 @@ class UserModelClass extends BaseModelClass {
 // ❌ 나쁜 예: 오래 걸리는 작업
 @transactional()
 async processLargeData() {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
   // 10분 걸리는 작업
   for (let i = 0; i < 1000000; i++) {
@@ -415,9 +415,11 @@ async processLargeData() {
 
 @transactional()
 async processBatch(batch: Item[]) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
   // 작은 단위로 트랜잭션 실행
-  return this.insertBatch(wdb, batch);
+  for (const item of batch) {
+    await wdb.table("items").insert(item);
+  }
 }
 ```
 
@@ -427,15 +429,15 @@ async processBatch(batch: Item[]) {
 // ❌ 나쁜 예: 트랜잭션 중 외부 API
 @transactional()
 async createOrder(data: OrderCreateParams) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
-  const order = await this.insert(wdb, data);
+  const order = await wdb.table("orders").insert(data).returning("*");
 
   // 외부 결제 API 호출 (느림)
-  await this.paymentService.charge(order.amount);
+  await this.paymentService.charge(order[0].amount);
   // 트랜잭션이 오래 열려있음
 
-  return order;
+  return order[0];
 }
 
 // ✅ 좋은 예: 트랜잭션 밖에서 처리
@@ -454,13 +456,13 @@ async createOrder(data: OrderCreateParams) {
 
 @transactional()
 async saveOrder(data: OrderCreateParams) {
-  const wdb = this.getDB("w");
-  return this.insert(wdb, data);
+  const wdb = this.getPuri("w");
+  return (await wdb.table("orders").insert(data).returning("*"))[0];
 }
 
 @transactional()
 async updateOrderStatus(id: number, status: string) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
   return wdb.table("orders").where("id", id).update({ status });
 }
 ```
@@ -492,7 +494,7 @@ async save() {
         toAccountId: number,
         amount: number
       ) {
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
 
         // 1. 출금 계좌 잔액 확인
         const fromAccount = await wdb.table("accounts")
@@ -535,14 +537,14 @@ async save() {
       @api({ httpMethod: "POST" })
       @transactional()
       async createOrder(data: OrderCreateParams) {
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
 
         // 1. 주문 생성
-        const order = await this.insert(wdb, {
+        const [order] = await wdb.table("orders").insert({
           user_id: data.userId,
           total_amount: data.totalAmount,
           status: "pending"
-        });
+        }).returning("*");
 
         // 2. 주문 상품 저장
         await wdb.table("order_items").insert(
@@ -649,13 +651,13 @@ async save() {
       // 배치별 트랜잭션
       @transactional()
       async processBatch(batch: Item[]) {
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
 
         // 배치 단위로 트랜잭션
         const processed = [];
         for (const item of batch) {
-          const result = await this.processItem(wdb, item);
-          processed.push(result);
+          const result = await wdb.table("items").insert(item).returning("*");
+          processed.push(result[0]);
         }
 
         return processed;

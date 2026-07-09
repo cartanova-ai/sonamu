@@ -14,24 +14,24 @@ class UserModelClass extends BaseModelClass<UserSubsetKey, UserSubsetMapping, Us
   @api({ httpMethod: "POST" })
   @transactional()
   async create(data: UserCreateParams) {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
 
     // All operations executed within transaction
-    const user = await this.insert(wdb, data);
-    await this.createProfile(user.id);
-    await this.sendWelcomeEmail(user.id);
+    const user = await wdb.table("users").insert(data).returning("*");
+    await this.createProfile(user[0].id);
+    await this.sendWelcomeEmail(user[0].id);
 
     // Commits if all succeed, rolls back if any fails
-    return user;
+    return user[0];
   }
 
   @api({ httpMethod: "PUT" })
   @transactional()
   async update(id: number, data: UserUpdateParams) {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
 
     // Transaction guaranteed
-    await this.upsert(wdb, { id, ...data });
+    await wdb.table("users").where("id", id).update(data);
     await this.updateRelatedData(id);
 
     return this.findById(id);
@@ -131,8 +131,8 @@ Specifies the database preset to use.
 @transactional({ dbPreset: "w" })
 async saveData(data: SaveParams) {
   // Uses write DB (default)
-  const wdb = this.getDB("w");
-  return this.insert(wdb, data);
+  const wdb = this.getPuri("w");
+  return wdb.table("items").insert(data).returning("id");
 }
 
 @transactional({ dbPreset: "r", readOnly: true })
@@ -164,7 +164,7 @@ async criticalOperation(data: OperationParams) {
 ```typescript
 @transactional()
 async transfer(fromId: number, toId: number, amount: number) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
   // 1. Withdraw
   await wdb.table("accounts")
@@ -194,19 +194,19 @@ Transactions with the same dbPreset are **reused**:
 class UserModelClass extends BaseModelClass {
   @transactional()
   async createUser(data: UserCreateParams) {
-    const wdb = this.getDB("w");
-    const user = await this.insert(wdb, data);
+    const wdb = this.getPuri("w");
+    const user = await wdb.table("users").insert(data).returning("*");
 
     // This method also has @transactional
     // but reuses the same transaction
-    await this.createProfile(user.id);
+    await this.createProfile(user[0].id);
 
-    return user;
+    return user[0];
   }
 
   @transactional()
   async createProfile(userId: number) {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
     // Reuses createUser's transaction
     return wdb.table("profiles").insert({ user_id: userId });
   }
@@ -230,7 +230,7 @@ Different dbPresets create **separate transactions**:
 ```typescript
 @transactional({ dbPreset: "w" })
 async saveData(data: SaveParams) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
   await wdb.table("logs").insert(data);
 
   // Different preset creates separate transaction
@@ -284,7 +284,7 @@ async findWithRelations(id: number) {
 async uploadAvatar() {
   const { files } = Sonamu.getContext();
   const file = files?.[0]; // Use first file
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
   // File save + DB update in transaction
   const url = await this.saveFile(file);
@@ -336,7 +336,7 @@ async child() {
 ```typescript
 @transactional()
 async processOrder(orderId: number) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
   try {
     await wdb.table("orders")
@@ -360,9 +360,9 @@ Throw an error when explicit rollback is needed:
 ```typescript
 @transactional()
 async validateAndSave(data: SaveParams) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
-  const result = await this.insert(wdb, data);
+  const result = await wdb.table("items").insert(data).returning("*");
 
   // Rollback on validation failure
   if (!this.validate(result)) {
@@ -398,7 +398,7 @@ class UserModelClass extends BaseModelClass {
 // ❌ Bad: Long-running operation
 @transactional()
 async processLargeData() {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
   // 10-minute operation
   for (let i = 0; i < 1000000; i++) {
@@ -418,9 +418,11 @@ async processLargeData() {
 
 @transactional()
 async processBatch(batch: Item[]) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
   // Execute transaction in small units
-  return this.insertBatch(wdb, batch);
+  for (const item of batch) {
+    await wdb.table("items").insert(item);
+  }
 }
 ```
 
@@ -430,15 +432,15 @@ async processBatch(batch: Item[]) {
 // ❌ Bad: External API in transaction
 @transactional()
 async createOrder(data: OrderCreateParams) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
-  const order = await this.insert(wdb, data);
+  const order = await wdb.table("orders").insert(data).returning("*");
 
   // External payment API call (slow)
-  await this.paymentService.charge(order.amount);
+  await this.paymentService.charge(order[0].amount);
   // Transaction open too long
 
-  return order;
+  return order[0];
 }
 
 // ✅ Good: Handle outside transaction
@@ -457,13 +459,13 @@ async createOrder(data: OrderCreateParams) {
 
 @transactional()
 async saveOrder(data: OrderCreateParams) {
-  const wdb = this.getDB("w");
-  return this.insert(wdb, data);
+  const wdb = this.getPuri("w");
+  return (await wdb.table("orders").insert(data).returning("*"))[0];
 }
 
 @transactional()
 async updateOrderStatus(id: number, status: string) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
   return wdb.table("orders").where("id", id).update({ status });
 }
 ```
@@ -495,7 +497,7 @@ async save() {
         toAccountId: number,
         amount: number
       ) {
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
 
         // 1. Check sender balance
         const fromAccount = await wdb.table("accounts")
@@ -538,14 +540,14 @@ async save() {
       @api({ httpMethod: "POST" })
       @transactional()
       async createOrder(data: OrderCreateParams) {
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
 
         // 1. Create order
-        const order = await this.insert(wdb, {
+        const [order] = await wdb.table("orders").insert({
           user_id: data.userId,
           total_amount: data.totalAmount,
           status: "pending"
-        });
+        }).returning("*");
 
         // 2. Save order items
         await wdb.table("order_items").insert(
@@ -652,13 +654,13 @@ async save() {
       // Per-batch transaction
       @transactional()
       async processBatch(batch: Item[]) {
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
 
         // Transaction per batch
         const processed = [];
         for (const item of batch) {
-          const result = await this.processItem(wdb, item);
-          processed.push(result);
+          const result = await wdb.table("items").insert(item).returning("*");
+          processed.push(result[0]);
         }
 
         return processed;
