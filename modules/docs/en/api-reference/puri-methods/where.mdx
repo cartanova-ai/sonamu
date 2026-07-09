@@ -135,8 +135,7 @@ await puri.table("users").where("users.email", "not ilike", "%SPAM%");
 ```
 
 <Info>
-  `ilike` and `not ilike` are PostgreSQL-specific operators. In MySQL, you can achieve similar
-  results by combining `LOWER()` function with `like`.
+  `ilike` and `not ilike` are PostgreSQL's case-insensitive pattern matching operators.
 </Info>
 
 ## whereIn / whereNotIn

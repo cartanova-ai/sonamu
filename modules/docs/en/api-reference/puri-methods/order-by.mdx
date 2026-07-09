@@ -448,9 +448,7 @@ CREATE INDEX idx_products_category_price ON products(category, price);
 ### 2. NULL Values
 
 ```typescript
-// NULL sorting may differ between PostgreSQL and MySQL
-
-// PostgreSQL: NULL LAST (default)
+// PostgreSQL: NULLS LAST is the default
 .orderBy("users.last_login", "desc")
 
 // Use the nulls option to specify explicitly

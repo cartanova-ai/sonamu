@@ -135,8 +135,7 @@ await puri.table("users").where("users.email", "not ilike", "%SPAM%");
 ```
 
 <Info>
-  `ilike`와 `not ilike`는 PostgreSQL 전용 연산자입니다. MySQL에서는 `LOWER()` 함수와 `like`를
-  조합하여 유사한 효과를 얻을 수 있습니다.
+  `ilike`와 `not ilike`는 PostgreSQL의 대소문자 무시 패턴 매칭 연산자입니다.
 </Info>
 
 ## whereIn / whereNotIn

@@ -1113,7 +1113,15 @@ function encodeCursor(item: Cursor): string {
 
 export function decodeCursor(cursor: string): Cursor {
   const decoded = Buffer.from(cursor, "base64").toString("utf8");
-  const parsed = JSON.parse(decoded) as { createdAt: string; id: string };
+  let parsed: { createdAt: string; id: string };
+  try {
+    parsed = JSON.parse(decoded);
+  } catch {
+    throw new Error(`Invalid cursor: ${cursor}`);
+  }
+  if (!parsed.createdAt || !parsed.id) {
+    throw new Error(`Invalid cursor: ${cursor}`);
+  }
   return {
     createdAt: new Date(parsed.createdAt),
     id: parsed.id,

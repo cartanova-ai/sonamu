@@ -448,9 +448,7 @@ CREATE INDEX idx_products_category_price ON products(category, price);
 ### 2. NULL 값
 
 ```typescript
-// PostgreSQL과 MySQL의 NULL 정렬이 다를 수 있음
-
-// PostgreSQL: NULL LAST (기본)
+// PostgreSQL: NULLS LAST가 기본
 .orderBy("users.last_login", "desc")
 
 // nulls 옵션으로 명시적으로 지정 가능

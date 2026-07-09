@@ -302,7 +302,7 @@ class UserModel extends BaseModelClass {
   async updateWithIsolation(userId: number): Promise<void> {
     const wdb = this.getPuri("w");
 
-    // PostgreSQL/MySQL 모두 지원
+    // 격리 수준이 지정된 트랜잭션
     return wdb.transaction(
       async (trx) => {
         const user = await trx.table("users").where("id", userId).first();

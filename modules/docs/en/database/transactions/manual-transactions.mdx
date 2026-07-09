@@ -304,7 +304,7 @@ class UserModel extends BaseModelClass {
   async updateWithIsolation(userId: number): Promise<void> {
     const wdb = this.getPuri("w");
 
-    // Supported by both PostgreSQL and MySQL
+    // Transaction with isolation level
     return wdb.transaction(
       async (trx) => {
         const user = await trx.table("users").where("id", userId).first();

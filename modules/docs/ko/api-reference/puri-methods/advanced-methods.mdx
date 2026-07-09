@@ -674,13 +674,8 @@ CREATE UNIQUE INDEX idx_users_email ON users(email);
 ### 3. returning은 PostgreSQL만
 
 ```typescript
-// ✅ PostgreSQL
 .insert({ ... })
 .returning("*")
-
-// ❌ MySQL: RETURNING 지원 안 함
-// 대신 insert 후 ID 반환
-const [id] = await puri.table("users").insert({ ... });
 ```
 
 ### 4. vectorSimilarity는 pgvector 필요
