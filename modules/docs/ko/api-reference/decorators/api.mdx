@@ -19,8 +19,9 @@ class UserModelClass extends BaseModelClass<UserSubsetKey, UserSubsetMapping, Us
 
   @api({ httpMethod: "POST" })
   async save(data: UserSaveParams) {
-    const wdb = this.getDB("w");
-    return this.upsert(wdb, data);
+    const wdb = this.getPuri("w");
+    wdb.ubRegister("users", data);
+    return wdb.ubUpsert("users");
   }
 }
 
@@ -363,9 +364,10 @@ class AuthFrameClass extends BaseFrameClass {
 @api({ httpMethod: "POST" })
 @transactional()
 async save(data: UserSaveParams) {
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
   // 트랜잭션 내에서 실행
-  return this.upsert(wdb, data);
+  wdb.ubRegister("users", data);
+  return wdb.ubUpsert("users");
 }
 ```
 
@@ -540,22 +542,27 @@ async findById(id: number) {
       @api({ httpMethod: "POST" })
       @transactional()
       async create(data: UserCreateParams) {
-        const wdb = this.getDB("w");
-        return this.insert(wdb, data);
+        const wdb = this.getPuri("w");
+        const [user] = await wdb.table("users")
+          .insert(data)
+          .returning("*");
+        return user;
       }
 
       @api({ httpMethod: "PUT" })
       @transactional()
       async update(id: number, data: UserUpdateParams) {
-        const wdb = this.getDB("w");
-        return this.upsert(wdb, { id, ...data });
+        const wdb = this.getPuri("w");
+        await wdb.table("users")
+          .where("id", id)
+          .update(data);
       }
 
       @api({ httpMethod: "DELETE" })
       @transactional()
       async delete(id: number) {
-        const wdb = this.getDB("w");
-        return wdb.table("users")
+        const wdb = this.getPuri("w");
+        await wdb.table("users")
           .where("id", id)
           .update({ deleted_at: new Date() });
       }
@@ -588,13 +595,13 @@ async findById(id: number) {
       @api({ httpMethod: "POST" })
       @transactional()
       async update(id: number, data: ProductUpdateParams) {
-        const wdb = this.getDB("w");
-        const result = await this.upsert(wdb, { id, ...data });
+        const wdb = this.getPuri("w");
+        await wdb.table("products")
+          .where("id", id)
+          .update(data);
 
         // 캐시 무효화
         await Sonamu.cache.deleteByTag({ tags: ["products"] });
-
-        return result;
       }
     }
     ```
@@ -627,7 +634,7 @@ async findById(id: number) {
       @transactional()
       async banUser(userId: number) {
         // 관리자만 실행 가능
-        const wdb = UserModel.getDB("w");
+        const wdb = UserModel.getPuri("w");
         return wdb.table("users")
           .where("id", userId)
           .update({ banned_at: new Date() });
