@@ -5,6 +5,7 @@ export type AuditLogEvent = {
   eventType: string;
   eventData: Record<string, unknown>;
   eventKey: string;
+  eventId?: string;
   eventDisplayName?: string;
   ipAddress?: string;
   city?: string;

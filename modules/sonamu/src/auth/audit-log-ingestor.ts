@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { type Knex } from "knex";
 
+import { getValidClientIp } from "./audit-log/client-ip";
 import { type AuditLogEvent } from "./audit-log/events";
 
 const AUDIT_EVENT_SOURCE = "better_auth";
@@ -137,6 +138,10 @@ function computeDedupeKey(parts: {
   return createHash("sha256").update(raw).digest("hex");
 }
 
+function computeEventIdDedupeKey(source: string, eventId: string): string {
+  return createHash("sha256").update(`${source}|${eventId}`).digest("hex");
+}
+
 /**
  * sonamuAuditLog 플러그인이 구성한 AuditLogEvent를 audit_events 테이블에 적재합니다.
  * ON CONFLICT (dedupe_key) DO NOTHING으로 중복을 silent 무시합니다.
@@ -172,26 +177,28 @@ export async function ingestAuditEvent(db: Knex, event: AuditLogEvent): Promise<
   const trigger_context = pickString(eventData, "triggerContext");
   const user_agent = pickString(eventData, "userAgent");
 
-  const ip_address = event.ipAddress ?? null;
+  const ip_address = getValidClientIp(event.ipAddress);
   const city = event.city ?? null;
   const country = event.country ?? null;
   const country_code = event.countryCode ?? null;
 
   const category = classifyCategory(event.eventType);
-  const dedupe_key = computeDedupeKey({
-    source: AUDIT_EVENT_SOURCE,
-    event_type: event.eventType,
-    event_key: event.eventKey,
-    actor_user_id,
-    subject_user_id,
-    organization_id,
-    team_id,
-    session_id,
-    identifier,
-    reason,
-    action,
-    occurred_at,
-  });
+  const dedupe_key = event.eventId
+    ? computeEventIdDedupeKey(AUDIT_EVENT_SOURCE, event.eventId)
+    : computeDedupeKey({
+        source: AUDIT_EVENT_SOURCE,
+        event_type: event.eventType,
+        event_key: event.eventKey,
+        actor_user_id,
+        subject_user_id,
+        organization_id,
+        team_id,
+        session_id,
+        identifier,
+        reason,
+        action,
+        occurred_at,
+      });
 
   // ON CONFLICT DO NOTHING: dedupe_key UNIQUE 위반을 silent 무시.
   // try/catch 방식은 PG 커넥션을 aborted 상태로 만드므로 사용하지 않는다.

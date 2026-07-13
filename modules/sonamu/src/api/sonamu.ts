@@ -15,6 +15,7 @@ import { type WebSocket } from "ws";
 import { type ZodObject } from "zod";
 
 import { BASE_FIELD_MAPPINGS } from "../auth/better-auth-entities";
+import { createBetterAuthRequest } from "../auth/better-auth-request";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
 import { type CacheControlConfig, type CacheControlRequest } from "../cache-control/types";
 import { type CacheConfig, type CacheManager } from "../cache/types";
@@ -1805,29 +1806,9 @@ class SonamuClass {
       method: ["GET", "POST"],
       url: `${basePath}/*`,
       handler: async (request, reply) => {
-        const url = new URL(request.url, `http://${request.headers.host}`);
-        const headers = convertFastifyHeadersToStandard(request.headers);
-
-        // IP 헤더 fallback: 프록시가 표준 IP 헤더를 주입하지 않는 환경에서도
-        // better-auth/infra의 getClientIpFromRequest()가 IP를 인식할 수 있도록
-        // Fastify가 resolve한 request.ip를 x-real-ip로 주입한다.
-        const IP_HEADERS = [
-          "cf-connecting-ip",
-          "x-forwarded-for",
-          "x-real-ip",
-          "x-vercel-forwarded-for",
-        ];
-        if (request.ip && !IP_HEADERS.some((h) => headers.has(h))) {
-          headers.set("x-real-ip", request.ip);
-        }
-
-        const req = new Request(url.toString(), {
-          method: request.method,
-          headers,
-          ...(request.body ? { body: JSON.stringify(request.body) } : {}),
-        });
-
-        const response = await this.auth.handler(req);
+        const response = await this.auth.handler(
+          createBetterAuthRequest(request, options.advanced?.ipAddress?.ipAddressHeaders),
+        );
 
         reply.status(response.status);
         response.headers.forEach((value: string, key: string) => {

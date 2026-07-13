@@ -1,3 +1,4 @@
+export { createBetterAuthRequest } from "../auth/better-auth-request";
 export * from "./bootstrap";
 export * from "./data-explorer";
 export * from "./dev-vitest-manager";

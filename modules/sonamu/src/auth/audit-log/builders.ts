@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   type AccountSnapshot,
   type AuditLogEvent,
@@ -24,6 +26,7 @@ const createEvent = (
   location?: BuilderLocation,
 ): AuditLogEvent => ({
   ...base,
+  eventId: randomUUID(),
   eventData: {
     ...data,
     triggeredBy: trigger.triggeredBy,
