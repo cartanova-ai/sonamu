@@ -258,7 +258,7 @@ class ProductModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   @transactional()
   async create(data: ProductCreateParams) {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
     const result = await this.insert(wdb, data);
 
     // Invalidate all caches with "products" tag
@@ -505,7 +505,7 @@ export default defineConfig({
       @api({ httpMethod: "POST" })
       @transactional()
       async create(data: ProductCreateParams) {
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
         const result = await this.insert(wdb, data);
 
         // Invalidate cache
@@ -545,7 +545,7 @@ export default defineConfig({
       @api({ httpMethod: "PUT" })
       @transactional()
       async updateProfile(id: number, data: UserUpdateParams) {
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
         await this.upsert(wdb, { id, ...data });
 
         // Invalidate only this user's cache

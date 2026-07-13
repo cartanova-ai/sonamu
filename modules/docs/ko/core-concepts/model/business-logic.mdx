@@ -362,14 +362,14 @@ async findMany<T extends UserSubsetKey>(
 
 ```typescript
 async findUsersWithStats(): Promise<UserWithStats[]> {
-  const rdb = this.getDB("r");
+  const rdb = this.getPuri("r");
 
-  return rdb("users")
+  return rdb.knex("users")
     .select([
       "users.*",
-      rdb.raw("COUNT(DISTINCT posts.id) as post_count"),
-      rdb.raw("COUNT(DISTINCT comments.id) as comment_count"),
-      rdb.raw("AVG(posts.views) as avg_post_views"),
+      rdb.knex.raw("COUNT(DISTINCT posts.id) as post_count"),
+      rdb.knex.raw("COUNT(DISTINCT comments.id) as comment_count"),
+      rdb.knex.raw("AVG(posts.views) as avg_post_views"),
     ])
     .leftJoin("posts", "posts.user_id", "users.id")
     .leftJoin("comments", "comments.user_id", "users.id")
@@ -381,9 +381,9 @@ async findUsersWithStats(): Promise<UserWithStats[]> {
 
 ```typescript
 async findTopUsers(limit: number): Promise<User[]> {
-  const rdb = this.getDB("r");
+  const rdb = this.getPuri("r");
 
-  const subquery = rdb("orders")
+  const subquery = rdb.knex("orders")
     .select("user_id")
     .sum("total_price as total_spent")
     .groupBy("user_id")
@@ -391,7 +391,7 @@ async findTopUsers(limit: number): Promise<User[]> {
     .limit(limit)
     .as("top_users");
 
-  return rdb("users")
+  return rdb.knex("users")
     .select("users.*", "top_users.total_spent")
     .joinRaw("JOIN ? ON users.id = top_users.user_id", [subquery]);
 }

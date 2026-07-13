@@ -105,8 +105,8 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     };
 
     // Get user info from DB
-    const rdb = DB.getDB("r");
-    const user = await rdb("users").where("id", payload.userId).first();
+    const rdb = DB.getPuri("r");
+    const user = await rdb.table("users").where("id", payload.userId).first();
 
     if (!user) {
       reply.status(401);
@@ -128,7 +128,8 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     };
 
     // Update last activity time
-    await rdb.table("users").where("id", user.id).update({ last_activity_at: new Date() });
+    const wdb = DB.getPuri("w");
+    await wdb.table("users").where("id", user.id).update({ last_activity_at: new Date() });
   } catch (error) {
     reply.status(401);
     throw new Error("Invalid or expired token");
@@ -154,10 +155,10 @@ export async function tenantMiddleware(request: FastifyRequest) {
     return; // No tenant info
   }
 
-  const rdb = DB.getDB("r");
+  const rdb = DB.getPuri("r");
 
   // Get tenant
-  const tenant = await rdb("tenants")
+  const tenant = await rdb.table("tenants")
     .where((qb) => {
       if (subdomain) {
         qb.where("subdomain", subdomain);

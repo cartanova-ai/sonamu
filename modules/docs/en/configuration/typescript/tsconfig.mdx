@@ -127,7 +127,7 @@ Sonamu projects are written in TypeScript, with API and Web each having independ
       @api({ httpMethod: "POST" })
       @transactional()
       async save(data: UserSaveParams) {
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
         return this.upsert(wdb, data);
       }
     }

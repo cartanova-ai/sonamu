@@ -221,9 +221,9 @@ CREATE TABLE workflow_steps (
 
 ```typescript
 // Query via Puri (workflow_runs is a framework-internal table, not an entity, so use the .knex escape hatch)
-import { DB, PuriWrapper, UpsertBuilder } from "sonamu";
+import { DB } from "sonamu";
 
-const puri = new PuriWrapper(DB.getDB("r"), new UpsertBuilder());
+const puri = DB.getPuri("r");
 const runs = await puri.knex.table("workflow_runs").where("status", "running").select("*");
 ```
 

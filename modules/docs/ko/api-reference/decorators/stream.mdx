@@ -323,7 +323,7 @@ class TaskModelClass extends BaseModelClass {
 @transactional()
 async process() {
   const sse = Sonamu.getContext().createSSE(EventsSchema);
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
   // 트랜잭션 내에서 실행
   // SSE 전송과 DB 작업 함께 수행

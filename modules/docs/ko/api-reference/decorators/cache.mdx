@@ -258,7 +258,7 @@ class ProductModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   @transactional()
   async create(data: ProductCreateParams) {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
     const result = await this.insert(wdb, data);
 
     // "products" 태그의 모든 캐시 무효화
@@ -503,7 +503,7 @@ export default defineConfig({
       @api({ httpMethod: "POST" })
       @transactional()
       async create(data: ProductCreateParams) {
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
         const result = await this.insert(wdb, data);
 
         // 캐시 무효화
@@ -543,7 +543,7 @@ export default defineConfig({
       @api({ httpMethod: "PUT" })
       @transactional()
       async updateProfile(id: number, data: UserUpdateParams) {
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
         await this.upsert(wdb, { id, ...data });
 
         // 해당 사용자 캐시만 무효화

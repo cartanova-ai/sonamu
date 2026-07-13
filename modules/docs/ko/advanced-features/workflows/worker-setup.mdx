@@ -221,9 +221,9 @@ CREATE TABLE workflow_steps (
 
 ```typescript
 // Puri를 통해 조회 (workflow_runs는 entity가 아닌 프레임워크 내부 테이블이므로 .knex 이스케이프 해치 사용)
-import { DB, PuriWrapper, UpsertBuilder } from "sonamu";
+import { DB } from "sonamu";
 
-const puri = new PuriWrapper(DB.getDB("r"), new UpsertBuilder());
+const puri = DB.getPuri("r");
 const runs = await puri.knex.table("workflow_runs").where("status", "running").select("*");
 ```
 
