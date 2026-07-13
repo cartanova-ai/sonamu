@@ -425,7 +425,7 @@ async uploadAndSave() {
     throw new Error("No file");
   }
 
-  const wdb = this.getDB("w");
+  const wdb = this.getPuri("w");
 
   // File save + DB update in transaction
   const md5 = await file.md5();
@@ -731,7 +731,7 @@ async uploadFile() {
         const url = await Sonamu.storage.use("s3").getUrl(key);
 
         // Update DB
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
         await wdb.table("users")
           .where("id", user.id)
           .update({ avatar_url: url });
@@ -756,7 +756,7 @@ async uploadFile() {
           throw new Error("No files uploaded");
         }
 
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
         const results = [];
 
         for (const file of bufferedFiles) {
@@ -828,7 +828,7 @@ async uploadFile() {
         }
 
         // Validate and save data
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
         const results = [];
 
         for (const row of parsed.data) {
