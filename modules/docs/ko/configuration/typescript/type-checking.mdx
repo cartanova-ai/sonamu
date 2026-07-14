@@ -257,7 +257,7 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
       @api({ httpMethod: "POST" })
       async create(data: UserSaveParams) {
         // data는 반드시 필수 필드를 포함해야 함
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
         return this.insert(wdb, data);
       }
     }

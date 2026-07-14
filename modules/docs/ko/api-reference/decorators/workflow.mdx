@@ -918,7 +918,7 @@ console.log("Result:", result);
         const report = await step.define(
           { name: "save-report" },
           async () => {
-            const wdb = ReportModel.getDB("w");
+            const wdb = ReportModel.getPuri("w");
             return wdb.table("reports").insert({
               type: "monthly",
               year: input.year,
@@ -1010,7 +1010,7 @@ console.log("Result:", result);
               });
 
               // 상태 업데이트
-              const wdb = TaskModel.getDB("w");
+              const wdb = TaskModel.getPuri("w");
               await wdb.table("tasks")
                 .where("id", task.id)
                 .update({ reminder_sent: true });

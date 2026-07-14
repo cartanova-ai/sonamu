@@ -296,7 +296,7 @@ class HealthFrameClass extends BaseFrameClass {
     // DB 연결 확인
     let databaseStatus = "ok";
     try {
-      await this.getDB("r").raw("SELECT 1");
+      await this.getPuri("r").raw("SELECT 1");
     } catch (error) {
       databaseStatus = "error";
     }

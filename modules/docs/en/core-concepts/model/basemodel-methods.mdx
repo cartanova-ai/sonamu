@@ -69,6 +69,10 @@ Separating read/write allows distributing read load in database replication.
 
 </Info>
 
+<Warning>
+Prefer `getPuri()` over `getDB()` for business logic. `getPuri()` automatically participates in transactions created by `@transactional` and includes a built-in UpsertBuilder. Direct use of `getDB()` is only recommended for migration files, test code, and infrastructure setups that require a raw Knex instance.
+</Warning>
+
 ### getPuri(preset)
 
 Returns a Puri query builder. Automatically uses transaction connection when a transaction is active.

@@ -257,7 +257,7 @@ Sonamu enables all strict options.
       @api({ httpMethod: "POST" })
       async create(data: UserSaveParams) {
         // data must include required fields
-        const wdb = this.getDB("w");
+        const wdb = this.getPuri("w");
         return this.insert(wdb, data);
       }
     }

@@ -62,7 +62,7 @@ async function importFixture(entityId: string, ids: number[]) {
   );
 
   // Execute queries
-  const wdb = BaseModel.getDB("w");
+  const wdb = BaseModel.getPuri("w");
   for (const query of queries) {
     await wdb.raw(query);
   }

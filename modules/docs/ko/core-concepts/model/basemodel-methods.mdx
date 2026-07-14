@@ -69,6 +69,10 @@ async customQuery(): Promise<any[]> {
 
 </Info>
 
+<Warning>
+비즈니스 로직에서는 `getDB()` 대신 아래의 `getPuri()`를 우선 사용하세요. `getPuri()`는 `@transactional` 데코레이터가 생성한 트랜잭션에 자동으로 참여하며, UpsertBuilder도 내장하고 있습니다. `getDB()`의 직접 사용은 마이그레이션 파일, 테스트 코드, Knex 인스턴스가 직접 필요한 인프라 설정 등 제한적인 경우에만 권장됩니다.
+</Warning>
+
 ### getPuri(preset)
 
 Puri 쿼리 빌더를 반환합니다. 트랜잭션이 활성화된 경우 트랜잭션 연결을 자동으로 사용합니다.
