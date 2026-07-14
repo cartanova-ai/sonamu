@@ -63,13 +63,23 @@ export default defineConfig({
   build: {
     sourcemap: true,
     lib: {
-      entry: path.resolve(__dirname, "src/index.tsx"),
-      name: "@sonamu-kit/react-components",
+      entry: {
+        index: path.resolve(__dirname, "src/index.tsx"),
+        "components/index": path.resolve(__dirname, "src/components/index.ts"),
+        "contexts/index": path.resolve(__dirname, "src/contexts/index.ts"),
+        "hooks/index": path.resolve(__dirname, "src/hooks/index.ts"),
+        "lib/index": path.resolve(__dirname, "src/lib/index.ts"),
+        "router/index": path.resolve(__dirname, "src/router/index.ts"),
+      },
       formats: ["es"],
-      fileName: (format) => `react-components.${format}.js`,
     },
     rolldownOptions: {
       external: isExternalModule,
+      output: {
+        entryFileNames: "[name].js",
+        preserveModules: true,
+        preserveModulesRoot: "src",
+      },
     },
   },
 });

@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import PlusIcon from "~icons/lucide/plus";
 
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "../..";
 import { useSonamuBaseContext } from "../../../contexts/sonamu-context";
+import { Button } from "../button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import { RuleRowInput } from "./rule-row-input";
 import { type Rule, type SonamuFilterModalProps } from "./types";
 import { extractFieldMetaFromSchema } from "./utils";

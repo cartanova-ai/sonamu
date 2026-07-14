@@ -1,6 +1,6 @@
 {
   "name": "@sonamu-kit/react-components",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "license": "MIT",
   "author": "CartaNova <dev@cartanova.ai>",
   "repository": {
@@ -11,32 +11,35 @@
     "dist"
   ],
   "type": "module",
-  "main": "./dist/react-components.es.js",
+  "sideEffects": [
+    "./dist/styles/globals.css"
+  ],
+  "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/react-components.es.js"
+      "import": "./dist/index.js"
     },
     "./components": {
       "types": "./dist/components/index.d.ts",
-      "import": "./dist/react-components.es.js"
+      "import": "./dist/components/index.js"
     },
     "./contexts": {
       "types": "./dist/contexts/index.d.ts",
-      "import": "./dist/react-components.es.js"
+      "import": "./dist/contexts/index.js"
     },
     "./hooks": {
       "types": "./dist/hooks/index.d.ts",
-      "import": "./dist/react-components.es.js"
+      "import": "./dist/hooks/index.js"
     },
     "./lib": {
       "types": "./dist/lib/index.d.ts",
-      "import": "./dist/react-components.es.js"
+      "import": "./dist/lib/index.js"
     },
     "./router": {
       "types": "./dist/router/index.d.ts",
-      "import": "./dist/react-components.es.js"
+      "import": "./dist/router/index.js"
     },
     "./styles": "./dist/styles/globals.css"
   },
@@ -44,6 +47,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint src",
+    "test:exports": "node --test tests/package-exports.test.mjs",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"

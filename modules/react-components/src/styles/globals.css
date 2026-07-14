@@ -7,7 +7,7 @@
 @source "../hooks/**/*.ts";
 @source "../lib/**/*.ts";
 /* npm 패키지 사용 시 dist 폴더의 번들 스캔 */
-@source "../react-components.es.js";
+@source "../**/*.js";
 
 /* VSCode CSS 린터: Tailwind v4의 새 문법 경고 무시 */
 /* @custom-variant, @theme는 Tailwind v4에서 정상 작동 */
