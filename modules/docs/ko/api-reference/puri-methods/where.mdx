@@ -320,7 +320,7 @@ await puri.table("items").whereFuzzy("items.search_text", "typscript", { operato
 
 ```typescript
 // 파라미터 없음
-await puri.table("users").whereRaw("YEAR(users.created_at) = YEAR(CURRENT_DATE)");
+await puri.table("users").whereRaw("EXTRACT(YEAR FROM users.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)");
 
 // 파라미터 바인딩
 await puri.table("users").whereRaw("users.age BETWEEN ? AND ?", [18, 65]);
