@@ -320,7 +320,7 @@ You can write complex SQL conditions directly.
 
 ```typescript
 // No parameters
-await puri.table("users").whereRaw("YEAR(users.created_at) = YEAR(CURRENT_DATE)");
+await puri.table("users").whereRaw("EXTRACT(YEAR FROM users.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)");
 
 // Parameter binding
 await puri.table("users").whereRaw("users.age BETWEEN ? AND ?", [18, 65]);

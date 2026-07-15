@@ -105,10 +105,10 @@ const result = await puri.table("users").select({
   display_name: Puri.rawString("CONCAT(users.first_name, ' ', users.last_name)"),
 
   // 숫자 반환
-  age: Puri.rawNumber("YEAR(CURRENT_DATE) - YEAR(users.birth_date)"),
+  age: Puri.rawNumber("EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM users.birth_date)"),
 
   // 불리언 반환
-  is_adult: Puri.rawBoolean("YEAR(CURRENT_DATE) - YEAR(users.birth_date) >= 18"),
+  is_adult: Puri.rawBoolean("EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM users.birth_date) >= 18"),
 
   // 날짜 반환
   signup_date: Puri.rawDate("DATE(users.created_at)"),
@@ -505,7 +505,7 @@ puri.table("users").select({
 // Raw SQL 사용 시 반환 타입 명시
 const result = await puri.table("users").select({
   // ✅ 타입 명시
-  age: Puri.rawNumber("YEAR(CURRENT_DATE) - YEAR(birth_date)"),
+  age: Puri.rawNumber("EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM birth_date)"),
 
   // ❌ 타입 없음 (any)
   unknown: puri.raw("SOME_COMPLEX_SQL"),

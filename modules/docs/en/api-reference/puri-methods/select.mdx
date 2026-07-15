@@ -105,10 +105,10 @@ const result = await puri.table("users").select({
   display_name: Puri.rawString("CONCAT(users.first_name, ' ', users.last_name)"),
 
   // Return number
-  age: Puri.rawNumber("YEAR(CURRENT_DATE) - YEAR(users.birth_date)"),
+  age: Puri.rawNumber("EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM users.birth_date)"),
 
   // Return boolean
-  is_adult: Puri.rawBoolean("YEAR(CURRENT_DATE) - YEAR(users.birth_date) >= 18"),
+  is_adult: Puri.rawBoolean("EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM users.birth_date) >= 18"),
 
   // Return date
   signup_date: Puri.rawDate("DATE(users.created_at)"),
@@ -508,7 +508,7 @@ puri.table("users").select({
 // Specify return type when using raw SQL
 const result = await puri.table("users").select({
   // ✅ Type specified
-  age: Puri.rawNumber("YEAR(CURRENT_DATE) - YEAR(birth_date)"),
+  age: Puri.rawNumber("EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM birth_date)"),
 
   // ❌ No type (any)
   unknown: puri.raw("SOME_COMPLEX_SQL"),

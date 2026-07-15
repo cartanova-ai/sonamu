@@ -870,8 +870,8 @@ Workflows automatically log through LogTape:
           async () => {
             const rdb = OrderModel.getPuri("r");
             return rdb.table("orders")
-              .whereRaw("YEAR(created_at) = ?", [input.year])
-              .whereRaw("MONTH(created_at) = ?", [input.month])
+              .whereRaw("EXTRACT(YEAR FROM created_at) = ?", [input.year])
+              .whereRaw("EXTRACT(MONTH FROM created_at) = ?", [input.month])
               .select(
                 rdb.raw("COUNT(*) as total_orders"),
                 rdb.raw("SUM(total_amount) as total_revenue"),
@@ -887,8 +887,8 @@ Workflows automatically log through LogTape:
           async () => {
             const rdb = UserModel.getPuri("r");
             return rdb.table("users")
-              .whereRaw("YEAR(created_at) = ?", [input.year])
-              .whereRaw("MONTH(created_at) = ?", [input.month])
+              .whereRaw("EXTRACT(YEAR FROM created_at) = ?", [input.year])
+              .whereRaw("EXTRACT(MONTH FROM created_at) = ?", [input.month])
               .count("* as new_users")
               .first();
           }
@@ -901,8 +901,8 @@ Workflows automatically log through LogTape:
             const rdb = OrderModel.getPuri("r");
             return rdb.table("order_items")
               .join("orders", "orders.id", "order_items.order_id")
-              .whereRaw("YEAR(orders.created_at) = ?", [input.year])
-              .whereRaw("MONTH(orders.created_at) = ?", [input.month])
+              .whereRaw("EXTRACT(YEAR FROM orders.created_at) = ?", [input.year])
+              .whereRaw("EXTRACT(MONTH FROM orders.created_at) = ?", [input.month])
               .groupBy("order_items.product_id")
               .select(
                 "order_items.product_id",
