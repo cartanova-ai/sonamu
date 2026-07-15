@@ -264,7 +264,7 @@ export class MyModel {
     const session = ctx.session; // Session | null
 
     if (!user) {
-      throw new UnauthorizedError("Login required");
+      throw new UnauthorizedException("Login required");
     }
 
     return { userId: user.id, userName: user.name };
@@ -330,17 +330,17 @@ export default defineConfig({
         const { user } = Sonamu.getContext();
 
         if (guard === "auth" && !user) {
-          throw new UnauthorizedError("Login required");
+          throw new UnauthorizedException("Login required");
         }
 
         if (guard === "admin") {
           if (!user) {
-            throw new UnauthorizedError("Login required");
+            throw new UnauthorizedException("Login required");
           }
           // Assuming User entity has a role field
           const fullUser = await UserModel.findById("A", user.id);
           if (fullUser.role !== "admin") {
-            throw new UnauthorizedError("Admin access required");
+            throw new UnauthorizedException("Admin access required");
           }
         }
       },
@@ -776,7 +776,7 @@ export default defineConfig({
         const { user } = Sonamu.getContext();
 
         if (guard === "auth" && !user) {
-          throw new UnauthorizedError("Login required");
+          throw new UnauthorizedException("Login required");
         }
       },
     },

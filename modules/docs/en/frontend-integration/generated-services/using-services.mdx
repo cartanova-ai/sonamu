@@ -407,7 +407,7 @@ class UserModelClass extends BaseModelClass {
 
     // Authorization checks possible
     if (!context.user) {
-      throw new UnauthorizedError();
+      throw new UnauthorizedException();
     }
 
     return this.findById(id, [subset]);

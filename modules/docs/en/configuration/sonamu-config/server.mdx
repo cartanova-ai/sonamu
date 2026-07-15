@@ -485,7 +485,7 @@ export default defineConfig({
       guardHandler: (guard, request, api) => {
         // Permission check logic
         if (guard === "admin" && !request.session.isAdmin) {
-          throw new UnauthorizedError("Admin only");
+          throw new UnauthorizedException("Admin only");
         }
       },
     },
@@ -712,7 +712,7 @@ export default defineConfig({
 
       guardHandler: (guard, request) => {
         if (guard === "admin" && !request.session.isAdmin) {
-          throw new UnauthorizedError("Admin access required");
+          throw new UnauthorizedException("Admin access required");
         }
       },
     },
