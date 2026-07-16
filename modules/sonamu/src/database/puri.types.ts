@@ -340,10 +340,15 @@ type GeneratedKeys<T> = T extends { __generated__: readonly (infer K)[] }
   ? Extract<K, keyof PuriTable<T>>
   : never;
 
-// Insert 타입: 메타데이터 제거 후, __hasDefault__ 컬럼들만 optional로 처리, __generated__ 컬럼은 완전히 제외
+// __virtual_query__에 포함된 키들 (INSERT 시 제외해야 함)
+type VirtualQueryKeys<T> = T extends { __virtual_query__: readonly (infer K)[] }
+  ? Extract<K, keyof PuriTable<T>>
+  : never;
+
+// Insert 타입: 메타데이터 제거 후, __hasDefault__ 컬럼들만 optional로 처리, generated/virtualQuery 컬럼은 완전히 제외
 export type InsertData<T> = Omit<
   PuriTable<T>,
-  InternalTypeKeys | HasDefaultKeys<T> | GeneratedKeys<T>
+  InternalTypeKeys | HasDefaultKeys<T> | GeneratedKeys<T> | VirtualQueryKeys<T>
 > & {
   [K in HasDefaultKeys<T>]?: PuriTable<T>[K];
 };
