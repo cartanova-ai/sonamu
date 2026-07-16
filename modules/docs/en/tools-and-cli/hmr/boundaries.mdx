@@ -248,7 +248,7 @@ async create(body: PostForm) {
   const user = await UserModel.findById(body.userId);
 
   if (!user.canCreatePost()) {  // 👈 Use the method just added!
-    throw new UnauthorizedError("You don't have permission to create posts");
+    throw new UnauthorizedException("You don't have permission to create posts");
   }
 
   return PostModel.save(body);
