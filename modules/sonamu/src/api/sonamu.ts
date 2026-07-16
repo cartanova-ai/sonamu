@@ -1095,9 +1095,9 @@ class SonamuClass {
   }
 
   // WS route 핸들러의 실행 순서를 고정함:
-  // 1) guard를 connection 등록 이전에 돌려 인증 실패 시 부분 등록 상태를 남기지 않음
-  // 2) query param 파싱도 activation 전에 끝내 handshake 실패가 registry에 노출되지 않게 함
-  // 3) `active: false`로 먼저 등록하고, context 준비가 끝난 뒤 `activate()`해 브로드캐스트가 초기화 중간 상태를 보지 못하게 함
+  // 1) query param 파싱을 activation 전에 끝내 handshake 실패가 registry에 노출되지 않게 함
+  // 2) `active: false`로 먼저 등록한 뒤 context 안에서 guard를 실행해 인증 정보를 참조할 수 있게 함
+  // 3) context/guard 준비가 끝난 뒤 `activate()`해 브로드캐스트가 초기화 중간 상태를 보지 못하게 함
   // 에러 발생 시에는 resolveWebSocketCloseDescriptor 정책에 따라 close code를 매핑함
   private createWebSocketHandler(api: ExtendedApi, config: SonamuFastifyConfig) {
     return async (
