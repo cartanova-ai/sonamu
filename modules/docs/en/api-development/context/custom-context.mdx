@@ -82,7 +82,7 @@ declare module "sonamu" {
 // middleware/auth.middleware.ts
 import { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
-import { Sonamu, DB } from "sonamu";
+import { Sonamu, BaseModel } from "sonamu";
 
 export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
   // Extract token from Authorization header
@@ -105,7 +105,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     };
 
     // Get user info from DB
-    const rdb = DB.getPuri("r");
+    const rdb = BaseModel.getPuri("r");
     const user = await rdb.table("users").where("id", payload.userId).first();
 
     if (!user) {
@@ -128,7 +128,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     };
 
     // Update last activity time
-    const wdb = DB.getPuri("w");
+    const wdb = BaseModel.getPuri("w");
     await wdb.table("users").where("id", user.id).update({ last_activity_at: new Date() });
   } catch (error) {
     reply.status(401);
@@ -142,7 +142,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
 ```typescript
 // middleware/tenant.middleware.ts
 import { FastifyRequest } from "fastify";
-import { Sonamu, DB } from "sonamu";
+import { Sonamu, BaseModel } from "sonamu";
 
 export async function tenantMiddleware(request: FastifyRequest) {
   const context = Sonamu.getContext();
@@ -155,7 +155,7 @@ export async function tenantMiddleware(request: FastifyRequest) {
     return; // No tenant info
   }
 
-  const rdb = DB.getPuri("r");
+  const rdb = BaseModel.getPuri("r");
 
   // Get tenant
   const tenant = await rdb.table("tenants")

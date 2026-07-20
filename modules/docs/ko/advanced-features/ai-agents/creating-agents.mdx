@@ -267,6 +267,7 @@ export const HotelBookingAgent = new HotelBookingAgentClass();
 
 ```typescript
 import { BaseAgentClass, tools } from "sonamu/ai";
+import { BaseModel } from "sonamu";
 import { z } from "zod";
 
 class DataAnalystAgentClass extends BaseAgentClass<{
@@ -294,11 +295,11 @@ class DataAnalystAgentClass extends BaseAgentClass<{
       throw new Error("SELECT 쿼리만 허용됩니다");
     }
 
-    const result = await DB.query(input.query);
+    const result = await BaseModel.getDB("r").raw(input.query);
 
     return {
       rows: result.rows,
-      rowCount: result.rowCount,
+      rowCount: result.rows.length,
     };
   }
 
