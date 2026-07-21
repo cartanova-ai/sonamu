@@ -96,9 +96,6 @@ class NaiteReporterClass {
 
     if (this.connected && this.socket) {
       this.socket.write(msg);
-    } else {
-      // 연결 대기 중이면 버퍼에 저장
-      this.buffer.push(msg);
     }
   }
 
