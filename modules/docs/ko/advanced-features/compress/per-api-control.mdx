@@ -414,7 +414,8 @@ class StreamModelClass extends BaseModelClass {
 SSR 라우트에도 압축 설정이 가능합니다.
 
 ```typescript
-import { registerSSR, CompressPresets } from "sonamu";
+import { CompressPresets } from "sonamu";
+import { registerSSR } from "sonamu/ssr";
 
 // HTML 페이지: 적극적 압축
 registerSSR({

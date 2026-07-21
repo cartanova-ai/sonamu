@@ -10,7 +10,8 @@ Sonamu의 SSR 라우트에 `cacheControl` 옵션을 추가하여 **SSR 페이지
 ### registerSSR에 추가
 
 ```typescript
-import { registerSSR, CachePresets } from "sonamu";
+import { CachePresets } from "sonamu";
+import { registerSSR } from "sonamu/ssr";
 import ProductList from "./pages/ProductList";
 
 registerSSR({
