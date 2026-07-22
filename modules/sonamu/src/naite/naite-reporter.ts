@@ -42,6 +42,12 @@ function getSocketPath(): string {
     : join(homedir(), ".sonamu", `naite-${hash}.sock`);
 }
 
+/**
+ * 연결 실패가 지속될 때(extension 미실행 등) buffer가 무한히 커지지 않도록
+ * 최근 메시지만 이 개수만큼 유지합니다.
+ */
+const MAX_BUFFERED_MESSAGES = 1000;
+
 class NaiteReporterClass {
   private socketPath: string | null = null;
   private socket: Socket | null = null;
@@ -97,8 +103,11 @@ class NaiteReporterClass {
     if (this.connected && this.socket) {
       this.socket.write(msg);
     } else {
-      // 연결 대기 중이면 버퍼에 저장
+      // 연결 대기 중이면 버퍼에 저장, 상한 초과 시 오래된 메시지부터 폐기
       this.buffer.push(msg);
+      if (this.buffer.length > MAX_BUFFERED_MESSAGES) {
+        this.buffer.shift();
+      }
     }
   }
 

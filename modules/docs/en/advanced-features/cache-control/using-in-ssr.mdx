@@ -10,7 +10,8 @@ You can set **Cache-Control headers on SSR page responses** by adding the `cache
 ### Adding to registerSSR
 
 ```typescript
-import { registerSSR, CachePresets } from "sonamu";
+import { CachePresets } from "sonamu";
+import { registerSSR } from "sonamu/ssr";
 import ProductList from "./pages/ProductList";
 
 registerSSR({

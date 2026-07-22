@@ -319,7 +319,8 @@ afterAll(() => {
 <Tip>
   **Buffering Mechanism**: If the Extension hasn't started yet or socket connection is delayed,
   NaiteReporter stores messages in a buffer and sends them all at once when connection succeeds.
-  This allows you to see previous test logs even if you start the Extension late.
+  This allows you to see previous test logs even if you start the Extension late. The buffer keeps
+  only the most recent 1,000 messages; older ones are discarded beyond that limit.
 </Tip>
 
 ## Installation and Setup
@@ -893,6 +894,12 @@ NaiteReporter includes buffering and reconnection logic for stable socket connec
 <Accordion title="Full NaiteReporter Structure">
 
 ```typescript
+/**
+ * Keeps only this many recent messages so the buffer doesn't grow
+ * unboundedly while connection failures persist (e.g. extension not running).
+ */
+const MAX_BUFFERED_MESSAGES = 1000;
+
 class NaiteReporterClass {
   private socketPath: string | null = null;
   private socket: Socket | null = null;
@@ -901,15 +908,18 @@ class NaiteReporterClass {
 
   /**
    * Ensure socket connection
-   * - Return immediately if already connected
-   * - Store messages in buffer if connecting
+   * - Return immediately if already connected or connecting
    * - Ignore connection failure (Extension may be off)
    */
   private async ensureConnection(): Promise<void> {
-    if (this.connected) return;
+    if (this.connected || this.socket) {
+      return;
+    }
 
     return new Promise((resolve, reject) => {
-      this.socketPath = getSocketPath();
+      if (!this.socketPath) {
+        this.socketPath = getSocketPath();
+      }
       this.socket = connect(this.socketPath);
 
       this.socket.on("connect", () => {
@@ -924,11 +934,11 @@ class NaiteReporterClass {
         resolve();
       });
 
-      this.socket.on("error", () => {
+      this.socket.on("error", (e) => {
         // Ignore error as Extension may be off
         this.connected = false;
         this.socket = null;
-        reject();
+        reject(e);
       });
 
       this.socket.on("close", () => {
@@ -941,7 +951,7 @@ class NaiteReporterClass {
   /**
    * Send message
    * - Send immediately if connected
-   * - Store in buffer if connecting
+   * - Otherwise store in buffer (keeps the most recent 1,000 messages)
    */
   private async send(data: NaiteMessage): Promise<void> {
     const msg = `${JSON.stringify(data)}\n`;
@@ -951,7 +961,11 @@ class NaiteReporterClass {
     if (this.connected && this.socket) {
       this.socket.write(msg);
     } else {
+      // Buffer while not connected; discard oldest messages beyond the cap
       this.buffer.push(msg);
+      if (this.buffer.length > MAX_BUFFERED_MESSAGES) {
+        this.buffer.shift();
+      }
     }
   }
 
@@ -994,7 +1008,7 @@ class NaiteReporterClass {
 
 **Key mechanisms**:
 
-1. **Buffering**: Stores messages in buffer even if Extension isn't ready
+1. **Buffering**: Stores messages in buffer even if Extension isn't ready (keeps the most recent 1,000 messages)
 2. **Lazy connection**: Connection failure is not treated as error
 3. **Auto resend**: Sends all buffered messages on successful connection
 4. **CI detection**: Skips socket communication in CI environment
@@ -1307,7 +1321,7 @@ When modifying files multiple times in watch mode, previous test logs may remain
 <Warning>
 **Cautions when using Naite Viewer**:
 
-1. **Extension required**: VSCode Extension must be running. Running only tests without Extension causes logs to accumulate in buffer and disappear.
+1. **Extension required**: VSCode Extension must be running. Running only tests without Extension causes logs to accumulate in buffer (up to the most recent 1,000 messages) and disappear.
 
 2. **Local only**: Socket communication may be restricted on remote servers (SSH, Codespaces, etc.). Use in local development environment.
 

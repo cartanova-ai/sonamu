@@ -417,7 +417,8 @@ class StreamModelClass extends BaseModelClass {
 Compression settings are also available for SSR routes.
 
 ```typescript
-import { registerSSR, CompressPresets } from "sonamu";
+import { CompressPresets } from "sonamu";
+import { registerSSR } from "sonamu/ssr";
 
 // HTML page: aggressive compression
 registerSSR({
