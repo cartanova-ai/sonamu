@@ -12,7 +12,8 @@ SSE 엔드포인트를 정의하는 데코레이터입니다.
 ### 기본 사용법
 
 ```typescript
-import { type Context, BaseModelClass, stream, z } from "sonamu";
+import { type Context, BaseModelClass, stream } from "sonamu";
+import { z } from "zod";
 
 class NotificationModelClass extends BaseModelClass {
   @stream({

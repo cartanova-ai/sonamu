@@ -450,7 +450,8 @@ SSE endpoints are created using the `@stream` decorator and `ctx.createSSE()`.
 
 ```typescript
 // ai.model.ts (backend)
-import { BaseModelClass, stream, Sonamu, z } from "sonamu";
+import { BaseModelClass, stream, Sonamu } from "sonamu";
+import { z } from "zod";
 
 class AIModelClass extends BaseModelClass {
   @stream({

@@ -102,9 +102,10 @@ LoaderQuery is defined in `subset-loaders.ts` files:
 ```typescript
 // src/application/user/user.subset-loaders.ts
 
-import type { SubsetLoaderMap } from "sonamu";
+import type { PuriLoaderQueries } from "sonamu";
+import type { UserSubsetKey } from "../sonamu.generated";
 
-export const UserSubsetLoaders: SubsetLoaderMap<"User"> = {
+export const UserSubsetLoaders: PuriLoaderQueries<UserSubsetKey> = {
   // Add posts loader to Subset A
   A: [
     {
@@ -133,7 +134,7 @@ export const UserSubsetLoaders: SubsetLoaderMap<"User"> = {
 
 ```typescript
 // Department Entity
-export const DepartmentSubsetLoaders: SubsetLoaderMap<"Department"> = {
+export const DepartmentSubsetLoaders: PuriLoaderQueries<DepartmentSubsetKey> = {
   P: [
     {
       as: "employees",
@@ -184,7 +185,7 @@ dept.employees.forEach((emp) => {
 
 ```typescript
 // Project Entity
-export const ProjectSubsetLoaders: SubsetLoaderMap<"Project"> = {
+export const ProjectSubsetLoaders: PuriLoaderQueries<ProjectSubsetKey> = {
   P: [
     {
       as: "members",
@@ -240,7 +241,7 @@ LoaderQuery can be **nested recursively**:
 
 ```typescript
 // Department Entity
-export const DepartmentSubsetLoaders: SubsetLoaderMap<"Department"> = {
+export const DepartmentSubsetLoaders: PuriLoaderQueries<DepartmentSubsetKey> = {
   P: [
     {
       as: "employees",
