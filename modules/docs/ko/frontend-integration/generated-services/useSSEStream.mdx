@@ -450,7 +450,8 @@ SSE 엔드포인트는 `@stream` 데코레이터와 `ctx.createSSE()`로 만듭�
 
 ```typescript
 // ai.model.ts (백엔드)
-import { BaseModelClass, stream, Sonamu, z } from "sonamu";
+import { BaseModelClass, stream, Sonamu } from "sonamu";
+import { z } from "zod";
 
 class AIModelClass extends BaseModelClass {
   @stream({

@@ -12,7 +12,8 @@ A decorator for defining SSE endpoints.
 ### Basic Usage
 
 ```typescript
-import { type Context, BaseModelClass, stream, z } from "sonamu";
+import { type Context, BaseModelClass, stream } from "sonamu";
+import { z } from "zod";
 
 class NotificationModelClass extends BaseModelClass {
   @stream({

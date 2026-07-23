@@ -90,8 +90,7 @@ class PostgreSQLSchemaReaderClass {
       if (e instanceof Error && e.message.includes("Table not found")) {
         return null;
       }
-      console.error(e);
-      return null;
+      throw e;
     }
 
     // vector 컬럼의 dimensions 조회
