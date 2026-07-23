@@ -171,6 +171,34 @@ db.where("status", "active").orWhereGroup((g) => {
 });
 ```
 
+### JSONB Containment (`@>`)
+
+Use `whereJsonSupersetOf()` to require a JSONB column to contain a JSON value. The column and
+containment value are checked against the generated Entity type, and the value is serialized and
+bound internally.
+
+```typescript
+db.table("products").whereJsonSupersetOf("metadata", { warranty: 2 });
+
+// Aliased columns are supported.
+db.table({ p: "products" }).whereJsonSupersetOf("p.metadata", {
+  tags: ["featured"],
+});
+```
+
+Inside a WHERE group, both AND and OR variants are available:
+
+```typescript
+db.whereGroup((g) => {
+  g.where("status", "active").orWhereJsonSupersetOf("metadata", {
+    tags: ["featured"],
+  });
+});
+```
+
+Do not call `JSON.stringify()` yourself. For other JSONB operators such as `->>`, `->`, and `?`,
+continue to use parameterized `whereRaw()`.
+
 ## JOIN
 
 ```typescript

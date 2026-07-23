@@ -368,7 +368,8 @@ export async function down(knex: Knex): Promise<void> {
 <AccordionGroup>
 <Accordion title="PostgreSQL의 JSONB 연산자를 Puri에서 사용하려면?">
 
-`Puri.rawString()`과 `.whereRaw()`로 JSONB 연산자를 사용합니다.
+JSONB 포함 연산자 `@>`에는 타입 안전한 `.whereJsonSupersetOf()`를 사용합니다. 그 외 JSONB
+연산자는 `Puri.rawString()`과 파라미터가 바인딩된 `.whereRaw()`를 사용합니다.
 
 **JSONB 속성 조회 (->>, ->):**
 
@@ -391,9 +392,15 @@ const products = await ProductModel.getPuri("r")
 // metadata @> '{"warranty": 2}'
 const productsWithWarranty = await ProductModel.getPuri("r")
   .table("products")
-  .select("*")
-  .whereRaw("products.metadata @> ?", [JSON.stringify({ warranty: 2 })]);
+  .select({
+    id: "products.id",
+    name: "products.name",
+  })
+  .whereJsonSupersetOf("products.metadata", { warranty: 2 });
 ```
+
+값은 내부에서 직렬화되고 바인딩되므로 `JSON.stringify()`를 직접 호출하지 않습니다. 괄호 안에서
+OR 조건이 필요하면 `whereGroup()`의 `orWhereJsonSupersetOf()`를 사용합니다.
 
 **JSONB 키 존재 여부 (?):**
 

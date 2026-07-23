@@ -368,7 +368,8 @@ export async function down(knex: Knex): Promise<void> {
 <AccordionGroup>
 <Accordion title="How do I use PostgreSQL JSONB operators in Puri?">
 
-Use `Puri.rawString()` and `.whereRaw()` for JSONB operators.
+Use the type-safe `.whereJsonSupersetOf()` for the JSONB containment operator `@>`. For other
+JSONB operators, use `Puri.rawString()` and parameterized `.whereRaw()`.
 
 **JSONB property query (->>, ->):**
 
@@ -391,9 +392,15 @@ const products = await ProductModel.getPuri("r")
 // metadata @> '{"warranty": 2}'
 const productsWithWarranty = await ProductModel.getPuri("r")
   .table("products")
-  .select("*")
-  .whereRaw("products.metadata @> ?", [JSON.stringify({ warranty: 2 })]);
+  .select({
+    id: "products.id",
+    name: "products.name",
+  })
+  .whereJsonSupersetOf("products.metadata", { warranty: 2 });
 ```
+
+The value is serialized and bound internally, so do not call `JSON.stringify()` yourself. For an
+OR condition inside parentheses, use `orWhereJsonSupersetOf()` on a `whereGroup()`.
 
 **JSONB key existence (?):**
 
