@@ -1,9 +1,11 @@
 import { describe, expectTypeOf, it } from "vitest";
 
-import { type Puri } from "./puri";
+import { Puri } from "./puri";
 import {
   type AvailableColumns,
   type ExtractColumnType,
+  type JsonColumns,
+  type JsonSupersetValue,
   type LeftJoinedMarker,
   type ParseSelectObject,
 } from "./puri.types";
@@ -18,6 +20,28 @@ type MockSchema = {
     name: string;
     email: string;
     department_id: number | null;
+    preferences: {
+      theme: "light" | "dark";
+      notifications: {
+        email: boolean;
+        sms: boolean;
+      };
+      labels: string[];
+      sessions: {
+        id: string;
+        active: boolean;
+      }[];
+    };
+    json_tags: string[];
+    json_scalar: string;
+    nullable_payload: {
+      enabled: boolean;
+    } | null;
+    native_tags: string[];
+    created_at: Date;
+    embedding: number[];
+    readonly __json__: readonly ["preferences", "json_tags", "json_scalar", "nullable_payload"];
+    readonly __vector__: readonly ["embedding"];
   };
   departments: {
     id: number;
@@ -455,6 +479,96 @@ describe("AvailableColumns", () => {
 
     expectTypeOf(valid1).toExtend<Result>();
     expectTypeOf(valid2).toExtend<Result>();
+  });
+});
+
+describe("JsonColumns and JsonSupersetValue", () => {
+  it("JSON metadata selects only JSON columns and preserves recursive RHS types", () => {
+    type Tables = { users: MockSchema["users"] };
+    type Columns = JsonColumns<Tables>;
+    type PreferencesValue = JsonSupersetValue<MockSchema["users"]["preferences"]>;
+    type NullablePayloadValue = JsonSupersetValue<MockSchema["users"]["nullable_payload"]>;
+
+    expectTypeOf<Columns>().toEqualTypeOf<
+      | "users.preferences"
+      | "users.json_tags"
+      | "users.json_scalar"
+      | "users.nullable_payload"
+      | "preferences"
+      | "json_tags"
+      | "json_scalar"
+      | "nullable_payload"
+    >();
+
+    const partialObject: PreferencesValue = {
+      notifications: { email: true },
+      sessions: [{ active: false }],
+    };
+    const arrayRoot: JsonSupersetValue<MockSchema["users"]["json_tags"]> = ["urgent"];
+    const scalarRoot: JsonSupersetValue<MockSchema["users"]["json_scalar"]> = "active";
+    const nullableColumnValue: NullablePayloadValue = { enabled: true };
+
+    expectTypeOf(partialObject).toExtend<PreferencesValue>();
+    expectTypeOf(arrayRoot).toEqualTypeOf<string[]>();
+    expectTypeOf(scalarRoot).toEqualTypeOf<string>();
+    expectTypeOf(nullableColumnValue).toExtend<NullablePayloadValue>();
+
+    // @ts-expect-error nested boolean property must not accept a string.
+    const wrongNestedType: PreferencesValue = { notifications: { email: "yes" } };
+    // @ts-expect-error array element types are preserved.
+    const wrongArrayElement: JsonSupersetValue<MockSchema["users"]["json_tags"]> = [1];
+    // @ts-expect-error object array elements retain their recursive partial shape.
+    const wrongObjectArrayElement: PreferencesValue = { sessions: [{ active: "yes" }] };
+    // @ts-expect-error nullable JSON columns do not accept top-level null as a containment value.
+    const nullRoot: NullablePayloadValue = null;
+    // @ts-expect-error undefined cannot be serialized as a JSONB containment value.
+    const undefinedRoot: PreferencesValue = undefined;
+
+    const unknownValue: unknown = { notifications: { email: true } };
+    // @ts-expect-error unknown must be narrowed before it can be used as a containment value.
+    const unknownRoot: PreferencesValue = unknownValue;
+
+    expectTypeOf(wrongNestedType).toExtend<PreferencesValue>();
+    expectTypeOf(wrongArrayElement).toEqualTypeOf<string[]>();
+    expectTypeOf(wrongObjectArrayElement).toExtend<PreferencesValue>();
+    expectTypeOf(nullRoot).toExtend<NullablePayloadValue>();
+    expectTypeOf(undefinedRoot).toExtend<PreferencesValue>();
+    expectTypeOf(unknownRoot).toExtend<PreferencesValue>();
+
+    type Query = Puri<MockSchema, Tables, MockSchema["users"]>;
+    const query = {} as Query;
+
+    expectTypeOf(
+      query.whereJsonSupersetOf("preferences", {
+        notifications: { sms: false },
+      }),
+    ).toEqualTypeOf<Query>();
+    expectTypeOf(
+      query.whereGroup((group) =>
+        group
+          .whereJsonSupersetOf("users.preferences", { theme: "dark" })
+          .orWhereJsonSupersetOf("users.json_tags", ["urgent"]),
+      ),
+    ).toEqualTypeOf<Query>();
+
+    // @ts-expect-error ordinary string columns are not JSON columns.
+    query.whereJsonSupersetOf("name", "Noa");
+    // @ts-expect-error date columns are not JSON columns.
+    query.whereJsonSupersetOf("created_at", new Date());
+    // @ts-expect-error native PostgreSQL array columns are not JSON columns.
+    query.whereJsonSupersetOf("native_tags", ["urgent"]);
+    // @ts-expect-error vector columns are not JSON columns.
+    query.whereJsonSupersetOf("embedding", [0.1, 0.2]);
+    // @ts-expect-error scalar JSON roots retain their scalar type.
+    query.whereJsonSupersetOf("json_scalar", { state: "active" });
+    // @ts-expect-error top-level null is rejected even when the JSON column itself is nullable.
+    query.whereJsonSupersetOf("nullable_payload", null);
+    // @ts-expect-error top-level undefined is not JSON-serializable.
+    query.whereJsonSupersetOf("preferences", undefined);
+    // @ts-expect-error unknown must be narrowed before calling the public method.
+    query.whereJsonSupersetOf("preferences", unknownValue);
+    // @ts-expect-error top-level OR is intentionally exposed only through whereGroup.
+    query.orWhereJsonSupersetOf("preferences", { theme: "light" });
   });
 });
 

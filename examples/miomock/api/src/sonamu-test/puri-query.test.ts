@@ -937,7 +937,67 @@ describe("Puri Query", () => {
     });
   });
 
-  describe("J. FUZZY SEARCH (pg_trgm)", () => {
+  describe("J. JSONB containment", () => {
+    test("miomock generated object and array JSON columns build valid containment queries", () => {
+      const db = UserModel.getPuri("r");
+      const objectQuery = db
+        .table("audit_events")
+        .whereJsonSupersetOf("audit_events.payload_json", {
+          source: "better-auth",
+          context: {
+            action: "user_signed_in",
+          },
+        })
+        .rawQuery()
+        .toSQL();
+      const arrayQuery = db
+        .table("sync_fixtures")
+        .whereJsonSupersetOf("sync_fixtures.tags", ["jsonb", "query-builder"])
+        .rawQuery()
+        .toSQL();
+
+      expect(objectQuery.sql).toBe(
+        'select * from "audit_events" where "audit_events"."payload_json" @> ?',
+      );
+      expect(objectQuery.bindings).toEqual([
+        JSON.stringify({
+          source: "better-auth",
+          context: {
+            action: "user_signed_in",
+          },
+        }),
+      ]);
+      expect(arrayQuery.sql).toBe(
+        'select * from "sync_fixtures" where "sync_fixtures"."tags" @> ?',
+      );
+      expect(arrayQuery.bindings).toEqual([JSON.stringify(["jsonb", "query-builder"])]);
+    });
+
+    test("generated JSON columns preserve grouped AND OR containment", () => {
+      const db = UserModel.getPuri("r");
+      const query = db
+        .table("audit_events")
+        .where("audit_events.source", "better-auth")
+        .whereGroup((group) =>
+          group
+            .whereJsonSupersetOf("audit_events.payload_json", { action: "login" })
+            .orWhereJsonSupersetOf("audit_events.payload_json", { action: "logout" }),
+        )
+        .rawQuery()
+        .toSQL();
+
+      expect(query.sql).toBe(
+        'select * from "audit_events" where "audit_events"."source" = ? and ("audit_events"."payload_json" @> ? or "audit_events"."payload_json" @> ?)',
+      );
+      expect(query.bindings).toEqual([
+        "better-auth",
+        JSON.stringify({ action: "login" }),
+        JSON.stringify({ action: "logout" }),
+      ]);
+    });
+  });
+
+  describe("K. FUZZY SEARCH (pg_trgm)", () => {
     test("whereFuzzy - 기본(<%)", () => {
       const db = UserModel.getPuri("r");
       const query = db.table("documents").whereFuzzy("documents.title", "검색어").toQuery();
@@ -1054,7 +1114,7 @@ describe("Puri Query", () => {
     });
   });
 
-  describe("K. ETC", () => {
+  describe("L. ETC", () => {
     test("first", async () => {
       const db = UserModel.getPuri("r");
       await db.table("users").orderBy("users.created_at", "desc").first();

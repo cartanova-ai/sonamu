@@ -62,6 +62,8 @@ async function registerEntityWithFileCustomScalar() {
     table: `generated_template_file_${entitySeq}`,
     props: [
       { name: "id", type: "integer" as const },
+      { name: "title", type: "string" as const },
+      { name: "created_at", type: "date" as const },
       {
         name: "file_props",
         type: "json" as const,
@@ -70,7 +72,7 @@ async function registerEntityWithFileCustomScalar() {
     ],
     indexes: [],
     subsets: {
-      A: ["id", "file_props"],
+      A: ["id", "title", "created_at", "file_props"],
     },
     enums: {},
   };
@@ -82,7 +84,7 @@ async function registerEntityWithFileCustomScalar() {
     image: SonamuFileSchema.nullable(),
   });
 
-  return { typeId };
+  return { entity: registeredEntity, typeId };
 }
 
 describe("Template__generated searchText", () => {
@@ -149,5 +151,18 @@ describe("Template__generated searchText", () => {
     expect(body).toContain(
       `export const ${entity.id}SaveParams = ${entity.id}BaseSchema.omit({ slug: true, search_text: true }).partial({ id: true });`,
     );
+  });
+});
+
+describe("Template__generated JSON metadata", () => {
+  test("only type=json properties appear in readonly __json__", async () => {
+    const { entity } = await registerEntityWithFileCustomScalar();
+    const template = new Template__generated();
+
+    const source = template.getBaseSchemaSourceCode(entity).lines.join("\n");
+
+    expect(source).toContain('readonly __json__: readonly ["file_props"],');
+    expect(source).not.toContain('readonly __json__: readonly ["title"');
+    expect(source).not.toContain('readonly __json__: readonly ["created_at"');
   });
 });

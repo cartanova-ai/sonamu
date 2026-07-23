@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 
-import { Naite, Puri } from "sonamu";
-import { type InsertResult } from "sonamu";
+import { type InsertResult, type JsonColumns, type JsonSupersetValue, Naite, Puri } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, expectTypeOf, vi } from "vitest";
 
+import { type AuditEventBaseSchema, type ProjectBaseSchema } from "../application/sonamu.generated";
 import { UserModel } from "../application/user/user.model";
 import {
   cleanupTestRecords,
@@ -485,6 +485,78 @@ describe("Puri Type Safety", () => {
 
       // @ts-expect-error - JOIN 안 한 테이블 참조 불가
       joinQuery.whereGroup((g) => g.where("departments.id", 1));
+    });
+
+    test("JSONB containment type safety", async () => {
+      const db = UserModel.getPuri("r");
+
+      type AuditEventJsonColumns = JsonColumns<{
+        events: AuditEventBaseSchema;
+      }>;
+      type ImageContainmentValue = JsonSupersetValue<ProjectBaseSchema["image_urls"]>;
+
+      expectTypeOf<AuditEventJsonColumns>().toEqualTypeOf<"events.payload_json" | "payload_json">();
+      const partialImage: ImageContainmentValue = [{ url: "https://example.com/image.png" }];
+      expectTypeOf(partialImage).toExtend<ImageContainmentValue>();
+
+      db.table("audit_events").whereJsonSupersetOf("payload_json", {
+        source: "better-auth",
+        nested: { enabled: true },
+      });
+      db.table("sync_fixtures").whereJsonSupersetOf("sync_fixtures.tags", ["jsonb"]);
+      db.table("projects").whereJsonSupersetOf("image_urls", [
+        {
+          mime_type: "image/png",
+        },
+      ]);
+
+      const aliasedQuery = db.table({ event: "audit_events" });
+      aliasedQuery.whereJsonSupersetOf("event.payload_json", { category: "auth" });
+
+      const joinedQuery = db
+        .table({ event: "audit_events" })
+        .join({ user: "users" }, "event.actor_user_id", "user.id");
+
+      joinedQuery.whereJsonSupersetOf("event.payload_json", { actor: { id: "user-1" } });
+      joinedQuery.whereGroup((group) =>
+        group
+          .whereJsonSupersetOf("event.payload_json", { action: "login" })
+          .orWhereJsonSupersetOf("event.payload_json", { action: "logout" }),
+      );
+
+      const unknownValue: unknown = { source: "better-auth" };
+
+      const assertRejectedCalls = () => {
+        // Compile-only rejection cases must not mutate or execute the runtime query.
+        // @ts-expect-error an alias replaces the original table name.
+        aliasedQuery.whereJsonSupersetOf("audit_events.payload_json", { category: "auth" });
+        // @ts-expect-error joined queries require the JSON column alias prefix.
+        joinedQuery.whereJsonSupersetOf("payload_json", { action: "login" });
+        // @ts-expect-error a JSON column from a table that was not joined is unavailable.
+        joinedQuery.whereJsonSupersetOf("sync_fixtures.tags", ["jsonb"]);
+        // @ts-expect-error ordinary string columns are not JSON columns.
+        db.table("audit_events").whereJsonSupersetOf("event_type", "user_created");
+        // @ts-expect-error date columns are not JSON columns.
+        db.table("audit_events").whereJsonSupersetOf("occurred_at", {});
+        // @ts-expect-error vector columns are not JSON columns.
+        db.table("documents").whereJsonSupersetOf("title_content_embedding", [0.1]);
+        // @ts-expect-error JSON array element types are preserved.
+        db.table("sync_fixtures").whereJsonSupersetOf("tags", [1]);
+        // @ts-expect-error recursive partial object values preserve nested property types.
+        db.table("projects").whereJsonSupersetOf("image_urls", [{ size: "large" }]);
+        // @ts-expect-error nullable JSON columns still reject top-level null containment values.
+        db.table("sync_fixtures").whereJsonSupersetOf("tags", null);
+        // @ts-expect-error undefined cannot be serialized as JSONB.
+        db.table("audit_events").whereJsonSupersetOf("payload_json", undefined);
+        // @ts-expect-error unknown values must be narrowed before use.
+        db.table("audit_events").whereJsonSupersetOf("payload_json", unknownValue);
+        // @ts-expect-error top-level OR containment is intentionally unavailable.
+        db.table("audit_events").orWhereJsonSupersetOf("payload_json", {
+          source: "better-auth",
+        });
+      };
+
+      expectTypeOf(assertRejectedCalls).toBeFunction();
     });
 
     test("LIKE 연산자 타입 안전성", async () => {
