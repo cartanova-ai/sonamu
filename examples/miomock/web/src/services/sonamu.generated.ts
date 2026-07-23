@@ -307,6 +307,7 @@ export type AuditEventBaseSchema = z.infer<typeof AuditEventBaseSchema> & {
     "ingested_at",
     "id",
   ];
+  readonly __json__: readonly ["payload_json"];
 };
 
 // BaseSchema: AuditLog
@@ -322,6 +323,7 @@ export const AuditLogBaseSchema = z.object({
 });
 export type AuditLogBaseSchema = z.infer<typeof AuditLogBaseSchema> & {
   readonly __hasDefault__: readonly ["created_at", "actor_id", "old_value", "new_value", "id"];
+  readonly __json__: readonly ["old_value", "new_value"];
 };
 
 // BaseSchema: Company
@@ -464,6 +466,7 @@ export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
     "id",
   ];
   readonly __generated__: readonly ["textsearchable_index_col"];
+  readonly __json__: readonly ["image_urls"];
 };
 
 // BaseSchema: Session
@@ -512,6 +515,7 @@ export type SyncFixtureBaseSchema = z.infer<typeof SyncFixtureBaseSchema> & {
     "tags",
     "id",
   ];
+  readonly __json__: readonly ["tags"];
 };
 
 // BaseSchema: Tag

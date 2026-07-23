@@ -16,6 +16,7 @@ type LeftJoinedKey = "__leftJoined__";
 type HasDefault = "__hasDefault__";
 type GeneratedKey = "__generated__";
 type VectorKey = "__vector__";
+type JsonKey = "__json__";
 type VirtualQueryKey = "__virtual_query__";
 
 type InternalTypeKeys =
@@ -25,6 +26,7 @@ type InternalTypeKeys =
   | HasDefault
   | GeneratedKey
   | VectorKey
+  | JsonKey
   | VirtualQueryKey;
 
 // ============================================
@@ -41,6 +43,23 @@ export type VectorColumns<TTables extends Record<string, any>> =
       [TAlias in keyof TTables]: `${TAlias & string}.${VectorColumnKeys<TTables[TAlias]>}`;
     }[keyof TTables]
   | (IsSingleKey<TTables> extends true ? VectorColumnKeys<TTables[keyof TTables]> : never);
+
+// __json__ 메타데이터에서 JSON 컬럼 추출
+type JsonColumnKeys<T> = T extends { [K in JsonKey]: readonly (infer J)[] } ? J & string : never;
+
+export type JsonColumns<TTables extends Record<string, any>> =
+  | {
+      [TAlias in keyof TTables]: `${TAlias & string}.${JsonColumnKeys<TTables[TAlias]>}`;
+    }[keyof TTables]
+  | (IsSingleKey<TTables> extends true ? JsonColumnKeys<TTables[keyof TTables]> : never);
+
+type JsonSupersetNestedValue<T> = T extends readonly (infer Element)[]
+  ? JsonSupersetNestedValue<Element>[]
+  : T extends object
+    ? { [K in keyof T]?: JsonSupersetNestedValue<T[K]> }
+    : T;
+
+export type JsonSupersetValue<T> = JsonSupersetNestedValue<NonNullable<T>>;
 
 // 테이블명 타입
 export type TableName<TSchema> = keyof TSchema & string;

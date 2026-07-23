@@ -216,6 +216,14 @@ export class Template__generated extends Template {
       .map((prop) => prop.name);
 
     /**
+     * JSON props
+     * - json 타입인 컬럼
+     */
+    const jsonColumns = entity.props
+      .filter((prop) => prop.type === "json")
+      .map((prop) => prop.name);
+
+    /**
      * generated props
      * - generated 속성이 있는 컬럼 (INSERT/UPDATE 시 값 제공 불가)
      */
@@ -232,7 +240,8 @@ export class Template__generated extends Template {
       virtualQueryProps.length > 0 ||
       hasDefaultColumns.length > 0 ||
       generatedColumns.length > 0 ||
-      hasVectorColumns.length > 0;
+      hasVectorColumns.length > 0 ||
+      jsonColumns.length > 0;
 
     const lines = [
       `export const ${schemaName} = ${schemaBody};`,
@@ -262,6 +271,11 @@ export class Template__generated extends Template {
                 : "") +
               (hasVectorColumns.length > 0
                 ? `readonly __vector__: readonly [${hasVectorColumns
+                    .map((col) => `"${col}"`)
+                    .join(", ")}],`
+                : "") +
+              (jsonColumns.length > 0
+                ? `readonly __json__: readonly [${jsonColumns
                     .map((col) => `"${col}"`)
                     .join(", ")}],`
                 : "")

@@ -20,6 +20,8 @@ import {
   type FuzzyOperator,
   type InsertData,
   type InsertResult,
+  type JsonColumns,
+  type JsonSupersetValue,
   type LeftJoinedMarker,
   type LeftJoinMarkerFor,
   type NumericColumns,
@@ -68,6 +70,18 @@ function normalizeFuzzyOperator(operator?: string): FuzzyOperator {
   }
 
   return fuzzyOperator;
+}
+
+function serializeJsonSupersetValue(value: unknown): string {
+  const serialized = JSON.stringify(value);
+
+  if (serialized === undefined) {
+    throw new TypeError(
+      "Puri JSONB containment value must be JSON-serializable; JSON.stringify returned undefined.",
+    );
+  }
+
+  return serialized;
 }
 
 function normalizeOrderByDirection(direction: PuriOrderByDirection = "asc"): PuriOrderByDirection {
@@ -784,6 +798,15 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this as any;
   }
 
+  // WHERE JSONB SUPERSET (@>)
+  whereJsonSupersetOf<TColumn extends JsonColumns<TTables>>(
+    column: TColumn,
+    value: JsonSupersetValue<ExtractColumnType<TTables, TColumn>>,
+  ): this {
+    this.knexQuery.whereJsonSupersetOf(column, serializeJsonSupersetValue(value));
+    return this;
+  }
+
   // WHERE MATCH
   whereMatch<TColumn extends FulltextColumns<TTables>>(column: TColumn, value: string): this {
     this.knexQuery.whereRaw(`MATCH (${String(column)}) AGAINST (?)`, [value]);
@@ -1446,6 +1469,23 @@ export class WhereGroup<TTables extends Record<string, any>> {
   ): this;
   orWhereNotIn(...args: any[]): WhereGroup<TTables> {
     this.builder.orWhereNotIn(args[0], args[1]);
+    return this;
+  }
+
+  // WHERE JSONB SUPERSET (@>)
+  whereJsonSupersetOf<TColumn extends JsonColumns<TTables>>(
+    column: TColumn,
+    value: JsonSupersetValue<ExtractColumnType<TTables, TColumn>>,
+  ): this {
+    this.builder.whereJsonSupersetOf(column, serializeJsonSupersetValue(value));
+    return this;
+  }
+
+  orWhereJsonSupersetOf<TColumn extends JsonColumns<TTables>>(
+    column: TColumn,
+    value: JsonSupersetValue<ExtractColumnType<TTables, TColumn>>,
+  ): this {
+    this.builder.orWhereJsonSupersetOf(column, serializeJsonSupersetValue(value));
     return this;
   }
 
