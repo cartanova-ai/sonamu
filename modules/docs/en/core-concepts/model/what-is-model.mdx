@@ -163,7 +163,7 @@ const user = await UserModel.findById("INVALID", 1);
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
 
   // Automatically SELECT only fields matching the subset
@@ -253,7 +253,7 @@ class UserModelClass extends BaseModelClass {
   }
 
   @api({ httpMethod: "GET" })
-  async findMany(params: UserListParams): Promise<ListResult<User>> {
+  async findMany(params: UserListParams): Promise<ListResult<UserListParams, User>> {
     // ...
   }
 

@@ -192,7 +192,7 @@ API 응답에서 사용할 필드 조합을 정의합니다.
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams,
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
   return this.executeSubsetQuery({ subset, qb, params });
 }

@@ -498,7 +498,7 @@ async findById(id: number): Promise<User> {
   resourceName: "Users",
   cacheControl: { maxAge: 30 },
 })
-async findMany(params: UserListParams): Promise<ListResult<User>> {
+async findMany(params: UserListParams): Promise<ListResult<UserListParams, User>> {
   const { qb } = this.getSubsetQueries("A");
   
   if (params.keyword) {

@@ -158,7 +158,7 @@ getSubsetQueries<T extends TSubsetKey>(
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
   
   // Add conditions
@@ -175,7 +175,7 @@ async findMany<T extends UserSubsetKey>(
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb, onSubset } = this.getSubsetQueries(subset);
 
   // Access fields only in subset "P"
@@ -192,7 +192,7 @@ async findMany<T extends UserSubsetKey>(
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb, onSubset } = this.getSubsetQueries(subset);
 
   // Only access fields in both A and P
@@ -235,7 +235,7 @@ executeSubsetQuery<T extends TSubsetKey>(
     debug?: boolean;
     optimizeCountQuery?: boolean;
   }
-): Promise<ListResult<TSubsetMapping[T]>>
+): Promise<ListResult<LP, TSubsetMapping[T]>>
 ```
 
 **Parameters**:
@@ -266,7 +266,7 @@ executeSubsetQuery<T extends TSubsetKey>(
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
   
   if (params.keyword) {
@@ -696,7 +696,7 @@ async findMany<T extends UserSubsetKey, LP extends UserListParams>(
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
 
   // Date range filter
