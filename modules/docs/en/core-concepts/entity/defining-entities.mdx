@@ -195,7 +195,7 @@ Defines field combinations for API responses.
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams,
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
   return this.executeSubsetQuery({ subset, qb, params });
 }

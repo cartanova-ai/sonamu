@@ -452,7 +452,7 @@ async getUserStats(userId: number) { }   // get + Noun + Type
 // ✅ Consistent return types
 Promise<User | null>      // Single record (nullable)
 Promise<User[]>           // Multiple records
-Promise<ListResult<User>> // Pagination
+Promise<ListResult<UserListParams, User>> // Pagination
 ```
 
 ### 4. Git Management

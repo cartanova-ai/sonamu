@@ -158,7 +158,7 @@ getSubsetQueries<T extends TSubsetKey>(
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
   
   // 조건 추가
@@ -175,7 +175,7 @@ async findMany<T extends UserSubsetKey>(
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb, onSubset } = this.getSubsetQueries(subset);
 
   // subset "P"에만 있는 필드 접근
@@ -192,7 +192,7 @@ async findMany<T extends UserSubsetKey>(
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb, onSubset } = this.getSubsetQueries(subset);
 
   // A와 P 둘 다 있는 필드만 접근 가능
@@ -235,7 +235,7 @@ executeSubsetQuery<T extends TSubsetKey>(
     debug?: boolean;
     optimizeCountQuery?: boolean;
   }
-): Promise<ListResult<TSubsetMapping[T]>>
+): Promise<ListResult<LP, TSubsetMapping[T]>>
 ```
 
 **파라미터**:
@@ -266,7 +266,7 @@ executeSubsetQuery<T extends TSubsetKey>(
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
   
   if (params.keyword) {
@@ -695,7 +695,7 @@ async findMany<T extends UserSubsetKey, LP extends UserListParams>(
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
 
   // 날짜 범위 필터

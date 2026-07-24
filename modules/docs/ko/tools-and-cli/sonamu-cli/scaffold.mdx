@@ -452,7 +452,7 @@ async getUserStats(userId: number) { }   // get + Noun + Type
 // ✅ 일관된 반환 타입
 Promise<User | null>      // 단일 레코드 (nullable)
 Promise<User[]>           // 다중 레코드
-Promise<ListResult<User>> // 페이지네이션
+Promise<ListResult<UserListParams, User>> // 페이지네이션
 ```
 
 ### 4. Git 관리

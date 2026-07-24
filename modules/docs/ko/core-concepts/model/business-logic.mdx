@@ -329,7 +329,7 @@ async updateStatus(
 async findMany<T extends UserSubsetKey>(
   subset: T,
   params: UserListParams
-): Promise<ListResult<UserSubsetMapping[T]>> {
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
 
   // 조건부 필터링

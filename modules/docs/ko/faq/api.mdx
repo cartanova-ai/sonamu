@@ -105,7 +105,7 @@ async getUser(id: number, includeProfile?: boolean): Promise<User> {
 
 ```typescript
 @api({ httpMethod: "GET" })
-async listUsers(listParams: UserListParams): Promise<ListResult<User>> {
+async listUsers(listParams: UserListParams): Promise<ListResult<UserListParams, User>> {
   // GET /user/listUsers?num=20&page=1&orderBy=id-desc
   return this.list("A", listParams);
 }
@@ -511,7 +511,7 @@ async downloadFile(id: number): Promise<Buffer> {
 
 ```typescript
 @api({ httpMethod: "GET" })
-async listUsers(listParams: UserListParams): Promise<ListResult<UserA>> {
+async listUsers(listParams: UserListParams): Promise<ListResult<UserListParams, UserA>> {
   // ListResult = { rows: T[], total: number }
   return this.list("A", listParams);
 }
