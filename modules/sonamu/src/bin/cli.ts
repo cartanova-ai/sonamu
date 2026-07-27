@@ -197,8 +197,8 @@ async function bootstrap() {
         stub_entity,
         scaffold_model,
         scaffold_model_test,
-        // scaffold_view_list,
-        // scaffold_view_form,
+        scaffold_view_list,
+        scaffold_view_form,
         cone_gen,
         sync,
         build_all,
@@ -979,6 +979,19 @@ async function scaffold_model(entityId: string) {
 
 async function scaffold_model_test(entityId: string) {
   await Sonamu.syncer.generateTemplate("model_test", {
+    entityId,
+  });
+}
+
+async function scaffold_view_list(entityId: string) {
+  await Sonamu.syncer.generateTemplate("view_list", {
+    entityId,
+    extra: undefined,
+  });
+}
+
+async function scaffold_view_form(entityId: string) {
+  await Sonamu.syncer.generateTemplate("view_form", {
     entityId,
   });
 }
