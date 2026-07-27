@@ -1,0 +1,6 @@
+interface:
+  display_name: "Task Inline"
+  short_description: "간단한 수정을 직접 구현하고 간결하게 자체 검토합니다"
+  default_prompt: "Use $task-inline to implement and self-review this small change without spawning sub-agents."
+policy:
+  allow_implicit_invocation: false

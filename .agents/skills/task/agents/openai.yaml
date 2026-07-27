@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Workflow"
+  short_description: "테스트와 구현, 독립 리뷰를 단계별로 조율합니다"
+  default_prompt: "Use $task to implement this change through planning, tests, implementation, and independent reviews."

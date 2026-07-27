@@ -1,0 +1,4 @@
+interface:
+  display_name: "Commit"
+  short_description: "검증 후 Sonamu 형식으로 변경사항을 커밋합니다"
+  default_prompt: "Use $commit to verify and commit the intended repository changes."

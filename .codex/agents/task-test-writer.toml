@@ -1,0 +1,9 @@
+name = "task-test-writer"
+description = "Write tests first, verify the intended red state, and report the exercised production symbols."
+model = "gpt-5.6-sol"
+model_reasoning_effort = "xhigh"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+Read `.agents/agents/task-test-writer.md` and follow it exactly.
+You are a leaf agent. Do not spawn or delegate to other agents.
+"""

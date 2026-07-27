@@ -13,7 +13,7 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Frontend policy
 
-- Follow React best-practice skill policy from root workflow contract.
+- Follow the React best-practice skill policy in the root `AGENTS.md`.
 - Add focused validation for changed component behavior.
 
 ## Cross-workspace gate

@@ -1,32 +1,53 @@
+# Repository Instructions
 
-# CDD Orchestrator
+Before performing a task, read and follow `.agents/agents/orchestrator.md`.
 
-You are now the CDD orchestrator. You do NOT write code or edit tests directly.
+## Instruction Scope
 
-## Step 0: Bootstrap (mandatory, before any other work)
+- This file applies to the entire repository.
+- A deeper `AGENTS.md` takes precedence within its directory.
+- Before changing a file, read the nearest applicable `AGENTS.md`.
 
-1. Read the workflow documents:
-   - [`${CLAUDE_SKILL_DIR}/../../workflow/00_shared_contract.md`](${CLAUDE_SKILL_DIR}/../../workflow/00_shared_contract.md)
-   - [`${CLAUDE_SKILL_DIR}/../../workflow/01_cdd.md`](${CLAUDE_SKILL_DIR}/../../workflow/01_cdd.md)
-   - [`${CLAUDE_SKILL_DIR}/../../workflow/02_orchestrator.md`](${CLAUDE_SKILL_DIR}/../../workflow/02_orchestrator.md)
+## Repository Map
 
-2. Check team mode availability:
-   - Run: `echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`
-   - If set (non-empty): **team mode**. Proceed to step 3.
-   - If unset/empty: **sub-agent mode**. Report to user and skip to step 4.
+- `modules/sonamu`: Sonamu framework core.
+- `examples/miomock`: Sample application and integration-validation target.
+- `examples/miomock/api`: Source of truth for miomock i18n.
+- `modules/create-sonamu`: Project generator and templates.
+- `modules/docs`: Sonamu documentation.
+- `modules/react-components` and `modules/react-sui`: Shared React packages.
+- `modules/hmr-*` and `modules/ts-loader`: Development runtime and tooling.
+- `modules/tasks`: Distributed task queue.
 
-3. Create the agent team via `TeamCreate` with all five workers:
-   - `cdd-planner`
-   - `cdd-surface-scaffolder`
-   - `cdd-test-writer`
-   - `cdd-implementer`
-   - `cdd-reviewer`
-   - Confirm team creation succeeded before continuing.
+## Validation
 
-4. Produce `bootstrap_context` (schema in `02_orchestrator.md#bootstrap`):
-   - Identify scope in/out, affected contracts, affected rules, unresolved questions.
-   - Resolve unresolved questions with the user before proceeding.
+- Run `pnpm check` at the repository root for every code change.
+- Run applicable tests and builds for each affected package.
+- For framework-core, generator, template, or generated-output changes, validate
+  the resulting behavior in `examples/miomock`.
 
-5. Report bootstrap result to user (execution mode, scope summary, team members if applicable), then proceed to planner handoff (orchestrator protocol step 1).
+## Language
 
-If invoked with arguments (e.g., `/cdd implement login`), treat `$ARGUMENTS` as the target.
+- Write prompts and reasoning instructions passed from the orchestrator to
+  sub-agents in English.
+- Write code comments and test case descriptions in Korean.
+
+## Comments
+
+- When code contains business logic, add concise inline comments that explain
+  its intent or rationale.
+- Do not narrate behavior already evident from the code.
+- When a method needs detailed documentation, use JSDoc instead of long inline
+  or block comments.
+
+## Frontend
+
+- For React code changes, read and follow the
+  `vercel-react-best-practices` skill.
+- For user-visible UI behavior changes, verify the affected flow with
+  Playwright MCP when the application can be run locally.
+
+## Sonamu Guidance
+
+Sonamu framework guidance lives under `modules/sonamu/src/skills/sonamu/`.
+Read the applicable skills before changing framework behavior.
