@@ -661,3 +661,59 @@ describe("Puri orderBy methods", () => {
     query.orderBy(["name", "missing_column"]);
   });
 });
+
+describe("Puri ensureJoin methods", () => {
+  it("ensureJoin 이후 alias 컬럼을 타입 안전하게 사용할 수 있다", () => {
+    type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    const query = {} as Query;
+
+    const joined = query.ensureJoin(
+      { department: "departments" },
+      "users.department_id",
+      "department.id",
+    );
+
+    expectTypeOf(joined.where("department.name", "개발팀")).toEqualTypeOf(joined);
+
+    // @ts-expect-error JOIN한 테이블에 없는 컬럼은 사용할 수 없다.
+    joined.where("department.email", "dev@example.com");
+  });
+
+  it("ensureLeftJoin은 nullable FK의 객체 타입을 유지한다", () => {
+    type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    const query = {} as Query;
+
+    const result = query
+      .ensureLeftJoin({ department: "departments" }, "users.department_id", "department.id")
+      .select({ department: { id: "department.id" } })
+      .first();
+
+    expectTypeOf(result).resolves.toEqualTypeOf<{
+      department: { id: number } | null;
+    }>();
+  });
+
+  it("ensureLeftJoin은 non-null FK의 객체를 non-null로 추론한다", () => {
+    type Query = Puri<MockSchema, { employees: MockSchema["employees"] }, MockSchema["employees"]>;
+    const query = {} as Query;
+
+    const result = query
+      .ensureLeftJoin({ user: "users" }, "employees.user_id", "user.id")
+      .select({ user: { id: "user.id" } })
+      .first();
+
+    expectTypeOf(result).resolves.toEqualTypeOf<{
+      user: { id: number };
+    }>();
+  });
+
+  it("ensureJoin은 callback 형식을 허용하지 않는다", () => {
+    type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    const query = {} as Query;
+
+    // @ts-expect-error callback JOIN은 동일성을 판정할 수 없으므로 지원하지 않는다.
+    query.ensureJoin({ department: "departments" }, (join) => {
+      join.on("users.department_id", "department.id");
+    });
+  });
+});

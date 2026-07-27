@@ -164,6 +164,41 @@ const results = await db
   key → INNER JOIN 3. NULLABLE foreign key → LEFT JOIN 4. Consider business requirements
 </Tip>
 
+## Reusing an Existing JOIN
+
+Use `ensureJoin()` or `ensureLeftJoin()` when a Model adds a JOIN that may already have been added
+by a Subset query.
+
+```typescript
+const results = await db
+  .table("patient_timeline_events")
+  .ensureJoin(
+    { patient: "patients" },
+    "patient_timeline_events.patient_id",
+    "patient.id",
+  )
+  .where("patient.organization_id", organizationId)
+  .select({
+    id: "patient_timeline_events.id",
+    patientName: "patient.name",
+  });
+```
+
+Puri compares JOINs by alias. If the alias, table, JOIN type, left column, and right column all
+match, it reuses the existing JOIN. If the alias is new, it adds the JOIN. Reusing an alias with a
+different definition throws an error before SQL execution.
+
+The same physical table can still be joined more than once under different aliases.
+
+```typescript
+db.table("documents")
+  .ensureJoin({ created_by: "users" }, "documents.created_by_id", "created_by.id")
+  .ensureJoin({ updated_by: "users" }, "documents.updated_by_id", "updated_by.id");
+```
+
+`ensureJoin()` and `ensureLeftJoin()` support simple column equality JOINs against tables. Callback
+and subquery JOINs continue to use `join()` and `leftJoin()` and are not considered reusable.
+
 ## Self JOIN - Self Reference
 
 Use **aliases** when joining the same table.

@@ -61,6 +61,24 @@ type PuriOrderByRuntimeItem = {
 };
 type PuriOrderByRuntimeEntry = string | PuriOrderByExpression | PuriOrderByRuntimeItem;
 
+type FromRegistration = {
+  kind: "from";
+  alias: string;
+  table: string | null;
+};
+
+type JoinRegistration = {
+  kind: "join";
+  alias: string;
+  table: string | null;
+  joinType: "join" | "leftJoin";
+  left: string | null;
+  right: string | null;
+  reusable: boolean;
+};
+
+type CorrelationRegistration = FromRegistration | JoinRegistration;
+
 function normalizeFuzzyOperator(operator?: string): FuzzyOperator {
   const normalized = operator?.trim() ?? "<%";
   const fuzzyOperator = FUZZY_OPERATORS.find((candidate) => candidate === normalized);
@@ -123,6 +141,7 @@ function isSqlExpression(value: PuriOrderByRuntimeEntry): value is PuriOrderByEx
 export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   private knexQuery: Knex.QueryBuilder;
   private tableSpec: TableSpec | null = null;
+  private correlationRegistry = new Map<string, CorrelationRegistration>();
 
   // 생성자 시그니처들
   constructor(knex: Knex, tableName: string);
@@ -135,6 +154,11 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       // Case: new Puri(knex, "users")
       this.knexQuery = this.knex(tableNameOrSource).from(tableNameOrSource);
       this.tableSpec = this.safeGetTableSpec(tableNameOrSource);
+      this.correlationRegistry.set(tableNameOrSource, {
+        kind: "from",
+        alias: tableNameOrSource,
+        table: tableNameOrSource,
+      });
     } else if (typeof tableNameOrSource === "object") {
       const entries = Object.entries(tableNameOrSource);
       if (entries.length !== 1) {
@@ -145,9 +169,11 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       if (typeof source === "string") {
         this.knexQuery = this.knex(source).from({ [alias]: source });
         this.tableSpec = this.safeGetTableSpec(source);
+        this.correlationRegistry.set(alias, { kind: "from", alias, table: source });
       } else if (source instanceof Puri) {
         const subqueryBuilder = source.rawQuery();
         this.knexQuery = this.knex.from(subqueryBuilder.as(alias));
+        this.correlationRegistry.set(alias, { kind: "from", alias, table: null });
       } else {
         throw new Error("Invalid table specification");
       }
@@ -559,19 +585,27 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // CLEAR
   clear(statement: ClearStatements): this {
     this.knexQuery.clear(statement);
+    if (statement === "join") {
+      this.clearJoinRegistrations();
+    }
     return this;
   }
 
   // knex에 없어서 직접 구현함
   clearJoin(alias: string): this {
+    let removed = false;
     (this.knexQuery as any)._statements = (this.knexQuery as any)._statements.filter((s: any) => {
       if ("joinType" in s) {
-        const [_alias, _table] = Object.entries(s.table)[0];
-        return _alias !== alias;
+        const shouldRemove = this.getKnexJoinAlias(s.table) === alias;
+        removed ||= shouldRemove;
+        return !shouldRemove;
       } else {
         return true;
       }
     });
+    if (removed && this.correlationRegistry.get(alias)?.kind === "join") {
+      this.correlationRegistry.delete(alias);
+    }
     return this;
   }
 
@@ -625,6 +659,22 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this.__commonJoin("join", tableNameOrSpec, ...args);
   }
 
+  // ENSURE JOIN: 테이블 + Alias
+  ensureJoin<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
+    tableSpec: { [K in TJoinAlias]: TJoinTable },
+    left: AvailableColumns<TTables>,
+    right: `${TJoinAlias}.${ColumnKeys<TSchema[TJoinTable]>}`,
+  ): Puri<TSchema, TTables & Record<TJoinAlias, TSchema[TJoinTable]>, TResult>;
+  // ENSURE JOIN: 테이블명
+  ensureJoin<TJoinTable extends keyof TSchema>(
+    tableName: TJoinTable,
+    left: AvailableColumns<TTables>,
+    right: `${TJoinTable & string}.${ColumnKeys<TSchema[TJoinTable]>}`,
+  ): Puri<TSchema, TTables & Record<TJoinTable, TSchema[TJoinTable]>, TResult>;
+  ensureJoin(tableNameOrSpec: any, left: string, right: string): any {
+    return this.__ensureJoin("join", tableNameOrSpec, left, right);
+  }
+
   // LEFT JOIN: 서브쿼리 + Alias
   leftJoin<TJoinAlias extends string, TSubResult>(
     tableSpec: { [K in TJoinAlias]: Puri<TSchema, any, TSubResult> },
@@ -676,7 +726,38 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this.__commonJoin("leftJoin", tableNameOrSpec, ...args);
   }
 
+  // ENSURE LEFT JOIN: 테이블 + Alias
+  ensureLeftJoin<
+    TJoinTable extends keyof TSchema,
+    TJoinAlias extends string,
+    TLeft extends AvailableColumns<TTables>,
+  >(
+    tableSpec: { [K in TJoinAlias]: TJoinTable },
+    left: TLeft,
+    right: `${TJoinAlias}.${ColumnKeys<TSchema[TJoinTable]>}`,
+  ): Puri<
+    TSchema,
+    TTables & Record<TJoinAlias, TSchema[TJoinTable] & LeftJoinMarkerFor<TTables, TLeft>>,
+    TResult
+  >;
+  // ENSURE LEFT JOIN: 테이블명
+  ensureLeftJoin<TJoinTable extends keyof TSchema, TLeft extends AvailableColumns<TTables>>(
+    tableName: TJoinTable,
+    left: TLeft,
+    right: `${TJoinTable & string}.${ColumnKeys<TSchema[TJoinTable]>}`,
+  ): Puri<
+    TSchema,
+    TTables & Record<TJoinTable, TSchema[TJoinTable] & LeftJoinMarkerFor<TTables, TLeft>>,
+    TResult
+  >;
+  ensureLeftJoin(tableNameOrSpec: any, left: string, right: string): any {
+    return this.__ensureJoin("leftJoin", tableNameOrSpec, left, right);
+  }
+
   __commonJoin(joinType: "join" | "leftJoin", tableNameOrSpec: any, ...args: any[]): this {
+    const registration = this.createJoinRegistration(joinType, tableNameOrSpec, args);
+    this.assertCorrelationAvailable(registration);
+
     if (typeof tableNameOrSpec === "string") {
       // Case 1: join("posts", ...)
       const tableName = tableNameOrSpec;
@@ -734,7 +815,152 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       throw new Error("Invalid arguments");
     }
 
+    this.correlationRegistry.set(registration.alias, registration);
     return this;
+  }
+
+  private __ensureJoin(
+    joinType: "join" | "leftJoin",
+    tableNameOrSpec: string | Record<string, string>,
+    left: string,
+    right: string,
+  ): this {
+    const requested = this.createJoinRegistration(joinType, tableNameOrSpec, [left, right]);
+    if (!requested.reusable) {
+      throw new Error(
+        `${joinType === "join" ? "ensureJoin" : "ensureLeftJoin"} only supports physical tables with simple column equality conditions.`,
+      );
+    }
+    const existing = this.correlationRegistry.get(requested.alias);
+
+    if (!existing) {
+      return this.__commonJoin(joinType, tableNameOrSpec, left, right);
+    }
+
+    if (this.isSameJoinRegistration(existing, requested)) {
+      return this;
+    }
+
+    throw this.createJoinConflictError(existing, requested);
+  }
+
+  private createJoinRegistration(
+    joinType: "join" | "leftJoin",
+    tableNameOrSpec: any,
+    args: any[],
+  ): JoinRegistration {
+    let alias: string;
+    let table: string | null;
+
+    if (typeof tableNameOrSpec === "string") {
+      alias = tableNameOrSpec;
+      table = tableNameOrSpec;
+    } else if (typeof tableNameOrSpec === "object") {
+      const entries = Object.entries(tableNameOrSpec);
+      if (entries.length !== 1) {
+        throw new Error("Table spec must have exactly one entry");
+      }
+      assert(entries[0]);
+      const [[joinAlias, spec]] = entries;
+      alias = joinAlias;
+      table = typeof spec === "string" ? spec : null;
+    } else {
+      throw new Error("Invalid arguments");
+    }
+
+    const [left, right] = args;
+    const reusable =
+      table !== null && args.length === 2 && typeof left === "string" && typeof right === "string";
+
+    return {
+      kind: "join",
+      alias,
+      table,
+      joinType,
+      left: reusable ? left : null,
+      right: reusable ? right : null,
+      reusable,
+    };
+  }
+
+  private assertCorrelationAvailable(requested: JoinRegistration): void {
+    const existing = this.correlationRegistry.get(requested.alias);
+    if (existing) {
+      if (this.isSameJoinRegistration(existing, requested)) {
+        throw new Error(
+          `Join alias "${requested.alias}" is already registered. Use ensureJoin() or ensureLeftJoin() to reuse an identical join.`,
+        );
+      }
+      throw this.createJoinConflictError(existing, requested);
+    }
+  }
+
+  private isSameJoinRegistration(
+    existing: CorrelationRegistration,
+    requested: JoinRegistration,
+  ): existing is JoinRegistration {
+    return (
+      existing.kind === "join" &&
+      existing.reusable &&
+      requested.reusable &&
+      existing.table === requested.table &&
+      existing.joinType === requested.joinType &&
+      existing.left === requested.left &&
+      existing.right === requested.right
+    );
+  }
+
+  private createJoinConflictError(
+    existing: CorrelationRegistration,
+    requested: JoinRegistration,
+  ): Error {
+    return new Error(
+      [
+        `Join alias "${requested.alias}" is already registered with a different definition.`,
+        `Existing: ${this.formatCorrelationRegistration(existing)}`,
+        `Requested: ${this.formatCorrelationRegistration(requested)}`,
+      ].join("\n"),
+    );
+  }
+
+  private formatCorrelationRegistration(registration: CorrelationRegistration): string {
+    if (registration.kind === "from") {
+      return `FROM ${registration.table ?? "subquery"} AS ${registration.alias}`;
+    }
+
+    const joinKeyword = registration.joinType === "join" ? "JOIN" : "LEFT JOIN";
+    const source = registration.table ?? "opaque source";
+    const condition = registration.reusable
+      ? ` ON ${registration.left} = ${registration.right}`
+      : " with opaque condition";
+    return `${joinKeyword} ${source} AS ${registration.alias}${condition}`;
+  }
+
+  private clearJoinRegistrations(): void {
+    for (const [alias, registration] of this.correlationRegistry) {
+      if (registration.kind === "join") {
+        this.correlationRegistry.delete(alias);
+      }
+    }
+  }
+
+  private getKnexJoinAlias(table: unknown): string | null {
+    if (typeof table === "string") {
+      return table;
+    }
+    if (typeof table === "object" && table !== null) {
+      if (
+        "_single" in table &&
+        typeof table._single === "object" &&
+        table._single !== null &&
+        "as" in table._single &&
+        typeof table._single.as === "string"
+      ) {
+        return table._single.as;
+      }
+      return Object.keys(table)[0] ?? null;
+    }
+    return null;
   }
 
   // WHERE: 객체 - 사용: .where({ "u.id": 1, "u.status": "active" })
@@ -1278,6 +1504,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     // 'dual'은 더미 테이블이며, 바로 아래 줄에서 knexQuery가 덮어씌워집니다.
     const newPuri = new Puri<TSchema, TTables, TResult>(this.knex, "dual");
     newPuri.knexQuery = this.knexQuery.clone();
+    newPuri.correlationRegistry = new Map(this.correlationRegistry);
     return newPuri;
   }
 

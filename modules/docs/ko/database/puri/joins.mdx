@@ -162,6 +162,41 @@ const results = await db
   → INNER JOIN 3. NULLABLE 외래 키 → LEFT JOIN 4. 비즈니스 요구사항 고려
 </Tip>
 
+## 기존 JOIN 재사용
+
+Subset 쿼리가 추가했을 수 있는 JOIN을 Model에서 다시 사용할 때는 `ensureJoin()` 또는
+`ensureLeftJoin()`을 사용합니다.
+
+```typescript
+const results = await db
+  .table("patient_timeline_events")
+  .ensureJoin(
+    { patient: "patients" },
+    "patient_timeline_events.patient_id",
+    "patient.id",
+  )
+  .where("patient.organization_id", organizationId)
+  .select({
+    id: "patient_timeline_events.id",
+    patientName: "patient.name",
+  });
+```
+
+Puri는 alias를 기준으로 JOIN을 비교합니다. alias, 테이블, JOIN 타입, 왼쪽 컬럼, 오른쪽 컬럼이
+모두 같으면 기존 JOIN을 재사용하고, alias가 없으면 새 JOIN을 추가합니다. 같은 alias에 다른 정의를
+사용하면 SQL 실행 전에 오류가 발생합니다.
+
+같은 물리 테이블도 alias가 다르면 각각 JOIN할 수 있습니다.
+
+```typescript
+db.table("documents")
+  .ensureJoin({ created_by: "users" }, "documents.created_by_id", "created_by.id")
+  .ensureJoin({ updated_by: "users" }, "documents.updated_by_id", "updated_by.id");
+```
+
+`ensureJoin()`과 `ensureLeftJoin()`은 테이블의 단순 컬럼 동등 JOIN만 지원합니다. callback 또는
+서브쿼리 JOIN은 기존처럼 `join()`과 `leftJoin()`을 사용하며 재사용 대상으로 판정하지 않습니다.
+
 ## Self JOIN - 자기 참조
 
 같은 테이블을 조인할 때는 **별칭(alias)**을 사용합니다.

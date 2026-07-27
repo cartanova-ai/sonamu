@@ -231,6 +231,36 @@ db.table("orders")
   .select({ id: "orders.id", total: "oi.total" });
 ```
 
+### Reusing generated JOINs
+
+Use `ensureJoin()` or `ensureLeftJoin()` when a Model adds a JOIN that may already have been added
+by a Subset query.
+
+```typescript
+db.table("patient_timeline_events")
+  .ensureJoin(
+    { patient: "patients" },
+    "patient_timeline_events.patient_id",
+    "patient.id",
+  )
+  .where("patient.organization_id", organizationId);
+```
+
+Puri compares JOINs by alias. If the alias, table, JOIN type, left column, and right column all
+match, the existing JOIN is reused. If the alias is new, the JOIN is added. Reusing an alias with a
+different definition throws an error before SQL execution.
+
+Different aliases for the same physical table remain valid:
+
+```typescript
+db.table("documents")
+  .ensureJoin({ created_by: "users" }, "documents.created_by_id", "created_by.id")
+  .ensureJoin({ updated_by: "users" }, "documents.updated_by_id", "updated_by.id");
+```
+
+`ensureJoin()` and `ensureLeftJoin()` support table equality JOINs only. Callback and subquery JOINs
+continue to use `join()` or `leftJoin()` and are not considered reusable.
+
 ## ORDER BY & LIMIT
 
 ```typescript
