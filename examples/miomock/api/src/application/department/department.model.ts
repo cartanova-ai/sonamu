@@ -79,7 +79,7 @@ class DepartmentModelClass extends BaseModelClass<
       ...rawParams,
     };
 
-    const { qb, onSubset } = this.getSubsetQueries(subset);
+    const { qb } = this.getSubsetQueries(subset);
 
     // id
     if (params.id) {
@@ -87,7 +87,11 @@ class DepartmentModelClass extends BaseModelClass<
     }
 
     if (params.company_name) {
-      onSubset(["A", "P", "P2"]).where("company.name", params.company_name);
+      // subset에 company JOIN이 이미 있으면 재사용하고, 없을 때만 추가한다.
+      qb.ensureJoin({ company: "companies" }, "departments.company_id", "company.id").where(
+        "company.name",
+        params.company_name,
+      );
     }
 
     // search-keyword
@@ -129,6 +133,7 @@ class DepartmentModelClass extends BaseModelClass<
       qb,
       params,
       enhancers,
+      debug: false,
     });
   }
 

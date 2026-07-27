@@ -65,7 +65,7 @@
   },
   {
     "path": "api/src/application/department/department.model.ts",
-    "checksum": "92302d97cfe157939d54b8b38017c7a9b32d44b4"
+    "checksum": "5b48aa113d2051f5ec7ecaa8798ec1e3df4a93d8"
   },
   {
     "path": "api/src/application/department/department.types.ts",
