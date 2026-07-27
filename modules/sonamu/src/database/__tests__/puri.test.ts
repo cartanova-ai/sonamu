@@ -7,6 +7,7 @@ type TestSchema = {
   users: {
     id: number;
     name: string;
+    department_id: number | null;
     payload: {
       actor: {
         id: string;
@@ -17,6 +18,14 @@ type TestSchema = {
     tags: string[];
     state: string;
     readonly __json__: readonly ["payload", "tags", "state"];
+  };
+  departments: {
+    id: number;
+    name: string;
+  };
+  companies: {
+    id: number;
+    name: string;
   };
 };
 
@@ -97,5 +106,179 @@ describe("Puri JSONB containment", () => {
       "Puri JSONB containment value must be JSON-serializable; JSON.stringify returned undefined.",
     );
     expect(query.rawQuery().toSQL().sql).toBe('select * from "users"');
+  });
+});
+
+describe("Puri ensureJoin", () => {
+  it("기존의 동일한 JOIN을 재사용한다", () => {
+    const query = usersQuery()
+      .join({ department: "departments" }, "users.department_id", "department.id")
+      .ensureJoin({ department: "departments" }, "users.department_id", "department.id");
+
+    expect(query.toQuery().match(/join "departments" as "department"/g)).toHaveLength(1);
+  });
+
+  it("등록되지 않은 JOIN을 추가한다", () => {
+    const query = usersQuery().ensureJoin(
+      { department: "departments" },
+      "users.department_id",
+      "department.id",
+    );
+
+    expect(query.toQuery()).toContain(
+      'join "departments" as "department" on "users"."department_id" = "department"."id"',
+    );
+  });
+
+  it("같은 alias의 JOIN 조건이 다르면 실행 전에 오류를 던진다", () => {
+    const query = usersQuery().join(
+      { department: "departments" },
+      "users.department_id",
+      "department.id",
+    );
+
+    expect(() =>
+      query.ensureJoin({ department: "departments" }, "users.id", "department.id"),
+    ).toThrowError(
+      [
+        'Join alias "department" is already registered with a different definition.',
+        "Existing: JOIN departments AS department ON users.department_id = department.id",
+        "Requested: JOIN departments AS department ON users.id = department.id",
+      ].join("\n"),
+    );
+  });
+
+  it.each([
+    {
+      name: "테이블",
+      create: () =>
+        usersQuery()
+          .join({ department: "departments" }, "users.department_id", "department.id")
+          .ensureJoin({ department: "companies" }, "users.department_id", "department.id"),
+      requested: "Requested: JOIN companies AS department ON users.department_id = department.id",
+    },
+    {
+      name: "JOIN 타입",
+      create: () =>
+        usersQuery()
+          .join({ department: "departments" }, "users.department_id", "department.id")
+          .ensureLeftJoin({ department: "departments" }, "users.department_id", "department.id"),
+      requested:
+        "Requested: LEFT JOIN departments AS department ON users.department_id = department.id",
+    },
+    {
+      name: "왼쪽 조건",
+      create: () =>
+        usersQuery()
+          .join({ department: "departments" }, "users.department_id", "department.id")
+          .ensureJoin({ department: "departments" }, "users.id", "department.id"),
+      requested: "Requested: JOIN departments AS department ON users.id = department.id",
+    },
+    {
+      name: "오른쪽 조건",
+      create: () =>
+        usersQuery()
+          .join({ department: "departments" }, "users.department_id", "department.id")
+          .ensureJoin({ department: "departments" }, "users.department_id", "department.name"),
+      requested:
+        "Requested: JOIN departments AS department ON users.department_id = department.name",
+    },
+  ])("같은 alias의 $name 정의가 다르면 실행 전에 오류를 던진다", ({ create, requested }) => {
+    expect(create).toThrowError(
+      'Join alias "department" is already registered with a different definition.',
+    );
+    expect(create).toThrowError(requested);
+  });
+
+  it("일반 JOIN은 같은 alias를 중복 등록할 수 없다", () => {
+    const query = usersQuery().join(
+      { department: "departments" },
+      "users.department_id",
+      "department.id",
+    );
+
+    expect(() =>
+      query.join({ department: "departments" }, "users.department_id", "department.id"),
+    ).toThrowError(/Join alias "department" is already registered/);
+  });
+
+  it("같은 테이블을 서로 다른 alias로 JOIN할 수 있다", () => {
+    const query = usersQuery()
+      .ensureJoin(
+        { primary_department: "departments" },
+        "users.department_id",
+        "primary_department.id",
+      )
+      .ensureJoin({ fallback_department: "departments" }, "users.id", "fallback_department.id");
+
+    expect(query.toQuery()).toContain('join "departments" as "primary_department"');
+    expect(query.toQuery()).toContain('join "departments" as "fallback_department"');
+  });
+
+  it("기존의 동일한 LEFT JOIN을 재사용한다", () => {
+    const query = usersQuery()
+      .leftJoin({ department: "departments" }, "users.department_id", "department.id")
+      .ensureLeftJoin({ department: "departments" }, "users.department_id", "department.id");
+
+    expect(query.toQuery().match(/left join "departments" as "department"/g)).toHaveLength(1);
+  });
+
+  it("callback JOIN은 동일성을 추론하지 않는다", () => {
+    const query = usersQuery().join({ department: "departments" }, (join) => {
+      join.on("users.department_id", "department.id");
+    });
+
+    expect(() =>
+      query.ensureJoin({ department: "departments" }, "users.department_id", "department.id"),
+    ).toThrowError(/Existing: JOIN departments AS department with opaque condition/);
+  });
+
+  it("clone은 JOIN registry를 독립적으로 복제한다", () => {
+    const original = usersQuery().ensureJoin(
+      { department: "departments" },
+      "users.department_id",
+      "department.id",
+    );
+    const cloned = original
+      .clone()
+      .ensureJoin({ department: "departments" }, "users.department_id", "department.id")
+      .ensureJoin({ fallback: "departments" }, "users.id", "fallback.id");
+
+    expect(original.toQuery()).not.toContain('as "fallback"');
+    expect(cloned.toQuery()).toContain('as "fallback"');
+    expect(cloned.toQuery().match(/join "departments" as "department"/g)).toHaveLength(1);
+  });
+
+  it("JOIN을 clear한 뒤 같은 alias를 다시 등록할 수 있다", () => {
+    const query = usersQuery()
+      .ensureJoin({ department: "departments" }, "users.department_id", "department.id")
+      .clear("join")
+      .ensureJoin({ department: "departments" }, "users.department_id", "department.id");
+
+    expect(query.toQuery().match(/join "departments" as "department"/g)).toHaveLength(1);
+  });
+
+  it("clearJoin으로 삭제한 alias를 다시 등록할 수 있다", () => {
+    const query = usersQuery()
+      .ensureJoin({ department: "departments" }, "users.department_id", "department.id")
+      .clearJoin("department")
+      .ensureJoin({ department: "departments" }, "users.department_id", "department.id");
+
+    expect(query.toQuery().match(/join "departments" as "department"/g)).toHaveLength(1);
+  });
+
+  it("clearJoin은 subquery JOIN의 registry도 함께 제거한다", () => {
+    const departmentIds = new Puri<
+      TestSchema,
+      { departments: TestSchema["departments"] },
+      TestSchema["departments"]
+    >(db, "departments").select({ id: "departments.id" });
+    const query = usersQuery()
+      .join({ department: departmentIds }, "users.department_id", "department.id")
+      .clearJoin("department")
+      .ensureJoin({ department: "departments" }, "users.department_id", "department.id");
+
+    expect(query.toQuery()).not.toContain('select "id" from "departments"');
+    expect(query.toQuery().match(/join "departments" as "department"/g)).toHaveLength(1);
   });
 });
