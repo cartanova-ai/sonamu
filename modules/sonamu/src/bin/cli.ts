@@ -1,6 +1,16 @@
 import assert from "assert";
 import { execSync, spawn } from "child_process";
-import { cp, mkdir, readdir, readFile, rm, symlink, writeFile } from "fs/promises";
+import {
+  cp,
+  mkdir,
+  readdir,
+  readFile,
+  readlink,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "fs/promises";
 import { createRequire } from "module";
 import os from "os";
 import path from "path";
@@ -177,6 +187,7 @@ async function bootstrap() {
         ["dev", "web"],
         ["start"],
         ["skills", "sync"],
+        ["skills", "index"],
         ["skills", "create", "#name"],
         ["test"],
         ["auth", "generate"],
@@ -209,6 +220,7 @@ async function bootstrap() {
         dev_web,
         start,
         skills_sync,
+        skills_index,
         skills_create,
         test: testCommand,
         auth_generate,
@@ -1010,34 +1022,24 @@ async function skills_sync() {
   // 빌드 후 - cli.js: node_modules/sonamu/dist/bin/cli.js (실제 실행)
   // skills 위치: node_modules/sonamu/src/skills (npm 배포 시)
   const sourceBase = path.resolve(import.meta.dirname, "..", "..", "src", "skills");
-  const sourceSkillsDir = path.join(sourceBase, "sonamu");
-  const sourceClaudeMd = path.join(sourceBase, "CLAUDE.md");
-
-  if (!(await exists(sourceSkillsDir))) {
+  if (!(await exists(sourceBase))) {
     console.log(chalk.yellow("Skills source not found in sonamu package."));
     return;
   }
 
   if (isGlobal) {
-    const homeClaudeDir = path.join(os.homedir(), ".claude");
-    await skills_sync_to(homeClaudeDir, sourceSkillsDir, sourceClaudeMd, {
+    await skills_sync_to(os.homedir(), {
       useSymlink: false,
       copyProjectTemplates: false,
-      isGlobal: true,
+      sourceBase,
     });
 
-    // ~/.claude/commands/sonamu-skills.md 설치
-    const sourceCommandsDir = path.join(sourceBase, "commands");
-    const sourceCommand = path.join(sourceCommandsDir, "sonamu-skills.md");
-    if (await exists(sourceCommand)) {
-      const targetCommandsDir = path.join(homeClaudeDir, "commands");
-      await mkdir(targetCommandsDir, { recursive: true });
-      await cp(sourceCommand, path.join(targetCommandsDir, "sonamu-skills.md"));
-      console.log(chalk.green(`✓ /sonamu-skills command installed → ~/.claude/commands/`));
-    }
+    // 구버전이 설치한 /sonamu-skills 커맨드 제거.
+    // 수동 스킬 메뉴는 자동 discovery와 AGENTS.md 스킬 인덱스로 대체됐습니다.
+    await rm(path.join(os.homedir(), ".claude", "commands", "sonamu-skills.md"), { force: true });
 
-    console.log(chalk.cyan(`\n  Global sync complete → ~/.claude/skills/sonamu/`));
-    console.log(chalk.dim(`  These skills are available in all Claude Code sessions.`));
+    console.log(chalk.cyan(`\n  Global sync complete → ~/.agents/skills/`));
+    console.log(chalk.dim(`  These skills are available in every agent session.`));
     console.log(
       chalk.dim(
         `  Once a project is created, run 'pnpm sonamu skills sync' for project-local sync.`,
@@ -1045,8 +1047,7 @@ async function skills_sync() {
     );
   } else {
     const workspaceRoot = await findWorkspaceRoot();
-    const claudeDir = path.join(workspaceRoot, ".claude");
-    await skills_sync_to(claudeDir, sourceSkillsDir, sourceClaudeMd, {
+    await skills_sync_to(workspaceRoot, {
       useSymlink: true,
       copyProjectTemplates: true,
       sourceBase,
@@ -1055,55 +1056,145 @@ async function skills_sync() {
 }
 
 /**
- * claudeDir로 skills를 동기화하는 공통 로직입니다.
+ * 두 경로가 심볼릭 링크를 따라 같은 실체를 가리키는지 확인합니다.
+ */
+async function resolvesToSameDir(a: string, b: string): Promise<boolean> {
+  try {
+    return (await realpath(a)) === (await realpath(b));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `.claude/<entry>`가 `../.agents/<entry>`를 가리키도록 보장합니다.
+ *
+ * 원본은 에이전트 중립인 `.agents/`에 두고, Claude Code용 `.claude/`는 심볼릭
+ * 링크로만 연결합니다. 이 저장소의 `CLAUDE.md -> AGENTS.md` 규약과 같은 방식입니다.
+ * 이미 심볼릭 링크가 아닌 실체가 있으면 사용자 파일일 수 있으므로 건드리지 않습니다.
+ */
+async function linkClaudeEntry(root: string, relative: string): Promise<boolean> {
+  // `.claude` 자체가 `.agents`를 가리키는 심볼릭 링크인 저장소에서는 두 경로가
+  // 같은 실체를 가리킵니다. 이때 링크를 걸면 원본을 자기 자신을 가리키는
+  // 링크로 덮어쓰게 되므로 아무것도 하지 않습니다.
+  if (await resolvesToSameDir(path.join(root, ".claude"), path.join(root, ".agents"))) {
+    return false;
+  }
+
+  const target = path.join(root, ".claude", relative);
+  const source = path.join(root, ".agents", relative);
+
+  let existing: string | undefined;
+  try {
+    existing = await readlink(target);
+  } catch {
+    // 심볼릭 링크가 아니거나 존재하지 않음
+  }
+
+  if (existing === undefined && (await exists(target))) {
+    return false;
+  }
+
+  await mkdir(path.dirname(target), { recursive: true });
+  await rm(target, { recursive: true, force: true });
+  await symlink(path.relative(path.dirname(target), source), target, "dir");
+  return true;
+}
+
+/**
+ * 배치 대상 스킬 디렉토리를 나열합니다.
+ *
+ * 에이전트는 `skills/<name>/SKILL.md` 단위로 스킬을 인식하므로,
+ * SKILL.md를 가진 디렉토리만 대상으로 삼습니다.
+ */
+async function listSkillDirs(sourceBase?: string): Promise<{ source: string; name: string }[]> {
+  if (!sourceBase || !(await exists(sourceBase))) {
+    return [];
+  }
+
+  const entries = await readdir(sourceBase, { withFileTypes: true });
+  const result: { source: string; name: string }[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith("sonamu")) {
+      continue;
+    }
+    const source = path.join(sourceBase, entry.name);
+    if (!(await exists(path.join(source, "SKILL.md")))) {
+      continue;
+    }
+    result.push({ source, name: entry.name });
+  }
+
+  return result.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * 프로젝트(또는 홈) 루트에 skills를 동기화하는 공통 로직입니다.
+ *
+ * 원본은 `.agents/`에 두고 `.claude/`에는 심볼릭 링크만 겁니다.
  */
 async function skills_sync_to(
-  claudeDir: string,
-  sourceSkillsDir: string,
-  sourceClaudeMd: string,
+  root: string,
   options: {
     useSymlink: boolean;
     copyProjectTemplates: boolean;
     sourceBase?: string;
-    isGlobal?: boolean;
   },
 ) {
-  const targetSkillsDir = path.join(claudeDir, "skills", "sonamu");
+  const agentsDir = path.join(root, ".agents");
+  const skillsRoot = path.join(agentsDir, "skills");
+  await mkdir(skillsRoot, { recursive: true });
 
-  // 기존 디렉토리/symlink 삭제 후 재생성
-  // exists()는 broken symlink를 감지하지 못하므로 rm을 무조건 시도합니다
-  try {
-    await rm(targetSkillsDir, { recursive: true, force: true });
-  } catch {
-    // 파일이 없으면 무시
-  }
+  // 에이전트는 skills/<name>/SKILL.md 단위로 스킬을 인식하므로 각각 별도 배치해야 합니다.
+  const targets = await listSkillDirs(options.sourceBase);
 
-  await mkdir(path.dirname(targetSkillsDir), { recursive: true });
+  for (const { source, name } of targets) {
+    const targetDir = path.join(skillsRoot, name);
 
-  if (options.useSymlink) {
+    // exists()는 broken symlink를 감지하지 못하므로 rm을 무조건 시도합니다
     try {
-      await symlink(sourceSkillsDir, targetSkillsDir, "dir");
-      console.log(chalk.green(`✓ Skills linked (symlink)`));
-    } catch (error) {
-      console.log(
-        chalk.yellow(`⚠ Symlink failed: ${error instanceof Error ? error.message : String(error)}`),
-      );
-      console.log(chalk.yellow(`  Falling back to copy...`));
-      await skillsCopy(sourceSkillsDir, targetSkillsDir);
+      await rm(targetDir, { recursive: true, force: true });
+    } catch {
+      // 파일이 없으면 무시
     }
-  } else {
-    await skillsCopy(sourceSkillsDir, targetSkillsDir);
+
+    if (options.useSymlink) {
+      try {
+        await symlink(source, targetDir, "dir");
+      } catch (error) {
+        console.log(
+          chalk.yellow(
+            `⚠ Symlink failed (${name}): ${error instanceof Error ? error.message : String(error)}`,
+          ),
+        );
+        console.log(chalk.yellow(`  Falling back to copy...`));
+        await skillsCopy(source, targetDir);
+      }
+    } else {
+      await skillsCopy(source, targetDir);
+    }
+
+    await linkClaudeEntry(root, path.join("skills", name));
   }
+
+  console.log(
+    chalk.green(
+      `✓ Skills ${options.useSymlink ? "linked" : "copied"} → .agents/skills/ (${targets.length}): ${targets.map((t) => t.name).join(", ")}`,
+    ),
+  );
+  console.log(chalk.dim(`  .claude/skills/* symlinked for Claude Code`));
 
   // project 디렉토리 초기화 (없으면 생성, 있으면 유지)
   if (options.copyProjectTemplates && options.sourceBase) {
     const sourceProjectDir = path.join(options.sourceBase, "project");
-    const targetProjectDir = path.join(claudeDir, "skills", "project");
+    const targetProjectDir = path.join(skillsRoot, "project");
 
     if (await exists(sourceProjectDir)) {
       if (!(await exists(targetProjectDir))) {
         try {
           await cp(sourceProjectDir, targetProjectDir, { recursive: true });
+          await linkClaudeEntry(root, path.join("skills", "project"));
           console.log(chalk.green(`✓ Project templates initialized`));
         } catch (error) {
           console.error(
@@ -1118,9 +1209,11 @@ async function skills_sync_to(
     }
   }
 
-  // settings.local.json — project-local 모드에서만, 없을 때만 생성
+  // settings.local.json — Claude Code 전용 파일이므로 .claude/에 직접 둡니다.
+  // project-local 모드에서만, 없을 때만 생성합니다.
   if (options.copyProjectTemplates) {
-    const settingsLocalPath = path.join(claudeDir, "settings.local.json");
+    await mkdir(path.join(root, ".claude"), { recursive: true });
+    const settingsLocalPath = path.join(root, ".claude", "settings.local.json");
     if (!(await exists(settingsLocalPath))) {
       try {
         const settingsContent = {
@@ -1152,52 +1245,75 @@ async function skills_sync_to(
     }
   }
 
-  // CLAUDE.md 복사/업데이트
-  if (await exists(sourceClaudeMd)) {
-    try {
-      const targetClaudeMd = path.join(claudeDir, "CLAUDE.md");
-      const rawContent = await readFile(sourceClaudeMd, "utf-8");
-      // 글로벌 모드에서는 상대 경로를 절대 경로로 변환합니다
-      const sourceContent = options.isGlobal
-        ? rawContent.replaceAll(".claude/skills/sonamu/", "~/.claude/skills/sonamu/")
-        : rawContent;
+  console.log(
+    chalk.dim(
+      `\n  To also write the skill index into this project's AGENTS.md, run 'sonamu skills index'.`,
+    ),
+  );
+}
 
-      if (await exists(targetClaudeMd)) {
-        const targetContent = await readFile(targetClaudeMd, "utf-8");
-        const startMarker = "<!-- SONAMU:START -->";
-        const endMarker = "<!-- SONAMU:END -->";
-        if (targetContent.includes(startMarker) && targetContent.includes(endMarker)) {
-          const startIdx = targetContent.indexOf(startMarker);
-          const endIdx = targetContent.indexOf(endMarker);
+/**
+ * 루트 스킬(`sonamu`)의 라우팅 테이블과 공통 규약을 프로젝트 AGENTS.md에 씁니다.
+ *
+ * 개별 스킬의 description은 각자의 발동 순간에만 걸리므로, 어느 스킬에도 맞지
+ * 않는 작업에서는 아무것도 안 걸립니다. 상시 로드되는 AGENTS.md에 인덱스를 두면
+ * 그 공백을 메울 수 있습니다.
+ *
+ * 다만 사용자의 에이전트 프롬프트 파일을 고치는 동작이므로 `skills sync`에
+ * 포함하지 않고, 사용자가 명시적으로 실행할 때만 수행합니다.
+ * `<!-- SONAMU:START -->` ~ `<!-- SONAMU:END -->` 구간만 갱신하며 나머지는 보존합니다.
+ */
+async function skills_index() {
+  const workspaceRoot = await findWorkspaceRoot();
+  const sourceBase = path.resolve(import.meta.dirname, "..", "..", "src", "skills");
+  const rootSkill = path.join(sourceBase, "sonamu", "SKILL.md");
 
-          if (startIdx !== -1 && endIdx !== -1 && startIdx < endIdx) {
-            const before = targetContent.substring(0, startIdx);
-            const after = targetContent.substring(endIdx + endMarker.length);
-            const newContent = `${before}${startMarker}\n${sourceContent}\n${endMarker}${after}`;
-            await writeFile(targetClaudeMd, newContent);
-            console.log(chalk.green(`✓ CLAUDE.md updated (marker region)`));
-          } else {
-            console.log(chalk.yellow(`⏭ CLAUDE.md marker positions invalid, skipped`));
-          }
-        } else {
-          // 마커가 없는 기존 CLAUDE.md에 Sonamu 섹션을 추가합니다
-          const appended = `${targetContent.trimEnd()}\n\n<!-- SONAMU:START -->\n${sourceContent}\n<!-- SONAMU:END -->\n`;
-          await writeFile(targetClaudeMd, appended);
-          console.log(chalk.green(`✓ CLAUDE.md updated (appended Sonamu section)`));
-        }
-      } else {
-        const withMarkers = `<!-- SONAMU:START -->\n${sourceContent}\n<!-- SONAMU:END -->\n`;
-        await writeFile(targetClaudeMd, withMarkers);
-        console.log(chalk.green(`✓ CLAUDE.md created`));
-      }
-    } catch (error) {
-      console.error(
-        chalk.red(
-          `✗ Failed to update CLAUDE.md: ${error instanceof Error ? error.message : String(error)}`,
-        ),
-      );
+  if (!(await exists(rootSkill))) {
+    console.log(chalk.yellow("Root skill not found in sonamu package."));
+    return;
+  }
+
+  // frontmatter는 스킬 메타데이터이므로 주입 대상에서 제외합니다
+  const body = (await readFile(rootSkill, "utf-8")).replace(/^---\n[\s\S]*?\n---\n+/, "");
+
+  const startMarker = "<!-- SONAMU:START -->";
+  const endMarker = "<!-- SONAMU:END -->";
+  const section = `${startMarker}\n${body.trim()}\n${endMarker}`;
+
+  const targetPath = path.join(workspaceRoot, "AGENTS.md");
+  const existing = (await exists(targetPath)) ? await readFile(targetPath, "utf-8") : undefined;
+
+  let next: string;
+  let action: string;
+  if (existing === undefined) {
+    next = `${section}\n`;
+    action = "created";
+  } else {
+    const startIdx = existing.indexOf(startMarker);
+    const endIdx = existing.indexOf(endMarker);
+    if (startIdx !== -1 && endIdx !== -1 && startIdx < endIdx) {
+      next = existing.slice(0, startIdx) + section + existing.slice(endIdx + endMarker.length);
+      action = "updated";
+    } else {
+      next = `${existing.trimEnd()}\n\n${section}\n`;
+      action = "appended";
     }
   }
+
+  if (next === existing) {
+    console.log(chalk.dim(`⏭ AGENTS.md already up to date`));
+    return;
+  }
+
+  await writeFile(targetPath, next);
+  console.log(chalk.green(`✓ AGENTS.md ${action} (Sonamu marker region)`));
+
+  if (!(await exists(path.join(workspaceRoot, "CLAUDE.md")))) {
+    await symlink("AGENTS.md", path.join(workspaceRoot, "CLAUDE.md"));
+    console.log(chalk.dim(`  CLAUDE.md → AGENTS.md`));
+  }
+
+  console.log(chalk.dim(`  Remove the marker region to undo.`));
 }
 
 async function skillsCopy(src: string, dest: string) {
@@ -1220,7 +1336,8 @@ async function skillsCopy(src: string, dest: string) {
  */
 async function skills_create(name: string) {
   const workspaceRoot = await findWorkspaceRoot();
-  const localDir = path.join(workspaceRoot, ".claude", "skills", "local");
+  // 원본은 에이전트 중립인 .agents/에 두고, .claude/에는 심볼릭 링크만 겁니다.
+  const localDir = path.join(workspaceRoot, ".agents", "skills", "local");
 
   // === 파일명 검증 및 Sanitize ===
   if (!name || name.trim() === "") {
@@ -1301,6 +1418,7 @@ async function skills_create(name: string) {
   }
 
   await mkdir(localDir, { recursive: true });
+  await linkClaudeEntry(workspaceRoot, path.join("skills", "local"));
 
   const template = `---
 name: ${sanitized}

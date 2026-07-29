@@ -1,36 +1,30 @@
-# Guide for Coding Agents - modules/sonamu/src/skills
+# Guide for Coding Agents - modules/create-sonamu
 
-Inherits rules from:
+Inherits root rules from `../../AGENTS.md`.
 
-- `../../../../AGENTS.md`
-- `../../AGENTS.md`
+## Module role
 
-## Directory role
+- `modules/create-sonamu` is the project generator (`pnpm create sonamu`).
+- `index.ts` drives the prompts, copies `template/`, and writes the generated
+  `package.json` and `pnpm-workspace.yaml`.
+- `template/` is the source of every generated project. Anything wrong here
+  ships to every new project.
 
-- Source-of-truth skill documents for Sonamu-related agent guidance.
+## Known issue
 
-## Skill reference rule
+`index.ts` copies `template/src/packages/api/package.json` changing only `name`,
+so a generated project keeps `"sonamu": "workspace:^"` while its generated
+`pnpm-workspace.yaml` lists only `packages/api` and `packages/web`. Outside the
+Sonamu monorepo that dependency cannot resolve and the user must set up a link
+by hand. Fixing the generated dependency is the real remedy; the manual steps
+are documented in the `sonamu-init` skill as a stopgap.
 
-- Read `modules/sonamu/src/skills/sonamu/SKILL.md` before Sonamu feature work that uses skill context.
-- Keep references under this directory consistent when adding/updating skill docs.
+## Validation requirements
 
-## Skill reference rule (user projects)
-
-When working in a user Sonamu project, always read skill files directly using the Read tool:
-
-```
-.claude/skills/sonamu/{skill-name}.md
-```
-
-Examples:
-
-- Migration → Read `.claude/skills/sonamu/migration.md`
-- Entity creation → Read `.claude/skills/sonamu/entity-basic.md`
-- Full workflow → Read `.claude/skills/sonamu/workflow.md`
-- Scaffolding → Read `.claude/skills/sonamu/scaffolding.md`
-
-See `.claude/skills/sonamu/SKILL.md` for the full skill list.
+- For template changes, generate a project and verify it installs and builds.
+- Template files are excluded from oxfmt (see root `.oxfmtrc.json`), so match
+  the surrounding style by hand.
 
 ## Cross-workspace gate
 
-- For changes in this scope, root `pnpm check` (oxlint + oxfmt) must pass before handoff.
+- For changes in this scope, root `pnpm check` must pass before handoff.

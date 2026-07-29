@@ -49,5 +49,8 @@ Before performing a task, read and follow `.agents/agents/orchestrator.md`.
 
 ## Sonamu Guidance
 
-Sonamu framework guidance lives under `modules/sonamu/src/skills/sonamu/`.
-Read the applicable skills before changing framework behavior.
+Sonamu framework guidance lives in the `sonamu-*` skills under
+`modules/sonamu/src/skills/`. Each directory is one Claude Code skill
+(`SKILL.md` entry point plus `references/`). Read the applicable skill before
+changing framework behavior, and see `modules/sonamu/src/skills/AGENTS.md` for
+the boundary and size rules that govern them.

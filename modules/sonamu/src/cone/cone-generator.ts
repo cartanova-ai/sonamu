@@ -88,7 +88,7 @@ function getApiKey(): string {
  * 도메인별 {domain}.contract.md와 architecture.md를 읽어 컨텍스트로 반환합니다.
  *
  * - contract/{domain}/{domain}.contract.md: 도메인 규칙과 결정 근거 (주 참조 대상)
- * - .claude/skills/project/architecture.md: 엔티티 설계 구조 (보조 참조)
+ * - .agents/skills/project/architecture.md: 엔티티 설계 구조 (보조 참조)
  *
  * cone 생성 시 LLM에게 전달하여 도메인 맥락에 맞는 메타데이터를 생성하도록 합니다.
  */
@@ -122,19 +122,24 @@ function readProjectSkills(): string {
       }
     }
 
-    // .claude/skills/project/architecture.md 보조 참조
-    const architecturePath = path.join(
-      projectRoot,
-      ".claude",
-      "skills",
-      "project",
-      "architecture.md",
-    );
-    if (fs.existsSync(architecturePath)) {
+    // architecture.md 보조 참조.
+    // 원본은 .agents/에 있고, 구버전 프로젝트는 .claude/에 남아 있을 수 있습니다.
+    for (const agentDir of [".agents", ".claude"]) {
+      const architecturePath = path.join(
+        projectRoot,
+        agentDir,
+        "skills",
+        "project",
+        "architecture.md",
+      );
+      if (!fs.existsSync(architecturePath)) {
+        continue;
+      }
       const content = fs.readFileSync(architecturePath, "utf-8").trim();
       if (content) {
         contents.push(`--- architecture.md ---\n${content}`);
       }
+      break;
     }
 
     return contents.join("\n\n");
