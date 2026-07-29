@@ -125,21 +125,20 @@ web/src/services/
 
 ### API (`packages/api/`)
 
-| 명령어                             | 설명                                      |
-| ---------------------------------- | ----------------------------------------- |
-| `pnpm dev`                         | 통합 개발 서버 시작 (= `sonamu dev all`)  |
-| `pnpm build`                       | 전체 프로덕션 빌드 (= `sonamu build all`) |
-| `pnpm build api`                   | API만 빌드 (= `sonamu build api`)         |
-| `pnpm build web`                   | Web만 빌드 (= `sonamu build web`)         |
-| `pnpm start`                       | 프로덕션 서버 시작                        |
-| `pnpm test`                        | 테스트 실행                               |
-| `pnpm docker:up`                   | Docker DB 시작                            |
-| `pnpm docker:down`                 | Docker DB 중지                            |
-| `pnpm docker:reset`                | Docker DB 초기화 (볼륨 삭제 후 재시작)    |
-| `pnpm dump`                        | 테스트 DB 덤프 생성                       |
-| `pnpm seed`                        | 덤프를 fixture DB에 적용                  |
-| `pnpm sonamu skills sync`          | 공식 Skills 동기화                        |
-| `pnpm sonamu skills create <name>` | 커스텀 Skill 생성                         |
+| 명령어                    | 설명                                      |
+| ------------------------- | ----------------------------------------- |
+| `pnpm dev`                | 통합 개발 서버 시작 (= `sonamu dev all`)  |
+| `pnpm build`              | 전체 프로덕션 빌드 (= `sonamu build all`) |
+| `pnpm build api`          | API만 빌드 (= `sonamu build api`)         |
+| `pnpm build web`          | Web만 빌드 (= `sonamu build web`)         |
+| `pnpm start`              | 프로덕션 서버 시작                        |
+| `pnpm test`               | 테스트 실행                               |
+| `pnpm docker:up`          | Docker DB 시작                            |
+| `pnpm docker:down`        | Docker DB 중지                            |
+| `pnpm docker:reset`       | Docker DB 초기화 (볼륨 삭제 후 재시작)    |
+| `pnpm dump`               | 테스트 DB 덤프 생성                       |
+| `pnpm seed`               | 덤프를 fixture DB에 적용                  |
+| `pnpm sonamu skills sync` | 공식 Skills 동기화                        |
 
 ### 개발 서버 모드
 
@@ -239,17 +238,17 @@ pnpm sonamu fixture sync
 ### Skills 디렉토리 구조
 
 ```
+.agents/
+└── skills/              # 원본 (에이전트 공통)
+    ├── sonamu/          # 루트 스킬 — 라우팅 테이블
+    │   └── SKILL.md
+    ├── sonamu-entity/   # 작업별 스킬
+    │   ├── SKILL.md
+    │   └── references/
+    └── ...
+
 .claude/
-├── skills/
-│   ├── sonamu/          # 공식 Sonamu Skills (자동 동기화)
-│   │   ├── api.md
-│   │   ├── entity-basic.md
-│   │   ├── model.md
-│   │   ├── puri.md
-│   │   └── ...
-│   └── local/           # 프로젝트별 커스텀 Skills
-│       └── my-skill.md
-└── CLAUDE.md            # 프로젝트 AI 가이드 (Sonamu 섹션 포함)
+└── skills/              # 위 디렉토리들을 가리키는 심볼릭 링크
 ```
 
 ### Skills 최신화
@@ -265,70 +264,26 @@ pnpm sonamu skills sync
 - 최신 공식 Skills를 `.claude/skills/sonamu`로 동기화
 - `CLAUDE.md`의 Sonamu 관련 섹션을 업데이트
 
-### 커스텀 Skill 생성
-
-프로젝트 개발 중 발견한 해결 방법이나 팁을 Skill로 저장할 수 있습니다:
-
-```bash
-pnpm sonamu skills create migration-helper
-```
-
-생성된 `.claude/skills/local/migration-helper.md` 파일을 편집:
-
-```markdown
----
-name: migration-helper
-category: other
-created_at: 2026-02-03
-status: draft
----
-
-# 마이그레이션 FK 순서 문제 해결
-
-## 상황
-
-마이그레이션에서 외래키를 추가할 때 테이블 생성 순서가 맞지 않아 에러 발생
-
-## 해결 방법
-
-참조되는 테이블을 먼저 생성하고, 참조하는 테이블을 나중에 생성
-
-## 코드 예시
-
-\`\`\`typescript
-// 1. users 테이블 먼저 생성
-await knex.schema.createTable('users', ...)
-
-// 2. posts 테이블 나중에 생성 (users 참조)
-await knex.schema.createTable('posts', (table) => {
-table.integer('user_id').references('users.id')
-})
-\`\`\`
-```
-
-**파일명 규칙**:
-
-- 자동으로 안전한 이름으로 변환됩니다
-- 예: `"bug fix"` → `bug-fix.md`
-- 예: `"마이그레이션/헬퍼"` → `마이그레이션-헬퍼.md`
-
 ### 주요 Skills
 
-| Skill                | 설명                                        |
-| -------------------- | ------------------------------------------- |
-| **project-init**     | 프로젝트 생성 및 초기화                     |
-| **entity-basic**     | Entity 생성/수정 기본                       |
-| **entity-relations** | Entity 관계 정의 (BelongsToOne, HasMany 등) |
-| **model**            | Model 클래스 작성 패턴                      |
-| **api**              | @api 데코레이터로 API 노출                  |
-| **puri**             | 타입 안전 쿼리 빌더 사용법                  |
-| **subset**           | API 응답 필드 범위 정의                     |
-| **upsert**           | 관계 데이터 저장 (UpsertBuilder)            |
-| **testing**          | 테스트 작성 (bootstrap, test, testAs)       |
-| **migration**        | 데이터베이스 마이그레이션                   |
-| **frontend**         | 프론트엔드에서 API 호출                     |
-| **i18n**             | 다국어 지원                                 |
-| **workflow**         | 전체 개발 워크플로우                        |
+| Skill                | 설명                                               |
+| -------------------- | -------------------------------------------------- |
+| **sonamu**           | 루트 스킬 — 작업에 맞는 스킬로 라우팅, 공통 규약   |
+| **sonamu-init**      | 프로젝트 생성, 로컬 링크 설정                      |
+| **sonamu-config**    | .env / sonamu.config.ts, Docker DB, 포트 충돌      |
+| **sonamu-entity**    | entity.json, 필드, 관계, subset, sync 오류         |
+| **sonamu-migration** | 마이그레이션 생성·적용, FK 순서, PK 타입 변경      |
+| **sonamu-query**     | Model CRUD, Puri 쿼리, UpsertBuilder, FTS/pgvector |
+| **sonamu-api**       | @api / @upload 엔드포인트                          |
+| **sonamu-auth**      | better-auth, Guards, 세션, 플러그인                |
+| **sonamu-i18n**      | SD 번역 키, enum 라벨                              |
+| **sonamu-testing**   | 테스트 작성, sonamu test 실행, DevRunner           |
+| **sonamu-fixture**   | fixture 생성/조회, cone.note, 3-Tier DB            |
+| **sonamu-naite**     | 값 추적으로 예상 밖 동작 원인 규명                 |
+| **sonamu-frontend**  | Service 호출, TanStack Query, 폼/목록, 스캐폴딩    |
+| **sonamu-vector**    | 임베딩, 청킹, 하이브리드 검색                      |
+| **sonamu-tasks**     | 백그라운드 잡, cron, durable step                  |
+| **sonamu-ai-agents** | BaseAgentClass, @tools                             |
 
 ### Claude Code 사용 예시
 

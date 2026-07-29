@@ -100,8 +100,8 @@ Then, before writing anything:
 3. Put horizontal rules in the root `sonamu` skill, not in a task skill.
 4. Get user confirmation before applying.
 
-Project-specific notes belong in that project's own `.agents/skills/local/`, created with
-`pnpm sonamu skills create <name>` — never in this directory.
+Project-specific notes belong in that project's own skill directory
+(`.agents/skills/<name>/SKILL.md`), written by hand — never in this directory.
 
 ## Cross-workspace gate
 
