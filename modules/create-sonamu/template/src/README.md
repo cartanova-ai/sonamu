@@ -279,7 +279,6 @@ pnpm sonamu skills index
 | Skill                | 설명                                               |
 | -------------------- | -------------------------------------------------- |
 | **sonamu**           | 루트 스킬 — 작업에 맞는 스킬로 라우팅, 공통 규약   |
-| **sonamu-init**      | 프로젝트 생성, 로컬 링크 설정                      |
 | **sonamu-config**    | .env / sonamu.config.ts, Docker DB, 포트 충돌      |
 | **sonamu-entity**    | entity.json, 필드, 관계, subset, sync 오류         |
 | **sonamu-migration** | 마이그레이션 생성·적용, FK 순서, PK 타입 변경      |

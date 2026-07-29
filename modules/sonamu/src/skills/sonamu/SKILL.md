@@ -22,7 +22,6 @@ below and invoke it rather than working from memory.
 | running fixture gen/fetch/explore, writing cone.note metadata for LLM generation, syncing between the development, test, and fixture databases, or when a fixture fails on a foreign key or unique constraint | `sonamu-fixture` |
 | calling a generated Service, wiring a TanStack Query hook, building a form or list view, or when a scaffolded view fails to compile | `sonamu-frontend` |
 | registering labels for a new entity or enum, adding a language, or a UI string renders as a raw key | `sonamu-i18n` |
-| running create-sonamu, linking a project to a local Sonamu checkout, or working through the first install, build, migrate, and scaffold sequence | `sonamu-init` |
 | a schema change needs a migration, a migration fails or conflicts, FK ordering breaks an apply, or a primary key type must change | `sonamu-migration` |
 | a query or save produces the wrong result and the cause is unclear, or when a test needs to assert on internal state | `sonamu-naite` |
 | implementing a Model CRUD method, writing a SELECT/WHERE/JOIN query, batch-saving relation data, or when a query returns unexpected rows or an excessively deep type error | `sonamu-query` |

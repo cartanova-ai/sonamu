@@ -10,14 +10,16 @@ Inherits root rules from `../../AGENTS.md`.
 - `template/` is the source of every generated project. Anything wrong here
   ships to every new project.
 
-## Known issue
+## Dependency versions in generated projects
 
-`index.ts` copies `template/src/packages/api/package.json` changing only `name`,
-so a generated project keeps `"sonamu": "workspace:^"` while its generated
-`pnpm-workspace.yaml` lists only `packages/api` and `packages/web`. Outside the
-Sonamu monorepo that dependency cannot resolve and the user must set up a link
-by hand. Fixing the generated dependency is the real remedy; the manual steps
-are documented in the `sonamu-init` skill as a stopgap.
+The template declares `"sonamu": "workspace:^"`, and `scripts/prepublish.mjs` substitutes the
+current versions before an npm publish (`postpublish.mjs` restores the originals). The published
+tarball therefore ships resolvable versions — running the generator from this monorepo is the
+only path that leaves `workspace:^` in place.
+
+Those substituted versions freeze at create-sonamu's publish time, and a caret on a `0.x`
+version does not cross a minor. create-sonamu@0.2.6 pins `^0.9.12` while sonamu is at 0.10.5, so
+new projects start a minor behind until create-sonamu is republished.
 
 ## Validation requirements
 
