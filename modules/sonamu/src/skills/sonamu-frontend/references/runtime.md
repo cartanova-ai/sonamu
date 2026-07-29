@@ -115,9 +115,46 @@ registerSSR({
 });
 ```
 
-## Initial Project Setup
+## Project Name Change
 
-**→ See the "Project Name Change" section in `sonamu-init`** (change 4 files: index.html, \_\_root.tsx, index.tsx, Sidebar.tsx)
+After generating the project, you need to replace the "Sonamu" text in the frontend with your project name.
+
+**4 files to update:**
+
+1. **`packages/web/index.html`** - Browser tab title
+
+```html
+<title>{project-name}</title>
+```
+
+2. **`packages/web/src/routes/__root.tsx`** - TanStack Router head configuration (most important!)
+
+```typescript
+head: () => ({
+  meta: [{ title: "{project-name}" }],
+}),
+```
+
+**Important:** If you don't update `__root.tsx`, the title will revert to "Sonamu" on HMR!
+
+3. **`packages/web/src/routes/index.tsx`** - Main page title
+
+```tsx
+<h1 className="text-2xl font-bold mb-4">Welcome to {project - name}</h1>
+```
+
+4. **`packages/web/src/components/Sidebar.tsx`** - Sidebar app name
+
+```typescript
+const title = isAdmin ? "Admin" : "{project-name}";
+```
+
+**How to verify:**
+
+- Check that the project name is shown in the browser tab
+- Confirm that the tab title does not change on file save via HMR (if it does, `__root.tsx` is missing)
+
+---
 
 ## Rules
 
