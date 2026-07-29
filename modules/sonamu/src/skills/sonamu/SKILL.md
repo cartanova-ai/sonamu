@@ -1,256 +1,76 @@
 ---
 name: sonamu
-description: Sonamu TypeScript full-stack framework development guide. Entity, Model, API, testing, and frontend integration. Use when developing with Sonamu framework.
+description: Entry point for any work in a Sonamu project. Routes to the specific Sonamu skill for the task at hand, and carries the conventions that apply to every change. Use at the start of Sonamu work, or whenever it is unclear which Sonamu skill covers the problem.
 ---
 
-# Sonamu Framework Skills
+# Sonamu
 
-Claude Code skill for developing projects with the Sonamu framework.
+Sonamu is a TypeScript full-stack framework. Work is split across focused skills — find yours
+below and invoke it rather than working from memory.
 
-## CRITICAL: Ask one question at a time
+## Skill index
 
-**MUST ask questions one at a time. NEVER overwhelm users with multiple questions.**
+<!-- SKILL-INDEX:START -->
 
-### MUST DO
+| Situation | Skill |
+| --- | --- |
+| building AI agents with tool-use capabilities | `sonamu-ai-agents` |
+| exposing Model methods as API endpoints | `sonamu-api` |
+| setting up authentication or implementing auth-related features | `sonamu-auth` |
+| editing .env or sonamu.config.ts, setting up auth/guards/storage/cache/logging options, starting the Docker DB, resolving port conflicts, or managing the 3-tier development/test/fixture databases | `sonamu-config` |
+| creating or editing entity.json, choosing field types, setting up BelongsToOne/HasMany/ManyToMany/parentId relationships, defining subsets, or resolving entity schema validation and sync errors | `sonamu-entity` |
+| running fixture gen/fetch/explore, writing cone.note metadata for LLM-based generation, resolving fixture FK or unique-constraint failures, or syncing between the development, test, and fixture databases | `sonamu-fixture` |
+| calling generated Services, wiring TanStack Query hooks, building forms with useTypeForm, list views with useListParams, Sonamu UI components, or fixing scaffolding errors in generated views | `sonamu-frontend` |
+| implementing internationalization | `sonamu-i18n` |
+| creating a new Sonamu project or wiring one to a local Sonamu checkout | `sonamu-init` |
+| modifying database schema | `sonamu-migration` |
+| tracing/debugging Model internals, verifying queries, or inspecting UpsertBuilder behavior | `sonamu-naite` |
+| implementing Model CRUD methods, writing Puri SELECT/WHERE/JOIN queries, running full-text or pgvector search, batch-saving relation data with UpsertBuilder, or when a query returns unexpected results | `sonamu-query` |
+| implementing background workflows, scheduled tasks, or multi-step async processes | `sonamu-tasks` |
+| authoring Model/API test files, calling bootstrap/test/testAs, asserting with Naite.get or expectQuery/expectUB, mocking, or running `sonamu test` | `sonamu-testing` |
+| implementing vector search, semantic search, or text embedding features | `sonamu-vector` |
 
-- One question → wait for user response → next question
-- Keep questions concise
-- Present choices clearly when options are available
+<!-- SKILL-INDEX:END -->
 
-### NEVER DO
-
-- List multiple questions at once
-- Ask questions alongside long explanations
-- Output a checklist of confirmation items all at once
-
----
-
-## Development Flow
-
-```
-PHASE 0: Project creation and initial setup  (create project → identify domains → auth generate → Users sequence setup)
-PHASE 1: Domain logic documentation          (write contract/{domain}/*.contract.md per domain → user confirmation)
-PHASE 2: Entity design                       (design with user confirmation)
-PHASE 3: Entity creation and migration       (entity.json + migration + cone + scaffolding)
-PHASE 4: Testing and API implementation      (contract → Claim → AC → implement, repeat)
-PHASE 5: Fixture generation                  (generate with LLM after user approval)
-PHASE 6: Frontend development                (proceed in batches with user confirmation)
-```
-
-**Full details:** see `.claude/workflow/project_init.md`
-
-### Starting Point Determination
-
-**Begin from the PHASE that matches the user's instruction.** Do not always start from PHASE 0.
-
-| User instruction                    | Starting PHASE | Prerequisites to verify                                                               |
-| ----------------------------------- | -------------- | ------------------------------------------------------------------------------------- |
-| "Create a new project"              | PHASE 0        | —                                                                                     |
-| "Write contract" / "Analyze domain" | PHASE 1        | Domain list identified                                                                |
-| "Add entity" / "Create entity"      | PHASE 2        | Project exists, dev server running, read contract/\*_/_.contract.md, PHASE 1 complete |
-| "Write tests" / "Implement API"     | PHASE 4        | entity.json exists, migration complete, scaffolding complete                          |
-| "Generate fixtures"                 | PHASE 5        | Tests passing, cone.note exists                                                       |
-| "Develop frontend"                  | PHASE 6        | API implementation complete, contract/\*_/_.contract.md reviewed                      |
-
-**Mid-entry rules:**
-
-1. If `contract/**/*.contract.md` and `skills/project/architecture.md` exist, read them first.
-2. Verify prerequisites for the target PHASE.
-3. If prerequisites are not met, inform the user and begin from the required step.
-4. Within a PHASE, follow the numbered steps in `.claude/workflow/project_init.md` in order. Do not skip any step or merge steps on your own judgment.
+Nothing matched? The problem is probably not Sonamu-specific — proceed normally.
 
 ---
 
-## Project Document System
+## Conventions that apply to every change
 
-### CRITICAL: Read these before starting any task
+These are not tied to one task, so no skill will surface them at the right moment. Copy them
+into your project's own `AGENTS.md` if you want them enforced on every turn.
 
-**Before starting any project task, always read the following documents.**
+### TypeScript type safety
 
-```
-contract/
-└── {domain}/
-    └── {domain}.contract.md  # PHASE 1: domain rules + decision rationale (permanent; update alongside code changes)
+- `as any` and `as unknown as T` are strictly prohibited.
+- Resolve type errors through correct type annotations, generic constraints, type narrowing, or
+  interface extension.
+- Do not use `as any` to work around "excessively deep" or similar TypeScript inference limits —
+  find the correct access pattern instead (e.g. use `getPuri("r")` directly rather than casting
+  the result).
+- Chaining methods after `as any` bypasses all TypeScript signature checks and leads directly to
+  runtime bugs.
+- Non-null assertion (`!`) is prohibited. Use optional chaining (`?.`) or type guard filters
+  instead.
 
-.claude/skills/project/
-└── architecture.md      # entity design + system architecture
+### Code quality gate
 
-tmp/claims/              # in-progress Claim YAML (discard after completion)
-```
+After editing any `.ts` or `.tsx` file, run both before considering the task done:
 
-**Code is the ground truth.** `*.contract.md` records the rationale behind code decisions — it is not a spec that precedes the code. When code and `*.contract.md` conflict, the code takes precedence.
+1. `npx tsc --noEmit --skipLibCheck` — type errors
+2. `pnpm check` — lint and format (oxlint + oxfmt)
 
-### Domain `*.contract.md`
+Do not skip lint/format even when tsc passes. oxlint catches `noNonNullAssertion`, import order,
+and other issues that tsc does not.
 
-Documents domain rules in a cohesive form and captures decision rationale that cannot be inferred from code alone.
-
-```markdown
-# {Domain} Business Logic
-
-## Rules
-
-- Refunds allowed only within 7 days of payment [Rationale: PG provider policy]
-- Order status transitions: pending → confirmed → shipped → completed
-
-## Workflow
-
-1. ...
-```
-
-**Two development paths:**
-
-- **New**: write `*.contract.md` → Claim → AC (test name) → implement (TDD)
-- **Change**: modify code → register Claim → verify/update `*.contract.md` (record change rationale)
-
-**Update rules:**
-
-- When code changes, check affected domain rules and update `*.contract.md` together
-- Record the reason and decision rationale — this keeps `*.contract.md` alive
-
-### architecture.md
-
-**When:** designing entities or discussing system architecture
-**Content:** entity structure and relationships, database schema, system component structure
-
-### Safe after compacting
-
-Documents are persisted as files, so project context is preserved even when the conversation is compacted.
-
----
-
-## Skills List
-
-| Skill                                | File                             | Purpose                                                                                                  |
-| ------------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **CDD (AC+Claim-based development)** | `cdd.md`                         | **`*.contract.md` (domain rules), AC (test names), Claim (work instructions) — 3-artifact system**       |
-| Project creation                     | `create-sonamu.md`               | create-sonamu CLI options                                                                                |
-| Project initialization               | `project-init.md`                | Project creation flow and conversation guide                                                             |
-| Project configuration                | `config.md`                      | .env, sonamu.config.ts settings                                                                          |
-| Database                             | `database.md`                    | DB setup, port conflict resolution, 3-Tier structure                                                     |
-| Entity validation                    | `entity-validation-checklist.md` | Step-by-step entity creation checklist                                                                   |
-| Entity basics                        | `entity-basic.md`                | Entity JSON structure, field types                                                                       |
-| Entity relations                     | `entity-relations.md`            | BelongsToOne, HasMany, ManyToMany, FK code patterns                                                      |
-| Subset                               | `subset.md`                      | Response field scope definition                                                                          |
-| Model                                | `model.md`                       | BaseModelClass, CRUD patterns                                                                            |
-| API                                  | `api.md`                         | @api decorator                                                                                           |
-| Puri                                 | `puri.md`                        | SQL query builder                                                                                        |
-| i18n                                 | `i18n.md`                        | Internationalization, SD functions                                                                       |
-| Upsert                               | `upsert.md`                      | Batch saving of relation data                                                                            |
-| Testing                              | `testing.md`                     | Vitest tests (test/testAs), fixture generation tips                                                      |
-| **DevRunner**                        | `testing-devrunner.md`           | **sonamu test execution, HMR integration, parallel tests, sonamu.config.ts test settings**               |
-| **Naite**                            | `naite.md`                       | **Naite.t()/get() tracing system, chaining filters, trace CLI output**                                   |
-| **Cone**                             | `cone.md`                        | **Cone metadata generation and management (LLM/template)**                                               |
-| **Fixture CLI**                      | `fixture-cli.md`                 | **fixture gen/fetch/explore commands, 3-Tier DB usage**                                                  |
-| Migration                            | `migration.md`                   | DB schema migration, PK type changes                                                                     |
-| Auth                                 | `auth.md`                        | better-auth system (auto entity generation, Guards, Context)                                             |
-| Auth Migration                       | `auth-migration.md`              | User.id type changes for external auth (e.g., better-auth)                                               |
-| **Auth Plugins**                     | `auth-plugins.md`                | **better-auth plugin wrappers (admin, organization, 2fa, passkey, etc. — 10 types), snake_case mapping** |
-| **Vector search**                    | `vector.md`                      | **pgvector embeddings (Voyage AI/OpenAI), chunking, hybrid search**                                      |
-| Puri query builder                   | `puri.md`                        | SELECT, WHERE, JOIN, FTS, pg_trgm fuzzy search, pgvector                                                 |
-| **AI Agents**                        | `ai-agents.md`                   | **BaseAgentClass, @tools decorator, ToolLoopAgent, AsyncLocalStorage state**                             |
-| **Tasks**                            | `tasks.md`                       | **Background workflows, cron scheduling, durable steps, retry policies**                                 |
-| **Skill contribution**               | `skill-contribution.md`          | **Troubleshooting → skill contribution workflow (matching, decision, format, approval)**                 |
-| **Framework change**                 | `framework-change.md`            | **Criteria for framework fix vs. project workaround. @upload parameter pattern**                         |
-| Frontend                             | `frontend.md`                    | Service, TanStack Query                                                                                  |
-| Scaffolding                          | `scaffolding.md`                 | Resolving UI scaffolding errors                                                                          |
-
-## Task-to-Skill Reference
-
-**CRITICAL: When building a new system from scratch, start with `.claude/workflow/project_init.md`!**
-
-| Task                                                        | Reference Skill                                                          |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Build an entire system from scratch**                     | **`.claude/workflow/project_init.md` (7-phase master guide)**            |
-| **Domain logic documentation / AC+Claim-based development** | **cdd.md**                                                               |
-| Project creation                                            | create-sonamu, project-init                                              |
-| Project configuration                                       | config                                                                   |
-| Sonamu local dev setup                                      | config                                                                   |
-| DB setup / port conflict                                    | database, config                                                         |
-| **3-Tier DB structure**                                     | **database, fixture-cli**                                                |
-| **Cone metadata generation/management**                     | **cone**                                                                 |
-| Entity / field definition                                   | entity-basic                                                             |
-| Relationship setup                                          | entity-relations                                                         |
-| **BelongsToOne FK code usage**                              | **entity-relations**                                                     |
-| API response field composition                              | subset                                                                   |
-| Data query / save logic                                     | model, puri                                                              |
-| API endpoints                                               | api                                                                      |
-| Batch saving of relation data                               | upsert                                                                   |
-| Writing tests                                               | testing                                                                  |
-| **Running tests (sonamu test)**                             | **testing-devrunner**                                                    |
-| **Naite tracing / debugging**                               | **naite**                                                                |
-| **Fixture data generation/management**                      | **fixture-cli**                                                          |
-| **Test data generation tips**                               | **testing (Fixture data generation tips), fixture-cli (practical tips)** |
-| DB schema changes                                           | migration                                                                |
-| **Auth setup (auth generate, Guards, Context)**             | **auth**                                                                 |
-| PK type changes (better-auth, etc.)                         | auth-migration                                                           |
-| **Adding auth plugins**                                     | **auth-plugins**                                                         |
-| Frontend development                                        | frontend                                                                 |
-| Internationalization / translation                          | i18n                                                                     |
-| Scaffolding errors                                          | scaffolding                                                              |
-| **Vector search / embeddings**                              | **vector**                                                               |
-| **pg_trgm Fuzzy Search**                                    | **puri, entity-basic**                                                   |
-| **AI Agent development**                                    | **ai-agents**                                                            |
-| **Background jobs / scheduling**                            | **tasks**                                                                |
-| **Troubleshooting → skill contribution**                    | **skill-contribution**                                                   |
-| **Framework bug / constraint response**                     | **framework-change**                                                     |
-
-## Skill Selection by CDD Claim Type
-
-**For Planners:** Use this table to populate `required_skills` in each Claim blueprint.
-
-### `surface` — Entity / Schema / Shared Type Work
-
-| Case                        | Required Skills                                                                |
-| --------------------------- | ------------------------------------------------------------------------------ |
-| Add new entity              | `entity-basic`, `entity-relations`, `migration`, `cone`, `fixture-cli`, `i18n` |
-| Define subset               | `entity-basic`, `subset`                                                       |
-| Add auth entity             | `auth`, `auth-migration`                                                       |
-| Add auth plugin             | `auth-plugins`                                                                 |
-| Add batch save structure    | `upsert`                                                                       |
-| Add vector search structure | `vector`, `entity-basic`                                                       |
-| Resolve scaffolding errors  | `scaffolding`                                                                  |
-
-### `test` — Test Writing
-
-| Case                     | Required Skills                |
-| ------------------------ | ------------------------------ |
-| Business logic tests     | `testing`, `testing-devrunner` |
-| Tests requiring fixtures | `testing`, `fixture-cli`       |
-| Debugging / tracing      | `naite`                        |
-
-### `implement` — Business Logic Implementation
-
-| Case                          | Required Skills           |
-| ----------------------------- | ------------------------- |
-| Model CRUD implementation     | `model`, `puri`           |
-| API endpoint implementation   | `api`, `model`            |
-| File upload implementation    | `api`, `framework-change` |
-| SQL query writing             | `puri`                    |
-| Internationalization          | `i18n`                    |
-| Auth guard / session handling | `auth`                    |
-| Auth plugin implementation    | `auth-plugins`            |
-| Batch save implementation     | `upsert`, `model`         |
-| AI Agent implementation       | `ai-agents`               |
-| Background job / scheduling   | `tasks`                   |
-| Vector search implementation  | `vector`, `puri`          |
-| Frontend integration          | `frontend`, `scaffolding` |
-
----
-
-## Command Execution Path
+### Command execution path
 
 All `pnpm` commands are run from the **`packages/api`** directory.
 
 ```bash
 cd packages/api
-pnpm build
 pnpm dev
+pnpm sonamu test
 pnpm sonamu migrate run
 ```
-
-## Source Code References
-
-- Sonamu framework: `sonamu/modules/sonamu/`
-- Example project: `sonamu/examples/miomock/`
-- Official docs: `sonamu/modules/docs/`
-- create-sonamu: `sonamu/modules/create-sonamu/`

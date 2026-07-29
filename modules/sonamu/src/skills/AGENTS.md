@@ -7,76 +7,79 @@ Inherits rules from:
 
 ## Directory role
 
-- Source-of-truth skill documents for Sonamu-related agent guidance.
-
-## Skill reference rule
-
-- Read `modules/sonamu/src/skills/sonamu/SKILL.md` before Sonamu feature work that uses skill context.
-- Keep references under this directory consistent when adding/updating skill docs.
-
-## Skill reference rule (user projects)
-
-When working in a user Sonamu project, always read skill files directly using the Read tool:
+Source of truth for the Sonamu skills that `sonamu skills sync` installs into user projects.
 
 ```
-.claude/skills/sonamu/{skill-name}.md
+skills/
+├── sonamu/                 root skill — routing table + cross-cutting conventions
+├── sonamu-<name>/          each directory is one agent skill
+│   ├── SKILL.md            entry point (target ≤ 12KB, hard limit 20KB)
+│   └── references/*.md     detail, loaded only when needed (hard limit 20KB)
+└── project/                per-project document templates (not overwritten by sync)
 ```
 
-Examples:
+Size limits are enforced by `scripts/check-skill-size.ts`, wired into root `pnpm check`.
+They are derived from measured Expo (max 19.1KB) and Vercel (max 17.3KB) skill sizes.
 
-- Migration → Read `.claude/skills/sonamu/migration.md`
-- Entity creation → Read `.claude/skills/sonamu/entity-basic.md`
-- Full workflow → Read `.claude/skills/sonamu/workflow.md`
-- Scaffolding → Read `.claude/skills/sonamu/scaffolding.md`
+## Skill boundary rule
 
-See `.claude/skills/sonamu/SKILL.md` for the full skill list.
+A document belongs in a skill only if it has a **discrete trigger moment** — a point where an
+agent can decide "now I need this". Content that applies to every turn (type-safety policy,
+lint gates, universal conventions) is horizontal and belongs in the root `sonamu` skill
+instead, because no specific skill will surface it at the right moment.
 
-## Skill contribution trigger
+Split criteria when adding or reorganizing:
 
-- After resolving a troubleshooting issue, suggest the `skill-contribution.md` workflow if the resolution is reusable.
-- If the user explicitly requests (e.g. "add this to skills", "record this"), read `skill-contribution.md` and proceed immediately.
-- Always check existing skills for duplicates before writing. Do not create new files unconditionally.
+1. Documents read together in one task belong in one skill.
+2. Each skill's `description` must state its trigger moment, distinctly from every other skill.
+3. Prefer small duplication over cross-skill references. Skills load independently, so pointing
+   from one skill to another forces both into context.
+
+## Skill index
+
+The root `sonamu` skill carries a generated routing table. It exists because each skill's
+`description` only fires at its own trigger moment — work that matches none of them gets no
+skill at all, and the root skill's broad description catches that case.
+
+Never hand-edit the region between `<!-- SKILL-INDEX:START -->` and `<!-- SKILL-INDEX:END -->`:
+
+```bash
+pnpm skills:index
+```
+
+`pnpm check` fails when the index is stale.
+
+Users who want the table always in context can run `sonamu skills index`, which writes it into
+their project's `AGENTS.md` inside `<!-- SONAMU:START -->` markers. That edits a file the user
+owns, so it is never part of `skills sync` — it only runs when invoked explicitly.
+
+## Contributing a troubleshooting resolution
+
+Only for maintainers of this repository. Skills shipped to user projects describe how to *use*
+Sonamu — never how to contribute to it, and never anything specific to one company or client
+project.
+
+Suggest capturing a resolution when all of these hold:
+
+1. The session went error → investigation → fix → success.
+2. The fix revealed internal framework behavior or an undocumented constraint.
+3. The same problem is likely to hit other projects.
+
+Skip typos, missing imports, project-specific business logic bugs, and one-off environment
+issues.
+
+Then, before writing anything:
+
+1. Find the skill whose trigger moment matches, and read it. Appending to an existing skill is
+   the normal outcome; a new skill is rare and needs a distinct trigger moment of its own.
+2. Check that the content is not already covered. Duplicates are the common failure here.
+3. Put horizontal rules in the root `sonamu` skill, not in a task skill.
+4. Get user confirmation before applying.
+
+Project-specific notes belong in that project's own `.agents/skills/local/`, created with
+`pnpm sonamu skills create <name>` — never in this directory.
 
 ## Cross-workspace gate
 
-- For changes in this scope, root `pnpm check` (oxlint + oxfmt) must pass before handoff.
-
-## TypeScript type safety policy
-
-- `as any` and `as unknown as T` are strictly prohibited.
-- Resolve type errors through correct type annotations, generic constraints, type narrowing, or interface extension.
-- Do not use `as any` to work around "excessively deep" or similar TypeScript inference limits — find the correct access pattern instead (e.g. use `getPuri("r")` directly rather than casting the result).
-- Chaining methods after `as any` bypasses all TypeScript signature checks and leads directly to runtime bugs.
-- Non-null assertion (`!`) is prohibited. Use optional chaining (`?.`) or type guard filters instead.
-
-## Code quality gate
-
-After editing any `.ts` or `.tsx` file, always run both checks before considering the task done:
-
-1. `npx tsc --noEmit --skipLibCheck` — type errors
-2. `pnpm check` — lint and format (oxlint + oxfmt)
-
-Do not skip lint/format check even when tsc passes. oxlint catches `noNonNullAssertion`, import order, and other issues that tsc does not.
-
-## Skill read triggers
-
-Read the listed skill file before attempting any workaround or fix in these situations:
-
-| Situation                                                                   | Read before acting              |
-| --------------------------------------------------------------------------- | ------------------------------- |
-| TypeScript error in Model code (type inference, "excessively deep", etc.)   | `puri.md`, `model.md`           |
-| Writing or modifying a `findMany()` / `executeSubsetQuery()` call           | `model.md`                      |
-| Writing or modifying a `@upload` method                                     | `api.md`                        |
-| Database query returning unexpected results                                 | `puri.md`                       |
-| Migration error or schema change                                            | `migration.md`                  |
-| Starting AC+Claim-based development or writing a Claim                      | `cdd.md`                        |
-| Applying Auth Guards or handling session/permission logic                   | `auth.md`                       |
-| Implementing polymorphic relations with `entity_type` + `entity_id` pattern | `entity-relations.md`           |
-| Writing Puri SELECT / WHERE / JOIN / FTS / pgvector queries                 | `puri.md`                       |
-| Implementing `@upload` file upload or deciding parameter pattern            | `api.md`, `framework-change.md` |
-| Reading or writing files under `contract/rules/`                            | `cdd.md`                        |
-| Implementing `BaseAgentClass` or `@tools` decorator                         | `ai-agents.md`                  |
-| Implementing background jobs or cron scheduling                             | `tasks.md`                      |
-| Batch-saving relation data (upsert)                                         | `upsert.md`                     |
-| Adding a new entity or enum and registering i18n keys                       | `i18n.md`                       |
-| Implementing pgvector embeddings or vector search                           | `vector.md`                     |
+- For changes in this scope, root `pnpm check` (oxlint + oxfmt + skill size + skill index) must
+  pass before handoff.
