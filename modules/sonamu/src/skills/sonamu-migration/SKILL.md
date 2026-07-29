@@ -1,6 +1,6 @@
 ---
 name: sonamu-migration
-description: Sonamu database migration. CREATE/ALTER TABLE, FK ordering, up/down functions. Use when modifying database schema.
+description: Generates and applies Sonamu database migrations. Use when a schema change needs a migration, a migration fails or conflicts, FK ordering breaks an apply, or a primary key type must change. Covers sonamu migrate generate/run/apply/status, up and down functions, and CREATE/ALTER TABLE output.
 ---
 
 # Migration

@@ -1,6 +1,6 @@
 ---
 name: sonamu-testing
-description: Write and run Sonamu Vitest tests. Use when authoring Model/API test files, calling bootstrap/test/testAs, asserting with Naite.get or expectQuery/expectUB, mocking, or running `sonamu test`.
+description: Writes and runs Sonamu Vitest tests. Use when authoring a Model or API test, asserting on query behaviour, mocking a dependency, or when sonamu test fails to run. Covers bootstrap, test and testAs, createFixtureLoader, Naite.get assertions, expectQuery, expectUB, DevRunner, HMR integration, and parallel workers.
 ---
 
 # Sonamu Test System

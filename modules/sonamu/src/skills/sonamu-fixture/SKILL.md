@@ -1,6 +1,6 @@
 ---
 name: sonamu-fixture
-description: Generate and manage Sonamu test data. Use when running fixture gen/fetch/explore, writing cone.note metadata for LLM-based generation, resolving fixture FK or unique-constraint failures, or syncing between the development, test, and fixture databases.
+description: Generates and manages Sonamu test data. Use when running fixture gen/fetch/explore, writing cone.note metadata for LLM generation, syncing between the development, test, and fixture databases, or when a fixture fails on a foreign key or unique constraint. Covers the 3-tier DB structure, dataSource strategies, fixtureGenerator, and --use-llm.
 ---
 
 # Fixture CLI Usage Guide

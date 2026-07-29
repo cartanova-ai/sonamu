@@ -1,6 +1,6 @@
 ---
 name: sonamu
-description: Entry point for any work in a Sonamu project. Routes to the specific Sonamu skill for the task at hand, and carries the conventions that apply to every change. Use at the start of Sonamu work, or whenever it is unclear which Sonamu skill covers the problem.
+description: Routes Sonamu work to the right skill and carries the conventions that apply to every change. Use when starting work in a Sonamu project, or when no specific Sonamu skill obviously covers the problem. Covers the skill index, TypeScript type-safety rules, the tsc and pnpm check gate, and the packages/api command path.
 ---
 
 # Sonamu
@@ -14,21 +14,21 @@ below and invoke it rather than working from memory.
 
 | Situation | Skill |
 | --- | --- |
-| building AI agents with tool-use capabilities | `sonamu-ai-agents` |
-| exposing Model methods as API endpoints | `sonamu-api` |
-| setting up authentication or implementing auth-related features | `sonamu-auth` |
-| editing .env or sonamu.config.ts, setting up auth/guards/storage/cache/logging options, starting the Docker DB, resolving port conflicts, or managing the 3-tier development/test/fixture databases | `sonamu-config` |
-| creating or editing entity.json, choosing field types, setting up BelongsToOne/HasMany/ManyToMany/parentId relationships, defining subsets, or resolving entity schema validation and sync errors | `sonamu-entity` |
-| running fixture gen/fetch/explore, writing cone.note metadata for LLM-based generation, resolving fixture FK or unique-constraint failures, or syncing between the development, test, and fixture databases | `sonamu-fixture` |
-| calling generated Services, wiring TanStack Query hooks, building forms with useTypeForm, list views with useListParams, Sonamu UI components, or fixing scaffolding errors in generated views | `sonamu-frontend` |
-| implementing internationalization | `sonamu-i18n` |
-| creating a new Sonamu project or wiring one to a local Sonamu checkout | `sonamu-init` |
-| modifying database schema | `sonamu-migration` |
-| tracing/debugging Model internals, verifying queries, or inspecting UpsertBuilder behavior | `sonamu-naite` |
-| implementing Model CRUD methods, writing Puri SELECT/WHERE/JOIN queries, running full-text or pgvector search, batch-saving relation data with UpsertBuilder, or when a query returns unexpected results | `sonamu-query` |
-| implementing background workflows, scheduled tasks, or multi-step async processes | `sonamu-tasks` |
-| authoring Model/API test files, calling bootstrap/test/testAs, asserting with Naite.get or expectQuery/expectUB, mocking, or running `sonamu test` | `sonamu-testing` |
-| implementing vector search, semantic search, or text embedding features | `sonamu-vector` |
+| implementing an agent class, defining its tools, or managing per-request agent state | `sonamu-ai-agents` |
+| adding or changing an API endpoint, choosing httpMethod/guards/clients options, or implementing a file upload | `sonamu-api` |
+| running auth generate, applying Guards to an endpoint, reading the session from Context, adding an auth plugin, or migrating User.id to a string primary key | `sonamu-auth` |
+| editing .env or sonamu.config.ts, adjusting auth, guards, storage, cache, or logging options, starting the Docker database, or resolving a port conflict | `sonamu-config` |
+| creating or editing an entity.json, adding a field or enum, wiring BelongsToOne/HasMany/ManyToMany/parentId, defining a subset, or resolving a schema validation or sync error | `sonamu-entity` |
+| running fixture gen/fetch/explore, writing cone.note metadata for LLM generation, syncing between the development, test, and fixture databases, or when a fixture fails on a foreign key or unique constraint | `sonamu-fixture` |
+| calling a generated Service, wiring a TanStack Query hook, building a form or list view, or when a scaffolded view fails to compile | `sonamu-frontend` |
+| registering labels for a new entity or enum, adding a language, or a UI string renders as a raw key | `sonamu-i18n` |
+| running create-sonamu, linking a project to a local Sonamu checkout, or working through the first install, build, migrate, and scaffold sequence | `sonamu-init` |
+| a schema change needs a migration, a migration fails or conflicts, FK ordering breaks an apply, or a primary key type must change | `sonamu-migration` |
+| a query or save produces the wrong result and the cause is unclear, or when a test needs to assert on internal state | `sonamu-naite` |
+| implementing a Model CRUD method, writing a SELECT/WHERE/JOIN query, batch-saving relation data, or when a query returns unexpected rows or an excessively deep type error | `sonamu-query` |
+| implementing a background job, scheduling recurring work, or building a multi-step process that must survive a restart | `sonamu-tasks` |
+| authoring a Model or API test, asserting on query behaviour, mocking a dependency, or when sonamu test fails to run | `sonamu-testing` |
+| generating embeddings, chunking documents, or combining vector similarity with full-text search | `sonamu-vector` |
 
 <!-- SKILL-INDEX:END -->
 

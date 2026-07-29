@@ -1,6 +1,6 @@
 ---
 name: sonamu-config
-description: Configure a Sonamu project and its database. Use when editing .env or sonamu.config.ts, setting up auth/guards/storage/cache/logging options, starting the Docker DB, resolving port conflicts, or managing the 3-tier development/test/fixture databases.
+description: Configures a Sonamu project and its databases. Use when editing .env or sonamu.config.ts, adjusting auth, guards, storage, cache, or logging options, starting the Docker database, or resolving a port conflict. Covers the 3-tier development/test/fixture databases, seed data, and environment-specific configuration.
 ---
 
 # Sonamu Configuration

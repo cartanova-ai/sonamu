@@ -1,6 +1,6 @@
 ---
 name: sonamu-api
-description: Expose Model methods as HTTP endpoints with the Sonamu @api decorator. Configure httpMethod, guards, and clients options. Use when exposing Model methods as API endpoints.
+description: Exposes Model methods as HTTP endpoints with the @api decorator. Use when adding or changing an API endpoint, choosing httpMethod/guards/clients options, or implementing a file upload. Covers @api, @upload, response subset selection, and the generated service client.
 ---
 
 # @api Decorator

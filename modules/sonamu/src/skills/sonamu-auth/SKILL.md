@@ -1,6 +1,6 @@
 ---
 name: sonamu-auth
-description: Sonamu better-auth authentication system. Automatic entity generation, Guards configuration, Context access. Use when setting up authentication or implementing auth-related features.
+description: Sets up better-auth in a Sonamu project. Use when running auth generate, applying Guards to an endpoint, reading the session from Context, adding an auth plugin, or migrating User.id to a string primary key. Covers the generated User/Account/Session/Verification entities, guard configuration, and the admin, organization, 2fa, and passkey plugin wrappers.
 ---
 
 # better-auth Authentication System

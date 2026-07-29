@@ -1,6 +1,6 @@
 ---
 name: sonamu-naite
-description: Naite tracing system. Record values in source code with Naite.t(), verify in tests with Naite.get(). Supports chaining filters (fromFile, fromFunction, where), wildcard patterns, and DevRunner trace output. Use when tracing/debugging Model internals, verifying queries, or inspecting UpsertBuilder behavior.
+description: Traces values through Sonamu internals to explain unexpected behaviour. Use when a query or save produces the wrong result and the cause is unclear, or when a test needs to assert on internal state. Covers Naite.t(), Naite.get(), chaining filters (fromFile, fromFunction, where), wildcard keys, and DevRunner trace output.
 ---
 
 # Naite (Tracing System)
