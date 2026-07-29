@@ -188,7 +188,6 @@ async function bootstrap() {
         ["start"],
         ["skills", "sync"],
         ["skills", "index"],
-        ["skills", "create", "#name"],
         ["test"],
         ["auth", "generate"],
         ["auth", "add-companions"],
@@ -221,7 +220,6 @@ async function bootstrap() {
         start,
         skills_sync,
         skills_index,
-        skills_create,
         test: testCommand,
         auth_generate,
         "auth_add-companions": auth_add_companions,
@@ -1334,131 +1332,6 @@ async function skillsCopy(src: string, dest: string) {
   }
 }
 
-/**
- * pnpm sonamu skills create <name> 하면 실행되는 함수입니다.
- * 로컬 skill 초안을 생성합니다.
- */
-async function skills_create(name: string) {
-  const appRoot = findAppRootPath();
-  // 원본은 에이전트 중립인 .agents/에 두고, .claude/에는 심볼릭 링크만 겁니다.
-  const localDir = path.join(appRoot, ".agents", "skills", "local");
-
-  // === 파일명 검증 및 Sanitize ===
-  if (!name || name.trim() === "") {
-    console.error(chalk.red("✗ Skill name is required"));
-    return;
-  }
-
-  let sanitized = name
-    // 공백을 하이픈으로
-    .replace(/\s+/g, "-")
-    // 경로 구분자 제거
-    .replace(/[/\\]/g, "-")
-    // Path traversal 방지
-    .replace(/\.\./g, "")
-    // Windows 금지 문자 제거
-    .replace(/[<>:"|?*]/g, "")
-    // 시작/끝 점, 하이픈, 언더스코어 제거
-    .replace(/^[.\-_]+|[.\-_]+$/g, "")
-    // 연속된 하이픈을 하나로
-    .replace(/-+/g, "-")
-    // 알파벳, 숫자, 하이픈, 언더스코어, 한글만 허용
-    .replace(/[^a-zA-Z0-9-_가-힣]/g, "");
-
-  // 길이 제한
-  const MAX_LENGTH = 100;
-  if (sanitized.length > MAX_LENGTH) {
-    sanitized = sanitized.substring(0, MAX_LENGTH);
-    console.log(chalk.yellow(`⚠ Name truncated to ${MAX_LENGTH} characters`));
-  }
-
-  // Windows 예약어 확인
-  const RESERVED_NAMES = [
-    "CON",
-    "PRN",
-    "AUX",
-    "NUL",
-    "COM1",
-    "COM2",
-    "COM3",
-    "COM4",
-    "COM5",
-    "COM6",
-    "COM7",
-    "COM8",
-    "COM9",
-    "LPT1",
-    "LPT2",
-    "LPT3",
-    "LPT4",
-    "LPT5",
-    "LPT6",
-    "LPT7",
-    "LPT8",
-    "LPT9",
-  ];
-  if (RESERVED_NAMES.includes(sanitized.toUpperCase())) {
-    sanitized = `skill-${sanitized}`;
-    console.log(chalk.yellow(`⚠ Reserved name detected, prefixed with "skill-"`));
-  }
-
-  // 빈 문자열 체크
-  if (sanitized === "") {
-    console.error(chalk.red("✗ Invalid skill name after sanitization"));
-    console.log(chalk.dim(`  Original: "${name}"`));
-    return;
-  }
-
-  // 변경 알림
-  if (sanitized !== name) {
-    console.log(chalk.yellow(`⚠ Name sanitized: "${name}" → "${sanitized}"`));
-  }
-
-  const filePath = path.join(localDir, `${sanitized}.md`);
-
-  if (await exists(filePath)) {
-    console.log(chalk.yellow(`Skill "${sanitized}" already exists.`));
-    return;
-  }
-
-  await mkdir(localDir, { recursive: true });
-  await linkClaudeEntry(appRoot, path.join("skills", "local"));
-
-  const template = `---
-name: ${sanitized}
-category: other
-created_at: ${new Date().toISOString().split("T")[0]}
-status: draft
----
-
-# ${sanitized}
-
-## 상황
-
-[어떤 문제였는지]
-
-## 해결 방법
-
-[어떻게 해결했는지]
-
-## 코드 예시
-
-\`\`\`typescript
-// 예시 코드
-\`\`\`
-`;
-
-  await writeFile(filePath, template);
-  console.log(chalk.green(`✓ Created .claude/skills/local/${sanitized}.md`));
-}
-
-/**
- * pnpm sonamu auth generate 하면 실행되는 함수입니다.
- * better-auth 엔티티들(User, Session, Account, Verification)을 생성합니다.
- *
- * 옵션:
- * --plugins phone-number,2fa  플러그인 엔티티도 함께 생성
- */
 async function auth_generate() {
   // --plugins 옵션 파싱
   const pluginsArg = process.argv.find((arg) => arg.startsWith("--plugins"));
