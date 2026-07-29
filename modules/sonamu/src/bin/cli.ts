@@ -1043,11 +1043,7 @@ async function skills_sync() {
       ),
     );
   } else {
-    // 워크스페이스 루트가 아니라 앱 루트를 씁니다. 모노레포 안에 든 프로젝트
-    // (예: examples/miomock)에서 워크스페이스 루트는 바깥 저장소를 가리켜,
-    // 스킬이 프로젝트가 아니라 상위 저장소에 배치됩니다.
-    const appRoot = findAppRootPath();
-    await skills_sync_to(appRoot, {
+    await skills_sync_to(findProjectRoot(), {
       useSymlink: true,
       createSettings: true,
       sourceBase,
@@ -1102,6 +1098,68 @@ async function linkClaudeEntry(root: string, relative: string): Promise<boolean>
 }
 
 /**
+ * 스킬을 배치할 프로젝트 루트를 찾습니다.
+ *
+ * Sonamu 프로젝트는 두 가지 레이아웃이 공존합니다.
+ *
+ * - `<root>/api`          (예: examples/miomock)
+ * - `<root>/packages/api` (create-sonamu가 생성하는 레이아웃)
+ *
+ * `findAppRootPath()`는 api의 부모를 그대로 돌려주므로 후자에서 `<root>/packages`가
+ * 나오고, `findWorkspaceRoot()`는 pnpm-workspace.yaml을 찾아 올라가므로 모노레포에
+ * 든 프로젝트에서 바깥 저장소가 잡힙니다. api의 부모가 `packages`면 한 단계 더
+ * 올라가는 방식으로 두 경우를 모두 맞춥니다.
+ */
+function findProjectRoot(): string {
+  const apiParent = findAppRootPath();
+  return path.basename(apiParent) === "packages" ? path.dirname(apiParent) : apiParent;
+}
+
+/**
+ * 구버전이 남긴 `skills/sonamu` 평면 디렉토리를 제거합니다.
+ *
+ * 예전에는 모든 스킬 문서를 `skills/sonamu/*.md` 한 디렉토리에 복사했습니다.
+ * 지금은 `sonamu`가 라우팅 테이블을 담은 루트 스킬 이름이라 경로가 겹치는데,
+ * 남아 있는 구버전 디렉토리에는 삭제된 문서를 가리키는 옛 SKILL.md가 들어 있어
+ * 그대로 두면 낡은 라우팅 테이블이 스킬로 계속 로드됩니다.
+ *
+ * 심볼릭 링크는 정상 배치 경로에서 처리하므로 건드리지 않습니다. 최상위에
+ * SKILL.md 외의 `.md`가 있으면 구버전 산출물로 판정합니다 — 새 루트 스킬은
+ * SKILL.md 하나만 가집니다.
+ */
+async function removeLegacyFlatSkillDir(root: string): Promise<void> {
+  for (const base of [".agents", ".claude"]) {
+    const target = path.join(root, base, "skills", "sonamu");
+
+    try {
+      await readlink(target);
+      continue; // 심볼릭 링크는 정상 경로에서 갱신됩니다
+    } catch {
+      // 심볼릭 링크가 아님
+    }
+
+    if (!(await exists(target))) {
+      continue;
+    }
+
+    let entries: string[];
+    try {
+      entries = await readdir(target);
+    } catch {
+      continue;
+    }
+
+    const hasLegacyDocs = entries.some((e) => e.endsWith(".md") && e !== "SKILL.md");
+    if (!hasLegacyDocs) {
+      continue;
+    }
+
+    await rm(target, { recursive: true, force: true });
+    console.log(chalk.yellow(`✓ Removed legacy ${base}/skills/sonamu (flat layout)`));
+  }
+}
+
+/**
  * 배치 대상 스킬 디렉토리를 나열합니다.
  *
  * 에이전트는 `skills/<name>/SKILL.md` 단위로 스킬을 인식하므로,
@@ -1145,6 +1203,8 @@ async function skills_sync_to(
   const agentsDir = path.join(root, ".agents");
   const skillsRoot = path.join(agentsDir, "skills");
   await mkdir(skillsRoot, { recursive: true });
+
+  await removeLegacyFlatSkillDir(root);
 
   // 에이전트는 skills/<name>/SKILL.md 단위로 스킬을 인식하므로 각각 별도 배치해야 합니다.
   const targets = await listSkillDirs(options.sourceBase);
@@ -1240,7 +1300,7 @@ async function skills_sync_to(
  * `<!-- SONAMU:START -->` ~ `<!-- SONAMU:END -->` 구간만 갱신하며 나머지는 보존합니다.
  */
 async function skills_index() {
-  const appRoot = findAppRootPath();
+  const appRoot = findProjectRoot();
   const sourceBase = path.resolve(import.meta.dirname, "..", "..", "src", "skills");
   const rootSkill = path.join(sourceBase, "sonamu", "SKILL.md");
 
