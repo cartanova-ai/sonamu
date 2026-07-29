@@ -16,3 +16,6 @@
 dist
 web-dist
 .env
+
+.agents
+.claude
