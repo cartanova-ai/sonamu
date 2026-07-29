@@ -1046,8 +1046,12 @@ async function skills_sync() {
       ),
     );
   } else {
-    const workspaceRoot = await findWorkspaceRoot();
-    await skills_sync_to(workspaceRoot, {
+    // 워크스페이스 루트가 아니라 앱 루트를 씁니다. 모노레포 안에 든 프로젝트
+    // (예: examples/miomock)에서 워크스페이스 루트는 바깥 저장소를 가리킵니다.
+    // cone-generator가 Sonamu.appRootPath 기준으로 .agents/skills/project를
+    // 읽으므로, 배치 위치도 앱 루트여야 서로 일치합니다.
+    const appRoot = findAppRootPath();
+    await skills_sync_to(appRoot, {
       useSymlink: true,
       copyProjectTemplates: true,
       sourceBase,
@@ -1264,7 +1268,7 @@ async function skills_sync_to(
  * `<!-- SONAMU:START -->` ~ `<!-- SONAMU:END -->` 구간만 갱신하며 나머지는 보존합니다.
  */
 async function skills_index() {
-  const workspaceRoot = await findWorkspaceRoot();
+  const appRoot = findAppRootPath();
   const sourceBase = path.resolve(import.meta.dirname, "..", "..", "src", "skills");
   const rootSkill = path.join(sourceBase, "sonamu", "SKILL.md");
 
@@ -1280,7 +1284,7 @@ async function skills_index() {
   const endMarker = "<!-- SONAMU:END -->";
   const section = `${startMarker}\n${body.trim()}\n${endMarker}`;
 
-  const targetPath = path.join(workspaceRoot, "AGENTS.md");
+  const targetPath = path.join(appRoot, "AGENTS.md");
   const existing = (await exists(targetPath)) ? await readFile(targetPath, "utf-8") : undefined;
 
   let next: string;
@@ -1308,8 +1312,8 @@ async function skills_index() {
   await writeFile(targetPath, next);
   console.log(chalk.green(`✓ AGENTS.md ${action} (Sonamu marker region)`));
 
-  if (!(await exists(path.join(workspaceRoot, "CLAUDE.md")))) {
-    await symlink("AGENTS.md", path.join(workspaceRoot, "CLAUDE.md"));
+  if (!(await exists(path.join(appRoot, "CLAUDE.md")))) {
+    await symlink("AGENTS.md", path.join(appRoot, "CLAUDE.md"));
     console.log(chalk.dim(`  CLAUDE.md → AGENTS.md`));
   }
 
@@ -1335,9 +1339,9 @@ async function skillsCopy(src: string, dest: string) {
  * 로컬 skill 초안을 생성합니다.
  */
 async function skills_create(name: string) {
-  const workspaceRoot = await findWorkspaceRoot();
+  const appRoot = findAppRootPath();
   // 원본은 에이전트 중립인 .agents/에 두고, .claude/에는 심볼릭 링크만 겁니다.
-  const localDir = path.join(workspaceRoot, ".agents", "skills", "local");
+  const localDir = path.join(appRoot, ".agents", "skills", "local");
 
   // === 파일명 검증 및 Sanitize ===
   if (!name || name.trim() === "") {
@@ -1418,7 +1422,7 @@ async function skills_create(name: string) {
   }
 
   await mkdir(localDir, { recursive: true });
-  await linkClaudeEntry(workspaceRoot, path.join("skills", "local"));
+  await linkClaudeEntry(appRoot, path.join("skills", "local"));
 
   const template = `---
 name: ${sanitized}
@@ -1498,45 +1502,4 @@ async function auth_add_companions() {
   console.log(chalk.yellow.bold("🔐 Adding fixtureCompanions to better-auth entities...\n"));
   await addCompanionsToEntities();
   console.log(chalk.bold("\n✅ Done!"));
-}
-
-/**
- * 워크스페이스 루트를 찾습니다.
- * 우선순위: pnpm-workspace.yaml > package.json(workspaces) > .agents/
- *
- * CLAUDE.md는 서브패키지에도 존재할 수 있으므로 사용하지 않습니다.
- * .agents/는 agents init이 생성하는 디렉토리로, 워크스페이스 루트에만 존재합니다.
- */
-async function findWorkspaceRoot() {
-  let dir = process.cwd();
-
-  while (dir !== path.dirname(dir)) {
-    // 1. pnpm-workspace.yaml: 확실한 monorepo 루트.
-    if (await exists(path.join(dir, "pnpm-workspace.yaml"))) {
-      return dir;
-    }
-
-    // 2. package.json에 workspaces 필드가 있으면 monorepo 루트.
-    const packagePath = path.join(dir, "package.json");
-    if (await exists(packagePath)) {
-      try {
-        const packageJson = JSON.parse(await readFile(packagePath, "utf-8"));
-        if (packageJson.workspaces) {
-          return dir;
-        }
-      } catch {
-        // 파싱 실패시 무시
-      }
-    }
-
-    // 3. .agents/: agents init이 생성한 디렉토리. 서브패키지에는 존재하지 않음.
-    if (await exists(path.join(dir, ".agents"))) {
-      return dir;
-    }
-
-    dir = path.dirname(dir);
-  }
-
-  // 찾지 못하면 api 폴더의 부모 사용
-  return findAppRootPath();
 }
