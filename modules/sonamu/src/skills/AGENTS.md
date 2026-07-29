@@ -12,10 +12,9 @@ Source of truth for the Sonamu skills that `sonamu skills sync` installs into us
 ```
 skills/
 ├── sonamu/                 root skill — routing table + cross-cutting conventions
-├── sonamu-<name>/          each directory is one agent skill
-│   ├── SKILL.md            entry point (target ≤ 12KB, hard limit 20KB)
-│   └── references/*.md     detail, loaded only when needed (hard limit 20KB)
-└── project/                per-project document templates (not overwritten by sync)
+└── sonamu-<name>/          each directory is one agent skill
+    ├── SKILL.md            entry point (target ≤ 12KB, hard limit 20KB)
+    └── references/*.md     detail, loaded only when needed (hard limit 20KB)
 ```
 
 Size limits are enforced by `scripts/check-skill-size.ts`, wired into root `pnpm check`.

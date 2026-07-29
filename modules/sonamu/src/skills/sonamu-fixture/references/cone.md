@@ -64,7 +64,7 @@ When the `--use-llm` flag is used:
 
 ### 1. cone gen — Generate cone with LLM (recommended)
 
-Passes the project requirements (`.agents/skills/project/*.md`) and Entity structure to the LLM to generate contextually appropriate cone.
+Passes the domain rules (`contract/**/*.contract.md`) and Entity structure to the LLM to generate contextually appropriate cone.
 
 **Requires ANTHROPIC_API_KEY** (`.env` or `sonamu.config.ts`'s `secret.anthropic_api_key`)
 
