@@ -1,6 +1,6 @@
 ---
 name: sonamu-tasks
-description: Sonamu Tasks workflow system. Background jobs, scheduling, durable step execution. Use when implementing background workflows, scheduled tasks, or multi-step async processes.
+description: Runs background work with Sonamu Tasks. Use when implementing a background job, scheduling recurring work, or building a multi-step process that must survive a restart. Covers durable steps, cron scheduling, retry policies, and the task worker.
 ---
 
 # Tasks (Workflow System)

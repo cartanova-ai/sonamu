@@ -48,13 +48,15 @@ function parseFrontmatter(content: string): { name?: string; description?: strin
 /**
  * description에서 트리거 문장만 뽑아냅니다.
  *
- * 인덱스는 "무엇인가"가 아니라 "언제 쓰는가"를 보여야 하므로,
- * "Use when ..." 문장이 있으면 그 부분을 우선 사용합니다.
+ * description은 `<무엇>. Use when <언제>. Covers <키워드>.` 3부 구조입니다.
+ * 인덱스는 "언제 쓰는가"만 보여주면 되므로 가운데 문장만 취합니다.
+ * "Covers"는 어휘 매칭 면적을 넓히려고 두는 것이라 표에서는 뺍니다.
  */
 function extractTrigger(description: string): string {
   const useWhen = /\bUse when\b(.*)$/is.exec(description);
   const raw = useWhen ? useWhen[1] : description;
-  return raw
+  const [trigger] = raw.split(/\.\s+Covers\b/i);
+  return trigger
     .trim()
     .replace(/^[,:\s]+/, "")
     .replace(/\s+/g, " ")

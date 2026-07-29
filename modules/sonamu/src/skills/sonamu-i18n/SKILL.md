@@ -1,6 +1,6 @@
 ---
 name: sonamu-i18n
-description: Sonamu internationalization (i18n) support. Dictionary configuration, SD function usage, helper functions. Use when implementing internationalization.
+description: Adds and resolves translation keys through Sonamu's SD function. Use when registering labels for a new entity or enum, adding a language, or a UI string renders as a raw key. Covers dictionary configuration, SD(), and the i18n helper functions.
 ---
 
 # i18n (Internationalization)

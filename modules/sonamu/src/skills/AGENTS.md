@@ -35,6 +35,30 @@ Split criteria when adding or reorganizing:
 3. Prefer small duplication over cross-skill references. Skills load independently, so pointing
    from one skill to another forces both into context.
 
+## Description format
+
+Every `description` is one line in three parts, matching what Expo and Vercel ship:
+
+```
+<What it does>. Use when <discrete trigger moments>. Covers <concrete symbols and commands>.
+```
+
+- **What** — third-person verb, no "This skill…". "Generates and applies Sonamu database
+  migrations."
+- **Use when** — the moments an agent can recognise. Name failures too, not just intentions:
+  "a migration fails or conflicts" catches cases "modifying a schema" misses. Never restate the
+  skill name — "Use when implementing internationalization" tells an agent nothing.
+- **Covers** — concrete identifiers an agent is likely to have in context: commands, decorators,
+  function names, error strings. This is matching surface, so prefer `executeSubsetQuery` and
+  `pg_trgm` over "query helpers".
+
+Keep it under ~400 characters. A well-formed trigger is necessary but not sufficient: Vercel
+measured a correctly written description that still went uninvoked in 56% of cases because its
+trigger was horizontal ("when writing or reviewing React code" applies to every turn). Write
+triggers that name a discrete moment.
+
+`pnpm skills:index` parses this shape — it takes the `Use when` sentence and drops `Covers`.
+
 ## Skill index
 
 The root `sonamu` skill carries a generated routing table. It exists because each skill's

@@ -1,6 +1,6 @@
 ---
 name: sonamu-entity
-description: Define and modify Sonamu entities. Use when creating or editing entity.json, choosing field types, setting up BelongsToOne/HasMany/ManyToMany/parentId relationships, defining subsets, or resolving entity schema validation and sync errors.
+description: Defines and modifies Sonamu entities: fields, relationships, subsets, and the sync pipeline. Use when creating or editing an entity.json, adding a field or enum, wiring BelongsToOne/HasMany/ManyToMany/parentId, defining a subset, or resolving a schema validation or sync error. Covers stub entity, sonamu sync, dbDefault, OrderBy enums, FieldExpr, and nullable handling in types.ts.
 ---
 
 # Sonamu Entity

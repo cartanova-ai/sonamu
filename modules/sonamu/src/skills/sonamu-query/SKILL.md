@@ -1,6 +1,6 @@
 ---
 name: sonamu-query
-description: Read and write data in Sonamu. Use when implementing Model CRUD methods, writing Puri SELECT/WHERE/JOIN queries, running full-text or pgvector search, batch-saving relation data with UpsertBuilder, or when a query returns unexpected results.
+description: Reads and writes data through Sonamu Models and the Puri query builder. Use when implementing a Model CRUD method, writing a SELECT/WHERE/JOIN query, batch-saving relation data, or when a query returns unexpected rows or an excessively deep type error. Covers BaseModelClass, findMany, executeSubsetQuery, getPuri, transactions, UpsertBuilder, tsvector and PGroonga full-text search, pgvector, and pg_trgm.
 ---
 
 # Sonamu Data Access

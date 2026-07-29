@@ -1,6 +1,6 @@
 ---
 name: sonamu-init
-description: Create and set up a new Sonamu project. Covers create-sonamu CLI options, local link setup for framework development, the ordered install/build/migrate/scaffold sequence, and post-creation .env and template placeholder replacement. Use when creating a new Sonamu project or wiring one to a local Sonamu checkout.
+description: Creates a new Sonamu project and wires it up. Use when running create-sonamu, linking a project to a local Sonamu checkout, or working through the first install, build, migrate, and scaffold sequence. Covers CLI options, pnpm-workspace overrides, and replacing template placeholder values.
 ---
 
 # Sonamu Project Setup

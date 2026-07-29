@@ -1,6 +1,6 @@
 ---
 name: sonamu-vector
-description: pgvector-based vector search. Embedding (Voyage AI/OpenAI), Chunking, hybrid search (Vector+FTS) support. Use when implementing vector search, semantic search, or text embedding features.
+description: Implements semantic and hybrid search with pgvector. Use when generating embeddings, chunking documents, or combining vector similarity with full-text search. Covers the Voyage AI and OpenAI embedding providers, chunking strategies, and hybrid ranking.
 ---
 
 # Vector Search Guide

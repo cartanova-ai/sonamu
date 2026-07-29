@@ -1,6 +1,6 @@
 ---
 name: sonamu-ai-agents
-description: AI Agent framework. Extend BaseAgentClass, define tools with @tools decorator, ToolLoopAgent integration, AsyncLocalStorage-based state management. Use when building AI agents with tool-use capabilities.
+description: Builds tool-using AI agents on Sonamu. Use when implementing an agent class, defining its tools, or managing per-request agent state. Covers BaseAgentClass, the @tools decorator, ToolLoopAgent, and AsyncLocalStorage state.
 ---
 
 # AI Agent Guide

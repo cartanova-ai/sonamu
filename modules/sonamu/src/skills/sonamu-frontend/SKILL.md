@@ -1,6 +1,6 @@
 ---
 name: sonamu-frontend
-description: Build the Sonamu web frontend. Use when calling generated Services, wiring TanStack Query hooks, building forms with useTypeForm, list views with useListParams, Sonamu UI components, or fixing scaffolding errors in generated views.
+description: Builds the Sonamu web frontend against generated services. Use when calling a generated Service, wiring a TanStack Query hook, building a form or list view, or when a scaffolded view fails to compile. Covers useTypeForm, useListParams, useSelection, IdAsyncSelect, FileInput, EnumSelect, SonamuProvider, and sonamu scaffold.
 ---
 
 # Frontend Service
