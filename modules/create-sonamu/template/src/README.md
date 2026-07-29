@@ -233,7 +233,7 @@ pnpm sonamu fixture sync
 
 ## 🤖 AI 개발 도우미 (Skills)
 
-이 프로젝트는 **Claude Code**와 함께 사용하도록 구성되어 있습니다. `.claude/skills/sonamu` 디렉토리에는 Sonamu 프레임워크 사용법을 Claude가 이해할 수 있도록 돕는 지식 베이스가 포함되어 있습니다.
+이 프로젝트에는 Sonamu 프레임워크 사용법을 에이전트가 이해하도록 돕는 스킬이 설치되어 있습니다. 원본은 `.agents/skills/`에 있고, Claude Code용 `.claude/skills/`는 그쪽을 가리키는 심볼릭 링크입니다.
 
 ### Skills 디렉토리 구조
 
@@ -261,8 +261,18 @@ pnpm sonamu skills sync
 
 이 명령은:
 
-- 최신 공식 Skills를 `.claude/skills/sonamu`로 동기화
-- `CLAUDE.md`의 Sonamu 관련 섹션을 업데이트
+- 최신 공식 Skills를 `.agents/skills/`에 스킬별 디렉토리로 배치 (symlink, 실패 시 복사)
+- `.claude/skills/*`에 그 디렉토리들을 가리키는 심볼릭 링크 생성
+- 구버전이 남긴 평면 구조(`skills/sonamu/*.md`)가 있으면 제거
+
+프로젝트의 `AGENTS.md`는 건드리지 않습니다. 라우팅 테이블을 상시 컨텍스트로
+두고 싶으면 별도로 실행하세요:
+
+```bash
+pnpm sonamu skills index
+```
+
+`AGENTS.md`의 `<!-- SONAMU:START -->` 구간만 갱신하며, 그 밖의 내용은 보존합니다.
 
 ### 주요 Skills
 
@@ -295,7 +305,7 @@ Skills가 설정되어 있으므로 Claude에게 다음과 같이 요청할 수 
 "API 테스트 코드를 작성해줘"
 ```
 
-Claude는 `.claude/skills/sonamu`의 지식을 활용하여 Sonamu 방식에 맞는 코드를 작성합니다.
+에이전트는 설치된 Sonamu 스킬을 참조해 프레임워크 방식에 맞는 코드를 작성합니다.
 
 ---
 
