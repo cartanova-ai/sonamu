@@ -1028,7 +1028,6 @@ async function skills_sync() {
   if (isGlobal) {
     await skills_sync_to(os.homedir(), {
       useSymlink: false,
-      copyProjectTemplates: false,
       sourceBase,
     });
 
@@ -1045,13 +1044,12 @@ async function skills_sync() {
     );
   } else {
     // 워크스페이스 루트가 아니라 앱 루트를 씁니다. 모노레포 안에 든 프로젝트
-    // (예: examples/miomock)에서 워크스페이스 루트는 바깥 저장소를 가리킵니다.
-    // cone-generator가 Sonamu.appRootPath 기준으로 .agents/skills/project를
-    // 읽으므로, 배치 위치도 앱 루트여야 서로 일치합니다.
+    // (예: examples/miomock)에서 워크스페이스 루트는 바깥 저장소를 가리켜,
+    // 스킬이 프로젝트가 아니라 상위 저장소에 배치됩니다.
     const appRoot = findAppRootPath();
     await skills_sync_to(appRoot, {
       useSymlink: true,
-      copyProjectTemplates: true,
+      createSettings: true,
       sourceBase,
     });
   }
@@ -1140,7 +1138,7 @@ async function skills_sync_to(
   root: string,
   options: {
     useSymlink: boolean;
-    copyProjectTemplates: boolean;
+    createSettings?: boolean;
     sourceBase?: string;
   },
 ) {
@@ -1187,33 +1185,9 @@ async function skills_sync_to(
   );
   console.log(chalk.dim(`  .claude/skills/* symlinked for Claude Code`));
 
-  // project 디렉토리 초기화 (없으면 생성, 있으면 유지)
-  if (options.copyProjectTemplates && options.sourceBase) {
-    const sourceProjectDir = path.join(options.sourceBase, "project");
-    const targetProjectDir = path.join(skillsRoot, "project");
-
-    if (await exists(sourceProjectDir)) {
-      if (!(await exists(targetProjectDir))) {
-        try {
-          await cp(sourceProjectDir, targetProjectDir, { recursive: true });
-          await linkClaudeEntry(root, path.join("skills", "project"));
-          console.log(chalk.green(`✓ Project templates initialized`));
-        } catch (error) {
-          console.error(
-            chalk.red(
-              `✗ Failed to initialize project templates: ${error instanceof Error ? error.message : String(error)}`,
-            ),
-          );
-        }
-      } else {
-        console.log(chalk.dim(`⏭ Project templates already exist (preserved)`));
-      }
-    }
-  }
-
   // settings.local.json — Claude Code 전용 파일이므로 .claude/에 직접 둡니다.
   // project-local 모드에서만, 없을 때만 생성합니다.
-  if (options.copyProjectTemplates) {
+  if (options.createSettings) {
     await mkdir(path.join(root, ".claude"), { recursive: true });
     const settingsLocalPath = path.join(root, ".claude", "settings.local.json");
     if (!(await exists(settingsLocalPath))) {
