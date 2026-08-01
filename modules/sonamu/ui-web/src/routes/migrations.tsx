@@ -306,10 +306,16 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {conns.some((conn) => conn.status === "error" || !!migrationStatusError) && (
+                {(conns.some((conn) => conn.status === "error") || !!migrationStatusError) && (
                   <TableRow>
                     <TableCell colSpan={6}>
-                      <b>{SD("migration.error.connections")}</b>
+                      <b className="text-destructive">{SD("migration.error.connections")}</b>
+                      {/* 실제 연결 실패 원인(대상 DB·에러 메시지)을 노출해 진단을 돕는다. */}
+                      {migrationStatusError && (
+                        <pre className="mt-1 text-xs text-destructive whitespace-pre-wrap break-all">
+                          {migrationStatusError}
+                        </pre>
+                      )}
                     </TableCell>
                   </TableRow>
                 )}

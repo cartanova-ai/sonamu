@@ -12,14 +12,17 @@ export function createKnexInstance(config: Knex.Config): Knex {
   }
 
   config.pool = {
+    // 아래는 기본값이며, 호출측이 config.pool로 덮어쓸 수 있다.
+    // (예: 마이그레이션 상태 조회는 fail-fast를 위해 짧은 타임아웃 + propagateCreateError를 지정)
     maxConnectionLifetimeMillis: 1800000,
     maxConnectionLifetimeJitterMillis: 300000,
-    ...config.pool,
     propagateCreateError: false,
     idleTimeoutMillis: 10000,
     reapIntervalMillis: 1000,
     acquireTimeoutMillis: 30000,
     createTimeoutMillis: 30000,
+    ...config.pool,
+    // validate/afterCreate는 항상 프레임워크 기본값을 사용한다.
     validate: (connection: unknown) => {
       if (typeof connection !== "object" || connection === null) return false;
       const conn = connection as Record<string, unknown>;

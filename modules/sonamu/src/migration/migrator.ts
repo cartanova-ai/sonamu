@@ -29,6 +29,31 @@ export type MigrationResult = {
   applied: string[];
 }[];
 
+// 마이그레이션 상태 조회 시 DB 연결 확인 타임아웃(ms).
+// createKnexInstance의 커넥션 획득 타임아웃(30초)에 status/list/currentVersion이
+// 각각 걸리면 CLI/UI가 최대 수십 초 hang한다. 정상 응답은 수백 ms이므로 5초면 충분하다.
+const MIGRATION_CONN_TIMEOUT_MS = 5000;
+
+/**
+ * 주어진 Promise가 ms 안에 완료되지 않으면 onTimeout 에러로 reject한다.
+ * 원본 Promise 자체는 계속 진행되므로, 호출측에서 커넥션 정리(destroy)를 책임진다.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => Error): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(onTimeout()), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 export class Migrator {
   private isMissingMigrationTableError(error: unknown): boolean {
     if (typeof error !== "object" || error === null) {
@@ -117,9 +142,57 @@ export class Migrator {
     const statuses = await Promise.all(
       connKeys.map(async (connKey) => {
         const knexOptions = Sonamu.dbConfig[connKey];
-        const tConn = createKnexInstance(knexOptions);
+        const connection = knexOptions.connection as Knex.PgConnectionConfig;
+        // 상태 조회용 커넥션은 fail-fast로 만든다: 불통 DB에서 커넥션 획득을 무한정
+        // 재시도하며 CLI 프로세스가 종료되지 않는 것을 막는다.
+        // - connectionTimeoutMillis: 소켓 연결 자체를 5초 안에 포기 → 소켓이 정리되어 프로세스가 종료됨
+        // - propagateCreateError: 첫 연결 실패를 즉시 전파(풀 재시도 없이 바로 실패)
+        const tConn = createKnexInstance({
+          ...knexOptions,
+          connection: {
+            ...(connection as Record<string, unknown>),
+            connectionTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
+          },
+          pool: {
+            ...knexOptions.pool,
+            min: 0,
+            acquireTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
+            createTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
+            propagateCreateError: true,
+          },
+        });
+        const connString =
+          `pg://${connection.user ?? ""}@${connection.host}:${connection.port}/${connection.database}` as ConnString;
 
         try {
+          // DB 연결 확인: 불통 DB에서 status/list/currentVersion이 커넥션 획득
+          // 타임아웃까지 hang하는 것을 막기 위해, 먼저 5초 안에 응답하는지 확인한다.
+          try {
+            await withTimeout(
+              tConn.raw("select 1"),
+              MIGRATION_CONN_TIMEOUT_MS,
+              () =>
+                new Error(
+                  `DB 연결 시간 초과 (${MIGRATION_CONN_TIMEOUT_MS}ms) — ${connection.host}:${connection.port}/${connection.database}`,
+                ),
+            );
+          } catch (err) {
+            console.warn(
+              chalk.yellow(
+                `${connKey}의 마이그레이션 상태를 가져오는 데에 실패하였습니다. 데이터베이스에 연결할 수 없습니다.\n시도한 연결 설정:\n${JSON.stringify(knexOptions.connection, null, 2)}\n발생한 에러:\n${err}\n`,
+              ),
+            );
+            migrationStatusError = err instanceof Error ? err.message : String(err);
+            return {
+              name: connKey,
+              connKey,
+              connString,
+              currentVersion: "error" as const,
+              status: "error" as const,
+              pending: [] as string[],
+            };
+          }
+
           const status: number | "error" = await (async () => {
             try {
               return await tConn.migrate.status();
@@ -164,20 +237,21 @@ export class Migrator {
           })();
           Naite.t("migrator:getStatus:status", status);
 
-          const connection = knexOptions.connection as Knex.PgConnectionConfig;
-
           return {
             name: connKey,
             connKey,
-            connString: `pg://${connection.user ?? ""}@${connection.host}:${
-              connection.port
-            }/${connection.database}` as ConnString,
+            connString,
             currentVersion,
             status: status,
             pending,
           };
         } finally {
-          await tConn.destroy();
+          // 불통 DB의 커넥션 정리가 커넥션 획득 타임아웃까지 hang하지 않도록 감싼다.
+          await withTimeout(
+            tConn.destroy(),
+            MIGRATION_CONN_TIMEOUT_MS,
+            () => new Error("connection destroy timeout"),
+          ).catch(() => {});
         }
       }),
     );
