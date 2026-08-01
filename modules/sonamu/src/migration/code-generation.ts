@@ -757,7 +757,7 @@ async function generateCreateCode_ColumnAndIndexes(
 
   // 컬럼, 인덱스 처리
   const lines: string[] = [
-    'import { Knex } from "knex";',
+    'import type { Knex } from "knex";',
     "",
     "export async function up(knex: Knex): Promise<void> {",
     ...helperDefinitions,
@@ -1083,7 +1083,7 @@ async function generateCreateCode_Foreign(
   }
 
   const lines: string[] = [
-    'import { Knex } from "knex";',
+    'import type { Knex } from "knex";',
     "",
     "export async function up(knex: Knex): Promise<void> {",
     `return knex.schema.alterTable("${table}", (table) => {`,
@@ -1304,7 +1304,7 @@ async function generateAlterCode_ColumnAndIndexes(
   ];
 
   const lines: string[] = [
-    'import { Knex } from "knex";',
+    'import type { Knex } from "knex";',
     "",
     "export async function up(knex: Knex): Promise<void> {",
     ...(upBuilderLines.length > 0
@@ -1776,7 +1776,7 @@ async function generateAlterCode_Foreigns(
   }
 
   const lines: string[] = [
-    'import { Knex } from "knex";',
+    'import type { Knex } from "knex";',
     "",
     "export async function up(knex: Knex): Promise<void> {",
     `return knex.schema.alterTable("${table}", (table) => {`,
@@ -2104,7 +2104,7 @@ async function generatePkTypeChangeMigration(
   }
 
   const lines: string[] = [
-    'import { Knex } from "knex";',
+    'import type { Knex } from "knex";',
     "",
     "export async function up(knex: Knex): Promise<void> {",
     ...upLines,
