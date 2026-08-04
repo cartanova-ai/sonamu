@@ -7,9 +7,7 @@ description: Implements semantic and hybrid search with pgvector. Use when gener
 
 Sonamu supports pgvector-based vector search. It integrates both Voyage AI and OpenAI embedding providers, and also supports hybrid search (Vector + Full-Text Search).
 
-**Source code:** `modules/sonamu/src/vector/`
-
----
+Source code: `modules/sonamu/src/vector/`
 
 ## Structure
 
@@ -19,8 +17,6 @@ Sonamu supports pgvector-based vector search. It integrates both Voyage AI and O
 | `config.ts`    | Default configuration values + `createVectorConfig()` helper                      |
 | `embedding.ts` | Embedding client (Voyage AI and OpenAI integration)                               |
 | `chunking.ts`  | Text chunking (splitting long documents)                                          |
-
----
 
 ## Embedding Providers
 
@@ -49,8 +45,6 @@ export default defineConfig({
 ```
 
 Key priority: `Sonamu.secrets.voyage_api_key` → `process.env.VOYAGE_API_KEY`
-
----
 
 ## Embedding Usage
 
@@ -81,9 +75,9 @@ Embedding.getDimensions("openai");  // 1536
 | `"document"` | When embedding documents to store in DB |
 | `"query"`    | When embedding search queries           |
 
-**CRITICAL: Use `"document"` when storing and `"query"` when searching for asymmetric embedding to work correctly.**
-
----
+Asymmetric embedding means the two sides are embedded differently on purpose. Using the same
+`inputType` for both — or swapping them — produces vectors from the wrong half of the model, and
+similarity scores degrade silently rather than erroring.
 
 ## Chunking Usage
 
@@ -119,8 +113,6 @@ chunker.estimateChunkCount(longText); // 5
 | `skipThreshold` | 200                               | Passes through without chunking if at or below this size |
 | `separators`    | `["\n\n", "\n", "。", ". ", ...]` | Split delimiters (in priority order)                     |
 
----
-
 ## Search Configuration
 
 ```typescript
@@ -139,8 +131,6 @@ const config = createVectorConfig({
   },
 });
 ```
-
----
 
 ## Type Definitions
 
@@ -184,8 +174,6 @@ interface HybridSearchOptions extends VectorSearchOptions {
 }
 ```
 
----
-
 ## pgvector DB Setup
 
 ### Install Extension
@@ -213,10 +201,8 @@ USING hnsw (embedding vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 ```
 
----
-
 ## References
 
-- **Source code**: `modules/sonamu/src/vector/`
-- **pgvector official**: https://github.com/pgvector/pgvector
-- **Voyage AI**: https://docs.voyageai.com/
+- Source code: `modules/sonamu/src/vector/`
+- pgvector official: https://github.com/pgvector/pgvector
+- Voyage AI: https://docs.voyageai.com/

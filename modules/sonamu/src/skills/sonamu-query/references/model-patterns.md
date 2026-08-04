@@ -100,27 +100,22 @@ async save(spa: ResponseSaveParams[]): Promise<number[]> {
 }
 ```
 
-**Key points:**
+Key points:
 
 - Clear error messages when validation fails
 - Only save after all validations pass
 - Enforce business rules through code
 
----
+## orderBy after scaffolding
 
-## IMPORTANT: Verify orderBy After Scaffolding
-
-### Problem
-
-When scaffolding is run from Sonamu UI, the model file is **regenerated**, leaving only the default value (`id-desc`) and losing any custom orderBy cases.
+Scaffolding from Sonamu UI regenerates the model file, leaving only the default `id-desc` case and
+dropping any custom orderBy branches. The next build fails on the `exhaustive()` call:
 
 ```
 Error: Argument of type 'xxx-asc' is not assignable to parameter of type 'never'
 ```
 
-### Fix
-
-After scaffolding, you must exhaustively handle **all orderBy enum cases** from entity.json in the model file.
+Every orderBy enum case in entity.json needs its own branch again:
 
 ```typescript
 // entity.json orderBy enum
@@ -140,13 +135,7 @@ if (params.orderBy) {
 }
 ```
 
-### Checklist
-
-- Verify orderBy cases in model after scaffolding
-- Confirm they match the orderBy enum in entity.json
-- Also check other custom logic such as search cases and enhancers
-
----
+Scaffolding overwrites the rest of the method too, so search cases and enhancers go the same way.
 
 ## Code Quality and Consistency
 
@@ -154,7 +143,7 @@ if (params.orderBy) {
 
 Use `this.modelName` instead of hardcoding the model name in error messages.
 
-**BAD: hardcoded model name**
+BAD: hardcoded model name
 
 ```typescript
 // department.model.ts
@@ -168,7 +157,7 @@ if (!rows[0]) {
 }
 ```
 
-**GOOD: use this.modelName**
+GOOD: use this.modelName
 
 ```typescript
 // Common to all Models
@@ -177,7 +166,7 @@ if (!rows[0]) {
 }
 ```
 
-**Benefits:**
+Benefits:
 
 - Prevents copy-paste mistakes: no need to update the model name when copying from another model
 - Consistency: all models use the same pattern
@@ -187,7 +176,7 @@ if (!rows[0]) {
 
 Use the same i18n keys consistently for the same purpose across the entire project.
 
-**BAD: duplicate i18n keys**
+BAD: duplicate i18n keys
 
 ```typescript
 // Different keys used across models
@@ -200,7 +189,7 @@ throw new BadRequestException(SD("error.unknownSearchField")(params.search));
 throw new BadRequestException(SD("error.invalidSearchField")(params.search));
 ```
 
-**GOOD: use standard i18n keys**
+GOOD: use standard i18n keys
 
 ```typescript
 // Entity lookup failure - short and clear
@@ -210,7 +199,7 @@ throw new NotFoundException(SD("notFound")(this.modelName, id));
 throw new BadRequestException(SD("search.invalidField")(params.search));
 ```
 
-**Recommended i18n key patterns:**
+Recommended i18n key patterns:
 | Situation | i18n key | Used in |
 |------|---------|--------|
 | Entity lookup failure | `notFound` | findById |
@@ -219,52 +208,9 @@ throw new BadRequestException(SD("search.invalidField")(params.search));
 | Unauthorized | `error.forbidden` | guards failure |
 | Login required | `error.loginRequired` | Context.user null |
 
-### Bulk Refactoring Strategy
-
-When consistently modifying multiple model files, use sed for automation:
-
-**Step 1: Confirm pattern**
-
-```bash
-# Find files to modify
-grep -r 'SD("error.entityNotFound")' packages/api/src/application/*/
-```
-
-**Step 2: Validate changes (dry-run)**
-
-```bash
-# Preview changes before applying
-sed -n 's/SD("error.entityNotFound")(\(.*\), id)/SD("notFound")(this.modelName, id)/p' file.ts
-```
-
-**Step 3: Apply in bulk**
-
-```bash
-# Modify all model files
-find packages/api/src/application -name "*.model.ts" -exec sed -i '' \
-  's/SD("error.entityNotFound")(\(.*\), id)/SD("notFound")(this.modelName, id)/g' {} \;
-```
-
-**Step 4: Validate with build**
-
-```bash
-# TypeScript type check
-pnpm typecheck
-
-# Full build
-pnpm build
-```
-
-**Cautions:**
-
-- Always run after a git commit (to allow rollback)
-- Confirm changes with dry-run first
-- Check for type errors with build
-- Verify behavior with tests
-
 ### Type Check Patterns
 
-**satisfies vs as const:**
+satisfies vs as const:
 
 ```typescript
 // BAD: bypasses type checking with type assertion
@@ -286,27 +232,23 @@ const params = {
 } satisfies RoleListParams;
 ```
 
-**Recommended usage locations:**
+`satisfies` is what catches a wrong `orderBy` or `search` literal in a findMany default-params object,
+where `as` would let it through.
 
-- Default values for params in findMany
-- Complex object literals (where type checking is important)
+### ListParams / findMany / SearchField synchronization
 
-### IMPORTANT: ListParams / findMany / SearchField Synchronization
-
-The following three must always remain consistent. If any one is out of sync, the feature either exists as a declaration only with no behavior, or a runtime error will occur.
+Three places declare the same search surface, and nothing checks them against each other:
 
 1. `SearchField` enum values in `entity.json`
 2. `ListParams` field definitions in `types.ts`
 3. Filter/search handling code in `findMany` in `model.ts`
 
-**Checklist:**
+A `SearchField` value with no branch in `findMany` reaches `exhaustive()` and throws at runtime; a
+`ListParams` field with no branch is accepted and silently ignored.
 
-- [ ] Are all values declared in SearchField implemented in findMany?
-- [ ] If any filter branch is commented out, either remove it or implement it
-- [ ] Are "filter by ~", "search by ~" features from requirements reflected in ListParams?
-
-**In particular, entities with an approval workflow must always add a status filter.**
-(Clicking count by stage → filter to show only that list is a commonly required pattern)
+Approval-workflow entities are the common gap: the admin UI pattern of clicking a per-stage count to
+see only that list needs a `status` filter in both `ListParams` and `findMany`, and scaffolded output
+does not add one.
 
 ```typescript
 // types.ts - approval workflow entity example
@@ -322,7 +264,7 @@ if (params.achievement_type) qb.where("achievements.achievement_type", params.ac
 if (params.submitter_id) qb.where("achievements.submitter_id", params.submitter_id);
 ```
 
-**DO NOT - declaration/implementation mismatch:**
+DO NOT - declaration/implementation mismatch:
 
 ```typescript
 // SearchField "title" declared in entity.json
@@ -334,57 +276,18 @@ if (params.search === "id") {
 } */
 ```
 
-### Code Review Checklist
+### Destructuring SaveParams
 
-When writing a new Model:
-
-- [ ] Use `this.modelName` (no hardcoding)
-- [ ] Use standard i18n keys (`notFound`, `search.invalidField`)
-- [ ] Use the `satisfies` keyword (type safety)
-- [ ] Do not unnecessarily specify the debug option
-- [ ] Exhaustively handle all orderBy cases
-- [ ] If a ManyToMany relation exists, add \_ids array to SaveParams
-- [ ] Does the `@upload` method have `@api` on it? (`@upload` is used standalone; using both together causes a build error)
-- [ ] Do the SearchField enum and findMany implementation match?
-- [ ] For entities with approval workflows, are status/type filters present in both ListParams and findMany?
-
-When bulk-modifying 20+ Models:
-
-- [ ] Compare patterns with reference code like miomock
-- [ ] Prioritize inconsistent patterns
-- [ ] Write an automation script using sed or similar
-- [ ] Commit to git before making changes
-- [ ] Validate changes with dry-run
-- [ ] Check for type errors with pnpm typecheck
-- [ ] Verify behavior with pnpm test
-- [ ] Check for `any` type usage (prohibited)
-
-### Prohibition on any type
-
-The `any` type neutralizes TypeScript's type safety and must **never be used**.
-
-**BAD: using any**
+Destructuring a `SaveParams` to split off relation id arrays loses type information when the
+assertion target is `any`:
 
 ```typescript
+// The rest object becomes any — a later typo in a column name compiles
 const { category_ids, ...data } = sp as any;
-function process(input: any) { ... }
-```
 
-**GOOD: use precise types or unknown**
-
-```typescript
-// Destructure with a precise type
+// Naming the concrete type keeps `data` checked against the entity's columns
 const { category_ids, ...data } = sp as QuestionCollectionSaveParams;
-
-// Use unknown when the type is not known (instead of any)
-function process(input: unknown) {
-  if (typeof input === "string") { ... }
-}
 ```
 
-**Rules:**
-
-- `any` is prohibited
-- When the type is unknown, use `unknown` and narrow with a type guard
-- When a type assertion is needed during destructuring, specify the exact type name (`as ConcreteType`)
-- Suppression comments like `eslint-disable @typescript-eslint/no-explicit-any` are also prohibited
+The same applies when chaining Puri calls after a cast: an `as any` in the chain disables the check
+that catches `.select()`'s string-argument bug (`references/puri.md`, SELECT section).

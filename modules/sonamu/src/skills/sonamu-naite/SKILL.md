@@ -7,14 +7,12 @@ description: Traces values through Sonamu internals to explain unexpected behavi
 
 Naite is a tracing system for recording values in source code and verifying them in tests.
 
-**Source code:** `modules/sonamu/src/naite/naite.ts`
+Source code: `modules/sonamu/src/naite/naite.ts`
 
-**How it works:**
+How it works:
 
-1. **Source code**: Record values with `Naite.t("key", value)`
-2. **Test code**: Retrieve recorded values with `Naite.get("key")`
-
----
+1. Source code: Record values with `Naite.t("key", value)`
+2. Test code: Retrieve recorded values with `Naite.get("key")`
 
 ## Recording in Source Code (Naite.t)
 
@@ -30,8 +28,6 @@ Naite.t("puri:ub-register", { tableName, uuid, isUuidReused, row });
 Naite.t("puri:ub-upserted", { tableName, mode, rowCount, returnedIds });
 ```
 
----
-
 ## Verifying in Tests (Naite.get)
 
 ```typescript
@@ -45,8 +41,6 @@ expect(Naite.get("esq-query").first()).not.contain("limit");
 const trace = Naite.get("puri:ub-upserted").first();
 expect(trace).toMatchObject({ tableName: "users", rowCount: 3 });
 ```
-
----
 
 ## Built-in Naite Keys (Sonamu)
 
@@ -64,8 +58,6 @@ expect(trace).toMatchObject({ tableName: "users", rowCount: 3 });
 | `fs/promises:writeFile`              | writeFile call                 | `{ path, data }`                                    |
 | `fs/promises:rm`                     | rm call                        | `{ path, options }`                                 |
 
----
-
 ## Recording with Custom Keys
 
 ```typescript
@@ -75,8 +67,6 @@ Naite.t("user:created", { userId: 1, email: "test@test.com" });
 // Virtual file system for mocking
 Naite.t("mock:fs/promises:virtualFileSystem", "/path/to/virtual/file.ts");
 ```
-
----
 
 ## Naite.get() Retrieval Methods
 
@@ -92,8 +82,6 @@ Naite.get("key").getTraces(); // raw trace array (includes call stack)
 Naite.get("puri:*").result(); // all with puri: prefix
 Naite.get("syncer:*:user").result(); // syncer:XXX:user pattern
 ```
-
----
 
 ## Chaining Filters
 
@@ -132,8 +120,6 @@ Naite.get("puri:executed-query")
   .first();
 ```
 
----
-
 ## Naite.del() - Delete Values
 
 ```typescript
@@ -141,8 +127,6 @@ Naite.t("mock:fs/promises:virtualFileSystem", "/virtual/path");
 // ... test ...
 Naite.del("mock:fs/promises:virtualFileSystem");
 ```
-
----
 
 ## Test Examples
 
@@ -178,8 +162,6 @@ test("trace upsert completion", async () => {
 });
 ```
 
----
-
 ## Viewing Traces in DevRunner
 
 Use the `sonamu test --traces` flag to view Naite traces directly in the CLI:
@@ -210,8 +192,6 @@ Traces:
 Trace data is fetched from `testCase.meta().traces` (collected in `afterEach` of `bootstrap.ts`) and serialized as the `SerializedTrace` type (exported from `naite.ts`).
 
 See `sonamu-testing` for DevRunner details.
-
----
 
 ## Internal Structure
 
@@ -246,21 +226,17 @@ type SerializedTrace = {
 };
 ```
 
----
-
 ## Debugging Uses
 
 Naite can also be used for source code behavior analysis beyond tests:
 
-- **Query tracing**: Use `esq-query` and `puri:executed-query` to see the actual SQL being executed
-- **UpsertBuilder analysis**: Trace the full flow (register → upsert → ref-resolved → batch-updated) with `puri:ub-*` keys
-- **File I/O tracing**: Use `fs/promises:*` keys to see file operations performed by the syncer and others
-- **Isolate a specific function**: Use `.fromFunction("findById")` chaining to filter traces to only those originating from a specific method
-
----
+- Query tracing: Use `esq-query` and `puri:executed-query` to see the actual SQL being executed
+- UpsertBuilder analysis: Trace the full flow (register → upsert → ref-resolved → batch-updated) with `puri:ub-*` keys
+- File I/O tracing: Use `fs/promises:*` keys to see file operations performed by the syncer and others
+- Isolate a specific function: Use `.fromFunction("findById")` chaining to filter traces to only those originating from a specific method
 
 ## References
 
-- **Testing guide**: `sonamu-testing`
-- **DevRunner details**: `sonamu-testing`
-- **expectQuery helper** (Naite-based): see "Test Helper: expectQuery" in `sonamu-testing`
+- Testing guide: `sonamu-testing`
+- DevRunner details: `sonamu-testing`
+- expectQuery helper (Naite-based): see "Test Helper: expectQuery" in `sonamu-testing`

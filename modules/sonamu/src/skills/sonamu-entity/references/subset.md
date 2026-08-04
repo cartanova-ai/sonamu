@@ -14,20 +14,24 @@
 
 ## Naming Conventions
 
-**WARNING: Only use A, P, and SS as Subset names. Do not use arbitrary names like S, D, or L.**
+The names are fixed, not free-form — generated code and scaffolded views look up `A`, `P`, and `SS`
+by name, so an invented name like `S`, `D`, or `L` produces a subset nothing consumes.
 
 | Subset     | Purpose                                                                        |
 | ---------- | ------------------------------------------------------------------------------ |
-| `A`        | All - all fields (detail view, admin). **Required**                            |
+| `A`        | All - all fields (detail view, admin). Required                            |
 | `P`        | Partial/Profile - partial fields including relations (for list views)          |
 | `SS`       | Super Simple/Summary - minimal fields, just ID + name (for dropdowns, selects) |
 | `P2`, `P3` | Additional profiles (only for special cases)                                   |
 
-### IMPORTANT: Subset A Must Include All Fields
+`A` is the base subset and is required; `P` and `SS` exist only where a list view or a dropdown
+needs them, so a single-subset entity is `{ "subsets": { "A": [...] } }`.
 
-**Subset A must include all regular fields and major relation fields of the Entity.**
+### Subset A covers every prop
 
-**DO:**
+`A` backs the detail view and the admin form, so a prop missing from it is a prop those screens
+cannot show. Include every regular field, and for each BelongsToOne relation at least `.id` plus a
+display field. HasMany relations are optional — include them only where the detail view needs them.
 
 ```json
 {
@@ -40,43 +44,6 @@
   ],
   "subsets": {
     "A": ["id", "created_at", "title", "status", "author.id", "author.name"]
-  }
-}
-```
-
-**DO NOT:**
-
-```json
-{
-  "subsets": {
-    "A": ["id", "title"] // created_at, status, author omitted - incorrect
-  }
-}
-```
-
-**Rules:**
-
-- Include all regular fields (id, created_at, business fields, etc.)
-- For BelongsToOne relations, include at least `.id` and a display field (`.name`, `.title`, etc.)
-- HasMany relations are optional (include only when needed)
-
-### When Only a Single Subset Is Needed
-
-```json
-// DO - Correct: create only A
-{ "subsets": { "A": ["id", "name", "created_at"] } }
-```
-
-### DO NOT - Incorrect Subset Names
-
-```json
-// Incorrect: do not use S, D, L, etc.
-{
-  "subsets": {
-    "A": [...],
-    "S": [...],  // NEVER - use SS instead
-    "D": [...],  // NEVER - do not use
-    "L": [...]   // NEVER - use P instead
   }
 }
 ```
@@ -94,13 +61,19 @@
 - BelongsToOne/OneToOne: automatic LEFT JOIN
 - HasMany/ManyToMany: automatically optimized with DataLoader
 
-## ID-Only Reference Optimization
+## FK columns go through the relation
+
+A BelongsToOne FK column is referenced as `user.id`, never as `user_id` — that form is what Sonamu
+recognises, and when a relation is referenced by `.id` alone it reads the FK column directly and
+skips the JOIN. So the relation form is both the valid one and the cheaper one.
 
 ```json
-{ "SS": ["id", "title", "user.id"] }
+{ "A": ["id", "user.id", "title"] }   // reads the user_id column directly, no JOIN
+{ "A": ["id", "user_id", "title"] }   // not a FieldExpr — unrecognised
 ```
 
-- Referencing only `user.id` reads the `user_id` column directly without a JOIN
+(`indexes` are the opposite: they take the real DB column name, `user_id`. See
+`references/design-guides.md`.)
 
 ## Internal Fields
 
@@ -136,21 +109,10 @@ const result = await UserModel.executeSubsetQuery({
 
 ## Notes
 
-- The base Subset `A` is required
-- Nesting depth of 3 or fewer levels is recommended
-- Exclude unnecessary relations from list-purpose Subsets
-- **Use relation notation for FK columns**: FK columns for BelongsToOne relations (e.g. `user_id`) must be accessed in Subsets using the `user.id` form. This is because Sonamu recognizes the relation notation and automatically optimizes by reading the FK column directly when only `.id` is referenced.
+- Nesting beyond 3 levels of dot notation gets expensive to resolve and hard to read
+- Relations left out of a list-purpose subset are relations the list query does not have to join
 
-```json
-// DO NOT - Incorrect: using FK column directly
-{ "A": ["id", "user_id", "title"] }
-
-// DO - Correct: use relation.field format (auto-optimized)
-{ "A": ["id", "user.id", "title"] }
-// → Sonamu reads the user_id column directly (no JOIN)
-```
-
-**Working code references:**
+Working code references:
 
 - `sonamu/examples/miomock/api/src/application/project/project.entity.json` - Subset definition examples
 - `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` - BelongsToOne relation examples

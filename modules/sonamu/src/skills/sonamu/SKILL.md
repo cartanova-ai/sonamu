@@ -1,12 +1,14 @@
 ---
 name: sonamu
-description: Routes Sonamu work to the right skill and carries the conventions that apply to every change. Use when starting work in a Sonamu project, or when no specific Sonamu skill obviously covers the problem. Covers the skill index, TypeScript type-safety rules, the tsc and pnpm check gate, and the packages/api command path.
+description: Routes Sonamu work to the right skill and states how these skills relate to a project's own rules. Use when starting work in a Sonamu project, or when no specific Sonamu skill obviously covers the problem. Covers the skill index, the packages/api command path, and sonamu sync for regenerating stale generated output.
 ---
 
 # Sonamu
 
 Sonamu is a TypeScript full-stack framework. Work is split across focused skills — find yours
 below and invoke it rather than working from memory.
+
+Where a Sonamu skill and the project's `AGENTS.md` disagree, `AGENTS.md` wins.
 
 ## Skill index
 
@@ -31,45 +33,38 @@ below and invoke it rather than working from memory.
 
 <!-- SKILL-INDEX:END -->
 
-Nothing matched? The problem is probably not Sonamu-specific — proceed normally.
+## Command execution path
 
----
-
-## Conventions that apply to every change
-
-These are not tied to one task, so no skill will surface them at the right moment. Copy them
-into your project's own `AGENTS.md` if you want them enforced on every turn.
-
-### TypeScript type safety
-
-- `as any` and `as unknown as T` are strictly prohibited.
-- Resolve type errors through correct type annotations, generic constraints, type narrowing, or
-  interface extension.
-- Do not use `as any` to work around "excessively deep" or similar TypeScript inference limits —
-  find the correct access pattern instead (e.g. use `getPuri("r")` directly rather than casting
-  the result).
-- Chaining methods after `as any` bypasses all TypeScript signature checks and leads directly to
-  runtime bugs.
-- Non-null assertion (`!`) is prohibited. Use optional chaining (`?.`) or type guard filters
-  instead.
-
-### Code quality gate
-
-After editing any `.ts` or `.tsx` file, run both before considering the task done:
-
-1. `npx tsc --noEmit --skipLibCheck` — type errors
-2. `pnpm check` — lint and format (oxlint + oxfmt)
-
-Do not skip lint/format even when tsc passes. oxlint catches `noNonNullAssertion`, import order,
-and other issues that tsc does not.
-
-### Command execution path
-
-All `pnpm` commands are run from the **`packages/api`** directory.
+All `pnpm` commands are run from the `packages/api` directory.
 
 ```bash
 cd packages/api
 pnpm dev
+pnpm sonamu sync
 pnpm sonamu test
 pnpm sonamu migrate run
 ```
+
+## Regenerating Sonamu artifacts
+
+Editing a truth source — `entity.json`, an API file, a `.types.ts` — leaves generated output
+stale until a sync runs. Run it from `packages/api`:
+
+```bash
+pnpm sonamu sync          # regenerate what changed
+pnpm sonamu sync --force  # full re-sync, ignores sonamu.lock
+```
+
+A running `pnpm dev` does the same thing automatically through its file watcher, so no separate
+command is needed while it is up. That is a convenience, not a requirement — `sonamu sync` runs
+the identical sync path on demand.
+
+The standalone command reads the built config, `dist/sonamu.config.js`, so it needs the API package
+built at least once. Without it:
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../api/dist/sonamu.config.js'
+```
+
+Fix with `pnpm build` in `packages/api`. (`pnpm dev` sets `HOT=yes`, which switches the loader to
+`src/sonamu.config.ts` — that is why the watcher path never needs a build.)

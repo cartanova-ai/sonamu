@@ -30,11 +30,11 @@ return wdb.transaction(async (trx) => {
 });
 ```
 
-## CRITICAL: All Required Fields Must Be Included
+## Required fields on every call, including updates
 
-**ubUpsert uses PostgreSQL's `ON CONFLICT ... DO UPDATE` query.**
-
-Even when updating, **all required fields (fields with NOT NULL constraints)** must be included.
+`ubUpsert` compiles to PostgreSQL `ON CONFLICT ... DO UPDATE`. That is a single statement, so an
+omitted NOT NULL field is not "left alone" on the update path — it is set to NULL, and the DB rejects
+it.
 
 ```typescript
 // BAD - missing required field
@@ -54,7 +54,7 @@ wdb.ubRegister("posts", {
 });
 ```
 
-**How to identify required fields**:
+How to identify required fields:
 
 1. Check props in entity.json
 2. Fields without `nullable: true` = required fields
@@ -73,7 +73,7 @@ wdb.ubRegister("posts", {
 }
 ```
 
-## Save Order (Important!)
+## Save Order
 
 Save the table referenced by FK first:
 
@@ -133,7 +133,7 @@ wdb.ubRegister("users", { email: "new@test.com", username: "new" });
 wdb.ubRegister("users", { id: 1, email: "updated@test.com" });
 ```
 
-**Conflict handling**: If the Entity has a unique index, automatically pre-fetches to populate the existing record's id, then performs UPDATE
+Conflict handling: If the Entity has a unique index, automatically pre-fetches to populate the existing record's id, then performs UPDATE
 
 ## ManyToMany Relationships
 
@@ -175,7 +175,7 @@ await wdb.transaction(async (trx) => {
 
 ## Bulk Insert / Bulk Upsert (Large Datasets)
 
-**Principle (same as regular saves):** call `ubRegister` for every row **outside** the transaction, then call only `ubUpsert` / `ubInsertOnly` **inside** the transaction. Split large datasets with `chunkSize`. Calling `ubRegister` inside the transaction is reserved for the special case where a row depends on the real id produced by a preceding `ubUpsert`.
+Principle (same as regular saves): call `ubRegister` for every row outside the transaction, then call only `ubUpsert` / `ubInsertOnly` inside the transaction. Split large datasets with `chunkSize`. Calling `ubRegister` inside the transaction is reserved for the special case where a row depends on the real id produced by a preceding `ubUpsert`.
 
 ### (a) Bulk insert inside a Model
 
@@ -317,8 +317,8 @@ When `mode: "insert"`, unlike `insertOnly`, `UpsertOptions` (cleanOrphans, inher
 
 ## Rules
 
-- MUST use inside `transaction()`
-- MUST call `ubUpsert()` for FK-referenced tables first (correct order)
-- UBRef can ONLY be used inside `ubRegister` (not for direct DB queries)
+- Used inside `transaction()` — it buffers writes and flushes them on `ubUpsert()`
+- `ubUpsert()` on FK-referenced tables first; the referencing rows need those IDs to exist
+- `UBRef` resolves only inside `ubRegister` — it is a deferred reference, not a value a query can use
 - Self-reference is auto-handled by level-based insertion
 - Unique index conflicts are auto-resolved by pre-fetching existing IDs

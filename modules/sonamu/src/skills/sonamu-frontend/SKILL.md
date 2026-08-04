@@ -60,10 +60,6 @@ description: Builds the Sonamu web frontend against generated services. Use when
 | `auth`           | Authentication state and functions                 | Optional                                   |
 | `SD`             | Internationalization function                      | Optional                                   |
 
----
-
-# Frontend Service
-
 ## Basic Usage
 
 ```typescript
@@ -129,7 +125,6 @@ const { data } = UserService.useUser("A", userId!, {
 const queryClient = useQueryClient();
 queryClient.invalidateQueries({ queryKey: ["User", "findById", "A", userId] });
 ```
-
 
 ## Reference Map
 

@@ -38,7 +38,7 @@ test("update company info", async () => {
 
 ## Naite (Test Tracing System)
 
-**→ Detailed guide (key list, chaining filters, wildcard, del, internal structure): `sonamu-naite`**
+→ Detailed guide (key list, chaining filters, wildcard, del, internal structure): `sonamu-naite`
 
 Naite is a tracing system that records values with `Naite.t("key", value)` in source code and validates them with `Naite.get("key")` in tests.
 

@@ -10,7 +10,7 @@
 | Does the relationship need additional information? | No                 | Yes → intermediate entity               |
 | Can it be expressed as "A belongs to B"?           | Yes                | No                                      |
 
-**Examples:**
+Examples:
 
 - Post → Author: 1:N (a post has one author)
 - Post ↔ Tag: N:M (multiple posts have multiple tags)
@@ -18,7 +18,7 @@
 
 ### When an Intermediate Entity Is Needed
 
-If an N:M relationship has **additional information**, use an **intermediate entity** instead of ManyToMany.
+If an N:M relationship has additional information, use an intermediate entity instead of ManyToMany.
 
 | Situation                              | ManyToMany | Intermediate entity |
 | -------------------------------------- | ---------- | ------------------- |
@@ -28,7 +28,7 @@ If an N:M relationship has **additional information**, use an **intermediate ent
 | Relationship needs a quantity/ratio    |            | ✓                   |
 | Relationship history management needed |            | ✓                   |
 
-**Intermediate entity example:**
+Intermediate entity example:
 
 ```
 Researcher ↔ Task
@@ -53,7 +53,7 @@ Achievement ↔ Researcher
        - contribution_rate: integer (optional)
 ```
 
-**Key point**: The achievement is registered once, and participants are linked to it (prevents duplication)
+Key point: The achievement is registered once, and participants are linked to it (prevents duplication)
 
 ### Status History Pattern
 
@@ -91,8 +91,6 @@ Task
        - before_value: json (before change, optional)
        - after_value: json (after change, optional)
 ```
-
----
 
 ## Common Domain Patterns
 
@@ -165,9 +163,7 @@ Task
   └─ apply_deliberation: BelongsToOne → ApplyDeliberation (references the original application)
 ```
 
-**Key point**: Bidirectional references allow querying from either side
-
----
+Key point: Bidirectional references allow querying from either side
 
 ## Which Relationship to Use?
 
@@ -180,7 +176,7 @@ Task
 
 ## BelongsToOne (N:1) - Most Common
 
-**Situation**: When a Post belongs to a User (author)
+Situation: When a Post belongs to a User (author)
 
 ```json
 {
@@ -195,11 +191,11 @@ Task
 }
 ```
 
-**Auto-generated**: `author_id` column (FK)
+Auto-generated: `author_id` column (FK)
 
-**Note**: Do not define `author_id` directly in props (it is auto-generated)
+Note: Do not define `author_id` directly in props (it is auto-generated)
 
-**Optional options:**
+Optional options:
 
 - `customJoinClause`: custom JOIN condition SQL (specify JOIN condition directly instead of FK)
 - `useConstraint`: whether to create FK constraint (default: `true`). If `false`, the FK column is created but no DB constraint is generated
@@ -208,7 +204,7 @@ Task
 
 Since a BelongsToOne relationship automatically creates a `{name}_id` column, use the correct field name when working with it directly in Model, FixtureGenerator, etc.
 
-**Correct pattern:**
+Correct pattern:
 
 ```typescript
 // Entity definition
@@ -228,7 +224,7 @@ const department = {
 await puri.ubRegister("departments", department);
 ```
 
-**Wrong pattern (common mistake):**
+Wrong pattern (common mistake):
 
 ```typescript
 // ✗ WRONG: using relation name directly
@@ -244,7 +240,7 @@ const department = {
 };
 ```
 
-**FixtureGenerator example:**
+FixtureGenerator example:
 
 ```typescript
 // inside fixture-generator.ts
@@ -258,7 +254,7 @@ if (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.ha
 }
 ```
 
-**Key points:**
+Key points:
 
 - Entity JSON: `"name": "company"` (relation name)
 - DB column: `company_id` (auto-generated)
@@ -267,7 +263,7 @@ if (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.ha
 
 ## HasMany (1:N) - For Reverse Lookup
 
-**Situation**: When you want to query a User's Posts
+Situation: When you want to query a User's Posts
 
 ```json
 {
@@ -280,36 +276,36 @@ if (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.ha
 }
 ```
 
-**Required**: `joinColumn` = FK column name in the related table
+Required: `joinColumn` = FK column name in the related table
 
-**Optional**: `fromColumn` = matching column in your own table (default: `id`). Use when JOIN needs to use a non-standard PK
+Optional: `fromColumn` = matching column in your own table (default: `id`). Use when JOIN needs to use a non-standard PK
 
-**Important**: If the `joinColumn` field is not defined, a Zod schema validation error will occur.
+Omitting the `joinColumn` field raises a Zod schema validation error.
 
-**No DB column is created** (virtual)
+No DB column is created (virtual)
 
-**When is it needed?**
+When is it needed?
 
 - When reverse lookup like `user.posts.title` is needed in a Subset
 - Can be omitted if not needed
 
 ### HasMany Performance Optimization
 
-HasMany relationships are automatically optimized using the **DataLoader pattern**:
+HasMany relationships are automatically optimized using the DataLoader pattern:
 
 - Parent record IDs are collected in batches
 - All child records are queried in a single `whereIn` query
-- **No N+1 query problem**
+- No N+1 query problem
 
 This optimization is applied automatically and requires no additional configuration.
 
-**Implementation location**: `processLoaders` method in `modules/sonamu/src/database/base-model.ts`
+Implementation location: `processLoaders` method in `modules/sonamu/src/database/base-model.ts`
 
 ## OneToOne (1:1)
 
-**Situation**: When User and Employee are 1:1
+Situation: When User and Employee are 1:1
 
-**The side holding the FK** (Employee):
+The side holding the FK (Employee):
 
 ```json
 {
@@ -324,7 +320,7 @@ This optimization is applied automatically and requires no additional configurat
 }
 ```
 
-**The side without the FK** (User):
+The side without the FK (User):
 
 ```json
 {
@@ -337,16 +333,16 @@ This optimization is applied automatically and requires no additional configurat
 }
 ```
 
-**Key point**: FK is only created on the side with `hasJoinColumn: true` (omitting it means no FK; it is an optional option)
+Key point: FK is only created on the side with `hasJoinColumn: true` (omitting it means no FK; it is an optional option)
 
-**Optional options (when `hasJoinColumn: true`):**
+Optional options (when `hasJoinColumn: true`):
 
 - `customJoinClause`: custom JOIN condition SQL
 - `useConstraint`: whether to create FK constraint (default: `true`)
 
 ## ManyToMany (N:M)
 
-**Situation**: When Post and Tag are many-to-many
+Situation: When Post and Tag are many-to-many
 
 ```json
 {
@@ -361,18 +357,18 @@ This optimization is applied automatically and requires no additional configurat
 }
 ```
 
-**Required**: `joinTable`, `onUpdate`, `onDelete`
+Required: `joinTable`, `onUpdate`, `onDelete`
 
 ### ManyToMany Naming Conventions
 
-**joinTable (join table name)**: use **double** underscore
+joinTable (join table name): use double underscore
 
 ```
 User ↔ Role → user__roles
 Post ↔ Tag → posts__tags (alphabetical order recommended)
 ```
 
-**joinColumn (join table column name)**: use **single** underscore
+joinColumn (join table column name): use single underscore
 
 ```
 user__roles table:
@@ -380,7 +376,7 @@ user__roles table:
   - role_id (single underscore)
 ```
 
-**Example**:
+Example:
 
 ```typescript
 // Entity: User
@@ -400,7 +396,7 @@ puri.ubRegister("user__roles", {
 
 ## Self-Reference
 
-**Situation**: When an Employee's manager is also an Employee
+Situation: When an Employee's manager is also an Employee
 
 ```json
 {
@@ -415,13 +411,13 @@ puri.ubRegister("user__roles", {
 }
 ```
 
-**Required**: `nullable: true` (top-level has no manager)
+Required: `nullable: true` (top-level has no manager)
 
-## IMPORTANT: parentId and Parent Subset HasMany Cannot Be Used Together
+## parentId and a parent-subset HasMany are mutually exclusive
 
 ### Problem
 
-When parentId is set, the **FK column is removed from the child entity's BaseSchema**.
+When parentId is set, the FK column is removed from the child entity's BaseSchema.
 In this state, if the parent's subset includes the child via HasMany, the SSO LoaderQuery
 executes `whereIn("child.parent_fk", fromIds)`, but since the FK is missing, a TypeScript error occurs.
 
@@ -460,4 +456,3 @@ Error: '{child_table}.{parent_fk}' is not assignable to type 'AvailableColumns'
 { "A": ["*", { "researchers": ["*"] }] }  // works correctly
 ```
 
----

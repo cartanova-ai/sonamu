@@ -3,13 +3,11 @@
 Sonamu wraps better-auth plugins with snake_case schema mapping.
 Use the `auth generate --plugins` command to auto-generate plugin entities.
 
-**Source code:**
+Source code:
 
 - Wrappers: `modules/sonamu/src/auth/plugins/wrappers/`
 - Entity definitions: `modules/sonamu/src/auth/plugins/entity-definitions/`
 - Generator: `modules/sonamu/src/auth/auth-generator.ts`
-
----
 
 ## Supported Plugins
 
@@ -26,8 +24,6 @@ Use the `auth generate --plugins` command to auto-generate plugin entities.
 | `sso`          | `sso()`          | `@better-auth/sso`      | OIDC/SAML SSO integration                             |
 | `anonymous`    | `anonymous()`    | `better-auth/plugins`   | Anonymous user support                                |
 
----
-
 ## CLI Usage
 
 ```bash
@@ -43,14 +39,12 @@ pnpm sonamu auth generate --plugins admin,2fa,phone-number,username
 
 ### How It Works
 
-1. **Base entities** are created/updated (User, Session, Account, Verification)
-2. **Per-plugin** processing:
+1. Base entities are created/updated (User, Session, Account, Verification)
+2. Per-plugin processing:
    - `entities`: creates new tables (e.g. Organization → organizations, members, invitations, teams, team_members)
    - `additionalProps`: adds fields to existing entities (e.g. admin → adds ban_reason, ban_expires to User)
    - `additionalIndexes`: adds indexes to existing entities
-3. Entities that already exist have **only missing fields added**; existing fields are preserved
-
----
+3. Entities that already exist have only missing fields added; existing fields are preserved
 
 ## Wrapper Usage (sonamu.config.ts)
 
@@ -70,7 +64,9 @@ export default defineConfig({
 });
 ```
 
-**CRITICAL: Do not import directly from `better-auth/plugins`.** You must go through the Sonamu wrapper for snake_case mapping to apply.
+Plugins are imported from `sonamu/auth/plugins`, not `better-auth/plugins`. The Sonamu wrapper is
+what applies the snake_case column mapping; the upstream import compiles and runs but reads
+camelCase columns that the generated schema does not have.
 
 ```typescript
 // WRONG - snake_case mapping not applied
@@ -80,15 +76,13 @@ import { admin } from "better-auth/plugins";
 import { admin } from "sonamu/auth/plugins";
 ```
 
----
-
 ## Per-Plugin Details
 
 ### admin
 
-**Additional entities:** None
-**Fields added to User:** `role`, `banned`, `ban_reason`, `ban_expires`
-**Fields added to Session:** `impersonated_by`
+Additional entities: None
+Fields added to User: `role`, `banned`, `ban_reason`, `ban_expires`
+Fields added to Session: `impersonated_by`
 
 ```typescript
 import { admin } from "sonamu/auth/plugins";
@@ -108,8 +102,8 @@ Schema mapping:
 
 ### organization
 
-**Additional entities:** Organization, Member, Invitation, Team, TeamMember
-**Fields added to Session:** `active_organization_id`, `active_team_id`
+Additional entities: Organization, Member, Invitation, Team, TeamMember
+Fields added to Session: `active_organization_id`, `active_team_id`
 
 ```typescript
 import { organization } from "sonamu/auth/plugins";
@@ -128,8 +122,8 @@ Schema mapping:
 
 ### 2fa (twoFactor)
 
-**Additional entities:** TwoFactor
-**Fields added to User:** `two_factor_enabled`
+Additional entities: TwoFactor
+Fields added to User: `two_factor_enabled`
 
 ```typescript
 import { twoFactor } from "sonamu/auth/plugins";
@@ -144,7 +138,7 @@ Schema mapping:
 
 ### username
 
-**Fields added to User:** `display_username`
+Fields added to User: `display_username`
 
 ```typescript
 import { username } from "sonamu/auth/plugins";
@@ -158,7 +152,7 @@ Schema mapping:
 
 ### phone-number
 
-**Fields added to User:** `phone_number`, `phone_number_verified`
+Fields added to User: `phone_number`, `phone_number_verified`
 
 ```typescript
 import { phoneNumber } from "sonamu/auth/plugins";
@@ -177,8 +171,8 @@ Schema mapping:
 
 ### api-key
 
-**Additional entities:** ApiKey (table: `api_keys`)
-**Package:** `@better-auth/api-key` (must be installed separately)
+Additional entities: ApiKey (table: `api_keys`)
+Package: `@better-auth/api-key` (must be installed separately)
 
 ```bash
 pnpm add @better-auth/api-key
@@ -203,7 +197,7 @@ Note: v1.5.0에서 `userId`가 `referenceId`로 변경됨. `referenceId`는 user
 
 ### jwt
 
-**Additional entities:** Jwks (table: `jwks`)
+Additional entities: Jwks (table: `jwks`)
 
 ```typescript
 import { jwt } from "sonamu/auth/plugins";
@@ -218,8 +212,8 @@ Schema mapping:
 
 ### passkey
 
-**Additional entities:** Passkey (table: `passkeys`)
-**Package:** `@better-auth/passkey` (must be installed separately)
+Additional entities: Passkey (table: `passkeys`)
+Package: `@better-auth/passkey` (must be installed separately)
 
 ```bash
 pnpm add @better-auth/passkey
@@ -238,7 +232,7 @@ Schema mapping:
 
 ### sso
 
-**Package:** `@better-auth/sso` (must be installed separately)
+Package: `@better-auth/sso` (must be installed separately)
 
 ```bash
 pnpm add @better-auth/sso
@@ -258,7 +252,7 @@ Schema mapping:
 
 ### anonymous
 
-**Fields added to User:** `is_anonymous`
+Fields added to User: `is_anonymous`
 
 ```typescript
 import { anonymous } from "sonamu/auth/plugins";
@@ -269,8 +263,6 @@ anonymous();
 Schema mapping:
 
 - `isAnonymous` → `is_anonymous`
-
----
 
 ## Custom Schema Options
 
@@ -291,8 +283,6 @@ admin({
 
 Internally, `merge(ADMIN_SCHEMA, options.schema)` is executed to preserve the Sonamu mapping.
 
----
-
 ## Steps After Adding a Plugin
 
 1. `pnpm sonamu auth generate --plugins <plugin list>`
@@ -301,10 +291,8 @@ Internally, `merge(ADMIN_SCHEMA, options.schema)` is executed to preserve the So
 4. Add wrapper functions to `sonamu.config.ts`
 5. If needed, add plugin-specific permission logic to `guardHandler`
 
----
-
 ## References
 
-- **Basic auth configuration:** `sonamu-auth`
-- **Changing PK type (better-auth → string PK):** `references/user-id-migration.md`
-- **Source code:** `modules/sonamu/src/auth/plugins/`
+- Basic auth configuration: `sonamu-auth`
+- Changing PK type (better-auth → string PK): `references/user-id-migration.md`
+- Source code: `modules/sonamu/src/auth/plugins/`

@@ -4,9 +4,9 @@
 
 ### 1. Fixture Data Preparation Required
 
-**Problem:** Tests fail without base data due to foreign key constraints
+Problem: Tests fail without base data due to foreign key constraints
 
-**Solution:**
+Solution:
 
 ```sql
 -- database/scripts/seed-initial-data.sql
@@ -31,9 +31,9 @@ pnpm sonamu fixture sync
 
 ### 2. SaveParams Type Design (Partial)
 
-**Problem 1:** Type error occurs when changing only some fields on update
+Problem 1: Type error occurs when changing only some fields on update
 
-**Problem 2:** Type error occurs when receiving overrides as Partial in test helpers
+Problem 2: Type error occurs when receiving overrides as Partial in test helpers
 
 ```typescript
 // WRONG - nullable fields not set to partial
@@ -59,7 +59,7 @@ export async function createTestQuestion(
 }
 ```
 
-**Solution:** Set nullable/dbDefault fields to partial
+Solution: Set nullable/dbDefault fields to partial
 
 ```typescript
 // api/src/application/user/user.types.ts
@@ -78,18 +78,18 @@ export const UserSaveParams = UserBaseSchema.partial({
 });
 ```
 
-**Application criteria:**
+Application criteria:
 
 - id, created_at, updated_at: always partial (auto-generated)
 - Fields with dbDefault: set to partial
 - FK fields with nullable: true: set to partial
 - Regular fields with nullable: true (e.g. description): set to partial
 
-**Key:** Required fields (employee_no, login_id, name, institution_id) are excluded from partial to maintain type safety
+Key: Required fields (employee_no, login_id, name, institution_id) are excluded from partial to maintain type safety
 
 ### 3. Excluding Relation Fields on Update
 
-**Problem:** Subset includes relation objects, but SaveParams only has FK, causing errors
+Problem: Subset includes relation objects, but SaveParams only has FK, causing errors
 
 ```typescript
 // WRONG
@@ -98,7 +98,7 @@ await UserModel.save([{ ...user, status: "inactive" }]);
 // → "column 'department' does not exist" error
 ```
 
-**Solution:** Exclude relation fields + explicitly add FK
+Solution: Exclude relation fields + explicitly add FK
 
 ```typescript
 // CORRECT
@@ -114,11 +114,11 @@ await UserModel.save([
 ]);
 ```
 
-**Reason:** `UserSubsetA` includes `institution`, `department` objects, but does not include `institution_id`, `department_id` FKs
+Reason: `UserSubsetA` includes `institution`, `department` objects, but does not include `institution_id`, `department_id` FKs
 
 ### 4. ubUpsert is an Upsert Operation
 
-**Problem:** Unique constraint violation tests fail
+Problem: Unique constraint violation tests fail
 
 ```typescript
 // failing test
@@ -132,9 +132,9 @@ test("employee number must be unique", async () => {
 });
 ```
 
-**Cause:** Sonamu's `save()` uses `ubUpsert` → on conflict, performs UPDATE instead of throwing error
+Cause: Sonamu's `save()` uses `ubUpsert` → on conflict, performs UPDATE instead of throwing error
 
-**Solution:** Skip such tests
+Solution: Skip such tests
 
 ```typescript
 test.skip("employee number must be unique (skipped because ubUpsert performs upsert)", async () => {
@@ -144,7 +144,7 @@ test.skip("employee number must be unique (skipped because ubUpsert performs ups
 
 ### 5. testAs Usage
 
-**Problem:** Calling testAs inside test causes an error
+Problem: Calling testAs inside test causes an error
 
 ```typescript
 // WRONG
@@ -162,7 +162,7 @@ testAs(adminUser, "permission test", async () => {
 
 ### 6. Validating Model Queries with Naite
 
-**Add Naite recording to Model:**
+Add Naite recording to Model:
 
 ```typescript
 // user.model.ts
@@ -178,7 +178,7 @@ async findMany(...) {
 }
 ```
 
-**Validate in test:**
+Validate in test:
 
 ```typescript
 test("should not have limit when num: 0", async () => {
@@ -201,11 +201,11 @@ await expect(UserModel.findById("A", 99999)).rejects.toThrow("does not exist");
 
 ### 8. pnpm Workspace and Vitest Instance Conflicts
 
-**Problem:** "Vitest failed to access its internal state" error
+Problem: "Vitest failed to access its internal state" error
 
-**Cause:** When sonamu is connected via `link:`, sonamu and the project's vitest are installed at separate paths with different peer dependency combinations
+Cause: When sonamu is connected via `link:`, sonamu and the project's vitest are installed at separate paths with different peer dependency combinations
 
-**Temporary fix (for testing):**
+Temporary fix (for testing):
 
 ```json
 // packages/api/package.json
@@ -216,7 +216,7 @@ await expect(UserModel.findById("A", 99999)).rejects.toThrow("does not exist");
 }
 ```
 
-**Fundamental fix:** Contact sonamu developers (framework internal issue)
+Fundamental fix: Contact sonamu developers (framework internal issue)
 
 ### 9. assert() for Truthy Checks
 
@@ -236,7 +236,7 @@ test("create user", async () => {
 
 ### 10. Create Test Data Directly
 
-**miomock convention:** Minimize fixtures, create data directly within tests
+miomock convention: Minimize fixtures, create data directly within tests
 
 ```typescript
 // recommended pattern
@@ -460,7 +460,7 @@ test("Update - update task info", async () => {
 
 ### Notes
 
-**Do not use beforeAll/beforeEach:**
+Do not use beforeAll/beforeEach:
 
 In sonamu's test environment, creating data with beforeAll/beforeEach may end up referencing sonamu internal code. Instead, call helper functions within each test.
 
@@ -487,13 +487,11 @@ describe("TaskModel", () => {
 });
 ```
 
----
-
 ## Common Mistakes and Solutions
 
 ### ubUpsert Does Not Throw Unique Constraint Errors
 
-**→ See "Practical Notes #4. ubUpsert is an Upsert Operation" above**
+→ See "Practical Notes #4. ubUpsert is an Upsert Operation" above
 
 ### Transaction Isolation and Test Isolation
 
@@ -531,7 +529,7 @@ test("search by role name", async () => {
 });
 ```
 
-**Patterns:**
+Patterns:
 
 - Use unique identifiers: `Date.now()`, `uuid()`, etc. to prevent conflicts
 - Flexible assertions: use `toBeGreaterThanOrEqual(1)` instead of `toBe(2)`
@@ -579,10 +577,8 @@ test("sort - newest ID first", async () => {
 });
 ```
 
-**Key:** Accept the uncertainty caused by transaction isolation, and only assert when validation is possible.
-
----
+Key: Accept the uncertainty caused by transaction isolation, and only assert when validation is possible.
 
 ## Fixture Data Creation Tips
 
-**→ Detailed guide (unique constraint handling, gen vs fetch selection, DB sequence reset, FixtureGenerator customization): `sonamu-fixture` "Practical Tips" section**
+→ Detailed guide (unique constraint handling, gen vs fetch selection, DB sequence reset, FixtureGenerator customization): `sonamu-fixture` "Practical Tips" section

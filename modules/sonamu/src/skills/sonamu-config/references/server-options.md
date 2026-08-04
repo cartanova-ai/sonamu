@@ -2,7 +2,7 @@
 
 ## server.auth Details (better-auth Authentication)
 
-Sonamu provides an authentication system using **better-auth**.
+Sonamu provides an authentication system using better-auth.
 
 ### 1. Auto-generate Entities
 
@@ -12,10 +12,10 @@ pnpm sonamu auth generate
 
 Generated entities:
 
-- **User** - user (id, name, email, email_verified, image)
-- **Session** - session (token, expires_at, user_id)
-- **Account** - account (provider_id, access_token, etc.)
-- **Verification** - email verification
+- User - user (id, name, email, email_verified, image)
+- Session - session (token, expires_at, user_id)
+- Account - account (provider_id, access_token, etc.)
+- Verification - email verification
 
 ### 2. server.auth Configuration
 
@@ -72,24 +72,22 @@ better-auth uses camelCase, Sonamu uses snake_case. Automatic mapping is applied
 | `userId`        | `user_id`        |
 | `expiresAt`     | `expires_at`     |
 
----
-
 ## Guards System (Access Control)
 
 The Sonamu permission system consists of 2 components:
 
-1. **GuardKeys** - permission key definitions
-2. **guardHandler** - permission check logic
+1. GuardKeys - permission key definitions
+2. guardHandler - permission check logic
 
 ### 1. Extending GuardKeys (Custom Permissions)
 
-**Source code:** `modules/sonamu/src/api/decorators.ts` (GuardKeys interface)
+Source code: `modules/sonamu/src/api/decorators.ts` (GuardKeys interface)
 
 Provided by default: `query`, `admin`, `user`
 
 To add custom permissions, extend in `src/typings/sonamu.d.ts`:
 
-**File location:** `src/typings/sonamu.d.ts`
+File location: `src/typings/sonamu.d.ts`
 
 ```typescript
 import {} from "sonamu";
@@ -170,11 +168,11 @@ apiConfig: {
 },
 ```
 
-**NOTE:** better-auth's default User entity does not have a `role` field. If role-based authentication is needed, add a `role` field to the User entity or create a separate Role entity.
+NOTE: better-auth's default User entity does not have a `role` field. If role-based authentication is needed, add a `role` field to the User entity or create a separate Role entity.
 
 ### Menu/Screen Access Control by Permission
 
-UI access control by permission is handled **on the frontend**:
+UI access control by permission is handled on the frontend:
 
 ```typescript
 // web/src/lib/auth.ts
@@ -199,8 +197,6 @@ export function canAccess(userRole: string, menu: keyof typeof menuPermissions) 
 }
 ```
 
----
-
 ## server.plugins Details
 
 ### session (Session Management)
@@ -217,7 +213,7 @@ session: {
 },
 ```
 
-**Production checklist:**
+Production checklist:
 
 - `SESSION_SECRET`: must be changed to a strong random string
 - `SESSION_SALT`: change to a 16-character random string
@@ -241,8 +237,6 @@ multipart: {
   },
 },
 ```
-
----
 
 ## server.storage Details
 
@@ -285,11 +279,9 @@ storage: {
 },
 ```
 
----
-
 ## server.cache Details
 
-Sonamu uses **BentoCache**.
+Sonamu uses BentoCache.
 
 ```typescript
 import { drivers as cacheDrivers, store } from "sonamu/cache";
@@ -304,7 +296,7 @@ cache: {
 },
 ```
 
-**Available drivers:**
+Available drivers:
 
 - `memory` - in-memory cache (default)
 - `file` - file-based cache
@@ -312,8 +304,6 @@ cache: {
 - `knex` - DB-based cache
 
 For other drivers, refer to the [BentoCache documentation](https://bentocache.dev/).
-
----
 
 ## server.apiConfig Details
 
@@ -374,8 +364,6 @@ cacheControlHandler: (req) => {
 },
 ```
 
----
-
 ## server.lifecycle Details
 
 ```typescript
@@ -397,4 +385,3 @@ lifecycle: {
 },
 ```
 
----

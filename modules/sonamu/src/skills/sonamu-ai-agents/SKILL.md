@@ -7,9 +7,7 @@ description: Builds tool-using AI agents on Sonamu. Use when implementing an age
 
 Sonamu provides a framework that wraps Vercel AI SDK's `ToolLoopAgent` to build class-based AI Agents.
 
-**Source code:** `modules/sonamu/src/ai/agents/`
-
----
+Source code: `modules/sonamu/src/ai/agents/`
 
 ## Structure
 
@@ -17,8 +15,6 @@ Sonamu provides a framework that wraps Vercel AI SDK's `ToolLoopAgent` to build 
 | ---------- | ----------------------------------------------------------------------- |
 | `agent.ts` | `BaseAgentClass`, `tools` decorator                                     |
 | `types.ts` | `AgentConfig`, `ToolDecoratorOptions`, `RegisteredToolDefinition`, etc. |
-
----
 
 ## BaseAgentClass
 
@@ -57,8 +53,6 @@ export const MyAgent = new MyAgentClass();
 | `this.tools`  | Registered toolset (ToolSet)                |
 | `this.use()`  | Run the Agent (ALS context + ToolLoopAgent) |
 
----
-
 ## @tools Decorator
 
 Registers a method as an AI tool. Define input/output using Zod v4 schema.
@@ -90,8 +84,6 @@ class SearchAgentClass extends BaseAgentClass<...> {
 ```
 
 The suffixes `Class`, `Model`, and `Frame` are automatically stripped from the class name.
-
----
 
 ## Running an Agent (use)
 
@@ -138,8 +130,6 @@ const result = await MyAgent.use(
 | `providerOptions`                      | `ProviderOptions`                | Additional provider-specific options |
 | `headers`                              | `Record<string, string>`         | Custom HTTP headers                  |
 
----
-
 ## State Management (AsyncLocalStorage)
 
 `BaseAgentClass` defines the state type with the generic `TStore`. When you pass the initial state to `use()`, it can be accessed via `this.store` during tool execution.
@@ -155,9 +145,7 @@ class StatefulAgentClass extends BaseAgentClass<{ processedItems: string[] }> {
 }
 ```
 
-**Note:** `this.store` is `undefined` outside of a `use()` context.
-
----
+Note: `this.store` is `undefined` outside of a `use()` context.
 
 ## Tool Isolation
 
@@ -175,8 +163,6 @@ class AgentB extends BaseAgentClass<void> {
 // AgentB.tools → { contains only toolY }
 ```
 
----
-
 ## Logging
 
 `this.logger` uses LogTape. The category is generated with `convertDomainToCategory(agentName, "agent")`.
@@ -187,8 +173,6 @@ Debug logs are automatically recorded on tool execution:
 tools: {model}.{method} with args: {args}
 ```
 
----
-
 ## Related Packages
 
 - `ai`: Vercel AI SDK (`ToolLoopAgent`, `Agent`, `ToolSet`)
@@ -196,10 +180,8 @@ tools: {model}.{method} with args: {args}
 - `zod/v4`: Schema definitions
 - `@logtape/logtape`: Logging
 
----
-
 ## References
 
-- **Source code**: `modules/sonamu/src/ai/agents/`
-- **Vercel AI SDK**: https://sdk.vercel.ai/docs
-- **Vector search**: `sonamu-vector`
+- Source code: `modules/sonamu/src/ai/agents/`
+- Vercel AI SDK: https://sdk.vercel.ai/docs
+- Vector search: `sonamu-vector`

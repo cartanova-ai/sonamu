@@ -78,8 +78,6 @@ db.select({
 });
 ```
 
----
-
 ## PGroonga Full-Text Search
 
 ### whereSearch
@@ -128,8 +126,6 @@ db.select({
 });
 ```
 
----
-
 ## Vector Search (pgvector)
 
 ### vectorSimilarity
@@ -163,15 +159,13 @@ db.vectorSimilarity("embedding", embedding, {
 });
 ```
 
-**Return value**: `similarity` column is automatically added
+Return value: `similarity` column is automatically added
 
 | method        | similarity meaning                   | sort order |
 | ------------- | ------------------------------------ | ---------- |
 | cosine        | 1 - distance (higher = more similar) | desc       |
 | l2            | distance (lower = more similar)      | asc        |
 | inner_product | -distance (higher = more similar)    | desc       |
-
----
 
 ## pg_trgm Fuzzy Search
 
@@ -223,8 +217,6 @@ const results = await this.getPuri("r")
 | English  | Excellent   | Word-level splitting + word_similarity          |
 | Korean   | Good        | Performance degrades for 1-2 character searches |
 | Japanese | Good        | Performance degrades for 1-2 character searches |
-
----
 
 ## Rules
 

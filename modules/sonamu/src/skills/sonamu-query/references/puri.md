@@ -31,7 +31,7 @@ const puri = new PuriWrapper(DB.getDB("r"), new UpsertBuilder());
 const rows = await puri.table("users").select({ id: "id" });
 ```
 
-> `UpsertBuilder` is a required constructor argument even for read-only wrappers; it simply stays unused for pure reads.
+`UpsertBuilder` is a required constructor argument even for read-only wrappers; it simply stays unused for pure reads.
 
 ### Escape hatch: `.knex` for non-entity / framework-internal tables
 
@@ -44,18 +44,18 @@ const runs = await puri.knex.table("workflow_runs").where("status", "running").s
 
 ## SELECT
 
-> **CRITICAL: `.select()` must always be used with an object argument.**
->
-> Passing a string argument causes the string to be spread character-by-character, generating incorrect SQL like `select "i" as "0", "d" as "1", ...`.
-> Be especially careful when chaining after an `as any` cast.
->
-> ```typescript
-> // WRONG — character spread bug
-> db.table("files").select("files.entity_id", "files.file_type");
->
-> // CORRECT
-> db.table("files").select({ entity_id: "files.entity_id", file_type: "files.file_type" });
-> ```
+`.select()` takes an object argument, not strings. A string argument is spread
+character-by-character, producing SQL like `select "i" as "0", "d" as "1", ...` — valid SQL that
+selects nonsense. The type signature catches this, so it only slips through when the chain follows
+an `as any` cast.
+
+```typescript
+// WRONG — character spread bug
+db.table("files").select("files.entity_id", "files.file_type");
+
+// CORRECT
+db.table("files").select({ entity_id: "files.entity_id", file_type: "files.file_type" });
+```
 
 ```typescript
 // Basic select
@@ -410,4 +410,3 @@ await this.getPuri("w").transaction(async (trx) => {
 });
 ```
 
----

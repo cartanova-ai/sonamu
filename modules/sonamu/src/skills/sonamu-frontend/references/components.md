@@ -60,7 +60,7 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
 }
 ```
 
-**Key Props:**
+Key Props:
 
 - `config`: Auto-generated AsyncIdConfig (EntityAsyncIdConfig form)
 - `subset`: Subset key to query
@@ -75,7 +75,7 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
 
 When lower-level lists should change based on higher-level selection (e.g. Department → Division → Lab), pass `baseListParams` dynamically.
 
-**Key behavior**: When the `baseListParams` prop changes, the React Query inside `IdAsyncSelect` automatically re-fetches with the new parameters. (Bug fixed in v0.2.5+ — previous versions only used the initial value and did not reflect changes)
+Key behavior: When the `baseListParams` prop changes, the React Query inside `IdAsyncSelect` automatically re-fetches with the new parameters. (Bug fixed in v0.2.5+ — previous versions only used the initial value and did not reflect changes)
 
 ```tsx
 // Example: 3-level cascade Department → Division → Lab
@@ -122,13 +122,13 @@ function UserForm() {
 }
 ```
 
-**Notes**:
+Notes:
 
 - You must explicitly reset lower values to `null` when a higher-level value changes. IdAsyncSelect does not reset automatically.
 - Using the `disabled` prop to disable lower levels when the parent is not selected improves UX.
 - If `baseListParams` is `undefined`, IdAsyncSelect stays in enabled=false state and does not fetch.
 
-**Items to specify in Spec** (recommended to add to acceptanceCriteria in spec.json when cascade is present):
+Items to specify in Spec (recommended to add to acceptanceCriteria in spec.json when cascade is present):
 
 ```json
 "acceptanceCriteria": [
@@ -138,13 +138,13 @@ function UserForm() {
 ]
 ```
 
-### IMPORTANT: String Primary Key Support
+### String primary key support
 
 Most Entities use Number PK (`IdAsyncSelect<number>`), but better-auth related Entities use String PK.
 
-**String PK Entities**: User, Account, Session, Verification
+String PK Entities: User, Account, Session, Verification
 
-**Points to change** (manual modification required after scaffolding):
+Points to change (manual modification required after scaffolding):
 
 ```typescript
 // Number PK (default)
@@ -226,7 +226,7 @@ function ProfileForm() {
 }
 ```
 
-**Props:**
+Props:
 
 - `uploadMode`: `"eager"` (upload immediately) | `"lazy"` (upload on submit)
 - `viewMode`: `"image"` (image preview) | `"file"` (filename)
@@ -235,7 +235,8 @@ function ProfileForm() {
 - `previewSize`: `"sm" | "md" | "lg" | "xl"`
 - `clearable`: Whether the X button can remove the file
 
-**IMPORTANT**: uploader function must be configured in SonamuProvider (see below)
+The component has no upload transport of its own — it calls the `uploader` function configured on
+`SonamuProvider` (see below), so without it the file picker works and the upload does nothing.
 
 ## Select (Multi-select Mode)
 
@@ -267,14 +268,14 @@ function TagForm() {
 }
 ```
 
-**Multi-select specific Props:**
+Multi-select specific Props:
 
 - `multiple`: `true` (enables multi-select)
 - `maxCount`: Maximum number of badges to display
 - `hideSelectAll`: Hide the select all button
 - `searchable`: Enable search input
 
-**Common Props:**
+Common Props:
 
 - `items`: `SelectItemDef[]` (values only or `{ value, label, disabled }` form)
 - `placeholder`: Text shown before selection
@@ -316,7 +317,7 @@ function PostForm() {
 }
 ```
 
-**Key points:**
+Key points:
 
 - Zod enum type safety
 - Display name mapping via labels object

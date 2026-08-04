@@ -5,7 +5,7 @@ description: Defines and modifies Sonamu entities: fields, relationships, subset
 
 # Sonamu Entity
 
-**Working code references:**
+Working code references:
 
 - `sonamu/examples/miomock/api/src/application/user/user.entity.json` — basic entity
 - `sonamu/examples/miomock/api/src/application/project/project.entity.json` — complex entity
@@ -25,97 +25,49 @@ description: Defines and modifies Sonamu entities: fields, relationships, subset
 Migration execution and schema-change errors live in the `sonamu-migration` skill.
 cone metadata and fixture generation live in `sonamu-fixture`.
 
----
+## After editing an entity.json
 
-## Prerequisite: CRITICAL
-
-**Always run `pnpm dev` in `packages/api` before creating or editing an entity.**
+Generated output — `types.ts`, `sonamu.generated.ts` — stays stale until a sync runs:
 
 ```bash
 cd packages/api
-pnpm dev  # keep running for all entity work
+pnpm sonamu sync          # regenerate what changed
+pnpm sonamu sync --force  # full re-sync, ignores sonamu.lock
 ```
 
-In dev mode the syncer detects `entity.json` changes and auto-generates `types.ts`. This is
-required for **all** entity creation, not just auth entities.
-
----
-
-## When a User Requests a New System
-
-When the user requests a system to be built, proceed in the following order:
-
-**1. Analyze requirements** (identify missing entities)
-
-- "Do you need a User entity?"
-- "Are there any other entities needed?"
-
-**2. Confirm relationships between entities** (one question at a time)
-
-- "Is A to B a 1:N or N:M relationship?"
-- "Should chapters be managed as children of courses?"
-
-**3. Decide whether to use parentId**
-
-- "Can it exist without a parent?"
-- "Should it be created and deleted together with the parent?"
-
-**4. Final confirmation with the user**
-
-- Finalize entity list
-- Provide a relationship diagram or clear description
-
-### Entity Design Done Checklist
-
-- [ ] All required entities identified
-- [ ] Relationships between entities defined
-- [ ] parentId usage decided
-- [ ] User confirmation complete
-
-**When done:** proceed to "Entity Creation Workflow"
-
----
-
+A running `pnpm dev` does the same through its file watcher, so no separate command is needed
+while it is up. The standalone command reads `dist/sonamu.config.js` and fails with
+`ERR_MODULE_NOT_FOUND` if the API package has never been built — `pnpm build` once fixes it.
 
 ## Checklist for New Entity Creation
 
-1. **id**: PascalCase (e.g., `User`, `BlogPost`)
-2. **table**: snake_case plural (e.g., `users`, `blog_posts`) — can be omitted
-3. **title**: display name
-4. **Recommended props**: `id`, `created_at` (not enforced by schema but best practice)
-5. **Recommended enums**: `{EntityId}OrderBy`, `{EntityId}SearchField` (not enforced but best practice)
+1. id: PascalCase (e.g., `User`, `BlogPost`)
+2. table: snake_case plural (e.g., `users`, `blog_posts`) — can be omitted
+3. title: display name
+4. Recommended props: `id`, `created_at` (not enforced by schema but best practice)
+5. Recommended enums: `{EntityId}OrderBy`, `{EntityId}SearchField` (not enforced but best practice)
 
-## IMPORTANT: Analyze Requirements Before Creating Entity
+## Decisions that are expensive to reverse
 
-**STOP! Ask questions one at a time before creating any entity.**
+Cheap to settle before the entity.json exists, costly once code depends on them. How you settle
+them — asking the user, reading the spec — is your project's call.
 
-### Identify missing entities
+Domain term ↔ EntityId mapping (e.g. "위탁연구과제" → `ResearchContract`). Renaming an
+EntityId later also renames the table, generated types, model, and every scaffolded view.
 
-Do not only create entities explicitly mentioned by the user. **Ask one at a time:**
+Polymorphic association (`entity_type` + `entity_id`): if any target entity has a string PK
+(e.g. a better-auth `User`), type `entity_id` as `string` for all of them. Otherwise `integer`.
 
-- "Do you need a User entity?" → wait for response
-- "Does the User have multiple roles?" → wait for response
-- "Are there any other entities needed?" → wait for response
+parentId: a child with `parentId` has no independent CRUD, so adding or removing it later
+rewrites the child's model and views. See "Parent-Child Relationships" below.
 
-**Note on User entity**: `id` is an auto-increment sequence (PK) and is not a login ID. When using better-auth, a separate `login_id` is not needed (managed by the auth table).
+Relations to entities the spec implies but does not name — content domains usually grow
+Comment / Like / Tag / Category; commerce grows Review / Cart / Payment; reservations grow
+Schedule; courses grow Enrollment / Progress. Adding one later is routine; discovering it after
+the surrounding relations are built usually means reworking them.
 
-**Commonly missed entities**: Content (Comment, Like, Tag, Category), Commerce (Review, Cart, Payment), Reservation (Reservation, Schedule), Education (Enrollment, Progress)
-
-### When multiple entities are requested — confirm relationships
-
-When 2+ entities are requested, **ask about relationships one at a time before writing any code**:
-
-- Which relationship type: BelongsToOne, HasMany, ManyToMany, or parentId
-- Whether it is a parent-child dependency (delete together) or independent
-
-### Always confirm before designing
-
-**1. Polymorphic Association** (`entity_type + entity_id` pattern):
-
-- If there is a string PK entity (e.g., better-auth User) → use `string` type for `entity_id` uniformly
-- Otherwise → `integer` is fine
-
-**2. Domain term ↔ entity English ID mapping**: finalize with the user before writing any code (e.g., "위탁연구과제" → `ResearchContract`). Changing this later requires a full rename.
+`User.id` is an auto-increment sequence PK, not a login ID. With better-auth, a separate
+`login_id` prop is unnecessary — the auth tables manage credentials.
 
 ## Parent-Child Relationships (parentId)
 
@@ -126,13 +78,17 @@ A top-level option used when a child entity is managed as a dependent of a paren
 - With parentId: the child has no independent CRUD — it is created, updated, and deleted through the parent
 - Without parentId: an independent entity with its own CRUD
 
-### When to use parentId
+### What decides parentId
+
+Not inferable from the entity's shape — it follows from how the data is used, which lives in the
+domain rather than the schema. Switching later rewrites the child's model and views, so it is worth
+settling before the entity.json is written.
 
 | Situation                                | parentId | Example                            |
 | ---------------------------------------- | -------- | ---------------------------------- |
 | Cannot exist without a parent            | Yes      | OrderItem → Order                  |
 | Created and deleted together with parent | Yes      | Chapter → Course, Lesson → Chapter |
-| Can be independently CRUD'd              | No       | Comment → Post                     |
+| Queried, updated, or listed on its own   | No       | Comment → Post                     |
 | Can belong to multiple parents           | No       | Tag → Post (ManyToMany)            |
 
 ### parentId usage example
@@ -153,7 +109,7 @@ Child entities with parentId set (e.g., Chapter, Lesson) do not get their own `t
 
 ### Folder location for parentId child entities
 
-Child entities with parentId must be placed **in the same folder as the root parent entity**.
+Child entities with parentId must be placed in the same folder as the root parent entity.
 
 | Structure                    | Description                                       |
 | ---------------------------- | ------------------------------------------------- |
@@ -162,19 +118,4 @@ Child entities with parentId must be placed **in the same folder as the root par
 | `course/lesson.entity.json`  | parentId: "Chapter" → same folder (based on root) |
 | `course/course.types.ts`     | types.ts generated only for root                  |
 
-**Note:** Do not create child entities in a separate folder (e.g., `chapter/chapter.entity.json`).
-
-### IMPORTANT: When Uncertain - Ask User (Never Guess)
-
-**Do not guess — ask.** In situations like the following, ask the user directly:
-
-- "Should chapters be managed as children of courses, or created as an independent entity?"
-- "Should order items be saved together with the order, or managed separately?"
-
-**When in doubt, ask. One question is better than a wrong design.**
-
-**Helpful questions to ask the user:**
-
-- "Will this data ever need to be queried or updated independently without a parent?"
-- "Should this data be deleted when the parent is deleted?"
-- "Does the admin UI need a separate list page for this?"
+A child in its own folder (`chapter/chapter.entity.json`) is not resolved against its root.

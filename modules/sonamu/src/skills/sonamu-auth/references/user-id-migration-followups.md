@@ -64,45 +64,45 @@ Must use snake_case (`phone_number`) in Sonamu Entity, not better-auth's camelCa
 
 ### Mistake 7: Adding FK at the Same Time as Table Creation for New Tables
 
-Table creation and FK addition must be separated. Using `foreign()` together with table creation may reference a table that does not exist yet. → See "Migration Patterns" above.
+Table creation and FK addition must be separated. Using `foreign()` together with table creation may reference a table that does not exist yet — see `sonamu-migration`'s execution-order section.
 
 ## Checklist
 
-**Entity updates:**
+Entity updates:
 
-- [ ] Change User.id type to string
-- [ ] Check all FK entities referencing User (search with grep)
-- [ ] If there are HasMany relationships, confirm the joinColumn column exists in the child entity
-- [ ] Check required fields per better-auth plugin (extend existing table vs. new table)
+- Change User.id type to string
+- Check all FK entities referencing User (search with grep)
+- If there are HasMany relationships, confirm the joinColumn column exists in the child entity
+- Check required fields per better-auth plugin (extend existing table vs. new table)
 
-**Writing Migration:**
+Writing Migration:
 
-- [ ] Write consolidated migration (FK removal → type change → FK restore order)
-- [ ] Delete individually generated duplicate migration files
-- [ ] Write down function in correct order too
-- [ ] Check FK order when creating new tables (create table → add FK)
+- Write consolidated migration (FK removal → type change → FK restore order)
+- Delete individually generated duplicate migration files
+- Write down function in correct order too
+- Check FK order when creating new tables (create table → add FK)
 
-**Type definitions:**
+Type definitions:
 
-- [ ] Make all nullable fields partial in SaveParams
-- [ ] Make dbDefault fields (created_at, updated_at) partial in SaveParams
-- [ ] Change userId-related parameters in test-helpers to string
-- [ ] Fix return types in test-helpers (Promise<String> -> Promise<string>)
+- Make all nullable fields partial in SaveParams
+- Make dbDefault fields (created_at, updated_at) partial in SaveParams
+- Change userId-related parameters in test-helpers to string
+- Fix return types in test-helpers (Promise<String> -> Promise<string>)
 
-**Test code:**
+Test code:
 
-- [ ] Remove unnecessary nullable fields from tests
-- [ ] Separate tests for OAuth accounts and credential accounts
-- [ ] Provide only fields appropriate to each provider
-- [ ] Write test cases per plugin (phone-number, two-factor, etc.)
+- Remove unnecessary nullable fields from tests
+- Separate tests for OAuth accounts and credential accounts
+- Provide only fields appropriate to each provider
+- Write test cases per plugin (phone-number, two-factor, etc.)
 
-**Execution:**
+Execution:
 
-- [ ] Regenerate stubs: `pnpm stub`
-- [ ] Generate migration: `pnpm generate`
-- [ ] Clean up duplicate migrations
-- [ ] Apply migration: `pnpm migration:apply`
-- [ ] Run all tests: `pnpm test`
+- Regenerate stubs: `pnpm stub`
+- Generate migration: `pnpm generate`
+- Clean up duplicate migrations
+- Apply migration: `pnpm migration:apply`
+- Run all tests: `pnpm test`
 
 ## Generating better-auth Entity Fixtures
 
@@ -134,7 +134,7 @@ pnpm sonamu fixture gen --include User,Account,Session --count 10 --use-llm
 
 ### User.id Sequence Setup Required
 
-The better-auth User entity has id as string type, but fixture gen automatically uses a numeric sequence. **If `users_id_seq` was not created during initial project setup, fixture gen will fail.**
+The better-auth User entity has id as string type, but fixture gen automatically uses a numeric sequence. If `users_id_seq` was not created during initial project setup, fixture gen will fail.
 
 ```sql
 -- must be set up in advance

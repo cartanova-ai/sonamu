@@ -50,20 +50,18 @@ pnpm sonamu fixture gen --include User --count 10 --save-to file
 pnpm sonamu fixture sync
 ```
 
----
-
 ## Practical Tips
 
 ### 1. Automatic Korean data generation
 
 FixtureGenerator automatically generates Korean data for specific field names:
 
-**Fields with automatic Korean generation**:
+Fields with automatic Korean generation:
 
 - `name`, `username`: Korean full name (`fakerKO.person.fullName()`)
 - Entity is `Department` and prop is `name`: Korean department name
 
-**Example output**:
+Example output:
 
 ```typescript
 // User
@@ -73,7 +71,7 @@ FixtureGenerator automatically generates Korean data for specific field names:
 { name: "개발팀 1팀", name: "글로벌 마케팅팀" }
 ```
 
-**Customization**:
+Customization:
 
 ```typescript
 // Edit in fixture-generator.ts
@@ -87,14 +85,14 @@ if (entity?.id === "Department" && prop.name === "name") {
 
 Fields with unique constraints require a deduplication strategy.
 
-**Problem**:
+Problem:
 
 ```sql
 -- departments table
 UNIQUE (company_id, name)
 ```
 
-**Solution: Automatic variation**
+Solution: Automatic variation
 
 ```typescript
 // Prevents "개발팀" from being generated multiple times under the same company_id
@@ -107,13 +105,13 @@ UNIQUE (company_id, name)
 "글로벌 개발팀"; // 30%
 ```
 
-**Implementation location**: `generateDefaultValue()` in `fixture-generator.ts`
+Implementation location: `generateDefaultValue()` in `fixture-generator.ts`
 
 ### 3. BelongsToOne FK Setup
 
 BelongsToOne relations auto-generate a `{name}_id` column, so code must use the `_id` suffix.
 
-**Entity definition**:
+Entity definition:
 
 ```json
 {
@@ -124,7 +122,7 @@ BelongsToOne relations auto-generate a `{name}_id` column, so code must use the 
 }
 ```
 
-**Inside FixtureGenerator**:
+Inside FixtureGenerator:
 
 ```typescript
 // ✓ CORRECT
@@ -134,7 +132,7 @@ fixture[`${prop.name}_id`] = relationValue; // company_id
 fixture[prop.name] = relationValue; // company (FK saved as NULL!)
 ```
 
-**Easy to get wrong because**:
+Easy to get wrong because:
 
 - Entity JSON defines `name: "company"`
 - DB column is auto-created as `company_id`
@@ -142,9 +140,9 @@ fixture[prop.name] = relationValue; // company (FK saved as NULL!)
 
 ### 4. Resolving Ordering Issues
 
-fixture gen **automatically sorts by dependency order** (uses FixtureManager's RelationGraph).
+fixture gen automatically sorts by dependency order (uses FixtureManager's RelationGraph).
 
-**Example**:
+Example:
 
 ```bash
 # Department references Company, but no need to worry about order
@@ -155,9 +153,9 @@ pnpm sonamu fixture gen --include Department,Company --count 5
 # 2. Department generated next (references company_id)
 ```
 
-**Note**: Circular references will produce a warning.
+Note: Circular references will produce a warning.
 
-**Internal implementation (RelationGraph):**
+Internal implementation (RelationGraph):
 
 `FixtureManager` uses the `RelationGraph` class (`_relation-graph.ts`) to build a dependency graph and topologically sort it to determine insertion order. It analyzes BelongsToOne and OneToOne (hasJoinColumn) relations to guarantee that parent entities are always inserted before children.
 
@@ -165,7 +163,7 @@ pnpm sonamu fixture gen --include Department,Company --count 5
 
 After generating fixtures, ID sequences may be out of sync.
 
-**Check**:
+Check:
 
 ```bash
 PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_fixture -c "
@@ -176,7 +174,7 @@ ORDER BY sequencename;
 "
 ```
 
-**Reset**:
+Reset:
 
 ```sql
 -- Per table
@@ -184,7 +182,7 @@ SELECT setval('departments_id_seq', (SELECT MAX(id) FROM departments), true);
 SELECT setval('companies_id_seq', (SELECT MAX(id) FROM companies), true);
 ```
 
-**Automated**:
+Automated:
 
 ```bash
 # Reset all sequences script
@@ -198,7 +196,7 @@ WHERE schemaname = 'public' AND sequencename LIKE '%_id_seq';
 
 ### 6. Using File Storage
 
-Saving to file enables **version control**.
+Saving to file enables version control.
 
 ```bash
 # 1. Save to file
@@ -212,13 +210,11 @@ git commit -m "Add user fixtures for testing"
 # 3. Other developers can test with the same data
 ```
 
-**When to use**:
+When to use:
 
 - Consistent test data needed in CI/CD environments
 - Reproducing specific scenarios
 - Sharing test data across team members
-
----
 
 ## Advanced: cone Metadata (Optional)
 
@@ -246,7 +242,7 @@ Adding `cone` metadata to Entity JSON gives you finer control over fixture gener
 }
 ```
 
-**Supported strategies**:
+Supported strategies:
 
 - `sample`: Uniform sampling
 - `recent`: Most recent data (by created_at)
@@ -267,7 +263,7 @@ Adding `cone` metadata to Entity JSON gives you finer control over fixture gener
 }
 ```
 
-**Security note**: Security risk due to eval usage (only use trusted expressions)
+Security note: Security risk due to eval usage (only use trusted expressions)
 
 ### fixtureDefault - Specify a default value
 
@@ -293,18 +289,16 @@ Adding `cone` metadata to Entity JSON gives you finer control over fixture gener
 }
 ```
 
-**How it works**:
+How it works:
 
 - Without `--use-llm`: serves only as a reference description for developers/LLMs (used by cone-generator when generating metadata)
 - With `--use-llm`: fixture gen calls the Claude API and generates actual values based on the note content
 
-**Use cases**:
+Use cases:
 
 - Contextual text that is hard to express with simple faker.js (self-introductions, descriptions, etc.)
 - Explaining the field's meaning and generation pattern to developers
 - No length limit (short patterns or long descriptions are both fine)
-
----
 
 ### LLM-based Data Generation
 
@@ -344,7 +338,7 @@ export default defineConfig({
 
 #### Caching behavior
 
-- When `useLLM=true`, all LLM-targeted fields in a single row are generated in **a single LLM call** (not per-field individual calls)
+- When `useLLM=true`, all LLM-targeted fields in a single row are generated in a single LLM call (not per-field individual calls)
 - This single call guarantees automatic consistency across correlated fields such as `name`, `name_en`, `name_cn`, `email`
 - Generated results are stored in an in-memory cache keyed by `rowKey:fieldName`, and returned immediately for subsequent fields in the same row
 - Cache is valid only within the same FixtureGenerator instance
@@ -363,11 +357,9 @@ export default defineConfig({
 | Contextual text such as self-introductions or descriptions | `cone.note` + `--use-llm` (LLM)   |
 | Selecting from a specific list of values                   | `fixtureGenerator` (arrayElement) |
 
----
-
 ## FixtureGenerator Options (FixtureGeneratorOptions)
 
-**Source:** `modules/sonamu/src/testing/fixture-generator.ts`
+Source: `modules/sonamu/src/testing/fixture-generator.ts`
 
 | Option           | Type                       | Default               | Description                                   |
 | ---------------- | -------------------------- | --------------------- | --------------------------------------------- |
@@ -376,15 +368,13 @@ export default defineConfig({
 | `enableLLMCache` | boolean                    | `true`                | Cache LLM results (disable with `--no-cache`) |
 | `llmModel`       | string                     | `"claude-sonnet-4-6"` | LLM model to use                              |
 
----
-
 ## Troubleshooting
 
 ### Problem 1: "Cannot generate non-nullable relation without dataSource"
 
-**Cause**: BelongsToOne relation is non-nullable but there is no data to reference
+Cause: BelongsToOne relation is non-nullable but there is no data to reference
 
-**Solution**:
+Solution:
 
 ```bash
 # Generate the referenced Entity first
@@ -403,9 +393,9 @@ pnpm sonamu fixture gen --include Company,Department --count 5
 
 ### Problem 2: "duplicate key value violates unique constraint"
 
-**Cause**: Duplicate values generated for a field with a unique constraint
+Cause: Duplicate values generated for a field with a unique constraint
 
-**Solution**:
+Solution:
 
 1. Modify the per-field generation logic for that Entity in `fixture-generator.ts`
 2. Add prefix/suffix or use UUID
@@ -413,9 +403,9 @@ pnpm sonamu fixture gen --include Company,Department --count 5
 
 ### Problem 3: FK reference error "violates foreign key constraint"
 
-**Cause**: Incorrect sourceDb/targetDb configuration
+Cause: Incorrect sourceDb/targetDb configuration
 
-**Check**:
+Check:
 
 ```typescript
 // Verify in fixture.ts
@@ -423,17 +413,15 @@ const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
 const generator = new FixtureGenerator(fixtureDb, fixtureDb, "fixture", EntityManager);
 ```
 
-**Correct configuration**:
+Correct configuration:
 
 - `fixture gen`: sourceDb = fixtureDb, targetDb = fixtureDb
 - `fixture fetch`: sourceDb = production, targetDb = fixtureDb
 
----
-
 ## References
 
-- **3-Tier DB Structure**: "3-Tier DB Structure" section in `sonamu-config`
-- **Fixture generation tips**: "Fixture Data Creation Tips" section in `sonamu-testing`
-- **BelongsToOne FK**: "Using FK in Code" section in `sonamu-entity`
-- **Implementation**: `modules/sonamu/src/bin/fixture.ts`
-- **Generation logic**: `modules/sonamu/src/testing/fixture-generator.ts`
+- 3-Tier DB Structure: "3-Tier DB Structure" section in `sonamu-config`
+- Fixture generation tips: "Fixture Data Creation Tips" section in `sonamu-testing`
+- BelongsToOne FK: "Using FK in Code" section in `sonamu-entity`
+- Implementation: `modules/sonamu/src/bin/fixture.ts`
+- Generation logic: `modules/sonamu/src/testing/fixture-generator.ts`

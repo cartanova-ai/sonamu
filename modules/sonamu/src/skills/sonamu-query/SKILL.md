@@ -5,7 +5,7 @@ description: Reads and writes data through Sonamu Models and the Puri query buil
 
 # Sonamu Data Access
 
-**Working code references:**
+Working code references:
 
 - `sonamu/examples/miomock/api/src/application/employee/employee.model.ts` — basic CRUD
 - `sonamu/examples/miomock/api/src/application/project/project.model.ts` — ManyToMany save
@@ -24,25 +24,23 @@ description: Reads and writes data through Sonamu Models and the Puri query buil
 Embedding generation and chunking live in the `sonamu-vector` skill.
 Subset definition lives in `sonamu-entity`.
 
----
-
 ## Non-negotiable rules
 
-**Puri**
+Puri
 
 - Puri is the standard for BOTH reads and writes in ALL contexts (Model, Frame, scripts) — do NOT run queries on a raw `DB.getDB()` handle (exceptions: migration files, `db.ts`, tests, and the `.knex` escape hatch)
 - MUST use `getPuri("r")` for read queries, `getPuri("w")` for write queries
 - MUST include a WHERE condition for UPDATE/DELETE
-- MUST use `transaction()` for multiple write operations
+- Multiple write operations go inside `transaction()`, or a partial failure leaves half of them applied
 - Inside a Frame, use the associated Model's `getPuri` (Frame exposes only `getDB` / `getUpsertBuilder`)
 - Outside a Model, wrap knex with `new PuriWrapper(DB.getDB(which), new UpsertBuilder())`
 - Use the `puri.knex` escape hatch only for non-entity / framework-internal tables (e.g. `workflow_runs`)
 - JSON/JSONB columns are automatically JSON.stringify'd on insert/update
 
-**UpsertBuilder**
+UpsertBuilder
 
-- MUST use inside `transaction()`
-- MUST call `ubUpsert()` for FK-referenced tables first (correct order)
-- `UBRef` can ONLY be used inside `ubRegister`, never for direct DB queries
+- Used inside `transaction()` — it buffers writes and flushes them on `ubUpsert()`
+- `ubUpsert()` on FK-referenced tables first; the referencing rows need those IDs to exist
+- `UBRef` resolves only inside `ubRegister` — it is a deferred reference, not a value a query can use
 - Self-reference is auto-handled by level-based insertion
 - Unique index conflicts are auto-resolved by pre-fetching existing IDs

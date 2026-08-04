@@ -1,7 +1,7 @@
 # Quick Start — Getting Started with Tests Quickly
 
-
-**Prerequisites**: scaffolding completed, nullable field handling in types.ts completed
+Assumes: the entity's table is migrated, and nullable fields in its `types.ts` are handled — see
+"Tasks to Do Immediately After Entity Creation" in `references/writing-plan.md`.
 
 ### Step 1: Extend test-helpers.ts
 
@@ -78,17 +78,17 @@ export async function createTestCommentWithDeps() {
 }
 ```
 
-**CRITICAL patterns**:
+Patterns:
 
 - `createTestX()`: basic creation helper (overridable via params)
 - `createTestXWithDeps()`: helper that automatically handles dependencies (creates all required data together)
 - FK fields use the `_id` suffix (`author_id`, `post_id`)
 - Returns: primarily returns ID; WithDeps returns an object with multiple IDs
 
-**CRITICAL: All required fields must be included!**
+All required fields must be included
 
 Sonamu's `ubUpsert` uses PostgreSQL's `ON CONFLICT ... DO UPDATE` query.
-Even for updates, **all required fields (fields with NOT NULL constraints)** must be included.
+Even for updates, all required fields (fields with NOT NULL constraints) must be included.
 
 When required fields are missing:
 
@@ -104,7 +104,7 @@ const post: PostSaveParams = {
 
 ### Distinguishing Required vs Optional Fields
 
-**1. Check entity.json**
+1. Check entity.json
 
 ```json
 // post.entity.json
@@ -121,23 +121,23 @@ const post: PostSaveParams = {
 }
 ```
 
-**Required fields**: Fields **without** `nullable: true`
+Required fields: Fields without `nullable: true`
 
 - `title`, `content`, `author_id`
-- **Must** provide default values in test-helpers.ts
+- Must provide default values in test-helpers.ts
 
-**Optional fields**: Fields **with** `nullable: true`
+Optional fields: Fields with `nullable: true`
 
 - `category`
 - Can be omitted in test-helpers.ts
 
-**Excluded fields**:
+Excluded fields:
 
 - `id`: auto-increment (auto-generated on save)
 - `created_at`: automatically set by dbDefault
 - `view_count`: automatically set by dbDefault="0"
 
-**2. Write test-helpers.ts**
+2. Write test-helpers.ts
 
 ```typescript
 export async function createTestPost(
@@ -163,10 +163,10 @@ export async function createTestPost(
 }
 ```
 
-**Rule summary**:
+Rule summary:
 
 1. Fields without `nullable: true` in entity.json = required fields
-2. Required fields **must** have default values in test-helpers.ts
+2. Required fields must have default values in test-helpers.ts
 3. `id`, `created_at`, fields with `dbDefault` can be excluded
 4. Required fields are also needed for ubUpsert's ON CONFLICT UPDATE
 
@@ -180,7 +180,7 @@ import { describe, test, expect, vi } from "vitest";
 import PostModel from "../post.model";
 import { createTestPostWithDeps } from "../../__tests__/test-helpers";
 
-bootstrap(vi); // CRITICAL: required!
+bootstrap(vi); // required — without it the test has no DB connection
 
 describe("PostModel", () => {
   describe("A. Create", () => {
@@ -262,12 +262,13 @@ describe("PostModel", () => {
 });
 ```
 
-**Pattern summary**:
+Pattern summary:
 
 - `bootstrap(vi)` call is required
 - `describe` + `test` pattern (order: A. Create, B. Read, C. Update, D. Delete, E. Business Logic)
 - Use `createTestXWithDeps()` helper to automatically resolve dependencies
-- The Business Logic section is the most important! (implements real business scenarios)
+- The Business Logic section exercises multi-step flows across models, which is where CRUD-only
+  tests tend to miss defects
 
 ### Step 3: Run tests
 
@@ -280,6 +281,5 @@ pnpm sonamu test
 pnpm sonamu test user.model
 ```
 
-**Done!** See the sections below for detailed information.
+Done! See the sections below for detailed information.
 
----

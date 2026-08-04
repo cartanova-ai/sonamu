@@ -58,8 +58,6 @@ SLACK_CHANNEL_ID=C0123456789
 | `S3_REGION`             |          | S3 region (default: `ap-northeast-2`)                     |
 | `S3_BUCKET`             |          | S3 bucket name                                            |
 
----
-
 ## sonamu.config.ts
 
 Location: `packages/api/src/sonamu.config.ts`
@@ -190,9 +188,6 @@ server: {
   lifecycle: { /* lifecycle hooks */ },
 },
 ```
-
----
-
 
 ## Reference Map
 

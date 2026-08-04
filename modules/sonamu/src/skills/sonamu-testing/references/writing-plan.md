@@ -1,12 +1,16 @@
 # Test Writing Plan and Rollout Strategy
 
-## Test Writing Plan
+How much to test is your project's call. This document is for the case where you have already
+decided to cover many entities at once — it is about ordering that work so fixtures and FK
+constraints cooperate, not about a required amount of coverage.
 
-### Planning Based on Entity Design Prompt
+## Grouping tests across many entities
 
-After entity design is complete (confirming migration + scaffolding succeed), group tests according to **the business processes and data flows specified at the time of entity design**.
+### Group by data dependency, not alphabetically
 
-**CRITICAL:** Group tests by **business flow units**, not by simple alphabetical order or individual entities.
+Group by the business flows and data-creation order the entities were designed around. Alphabetical
+or one-entity-at-a-time order forces you to re-create the same parent rows in every file and hits FK
+constraints in whatever order they happen to fall.
 
 ### Step 1: Re-examine the Entity Design Prompt
 
@@ -19,9 +23,9 @@ Extract the following from the prompt written at the time of the design request:
 
 ### Step 2: Group by Business Process
 
-Group entities by **business flow units**, not simple priority.
+Group entities by business flow units, not simple priority.
 
-**Customer consultation system example:**
+Customer consultation system example:
 
 ```
 Group 1: Core Infrastructure
@@ -66,15 +70,15 @@ Test order: any order (can be written in parallel)
 
 ### Step 3: Work Order per Group
 
-**For each group:**
+For each group:
 
-1. **Modify types.ts** - handle nullable fields for all entities in the group at once
-2. **Extend test-helpers.ts** - write helper functions for entities in the group together
-3. **Write test files** - write in dependency order within the group
-4. **Business Logic tests** - implement real business scenarios (the key!)
-5. **Verify tests pass** - proceed to next group
+1. Modify types.ts - handle nullable fields for all entities in the group at once
+2. Extend test-helpers.ts - write helper functions for entities in the group together
+3. Write test files - write in dependency order within the group
+4. Business Logic tests - the scenarios that span the group's entities
+5. Verify tests pass - proceed to next group
 
-**test-helpers.ts example (considering dependency chains):**
+test-helpers.ts example (considering dependency chains):
 
 ```typescript
 // Write helpers considering dependency chains
@@ -97,19 +101,13 @@ export async function createTestConsultationWithDeps() {
 }
 ```
 
-### Step 4: Business Logic Tests (the key!)
+### Step 4: Business Logic Tests
 
-**IMPORTANT:** The E. Business Logic section is the most important.
+The `E. Business Logic` section is where a multi-entity scenario runs end to end — interactions
+between entities and the data flow between them, rather than one entity's CRUD surface. This is the
+part that fails when the design itself is wrong, which per-entity tests pass right over.
 
-In this section:
-
-- Implement **real business scenarios** specified in the entity design prompt
-- Test **interactions** between entities
-- Validate **data flows**
-
-This is what differentiates it from simple CRUD tests, and it's **the core that validates design intent**.
-
-**Business Logic test example (consultation process):**
+Business Logic test example (consultation process):
 
 ```typescript
 describe("E. Business Logic", () => {
@@ -136,39 +134,25 @@ describe("E. Business Logic", () => {
 });
 ```
 
-### Notes
+### What the grouping buys you
 
-**DO:**
+- Dependency order lets `test-helpers` build each chain once instead of every file re-creating the
+  same parent rows
+- A scenario spanning several entities catches what per-entity CRUD tests cannot: wrong save order, a
+  relation that silently fails to persist, a status transition that skips a step
+- Alphabetical or strictly one-entity-at-a-time order tends to hit FK constraints in arbitrary order
 
-- Always reference the entity design prompt
-- Group by business process flow
-- Test order that considers dependency order
-- Business Logic tests based on real usage scenarios
-- Clearly implement dependency chains in test-helpers
+### Per group
 
-**DON'T:**
-
-- Write tests in simple alphabetical order
-- Only test entities individually (missing integration perspective)
-- Set priorities unrelated to business flow
-- Write tests that ignore the intent of the entity design
-
-### Checklist per Group
-
-When test writing for a process group is complete:
-
-- [ ] Nullable field handling in types.ts completed for all entities in the group
-- [ ] test-helpers written reflecting dependency chains within the group
-- [ ] Module test file written for each entity in the group
-- [ ] **Key business scenarios included in Business Logic tests**
-- [ ] All tests pass confirmed (`pnpm sonamu test`)
-- [ ] Proceed to next group
+- Nullable fields handled in `types.ts` for the entities in the group
+- test-helpers reflect the dependency chains within the group
+- Tests pass (`pnpm sonamu test`)
 
 ## Tasks to Do Immediately After Entity Creation
 
 ### Handling nullable Fields in types.ts (Required)
 
-After creating an entity and generating types.ts with `sonamu generate`, immediately handle nullable fields **before writing tests**.
+After creating an entity and generating types.ts with `sonamu generate`, immediately handle nullable fields before writing tests.
 
 #### Work Order
 
@@ -185,7 +169,7 @@ After creating an entity and generating types.ts with `sonamu generate`, immedia
 
 #### Practical Example
 
-**STEP 1: File generated after running sonamu generate**
+STEP 1: File generated after running sonamu generate
 
 ```typescript
 // faq.types.ts (auto-generated)
@@ -203,7 +187,7 @@ export const FAQSaveParams = FAQBaseSchema.partial({
 export type FAQSaveParams = z.infer<typeof FAQSaveParams>;
 ```
 
-**STEP 2: Immediate fix (nullable fields + Zod import handling)**
+STEP 2: Immediate fix (nullable fields + Zod import handling)
 
 ```typescript
 // faq.types.ts (fix complete)
@@ -232,7 +216,7 @@ export type FAQSaveParams = z.infer<typeof FAQSaveParams>;
 
 #### Why Is This Necessary?
 
-**Problem:** Zod's `nullable()` gives `T | null` but it's still required.
+Problem: Zod's `nullable()` gives `T | null` but it's still required.
 
 ```typescript
 // entity.json
@@ -254,7 +238,7 @@ const [id] = await FAQModel.save([{
 }]);
 ```
 
-**Solution:** Combination of `partial()` + `extend()` + `nullish()`
+Solution: Combination of `partial()` + `extend()` + `nullish()`
 
 ```typescript
 // CORRECT: proper handling
@@ -283,28 +267,24 @@ const [id] = await FAQModel.save([
 
 #### Checklist
 
-- [ ] Change `import type { z }` to `import { z }`
-- [ ] Add nullable fields to partial
-- [ ] Redefine as nullish via extend
-- [ ] Use `.optional().default()` for dbDefault fields
-- [ ] Confirm required fields are excluded from partial
+- Change `import type { z }` to `import { z }`
+- Add nullable fields to partial
+- Redefine as nullish via extend
+- Use `.optional().default()` for dbDefault fields
+- Confirm required fields are excluded from partial
 
-**Detailed type safety guide:** See "TypeScript Type Safety" and "Type Safety Notes" sections below
+Detailed type safety guide: `references/type-safety.md`
 
 
-## Large-Scale Project Strategy (10 or more entities)
+## Working through many entities in batches
 
-**CRITICAL: Do not work on all entities at once if a project has 10 or more entities.**
+Covering dozens of entities in one pass tends to go wrong in a specific way: relationships stop
+being trackable, and edits land in the wrong file. Batches of 5–10 related entities keep each pass
+reviewable. This is a way to organise a large pass you have already decided to make.
 
-### Problems
+### Batch units
 
-- Working on 55 entities at once causes context confusion
-- Serious risk of errors such as modifying the wrong file or deleting required content
-- Cannot track relationships, lose direction while writing tests
-
-### Solution: Batch Work Units
-
-**Rule: Group related entities together and work in batches of 5–10**
+Group related entities together, 5–10 per batch
 
 ```
 Batch 1: User, Institution, Role related (5 entities)
@@ -319,7 +299,7 @@ Batch 3: Report, Statistics related (6 entities)
 
 ### Batch Grouping Criteria
 
-**Grouping by domain (recommended):**
+Grouping by domain (recommended):
 
 ```
 Auth/Permissions: User, Role, Permission, Session
@@ -328,7 +308,7 @@ Reports: Report, Chart, Export
 Administration: Institution, Department, Settings
 ```
 
-**Grouping by dependencies:**
+Grouping by dependencies:
 
 ```
 1st: Independent entities (User, Institution, etc.)
@@ -336,40 +316,15 @@ Administration: Institution, Department, Settings
 3rd: Entities depending on 2nd (Question → Survey)
 ```
 
-### Batch Work Process
+### Per batch
 
-**For each batch:**
+1. Name the entities in the batch, and write test helpers (`createTest...`) shared by them
+2. Write the tests
+3. Run the current batch, then the earlier ones — shared helpers and fixtures are the usual source
+   of regressions across batch boundaries
 
-1. List entities in the batch explicitly
-2. Write test helpers (createTest...)
-3. Complete tests for all entities
-4. Confirm all tests pass
-5. **Git commit, then proceed to next batch**
+### Signs the batch is too large
 
-**Between-batch checklist:**
-
-- [ ] All tests in current batch pass
-- [ ] Previous batch tests still pass (prevent regression)
-- [ ] Commit complete (establish rollback point)
-
-### Declare Before Starting Work
-
-**IMPORTANT: Declare explicitly before starting each batch**
-
-```
-"Starting batch 1: User, Institution, Role entities (5)
-- User: write user.model.test.ts
-- Institution: write institution.model.test.ts
-- Role: write role.model.test.ts
-Only work on files to be modified, do not touch other files
-Shall we proceed?"
-```
-
-### Warning Signs
-
-**Stop work immediately** if any of the following occur:
-
-- Attempting to modify entities outside the batch scope
-- Asking the same question repeatedly
-- Confusing entity relationships
-- Trying to re-modify files already completed
+- Edits reaching entities outside the batch
+- Relationships getting confused, or the same question resurfacing
+- Re-editing files already finished in this pass

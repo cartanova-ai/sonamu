@@ -1,342 +1,79 @@
 # Entity Creation Workflow
 
-## Entity Creation Workflow
+Each step consumes the previous step's output, so the order is fixed by the pipeline rather than by
+convention. All commands run from `packages/api`.
 
-**Prerequisite: CRITICAL!**
+| # | Command / edit                                        | Produces                                          |
+| - | ----------------------------------------------------- | ------------------------------------------------- |
+| 1 | `pnpm sonamu stub entity {EntityId}`                  | `application/{entity}/{entity}.entity.json`       |
+| 2 | Edit that entity.json — props, relations, subsets      | the schema everything below is derived from        |
+| 3 | Write `{entity}.model.ts` by hand                      | findById / findOne / findMany / save / del         |
+| 4 | `pnpm sonamu sync`                                     | `{entity}.types.ts`, `sonamu.generated.ts`, web    |
+| 5 | Handle nullable fields in the generated `types.ts`     | `SaveParams` that accepts `null`                   |
+| 6 | `pnpm sonamu migrate generate` → `migrate run`          | migration file, then the table                     |
+| 7 | `pnpm sonamu scaffold model\|model_test\|view_* {EntityId}` | model body and admin UI                       |
+| 8 | `pnpm build` in `packages/api` and `packages/web`       | confirms the generated code type-checks            |
 
-**Always run `pnpm dev` in `/packages/api` before starting!**
+A running `pnpm dev` performs step 4 automatically through its file watcher, so no separate command
+is needed while it is up.
+
+## Step 1: Stub
+
+`EntityId` must start with an uppercase letter — `Course`, `ConsultationHistory`. A lowercase id
+produces a table and type names that no later step can correct without a rename.
 
 ```bash
-cd packages/api
-pnpm dev  # keep this running during all work
+pnpm sonamu stub entity Course
 ```
 
-> **Why**: In dev mode, the syncer detects changes to entity.json and auto-generates types.ts.
->
-> Dev mode is required **for all entity creation**, not just auth entities.
+Editing the stub is the intended path; a hand-written entity.json tends to omit fields the stub
+supplies.
 
-### Step 1: Generate stub
+## Step 2: entity.json validation
 
-**CRITICAL: EntityId must always start with an uppercase letter!**
+An invalid entity.json fails at sync, so these are worth checking before running it.
 
-```bash
-pnpm sonamu stub entity {EntityId}
+Every index needs a `type` (`"index"` | `"unique"` | `"hnsw"` | `"ivfflat"`):
+
+```json
+"indexes": [{ "name": "ix_user_email", "type": "index", "columns": [{ "name": "email" }] }]
 ```
 
-**Correct examples:**
+Indexes use DB column names, subsets use FieldExpr. `role_id` in `indexes`, `role.id` in
+`subsets` — the two are not interchangeable, and swapping them errors.
 
-- `pnpm sonamu stub entity Course` (correct)
-- `pnpm sonamu stub entity User` (correct)
-- `pnpm sonamu stub entity ConsultationHistory` (correct)
+Subsets reference FKs through the relation, not the FK column: `user.id`, not `user_id`.
+Sonamu reads the FK column directly and skips the JOIN when only `.id` is referenced, so the
+relation form costs nothing.
 
-**Incorrect examples:**
+Subset A includes every prop, plus at least `.id` for each relation. See `references/subset.md`.
 
-- `pnpm sonamu stub entity course` (wrong — starts with lowercase)
-- `pnpm gen stub entity Course` (wrong — incorrect command)
+A BelongsToOne relation and its FK column are not both declared. Declare the relation only —
+the FK column is derived from it. Declaring `user_id` alongside a `user` relation produces a
+duplicate column.
 
-Generated file: `api/src/application/{entity}/{entity}.entity.json`
+Boolean `dbDefault` is the string `"true"` or `"false"`, not `"1"` / `"0"`.
 
-### Step 2: Edit the stub file
+Enum `dbDefault` is wrapped in escaped double quotes — `"\"pending\""`. Unquoted, PostgreSQL
+reads it as a column reference and rejects the DEFAULT expression.
 
-Add props, relations, and subsets to the generated entity.json file.
+OrderBy enum holds only `id-desc` until scaffolding is done. Scaffolded model code handles that
+one case, so extra values type-error in `exhaustive()`. See `references/field-types.md`.
 
-### Step 3: Validate and generate required files
+## Step 3: model.ts
 
-**CRITICAL: Always validate before running sync!**
+Not generated — write it, using another entity's model.ts as the template. Required methods:
+`findById`, `findOne`, `findMany`, `save`, `del`. Templates and per-method patterns live in
+`sonamu-query`'s `references/model.md`.
 
-**A. Validate entity.json** (see PHASE 1 below)
-
-- [ ] Does every index have a `type` field?
-- [ ] Does the subset use `relation.id` format instead of directly referencing FK columns?
-- [ ] Is the Boolean `dbDefault` a string (`"true"` / `"false"`)?
-- [ ] Does the OrderBy enum contain only `id-desc`?
-- [ ] Is the Enum `dbDefault` using escaped double quotes? (e.g., `"\"pending\""`)
-
-**B. model.ts (must be created manually)**
-
-- Must be created manually
-- Reference another entity's model.ts as a template
-- Required methods: findById, findOne, findMany, save, del
-- See PHASE 2 below for template
-
-**C. types.ts (auto-generated — wait for it)**
-
-- **If `pnpm dev` is running**, the syncer will auto-generate it within 2–3 seconds
-- Check: `ls packages/api/src/application/{entity}/{entity}.types.ts`
-- If not generated:
-  1. Verify `pnpm dev` is running
-  2. If still not generated, create manually (see PHASE 2 below for template)
-
-**Done criteria:**
-
-- [ ] entity.json validation passed
-- [ ] model.ts exists
-- [ ] types.ts exists (auto-generated or manually created)
-
-### Step 4: Sync
+## Step 4: Sync
 
 ```bash
 pnpm sonamu sync
 ```
 
-**Note:** Do not write entity JSON by hand. Always generate using the stub command, then edit.
-
-### Step 5: Migration and Scaffolding
-
-1. Generate and apply migration
-2. Run scaffolding
-3. Test the build
-
-**Full workflow:** see the step-by-step checklist in PHASE 1–5 below
-
-### Step 6: Handle nullable fields in types.ts (required)
-
-**CRITICAL: Do this immediately after scaffolding, before writing tests!**
-
-After scaffolding completes, nullable fields in the generated `*.types.ts` must be handled.
-
-```typescript
-// Auto-generated types.ts
-export const FAQSaveParams = FAQBaseSchema.partial({
-  id: true,
-  created_at: true,
-});
-
-// CORRECT: update immediately — add nullable fields
-export const FAQSaveParams = FAQBaseSchema.partial({
-  id: true,
-  created_at: true,
-  category: true, // nullable added
-  order_num: true, // nullable added
-}).extend({
-  category: z.string().nullish(),
-  order_num: z.number().nullish(),
-  updated_at: z.date().nullish(),
-});
-```
-
-**Detailed guide:** see "Tasks to Do Immediately After Entity Creation" in `sonamu-testing`
-
-
-## Overall Workflow
-
-```
-1. Generate stub
-2. Write entity.json
-3. Run automated validation (this checklist)
-4. Create model.ts, types.ts
-5. Run sync
-6. Create migration
-7. Apply migration
-8. Run scaffolding
-```
-
-## PHASE 1: entity.json Validation (Before Sync)
-
-Immediately after writing your entity.json file, validate the following **before running sync**.
-
-### 1.1 Index Validation
-
-**Does every index have a `type` field?**
-
-```json
-// DO NOT - Incorrect
-"indexes": [
-  { "name": "ix_user_email", "columns": [{ "name": "email" }] }
-]
-
-// DO - Correct
-"indexes": [
-  { "name": "ix_user_email", "type": "index", "columns": [{ "name": "email" }] }
-]
-```
-
-**How to validate:**
-
-```bash
-# Find indexes without type in all entity.json files
-grep -r '"indexes"' packages/api/src/application/*/\*.entity.json | \
-  xargs -I {} sh -c 'grep -L "\"type\":" {}'
-```
-
-### 1.2 Subset Validation
-
-**Are you avoiding direct foreign key references?**
-
-```json
-// DO NOT - Incorrect: direct foreign key reference
-"subsets": {
-  "A": ["id", "user_id", "task_id"]
-}
-
-// DO - Correct: reference through relation (Sonamu auto-optimizes when only .id is referenced)
-"subsets": {
-  "A": ["id", "user.id", "task.id"]
-}
-```
-
-**Rules:**
-
-- `{relation_name}_id` → `{relation_name}.id`
-- If a BelongsToOne relation exists, always use `relation.id` format
-- Sonamu optimizes by reading the FK column directly and skipping JOINs when only `.id` is referenced
-
-**How to validate:**
-
-```bash
-# Find subset fields ending in _id in entity.json
-grep -A 20 '"subsets"' your-entity.entity.json | grep '_id"'
-```
-
-**Reference working code:**
-
-- `sonamu/examples/miomock/api/src/application/project/project.entity.json`
-- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json`
-
-### 1.3 Subset A Completeness Validation
-
-**Does Subset A include all fields?**
-
-```json
-// DO - Correct: all props included
-{
-  "props": [
-    { "name": "id" },
-    { "name": "created_at" },
-    { "name": "title" },
-    { "type": "relation", "name": "user" }
-  ],
-  "subsets": {
-    "A": ["id", "created_at", "title", "user.id", "user.name"]
-  }
-}
-```
-
-**Validation checklist:**
-
-- [ ] All regular fields included
-- [ ] All relations include at least `.id`
-- [ ] Non-nullable relations also include required fields
-
-### 1.4 Duplicate Column Validation
-
-**Are BelongsToOne relations and their foreign keys not defined twice?**
-
-```json
-// DO NOT - Incorrect: duplicate definition
-{
-  "props": [
-    { "name": "user_id", "type": "integer" },  // should be removed
-    {
-      "type": "relation",
-      "name": "user",
-      "with": "User",
-      "relationType": "BelongsToOne"
-    }
-  ]
-}
-
-// DO - Correct: define relation only
-{
-  "props": [
-    {
-      "type": "relation",
-      "name": "user",
-      "with": "User",
-      "relationType": "BelongsToOne"
-    }
-  ]
-}
-```
-
-**How to validate:**
-
-```bash
-# Check if a BelongsToOne relation also has an _id field
-grep -A 5 '"relationType": "BelongsToOne"' your-entity.entity.json
-grep '"name": ".*_id"' your-entity.entity.json
-```
-
-### 1.5 Boolean dbDefault Validation
-
-**Is the dbDefault for Boolean types the string "true"/"false"?**
-
-```json
-// DO NOT - Incorrect
-{ "name": "is_active", "type": "boolean", "dbDefault": "1" }
-{ "name": "is_deleted", "type": "boolean", "dbDefault": "0" }
-
-// DO - Correct
-{ "name": "is_active", "type": "boolean", "dbDefault": "true" }
-{ "name": "is_deleted", "type": "boolean", "dbDefault": "false" }
-```
-
-### 1.6 OrderBy Enum Validation
-
-**Does the OrderBy enum contain only `id-desc`?**
-
-```json
-// DO NOT - Incorrect: causes scaffolding errors!
-"enums": {
-  "ProductOrderBy": {
-    "id-desc": "ID Latest",
-    "name-asc": "By Name",
-    "created_at-desc": "By Registration Date"
-  }
-}
-
-// DO - Correct
-"enums": {
-  "ProductOrderBy": { "id-desc": "ID Latest" }
-}
-```
-
-**Reason:** The model code generated by scaffolding only handles `id-desc`.
-
-### 1.7 Enum dbDefault Validation
-
-**Is the dbDefault for Enum types wrapped in escaped double quotes?**
-
-```json
-// DO NOT - Incorrect
-{ "name": "status", "type": "enum", "id": "Status", "dbDefault": "pending" }
-{ "name": "status", "type": "enum", "id": "Status", "dbDefault": "'pending'" }
-
-// DO - Correct
-{ "name": "status", "type": "enum", "id": "Status", "dbDefault": "\"pending\"" }
-```
-
-## PHASE 2: Required File Generation Validation
-
-### 2.1 model.ts File Creation
-
-**Does the entity folder contain a `{entity}.model.ts` file?**
-
-```bash
-# Check
-ls packages/api/src/application/your-entity/your-entity.model.ts
-```
-
-**If missing, manual creation is required** (refer to another entity's model.ts)
-
-Required methods:
-
-- `findById`
-- `findOne`
-- `findMany`
-- `save`
-- `del`
-
-### 2.2 types.ts File Creation
-
-**Does the entity folder contain a `{entity}.types.ts` file?**
-
-```bash
-# Check
-ls packages/api/src/application/your-entity/your-entity.types.ts
-```
-
-**Required content:**
+`sync` generates `{entity}.types.ts` and never overwrites it afterwards, so extending that file is
+your job. Expected shape:
 
 ```typescript
 import { z } from "zod";
@@ -345,7 +82,6 @@ import { YourEntityBaseListParams, YourEntityBaseSchema } from "../sonamu.genera
 export const YourEntityListParams = YourEntityBaseListParams;
 export type YourEntityListParams = z.infer<typeof YourEntityListParams>;
 
-// Basic pattern (no relations)
 export const YourEntitySaveParams = YourEntityBaseSchema.partial({
   id: true,
   created_at: true,
@@ -353,229 +89,86 @@ export const YourEntitySaveParams = YourEntityBaseSchema.partial({
 export type YourEntitySaveParams = z.infer<typeof YourEntitySaveParams>;
 ```
 
-**If a ManyToMany relation exists:**
+With a ManyToMany relation, add the id array:
 
 ```typescript
-// ManyToMany relation: add {relation_name}_ids array
 export const YourEntitySaveParams = YourEntityBaseSchema.partial({
   id: true,
   created_at: true,
 }).extend({
   relation_name_ids: z.array(z.number().int().positive()),
 });
-export type YourEntitySaveParams = z.infer<typeof YourEntitySaveParams>;
 ```
 
-**Reference working code:**
+Working examples: `examples/miomock/api/src/application/project/project.types.ts` (ManyToMany),
+`.../employee/employee.types.ts` (basic).
 
-- `sonamu/examples/miomock/api/src/application/project/project.types.ts` - ManyToMany example
-- `sonamu/examples/miomock/api/src/application/employee/employee.types.ts` - basic pattern
+No `types.ts` after a sync? The syncer generates it only when the entity has no `parentId` and
+the file does not already exist — so it is one of those two conditions, not a timing lag. Child
+entities with `parentId` are typed through their parent. Substituting a hand-written file for a
+sync drifts from the template; `pnpm sonamu sync --force` re-runs the full sync, ignoring
+`sonamu.lock`.
 
-## PHASE 3: Sync Execution and Validation
-
-### 3.1 Run Sync
+Sync writes across both packages, so these are the places to look when something downstream is
+missing:
 
 ```bash
-cd packages/api
-pnpm sonamu sync
-```
-
-### 3.2 Sync Result Validation
-
-**Are all 3 files registered in sonamu.lock?**
-
-```bash
-# Check
-grep "your-entity" packages/api/sonamu.lock
-```
-
-**Expected result:**
-
-```json
-[
-  {
-    "path": "src/application/your-entity/your-entity.entity.json",
-    "checksum": "..."
-  },
-  {
-    "path": "src/application/your-entity/your-entity.model.ts",
-    "checksum": "..."
-  },
-  {
-    "path": "src/application/your-entity/your-entity.types.ts",
-    "checksum": "..."
-  }
-]
-```
-
-### 3.3 Web Package Sync Validation
-
-**Have the required files been generated in the web package?**
-
-```bash
-# Check service generation
+grep "your-entity" packages/api/sonamu.lock                          # entity.json, model.ts, types.ts
 grep "YourEntityService" packages/web/src/services/services.generated.ts
-
-# Check component generation
-ls packages/web/src/components/your-entity/
-
-# Check route generation
-ls packages/web/src/routes/admin/your-entities/
+grep "entity.YourEntity" packages/web/src/i18n/sd.generated.ts       # FK field labels
+ls packages/web/src/components/your-entity/ packages/web/src/routes/admin/your-entities/
 ```
 
-### 3.4 i18n Key Generation Validation
+## Step 5: Nullable fields in types.ts
 
-**Have labels been generated for foreign key fields?**
+Generated `SaveParams` does not mark nullable props as `partial`, so until this is done `SaveParams`
+rejects `null` for every nullable field and any code path that saves one — a test helper, a form
+submit, a fixture — fails to type-check.
+
+```typescript
+// generated
+export const FAQSaveParams = FAQBaseSchema.partial({ id: true, created_at: true });
+
+// after handling the nullable props
+export const FAQSaveParams = FAQBaseSchema.partial({
+  id: true,
+  created_at: true,
+  category: true,
+  order_num: true,
+}).extend({
+  category: z.string().nullish(),
+  order_num: z.number().nullish(),
+  updated_at: z.date().nullish(),
+});
+```
+
+Full treatment: "Tasks to Do Immediately After Entity Creation" in `sonamu-testing`.
+
+## Step 6: Migration
 
 ```bash
-# Check
-grep "entity.YourEntity" packages/web/src/i18n/sd.generated.ts
+pnpm sonamu migrate generate
+pnpm sonamu migrate status
+pnpm sonamu migrate run
 ```
 
-## PHASE 4: Migration Validation
+`migrate generate` refuses to run while any earlier migration is unapplied — see `sonamu-migration`
+for that error and how to clear it. There is no dry-run flag; the generated file is the SQL preview.
+Reading it before applying catches:
 
-### 4.1 Create Migration File
+- A wrong table name (expected: plural, snake_case)
+- Missing columns, FK constraints, or indexes
+- Duplicate column definitions
+- Boolean defaults emitted as strings rather than `true` / `false`
+
+## Step 7: Scaffolding
 
 ```bash
-cd packages/api
-pnpm sonamu migration:create
+pnpm sonamu scaffold model YourEntity
+pnpm sonamu scaffold model_test YourEntity
+pnpm sonamu scaffold view_list YourEntity
+pnpm sonamu scaffold view_form YourEntity
 ```
 
-### 4.2 Migration File Validation
-
-**Check the generated migration file:**
-
-```bash
-ls packages/api/src/migrations/*_create__your_entities.ts
-```
-
-**Validation checklist:**
-
-- [ ] Is the table name correct? (plural, snake_case)
-- [ ] Are all columns defined?
-- [ ] Are foreign key constraints present?
-- [ ] Are indexes created?
-- [ ] Is the default for Boolean columns correct? (true/false)
-
-### 4.3 Migration Dry-run
-
-```bash
-# Check SQL before applying migration
-cd packages/api
-pnpm sonamu migration:latest --dry-run
-```
-
-**Check for:**
-
-- No SQL syntax errors
-- No duplicate column definitions
-- No Boolean default type errors
-
-## PHASE 5: Scaffolding Validation
-
-### 5.1 Pre-Scaffolding Check
-
-**Have all previous steps been completed?**
-
-- [ ] entity.json validation complete
-- [ ] model.ts, types.ts created
-- [ ] sync executed
-- [ ] migration created and applied
-
-### 5.2 Run Scaffolding
-
-```bash
-cd packages/api
-pnpm sonamu scaffold your-entity
-```
-
-### 5.3 Build Validation
-
-```bash
-# API build
-cd packages/api
-pnpm build
-
-# Web build
-cd packages/web
-pnpm build
-```
-
-**There must be no build errors!**
-
-## Automated Validation Script (Optional)
-
-Save the following script as `packages/api/scripts/validate-entity.sh`:
-
-```bash
-#!/bin/bash
-
-ENTITY=$1
-ENTITY_DIR="src/application/$ENTITY"
-
-echo "[VALIDATION] Validating entity: $ENTITY"
-
-# 1. Check files exist
-echo "[CHECK] Checking required files..."
-if [ ! -f "$ENTITY_DIR/$ENTITY.entity.json" ]; then
-  echo "[ERROR] Missing: $ENTITY.entity.json"
-  exit 1
-fi
-if [ ! -f "$ENTITY_DIR/$ENTITY.model.ts" ]; then
-  echo "[ERROR] Missing: $ENTITY.model.ts"
-  exit 1
-fi
-if [ ! -f "$ENTITY_DIR/$ENTITY.types.ts" ]; then
-  echo "[ERROR] Missing: $ENTITY.types.ts"
-  exit 1
-fi
-echo "[PASS] All required files exist"
-
-# 2. Check indexes have type
-echo "[CHECK] Checking index types..."
-if grep -q '"indexes"' "$ENTITY_DIR/$ENTITY.entity.json"; then
-  if ! grep -A 10 '"indexes"' "$ENTITY_DIR/$ENTITY.entity.json" | grep -q '"type":'; then
-    echo "[ERROR] Some indexes are missing 'type' field"
-    exit 1
-  fi
-fi
-echo "[PASS] All indexes have type"
-
-# 3. Check for _id in subsets
-echo "[CHECK] Checking subset field expressions..."
-if grep -A 20 '"subsets"' "$ENTITY_DIR/$ENTITY.entity.json" | grep -q '_id"'; then
-  echo "[WARNING] Found '_id' in subsets. Should use 'relation.id' instead"
-fi
-
-# 4. Check OrderBy enum
-echo "[CHECK] Checking OrderBy enum..."
-if grep -A 5 'OrderBy"' "$ENTITY_DIR/$ENTITY.entity.json" | grep -v 'id-desc' | grep -q ':'; then
-  echo "[WARNING] OrderBy has values other than 'id-desc'"
-fi
-
-echo "[COMPLETE] Entity validation complete!"
-```
-
-**Usage:**
-
-```bash
-chmod +x packages/api/scripts/validate-entity.sh
-./packages/api/scripts/validate-entity.sh your-entity
-```
-
-## Checklist Summary
-
-When creating an entity, **always** proceed in the following order:
-
-1. STEP 1: `pnpm sonamu stub entity YourEntity`
-2. STEP 2: Write `your-entity.entity.json`
-3. STEP 3: **Validate using this checklist** (CRITICAL - must be performed)
-4. STEP 4: Create `your-entity.model.ts`
-5. STEP 5: Create `your-entity.types.ts`
-6. STEP 6: `pnpm sonamu sync`
-7. STEP 7: Validate sync results (sonamu.lock, web files)
-8. STEP 8: `pnpm sonamu migration:create`
-9. STEP 9: Validate migration file
-10. STEP 10: `pnpm sonamu migration:latest` (apply)
-11. STEP 11: `pnpm sonamu scaffold your-entity`
-12. STEP 12: Build test
+Each type is a separate command taking the EntityId. What each produces, and what the generated
+output leaves for you to finish, is in `sonamu-frontend`'s `references/scaffolding.md`.

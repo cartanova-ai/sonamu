@@ -20,19 +20,19 @@
 "ProductStatus": { "draft": "Draft", "published": "Published", "archived": "Archived" }
 ```
 
-### IMPORTANT: Always use enum for fixed-value fields
+### Fixed-value fields: enum over string
 
-Defining a field with a fixed set of choices as `string` breaks DB integrity.
+A fixed set of choices typed as `string` leaves the DB with no constraint on the value, and the
+generated form with a free-text input where a select belongs.
 
-**Rule: "Can this value be freely entered from outside the code?"** No → enum, Yes → string
-
-**Enum candidates**: strings that look like `faker.helpers.arrayElement([...])`, fields described as "one of the following / type / category", select boxes / radio buttons
+The question that separates them: can this value be entered freely from outside the code? No → enum.
+Yes → string. Fields that turn out to be enums usually read as "one of the following", a type, or a
+category — and show up as select boxes or radio buttons in the UI, or as
+`faker.helpers.arrayElement([...])` in a fixture generator.
 
 ```json
-// WRONG: defined as string
-{ "name": "budget_item", "type": "string", "desc": "Budget item" }
-// CORRECT: defined as enum
-{ "name": "budget_item", "type": "enum", "id": "BudgetItem", "desc": "Budget item" }
+{ "name": "budget_item", "type": "string", "desc": "Budget item" }                        // unconstrained
+{ "name": "budget_item", "type": "enum", "id": "BudgetItem", "desc": "Budget item" }      // constrained
 ```
 
 ### Adding a nullable field
@@ -41,30 +41,23 @@ Defining a field with a fixed set of choices as `string` breaks DB integrity.
 { "name": "deleted_at", "type": "date", "nullable": true, "desc": "Deleted at" }
 ```
 
-**CRITICAL: Importance of the nullable attribute**
-
-A field without `nullable: true` is treated as **required**.
-
-Sonamu's `ubUpsert` uses PostgreSQL `ON CONFLICT ... DO UPDATE`, so **all required fields** must be included even on updates.
+A prop without `nullable: true` is required, and that reaches further than the column definition:
+`ubUpsert` uses PostgreSQL `ON CONFLICT ... DO UPDATE`, so every required field has to be supplied on
+updates as well as inserts — a partial update that omits one fails.
 
 ```json
-// example
 {
   "props": [
-    { "name": "title", "type": "string" }, // required (no nullable)
-    { "name": "content", "type": "string" }, // required (no nullable)
-    { "name": "category", "type": "string", "nullable": true } // optional
+    { "name": "title", "type": "string" },                      // required
+    { "name": "content", "type": "string" },                    // required
+    { "name": "category", "type": "string", "nullable": true }  // optional
   ]
 }
 ```
 
-**Rules**:
-
-- Do not add `nullable: true` to fields that are not optional
-- Always specify `nullable: true` for optional fields
-- Required fields must always have a value in tests and API calls
-
-**Details:** see `sonamu-testing` and "CRITICAL: Required fields must be included" in `sonamu-query`
+Which way each prop goes is a modelling decision, and the cost of getting it wrong lands on every
+test helper and API call that has to fill the field. Details: "Required fields must be included" in
+`sonamu-query`.
 
 ### Adding a JSON field
 
@@ -145,7 +138,7 @@ SQL expressions per source column type:
 
 ### Partial index (`where`)
 
-`where` declares a PostgreSQL partial index predicate. Provide a raw SQL condition **without** the `WHERE` keyword; it is appended to the generated `CREATE INDEX`. Works for every index type (`index`, `unique`, `hnsw`, `ivfflat`, pgroonga).
+`where` declares a PostgreSQL partial index predicate. Provide a raw SQL condition without the `WHERE` keyword; it is appended to the generated `CREATE INDEX`. Works for every index type (`index`, `unique`, `hnsw`, `ivfflat`, pgroonga).
 
 ```json
 {
@@ -174,70 +167,41 @@ By default PostgreSQL treats `NULL`s as distinct, so a unique index allows multi
 
 → `CREATE UNIQUE INDEX uniq_accounts_external_id ON accounts (external_id) NULLS NOT DISTINCT;`
 
-### IMPORTANT: Use the actual DB column name in indexes
+### FK columns: DB column name in indexes, FieldExpr in subsets
 
-**The way FK columns are referenced differs between indexes and subsets. Do not confuse them.**
+Indexes are DDL, so they name real columns; subsets are query expressions, so they name relations.
+The two forms are not interchangeable and `role.id` in an index errors.
 
 | Location  | Format                     | Example                               |
 | --------- | -------------------------- | ------------------------------------- |
 | `indexes` | Actual DB column name      | `role_id`, `user_id`, `department_id` |
 | `subsets` | FieldExpr (relation.field) | `role.id`, `user.id`, `department.id` |
 
-**DO NOT:**
-
 ```json
-// Using FieldExpr in indexes → error
-"indexes": [
-  { "name": "ix_role", "type": "index", "columns": [{ "name": "role.id" }] }
-]
+"indexes": [{ "name": "ix_role_id", "type": "index", "columns": [{ "name": "role_id" }] }],
+"subsets": { "A": ["id", "role.id", "role.name"] }
 ```
 
-**DO:**
+### Unique vs index
 
-```json
-// indexes use actual DB column names
-"indexes": [
-  { "name": "ix_role_id", "type": "index", "columns": [{ "name": "role_id" }] }
-]
+The domain decides this one, not the schema: what should happen if the same combination is inserted
+twice? An error → `unique`. Allowed → plain `index`.
 
-// subsets use FieldExpr
-"subsets": {
-  "A": ["id", "role.id", "role.name"]
-}
-```
+Combinations that usually want a composite unique: per-year settings (`type, dept_id, year`),
+user-role mappings, per-year budgets (`project_id, year, budget_item`), likes and bookmarks
+(`user_id, entity_id`).
 
-### IMPORTANT: Unique constraints based on business rules
+## Easily missed declarations
 
-Not a technical decision — ask **"What if the same combination is inserted twice?"** → if it should error, use unique; if it should be allowed, use index only.
+| Missing                             | Effect                                                              |
+| ----------------------------------- | ------------------------------------------------------------------- |
+| `id` prop                           | Most Model logic assumes it — findById, save, del                   |
+| `created_at` prop                   | No creation timestamp; add with `dbDefault: "CURRENT_TIMESTAMP"`    |
+| `{EntityId}OrderBy` enum            | `findMany` has nothing to sort by                                   |
+| `{EntityId}SearchField` enum        | Search has no field to search                                       |
+| enum prop's `id` absent from `enums` | Sync fails — the prop references a type that was never defined      |
+| `id` on a json prop                 | Sync fails — `id` is the generated TypeScript type's name           |
 
-**Patterns that need composite unique**: per-year settings (`type, dept_id, year`), user-role mappings, per-year budgets (`project_id, year, budget_item`), likes/bookmarks (`user_id, entity_id`)
+`"type": "text"` is not a valid prop type. Long text is `"type": "string"` with `length` omitted.
 
-## Common Mistakes
-
-| Mistake                                          | Fix                                                                                   |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| Missing `id` prop                                | Recommended to add (needed by most Model logic)                                       |
-| Missing `created_at` prop                        | Recommended to add with `dbDefault: "CURRENT_TIMESTAMP"`                              |
-| Missing `OrderBy` enum                           | Add `{EntityId}OrderBy` (needed for findMany sorting)                                 |
-| Missing `SearchField` enum                       | Add `{EntityId}SearchField` (needed for search)                                       |
-| enum prop `id` not defined in enums              | Add definition to the enums section                                                   |
-| Missing `id` on json prop                        | Add the `id` field                                                                    |
-| Using `"type": "text"` directly                  | `text` is invalid. Use `"type": "string"` without a length                            |
-| Adding multiple values to `OrderBy` enum         | **Default is `id-desc` only** (see below)                                             |
-| Defining fixed-choice fields as `string`         | Convert to enum (check for fields with arrayElement-style fixtureGenerator)           |
-| Yearly/mapping tables without unique constraints | Add composite unique based on business rules                                          |
-| Using `number` type for integer fields           | Use `integer` (use `numeric` only when decimal precision is needed)                   |
-| Using `role.id` format in indexes                | indexes use actual DB column name (`role_id`); only subsets use FieldExpr (`role.id`) |
-
-## Resolving Entity Schema Validation Errors
-
-**→ See `references/creation-workflow.md` PHASE 1** (missing index type, Subset FieldExpr, duplicate columns, Boolean dbDefault, etc.)
-
-**Quick checklist:**
-
-- [ ] Does every index have a `type` field? (`"index"` | `"unique"` | `"hnsw"` | `"ivfflat"`)
-- [ ] Does the subset reference FK using `relation.id` format? (`user_id` ✗ → `user.id` ✓)
-- [ ] No duplicate definition of BelongsToOne relation and FK column?
-- [ ] Is Boolean `dbDefault` a string (`"true"` / `"false"`)? (0, 1 ✗)
-- [ ] Are all fields included in Subset A?
-- [ ] Do index columns use actual DB column names (`role_id`)? (FieldExpr `role.id` ✗)
+The full pre-sync validation list is in `references/creation-workflow.md`, Step 2.

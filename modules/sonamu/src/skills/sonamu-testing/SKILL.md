@@ -7,9 +7,10 @@ description: Writes and runs Sonamu Vitest tests. Use when authoring a Model or 
 
 Sonamu provides a Vitest-based test environment. Each test is isolated in a transaction and automatically rolled back.
 
-**Example project**: `sonamu/examples/miomock` — reference for real test code
+Example project: `sonamu/examples/miomock` — reference for real test code
 
-**WARNING: Projects with 10 or more entities must use a batch strategy** — see `references/writing-plan.md`.
+Writing tests across many entities at once? `references/writing-plan.md` covers grouping them by
+data dependency so fixtures and FK order do not fight you.
 
 ## Reference Map
 
@@ -26,11 +27,9 @@ Sonamu provides a Vitest-based test environment. Each test is isolated in a tran
 Fixture generation via CLI (`fixture gen/fetch/explore`) and the 3-Tier DB structure live in the
 `sonamu-fixture` skill, not here.
 
----
-
 ## Running Tests
 
-**Use `pnpm sonamu test` during development.** It reuses a Vitest instance living inside the
+Use `pnpm sonamu test` during development. It reuses a Vitest instance living inside the
 `sonamu dev` process, so it is roughly 3.2x faster than a cold start and picks up source changes
 through HMR. Assume the dev server is running; start it first if it is down. `pnpm test` is for CI.
 
@@ -60,28 +59,25 @@ export default defineConfig({
 });
 ```
 
-**→ Prerequisites, CLI argument rules, HMR integration, HTTP API, internal architecture, parallel
-DB flow, vitest.config.ts/global.ts, troubleshooting: `references/devrunner.md`**
+## What a Model test needs in place
 
----
+These are what make a test runnable, not a checklist to complete before you are allowed to write
+one:
 
-## Pre-Test Writing Checklist
-
-- [ ] **Confirm entity design is complete** - `pnpm db:migration` and `pnpm scaffolding` completed without errors
-- [ ] **Plan test writing** - group entities by business process (→ see "Test Writing Plan" below)
-- [ ] **Handle nullable fields in types.ts (FIRST!)** - immediately after entity creation, apply partial + extend handling for nullable fields (→ see "Tasks to Do Immediately After Entity Creation" below)
-- [ ] **Prepare Seed Data** - base data required due to FK constraints (→ see "minimum seed data" in database.md)
-- [ ] **Test helper functions** - prepare helpers for handling complex entity dependencies
-- [ ] **For 10 or more entities** - plan batch strategy (see "Large-Scale Project Strategy" below)
-
+- The table exists — the entity's migration has been applied to the test DB, or `save` fails on
+  a missing relation
+- Nullable fields are handled in `types.ts` — generated `SaveParams` does not mark nullable
+  props as `partial`, so omitting them is a type error until you add `partial` + `extend`
+  (→ "Tasks to Do Immediately After Entity Creation" in `references/writing-plan.md`)
+- Seed data for non-nullable FKs — a row that cannot exist without its parent needs that parent
+  (→ "minimum seed data" in `sonamu-config`'s `references/database.md`)
 
 ## Core Test Writing Principles
 
 ### 1. Verify Actual Structure First
 
-**CRITICAL: Always verify the actual entity structure before planning tests.**
-
-Before writing tests, you must verify the following:
+Tests written against a guessed structure fail on the field name, not on the behavior they meant to
+check. Read the actual structure first:
 
 ```typescript
 // STEP 1: Check entity.json
@@ -101,7 +97,7 @@ Before writing tests, you must verify the following:
 // - BaseSchema structure
 ```
 
-**Wrong approach:**
+Wrong approach:
 
 ```typescript
 // BAD - writing tests based on guesses
@@ -116,7 +112,7 @@ test("create user", async () => {
 });
 ```
 
-**Correct approach:**
+Correct approach:
 
 ```typescript
 // GOOD - write after checking entity.json
@@ -144,7 +140,7 @@ test("create user", async () => {
 
 ### 2. Understanding Subset Structure
 
-**Access nested relations using dot notation.**
+Access nested relations using dot notation.
 
 ```typescript
 // Check Subset definition in entity.json
@@ -176,7 +172,7 @@ test("fetch evaluation item", async () => {
 });
 ```
 
-**Important rules:**
+Rules:
 
 - FK of BelongsToOne relation is defined as `relation.id` form in Subset
 - Access in tests as `entity.relation.field` form
@@ -184,7 +180,7 @@ test("fetch evaluation item", async () => {
 
 ### 3. Handling DECIMAL Types
 
-**DECIMAL types are returned from PostgreSQL with a `.00` suffix.**
+DECIMAL types are returned from PostgreSQL with a `.00` suffix.
 
 ```typescript
 // entity.json
@@ -221,7 +217,7 @@ test("fetch salary info", async () => {
 });
 ```
 
-**DECIMAL type comparison patterns:**
+DECIMAL type comparison patterns:
 
 ```typescript
 // Pattern 1: string pattern matching
@@ -247,5 +243,5 @@ expect(result).toMatchObject({
 - Use `test` for unauthenticated tests, `testAs` for authenticated tests
 - Define fixtures with `createFixtureLoader` and load with `loadFixtures`
 - Use Naite to track and validate query/UpsertBuilder behavior
-- Recommend snapshot tests using `toMatchInlineSnapshot()`
+- `toMatchInlineSnapshot()` writes the expected value into the test file on its first run
 - Configure Mocks globally in `setup-mocks.ts` or use `vi.spyOn` within tests

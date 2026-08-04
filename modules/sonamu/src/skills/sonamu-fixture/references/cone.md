@@ -4,11 +4,9 @@
 
 | Purpose                | Description                                                           |
 | ---------------------- | --------------------------------------------------------------------- |
-| **Fixture generation** | LLM generates contextually appropriate test data based on `cone.note` |
-| **Scaffolding**        | Uses cone information to generate model and view templates            |
-| **Documentation**      | Metadata describing Entity structure and the meaning of each field    |
-
----
+| Fixture generation | LLM generates contextually appropriate test data based on `cone.note` |
+| Scaffolding        | Uses cone information to generate model and view templates            |
+| Documentation      | Metadata describing Entity structure and the meaning of each field    |
 
 ## Cone Field Types
 
@@ -23,8 +21,8 @@
 
 | Field              | Type   | Description                                                                                                                                    |
 | ------------------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `note`             | string | **Highest priority.** Business meaning of the field, concrete examples, value ranges, format constraints. Input the LLM reads to generate data |
-| `fixtureGenerator` | string | **Fallback.** faker.js expression. Fallback when no API key is available                                                                       |
+| `note`             | string | Highest priority. Business meaning of the field, concrete examples, value ranges, format constraints. Input the LLM reads to generate data |
+| `fixtureGenerator` | string | Fallback. faker.js expression. Fallback when no API key is available                                                                       |
 | `fixtureDefault`   | any    | Fixed default value                                                                                                                            |
 | `fixtureStrategy`  | string | `"sequence"` — used when a DB sequence auto-assigns the id. Never use on string PK.                                                            |
 | `dataSource`       | object | Strategy for fetching reference data for relation props                                                                                        |
@@ -42,8 +40,6 @@
 | `note`   | string | Meaning and usage context of the enum  |
 | `values` | object | `{ note: string }` for each enum value |
 
----
-
 ## Priority During Fixture Generation
 
 When the `--use-llm` flag is used:
@@ -56,9 +52,9 @@ When the `--use-llm` flag is used:
 5. type-based default (auto-generated)
 ```
 
-**CRITICAL: If `cone.note` is empty, the LLM generates data without context, resulting in poor quality. Always verify that cone.note exists before running fixture generation.**
-
----
+With an empty `cone.note`, the LLM has no domain context to condition on and falls back to generic
+values — the generation still succeeds, so the effect shows up as unrealistic fixture data rather
+than an error.
 
 ## CLI Commands
 
@@ -66,7 +62,7 @@ When the `--use-llm` flag is used:
 
 Passes the domain rules (`contract/**/*.contract.md`) and Entity structure to the LLM to generate contextually appropriate cone.
 
-**Requires ANTHROPIC_API_KEY** (`.env` or `sonamu.config.ts`'s `secret.anthropic_api_key`)
+Requires ANTHROPIC_API_KEY (`.env` or `sonamu.config.ts`'s `secret.anthropic_api_key`)
 
 ```bash
 # Single Entity
@@ -95,8 +91,8 @@ pnpm sonamu cone gen Post --locale en
 
 #### How it works
 
-- **Default mode**: `onlyEmpty` — only generates for props where cone.note is empty; existing notes are preserved
-- **`--regenerate` mode**: full regeneration, overwrites existing cone
+- Default mode: `onlyEmpty` — only generates for props where cone.note is empty; existing notes are preserved
+- `--regenerate` mode: full regeneration, overwrites existing cone
 
 #### Information referenced by the LLM
 
@@ -125,8 +121,6 @@ pnpm sonamu stub entity Post --no-cones
 | Quality | Defaults based on faker-mappings | Reflects project context |
 | Speed   | Immediate                        | Takes a few seconds      |
 | Upgrade | Can be upgraded with `cone gen`  | —                        |
-
----
 
 ## Key Cone Patterns
 
@@ -203,8 +197,6 @@ fixture-generator automatically generates `alphanumeric(32)`.
 }
 ```
 
----
-
 ## dataSource Strategies
 
 Specifies how reference data is fetched for relation props.
@@ -227,7 +219,7 @@ Specifies how reference data is fetched for relation props.
 
 ### DataExplorer Options Detail
 
-**Source:** `modules/sonamu/src/testing/data-explorer.ts`
+Source: `modules/sonamu/src/testing/data-explorer.ts`
 
 | Option     | Type               | Default | Description                                            |
 | ---------- | ------------------ | ------- | ------------------------------------------------------ |
@@ -240,7 +232,7 @@ Specifies how reference data is fetched for relation props.
 | `useCache` | boolean            | `false` | Whether to use caching                                 |
 | `cacheTtl` | number             | `300`   | Cache TTL (in seconds)                                 |
 
-**Example using a where condition:**
+Example using a where condition:
 
 ```json
 "dataSource": {
@@ -261,25 +253,25 @@ Used in `fixture gen` to fetch related data alongside the target data.
 | `includeRelations` | boolean | `true`  | Whether to include related data       |
 | `maxDepth`         | number  | `2`     | Maximum depth for recursive traversal |
 
----
-
 ## Practical Tips
 
 ### Writing effective cone.note
 
-**note is the primary input for fixture data generation.** The LLM reads note to produce contextually appropriate data, so it must contain specific, domain-specialized content.
+note is the primary input for fixture data generation. The LLM reads note to produce contextually appropriate data, so it must contain specific, domain-specialized content.
 
-- **Be specific**: "Korean phone number in 010-XXXX-XXXX format" rather than "string"
-- **Include business context**: "Employee salary. Range: 30,000,000–150,000,000 KRW"
-- **Include concrete examples**: "e.g. AI-based drug discovery platform development, eco-friendly energy storage system development"
-- **State value ranges explicitly**: "Between 50,000,000 (50,000) and 5,000,000,000 (5,000,000)"
-- **Describe correlated fields**: "name_en must be the romanized form of name"
-- **Specify length/format constraints**: "Korean self-introduction, 20–100 characters"
+- Be specific: "Korean phone number in 010-XXXX-XXXX format" rather than "string"
+- Include business context: "Employee salary. Range: 30,000,000–150,000,000 KRW"
+- Include concrete examples: "e.g. AI-based drug discovery platform development, eco-friendly energy storage system development"
+- State value ranges explicitly: "Between 50,000,000 (50,000) and 5,000,000,000 (5,000,000)"
+- Describe correlated fields: "name_en must be the romanized form of name"
+- Specify length/format constraints: "Korean self-introduction, 20–100 characters"
 
 ### Improving LLM cone generation quality
 
-1. Record domain rules and decision rationale in detail in `contract/{domain}/{domain}.contract.md`
-2. Run `cone gen` — the LLM uses `contract/**/*.contract.md` as context
+If the project keeps domain rules under `contract/{domain}/{domain}.contract.md`, `cone gen` picks
+them up as context automatically — the more concrete those rules are, the closer generated notes land
+to the real domain. Projects without that directory are unaffected; the entity JSON and existing cone
+metadata are still used.
 
 ### When to regenerate cone
 
@@ -288,11 +280,9 @@ Used in `fixture gen` to fetch related data alongside the target data.
 - When fixture data quality is poor
 - Running without `--regenerate` preserves existing notes and only fills in empty ones
 
----
-
 ## References
 
-- **Fixture CLI**: this skill — fixture gen/fetch/explore commands
-- **Testing**: `sonamu-testing` — writing tests and using fixtures
-- **Source code**: `modules/sonamu/src/cone/cone-generator.ts`
-- **Template cone**: `modules/sonamu/src/entity/entity-template-cone.ts`
+- Fixture CLI: this skill — fixture gen/fetch/explore commands
+- Testing: `sonamu-testing` — writing tests and using fixtures
+- Source code: `modules/sonamu/src/cone/cone-generator.ts`
+- Template cone: `modules/sonamu/src/entity/entity-template-cone.ts`

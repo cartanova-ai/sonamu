@@ -9,7 +9,7 @@ pnpm docker:up
 
 ## 3-Tier DB Structure
 
-Sonamu uses a 3-tier database structure. It is important to understand the role of each DB and the data flow.
+Sonamu uses a 3-tier database structure:
 
 ```
 production/development master (actual DB)
@@ -29,7 +29,7 @@ production/development master (actual DB)
 
 ### Data Flow
 
-**1. fixture fetch (fetch real data)**
+1. fixture fetch (fetch real data)
 
 ```bash
 pnpm sonamu fixture fetch --include User --limit 10
@@ -39,7 +39,7 @@ pnpm sonamu fixture fetch --include User --limit 10
 - Copies actual production data for testing
 - Related data (FKs) is also fetched
 
-**2. fixture gen (generate dummy data)**
+2. fixture gen (generate dummy data)
 
 ```bash
 pnpm sonamu fixture gen --include Department --count 5
@@ -49,7 +49,7 @@ pnpm sonamu fixture gen --include Department --count 5
 - Automatically resolves reference relationships (FKs)
 - Supports Korean data generation
 
-**3. fixture sync (sync test DB)**
+3. fixture sync (sync test DB)
 
 ```bash
 pnpm sonamu fixture sync
@@ -61,13 +61,13 @@ pnpm sonamu fixture sync
 
 ### Notes
 
-**CRITICAL: Prevent sourceDb vs targetDb confusion**
+sourceDb vs targetDb — the two commands differ, and swapping them produces FK reference errors
+because the rows a relation points at live in the other DB:
 
 - `fixture gen`: sourceDb=fixture, targetDb=fixture (generated inside fixture)
 - `fixture fetch`: sourceDb=production, targetDb=fixture (production → fixture)
-- Incorrect configuration causes FK reference errors
 
-**Example (correct configuration)**:
+Example (correct configuration):
 
 ```typescript
 // fixture gen: reference and save within fixture DB
@@ -80,9 +80,7 @@ const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
 const generator = new FixtureGenerator(sourceDb, fixtureDb, "fixture", EntityManager);
 ```
 
-**Note**: For detailed Fixture CLI command usage, see `sonamu-fixture`
-
----
+Note: For detailed Fixture CLI command usage, see `sonamu-fixture`
 
 ## Seed Data Management
 
@@ -94,10 +92,8 @@ Seed data management proceeds in 2 phases:
 
 | Phase       | Purpose                              | Target DB                         |
 | ----------- | ------------------------------------ | --------------------------------- |
-| **Phase 1** | Prepare seed for development/testing | `project_test`, `project_fixture` |
-| **Phase 2** | Apply seed to the actual DB          | `project` (actual DB)             |
-
----
+| Phase 1 | Prepare seed for development/testing | `project_test`, `project_fixture` |
+| Phase 2 | Apply seed to the actual DB          | `project` (actual DB)             |
 
 ### Phase 1: Prepare Seed for Development/Testing
 
@@ -115,13 +111,13 @@ The `database/scripts/dump.sql` generated at this point contains:
 - CREATE SEQUENCE statements
 - ALTER TABLE ... PRIMARY KEY
 - ALTER TABLE ... FOREIGN KEY
-- **No INSERT statements** (no data yet)
+- No INSERT statements (no data yet)
 
 #### 1-2. Add INSERT Statements to Dump File
 
-Open `database/scripts/dump.sql` and add INSERT statements **before the FK CONSTRAINT** section.
+Open `database/scripts/dump.sql` and add INSERT statements before the FK CONSTRAINT section.
 
-**Important: Write in order considering FK dependency order**
+Write the INSERTs in FK dependency order:
 
 ```sql
 -- Independent tables first
@@ -155,24 +151,11 @@ pnpm sonamu fixture sync
 
 Copies test DB data to the fixture DB.
 
----
-
 ### Phase 2: Apply Seed to Actual DB
 
-**⚠️ CRITICAL WARNING:**
-
-- This step inserts data into the actual DB (`project`)
-- Existing data may be overwritten
-- **You must confirm with the user before proceeding**
-
-**Agent Rules:**
-
-```
-Before applying seed to the actual DB:
-1. Ask the user: "Would you like to apply seed data to the actual database (project)?"
-2. Only proceed when the user explicitly approves
-3. Never run without approval
-```
+This writes to the `project` database, not a test database. Existing rows can be overwritten,
+and there is no undo — the seed is applied directly. Whether that is acceptable depends on what is in
+that database, so it is not a step to run incidentally on the way to something else.
 
 #### 2-1. Verify Current State
 
@@ -188,7 +171,7 @@ PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_test -c "SELECT COUNT(*) 
 pnpm dump
 ```
 
-This dump **includes INSERT statements** (the data added in step 1-2).
+This dump includes INSERT statements (the data added in step 1-2).
 
 #### 2-3. Modify seed.sh File
 
@@ -204,10 +187,8 @@ FIXTURE_DB="${DATABASE_NAME}"
 
 #### 2-4. Run Seed on Actual DB
 
-**⚠️ Run only after user approval:**
-
 ```bash
-pnpm seed
+pnpm seed   # writes to the real DB — see the warning at the top of Phase 2
 ```
 
 Seed data is now applied to the actual DB (`project`).
@@ -219,7 +200,7 @@ Seed data is now applied to the actual DB (`project`).
 PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project -c "SELECT * FROM departments LIMIT 5;"
 ```
 
-#### 2-6. Restore seed.sh (Important!)
+#### 2-6. Restore seed.sh
 
 After the actual DB seed is complete, restore seed.sh to its original state so the next development cycle uses the test DB:
 
@@ -228,19 +209,15 @@ After the actual DB seed is complete, restore seed.sh to its original state so t
 FIXTURE_DB="${DATABASE_NAME}_fixture"  # restored
 ```
 
----
-
 ### Summary: Phase 1 vs Phase 2
 
 | Item              | Phase 1 (Development/Testing)           | Phase 2 (Actual DB)                                 |
 | ----------------- | --------------------------------------- | --------------------------------------------------- |
-| **Timing**        | Preparing test data during development  | Preparing actual data after development is complete |
-| **Dump count**    | 1 time (table structure)                | 2 times (includes data)                             |
-| **Target DB**     | `project_test` → `project_fixture`      | `project`                                           |
-| **seed.sh**       | `FIXTURE_DB="${DATABASE_NAME}_fixture"` | `FIXTURE_DB="${DATABASE_NAME}"`                     |
-| **User approval** | Not required                            | **Required**                                        |
-
----
+| Timing        | Preparing test data during development  | Preparing actual data after development is complete |
+| Dump count    | 1 time (table structure)                | 2 times (includes data)                             |
+| Target DB     | `project_test` → `project_fixture`      | `project`                                           |
+| seed.sh       | `FIXTURE_DB="${DATABASE_NAME}_fixture"` | `FIXTURE_DB="${DATABASE_NAME}"`                     |
+| Reversible    | Yes — the DB is disposable              | No — writes over live data                          |
 
 ### Legacy Workflow (Phase 1 Simple Version)
 
@@ -260,7 +237,7 @@ pnpm sonamu fixture sync
 
 ### Position for Adding Seed Data in Dump File
 
-**pg_dump --inserts output order (based on miomock):**
+pg_dump --inserts output order (based on miomock):
 
 ```sql
 -- 1~40: SET statements & Extensions
@@ -299,9 +276,9 @@ ALTER TABLE ONLY public.departments
     ADD CONSTRAINT departments_company_id_foreign FOREIGN KEY (company_id) REFERENCES public.companies(id);
 ```
 
-### CRITICAL: Seed Data Placement Rule
+### Seed data placement
 
-**Seed data must be added before FK CONSTRAINTs.**
+INSERTs go before the FK CONSTRAINT section of the dump.
 
 | Position             | Result                                                   |
 | -------------------- | -------------------------------------------------------- |
@@ -310,7 +287,7 @@ ALTER TABLE ONLY public.departments
 
 ### Table Dependency Order
 
-Seed data INSERT order must follow **FK dependencies**:
+Seed data INSERT order must follow FK dependencies:
 
 ```sql
 -- 1. Independent tables first (tables without FKs)
@@ -349,8 +326,6 @@ SELECT pg_catalog.setval('public.institutions_id_seq', 1, true);
 SELECT pg_catalog.setval('public.departments_id_seq', 1, true);
 ```
 
----
-
 ## Resolving Port Conflicts
 
 If a port-already-in-use error occurs when running `pnpm docker:up`:
@@ -363,7 +338,7 @@ docker ps --format "table {{.Names}}\t{{.Ports}}"
 
 ### Step 2: Compare Container Names
 
-**Check the current project's container name:**
+Check the current project's container name:
 
 ```bash
 # Check CONTAINER_NAME in packages/api/.env
@@ -386,7 +361,7 @@ pnpm docker:up
 
 Another project is using the same port. The new project's port must be changed.
 
-**Two files to modify:**
+Two files to modify:
 
 1. `packages/api/.env`
 
@@ -420,7 +395,7 @@ port: 5432,
 port: 5433,
 ```
 
-**Port Selection Guide:**
+Port Selection Guide:
 
 - PostgreSQL default port: 5432
 - Available range: 5433 ~ 5439

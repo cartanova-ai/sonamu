@@ -6,13 +6,13 @@
 
 When accessing a property after indexing into an array, you must use optional chaining (`?.`).
 
-**Reason:**
+Reason:
 
 - Array indexing (`array[0]`, `array[1]`, etc.) can always return `undefined`
 - TypeScript infers the type of `array[0]` as `T | undefined`
 - Accessing a property without optional chaining causes a compile error
 
-**Wrong:**
+Wrong:
 
 ```typescript
 // Type error: Object is possibly 'undefined'
@@ -20,7 +20,7 @@ expect(list.rows[0].title).toBe("test");
 expect(searchResults.rows[0].name).toContain("keyword");
 ```
 
-**Correct:**
+Correct:
 
 ```typescript
 // Use optional chaining
@@ -36,14 +36,14 @@ expect(list.rows[0].title).toBe("test"); // now safe
 
 When accessing array elements in test code:
 
-**Pattern 1: Use optional chaining**
+Pattern 1: Use optional chaining
 
 ```typescript
 const result = await Model.findMany("A", { num: 10, page: 1 });
 expect(result.rows[0]?.field).toBe(expectedValue);
 ```
 
-**Pattern 2: Verify length, then access**
+Pattern 2: Verify length, then access
 
 ```typescript
 const result = await Model.findMany("A", { num: 10, page: 1 });
@@ -51,7 +51,7 @@ expect(result.rows.length).toBeGreaterThanOrEqual(1);
 expect(result.rows[0].field).toBe(expectedValue); // type-safe
 ```
 
-**Pattern 3: Optional chaining required when using find()**
+Pattern 3: Optional chaining required when using find()
 
 ```typescript
 const list = await Model.findMany("A", { num: 10, page: 1 });
@@ -77,27 +77,23 @@ Sonamu Model provides the following methods by default. Tests are written target
 | `save(rows)`               | Create/update (upsert) | `Promise<number[]>` (ids)        |
 | `del(ids)`                 | Delete                 | `Promise<number>` (delete count) |
 
-**Note:** It's `del`, not `delete`. This avoids JavaScript reserved words.
+Note: It's `del`, not `delete`. This avoids JavaScript reserved words.
 
 
 ## Type Safety Notes
 
 ### Zod Import Method
 
-**CRITICAL: Always use regular imports when importing Zod in test files.**
+Zod is imported as a value in test files, not with `import type`. Tests use Zod schemas and `z.infer<>`
+directly, so the object has to exist at runtime — a type-only import compiles and then fails when the
+test runs.
 
 ```typescript
-// CORRECT - in test files
-import { z } from "zod";
-import { describe, expect, vi } from "vitest";
-
-// WRONG - runtime error when using type import
-import type { z } from "zod"; // error when test runs!
+import { z } from "zod";              // value import
+import type { z } from "zod";         // erased at compile time → runtime error
 ```
 
-**Reason:** Because `z.infer<>` and Zod schemas are used directly in tests, the Zod object is needed at runtime.
-
-**Where this applies:**
+Where this applies:
 
 - `*.model.test.ts` - all test files
 - `test-helpers.ts` - helper files that use Zod schemas
@@ -121,7 +117,8 @@ export type UserSaveParams = z.infer<typeof UserSaveParams>;
 
 ### Nullable Field Handling Pattern
 
-**→ See "Tasks to Do Immediately After Entity Creation" section above** (partial + extend + nullish pattern)
+The `partial` + `extend` + `nullish` pattern is written out in
+`references/writing-plan.md` under "Tasks to Do Immediately After Entity Creation".
 
 ### Use Nullish Coalescing
 
@@ -151,14 +148,14 @@ const user = await UserModel.findById("A", userId ?? 0);
 
 SaveParams types are exported from each entity's types.ts, not from sonamu.generated.
 
-**Wrong:**
+Wrong:
 
 ```typescript
 // test-helpers.ts
 import type { UserSaveParams, TaskSaveParams } from "../application/sonamu.generated"; // WRONG
 ```
 
-**Correct:**
+Correct:
 
 ```typescript
 // test-helpers.ts
@@ -166,7 +163,7 @@ import type { UserSaveParams } from "../application/user/user.types";
 import type { TaskSaveParams } from "../application/task/task.types";
 ```
 
-**Reason:**
+Reason:
 
 - sonamu.generated only exports BaseSchema and BaseListParams
 - SaveParams is defined with BaseSchema.partial() in each entity's types.ts

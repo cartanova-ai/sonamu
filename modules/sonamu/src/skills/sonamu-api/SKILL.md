@@ -94,9 +94,9 @@ async me(): Promise<User | null> {
 
 ## File Upload (@upload)
 
-> **CRITICAL: `@upload` is used standalone without `@api`.**
-> Adding `@upload` **automatically generates** a POST endpoint and `axios-multipart`/`tanstack-mutation-multipart` clients.
-> Adding `@api` alongside it causes a **build error** due to `checkSingleDecorator` conflict.
+`@upload` stands alone — no `@api` next to it. It already generates the POST endpoint and the
+`axios-multipart` / `tanstack-mutation-multipart` clients, so adding `@api` gives the method two
+decorators claiming the same route and `checkSingleDecorator` fails the build.
 
 ```typescript
 // CORRECT
@@ -109,22 +109,22 @@ async upload(...): Promise<number[]> { }
 async upload(...): Promise<number[]> { }
 ```
 
-**`@upload` supported options** (`httpMethod`, `clients` are not supported — set automatically)
+`httpMethod` and `clients` are not accepted — both are set automatically.
 
-| Option         | Description                                         |
-| -------------- | --------------------------------------------------- |
-| `guards`       | Authentication/authorization guards                 |
-| `limits`       | File count/size limits (`{ files: N }`)             |
-| `consume`      | `"buffer"` (default) or `"stream"`                  |
-| `description`  | API documentation description                       |
-| `destination`  | Stream mode only: storage driver key                |
-| `keyGenerator` | Stream mode only: function to generate storage path |
+| Option         | Description                                                   |
+| -------------- | ------------------------------------------------------------- |
+| `guards`       | Authentication/authorization guards                           |
+| `limits`       | File count/size limits (`{ files: N }`)                       |
+| `consume`      | `"buffer"` (default) or `"stream"`                            |
+| `description`  | API documentation description                                 |
+| `destination`  | Stream mode only, required: which configured disk to write to |
+| `keyGenerator` | Stream mode only: function to generate storage path           |
 
-### Parameter Rule: Must Wrap in a Single Object
+### Two or more parameters go in one object
 
-> **CRITICAL: If an `@upload` method has 2 or more parameters, they must be wrapped into a single object.**
->
-> Using multiple primitive parameters causes a codegen bug in `services.template.ts` that generates `useUploadMutation` incorrectly.
+A `split(":")` bug in `services.template.ts` makes the generated `useUploadMutation` drop every
+primitive parameter after the first, emitting it without its `mutationFn` argument. Wrapping the
+parameters in one object keeps the generated hook correct.
 
 ```typescript
 // WRONG — codegen breaks (missing mutationFn argument)
@@ -143,9 +143,6 @@ uploadMutation.mutate({
 });
 ```
 
-> Root cause: a `split(":")` bug in `services.template.ts` makes `useUploadMutation` drop
-> every primitive parameter after the first, so multiple primitives must be wrapped in one object.
-
 ### Buffer Mode (Default)
 
 ```typescript
@@ -158,10 +155,24 @@ async uploadFiles(): Promise<{ files: SonamuFile[] }> {
 
 ### Stream Mode (Large Files)
 
+`destination` names one of the disks declared under `server.storage.drivers` in `sonamu.config.ts` —
+it selects a configured disk, it does not choose a driver type. The disk keys are yours to define, so
+`destination` has to match one the project actually configured:
+
+```typescript
+// sonamu.config.ts
+storage: {
+  drivers: {
+    fs: drivers.fs({ location: "./uploads", urlBuilder: { ... } }),
+    s3: drivers.s3({ bucket: "my-bucket", region: "ap-northeast-2", ... }),
+  },
+}
+```
+
 ```typescript
 @upload({
   consume: "stream",
-  destination: "s3",  // or "fs"
+  destination: "s3",  // a key of server.storage.drivers
   keyGenerator: (file) => `uploads/${Date.now()}-${file.filename}`,
   limits: { files: 5 },
 })
@@ -171,7 +182,11 @@ async uploadLargeFiles(): Promise<{ urls: string[] }> {
 }
 ```
 
----
+A key with no matching driver throws on the first upload, not at boot:
+`Unknown disk: "x". Available: fs, s3`.
+
+`keyGenerator` resolves decorator → `storage.keyGenerator` → a timestamp-random default, so omitting
+it everywhere still produces keys.
 
 ## Real-world Business Logic Patterns
 
@@ -214,7 +229,7 @@ async changeStatus(
 }
 ```
 
-**Key points:**
+Key points:
 
 - Atomicity guaranteed by transaction
 - ubRegister + ubUpsert pattern
@@ -254,7 +269,7 @@ async enroll(
 }
 ```
 
-**Key points:**
+Key points:
 
 - Step-by-step validation (duplicate → capacity)
 - Clear error messages
@@ -322,15 +337,13 @@ describe("E. Business Logic", () => {
 });
 ```
 
----
-
 ## Conventions and Best Practices
 
 ### Error Message Pattern
 
 Use `this.modelName` and the `SD()` function for consistent error messages.
 
-**BAD: Hardcoded model name**
+BAD: Hardcoded model name
 
 ```typescript
 // findById
@@ -342,7 +355,7 @@ if (!rows[0]) {
 throw new BadRequestException(SD("error.unknownSearchField")(params.search));
 ```
 
-**GOOD: Using this.modelName**
+GOOD: Using this.modelName
 
 ```typescript
 // findById - auto-detects model name
@@ -354,7 +367,7 @@ if (!rows[0]) {
 throw new BadRequestException(SD("search.invalidField")(params.search));
 ```
 
-**Benefits:**
+Benefits:
 
 - DRY principle: model name managed in one place
 - Refactoring safe: error messages auto-reflect model name changes
@@ -364,7 +377,7 @@ throw new BadRequestException(SD("search.invalidField")(params.search));
 
 Use TypeScript's satisfies keyword to preserve type inference while checking types.
 
-**BAD: Loss of type inference**
+BAD: Loss of type inference
 
 ```typescript
 const params: RoleListParams = {
@@ -376,7 +389,7 @@ const params: RoleListParams = {
 };
 ```
 
-**GOOD: Type check + preserved inference with satisfies**
+GOOD: Type check + preserved inference with satisfies
 
 ```typescript
 const params = {
@@ -388,7 +401,7 @@ const params = {
 } satisfies RoleListParams;
 ```
 
-**Benefits:**
+Benefits:
 
 - Compile-time verification: checks that params satisfies the RoleListParams type
 - Preserved type inference: params keeps its narrowed type
@@ -398,7 +411,7 @@ const params = {
 
 The debug option in executeSubsetQuery defaults to false, so it does not need to be specified explicitly.
 
-**BAD: Unnecessary debug: false**
+BAD: Unnecessary debug: false
 
 ```typescript
 return this.executeSubsetQuery({
@@ -410,7 +423,7 @@ return this.executeSubsetQuery({
 });
 ```
 
-**GOOD: Use the default**
+GOOD: Use the default
 
 ```typescript
 return this.executeSubsetQuery({
@@ -421,7 +434,7 @@ return this.executeSubsetQuery({
 });
 ```
 
-**When to use debug: true:**
+When to use debug: true:
 
 ```typescript
 // Only specify when debugging

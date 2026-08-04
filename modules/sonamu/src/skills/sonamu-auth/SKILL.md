@@ -5,52 +5,28 @@ description: Sets up better-auth in a Sonamu project. Use when running auth gene
 
 # better-auth Authentication System
 
-**Plugin wrappers** (admin, organization, 2fa, passkey and 6 more, plus snake_case mapping):
+Plugin wrappers (admin, organization, 2fa, passkey and 6 more, plus snake_case mapping):
 see `references/plugins.md`.
 
-**Changing User.id to a string PK** for external auth: see `references/user-id-migration.md`.
-
-> This document is based on actual Sonamu source code.
+Changing User.id to a string PK for external auth: see `references/user-id-migration.md`.
 
 ## Automatic Entity Generation
 
-**Source code:**
+Source code: `modules/sonamu/src/bin/cli.ts` (auth_generate),
+`modules/sonamu/src/auth/auth-generator.ts`, `modules/sonamu/src/auth/better-auth-entities.ts`.
 
-- CLI: `modules/sonamu/src/bin/cli.ts` (auth_generate function)
-- Generation logic: `modules/sonamu/src/auth/auth-generator.ts`
-- Entity definitions: `modules/sonamu/src/auth/better-auth-entities.ts`
+### Plugin selection
 
-**IMPORTANT: Before running generate, you must confirm with the user which plugins they want to use.**
+Plugins are chosen at generate time: each one adds its own entities and fields, so the generated
+schema — and therefore the migration — depends on the set passed to `--plugins`.
 
-Plugin selection happens at generate time and can be added later, but it is best to specify them from the start.
-Refer to `references/plugins.md` for the list of supported plugins and their purposes.
+Supported: `admin`, `organization`, `2fa`, `username`, `phone-number`, `api-key`, `jwt`, `passkey`,
+`sso`, `anonymous` (see `references/plugins.md` for what each adds).
 
-### Plugin Confirmation Flow
-
-**[Step 1] Confirm before generate (required)**
-
-> "What authentication method do you plan to use? Please confirm whether you need additional plugins beyond the default email/social login.
-> Supported plugins: `admin`, `organization`, `2fa`, `username`, `phone-number`, `api-key`, `jwt`, `passkey`, `sso`, `anonymous`"
-
-**[Step 1-A] If the user responds "I'll do it later":**
-
-Provide the following guidance and proceed with generate without plugins:
-
-> "Understood. It's best to add plugins before the initial migration is run.
-> I'll confirm again before the migration."
-
-And remember the **`plugins_deferred: true`** state.
-
-**[Step 2] Re-confirm just before migrate run (CRITICAL — must be done if `plugins_deferred: true`)**
-
-Before running the migration, always confirm again:
-
-> "You are about to run a migration. This is the best time to add plugins.
-> If you want to add any plugins, please let me know. Otherwise, we'll proceed as-is.
-> Supported plugins: `admin`, `organization`, `2fa`, `username`, `phone-number`, `api-key`, `jwt`, `passkey`, `sso`, `anonymous`"
-
-- If adding plugins: run `pnpm sonamu auth generate --plugins <list>` then proceed with migrate
-- If none: proceed with migrate as-is
+Adding one later is a re-run of `auth generate` plus another migration — the command only adds
+missing entities and fields, so it is not destructive. The cheap window is before the first migration
+runs: until then a plugin costs nothing but a regenerate, after that each addition is a schema change
+against live tables.
 
 ```bash
 # Basic entities only, no plugins
@@ -69,7 +45,7 @@ The 4 entities generated (`betterAuthV1` array):
 | Account      | accounts      | id, provider_id, access_token, user_id |
 | Verification | verifications | id, identifier, value, expires_at      |
 
-**How it works:**
+How it works:
 
 - If the entity does not exist, it is created fresh
 - If the entity already exists, only missing fields are added
@@ -84,18 +60,18 @@ After running `auth generate`, run this command once to add `fixtureCompanions` 
 pnpm sonamu auth add-companions
 ```
 
-**Purpose:** Enables automatic Account fixture creation when generating User fixtures. Without this, fixture gen creates User records without a corresponding credentials Account, breaking auth-dependent tests.
+Purpose: Enables automatic Account fixture creation when generating User fixtures. Without this, fixture gen creates User records without a corresponding credentials Account, breaking auth-dependent tests.
 
-**What it does:**
+What it does:
 - Reads `fixtureCompanions` from the `betterAuthV1` definitions
 - Adds them to the existing entity.json `id` prop's cone
 - Skips if `fixtureCompanions` already exists
 
-**When to run:** Once, after `auth generate`, before running `fixture gen` for the first time. Re-running is safe (idempotent).
+When to run: Once, after `auth generate`, before running `fixture gen` for the first time. Re-running is safe (idempotent).
 
 ## Field Mapping (Applied Automatically)
 
-**Source code:** `modules/sonamu/src/auth/better-auth-entities.ts` (BASE_FIELD_MAPPINGS)
+Source code: `modules/sonamu/src/auth/better-auth-entities.ts` (BASE_FIELD_MAPPINGS)
 
 | better-auth     | Sonamu           |
 | --------------- | ---------------- |
@@ -106,7 +82,7 @@ pnpm sonamu auth add-companions
 
 ## Config Setup
 
-**Source code:** `modules/sonamu/src/api/config.ts` (SonamuServerOptions.auth)
+Source code: `modules/sonamu/src/api/config.ts` (SonamuServerOptions.auth)
 
 ```typescript
 // sonamu.config.ts
@@ -135,7 +111,7 @@ server: {
 
 ## Accessing user/session from Context
 
-**Source code:** `modules/sonamu/src/api/context.ts` (AuthContext type definition)
+Source code: `modules/sonamu/src/api/context.ts` (AuthContext type definition)
 
 ```typescript
 import { Sonamu } from "sonamu";
@@ -153,7 +129,7 @@ async me(): Promise<UserSubsetA | null> {
 
 ## Using Guards
 
-**Source code:** `modules/sonamu/src/api/decorators.ts` (GuardKeys interface)
+Source code: `modules/sonamu/src/api/decorators.ts` (GuardKeys interface)
 
 ### Built-in Guards
 
@@ -182,7 +158,7 @@ async deleteUser(id: string) {
 
 If additional permissions beyond the default guards are needed, extend the `GuardKeys` interface in `src/typings/sonamu.d.ts`.
 
-**File location:** `src/typings/sonamu.d.ts`
+File location: `src/typings/sonamu.d.ts`
 
 ```typescript
 import {} from "sonamu";
@@ -218,7 +194,7 @@ async createReport() {
 
 ## Implementing guardHandler
 
-**Source code:** `modules/sonamu/src/api/config.ts` (SonamuFastifyConfig.guardHandler)
+Source code: `modules/sonamu/src/api/config.ts` (SonamuFastifyConfig.guardHandler)
 
 ```typescript
 import { Sonamu } from "sonamu";
@@ -266,7 +242,7 @@ apiConfig: {
 
 ## Adding role to the User Entity (Role-based Authorization)
 
-**Note:** The default User entity from better-auth (`modules/sonamu/src/auth/better-auth-entities.ts`) does not have a `role` field.
+Note: The default User entity from better-auth (`modules/sonamu/src/auth/better-auth-entities.ts`) does not have a `role` field.
 
 If role-based authorization is needed, add it directly to the User entity:
 
@@ -304,24 +280,22 @@ Adding an enum:
 
 After setup, verify:
 
-- [ ] **[Before generate] Confirm with user whether plugins are needed**
-  - If "later" → remember `plugins_deferred: true`, guide on optimal timing
-- [ ] Run `pnpm sonamu auth generate [--plugins ...]`
-- [ ] **[Before migrate] Re-confirm plugins if `plugins_deferred: true`** (CRITICAL)
-- [ ] Create and apply migration
-- [ ] Configure `server.auth` in `sonamu.config.ts`
-- [ ] Implement `guardHandler`
-- [ ] Confirm user/session access from Context
-- [ ] Add role to User entity if role-based authorization is needed
+- Plugin set settled — adding one after the first migration is a schema change, not a regenerate
+- Run `pnpm sonamu auth generate [--plugins ...]`
+- Create and apply migration
+- Configure `server.auth` in `sonamu.config.ts`
+- Implement `guardHandler`
+- Confirm user/session access from Context
+- Add role to User entity if role-based authorization is needed
 
 ## Reference
 
-**Skills documentation:**
+Skills documentation:
 
 - Detailed configuration: "server.auth details" section in `sonamu-config`
 - Context API: "Context access" section in `sonamu-api`
 
-**Official documentation:**
+Official documentation:
 
 - Korean: `modules/docs/ko/api-development/authentication/setup.mdx`
 - English: `modules/docs/en/api-development/authentication/setup.mdx`

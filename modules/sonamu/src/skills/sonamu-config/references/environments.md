@@ -2,12 +2,12 @@
 
 ## Sonamu Local Development Environment Setup
 
-**When is this needed:**
+When is this needed:
 
 - When modifying the Sonamu framework source code during development
 - When linking a local Sonamu repository to a project for development
 
-**Problem:**
+Problem:
 
 When linking Sonamu with pnpm link, type errors occur at build time:
 
@@ -16,13 +16,13 @@ error TS2345: Argument of type 'ZodNumber' is not assignable to parameter...
   Type '2' is not assignable to type '3'.
 ```
 
-**Cause:**
+Cause:
 
 - The linked Sonamu and the project each maintain their own `node_modules`
 - TypeScript type mismatches occur due to different versions of shared dependencies (e.g. zod)
 - TypeScript simultaneously references two different type definitions, causing errors
 
-**Solution:**
+Solution:
 
 ### 1. Add override to pnpm-workspace.yaml
 
@@ -56,19 +56,17 @@ cd packages/api
 pnpm build
 ```
 
-**How it works:**
+How it works:
 
-- **TypeScript type check**: references type definitions from the npm registry based on the published version in `package.json`
-- **Actual runtime**: `pnpm overrides` local link takes priority and runs local source code
+- TypeScript type check: references type definitions from the npm registry based on the published version in `package.json`
+- Actual runtime: `pnpm overrides` local link takes priority and runs local source code
 - Separates type checking and runtime to resolve version mismatch issues
 
-**Notes:**
+Notes:
 
 - Changes to Sonamu source code are immediately reflected in the project
 - Restarting the project is required after building Sonamu
 - For general project development, using the npm version is recommended
-
----
 
 ## Environment-Specific Configuration
 
@@ -103,8 +101,6 @@ AWS_SECRET_ACCESS_KEY=...
 S3_REGION=ap-northeast-2
 S3_BUCKET=myproject-prod-bucket
 ```
-
----
 
 ## server Additional Options
 
@@ -159,8 +155,6 @@ slackConfirm: {
 },
 ```
 
----
-
 ## Post-Configuration Checklist
 
 1. Confirm `.env` file is created
@@ -171,8 +165,8 @@ slackConfirm: {
 
 Before production deployment:
 
-- [ ] Change `SESSION_SECRET`
-- [ ] Change `SESSION_SALT`
-- [ ] Change `cookie.domain` to the actual domain
-- [ ] Configure S3 (if needed)
-- [ ] Add error handling logic
+- Change `SESSION_SECRET`
+- Change `SESSION_SALT`
+- Change `cookie.domain` to the actual domain
+- Configure S3 (if needed)
+- Add error handling logic

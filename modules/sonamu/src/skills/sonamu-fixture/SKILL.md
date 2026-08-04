@@ -7,13 +7,9 @@ description: Generates and manages Sonamu test data. Use when running fixture ge
 
 Sonamu provides CLI commands for generating and managing fixture data for testing.
 
-**Note**: See the "Practical Tips" section below for fixture generation tips.
+## 3-Tier DB Structure
 
----
-
-## Understanding the 3-Tier DB Structure (Required)
-
-Sonamu uses a three-tier database structure. **Without understanding this structure, using fixture commands will be confusing.**
+Every fixture command is defined in terms of one of these three databases:
 
 ```
 production/development master (live DB)
@@ -39,9 +35,8 @@ production/development master (live DB)
 | `fixture fetch` | production master | fixture DB | Imports from live DB → fixture DB                      |
 | `fixture sync`  | fixture DB        | test DB    | Synchronizes fixture DB → test DB (existing behavior)  |
 
-**CRITICAL**: Incorrect sourceDb or targetDb settings will cause FK reference errors.
-
----
+Each command has a fixed source/target pair. Pointing one at the wrong DB produces FK reference
+errors, because the rows a relation points at live in the DB that was not read.
 
 ## CLI Commands
 
@@ -49,9 +44,18 @@ production/development master (live DB)
 
 Generates new test data based on faker.
 
-**CRITICAL: The `--use-llm` option must always be used in real projects.** Without `--use-llm`, domain context from cone.note is not applied and only faker defaults are used, potentially producing meaningless data. This option is required for the LLM to reference `contract/**/*.contract.md` and generate contextually appropriate data.
+What `--use-llm` changes: without it, values come from faker defaults, so the data is
+structurally valid but semantically arbitrary — a `title` reads like `"Lorem ipsum"`. With it, the
+generator reads each prop's `cone.note` and asks the LLM for values that fit the domain before
+falling back to the faker generator. Worth it when a test asserts on meaning; unnecessary when it
+only asserts on shape or counts. Requires `ANTHROPIC_API_KEY`. Interactive mode asks rather than
+assuming, so the flag matters mainly for non-interactive runs.
 
-**CRITICAL: Before running fixture gen, verify that `cone.note` exists for key props.** Without cone.note, the LLM cannot understand context and cannot generate meaningful data. If cone.note is insufficient, regenerate it with `pnpm sonamu cone generate --use-llm`.
+`cone.note` is what the LLM conditions on. A prop with no note gives it nothing to work from, so
+that prop falls back to faker regardless of the flag. Check the notes before generating, and refresh
+them with `pnpm sonamu cone gen <EntityId> --regenerate` if they are thin. `cone gen` reads
+`contract/**/*.contract.md` when the project happens to have such files, which is how domain rules
+reach fixture data indirectly.
 
 #### Basic Usage
 
@@ -101,8 +105,6 @@ pnpm sonamu fixture gen --include User --count 10 --save-to none
 - `--no-cache`: Disable LLM cache (default: cache ON)
 - `--llm-model <model>`: Specify LLM model (default: `claude-sonnet-4-6`)
 
----
-
 ### 2. fixture fetch - Import from live DB
 
 Fetches data from the production/development DB and saves it to the fixture DB.
@@ -131,7 +133,8 @@ pnpm sonamu fixture fetch --all --strategy recent --limit 3
 | `sample` | Uniform sampling                 | `--strategy sample --limit 10` |
 | `random` | Random sampling                  | `--strategy random --limit 10` |
 
-**CRITICAL**: fetch retrieves related data **recursively** (maxDepth: 2)
+`fetch` pulls related data recursively to `maxDepth: 2`, so one entity brings more rows than the
+`--limit` suggests:
 
 - Fetching User → also imports User's department and institution
 - Fetching Post → also imports Post's author (User)
@@ -144,11 +147,9 @@ pnpm sonamu fixture fetch --all --strategy recent --limit 3
 - `--strategy <strategy>`: Fetch strategy - `recent` | `sample` | `random` (default: recent)
 - `--limit <number>`: Number of records per Entity (default: 10)
 
----
-
 ### 3. fixture explore - Query data (without saving)
 
-Queries data from the live DB and prints it to the console. **Query only — nothing is saved.**
+Queries data from the live DB and prints it to the console. Query only — nothing is saved.
 
 #### Basic Usage
 
@@ -168,9 +169,6 @@ pnpm sonamu fixture explore --include Department --strategy sample --limit 5
 - Quickly check what data exists in the live DB
 - Preview before running fixture fetch
 - Understand data distribution
-
----
-
 
 ## Reference Map
 

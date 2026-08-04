@@ -34,6 +34,36 @@ Split criteria when adding or reorganizing:
 3. Prefer small duplication over cross-skill references. Skills load independently, so pointing
    from one skill to another forces both into context.
 
+## Policy boundary rule
+
+Shipped skills describe **how Sonamu behaves**. They do not decide **how a project works**. Keep out:
+
+- Scope — what else must be changed alongside the change at hand
+- Methodology — TDD, test-first, how much coverage, when to commit
+- Documentation duties — which documents must be updated with a code change
+- Conversation procedure — "ask one question at a time", "confirm before starting"
+- Code style and quality gates — cast bans, lint/format/type-check gates
+
+These belong to the consuming project's `AGENTS.md`. A synced skill is a symlink into
+`node_modules`, so a project cannot edit one out; anything imperative we ship silently overrides
+the project's own policy. The precedence statement lives once, in the root `sonamu` skill.
+
+Separating the two cases:
+
+| | Test | Wording |
+| --- | --- | --- |
+| Technical constraint | Breaks or misbehaves if ignored | Imperative is fine — `bootstrap(vi)` is required, EntityId must start uppercase |
+| Quality preference | Works either way; the project decides | State the effect and let the reader choose — "without X, Y happens" |
+
+Two failure modes worth naming, both of which shipped in earlier versions of these skills:
+
+1. **Prerequisite framing.** "Always run `pnpm dev` first" turned a convenience into a gate, and an
+   agent that found it unmet started work nobody asked for. Write the command that produces the
+   needed state instead — `pnpm sonamu sync` — never a resident process or a timing wait the agent
+   cannot control.
+2. **Superlatives instead of mechanism.** "CRITICAL", "must always", "the key!" carry no information
+   about what actually fails. Name the failure and the reader can judge the risk themselves.
+
 ## Description format
 
 Every `description` is one line in three parts, matching what Expo and Vercel ship:

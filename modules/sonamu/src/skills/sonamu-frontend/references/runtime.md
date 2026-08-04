@@ -43,7 +43,7 @@ function App() {
 }
 ```
 
-**Required Props:**
+Required Props:
 
 - `uploader`: `(files: File[]) => Promise<SonamuFile[]>` - Used by FileInput
 - `auth`: Authentication state and functions (optional)
@@ -119,15 +119,15 @@ registerSSR({
 
 After generating the project, you need to replace the "Sonamu" text in the frontend with your project name.
 
-**4 files to update:**
+4 files to update:
 
-1. **`packages/web/index.html`** - Browser tab title
+1. `packages/web/index.html` - Browser tab title
 
 ```html
 <title>{project-name}</title>
 ```
 
-2. **`packages/web/src/routes/__root.tsx`** - TanStack Router head configuration (most important!)
+2. `packages/web/src/routes/__root.tsx` - TanStack Router head configuration
 
 ```typescript
 head: () => ({
@@ -135,31 +135,29 @@ head: () => ({
 }),
 ```
 
-**Important:** If you don't update `__root.tsx`, the title will revert to "Sonamu" on HMR!
+The router rewrites the head on navigation and on HMR, so this is the one that has to change — with
+`index.html` alone the title reverts to "Sonamu" the first time a file is saved.
 
-3. **`packages/web/src/routes/index.tsx`** - Main page title
+3. `packages/web/src/routes/index.tsx` - Main page title
 
 ```tsx
 <h1 className="text-2xl font-bold mb-4">Welcome to {project - name}</h1>
 ```
 
-4. **`packages/web/src/components/Sidebar.tsx`** - Sidebar app name
+4. `packages/web/src/components/Sidebar.tsx` - Sidebar app name
 
 ```typescript
 const title = isAdmin ? "Admin" : "{project-name}";
 ```
 
-**How to verify:**
+How to verify:
 
 - Check that the project name is shown in the browser tab
 - Confirm that the tab title does not change on file save via HMR (if it does, `__root.tsx` is missing)
 
----
-
 ## Rules
 
-- NEVER manually modify `services.generated.ts`
-- MUST specify Subset parameter when calling APIs
+- `services.generated.ts` is overwritten by the next sync — edits to it are lost
+- API calls take a Subset parameter; it selects which fields come back
 - Use `Promise.all([...])` for parallel requests
 
----

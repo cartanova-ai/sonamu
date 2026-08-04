@@ -33,7 +33,7 @@ Sonamu Model provides the following basic methods:
 | `save`     | Create/update          | upsert behavior    |
 | `del`      | Delete                 | Note: not `delete` |
 
-**Avoiding JavaScript reserved words:** `delete` is a JS reserved word, so it is named `del`. While TypeScript allows `delete` as a method name without a compile error, it can cause runtime issues, so Sonamu uses `del`.
+Avoiding JavaScript reserved words: `delete` is a JS reserved word, so it is named `del`. While TypeScript allows `delete` as a method name without a compile error, it can cause runtime issues, so Sonamu uses `del`.
 
 ### findById
 
@@ -126,25 +126,23 @@ return this.executeSubsetQuery({
 });
 ```
 
-> **CRITICAL: Do not directly mutate the object returned by `executeSubsetQuery()`.**
->
-> Replacing rows via `result.rows = result.rows.map(...)` or `(result as any).rows = ...`
-> will break the `total` count and cause pagination to malfunction.
->
-> Use the `enhancers` pattern for virtual fields that require additional computation:
->
-> ```typescript
-> // WRONG — breaks pagination
-> const result = await this.executeSubsetQuery({ subset, qb, params });
-> (result as any).rows = result.rows.map((row) => ({ ...row, extra: "value" }));
-> return result as any;
->
-> // CORRECT — enhancers pattern
-> const enhancers = this.createEnhancers({
->   A: (row) => ({ ...row, extra: "value" }),
-> });
-> return this.executeSubsetQuery({ subset, qb, params, enhancers });
-> ```
+The object returned by `executeSubsetQuery()` is not meant to be mutated. Replacing rows via
+`result.rows = result.rows.map(...)` or `(result as any).rows = ...` detaches them from the `total`
+count, so pagination reports the wrong page size. Virtual fields that need extra computation go
+through `enhancers` instead:
+
+```typescript
+// WRONG — breaks pagination
+const result = await this.executeSubsetQuery({ subset, qb, params });
+(result as any).rows = result.rows.map((row) => ({ ...row, extra: "value" }));
+return result as any;
+
+// CORRECT — enhancers pattern
+const enhancers = this.createEnhancers({
+  A: (row) => ({ ...row, extra: "value" }),
+});
+return this.executeSubsetQuery({ subset, qb, params, enhancers });
+```
 
 ### queryMode
 
@@ -165,7 +163,7 @@ const { rows, total } = await this.findMany(subset, { ...params, queryMode: "bot
 
 Automatically apply filter conditions via params.sonamuFilter:
 
-**Prerequisite:** The corresponding prop in entity.json must have `"toFilter": true` set. Fields without this setting are excluded from filtering.
+Prerequisite: The corresponding prop in entity.json must have `"toFilter": true` set. Fields without this setting are excluded from filtering.
 
 ```typescript
 // Filter passed from the client
@@ -184,7 +182,7 @@ const params = {
 return this.executeSubsetQuery({ subset, qb, params });
 ```
 
-**Allowed operators by type:**
+Allowed operators by type:
 
 | Type              | Operators                                                            |
 | ----------------- | -------------------------------------------------------------------- |
@@ -196,7 +194,7 @@ return this.executeSubsetQuery({ subset, qb, params });
 | `enum`            | eq, ne, in, notIn, isNull, isNotNull                                 |
 | `json`            | isNull, isNotNull                                                    |
 
-**Operator examples:**
+Operator examples:
 
 | Operator              | SQL             | Example                                   |
 | --------------------- | --------------- | ----------------------------------------- |
@@ -212,7 +210,7 @@ return this.executeSubsetQuery({ subset, qb, params });
 | `before`, `after`     | `<`, `>` (date) | `{ created_at: { after: "2024-01-01" } }` |
 | `between`             | `BETWEEN`       | `{ price: { between: [100, 500] } }`      |
 
-**Type definition (`ApplySonamuFilter`):**
+Type definition (`ApplySonamuFilter`):
 
 ```typescript
 import type { ApplySonamuFilter } from "sonamu";
@@ -275,7 +273,7 @@ export type UserSaveParams = z.infer<typeof UserSaveParams>;
 
 ### SaveParams Patterns
 
-**Basic pattern (no relations):**
+Basic pattern (no relations):
 
 ```typescript
 import { UserBaseSchema, UserBaseListParams } from "../sonamu.generated";
@@ -290,7 +288,7 @@ export const UserSaveParams = UserBaseSchema.partial({
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
 ```
 
-**If a ManyToMany relation exists:**
+If a ManyToMany relation exists:
 
 ```typescript
 // ManyToMany relation: add {relation_name}_ids array
@@ -309,7 +307,7 @@ export const ProjectSaveParams = ProjectBaseSchema.partial({
 export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 ```
 
-**Handling nullable fields in BelongsToOne relations:**
+Handling nullable fields in BelongsToOne relations:
 
 ```typescript
 // Nullable relations are automatically optional, so no extra partial is needed
@@ -321,14 +319,14 @@ export const ResponseSaveParams = ResponseBaseSchema.partial({
 export type ResponseSaveParams = z.infer<typeof ResponseSaveParams>;
 ```
 
-**Reference working code:**
+Reference working code:
 
 - `sonamu/examples/miomock/api/src/application/project/project.types.ts` - ManyToMany SaveParams example
 - `sonamu/examples/miomock/api/src/application/employee/employee.types.ts` - BelongsToOne SaveParams example
 
 ### Handling Relations in the Model
 
-**Removing relation objects on update:**
+Removing relation objects on update:
 
 ```typescript
 // Pattern used in tests for updates
@@ -346,7 +344,7 @@ await UserModel.save([
 ]);
 ```
 
-**ManyToMany save:**
+ManyToMany save:
 
 ```typescript
 // ManyToMany is passed as an _ids array
@@ -360,7 +358,7 @@ await ProjectModel.save([
 ]);
 ```
 
-**Reference working code:**
+Reference working code:
 
 - `sonamu/examples/miomock/api/src/application/project/project.model.ts` - ManyToMany save implementation
 - `sonamu/examples/miomock/api/src/application/project/project.model.test.ts` - Save test example

@@ -1,15 +1,10 @@
 # Test Patterns
 
-## Enum Value Usage Rules
+## Enum values in tests
 
-**CRITICAL: Only use enum values defined in entity.json.**
-
-### Rules
-
-1. Check the exact value list for enum fields in entity.json
-2. If possible, use TypeScript enum types from `sonamu.generated.ts` (type-safe)
-3. Set valid enum values as defaults in test-helpers.ts
-4. Do not use arbitrary strings
+`entity.json` is the source of the enum's values, and a plausible-looking guess (`"user"` where the
+entity says `"normal"`) fails on the value rather than on the behaviour under test. Importing the
+generated enum from `sonamu.generated.ts` moves that failure to compile time:
 
 ```typescript
 // WRONG: written based on guesses
@@ -25,7 +20,8 @@ import { UserRoleEnum } from "../sonamu.generated";
 role: UserRoleEnum.normal;
 ```
 
-**Core principle: entity.json is the Single Source of Truth.**
+Setting the valid values as defaults in `test-helpers.ts` keeps them in one place rather than in every
+test file.
 
 
 ## Test Basic Patterns
@@ -47,7 +43,7 @@ describe("MyTest", () => {
 });
 ```
 
-**bootstrap options:**
+bootstrap options:
 
 ```typescript
 // Default: forTesting: true (fast, skips Syncer/Task)

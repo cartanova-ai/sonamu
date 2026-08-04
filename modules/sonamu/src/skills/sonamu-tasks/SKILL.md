@@ -7,7 +7,7 @@ description: Runs background work with Sonamu Tasks. Use when implementing a bac
 
 PostgreSQL-based durable workflow engine. Uses the `@sonamu-kit/tasks` package.
 
-**Source code:**
+Source code:
 
 - Decorator: `modules/sonamu/src/tasks/decorator.ts`
 - StepWrapper: `modules/sonamu/src/tasks/step-wrapper.ts`
@@ -97,7 +97,7 @@ await step.sleep("daily-delay", "1d");
 
 The wait time is preserved even if the server restarts.
 
-**DurationString format:** `{number}{unit}` — e.g. `"5s"`, `"30m"`, `"2h"`, `"7d"`, `"1w"`, `"1y"`
+DurationString format: `{number}{unit}` — e.g. `"5s"`, `"30m"`, `"2h"`, `"7d"`, `"1w"`, `"1y"`
 
 ## Scheduling (cron)
 

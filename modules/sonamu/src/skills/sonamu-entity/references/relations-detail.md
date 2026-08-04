@@ -2,7 +2,7 @@
 
 ## FK Reference Rules (FieldExpr)
 
-When a BelongsToOne relationship is defined, a `{name}_id` column is automatically created. **In subsets, reference using the `{name}.id` form (FieldExpr)**, and **in indexes, use the actual DB column name (`{name}_id`)**.
+When a BelongsToOne relationship is defined, a `{name}_id` column is automatically created. In subsets, reference using the `{name}.id` form (FieldExpr), and in indexes, use the actual DB column name (`{name}_id`).
 
 ### Where It Applies
 
@@ -38,11 +38,8 @@ When a BelongsToOne relationship is defined, a `{name}_id` column is automatical
 Error: ApiLog -- invalid FieldExpr 'user_id' (available props: id, created_at, ..., user)
 ```
 
-If you see this error in subsets, change `user_id` → `user.id`. In indexes, `user_id` is the correct format.
-
-> **Note:** For a detailed explanation of the difference in reference methods between indexes and subsets, see the "IMPORTANT: In indexes, use the actual DB column name for FK columns" section in `sonamu-entity`.
-
----
+If you see this error in subsets, change `user_id` → `user.id`. In indexes, `user_id` is the correct
+format — see "FK columns go through the relation" in `references/subset.md`.
 
 ## Common Mistakes
 
@@ -72,8 +69,6 @@ If you see this error in subsets, change `user_id` → `user.id`. In indexes, `u
 - Nesting is possible via dot notation
 - JOIN is auto-generated
 
----
-
 ## Type Definitions for ManyToMany Relationships
 
 ManyToMany relationships are defined in Entity JSON, but SaveParams must pass join table data as an array.
@@ -82,7 +77,7 @@ Reference: sonamu/examples/miomock/api/src/application/project
 
 ### Handling ManyToMany in SaveParams
 
-**Pattern: Use BaseSchema.partial().extend()**
+Pattern: Use BaseSchema.partial().extend()
 
 ```typescript
 // project.types.ts (miomock example)
@@ -105,7 +100,7 @@ export const ProjectSaveParams = ProjectBaseSchema.partial({
 export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 ```
 
-**Important:**
+Notes:
 
 - Since BaseSchema does not have ManyToMany relation fields, add them with `.extend()`
 - Field name should be in the `{relation_name}_ids` form (e.g. employee → employee_ids, tags → tag_ids)
@@ -115,7 +110,7 @@ export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 
 ### Handling in Model.save() (Recommended Pattern)
 
-**Efficient pattern: Delete only changed entries with whereNotIn**
+Efficient pattern: Delete only changed entries with whereNotIn
 
 ```typescript
 // project.model.ts (miomock example)
@@ -164,7 +159,7 @@ async save(spa: ProjectSaveParams[]): Promise<number[]> {
 }
 ```
 
-**Basic pattern: Delete all then re-register (simple but inefficient)**
+Basic pattern: Delete all then re-register (simple but inefficient)
 
 ```typescript
 async save(spa: QuestionCollectionSaveParams[]): Promise<number[]> {
@@ -222,7 +217,7 @@ await QuestionCollectionModel.save([{ ...collectionData, category_ids, title: "U
 
 ### Managing Bidirectional ManyToMany
 
-**Principle: Manage from one side only**
+Principle: Manage from one side only
 
 ```typescript
 // Project Entity: employee (ManyToMany)
@@ -238,7 +233,7 @@ export const EmployeeSaveParams = EmployeeBaseSchema.partial({ id: true, created
 // proj_ids is not added
 ```
 
-**Reason:**
+Reason:
 
 - Managing from both sides causes synchronization issues
 - Managing from the primary Entity (Project) only is clearer
