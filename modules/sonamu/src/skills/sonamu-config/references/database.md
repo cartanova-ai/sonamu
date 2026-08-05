@@ -1,427 +1,158 @@
-# Database — Docker, 3-Tier Structure, Seed, Port Conflicts
+# Database — Connections, Docker, Seed Dumps
 
-## Starting Docker DB
+## SONAMU_DB_* variables
+
+These are the only database variables Sonamu reads. Each lives in `.env` or in the dotenv file of the
+environment it applies to.
+
+| Variable | Fallback |
+| --- | --- |
+| `SONAMU_DB_HOST` | `defaultOptions.connection.host`, then `0.0.0.0` |
+| `SONAMU_DB_PORT` | `defaultOptions.connection.port`, then `5432` |
+| `SONAMU_DB_USER` | `defaultOptions.connection.user`, then `postgres` |
+| `SONAMU_DB_PASSWORD` | `defaultOptions.connection.password`, then unset |
+| `SONAMU_DB_NAME` | the derived name for that preset |
+| `SONAMU_DB_READONLY_HOST` / `_PORT` / `_USER` / `_PASSWORD` / `_NAME` | the unprefixed variable |
+| `SONAMU_DB_FIXTURE_HOST` / `_PORT` / `_USER` / `_PASSWORD` | the unprefixed variable |
+| `SONAMU_DB_FIXTURE_NAME` | `{base}_fixture` — deliberately **not** `SONAMU_DB_NAME` |
+
+A non-numeric `SONAMU_DB_PORT` throws `Invalid database port: <value>`.
+
+`{base}` is `projectName` from `sonamu.config.ts`, lowercased with runs of non-alphanumerics replaced
+by `_` and leading/trailing `_` trimmed. No `projectName` means `sonamu`.
+
+## The nine presets
+
+Every connection Sonamu opens comes from one of these:
+
+| Preset | Dotenv file it reads | Database name |
+| --- | --- | --- |
+| `development`, `staging`, `production` | `.env.<preset>` | `SONAMU_DB_NAME` ?? `{base}_<preset>` |
+| `test` | `.env.test` | `SONAMU_DB_NAME` ?? `{base}_test` |
+| `fixture` | `.env.test` | `SONAMU_DB_FIXTURE_NAME` ?? `{base}_fixture` |
+| `development_readonly`, `staging_readonly`, `production_readonly`, `test_readonly` | the matching environment file | `SONAMU_DB_READONLY_NAME` ?? `SONAMU_DB_NAME` ?? `{base}_<environment>` |
+
+The fixture preset reading `.env.test` is why `SONAMU_DB_FIXTURE_*` belongs in `.env.test`, not
+`.env.development`.
+
+Outside `test`, `DB.getDB("w")` resolves to the current environment's preset and `DB.getDB("r")` to
+its readonly twin, so a readonly replica is wired by adding `SONAMU_DB_READONLY_HOST` alone — the
+remaining readonly fields fall back to the writer's.
+
+Under `NODE_ENV=test` the two collapse: both arguments return the open test transaction if there is
+one, otherwise a `test` writer pinned to `pool: { min: 1, max: 1 }`, or the per-worker database
+`<test name>_<VITEST_POOL_ID>` when `SONAMU_WORKER_DB=true`. `test_readonly` is reachable only by
+naming the preset explicitly.
+
+## What defaultOptions can still set
+
+`defaultOptions` is merged over these built-ins:
+
+```typescript
+{
+  client: "postgresql",              // "pgnative" when database: "pgnative"
+  pool: { min: 1, max: 5 },
+  migrations: { directory: "./src/migrations" },
+}
+```
+
+Two limits on `defaultOptions.connection`:
+
+- `database` is always discarded. Names come from the table above, so a `database` written here looks
+  applied and silently is not.
+- In `development` and `test`, `host`, `port`, `user`, and `password` are discarded too, because
+  Sonamu builds every preset from its own dotenv snapshot in those environments. A password written
+  into `sonamu.config.ts` and left out of the dotenv files means an empty password and a failed
+  connection locally, while the same config connects in staging and production, where snapshots are
+  not read and these fields do act as fallbacks.
+
+Fields outside that set (`ssl`, `application_name`, …) survive in every environment.
+
+## Docker DB
 
 ```bash
 cd packages/api
-pnpm docker:up
+pnpm docker:up     # docker compose --env-file .env -f database/docker-compose.yml up -d
+pnpm docker:down
 ```
 
-## 3-Tier DB Structure
-
-Sonamu uses a 3-tier database structure:
-
-```
-production/development master (actual DB)
-          ↓ (fixture fetch)
-     project_fixture (fixture DB)
-          ↓ (fixture sync)
-       project_test (test DB)
-```
-
-### Role of Each DB
-
-| DB                | Purpose                          | Data Source                                   | Command                         |
-| ----------------- | -------------------------------- | --------------------------------------------- | ------------------------------- |
-| `project`         | Production/development actual DB | Real user data                                | Created directly                |
-| `project_fixture` | Reference data store for testing | Fetched from production or generated with gen | `pnpm sonamu fixture gen/fetch` |
-| `project_test`    | Test execution environment       | Synced from fixture                           | `pnpm sonamu fixture sync`      |
-
-### Data Flow
-
-1. fixture fetch (fetch real data)
-
-```bash
-pnpm sonamu fixture fetch --include User --limit 10
-```
-
-- production/development master → fixture DB
-- Copies actual production data for testing
-- Related data (FKs) is also fetched
-
-2. fixture gen (generate dummy data)
-
-```bash
-pnpm sonamu fixture gen --include Department --count 5
-```
-
-- Generated inside fixture DB using faker
-- Automatically resolves reference relationships (FKs)
-- Supports Korean data generation
-
-3. fixture sync (sync test DB)
-
-```bash
-pnpm sonamu fixture sync
-```
-
-- fixture DB → test DB
-- Sync to the latest state before running tests
-- Each test is isolated with a transaction that auto-rolls back
-
-### Notes
-
-sourceDb vs targetDb — the two commands differ, and swapping them produces FK reference errors
-because the rows a relation points at live in the other DB:
-
-- `fixture gen`: sourceDb=fixture, targetDb=fixture (generated inside fixture)
-- `fixture fetch`: sourceDb=production, targetDb=fixture (production → fixture)
-
-Example (correct configuration):
-
-```typescript
-// fixture gen: reference and save within fixture DB
-const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
-const generator = new FixtureGenerator(fixtureDb, fixtureDb, "fixture", EntityManager);
-
-// fixture fetch: production → fixture DB
-const sourceDb = DB.getDB("r"); // current NODE_ENV readonly DB
-const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
-const generator = new FixtureGenerator(sourceDb, fixtureDb, "fixture", EntityManager);
-```
-
-Note: For detailed Fixture CLI command usage, see `sonamu-fixture`
-
-## Seed Data Management
-
-Base data for testing (seed data) is managed by adding it to dump files.
-
-### Overall Workflow
-
-Seed data management proceeds in 2 phases:
-
-| Phase       | Purpose                              | Target DB                         |
-| ----------- | ------------------------------------ | --------------------------------- |
-| Phase 1 | Prepare seed for development/testing | `project_test`, `project_fixture` |
-| Phase 2 | Apply seed to the actual DB          | `project` (actual DB)             |
-
-### Phase 1: Prepare Seed for Development/Testing
-
-The step of preparing dummy data for testing during development.
-
-#### 1-1. Generate Initial Dump (Table Structure Only)
-
-```bash
-pnpm dump
-```
-
-The `database/scripts/dump.sql` generated at this point contains:
-
-- CREATE TABLE statements
-- CREATE SEQUENCE statements
-- ALTER TABLE ... PRIMARY KEY
-- ALTER TABLE ... FOREIGN KEY
-- No INSERT statements (no data yet)
-
-#### 1-2. Add INSERT Statements to Dump File
-
-Open `database/scripts/dump.sql` and add INSERT statements before the FK CONSTRAINT section.
-
-Write the INSERTs in FK dependency order:
-
-```sql
--- Independent tables first
-INSERT INTO public.institutions (id, created_at, name, code) VALUES
-  (1, '2024-01-01 00:00:00+09', 'Headquarters', 'HQ');
-
--- Reference tables (referencing institutions)
-INSERT INTO public.departments (id, created_at, name, code, institution_id) VALUES
-  (1, '2024-01-01 00:00:00+09', 'Research', 'RND', 1);
-
--- Set sequence values (after INSERT)
-SELECT pg_catalog.setval('public.institutions_id_seq', 1, true);
-SELECT pg_catalog.setval('public.departments_id_seq', 1, true);
-```
-
-#### 1-3. Apply to Test DB
-
-```bash
-pnpm seed
-```
-
-`database/scripts/seed.sh` runs and:
-
-- `SOURCE_DB="${DATABASE_NAME}_test"` → applies dump.sql to the test DB
-
-#### 1-4. Sync to Fixture DB
-
-```bash
-pnpm sonamu fixture sync
-```
-
-Copies test DB data to the fixture DB.
-
-### Phase 2: Apply Seed to Actual DB
-
-This writes to the `project` database, not a test database. Existing rows can be overwritten,
-and there is no undo — the seed is applied directly. Whether that is acceptable depends on what is in
-that database, so it is not a step to run incidentally on the way to something else.
-
-#### 2-1. Verify Current State
-
-```bash
-# Data must already be in test/fixture DBs
-PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_test -c "SELECT COUNT(*) FROM users;"
-```
-
-#### 2-2. Generate Final Dump
-
-```bash
-# Generate a dump that includes test/fixture data
-pnpm dump
-```
-
-This dump includes INSERT statements (the data added in step 1-2).
-
-#### 2-3. Modify seed.sh File
-
-Open `database/scripts/seed.sh` and change FIXTURE_DB:
-
-```bash
-# Before (development/testing phase)
-FIXTURE_DB="${DATABASE_NAME}_fixture"
-
-# After (seeding actual DB)
-FIXTURE_DB="${DATABASE_NAME}"
-```
-
-#### 2-4. Run Seed on Actual DB
-
-```bash
-pnpm seed   # writes to the real DB — see the warning at the top of Phase 2
-```
-
-Seed data is now applied to the actual DB (`project`).
-
-#### 2-5. Verify
-
-```bash
-# Verify data in actual DB
-PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project -c "SELECT * FROM departments LIMIT 5;"
-```
-
-#### 2-6. Restore seed.sh
-
-After the actual DB seed is complete, restore seed.sh to its original state so the next development cycle uses the test DB:
-
-```bash
-# database/scripts/seed.sh
-FIXTURE_DB="${DATABASE_NAME}_fixture"  # restored
-```
-
-### Summary: Phase 1 vs Phase 2
-
-| Item              | Phase 1 (Development/Testing)           | Phase 2 (Actual DB)                                 |
-| ----------------- | --------------------------------------- | --------------------------------------------------- |
-| Timing        | Preparing test data during development  | Preparing actual data after development is complete |
-| Dump count    | 1 time (table structure)                | 2 times (includes data)                             |
-| Target DB     | `project_test` → `project_fixture`      | `project`                                           |
-| seed.sh       | `FIXTURE_DB="${DATABASE_NAME}_fixture"` | `FIXTURE_DB="${DATABASE_NAME}"`                     |
-| Reversible    | Yes — the DB is disposable              | No — writes over live data                          |
-
-### Legacy Workflow (Phase 1 Simple Version)
-
-```bash
-# 1. Directly add base data to test DB (using psql or Sonamu UI)
-PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_test
-
-# 2. Generate dump
-pnpm dump
-
-# 3. Apply to fixture DB
-pnpm seed
-
-# 4. (Optional) sonamu fixture sync
-pnpm sonamu fixture sync
-```
-
-### Position for Adding Seed Data in Dump File
-
-pg_dump --inserts output order (based on miomock):
-
-```sql
--- 1~40: SET statements & Extensions
-SET statement_timeout = 0;
-CREATE EXTENSION IF NOT EXISTS ...;
-
--- ~400: CREATE TABLE
-CREATE TABLE public.companies (...);
-CREATE TABLE public.departments (...);
-
--- ~450: CREATE SEQUENCE
-CREATE SEQUENCE public.companies_id_seq ...;
-
--- ~470: ALTER SEQUENCE OWNED BY
-ALTER SEQUENCE public.companies_id_seq OWNED BY public.companies.id;
-
--- 480~564: ALTER TABLE ... DEFAULT (Name: xxx id; Type: DEFAULT)
-ALTER TABLE ONLY public.companies ALTER COLUMN id SET DEFAULT nextval(...);
-
--- ⭐ 574~1770: INSERT INTO ... ← SEED DATA INSERTION POSITION
-INSERT INTO public.companies VALUES (1, '2025-11-25 00:17:02+09', 'Tech Corp');
-INSERT INTO public.departments VALUES (1, '2024-01-01 01:00:00+09', 'Dev Team', 1, NULL, DEFAULT);
-INSERT INTO public.employees VALUES (1, '2024-01-01 01:00:00+09', 1, 3, 'EMP001', 75000.00, ...);
-
--- 1775~1862: SELECT pg_catalog.setval (Name: xxx_id_seq; Type: SEQUENCE SET)
-SELECT pg_catalog.setval('public.companies_id_seq', 308, true);
-
--- 1878~2006: ALTER TABLE ... PRIMARY KEY
-ALTER TABLE ONLY public.companies ADD CONSTRAINT companies_pkey PRIMARY KEY (id);
-
--- 2010~2017: CREATE INDEX
-CREATE INDEX projects_name_description_pgroonga_index ON public.projects ...;
-
--- 2024~: ALTER TABLE ... FOREIGN KEY (FK constraint - data must exist before this!)
-ALTER TABLE ONLY public.departments
-    ADD CONSTRAINT departments_company_id_foreign FOREIGN KEY (company_id) REFERENCES public.companies(id);
-```
-
-### Seed data placement
-
-INSERTs go before the FK CONSTRAINT section of the dump.
-
-| Position             | Result                                                   |
-| -------------------- | -------------------------------------------------------- |
-| Before FK CONSTRAINT | OK - FK check after data insertion                       |
-| After FK CONSTRAINT  | FAIL - FK violation because referenced table has no data |
-
-### Table Dependency Order
-
-Seed data INSERT order must follow FK dependencies:
-
-```sql
--- 1. Independent tables first (tables without FKs)
-INSERT INTO public.institutions (id, name, code) VALUES (1, 'Headquarters', 'HQ');
-
--- 2. Tables referencing step 1
-INSERT INTO public.departments (id, name, institution_id) VALUES (1, 'Research', 1);
-
--- 3. Tables referencing steps 1 and 2
-INSERT INTO public.users (id, name, institution_id, department_id) VALUES (1, 'Admin', 1, 1);
-```
-
-### Setting Sequence Values
-
-After adding seed data, the sequence current values must also be updated:
-
-```sql
--- Set sequence to after the maximum id in seed data
-SELECT pg_catalog.setval('public.users_id_seq', 10, true);  -- next id starts from 11
-SELECT pg_catalog.setval('public.departments_id_seq', 5, true);
-```
-
-### Example: Minimal Seed Data
-
-```sql
--- institutions (independent)
-INSERT INTO public.institutions (id, created_at, name, code) VALUES
-  (1, '2024-01-01 00:00:00+09', 'Headquarters', 'HQ');
-
--- departments (references institutions)
-INSERT INTO public.departments (id, created_at, name, code, institution_id, is_active) VALUES
-  (1, '2024-01-01 00:00:00+09', 'Research', 'RND', 1, true);
-
--- Set sequences
-SELECT pg_catalog.setval('public.institutions_id_seq', 1, true);
-SELECT pg_catalog.setval('public.departments_id_seq', 1, true);
-```
-
-## Resolving Port Conflicts
-
-If a port-already-in-use error occurs when running `pnpm docker:up`:
-
-### Step 1: Check Running Containers
+Both scripts pass `--env-file .env` and nothing else, so the values the container itself needs must
+be in `.env`, not in `.env.development`:
+
+| Variable | Used for |
+| --- | --- |
+| `CONTAINER_NAME` | compose project name and `container_name` |
+| `PROJECT_NAME` | `{base}` for the databases `init.sh` creates |
+| `SONAMU_DB_USER`, `SONAMU_DB_PASSWORD` | `POSTGRES_USER`, `POSTGRES_PASSWORD` |
+| `SONAMU_DB_PORT` | host side of `"${SONAMU_DB_PORT}:5432"` |
+
+A password that exists only in `.env.development` produces an empty `POSTGRES_PASSWORD`, and the
+container comes up with credentials the app cannot use.
+
+`database/fixtures/init.sh` is mounted into `/docker-entrypoint-initdb.d/`, so it runs when the data
+directory is first initialized. It installs the `vector` extension into `template1` and creates
+`{base}_development`, `{base}_staging`, `{base}_production`, `{base}_test`, `{base}_fixture`, plus
+`SONAMU_DB_NAME` and `SONAMU_DB_FIXTURE_NAME` when those are set. Setting `SONAMU_DB_NAME` after the
+container already exists creates nothing — issue the `CREATE DATABASE` by hand or recreate the
+container.
+
+`init.sh`, `dump.sh`, and `seed.sh` derive `{base}` from the `PROJECT_NAME` environment variable,
+while the runtime derives it from `projectName` in `sonamu.config.ts`. Hardcoding `projectName`
+without setting `PROJECT_NAME` points the scripts at `sonamu_test` and `sonamu_fixture` while the app
+uses the real names. Keep the two equal, or set `SONAMU_DB_NAME` and `SONAMU_DB_FIXTURE_NAME`
+explicitly.
+
+## Port conflicts
+
+`pnpm docker:up` failing with a port already in use means another container holds the port:
 
 ```bash
 docker ps --format "table {{.Names}}\t{{.Ports}}"
 ```
 
-### Step 2: Compare Container Names
+If the name matches this project's `CONTAINER_NAME`, an earlier instance is still up — `pnpm
+docker:down && pnpm docker:up`.
 
-Check the current project's container name:
+If it belongs to another project, change `SONAMU_DB_PORT` in `.env` and run `pnpm docker:up` again.
+That single value is enough: compose interpolates it into the port mapping, and the config reads the
+same variable. Editing `docker-compose.yml` or hardcoding a port in `sonamu.config.ts` is not part of
+the fix.
 
-```bash
-# Check CONTAINER_NAME in packages/api/.env
-cat packages/api/.env | grep CONTAINER_NAME
-```
+## Seed dumps
 
-### Step 3: Handle by Situation
+| Command | What it does |
+| --- | --- |
+| `pnpm dump` | `docker exec … pg_dump --inserts` of the **test** DB into `database/dumps/<dbname>_latest.sql` |
+| `pnpm seedOnly` | `DROP DATABASE` + `CREATE DATABASE` on the **fixture** DB, then applies that dump file to it |
+| `pnpm seed` | `seedOnly`, then `sonamu fixture sync` |
+| `pnpm sync:dump` | `seed`, then `sonamu migrate run`, then `dump` |
 
-#### If Container Names are the Same
+All three scripts load `.env`, `.env.test`, and `.env.local` only.
 
-A container from the same project was started earlier. Bring it down and bring it back up:
+`pnpm seedOnly` drops the fixture database outright, so anything in it that is not in the dump file is
+gone. `pnpm seed` then pushes the result into the test DB through `fixture sync`. Neither touches
+`{base}_development` or any remote environment.
 
-```bash
-cd packages/api
-pnpm docker:down
-pnpm docker:up
-```
+To add base rows every developer and test run should have: insert them into the test DB, run
+`pnpm dump`, then `pnpm seed`. The dump file is regenerated by `pnpm dump`, so edits to it survive
+only until the next dump.
 
-#### If Container Names are Different
+When rows are written into the dump file by hand, two constraints from `pg_dump --inserts` output
+order apply — it emits `ALTER TABLE … ADD CONSTRAINT … FOREIGN KEY` after the data section:
 
-Another project is using the same port. The new project's port must be changed.
+- Put `INSERT` statements before the foreign-key constraint section. After it, the apply fails on an
+  FK violation because the referenced rows do not exist yet.
+- Order the inserts along FK dependencies (parents first), and follow them with
+  `SELECT pg_catalog.setval('public.<table>_id_seq', <max id>, true)` so the next generated id does
+  not collide.
 
-Two files to modify:
+`sonamu fixture gen`, `fetch`, and the fixture/test/development relationship are covered by
+`sonamu-fixture`.
 
-1. `packages/api/.env`
+## Files that carry connection settings
 
-```bash
-# Before
-DB_PORT=5432
-
-# After (use an unused port between 5433–5439)
-DB_PORT=5433
-```
-
-2. `packages/api/database/docker-compose.yml`
-
-```yaml
-# Before
-ports:
-  - "5432:5432"
-
-# After
-ports:
-  - "5433:5432"
-```
-
-3. `packages/api/src/sonamu.config.ts`
-
-```typescript
-// Before
-port: 5432,
-
-// After
-port: 5433,
-```
-
-Port Selection Guide:
-
-- PostgreSQL default port: 5432
-- Available range: 5433 ~ 5439
-- Check currently used ports with `docker ps` and choose a number that is not duplicated
-
-### Restart After Changes
-
-```bash
-pnpm docker:up
-```
-
-## DB Connection Configuration Files
-
-| File                                       | Purpose                                                 |
-| ------------------------------------------ | ------------------------------------------------------- |
-| `packages/api/.env`                        | Environment variables (DB_HOST, DB_PORT, DB_USER, etc.) |
-| `packages/api/database/docker-compose.yml` | Docker container configuration                          |
-| `packages/api/src/sonamu.config.ts`        | Sonamu DB connection configuration                      |
-
-## .env Default Settings
-
-```bash
-DB_HOST=0.0.0.0
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=1234
-CONTAINER_NAME=[project-name]-container
-DATABASE_NAME=[project-name]
-```
+| File | Purpose |
+| --- | --- |
+| `packages/api/.env` and `.env.<environment>` | `SONAMU_DB_*`, `CONTAINER_NAME`, `PROJECT_NAME` |
+| `packages/api/database/docker-compose.yml` | container definition, interpolates the variables above |
+| `packages/api/src/sonamu.config.ts` | `database.database` and `defaultOptions` |

@@ -19,7 +19,7 @@ Where a Sonamu skill and the project's `AGENTS.md` disagree, `AGENTS.md` wins.
 | implementing an agent class, defining its tools, or managing per-request agent state | `sonamu-ai-agents` |
 | adding an endpoint, choosing httpMethod or clients options, implementing a file upload, streaming SSE events, opening a WebSocket channel, restricting an endpoint, or mapping a thrown error to a status or close code | `sonamu-api` |
 | running auth generate, configuring server.auth, adding an auth plugin, reading user or session from the Context, typing a custom User field, or when sign-in fails or user is always null | `sonamu-auth` |
-| editing .env or sonamu.config.ts, adjusting storage, cache, apiConfig, or logging options, starting the Docker database, or resolving a port conflict | `sonamu-config` |
+| editing .env, .env.<environment>, or sonamu.config.ts, wiring database, storage, cache, logging, or tasks options, starting the Docker DB, resolving a port conflict, or on an Invalid NODE_ENV, Missing Sonamu dotenv file, or removed database.name error | `sonamu-config` |
 | creating or editing an entity.json, adding a field or enum, wiring BelongsToOne/HasMany/ManyToMany/parentId, defining a subset, or resolving a schema validation or sync error | `sonamu-entity` |
 | running fixture gen/fetch/explore, writing cone.note metadata, generating a row with its dependent child rows, syncing between the fixture, test, and development databases, or when a fixture fails on a foreign key or unique constraint | `sonamu-fixture` |
 | calling a generated Service, wiring a TanStack Query hook, building a form or list view, or when a scaffolded view fails to compile | `sonamu-frontend` |

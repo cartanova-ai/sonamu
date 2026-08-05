@@ -1,172 +1,101 @@
-# Environments, Logging, Local Development
+# Per-Environment Dotenv, Logging, Slack Approval
 
-## Sonamu Local Development Environment Setup
+## What goes in which dotenv file
 
-When is this needed:
+The layering order and the failure modes are in `SKILL.md`; this is what each file is for. All of them
+sit in the api root and are gitignored in a generated project, so the values are per-machine.
 
-- When modifying the Sonamu framework source code during development
-- When linking a local Sonamu repository to a project for development
+| File | Contents |
+| --- | --- |
+| `.env` | Values shared by every environment, plus everything the Docker container needs — `CONTAINER_NAME`, `PROJECT_NAME`, `SONAMU_DB_USER`, `SONAMU_DB_PASSWORD`, `SONAMU_DB_PORT`. `pnpm docker:up` reads only this file |
+| `.env.development` | The development database's `SONAMU_DB_*` |
+| `.env.test` | The test database's `SONAMU_DB_*`, plus `SONAMU_DB_FIXTURE_*` — the fixture preset reads this file |
+| `.env.staging`, `.env.production` | Remote `SONAMU_DB_HOST` and credentials, plus `SONAMU_DB_READONLY_*` when a replica exists |
+| `.env.local` | Machine-specific overrides; wins over both of the above |
 
-Problem:
+A generated project ships all five files. The four `.env.<environment>` files arrive fully commented
+out, so every value falls through to `.env` until something is uncommented. `.env` itself is written
+with real connection values when the generator sets up the Docker database, and is left commented out
+when that step is declined — in which case the container variables above have to be filled in by hand
+before `pnpm docker:up` works.
 
-When linking Sonamu with pnpm link, type errors occur at build time:
-
-```
-error TS2345: Argument of type 'ZodNumber' is not assignable to parameter...
-  Type '2' is not assignable to type '3'.
-```
-
-Cause:
-
-- The linked Sonamu and the project each maintain their own `node_modules`
-- TypeScript type mismatches occur due to different versions of shared dependencies (e.g. zod)
-- TypeScript simultaneously references two different type definitions, causing errors
-
-Solution:
-
-### 1. Add override to pnpm-workspace.yaml
-
-In the project root's `pnpm-workspace.yaml`:
-
-```yaml
-overrides:
-  sonamu: link:../../sonamu/modules/sonamu
-```
-
-### 2. Specify published version in packages/api/package.json
-
-```json
-{
-  "dependencies": {
-    "sonamu": "^0.7.45" // specify the latest published version
-  }
-}
-```
-
-### 3. Run install
-
-```bash
-pnpm install
-```
-
-### 4. Verify build
-
-```bash
-cd packages/api
-pnpm build
-```
-
-How it works:
-
-- TypeScript type check: references type definitions from the npm registry based on the published version in `package.json`
-- Actual runtime: `pnpm overrides` local link takes priority and runs local source code
-- Separates type checking and runtime to resolve version mismatch issues
-
-Notes:
-
-- Changes to Sonamu source code are immediately reflected in the project
-- Restarting the project is required after building Sonamu
-- For general project development, using the npm version is recommended
-
-## Environment-Specific Configuration
-
-### Development Environment
+Development, pointing at the local container:
 
 ```env
-# packages/api/.env
-DB_HOST=0.0.0.0
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=1234
-DATABASE_NAME=myproject
+# .env
+CONTAINER_NAME=myproject-container
 PROJECT_NAME=myproject
+SONAMU_DB_HOST=0.0.0.0
+SONAMU_DB_PORT=5432
+SONAMU_DB_USER=postgres
+SONAMU_DB_PASSWORD=1234
 ```
 
-### Production Environment
+Production, in `.env.production`:
 
 ```env
-# packages/api/.env.production
-DB_HOST=your-rds-endpoint.amazonaws.com
-DB_PORT=5432
-DB_USER=produser
-DB_PASSWORD=strong-password-here
-DATABASE_NAME=myproject_prod
-PROJECT_NAME=myproject
-
-SESSION_SECRET=very-long-random-string-at-least-32-chars
-SESSION_SALT=random16charstr!
-
-AWS_ACCESS_KEY_ID=AKIA...
-AWS_SECRET_ACCESS_KEY=...
-S3_REGION=ap-northeast-2
-S3_BUCKET=myproject-prod-bucket
+SONAMU_DB_HOST=your-rds-endpoint.amazonaws.com
+SONAMU_DB_PORT=5432
+SONAMU_DB_USER=produser
+SONAMU_DB_PASSWORD=strong-password-here
+SONAMU_DB_READONLY_HOST=your-rds-replica.amazonaws.com
 ```
 
-## server Additional Options
-
-### baseUrl
-
-```typescript
-server: {
-  baseUrl: "https://api.example.com",  // external access URL (default: host:port)
-}
-```
-
-### fastify
-
-Pass Fastify server options directly (excluding `logger`).
-
-### Full Plugin List
-
-| Plugin      | Type                                 | Description                              |
-| ----------- | ------------------------------------ | ---------------------------------------- |
-| `compress`  | `boolean \| FastifyCompressOptions`  | Response compression (@fastify/compress) |
-| `cors`      | `boolean \| FastifyCorsOptions`      | CORS configuration                       |
-| `formbody`  | `boolean \| FastifyFormbodyOptions`  | x-www-form-urlencoded parsing            |
-| `multipart` | `boolean \| FastifyMultipartOptions` | File upload                              |
-| `qs`        | `boolean \| QsPluginOptions`         | Query string parsing                     |
-| `session`   | session config                       | Session management                       |
-| `sse`       | `boolean \| SsePluginOptions`        | Server-Sent Events                       |
-| `static`    | `boolean \| FastifyStaticOptions`    | Static file serving                      |
-| `custom`    | `(server: FastifyInstance) => void`  | Custom plugin registration function      |
+The database name is derived from `projectName`, so there is no name variable to set here unless the
+existing database has a different name — then `SONAMU_DB_NAME`.
 
 ## logging
 
-Define logging configuration. Set to `false` to completely disable logging.
+Logging is LogTape. The block takes four keys, all optional:
 
 ```typescript
-logging: false,  // disable logging
-// or
+import { getConsoleSink } from "@logtape/logtape";
+import { getPrettyFormatter } from "@logtape/pretty";
+
 logging: {
-  sinks: { /* define log output targets */ },
-  filters: { /* define filters */ },
+  fastifyCategory: ["fastify"],   // default
+  sinks: { console: getConsoleSink({ formatter: getPrettyFormatter({ timestamp: "time" }) }) },
+  filters: { /* FilterLike per id */ },
+  loggers: [
+    { category: ["sonamu"], sinks: ["console"], lowestLevel: "debug" },
+    { category: ["tasks"], sinks: ["console"], lowestLevel: "info" },
+  ],
 },
 ```
+
+`loggers` is what decides whether anything is printed. A block with `sinks` alone declares outputs
+nothing routes to, and the only lines that appear are Sonamu's own default Fastify logger.
+
+Sonamu adds to whatever is declared:
+
+- a `fastify-console` sink and filter, pretty-printed and restricted to requests under `/api`.
+  Declaring either id yourself replaces Sonamu's.
+- a logger for `fastifyCategory` (default `["fastify"]`) at `info`, unless `loggers` already contains
+  an entry for that category.
+- LogTape's own meta logger, silenced at `fatal`.
+
+`logging: false` skips the LogTape setup entirely.
 
 ## slackConfirm
 
-Activates a Slack-based approval process for production DB migrations.
+Requires a Slack approval in channel before pending migrations are applied to the listed presets:
 
 ```typescript
 slackConfirm: {
-  targets: ["production"],       // list of DB keys requiring approval
-  botToken: process.env.SLACK_BOT_TOKEN ?? "",  // Slack Bot Token (xoxb-...)
-  channelId: process.env.SLACK_CHANNEL_ID ?? "", // Slack Channel ID (C...)
+  targets: ["staging", "production"],            // DB preset keys
+  botToken: process.env.SLACK_BOT_TOKEN ?? "",   // xoxb-...
+  channelId: process.env.SLACK_CHANNEL_ID ?? "", // C...
 },
 ```
 
-## Post-Configuration Checklist
+Three conditions gate the prompt, and it is skipped silently when any fails:
 
-1. Confirm `.env` file is created
-2. Start Docker: `pnpm docker:up`
-3. Verify build: `pnpm build`
-4. Start server: `pnpm dev`
-5. Access Sonamu UI: http://localhost:34900/sonamu-ui
+- `botToken` and `channelId` must both be non-empty. The generated config only sets the block when
+  both environment variables exist, which is why an unconfigured project applies migrations directly.
+- The apply must run through Sonamu UI. `sonamu migrate apply` and `sonamu migrate run` call the
+  migrator directly and never consult Slack.
+- At least one target host must be non-local. If every target resolves to `localhost`, `127.0.0.1`,
+  `0.0.0.0`, or `::1`, approval is skipped.
 
-Before production deployment:
-
-- Change `SESSION_SECRET`
-- Change `SESSION_SALT`
-- Change `cookie.domain` to the actual domain
-- Configure S3 (if needed)
-- Add error handling logic
+`targets` entries are validated against the generated presets, and an unknown one fails the apply with
+the valid list in the message.
