@@ -1,6 +1,6 @@
 ---
 name: sonamu-api
-description: Exposes Model methods as HTTP, SSE, and WebSocket endpoints. Use when adding or changing an endpoint, choosing httpMethod/clients options, implementing a file upload, streaming SSE events, opening a WebSocket channel, or mapping a thrown error to a status or close code. Covers @api, @upload, @stream, @websocket, createSSE, ctx.ws, and SoException.
+description: Exposes Model methods as HTTP, SSE, and WebSocket endpoints. Use when adding an endpoint, choosing httpMethod or clients options, implementing a file upload, streaming SSE events, opening a WebSocket channel, restricting an endpoint, or mapping a thrown error to a status or close code. Covers @api, @upload, @stream, @websocket, createSSE, ctx.ws, guards, guardHandler, and SoException.
 ---
 
 # Sonamu Endpoints
@@ -21,6 +21,7 @@ package.
 | Server-to-client event stream                                                     | `references/sse.md`         |
 | Bidirectional channel, rooms, broadcasting outside the handler                     | `references/websocket.md`   |
 | A thrown error's status code, response body, or WebSocket close code              | `references/errors.md`      |
+| Restricting an endpoint — guard keys, `guardHandler`, when the loop runs          | `references/guards.md`      |
 
 | Decorator    | Endpoint                    | Generated client                     |
 | ------------ | --------------------------- | ------------------------------------ |
@@ -29,8 +30,8 @@ package.
 | `@stream`    | SSE route                   | `useSSEStream`-based hook            |
 | `@websocket` | WebSocket route             | `useWebSocketChannel`-based hook     |
 
-Guards are wired through the `guards` option on all four. The guard keys themselves, `guardHandler`,
-and custom guards live in the `sonamu-auth` skill.
+All four take a `guards` option. Sonamu enforces nothing itself — each key is passed to
+`apiConfig.guardHandler`, which throws or returns. An endpoint with no `guards` is public.
 
 ## Route path
 

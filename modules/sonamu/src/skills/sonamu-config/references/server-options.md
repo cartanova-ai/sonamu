@@ -1,201 +1,15 @@
 # sonamu.config.ts — server Options
 
-## server.auth Details (better-auth Authentication)
+## server.auth
 
-Sonamu provides an authentication system using better-auth.
+`server.auth` takes better-auth's `BetterAuthOptions` plus Sonamu's `user.additionalFields`
+extension. Sonamu supplies the database adapter, registers the catch-all route under `basePath`
+(default `/api/auth`), and resolves `user`/`session` onto the Context on every request. Leaving the
+block out is valid — no better-auth instance is built and both are always `null`.
 
-### 1. Auto-generate Entities
+The `sonamu-auth` skill covers the option shape, `auth generate`, the plugin list, and the
+snake_case field mapping.
 
-```bash
-pnpm sonamu auth generate
-```
-
-Generated entities:
-
-- User - user (id, name, email, email_verified, image)
-- Session - session (token, expires_at, user_id)
-- Account - account (provider_id, access_token, etc.)
-- Verification - email verification
-
-### 2. server.auth Configuration
-
-```typescript
-server: {
-  // Basic configuration (emailAndPassword enabled)
-  auth: {
-    emailAndPassword: { enabled: true },
-  },
-
-  // Add social login
-  // auth: {
-  //   emailAndPassword: { enabled: true },
-  //   socialProviders: {
-  //     google: {
-  //       clientId: process.env.GOOGLE_CLIENT_ID!,
-  //       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-  //     },
-  //   },
-  // },
-}
-```
-
-### 3. Authentication API Endpoints
-
-Automatically registered under the `/api/auth/*` path:
-
-| Endpoint                  | Method | Description |
-| ------------------------- | ------ | ----------- |
-| `/api/auth/sign-up/email` | POST   | Sign up     |
-| `/api/auth/sign-in/email` | POST   | Sign in     |
-| `/api/auth/sign-out`      | POST   | Sign out    |
-| `/api/auth/get-session`   | GET    | Get session |
-
-### 4. Accessing user/session from Context
-
-```typescript
-@api({ httpMethod: "GET", guards: ["user"] })
-async me(): Promise<UserSubsetA | null> {
-  const { user, session } = Sonamu.getContext();
-  if (!user) return null;
-  return this.findById("A", user.id);
-}
-```
-
-### 5. Field Mapping (camelCase → snake_case)
-
-better-auth uses camelCase, Sonamu uses snake_case. Automatic mapping is applied:
-
-| better-auth     | Sonamu           |
-| --------------- | ---------------- |
-| `emailVerified` | `email_verified` |
-| `createdAt`     | `created_at`     |
-| `userId`        | `user_id`        |
-| `expiresAt`     | `expires_at`     |
-
-## Guards System (Access Control)
-
-The Sonamu permission system consists of 2 components:
-
-1. GuardKeys - permission key definitions
-2. guardHandler - permission check logic
-
-### 1. Extending GuardKeys (Custom Permissions)
-
-Source code: `modules/sonamu/src/api/decorators.ts` (GuardKeys interface)
-
-Provided by default: `query`, `admin`, `user`
-
-To add custom permissions, extend in `src/typings/sonamu.d.ts`:
-
-File location: `src/typings/sonamu.d.ts`
-
-```typescript
-import {} from "sonamu";
-
-declare module "sonamu" {
-  export interface GuardKeys {
-    query: true;
-    admin: true;
-    user: true;
-    manager: true; // added
-    superadmin: true; // added
-  }
-}
-```
-
-### 2. Using guards in the @api Decorator
-
-```typescript
-// user.model.ts
-import { api } from "sonamu";
-
-class UserModelClass extends BaseModelClass {
-  @api({ httpMethod: "GET", guards: ["user"] })
-  async me(): Promise<UserSubsetA | null> {
-    // only logged-in users can access
-  }
-
-  @api({ httpMethod: "DELETE", guards: ["admin"] })
-  async del(ids: number[]): Promise<number> {
-    // only admins can access
-  }
-
-  @api({ httpMethod: "GET", guards: ["admin", "manager"] })
-  async adminList(): Promise<UserSubsetA[]> {
-    // admin or manager permission
-  }
-}
-```
-
-### 3. Implementing guardHandler
-
-```typescript
-import { Sonamu } from "sonamu";
-
-// sonamu.config.ts
-apiConfig: {
-  guardHandler: (guard, request, api) => {
-    // Access user from better-auth Context
-    const { user } = Sonamu.getContext();
-
-    switch (guard) {
-      case "user":
-        // login required
-        if (!user) {
-          throw new Error("Login is required");
-        }
-        break;
-
-      case "admin":
-        // admin permission (requires adding role field to User entity)
-        if (!user || (user as any).role !== "admin") {
-          throw new Error("Only admins can access");
-        }
-        break;
-
-      case "manager":
-        // manager permission (custom Guard example)
-        if (!user || !["admin", "manager"].includes((user as any).role)) {
-          throw new Error("Manager permission is required");
-        }
-        break;
-
-      case "query":
-        // allow all users (including unauthenticated)
-        break;
-    }
-  },
-},
-```
-
-NOTE: better-auth's default User entity does not have a `role` field. If role-based authentication is needed, add a `role` field to the User entity or create a separate Role entity.
-
-### Menu/Screen Access Control by Permission
-
-UI access control by permission is handled on the frontend:
-
-```typescript
-// web/src/lib/auth.ts
-export const menuPermissions = {
-  dashboard: ["user", "admin", "manager"],
-  userManagement: ["admin"],
-  settings: ["admin", "manager"],
-  reports: ["admin", "manager"],
-};
-
-export function canAccess(userRole: string, menu: keyof typeof menuPermissions) {
-  return menuPermissions[menu].includes(userRole);
-}
-```
-
-```tsx
-// web/src/components/Sidebar.tsx
-{
-  canAccess(user.role, "userManagement") && (
-    <MenuItem href="/admin/users">User Management</MenuItem>
-  );
-}
-```
 
 ## server.plugins Details
 
@@ -325,16 +139,8 @@ contextProvider: (defaultContext, request) => {
 
 ### guardHandler
 
-Handle API guard processing:
-
-```typescript
-guardHandler: (guard, request, api) => {
-  // access control based on guard value
-  if (guard === "admin" && request.user?.role !== "admin") {
-    throw new Error("Only admins can access");
-  }
-},
-```
+Required — one function covering every key used in an endpoint's `guards`, rejecting by throwing.
+The `sonamu-api` skill covers the signature, declaring keys, and a worked handler.
 
 ### cacheControlHandler
 

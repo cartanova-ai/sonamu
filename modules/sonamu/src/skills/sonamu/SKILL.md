@@ -17,11 +17,11 @@ Where a Sonamu skill and the project's `AGENTS.md` disagree, `AGENTS.md` wins.
 | Situation | Skill |
 | --- | --- |
 | implementing an agent class, defining its tools, or managing per-request agent state | `sonamu-ai-agents` |
-| adding or changing an endpoint, choosing httpMethod/clients options, implementing a file upload, streaming SSE events, opening a WebSocket channel, or mapping a thrown error to a status or close code | `sonamu-api` |
-| running auth generate, applying Guards to an endpoint, reading the session from Context, adding an auth plugin, or migrating User.id to a string primary key | `sonamu-auth` |
-| editing .env or sonamu.config.ts, adjusting auth, guards, storage, cache, or logging options, starting the Docker database, or resolving a port conflict | `sonamu-config` |
+| adding an endpoint, choosing httpMethod or clients options, implementing a file upload, streaming SSE events, opening a WebSocket channel, restricting an endpoint, or mapping a thrown error to a status or close code | `sonamu-api` |
+| running auth generate, configuring server.auth, adding an auth plugin, reading user or session from the Context, typing a custom User field, or when sign-in fails or user is always null | `sonamu-auth` |
+| editing .env or sonamu.config.ts, adjusting storage, cache, apiConfig, or logging options, starting the Docker database, or resolving a port conflict | `sonamu-config` |
 | creating or editing an entity.json, adding a field or enum, wiring BelongsToOne/HasMany/ManyToMany/parentId, defining a subset, or resolving a schema validation or sync error | `sonamu-entity` |
-| running fixture gen/fetch/explore, writing cone.note metadata for LLM generation, syncing between the development, test, and fixture databases, or when a fixture fails on a foreign key or unique constraint | `sonamu-fixture` |
+| running fixture gen/fetch/explore, writing cone.note metadata, generating a row with its dependent child rows, syncing between the fixture, test, and development databases, or when a fixture fails on a foreign key or unique constraint | `sonamu-fixture` |
 | calling a generated Service, wiring a TanStack Query hook, building a form or list view, or when a scaffolded view fails to compile | `sonamu-frontend` |
 | registering labels for a new entity or enum, adding a language, or a UI string renders as a raw key | `sonamu-i18n` |
 | a schema change needs a migration, a migration fails or conflicts, FK ordering breaks an apply, or a primary key type must change | `sonamu-migration` |

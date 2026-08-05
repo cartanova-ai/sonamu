@@ -9,8 +9,10 @@ description: Generates and applies Sonamu database migrations. Use when a schema
 
 Sonamu diffs `entity.json` against the DB and emits the migration, so a hand-written file or a direct
 `CREATE TABLE` / `ALTER TABLE` leaves the schema and the entity definition describing different
-things — and the next generate run tries to reconcile the gap. The one exception is a PK type change,
-which needs raw SQL because Sonamu cannot derive it (see "PK Type Change" below).
+things — and the next generate run tries to reconcile the gap. That holds for a PK type change too:
+edit the `id` prop and generate, and Sonamu writes the whole FK-drop → alter → FK-restore sequence
+itself. See `references/pk-type-change.md`, which is worth reading before generating one — the run
+also emits per-table files that have to be deleted.
 
 The generator reads `entity.json` from disk, so no sync step is needed first. It does require
 every existing migration to be applied to at least one DB, or it exits with:
@@ -38,8 +40,7 @@ pnpm sonamu migrate run         # Apply to actual DB
 
 Cascading changes across tables belong in one file. A sequence like FK drop → type change → FK
 restore leaves the schema in a state that violates its own constraints between steps, and each
-migration file is applied on its own — so splitting the sequence fails at the first file. Details:
-"PK Type Change" below.
+migration file is applied on its own — so splitting the sequence fails at the first file.
 
 ## Basic Structure
 
@@ -113,104 +114,6 @@ export async function down(knex: Knex): Promise<void> {
   });
 }
 ```
-
-## PK Type Change
-
-### Situation
-
-When the PK type of an existing table must be changed (e.g. integer -> text, bigint -> uuid), with FKs referencing that PK in multiple tables.
-
-### Required Order
-
-When changing the type of a column that has referential integrity (a PK referenced by FKs), the following order must be followed:
-
-```typescript
-export async function up(knex: Knex): Promise<void> {
-  // Step 1: DROP all FK constraints referencing this PK
-  await knex.raw('ALTER TABLE "child_table_1" DROP CONSTRAINT "child_table_1_parent_id_foreign"');
-  await knex.raw('ALTER TABLE "child_table_2" DROP CONSTRAINT "child_table_2_parent_id_foreign"');
-
-  // Step 2: DROP the PK constraint
-  await knex.raw('ALTER TABLE "parent_table" DROP CONSTRAINT "parent_table_pkey"');
-
-  // Step 3: Change types of the PK column and all FK columns simultaneously
-  await knex.raw('ALTER TABLE "parent_table" ALTER COLUMN "id" TYPE new_type USING "id"::new_type');
-  await knex.raw(
-    'ALTER TABLE "child_table_1" ALTER COLUMN "parent_id" TYPE new_type USING "parent_id"::new_type',
-  );
-  await knex.raw(
-    'ALTER TABLE "child_table_2" ALTER COLUMN "parent_id" TYPE new_type USING "parent_id"::new_type',
-  );
-
-  // Step 4: ADD the PK constraint
-  await knex.raw(
-    'ALTER TABLE "parent_table" ADD CONSTRAINT "parent_table_pkey" PRIMARY KEY ("id")',
-  );
-
-  // Step 5: ADD all FK constraints
-  await knex.raw(
-    'ALTER TABLE "child_table_1" ADD CONSTRAINT "child_table_1_parent_id_foreign" FOREIGN KEY ("parent_id") REFERENCES "parent_table"("id") ON UPDATE RESTRICT ON DELETE CASCADE',
-  );
-  await knex.raw(
-    'ALTER TABLE "child_table_2" ADD CONSTRAINT "child_table_2_parent_id_foreign" FOREIGN KEY ("parent_id") REFERENCES "parent_table"("id") ON UPDATE RESTRICT ON DELETE RESTRICT',
-  );
-}
-```
-
-### Core Principles
-
-1. Cannot change the type of a referenced column while FK constraints exist: PostgreSQL throws an error if the types of the FK and referenced PK do not match. Constraints must be removed first.
-
-2. Handle all changes in a single migration: Splitting into multiple migrations causes constraint violations in intermediate states. Change the types of the PK and all FKs in one go.
-
-3. Prefer raw SQL over the knex schema builder: Guarantees clear execution order, allows explicit constraint naming, and supports complex type conversions (USING).
-
-### Real Example: users.id integer -> text
-
-```typescript
-export async function up(knex: Knex): Promise<void> {
-  // 1. Remove FK constraints
-  await knex.raw('ALTER TABLE "accounts" DROP CONSTRAINT "accounts_user_id_foreign"');
-  await knex.raw('ALTER TABLE "sessions" DROP CONSTRAINT "sessions_user_id_foreign"');
-
-  // 2. Remove PK constraint
-  await knex.raw('ALTER TABLE "users" DROP CONSTRAINT "users_pkey"');
-
-  // 3. Change types (explicit conversion with USING clause)
-  await knex.raw('ALTER TABLE "users" ALTER COLUMN "id" TYPE text USING "id"::text');
-  await knex.raw('ALTER TABLE "accounts" ALTER COLUMN "user_id" TYPE text USING "user_id"::text');
-  await knex.raw('ALTER TABLE "sessions" ALTER COLUMN "user_id" TYPE text USING "user_id"::text');
-
-  // 4. Restore PK constraint
-  await knex.raw('ALTER TABLE "users" ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id")');
-
-  // 5. Restore FK constraints
-  await knex.raw(
-    'ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT ON DELETE CASCADE',
-  );
-  await knex.raw(
-    'ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT ON DELETE CASCADE',
-  );
-}
-```
-
-### Finding FK Reference Tables
-
-```bash
-# Find relations referencing a specific entity in entity files
-grep -r "with.*User" --include="*.entity.json"
-```
-
-### Common Mistakes
-
-1. Splitting into multiple migrations: the first file to be applied violates a constraint on its
-   own, since the intermediate state is invalid. Keep the sequence in one file.
-
-2. Changing type without removing constraint: Causes `cannot alter type of a column used by a foreign key` error
-
-3. Missing USING clause: Causes `column "id" cannot be cast automatically to type text` error. `USING "id"::text` is required for integer -> text.
-
-4. Constraint name mismatch: Verify the exact constraint name with `SELECT constraint_name FROM information_schema.table_constraints WHERE table_name = 'accounts'`.
 
 ## Commands
 

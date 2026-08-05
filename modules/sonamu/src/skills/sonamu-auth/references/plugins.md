@@ -1,52 +1,47 @@
-# better-auth Plugin Guide
+# better-auth Plugins
 
-Sonamu wraps better-auth plugins with snake_case schema mapping.
-Use the `auth generate --plugins` command to auto-generate plugin entities.
+Two halves that have to match: `auth generate --plugins <ids>` creates the schema, and a wrapper
+function in `server.auth.plugins` turns the feature on. Generating without configuring leaves unused
+tables; configuring without generating fails at the first query against a missing table or column.
 
-Source code:
+`audit-log` is the exception on that second half — it swallows its own write failures, so it stays
+silent instead of failing. See its section below.
 
-- Wrappers: `modules/sonamu/src/auth/plugins/wrappers/`
-- Entity definitions: `modules/sonamu/src/auth/plugins/entity-definitions/`
-- Generator: `modules/sonamu/src/auth/auth-generator.ts`
+## Supported plugins
 
-## Supported Plugins
+| Plugin ID      | Wrapper            | Purpose                                               |
+| -------------- | ------------------ | ----------------------------------------------------- |
+| `admin`        | `admin()`          | Admin features, user ban/unban, session impersonation |
+| `organization` | `organization()`   | Organization, team, member, and invitation management |
+| `2fa`          | `twoFactor()`      | TOTP-based two-factor authentication                  |
+| `username`     | `username()`       | Username-based authentication                         |
+| `phone-number` | `phoneNumber()`    | Phone number authentication                           |
+| `api-key`      | `apiKey()`         | API key issuance/management, rate limiting            |
+| `jwt`          | `jwt()`            | JWT tokens + JWKS key management                      |
+| `passkey`      | `passkey()`        | WebAuthn/Passkey authentication                       |
+| `sso`          | `sso()`            | OIDC/SAML SSO integration                             |
+| `anonymous`    | `anonymous()`      | Anonymous user support                                |
+| `audit-log`    | `sonamuAuditLog()` | Appends auth events to an `audit_events` table        |
 
-| Plugin ID      | Wrapper function | Package                 | Purpose                                               |
-| -------------- | ---------------- | ----------------------- | ----------------------------------------------------- |
-| `admin`        | `admin()`        | `better-auth/plugins`   | Admin features, user ban/unban, session impersonation |
-| `organization` | `organization()` | `better-auth/plugins`   | Organization, team, member, and invitation management |
-| `2fa`          | `twoFactor()`    | `better-auth/plugins`   | TOTP-based two-factor authentication                  |
-| `username`     | `username()`     | `better-auth/plugins`   | Username-based authentication                         |
-| `phone-number` | `phoneNumber()`  | `better-auth/plugins`   | Phone number authentication                           |
-| `api-key`      | `apiKey()`       | `@better-auth/api-key`  | API key issuance/management, rate limiting            |
-| `jwt`          | `jwt()`          | `better-auth/plugins`   | JWT tokens + JWKS key management                      |
-| `passkey`      | `passkey()`      | `@better-auth/passkey`  | WebAuthn/Passkey authentication                       |
-| `sso`          | `sso()`          | `@better-auth/sso`      | OIDC/SAML SSO integration                             |
-| `anonymous`    | `anonymous()`    | `better-auth/plugins`   | Anonymous user support                                |
+Nothing here needs an extra install. `api-key`, `passkey`, and `sso` live in their own
+`@better-auth/*` packages upstream, but Sonamu depends on all three directly, so the wrappers resolve
+from a plain `sonamu` install.
 
-## CLI Usage
+`audit-log` is the one that breaks the pattern: its wrapper is Sonamu's own rather than a wrapped
+better-auth plugin, because the ingestion into `audit_events` is Sonamu's.
 
-```bash
-# Base entities only (User, Session, Account, Verification)
-pnpm sonamu auth generate
+## What a plugin contributes
 
-# With plugins
-pnpm sonamu auth generate --plugins admin,organization
+Each per-plugin section below is written in terms of three kinds of contribution, echoed under a
+`[PLUGIN] <Name>` header when the id is passed to `auth generate --plugins`:
 
-# Multiple plugins
-pnpm sonamu auth generate --plugins admin,2fa,phone-number,username
-```
+| Kind                | Effect                                     | Output line |
+| ------------------- | ------------------------------------------ | ----------- |
+| `entities`          | New tables of its own                      | `[CREATED]` |
+| `additionalProps`   | Fields on entities that already exist      | `[ADD PROP]` |
+| `additionalIndexes` | Indexes on entities that already exist     | `[ADD INDEX]` |
 
-### How It Works
-
-1. Base entities are created/updated (User, Session, Account, Verification)
-2. Per-plugin processing:
-   - `entities`: creates new tables (e.g. Organization → organizations, members, invitations, teams, team_members)
-   - `additionalProps`: adds fields to existing entities (e.g. admin → adds ban_reason, ban_expires to User)
-   - `additionalIndexes`: adds indexes to existing entities
-3. Entities that already exist have only missing fields added; existing fields are preserved
-
-## Wrapper Usage (sonamu.config.ts)
+## Wrapper usage (sonamu.config.ts)
 
 Using Sonamu wrappers automatically applies snake_case schema mapping.
 
@@ -64,17 +59,20 @@ export default defineConfig({
 });
 ```
 
-Plugins are imported from `sonamu/auth/plugins`, not `better-auth/plugins`. The Sonamu wrapper is
-what applies the snake_case column mapping; the upstream import compiles and runs but reads
-camelCase columns that the generated schema does not have.
+What matters is the Sonamu wrapper, not the specifier — the wrappers are re-exported from the package
+root too, so `sonamu` and `sonamu/auth/plugins` are equivalent. `sonamuAuditLog` is root-only.
 
 ```typescript
-// WRONG - snake_case mapping not applied
+// WRONG - upstream plugin, snake_case mapping not applied
 import { admin } from "better-auth/plugins";
 
-// CORRECT - Sonamu wrapper
+// CORRECT - either of these
 import { admin } from "sonamu/auth/plugins";
+import { admin, sonamuAuditLog } from "sonamu";
 ```
+
+The wrapper is what applies the snake_case column mapping. The upstream import compiles and runs, but
+reads camelCase columns the generated schema does not have.
 
 ## Per-Plugin Details
 
@@ -138,7 +136,10 @@ Schema mapping:
 
 ### username
 
-Fields added to User: `display_username`
+Fields added to User: `username`, `display_username`
+Indexes added to User: `users_username_unique`
+
+`username` is the lookup column and `display_username` preserves the casing the user typed.
 
 ```typescript
 import { username } from "sonamu/auth/plugins";
@@ -153,6 +154,7 @@ Schema mapping:
 ### phone-number
 
 Fields added to User: `phone_number`, `phone_number_verified`
+Indexes added to User: `users_phone_number_unique`
 
 ```typescript
 import { phoneNumber } from "sonamu/auth/plugins";
@@ -172,11 +174,6 @@ Schema mapping:
 ### api-key
 
 Additional entities: ApiKey (table: `api_keys`)
-Package: `@better-auth/api-key` (must be installed separately)
-
-```bash
-pnpm add @better-auth/api-key
-```
 
 ```typescript
 import { apiKey } from "sonamu/auth/plugins";
@@ -193,7 +190,8 @@ Schema mapping:
 - `refillAmount` → `refill_amount`, `lastRefillAt` → `last_refill_at`
 - `expiresAt` → `expires_at`, `createdAt` → `created_at`, `updatedAt` → `updated_at`
 
-Note: v1.5.0에서 `userId`가 `referenceId`로 변경됨. `referenceId`는 user 또는 organization을 참조하는 polymorphic ID.
+Note: `userId` became `referenceId` in v1.5.0. It is a polymorphic id — it points at a user or an
+organization, so it carries no FK.
 
 ### jwt
 
@@ -213,11 +211,6 @@ Schema mapping:
 ### passkey
 
 Additional entities: Passkey (table: `passkeys`)
-Package: `@better-auth/passkey` (must be installed separately)
-
-```bash
-pnpm add @better-auth/passkey
-```
 
 ```typescript
 import { passkey } from "sonamu/auth/plugins";
@@ -232,11 +225,7 @@ Schema mapping:
 
 ### sso
 
-Package: `@better-auth/sso` (must be installed separately)
-
-```bash
-pnpm add @better-auth/sso
-```
+Additional entities: SsoProvider (table: `sso_providers`)
 
 ```typescript
 import { sso } from "sonamu/auth/plugins";
@@ -244,7 +233,6 @@ import { sso } from "sonamu/auth/plugins";
 sso();
 ```
 
-Table: `sso_providers`
 Schema mapping:
 
 - `oidcConfig` → `oidc_config`, `samlConfig` → `saml_config`
@@ -263,6 +251,40 @@ anonymous();
 Schema mapping:
 
 - `isAnonymous` → `is_anonymous`
+
+### audit-log
+
+Additional entities: AuditEvent (table: `audit_events`)
+
+```typescript
+import { sonamuAuditLog } from "sonamu";
+
+sonamuAuditLog();
+```
+
+Takes no options, and the wrapper is Sonamu's own — there is no upstream plugin to confuse it with,
+and no schema mapping, because the entity is declared in snake_case from the start.
+
+Once registered, it hooks better-auth's user, session, account, verification, and organization events
+and writes one row per event. Columns of note:
+
+| Column                                    | What it holds                                                                    |
+| ----------------------------------------- | -------------------------------------------------------------------------------- |
+| `category`                                | enum `AuditEventCategory` — user, session, account, verification, organization, security |
+| `event_type`, `event_key`                 | the better-auth event that fired                                                 |
+| `actor_user_id`, `subject_user_id`        | who acted, and who it happened to — both nullable, both plain strings with no FK  |
+| `dedupe_key`                              | sha256 of the event identity, `audit_events_dedupe_key_unique`                    |
+| `payload_json`                            | the original event body, typed `AuditEventPayload`                               |
+| `occurred_at` / `ingested_at`             | when the event happened vs. when the row was written                             |
+
+Unlike every other entity here, `id` is an `integer` — the rows are Sonamu's, not better-auth's.
+
+Two behaviors that produce no error:
+
+- The insert is `ON CONFLICT (dedupe_key) DO NOTHING`, so a replayed event is dropped silently.
+- An ingest failure is caught and logged, never thrown. Registering the wrapper without running
+  `auth generate --plugins audit-log` first leaves auth working normally while every event is lost to
+  a log line. An empty `audit_events` is the symptom to check.
 
 ## Custom Schema Options
 
@@ -285,14 +307,11 @@ Internally, `merge(ADMIN_SCHEMA, options.schema)` is executed to preserve the So
 
 ## Steps After Adding a Plugin
 
-1. `pnpm sonamu auth generate --plugins <plugin list>`
-2. Confirm generated entities in Sonamu UI
-3. Run migration with `pnpm sonamu migrate run`
-4. Add wrapper functions to `sonamu.config.ts`
-5. If needed, add plugin-specific permission logic to `guardHandler`
+1. `pnpm sonamu auth generate --plugins <full plugin list>` — pass every plugin you use, not just the
+   new one. The command is additive, so omitting one does not remove it, but listing all of them
+   keeps the command reproducible.
+2. Migrate.
+3. Add the wrapper to `server.auth.plugins`.
 
-## References
-
-- Basic auth configuration: `sonamu-auth`
-- Changing PK type (better-auth → string PK): `references/user-id-migration.md`
-- Source code: `modules/sonamu/src/auth/plugins/`
+Changing `User.id` to a string PK on an existing integer schema is its own procedure — the
+`sonamu-migration` skill covers it.

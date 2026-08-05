@@ -1,6 +1,6 @@
 ---
 name: sonamu-config
-description: Configures a Sonamu project and its databases. Use when editing .env or sonamu.config.ts, adjusting auth, guards, storage, cache, or logging options, starting the Docker database, or resolving a port conflict. Covers the 3-tier development/test/fixture databases, seed data, and environment-specific configuration.
+description: Configures a Sonamu project and its databases. Use when editing .env or sonamu.config.ts, adjusting storage, cache, apiConfig, or logging options, starting the Docker database, or resolving a port conflict. Covers the 3-tier development/test/fixture databases, seed data, and environment-specific configuration.
 ---
 
 # Sonamu Configuration
@@ -181,7 +181,7 @@ See `sonamu-testing` for details.
 server: {
   listen: { port: 34900, host: "localhost" },
   plugins: { /* plugin settings */ },
-  auth: true,
+  auth: { /* better-auth options — see the sonamu-auth skill */ },
   apiConfig: { /* API settings */ },
   storage: { /* storage settings */ },
   cache: { /* cache settings */ },
@@ -193,6 +193,6 @@ server: {
 
 | Need | Read |
 | --- | --- |
-| server.auth, Guards, plugins, storage, cache, apiConfig, lifecycle | `references/server-options.md` |
+| server.plugins, storage, cache, apiConfig, lifecycle | `references/server-options.md` |
 | Environment-specific config, logging, slackConfirm, local Sonamu link setup | `references/environments.md` |
 | Docker DB, 3-tier structure, seed data, port conflicts, connection files | `references/database.md` |
