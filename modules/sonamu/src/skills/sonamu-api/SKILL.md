@@ -1,493 +1,66 @@
 ---
 name: sonamu-api
-description: Exposes Model methods as HTTP endpoints with the @api decorator. Use when adding or changing an API endpoint, choosing httpMethod/guards/clients options, or implementing a file upload. Covers @api, @upload, response subset selection, and the generated service client.
+description: Exposes Model methods as HTTP, SSE, and WebSocket endpoints. Use when adding or changing an endpoint, choosing httpMethod/clients options, implementing a file upload, streaming SSE events, opening a WebSocket channel, or mapping a thrown error to a status or close code. Covers @api, @upload, @stream, @websocket, createSSE, ctx.ws, and SoException.
 ---
 
-# @api Decorator
+# Sonamu Endpoints
 
-## Basic Usage
+A method on a Model or Frame becomes an endpoint by carrying an endpoint decorator. `sonamu sync`
+reads the decorator and regenerates a typed client function or hook for it.
 
-```typescript
-@api({ httpMethod: "GET" })
-async findById(id: number): Promise<User> { }
-// → GET /user/findById?id=1
-```
+Each reference below opens with a usage example of its decorator. The option types and the
+decorator-time validation they describe live in `sonamu/src/api/decorators.ts`, which ships with the
+package.
 
-## Options
+## Reference Map
 
-| Option         | Description                                             | Default             |
-| -------------- | ------------------------------------------------------- | ------------------- |
-| `httpMethod`   | GET, POST, PUT, DELETE, PATCH                           | GET                 |
-| `clients`      | Client types to generate                                | `["axios"]`         |
-| `resourceName` | queryKey for TanStack Query                             | -                   |
-| `guards`       | Authentication/authorization guards                     | -                   |
-| `path`         | Custom path                                             | `/{model}/{method}` |
-| `description`  | API description (for documentation)                     | -                   |
-| `timeout`      | Request timeout (ms)                                    | -                   |
-| `contentType`  | Response Content-Type                                   | `application/json`  |
-| `cacheControl` | Cache-Control header setting                            | -                   |
-| `compress`     | Response compression setting (can disable with `false`) | -                   |
+| Need                                                                              | Read                        |
+| --------------------------------------------------------------------------------- | --------------------------- |
+| Request in, response out — options, defaults, generated client per `clients` value | `references/api.md`         |
+| File upload — buffer vs stream, limits, storage destination                        | `references/upload.md`      |
+| Server-to-client event stream                                                     | `references/sse.md`         |
+| Bidirectional channel, rooms, broadcasting outside the handler                     | `references/websocket.md`   |
+| A thrown error's status code, response body, or WebSocket close code              | `references/errors.md`      |
 
-## clients Options
+| Decorator    | Endpoint                    | Generated client                     |
+| ------------ | --------------------------- | ------------------------------------ |
+| `@api`       | Route with `httpMethod`     | Request function, plus hooks per `clients` |
+| `@upload`    | POST multipart route        | `axios-multipart` + `tanstack-mutation-multipart` |
+| `@stream`    | SSE route                   | `useSSEStream`-based hook            |
+| `@websocket` | WebSocket route             | `useWebSocketChannel`-based hook     |
 
-| Client                        | Purpose                  |
-| ----------------------------- | ------------------------ |
-| `axios`                       | General API calls        |
-| `axios-multipart`             | File upload (axios)      |
-| `tanstack-query`              | Query hook for reads     |
-| `tanstack-mutation`           | Mutation hook for writes |
-| `tanstack-mutation-multipart` | File upload Mutation     |
-| `window-fetch`                | Browser fetch API        |
+Guards are wired through the `guards` option on all four. The guard keys themselves, `guardHandler`,
+and custom guards live in the `sonamu-auth` skill.
 
-## Pattern Examples
+## Route path
 
-### Read API
+The default path is the config prefix plus `/{model}/{method}`. The model name drops its `Model` or
+`Frame` suffix, and both segments are camelized:
 
 ```typescript
-@api({
-  httpMethod: "GET",
-  clients: ["axios", "tanstack-query"],
-  resourceName: "Users",
-})
-async findMany(params: UserListParams): Promise<ListResult<User>> { }
+// UserModel.findById  →  /api/user/findById
+// ChatFrame.subscribeChat  →  /api/chat/subscribeChat
 ```
 
-### Write API
+The prefix comes from `api.route.prefix` in `sonamu.config.ts` (`/api` in the generated project) and
+is always prepended — including in the generated client's base URL. `path` replaces only the part
+after the prefix.
 
-```typescript
-@api({
-  httpMethod: "POST",
-  clients: ["axios", "tanstack-mutation"],
-})
-async save(params: UserSaveParams[]): Promise<number[]> { }
+## Mixing decorators on one method
+
+`checkSingleDecorator` rejects two *different* endpoint decorators on the same method, because both
+would claim the same route:
+
+```
+@api decorator can only be used once on UserModel.upload.
+You can use only one of @api, @stream, @websocket, or @upload decorator on the same method.
 ```
 
-### API Requiring Authorization
+It does not reject the same decorator applied twice. That case merges the two option objects instead,
+and throws only when they disagree — a different `path` fails `assertNoConflictingPath`, and any
+other option present in both with different values fails `assertNoConflictingOptions`:
 
-```typescript
-@api({ httpMethod: "POST", guards: ["admin"] })
-async del(ids: number[]): Promise<number> { }
 ```
-
-## Context Access
-
-```typescript
-import { Sonamu } from "sonamu";
-
-@api({ httpMethod: "GET", guards: ["user"] })
-async me(): Promise<User | null> {
-  const { user } = Sonamu.getContext();
-  return user ? this.findById("A", user.id) : null;
-}
+@api decorator on UserModel.findMany has conflicting options: resourceName.
+The decorator is trying to override the existing option("Users") with the new option("Members").
 ```
-
-| Context Property | Description                                                         |
-| ---------------- | ------------------------------------------------------------------- |
-| `user`           | Authenticated user (better-auth User, null if unauthenticated)      |
-| `session`        | Current session info (better-auth Session, null if unauthenticated) |
-| `request`        | FastifyRequest                                                      |
-| `reply`          | FastifyReply                                                        |
-| `headers`        | HTTP request headers                                                |
-| `bufferedFiles`  | Buffer mode uploaded files                                          |
-| `uploadedFiles`  | Stream mode uploaded files                                          |
-| `locale`         | Request locale                                                      |
-
-## File Upload (@upload)
-
-`@upload` stands alone — no `@api` next to it. It already generates the POST endpoint and the
-`axios-multipart` / `tanstack-mutation-multipart` clients, so adding `@api` gives the method two
-decorators claiming the same route and `checkSingleDecorator` fails the build.
-
-```typescript
-// CORRECT
-@upload({ limits: { files: 10 }, guards: ["user"] })
-async upload(...): Promise<number[]> { }
-
-// WRONG — causes build error
-@api({ httpMethod: "POST", clients: ["axios-multipart"] })
-@upload({ limits: { files: 10 } })
-async upload(...): Promise<number[]> { }
-```
-
-`httpMethod` and `clients` are not accepted — both are set automatically.
-
-| Option         | Description                                                   |
-| -------------- | ------------------------------------------------------------- |
-| `guards`       | Authentication/authorization guards                           |
-| `limits`       | File count/size limits (`{ files: N }`)                       |
-| `consume`      | `"buffer"` (default) or `"stream"`                            |
-| `description`  | API documentation description                                 |
-| `destination`  | Stream mode only, required: which configured disk to write to |
-| `keyGenerator` | Stream mode only: function to generate storage path           |
-
-### Two or more parameters go in one object
-
-A `split(":")` bug in `services.template.ts` makes the generated `useUploadMutation` drop every
-primitive parameter after the first, emitting it without its `mutationFn` argument. Wrapping the
-parameters in one object keeps the generated hook correct.
-
-```typescript
-// WRONG — codegen breaks (missing mutationFn argument)
-async upload(entity_type: string, entity_id: number, file_type: string)
-
-// CORRECT — wrap in a single object
-async upload(params: { entity_type: string; entity_id: number; file_type: string })
-```
-
-Call site pattern:
-
-```typescript
-uploadMutation.mutate({
-  params: { entity_type, entity_id, file_type },
-  files,
-});
-```
-
-### Buffer Mode (Default)
-
-```typescript
-@upload({ limits: { files: 10 } })
-async uploadFiles(): Promise<{ files: SonamuFile[] }> {
-  const { bufferedFiles } = Sonamu.getContext();
-  // Access file data via bufferedFiles[].buffer
-}
-```
-
-### Stream Mode (Large Files)
-
-`destination` names one of the disks declared under `server.storage.drivers` in `sonamu.config.ts` —
-it selects a configured disk, it does not choose a driver type. The disk keys are yours to define, so
-`destination` has to match one the project actually configured:
-
-```typescript
-// sonamu.config.ts
-storage: {
-  drivers: {
-    fs: drivers.fs({ location: "./uploads", urlBuilder: { ... } }),
-    s3: drivers.s3({ bucket: "my-bucket", region: "ap-northeast-2", ... }),
-  },
-}
-```
-
-```typescript
-@upload({
-  consume: "stream",
-  destination: "s3",  // a key of server.storage.drivers
-  keyGenerator: (file) => `uploads/${Date.now()}-${file.filename}`,
-  limits: { files: 5 },
-})
-async uploadLargeFiles(): Promise<{ urls: string[] }> {
-  const { uploadedFiles } = Sonamu.getContext();
-  // Access stored path via uploadedFiles[].key
-}
-```
-
-A key with no matching driver throws on the first upload, not at boot:
-`Unknown disk: "x". Available: fs, s3`.
-
-`keyGenerator` resolves decorator → `storage.keyGenerator` → a timestamp-random default, so omitting
-it everywhere still produces keys.
-
-## Real-world Business Logic Patterns
-
-### Transaction with History Logging
-
-Pattern for atomically handling main data and history together when changing state:
-
-```typescript
-// consultation.model.ts
-
-@api({ httpMethod: "POST", guards: ["user"] })
-async changeStatus(
-  id: number,
-  status: ConsultationStatus,
-  memo?: string
-): Promise<Consultation> {
-  const wdb = this.getPuri("w");
-
-  return wdb.transaction(async (trx) => {
-    // 1. Update consultation
-    await trx.ubRegister("consultations", {
-      id,
-      status,
-      updated_at: new Date()
-    });
-    await trx.ubUpsert("consultations");
-
-    // 2. Record status change history
-    await trx.ubRegister("consultation_histories", {
-      consultation_id: id,
-      status,
-      memo,
-      created_at: new Date(),
-    });
-    await trx.ubUpsert("consultation_histories");
-
-    // 3. Return result
-    return this.findById("A", id);
-  });
-}
-```
-
-Key points:
-
-- Atomicity guaranteed by transaction
-- ubRegister + ubUpsert pattern
-- Return latest data after change
-
-### Validation Logic and Business Rules
-
-Pattern for complex validation such as duplicate checks and capacity checks before registration:
-
-```typescript
-@api({ httpMethod: "POST", guards: ["user"] })
-async enroll(
-  courseId: number,
-  userId: number
-): Promise<Enrollment> {
-  // 1. Prevent duplicate registration
-  const existing = await this.findOne("A", {
-    course_id: courseId,
-    user_id: userId,
-  });
-
-  if (existing) {
-    throw new Error("Already enrolled in this course");
-  }
-
-  // 2. Check capacity
-  const course = await CourseModel.findById("A", courseId);
-  const { total } = await this.findMany({ course_id: courseId });
-
-  if (total >= course.max_students) {
-    throw new Error("Course is at capacity");
-  }
-
-  // 3. Enroll
-  const [id] = await this.save([{ course_id: courseId, user_id: userId }]);
-  return this.findById("A", id);
-}
-```
-
-Key points:
-
-- Step-by-step validation (duplicate → capacity)
-- Clear error messages
-- Save after validation passes
-
-### Using Authorization Guards
-
-Access control based on user role:
-
-```typescript
-// Regular user only
-@api({ httpMethod: "POST", guards: ["user"] })
-async save(spa: PostSaveParams[]): Promise<number[]> { }
-
-// Admin only
-@api({ httpMethod: "POST", guards: ["admin"] })
-async del(ids: number[]): Promise<number> { }
-
-// Using currently logged-in user info
-@api({ httpMethod: "GET", guards: ["user"] })
-async myConsultations(): Promise<ListResult<Consultation>> {
-  const { user } = Sonamu.getContext();
-  return this.findMany({ user_id: user!.id });
-}
-```
-
-### Writing API Tests
-
-Validating custom APIs in Business Logic tests:
-
-```typescript
-// consultation.test.ts
-describe("E. Business Logic", () => {
-  test("Status change API", async () => {
-    const { consultationId } = await createTestConsultationWithDeps();
-
-    // Call custom API
-    const updated = await ConsultationModel.changeStatus(
-      consultationId,
-      "completed",
-      "Consultation complete",
-    );
-
-    expect(updated.status).toBe("completed");
-
-    // Verify history was recorded
-    const histories = await ConsultationHistoryModel.findMany({
-      consultation_id: consultationId,
-    });
-    expect(histories.rows).toHaveLength(1);
-  });
-
-  test("Enrollment validation", async () => {
-    const courseId = 1;
-    const userId = 1;
-
-    // First enrollment succeeds
-    await EnrollmentModel.enroll(courseId, userId);
-
-    // Duplicate enrollment fails
-    await expect(EnrollmentModel.enroll(courseId, userId)).rejects.toThrow(
-      "Already enrolled in this course",
-    );
-  });
-});
-```
-
-## Conventions and Best Practices
-
-### Error Message Pattern
-
-Use `this.modelName` and the `SD()` function for consistent error messages.
-
-BAD: Hardcoded model name
-
-```typescript
-// findById
-if (!rows[0]) {
-  throw new NotFoundException(SD("error.entityNotFound")("Department", id));
-}
-
-// findMany
-throw new BadRequestException(SD("error.unknownSearchField")(params.search));
-```
-
-GOOD: Using this.modelName
-
-```typescript
-// findById - auto-detects model name
-if (!rows[0]) {
-  throw new NotFoundException(SD("notFound")(this.modelName, id));
-}
-
-// findMany - short and clear key
-throw new BadRequestException(SD("search.invalidField")(params.search));
-```
-
-Benefits:
-
-- DRY principle: model name managed in one place
-- Refactoring safe: error messages auto-reflect model name changes
-- Short i18n keys: `notFound`, `search.invalidField` are more concise
-
-### satisfies Keyword
-
-Use TypeScript's satisfies keyword to preserve type inference while checking types.
-
-BAD: Loss of type inference
-
-```typescript
-const params: RoleListParams = {
-  num: 24,
-  page: 1,
-  search: "id" as const,
-  orderBy: "id-desc" as const,
-  ...rawParams,
-};
-```
-
-GOOD: Type check + preserved inference with satisfies
-
-```typescript
-const params = {
-  num: 24,
-  page: 1,
-  search: "id" as const,
-  orderBy: "id-desc" as const,
-  ...rawParams,
-} satisfies RoleListParams;
-```
-
-Benefits:
-
-- Compile-time verification: checks that params satisfies the RoleListParams type
-- Preserved type inference: params keeps its narrowed type
-- Better IDE support: more accurate autocomplete and type checking
-
-### debug Option
-
-The debug option in executeSubsetQuery defaults to false, so it does not need to be specified explicitly.
-
-BAD: Unnecessary debug: false
-
-```typescript
-return this.executeSubsetQuery({
-  subset,
-  qb,
-  params,
-  enhancers,
-  debug: false, // unnecessary — it's the default
-});
-```
-
-GOOD: Use the default
-
-```typescript
-return this.executeSubsetQuery({
-  subset,
-  qb,
-  params,
-  enhancers,
-});
-```
-
-When to use debug: true:
-
-```typescript
-// Only specify when debugging
-return this.executeSubsetQuery({
-  subset,
-  qb,
-  params,
-  debug: true, // Print SQL query log
-});
-```
-
-## @stream Decorator (SSE)
-
-Creates a Server-Sent Events endpoint.
-
-```typescript
-import { stream } from "sonamu";
-import { z } from "zod";
-
-@stream({
-  type: "sse",
-  events: z.object({
-    progress: z.object({ percent: z.number() }),
-    done: z.object({ result: z.string() }),
-  }),
-  guards: ["user"],
-})
-async processStream() { ... }
-```
-
-| Option         | Description                                    | Required |
-| -------------- | ---------------------------------------------- | -------- |
-| `type`         | `"sse"` (only SSE currently supported)         | Yes      |
-| `events`       | Define event keys and payloads with Zod schema | Yes      |
-| `path`         | Custom path                                    | -        |
-| `resourceName` | Resource name                                  | -        |
-| `guards`       | Authentication/authorization guards            | -        |
-
-## @transactional Decorator
-
-Wraps the entire method in an automatic transaction. Reuses an existing transaction context if one is already active.
-
-```typescript
-import { transactional } from "sonamu";
-
-@transactional({ isolation: "serializable" })
-async transferFunds(fromId: number, toId: number, amount: number) {
-  // this.getPuri("w") automatically runs inside the transaction
-}
-```
-
-| Option      | Description                                                                                | Default |
-| ----------- | ------------------------------------------------------------------------------------------ | ------- |
-| `isolation` | Transaction isolation level (read uncommitted/read committed/repeatable read/serializable) | -       |
-| `readOnly`  | Read-only transaction                                                                      | `false` |
-| `dbPreset`  | DB preset                                                                                  | `"w"`   |

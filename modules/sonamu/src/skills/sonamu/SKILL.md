@@ -17,7 +17,7 @@ Where a Sonamu skill and the project's `AGENTS.md` disagree, `AGENTS.md` wins.
 | Situation | Skill |
 | --- | --- |
 | implementing an agent class, defining its tools, or managing per-request agent state | `sonamu-ai-agents` |
-| adding or changing an API endpoint, choosing httpMethod/guards/clients options, or implementing a file upload | `sonamu-api` |
+| adding or changing an endpoint, choosing httpMethod/clients options, implementing a file upload, streaming SSE events, opening a WebSocket channel, or mapping a thrown error to a status or close code | `sonamu-api` |
 | running auth generate, applying Guards to an endpoint, reading the session from Context, adding an auth plugin, or migrating User.id to a string primary key | `sonamu-auth` |
 | editing .env or sonamu.config.ts, adjusting auth, guards, storage, cache, or logging options, starting the Docker database, or resolving a port conflict | `sonamu-config` |
 | creating or editing an entity.json, adding a field or enum, wiring BelongsToOne/HasMany/ManyToMany/parentId, defining a subset, or resolving a schema validation or sync error | `sonamu-entity` |
