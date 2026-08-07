@@ -581,4 +581,4 @@ Key: Accept the uncertainty caused by transaction isolation, and only assert whe
 
 ## Fixture Data Creation Tips
 
-→ Detailed guide (unique constraint handling, gen vs fetch selection, DB sequence reset, FixtureGenerator customization): `sonamu-fixture` "Practical Tips" section
+→ Detailed guide (unique constraint handling, gen vs fetch selection, sequence reset, why a generated value came out the way it did): `sonamu-fixture`

@@ -1,208 +1,90 @@
 # Cone Metadata
 
-## Role of Cone
+`cone` is the metadata block attached to an entity, a prop, a subset, or an enum. It supplies the
+business meaning used for documentation and scaffolding, and the hints used for fixture generation.
 
-| Purpose                | Description                                                           |
-| ---------------------- | --------------------------------------------------------------------- |
-| Fixture generation | LLM generates contextually appropriate test data based on `cone.note` |
-| Scaffolding        | Uses cone information to generate model and view templates            |
-| Documentation      | Metadata describing Entity structure and the meaning of each field    |
+Unknown keys are accepted, so a typo in a key name is not rejected — it is simply never read.
 
-## Cone Field Types
+## Keys
 
-### Entity cone
+### On an entity, subset, or enum
 
-| Field  | Type     | Description                                                    |
-| ------ | -------- | -------------------------------------------------------------- |
-| `note` | string   | Entity purpose, business context, and fixture generation guide |
-| `tags` | string[] | Classification tags                                            |
+| Key      | Type     | Meaning                                                    |
+| -------- | -------- | ---------------------------------------------------------- |
+| `note`   | string   | What this is and what it is for                            |
+| `tags`   | string[] | Classification tags                                        |
+| `values` | object   | Enum only: `{ note: string }` per enum value               |
 
-### Prop cone
+### On a prop
 
-| Field              | Type   | Description                                                                                                                                    |
-| ------------------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `note`             | string | Highest priority. Business meaning of the field, concrete examples, value ranges, format constraints. Input the LLM reads to generate data |
-| `fixtureGenerator` | string | Fallback. faker.js expression. Fallback when no API key is available                                                                       |
-| `fixtureDefault`   | any    | Fixed default value                                                                                                                            |
-| `fixtureStrategy`  | string | `"sequence"` — used when a DB sequence auto-assigns the id. Never use on string PK.                                                            |
-| `fixtureCompanions` | object[] | Child rows to insert alongside each generated row. Id prop only — see below                                                             |
-| `dataSource`       | object | Strategy for fetching reference data for relation props                                                                                        |
+| Key                      | Type     | Effect on fixtures                                                        |
+| ------------------------ | -------- | ------------------------------------------------------------------------- |
+| `note`                   | string   | The text sent to the LLM under `--use-llm`. Ignored on relation props     |
+| `fixtureGenerator`       | string   | A `faker.*` expression. Also removes the prop from the LLM pass           |
+| `fixtureDefault`         | any      | Fixed value, used when nothing above applies                             |
+| `fixtureStrategy`        | `"sequence"` | Marks a **string** id whose value comes from a DB sequence, so sequence reset covers it |
+| `fixtureCompanions`      | object[] | Child rows inserted with each generated row. Declared on the id prop     |
+| `fixtureParentOverrides` | object   | `WHERE` filter for picking parent rows of a `parentId` entity. Declared on the id prop |
+| `dataSource`             | object   | How reference rows are found for a relation prop                          |
 
-### Subset cone
+Resolution order between these keys, and the post-processing that can overwrite the result, are in
+`references/generation.md`.
 
-| Field  | Type   | Description                                          |
-| ------ | ------ | ---------------------------------------------------- |
-| `note` | string | Subset purpose, included fields, and when it is used |
+## note
 
-### Enum cone
+`note` is what the LLM is told about this prop specifically. It is not the whole prompt — the entity's
+own `cone.note`, the other props' names, types and notes, and any enum's allowed values go along as
+context — but it is the only part you control per prop, so it carries the specifics:
 
-| Field    | Type   | Description                            |
-| -------- | ------ | -------------------------------------- |
-| `note`   | string | Meaning and usage context of the enum  |
-| `values` | object | `{ note: string }` for each enum value |
+- A format rather than a type — "Korean phone number as 010-XXXX-XXXX", not "string"
+- A range — "Employee salary, 30,000,000–150,000,000 KRW"
+- Concrete examples of the real domain
+- The relationship for correlated props — "romanized form of `name`, same person"
+- Length limits, when the column is tight
 
-## Priority During Fixture Generation
+An empty `note` is not an error. The prop is simply left out of the LLM request and falls through to
+faker, which shows up as bland data rather than a failure.
 
-When the `--use-llm` flag is used:
-
-```
-1. override value (passed at generate() call time)
-2. cone.note + LLM  ← highest priority when API key is present
-3. fixtureGenerator (faker.js expression)  ← fallback when LLM fails
-4. fixtureDefault (fixed default value)
-5. type-based default (auto-generated)
-```
-
-With an empty `cone.note`, the LLM has no domain context to condition on and falls back to generic
-values — the generation still succeeds, so the effect shows up as unrealistic fixture data rather
-than an error.
-
-## CLI Commands
-
-### 1. cone gen — Generate cone with LLM (recommended)
-
-Passes the domain rules (`contract/**/*.contract.md`) and Entity structure to the LLM to generate contextually appropriate cone.
-
-Requires ANTHROPIC_API_KEY (`.env` or `sonamu.config.ts`'s `secret.anthropic_api_key`)
-
-```bash
-# Single Entity
-pnpm sonamu cone gen Post
-
-# All Entities
-pnpm sonamu cone gen --all
-
-# Regenerate all existing cones (overwrite)
-pnpm sonamu cone gen Post --regenerate
-
-# Regenerate all Entities
-pnpm sonamu cone gen --all --regenerate
-
-# Specify locale
-pnpm sonamu cone gen Post --locale en
-```
-
-#### Options
-
-| Option                  | Description                                                                          |
-| ----------------------- | ------------------------------------------------------------------------------------ |
-| `--all`                 | Generate cone for all Entities                                                       |
-| `--regenerate`          | Overwrite existing cone (default: only generate for fields with no note)             |
-| `--locale <ko\|en\|ja>` | Generation language (default: `i18n.defaultLocale` from `sonamu.config.ts`, or `ko`) |
-
-#### How it works
-
-- Default mode: `onlyEmpty` — only generates for props where cone.note is empty; existing notes are preserved
-- `--regenerate` mode: full regeneration, overwrites existing cone
-
-#### Information referenced by the LLM
-
-1. Entity JSON structure (props, subsets, enums, relations)
-2. Domain rule files (`contract/**/*.contract.md`)
-3. Existing cone metadata (in preserve mode)
-
-### 2. stub entity — Auto-generate cone when creating an Entity
-
-```bash
-# Default: auto-generate template cone (no API key required)
-pnpm sonamu stub entity Post
-
-# Generate cone with LLM
-pnpm sonamu stub entity Post --ai
-
-# Skip cone generation
-pnpm sonamu stub entity Post --no-cones
-```
-
-#### Template cone vs LLM cone
-
-| Item    | Template cone                    | LLM cone                 |
-| ------- | -------------------------------- | ------------------------ |
-| API key | Not required                     | Required                 |
-| Quality | Defaults based on faker-mappings | Reflects project context |
-| Speed   | Immediate                        | Takes a few seconds      |
-| Upgrade | Can be upgraded with `cone gen`  | —                        |
-
-## Key Cone Patterns
-
-### General field
+## fixtureGenerator
 
 ```json
-{
-  "name": "title",
-  "type": "string",
-  "cone": {
-    "note": "Post title. A Korean title roughly 20–50 characters long",
-    "fixtureGenerator": "faker.lorem.sentence()"
-  }
-}
+{ "name": "code", "type": "string", "cone": { "fixtureGenerator": "faker.string.alphanumeric(12)" } }
 ```
 
-### Relation field (BelongsToOne)
+Only expressions starting with `faker.` are recognized. `fakerKO.*` and `fakerJA.*` are rejected with
+a warning and the prop falls through to normal default generation — see `references/generation.md`
+for the exact message and precedence. Setting this key excludes the prop from the shared row-level
+LLM request, but a non-empty `note` still sends it through the single-field LLM fallback before the
+generator. Do not put a generator on props that must stay consistent with each other:
 
 ```json
-{
-  "name": "author",
-  "type": "relation",
-  "with": "User",
-  "relationType": "BelongsToOne",
-  "cone": {
-    "note": "Post author. References existing User data",
-    "dataSource": {
-      "strategy": "recent",
-      "config": { "limit": 5 }
-    }
-  }
-}
+{ "name": "name",    "cone": { "note": "Korean name (e.g. 김민수)" } },
+{ "name": "name_en", "cone": { "note": "Romanized form of name (e.g. Kim Minsu), same person" } }
 ```
 
-### Correlated fields (name + name_en, etc.)
+## fixtureStrategy
 
-Do not set `fixtureGenerator` on correlated fields. The LLM generates them together per row to ensure consistency.
+`"sequence"` is for a **string** id column that a DB sequence actually assigns — the `dbDefault`
+contains `nextval`. It makes fixture insertion omit the temporary id so the DB default assigns the
+real one, and it includes the table in the sequence-reset pass. Without it the temporary numeric id
+is inserted explicitly and bypasses the default; reset is also skipped, so a later insert can
+collide.
 
-```json
-{
-  "name": "name",
-  "cone": { "note": "Korean name (e.g. 김민수)" }
-},
-{
-  "name": "name_en",
-  "cone": { "note": "Romanized form of name (e.g. Kim Minsu). Must refer to the same person as name" }
-}
-```
-
-### String PK
-
-Never set `fixtureStrategy: "sequence"` or `fixtureGenerator` on an id prop with `type: "string"`.
-fixture-generator automatically generates `alphanumeric(32)`.
+Do not put it on a random string PK such as a better-auth `generateId()` column. That id has no
+sequence, and reset would try to cast the value to `bigint`.
 
 ```json
 {
   "name": "id",
   "type": "string",
-  "cone": {
-    "note": "Random alphanumeric string ID (32 chars, [a-zA-Z0-9]). Generated by better-auth via generateId()"
-  }
-}
-```
-
-### Enum field
-
-```json
-{
-  "name": "status",
-  "type": "enum",
-  "cone": {
-    "note": "Post status. One of draft/published/archived"
-  }
+  "cone": { "note": "Random alphanumeric id (32 chars), generated by better-auth generateId()" }
 }
 ```
 
 ## fixtureCompanions
 
-A row that is useless without a child row — a user with no credential record, an order with no line
-items — declares that child on its **id prop**. Every generated parent then gets its companions
-inserted in the same run:
+A row that is useless without a child — a user with no credential record, an order with no line
+items — declares that child on its **id prop**:
 
 ```json
 {
@@ -219,121 +101,102 @@ inserted in the same run:
 }
 ```
 
-| Key        | Effect                                                      |
-| ---------- | ----------------------------------------------------------- |
-| `entity`   | The companion EntityId                                      |
+| Key         | Effect                                                                          |
+| ----------- | ------------------------------------------------------------------------------- |
+| `entity`    | The companion EntityId                                                          |
 | `overrides` | Fixed values for the companion's props; `{{field}}` reads the parent's generated value |
-| `count`    | Companions per parent row, default `1`                      |
+| `count`     | Companions per parent row, default `1`                                          |
 
-The FK back to the parent is filled in automatically, so leave it out of `overrides`. Sonamu finds it
-by looking for a `BelongsToOne` on the companion pointing at the parent entity — without one, nothing
-is inserted and the run reports it rather than failing:
+The FK back to the parent is filled in automatically, so leave it out of `overrides`. It is located
+by looking for a `BelongsToOne` on the companion pointing at the parent entity; with none, nothing is
+inserted and the run reports `[Companion] No BelongsToOne relation from Account to User. Skipping.`
+rather than failing. A `{{field}}` naming a prop the parent does not have throws instead.
 
-```
-[Companion] No BelongsToOne relation from Account to User. Skipping.
-```
+Companions run only on the batch path, and a companion's own `fixtureCompanions` is never read.
+Multi-level chains are therefore not supported: adding a grandchild as a second entry on the parent
+works only if that grandchild has a `BelongsToOne` pointing at the **parent** — the FK is always
+looked up against the entity being generated, never against the intermediate companion. A grandchild
+that references only the child is skipped with the `No BelongsToOne relation` warning. Generate that
+level in its own command instead.
 
-A `{{field}}` naming a prop the parent does not have throws instead, naming both the field and the
-override key it came from.
+Write this key by hand and re-check it after `cone gen`. The default `cone gen` preserves the whole
+existing prop cone only when that cone has a non-empty `note`; a companion-only cone can be replaced
+by generated output. `cone gen --regenerate` replaces prop cones unconditionally, so it can remove
+`fixtureCompanions` even when a note is present.
 
-Companions are generated by the batch path only, and are not themselves scanned for companions — a
-companion's own `fixtureCompanions` does not fire, so a two-level chain has to be declared as two
-entries on the parent.
+## dataSource
 
-`cone gen` never writes this key and preserves an existing one untouched. It is declared by hand.
+Declared on a relation prop, this decides which existing rows the FK may point at. Without it,
+generation falls back to picking randomly from up to 10 rows already in the fixture DB.
 
-### The `password` prop is hashed
-
-Any generated fixture with a non-empty string `password` has it replaced with a **bcrypt** hash
-(cost 10) before insert. That is the fixture generator's own behavior, independent of cone — a test
-that signs in with the plaintext value needs the verifier to be bcrypt too.
-
-## dataSource Strategies
-
-Specifies how reference data is fetched for relation props.
-
-| Strategy | Description                      |
-| -------- | -------------------------------- |
-| `recent` | Most recent data (by created_at) |
-| `sample` | Uniform sampling                 |
-| `random` | Random sampling                  |
-| `ids`    | Specific IDs                     |
-| `query`  | Custom query                     |
-| `file`   | Load from file                   |
+| Strategy | Behavior                                     | Config keys read |
+| -------- | -------------------------------------------- | ---------------- |
+| `recent` | Orders by the entity's `created_at`, newest first | `limit`      |
+| `sample` | Even spread across the table                 | `limit`          |
+| `random` | Random rows                                  | `limit`          |
+| `ids`    | The given ids; omitted or empty `ids` reads every row | `ids`      |
+| `query`  | Filtered and sorted                          | `where`, `orderBy`, `limit` |
+| `file`   | Rows read from a `.json` or `.csv` file      | `filePath`       |
 
 ```json
-"dataSource": {
-  "strategy": "recent",
-  "config": { "limit": 5 }
+{
+  "name": "author",
+  "type": "relation",
+  "with": "User",
+  "relationType": "BelongsToOne",
+  "cone": { "dataSource": { "strategy": "recent", "config": { "limit": 5 } } }
 }
 ```
 
-### DataExplorer Options Detail
-
-Source: `modules/sonamu/src/testing/data-explorer.ts`
-
-| Option     | Type               | Default | Description                                            |
-| ---------- | ------------------ | ------- | ------------------------------------------------------ |
-| `strategy` | string             | —       | Fetch strategy (see table above)                       |
-| `limit`    | number             | —       | Maximum number of records to fetch                     |
-| `where`    | object \| function | —       | WHERE condition (object or Knex QueryBuilder function) |
-| `orderBy`  | string             | —       | Sort criteria                                          |
-| `ids`      | number[]           | —       | Specific ID list for `ids` strategy                    |
-| `filePath` | string             | —       | File path for `file` strategy                          |
-| `useCache` | boolean            | `false` | Whether to use caching                                 |
-| `cacheTtl` | number             | `300`   | Cache TTL (in seconds)                                 |
-
-Example using a where condition:
+**`where` and `orderBy` are read only under `strategy: "query"`.** Attaching a `where` to `sample`,
+`recent`, or `random` is accepted and ignored, producing unfiltered rows:
 
 ```json
 "dataSource": {
-  "strategy": "sample",
-  "config": {
-    "limit": 5,
-    "where": { "status": "active" }
-  }
+  "strategy": "query",
+  "config": { "limit": 5, "where": { "status": "active" } }
 }
 ```
 
-### Relation Traversal Options (ExploreWithRelationsOptions)
+`orderBy` takes `"column:asc"` or `"column:desc"`; ordering by `id` casts to an integer first.
 
-Used in `fixture gen` to fetch related data alongside the target data.
+Under `strategy: "ids"`, pass a non-empty `config.ids`. An omitted or empty array skips `whereIn`
+entirely and returns the whole table; it does not mean "no rows".
 
-| Option             | Type    | Default | Description                           |
-| ------------------ | ------- | ------- | ------------------------------------- |
-| `includeRelations` | boolean | `true`  | Whether to include related data       |
-| `maxDepth`         | number  | `2`     | Maximum depth for recursive traversal |
+`useCache` and `cacheTtl` do nothing here — that cache needs a cache manager handed to the explorer,
+and fixture generation constructs it without one.
 
-## Practical Tips
+The lookup is still cached, by a different mechanism you cannot turn off: the result is keyed by the
+target entity plus the `dataSource` block and held for the length of one `generateBatch`. Every row
+in a run therefore draws its FK from the same candidate set, so `limit: 5` with `--count 100` spreads
+100 rows across 5 parents. There is no TTL and nothing survives the run.
 
-### Writing effective cone.note
+Resolving a `dataSource` also imports the matched rows and their relations into the fixture DB, to a
+depth of 3.
 
-note is the primary input for fixture data generation. The LLM reads note to produce contextually appropriate data, so it must contain specific, domain-specialized content.
+## Generating cone with `cone gen`
 
-- Be specific: "Korean phone number in 010-XXXX-XXXX format" rather than "string"
-- Include business context: "Employee salary. Range: 30,000,000–150,000,000 KRW"
-- Include concrete examples: "e.g. AI-based drug discovery platform development, eco-friendly energy storage system development"
-- State value ranges explicitly: "Between 50,000,000 (50,000) and 5,000,000,000 (5,000,000)"
-- Describe correlated fields: "name_en must be the romanized form of name"
-- Specify length/format constraints: "Korean self-introduction, 20–100 characters"
+```bash
+pnpm sonamu cone gen Post                 # only props whose note is empty
+pnpm sonamu cone gen Post --regenerate    # overwrite existing notes
+pnpm sonamu cone gen --all --regenerate
+pnpm sonamu cone gen Post --locale en
+```
 
-### Improving LLM cone generation quality
+| Option                  | Effect                                                                    |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `--all`                 | Every entity                                                              |
+| `--regenerate`          | Overwrite existing cone instead of filling only empty notes               |
+| `--locale <ko\|en\|ja>` | Output language; defaults to `i18n.defaultLocale`, else `ko`              |
 
-If the project keeps domain rules under `contract/{domain}/{domain}.contract.md`, `cone gen` picks
-them up as context automatically — the more concrete those rules are, the closer generated notes land
-to the real domain. Projects without that directory are unaffected; the entity JSON and existing cone
-metadata are still used.
+Requires an API key available as `Sonamu.secrets.anthropic_api_key` or the `ANTHROPIC_API_KEY`
+environment variable. Standard secret initialization fills the former from that environment
+variable; there is no `sonamu.config.ts` key for it. The LLM is given the entity JSON, any existing
+cone, and — when the project keeps them — domain rules under `contract/**/*.contract.md`. Projects
+without that directory still work; the notes are just less domain-specific.
 
-### When to regenerate cone
+Regenerate after adding props, after a requirement change, or when fixture data reads as generic.
 
-- After adding a new prop to an Entity
-- After a business requirement change
-- When fixture data quality is poor
-- Running without `--regenerate` preserves existing notes and only fills in empty ones
-
-## References
-
-- Fixture CLI: this skill — fixture gen/fetch/explore commands
-- Testing: `sonamu-testing` — writing tests and using fixtures
-- Source code: `modules/sonamu/src/cone/cone-generator.ts`
-- Template cone: `modules/sonamu/src/entity/entity-template-cone.ts`
+`pnpm sonamu stub entity Post` writes template cone from the faker mappings with no API key needed;
+`--ai` generates it with the LLM instead, and `--no-cones` skips it. Template cone can be upgraded
+later with `cone gen`.
