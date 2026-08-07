@@ -1,182 +1,15 @@
-# Relationships
+# Relations
 
-## Relationship Selection Guide
+Relations are declared as props with `"type": "relation"`, never in a separate `"relations"` key.
 
-### 1:N vs N:M Decision Criteria
+| Situation | relationType | Column created |
+| --- | --- | --- |
+| "A belongs to B" (N:1) | `BelongsToOne` | `{name}_id` on A |
+| "A has many Bs" (1:N) | `HasMany` | none |
+| "A and B are 1:1" | `OneToOne` | `{name}_id`, on the `hasJoinColumn` side only |
+| "A and B are many-to-many" | `ManyToMany` | none — a join table instead |
 
-| Question                                           | 1:N (BelongsToOne) | N:M (ManyToMany or intermediate entity) |
-| -------------------------------------------------- | ------------------ | --------------------------------------- |
-| Can one A belong to multiple Bs?                   | No                 | Yes                                     |
-| Does the relationship need additional information? | No                 | Yes → intermediate entity               |
-| Can it be expressed as "A belongs to B"?           | Yes                | No                                      |
-
-Examples:
-
-- Post → Author: 1:N (a post has one author)
-- Post ↔ Tag: N:M (multiple posts have multiple tags)
-- Researcher ↔ Task: N:M + intermediate entity (participation rate, role, and other additional info)
-
-### When an Intermediate Entity Is Needed
-
-If an N:M relationship has additional information, use an intermediate entity instead of ManyToMany.
-
-| Situation                              | ManyToMany | Intermediate entity |
-| -------------------------------------- | ---------- | ------------------- |
-| Only a simple connection is needed     | ✓          |                     |
-| Relationship needs a date/period       |            | ✓                   |
-| Relationship needs a role/status       |            | ✓                   |
-| Relationship needs a quantity/ratio    |            | ✓                   |
-| Relationship history management needed |            | ✓                   |
-
-Intermediate entity example:
-
-```
-Researcher ↔ Task
-  └─ ProjectResearcher (intermediate entity)
-       - researcher: BelongsToOne → User
-       - task: BelongsToOne → Task
-       - role: enum (lead/participant)
-       - participation_rate: integer
-       - begin_at, end_at: date
-```
-
-### Joint Ownership / Joint Achievement Pattern
-
-When multiple people are connected to a single result:
-
-```
-Achievement ↔ Researcher
-  └─ AchievementParticipant (intermediate entity)
-       - achievement: BelongsToOne → Achievement
-       - researcher: BelongsToOne → User
-       - is_primary: boolean (whether they are the original registrant)
-       - contribution_rate: integer (optional)
-```
-
-Key point: The achievement is registered once, and participants are linked to it (prevents duplication)
-
-### Status History Pattern
-
-When status change history needs to be managed:
-
-```
-Application (ApplyDeliberation)
-  └─ ApplicationHistory (ApplyDeliberationHistory)
-       - apply_deliberation: BelongsToOne → ApplyDeliberation
-       - status: enum (previous status or changed status)
-       - changed_at: date
-       - changed_by: BelongsToOne → User
-       - reason: string
-```
-
-### Change Request Pattern
-
-When data changes require an approval process:
-
-```
-Task
-  └─ TaskChangeRequest
-       - task: BelongsToOne → Task
-       - status: enum (requested/approved/rejected)
-       - reason: string
-       - requested_by: BelongsToOne → User
-       - requested_at: date
-       - approved_by: BelongsToOne → User (nullable)
-       - approved_at: date (nullable)
-
-  └─ TaskChangeHistory
-       - change_request: BelongsToOne → TaskChangeRequest
-       - change_type: enum (add/delete/update)
-       - target_user: BelongsToOne → User (subject of change)
-       - before_value: json (before change, optional)
-       - after_value: json (after change, optional)
-```
-
-## Common Domain Patterns
-
-### Organizational Structure (Institution-Department-User)
-
-```
-Institution
-  └─ departments: HasMany → Department
-
-Department
-  └─ institution: BelongsToOne → Institution
-  └─ employees: HasMany → User
-
-User
-  └─ institution: BelongsToOne → Institution
-  └─ department: BelongsToOne → Department
-```
-
-### Project Participation (Project-Participant)
-
-```
-Project
-  └─ participants: HasMany → ProjectParticipant
-  └─ owner: BelongsToOne → User
-
-ProjectParticipant [intermediate entity]
-  └─ project: BelongsToOne → Project
-  └─ user: BelongsToOne → User
-  └─ role: enum
-  └─ participation_rate: integer
-  └─ begin_at, end_at: date
-```
-
-### Committee-Member
-
-```
-Committee
-  └─ members: HasMany → CommitteeMember
-
-CommitteeMember [intermediate entity]
-  └─ committee: BelongsToOne → Committee
-  └─ user: BelongsToOne → User
-  └─ member_type: enum (internal/external)
-  └─ participate_year: string
-```
-
-### Review/Evaluation (Target-Reviewer-Result)
-
-```
-EvaluationTarget
-  └─ committee: BelongsToOne → Committee
-  └─ target_entity: BelongsToOne → Task (or polymorphic)
-
-EvaluationResult
-  └─ target: BelongsToOne → EvaluationTarget
-  └─ evaluator: BelongsToOne → CommitteeMember
-  └─ score: integer or enum (approved/rejected)
-  └─ opinion: string
-```
-
-### Step-by-Step Data Flow (Application → Confirmation)
-
-When data moves through stages:
-
-```
-ApplyDeliberation
-  └─ task: OneToOne → Task (references the task created on approval)
-
-Task
-  └─ apply_deliberation: BelongsToOne → ApplyDeliberation (references the original application)
-```
-
-Key point: Bidirectional references allow querying from either side
-
-## Which Relationship to Use?
-
-| Situation                  | Relationship type | Example              |
-| -------------------------- | ----------------- | -------------------- |
-| "A belongs to B" (N:1)     | `BelongsToOne`    | Post → User (author) |
-| "A has many Bs" (1:N)      | `HasMany`         | User → Posts         |
-| "A and B are 1:1"          | `OneToOne`        | User ↔ Employee      |
-| "A and B are many-to-many" | `ManyToMany`      | Post ↔ Tag           |
-
-## BelongsToOne (N:1) - Most Common
-
-Situation: When a Post belongs to a User (author)
+## BelongsToOne (N:1)
 
 ```json
 {
@@ -187,83 +20,40 @@ Situation: When a Post belongs to a User (author)
   "nullable": true,
   "onUpdate": "CASCADE",
   "onDelete": "SET NULL",
-  "desc": "author"
+  "desc": "작성자"
 }
 ```
 
-Auto-generated: `author_id` column (FK)
+This generates an `author_id` column. Do not also declare `author_id` as a prop — validation accepts
+both, and the generated migration then defines the same column twice.
 
-Note: Do not define `author_id` directly in props (it is auto-generated)
+The FK column's type follows the **referenced** entity's PK: an integer PK yields `z.int()`, a string
+or uuid PK yields `z.string()`, and a string PK's `length` is carried over. A polymorphic
+`entity_id` column therefore needs one type that fits every entity it can point at.
 
-Optional options:
+`onUpdate` and `onDelete` both default to `RESTRICT`, so a parent row cannot be deleted while
+children reference it. State them explicitly for cascade or null-out behavior.
 
-- `customJoinClause`: custom JOIN condition SQL (specify JOIN condition directly instead of FK)
-- `useConstraint`: whether to create FK constraint (default: `true`). If `false`, the FK column is created but no DB constraint is generated
+- `useConstraint` — default `true`. With `false` the FK column is created but no DB constraint is
+  emitted, which is how you point at a table Sonamu does not manage.
+- `customJoinClause` — a JOIN condition SQL string used instead of the FK equality.
 
-### Using FK in Code
+No index is created on the FK column; declare one in `indexes` when the relation is joined or
+filtered — `references/indexes.md`.
 
-Since a BelongsToOne relationship automatically creates a `{name}_id` column, use the correct field name when working with it directly in Model, FixtureGenerator, etc.
+### Three names for one relation
 
-Correct pattern:
+| Layer | Name |
+| --- | --- |
+| `props` declaration | `author` |
+| Puri writes and `indexes` | `author_id` |
+| `subsets` | `author.id` |
 
-```typescript
-// Entity definition
-{
-  "type": "relation",
-  "name": "company",
-  "with": "Company",
-  "relationType": "BelongsToOne"
-}
+Puri's row type is keyed by column names, so `author: 1` is a type error rather than a silently
+unset FK. A subset entry is not type-checked that way — `author_id` there fails at sync;
+see `references/subset.md`.
 
-// In Model save() or FixtureGenerator
-const department = {
-  name: "Engineering",
-  company_id: 1  // ✓ CORRECT: {relation_name}_id form
-};
-
-await puri.ubRegister("departments", department);
-```
-
-Wrong pattern (common mistake):
-
-```typescript
-// ✗ WRONG: using relation name directly
-const department = {
-  name: "Engineering",
-  company: 1, // FK is not set! company_id is saved as NULL
-};
-
-// ✗ WRONG: passing as object
-const department = {
-  name: "Engineering",
-  company: { id: 1 }, // FK is not set!
-};
-```
-
-FixtureGenerator example:
-
-```typescript
-// inside fixture-generator.ts
-if (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) {
-  const relationValue = await this.generateRelationValue(entity, prop, context);
-
-  // ✓ CORRECT: set FK as {prop.name}_id
-  fixture[`${prop.name}_id`] = relationValue;
-} else {
-  fixture[prop.name] = relationValue;
-}
-```
-
-Key points:
-
-- Entity JSON: `"name": "company"` (relation name)
-- DB column: `company_id` (auto-generated)
-- TypeScript code: use `company_id` (setting FK)
-- Entity subset: `"company.id"` form (FieldExpr)
-
-## HasMany (1:N) - For Reverse Lookup
-
-Situation: When you want to query a User's Posts
+## HasMany (1:N)
 
 ```json
 {
@@ -272,40 +62,24 @@ Situation: When you want to query a User's Posts
   "with": "Post",
   "relationType": "HasMany",
   "joinColumn": "author_id",
-  "desc": "authored posts"
+  "desc": "작성한 게시물"
 }
 ```
 
-Required: `joinColumn` = FK column name in the related table
+`joinColumn` is the FK column name in the **related** table and is required. `fromColumn` names the
+matching column on your own table and defaults to `id`.
 
-Optional: `fromColumn` = matching column in your own table (default: `id`). Use when JOIN needs to use a non-standard PK
+No DB column is created, so a HasMany can be added or removed later without a migration. Declare one
+only where a subset needs the reverse lookup.
 
-Omitting the `joinColumn` field raises a Zod schema validation error.
-
-No DB column is created (virtual)
-
-When is it needed?
-
-- When reverse lookup like `user.posts.title` is needed in a Subset
-- Can be omitted if not needed
-
-### HasMany Performance Optimization
-
-HasMany relationships are automatically optimized using the DataLoader pattern:
-
-- Parent record IDs are collected in batches
-- All child records are queried in a single `whereIn` query
-- No N+1 query problem
-
-This optimization is applied automatically and requires no additional configuration.
-
-Implementation location: `processLoaders` method in `modules/sonamu/src/database/base-model.ts`
+A HasMany or ManyToMany inside a subset generates a separate loader query, not a JOIN: the parent ids
+from the main query are collected and the child rows fetched with one `whereIn` over all of them. The
+count of queries is therefore per relation, not per row.
 
 ## OneToOne (1:1)
 
-Situation: When User and Employee are 1:1
-
-The side holding the FK (Employee):
+The FK exists only on the side that sets `hasJoinColumn: true`. Omitting it on both sides means
+neither table gets a column and the relation resolves to nothing.
 
 ```json
 {
@@ -316,33 +90,15 @@ The side holding the FK (Employee):
   "hasJoinColumn": true,
   "onUpdate": "CASCADE",
   "onDelete": "CASCADE",
-  "desc": "user"
+  "desc": "사용자"
 }
 ```
 
-The side without the FK (User):
-
-```json
-{
-  "type": "relation",
-  "name": "employee",
-  "with": "Employee",
-  "relationType": "OneToOne",
-  "nullable": true,
-  "desc": "employee info"
-}
-```
-
-Key point: FK is only created on the side with `hasJoinColumn: true` (omitting it means no FK; it is an optional option)
-
-Optional options (when `hasJoinColumn: true`):
-
-- `customJoinClause`: custom JOIN condition SQL
-- `useConstraint`: whether to create FK constraint (default: `true`)
+The reverse side declares the same relation without `hasJoinColumn`, usually with
+`"nullable": true`. `customJoinClause` and `useConstraint` apply on the `hasJoinColumn` side, as in
+BelongsToOne.
 
 ## ManyToMany (N:M)
-
-Situation: When Post and Tag are many-to-many
 
 ```json
 {
@@ -353,50 +109,24 @@ Situation: When Post and Tag are many-to-many
   "joinTable": "posts__tags",
   "onUpdate": "CASCADE",
   "onDelete": "CASCADE",
-  "desc": "tags"
+  "desc": "태그"
 }
 ```
 
-Required: `joinTable`, `onUpdate`, `onDelete`
+`joinTable`, `onUpdate`, and `onDelete` are all required here — unlike BelongsToOne, where the last
+two are optional.
 
-### ManyToMany Naming Conventions
+The join table name takes a **double** underscore between the two table names (`posts__tags`); its
+columns take a single one (`post_id`, `tag_id`).
 
-joinTable (join table name): use double underscore
+When the link itself needs data — a date range, a role, a quantity, a status — a join table cannot
+carry it. Replace the ManyToMany with an intermediate entity holding its own id and two
+BelongsToOne relations, reached through `HasMany`. Converting later means a data migration.
 
-```
-User ↔ Role → user__roles
-Post ↔ Tag → posts__tags (alphabetical order recommended)
-```
+## Self-reference
 
-joinColumn (join table column name): use single underscore
-
-```
-user__roles table:
-  - user_id (single underscore)
-  - role_id (single underscore)
-```
-
-Example:
-
-```typescript
-// Entity: User
-{
-  "name": "roles",
-  "relationType": "ManyToMany",
-  "with": "Role",
-  "joinTable": "user__roles"  // double underscore
-}
-
-// In Model save():
-puri.ubRegister("user__roles", {
-  user_id,   // single underscore
-  role_id    // single underscore
-});
-```
-
-## Self-Reference
-
-Situation: When an Employee's manager is also an Employee
+A BelongsToOne pointing at its own entity needs `nullable: true`, or every row requires a parent and
+no row can be inserted first.
 
 ```json
 {
@@ -407,52 +137,133 @@ Situation: When an Employee's manager is also an Employee
   "nullable": true,
   "onUpdate": "CASCADE",
   "onDelete": "SET NULL",
-  "desc": "direct manager"
+  "desc": "직속 상사"
 }
 ```
 
-Required: `nullable: true` (top-level has no manager)
+## SaveParams shapes
 
-## parentId and a parent-subset HasMany are mutually exclusive
+`{Entity}BaseSchema` is generated from **every** prop, including ones the database refuses writes to.
+Two adjustments are therefore made by hand in `{entity}.types.ts`, which sync writes once and never
+overwrites.
 
-### Problem
+### `.omit()` for non-writable props
 
-When parentId is set, the FK column is removed from the child entity's BaseSchema.
-In this state, if the parent's subset includes the child via HasMany, the SSO LoaderQuery
-executes `whereIn("child.parent_fk", fromIds)`, but since the FK is missing, a TypeScript error occurs.
+`virtual` props (no column at all), `generated` props, and `searchText` props are all in BaseSchema.
+The BaseSchema **type** lists them under `__virtual__`, `__virtual_query__`, and `__generated__`,
+which is how Puri rejects writes at the table level — but nothing strips them from a `SaveParams`
+derived from BaseSchema.
 
+```typescript
+export const ProductSaveParams = ProductBaseSchema.partial({
+  id: true,
+  created_at: true,
+}).omit({
+  display_name: true, // virtual
+  review_count: true, // virtual, virtualType: "query"
+  total_amount: true, // generated column
+  search_text: true, // searchText
+});
 ```
-Error: '{child_table}.{parent_fk}' is not assignable to type 'AvailableColumns'
+
+Without it, a form or fixture is typed as if those fields were writable.
+
+### `.extend()` for ManyToMany
+
+BaseSchema has no field for a ManyToMany relation — the link lives in the join table — so add an id
+array:
+
+```typescript
+export const ProductSaveParams = ProductBaseSchema.partial({
+  id: true,
+  created_at: true,
+}).extend({
+  tag_ids: z.array(z.number().int().positive()),
+});
 ```
 
-### Solution: Choose One of the Two
+Name it `{relation_name}_ids` — `tags` → `tag_ids`. `positive()` rejects `0`, which catches an unset
+id passed through by accident. A bidirectional ManyToMany — both entities declaring a relation over
+the same join table — gets the id array on one side only, so there is a single writer for the join
+table while reads work from both directions.
 
-| Requirement                                     | Choice             | parentId   | HasMany in parent subset |
-| ----------------------------------------------- | ------------------ | ---------- | ------------------------ |
-| Query child list together in parent detail view | Independent entity | ✗ not used | ✓ possible               |
-| Child is CRUD'd only through parent             | Use parentId       | ✓ used     | ✗ not possible           |
+Whether the array is required or optional is the decision that matters on update. Required means
+every save must resupply the full set, including a save built from a row loaded through a subset:
 
-### Decision Criteria
+```typescript
+const { tags, ...rest } = product;
+const tag_ids = tags?.map((t) => t.id) ?? [];
+await ProductModel.save([{ ...rest, tag_ids, title: "Updated" }]);
+```
 
-| Question                                                    | Yes → Independent entity | No → parentId |
-| ----------------------------------------------------------- | ------------------------ | ------------- |
-| Will the child ever be queried/modified standalone?         | ✓                        |               |
-| Does the admin screen need a separate child list page?      | ✓                        |               |
-| Is the child list queried as a subset in the parent detail? | ✓                        |               |
+Writing the join table and removing links the request no longer contains is `ubUpsert`'s
+`cleanOrphans` option — see `sonamu-query`'s `references/upsert.md`.
 
-### Example
+## parentId — a child managed through its parent
+
+`parentId` is a top-level key naming the **EntityId** of the parent:
 
 ```json
-// DO NOT - Incorrect (causes error)
-// entity: ApplyDeliberationResearcher
-{ "parentId": "apply_deliberation_id" }  // FK removed from BaseSchema
-
-// entity: ApplyDeliberation subset
-{ "A": ["*", { "researchers": ["*"] }] }  // SSO LoaderQuery error
-
-// DO - Correct (change to independent entity, remove parentId)
-// entity: ApplyDeliberationResearcher - no parentId, FK is preserved in BaseSchema
-// entity: ApplyDeliberation subset
-{ "A": ["*", { "researchers": ["*"] }] }  // works correctly
+{
+  "id": "OrderItem",
+  "title": "주문 항목",
+  "table": "order_items",
+  "parentId": "Order",
+  "props": [],
+  "indexes": [],
+  "subsets": {},
+  "enums": {}
+}
 ```
 
+A child with `parentId` has no independent CRUD — it is created, updated, and deleted through the
+parent. Adding or removing `parentId` later rewrites the child's model and views.
+
+### Creating one
+
+`sonamu stub entity` takes only an EntityId, so `parentId` cannot be passed to it. Stub the child,
+add `"parentId": "<ParentEntityId>"` by hand, then move the file to the derived path.
+
+### Derived folder location
+
+The path comes from the **direct** parent, one level up — not from the root of the chain:
+
+| Entity | parentId | Derived path |
+| --- | --- | --- |
+| `Course` | — | `course/course.entity.json` |
+| `Chapter` | `Course` | `course/chapter.entity.json` |
+| `Lesson` | `Chapter` | `chapter/lesson.entity.json` |
+
+Autoload globs `src/application/**/*.entity.json`, so a file in the wrong folder still registers.
+What breaks is everything else resolved by the derived path: the entity editor saves there, and the
+child's types module resolves to `<direct-parent>/<direct-parent>.types`.
+
+That bounds how deep a chain is useful. `Lesson` resolves its types module to `chapter/chapter.types`,
+and `Chapter` — having a parentId itself — never gets a `types.ts`, so nothing is there to resolve.
+Keep parentId one level deep, or make the middle entity independent.
+
+### What parentId costs
+
+| Generated for a child with `parentId` | |
+| --- | --- |
+| `{Entity}BaseSchema` and its table entry in `DatabaseSchemaExtend` | Yes |
+| `{Entity}BaseListParams` | No |
+| `{Entity}Subset*`, `SubsetKey`, `SubsetMapping` | No |
+| `{entity}.types.ts` | No |
+
+So the child's table and columns stay queryable through Puri, but it has no list params and no subset
+of its own — the parent's subset is the only place its fields are selected. An entity that needs to be
+listed or filtered independently should not have `parentId`.
+
+## Common mistakes
+
+| Mistake | Fix |
+| --- | --- |
+| A separate `"relations": [...]` key | Declare relations as props with `"type": "relation"` |
+| Declaring `{name}_id` next to a BelongsToOne | Remove it — the FK column is derived |
+| `user_id` inside a subset | Use `user.id`; the column name is for `indexes` only |
+| Neither OneToOne side sets `hasJoinColumn` | Set it on the side that holds the FK |
+| HasMany without `joinColumn` | Name the FK column in the related table |
+| ManyToMany without `joinTable` / `onUpdate` / `onDelete` | All three are required |
+| Self-reference with `nullable: false` | Use `nullable: true` |
+| `parentId` set to a column name | It takes an EntityId |
