@@ -163,6 +163,5 @@ pnpm sonamu scaffold view_form YourEntity
 Each type is a separate command taking the EntityId, and each writes exactly one file — including the
 admin screens, which are `view_list` and `view_form` output and are never produced by a sync. What
 the sync that follows adds is the API surface around the new `model.ts`: `services.generated.ts` in
-each sync target, `queries.generated.ts` and `sonamu.generated.http` in the API package. What each
-scaffold produces, and what it leaves to finish, is in `sonamu-frontend`'s
-`references/scaffolding.md`.
+each sync target, `queries.generated.ts` and `sonamu.generated.http` in the API package. Frontend
+scaffold output and its follow-up work belong to `sonamu-frontend`.

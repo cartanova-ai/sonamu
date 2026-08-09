@@ -1,137 +1,46 @@
 ---
 name: sonamu-frontend
-description: Builds the Sonamu web frontend against generated services. Use when calling a generated Service, wiring a TanStack Query hook, building a form or list view, or when a scaffolded view fails to compile. Covers useTypeForm, useListParams, useSelection, IdAsyncSelect, FileInput, EnumSelect, SonamuProvider, and sonamu scaffold.
+description: Connects React screens to Sonamu generated clients and components. Use when consuming services.generated.ts, wiring generated TanStack Query helpers, configuring SonamuProvider, building forms or lists with useTypeForm or useListParams, using IdAsyncSelect or FileInput, or repairing view_list or view_form output. Covers AsyncIdConfig, queryOptions, useSelection, EnumSelect, and uploader.
 ---
 
-# Frontend Service
+# Sonamu Frontend
 
-## Quick Reference
+`services.generated.ts` is the frontend boundary of each decorated Model or Frame method. Its
+request functions, query helpers, mutation hooks, parameter types, and return types are generated
+from the endpoint decorator; inspect that generated namespace instead of assuming every Service has
+the scaffolded CRUD names.
 
-### Hooks
+Do not edit `services.generated.ts`. A later sync replaces it. Change the Model decorator or its
+types, run `pnpm sonamu sync`, and consume the regenerated surface.
 
-| Hook            | Purpose                           | Key Return Values                                |
-| --------------- | --------------------------------- | ------------------------------------------------ |
-| `useTypeForm`   | Form state management (Zod-based) | form, setForm, register, submit, addError, reset |
-| `useListParams` | URL-synced list parameters        | listParams, setListParams, register              |
-| `useSelection`  | Checkbox multi-selection          | selectedKeys, toggle, selectAll, deselectAll     |
-| `useModal`      | Modal state management            | open, modal                                      |
-| `useToast`      | Toast notifications               | toast                                            |
+## Standard generated surface
 
-### Components
-
-| Component     | Purpose          | Key Props                                           |
-| ------------- | ---------------- | --------------------------------------------------- |
-| `Input`       | Text input       | value, onValueChange                                |
-| `Textarea`    | Multi-line input | value, onValueChange                                |
-| `Checkbox`    | Checkbox         | value (boolean), onValueChange, label               |
-| `Select`      | Single select    | items, value, onValueChange, placeholder, clearable |
-| `MultiSelect` | Multi-select     | options, value (array), onValueChange, maxCount     |
-| `EnumSelect`  | Enum select      | enum, labels, value, onValueChange                  |
-| `FileInput`   | File upload      | uploadMode, viewMode, multiple, maxFiles            |
-
-### Service (Auto-generated)
-
-| Method            | Purpose              | Example                             |
-| ----------------- | -------------------- | ----------------------------------- |
-| `get{Entity}`     | Fetch single record  | `UserService.getUser("A", 123)`     |
-| `get{Entities}`   | Fetch list           | `UserService.getUsers("P", params)` |
-| `save`            | Save (create/update) | `UserService.save([data])`          |
-| `del`             | Delete               | `UserService.del([1, 2, 3])`        |
-| `use{Entity}`     | Single fetch hook    | `UserService.useUser("A", id)`      |
-| `use{Entities}`   | List fetch hook      | `UserService.useUsers("P", params)` |
-| `useSaveMutation` | Save mutation        | `UserService.useSaveMutation()`     |
-
-### Utilities
-
-| Function           | Purpose                  | Example                                           |
-| ------------------ | ------------------------ | ------------------------------------------------- |
-| `dateF`            | Date formatting          | `dateF(new Date())` → `"2024-01-15"`              |
-| `datetimeF`        | Datetime formatting      | `datetimeF(new Date())` → `"2024-01-15 10:30:00"` |
-| `numF`             | Number formatting        | `numF(1234567)` → `"1,234,567"`                   |
-| `hidden`           | Conditional hidden class | `hidden(true)` → `"hidden"`                       |
-| `arrayableToArray` | Convert to array         | `arrayableToArray("a")` → `["a"]`                 |
-
-### Configuration
-
-| Item             | Description                                        | Required                                   |
-| ---------------- | -------------------------------------------------- | ------------------------------------------ |
-| `SonamuProvider` | Global configuration Provider (uploader, auth, SD) | Required (uploader required for FileInput) |
-| `uploader`       | File upload function                               | Required when using FileInput              |
-| `auth`           | Authentication state and functions                 | Optional                                   |
-| `SD`             | Internationalization function                      | Optional                                   |
-
-## Basic Usage
+The scaffolded CRUD Model generates a namespace shaped like this when its decorators include the
+matching clients:
 
 ```typescript
-import { UserService } from "@/services/services.generated";
+await ProjectService.getProject("A", projectId);
+await ProjectService.getProjects("P", { page: 1, num: 20 });
 
-// Single fetch (Subset required) - get{Entity} form
-const user = await UserService.getUser("A", 123);
-
-// List fetch - get{Entities} form
-const { rows, total } = await UserService.getUsers("P", { num: 20, page: 1 });
-
-// Save
-const [userId] = await UserService.save([{ email: "new@test.com", username: "newuser" }]);
-
-// Delete
-const count = await UserService.del([1, 2, 3]);
-```
-
-## TanStack Query Hook
-
-### useQuery
-
-```typescript
-function UserProfile({ userId }: { userId: number }) {
-  // use{Entity} form (single), use{Entities} form (list)
-  const { data: user, isLoading, error } = UserService.useUser("A", userId);
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-
-  return <h1>{user?.username}</h1>;
-}
-```
-
-### useMutation
-
-```typescript
-function EditProfile() {
-  const saveMutation = UserService.useSaveMutation();
-
-  async function handleSubmit(data: UserSaveParams) {
-    saveMutation.mutate({ spa: [data] }, {
-      onSuccess: ([userId]) => console.log("Saved:", userId),
-      onError: (error) => console.error("Failed:", error),
-    });
-  }
-
-  return <button disabled={saveMutation.isPending}>Save</button>;
-}
-```
-
-### Conditional Fetching
-
-```typescript
-const { data } = UserService.useUser("A", userId!, {
-  enabled: userId !== null,
+const projectQuery = ProjectService.useProject("A", projectId!, {
+  enabled: projectId !== undefined,
 });
+const projectsQuery = ProjectService.useProjects("P", { page: 1, num: 20 });
+
+const saveMutation = ProjectService.useSaveMutation();
+saveMutation.mutate({ spa: [form] });
 ```
 
-### Cache Invalidation
+The subset argument is present only when the underlying method declares one. It chooses the
+generated response shape; it is not a universal argument added to every endpoint.
 
-```typescript
-const queryClient = useQueryClient();
-queryClient.invalidateQueries({ queryKey: ["User", "findById", "A", userId] });
-```
+## Reference map
 
-## Reference Map
-
-| Need | Read |
+| Task | Read |
 | --- | --- |
-| useTypeForm, useListParams, useSelection | `references/hooks.md` |
-| IdAsyncSelect, FileInput, Select, EnumSelect | `references/components.md` |
-| SonamuProvider, utilities, error handling, SSR, initial setup, rules | `references/runtime.md` |
-| Full worked component implementations | `references/examples.md` |
-| Scaffold commands, pre/post checklists, scaffolding errors | `references/scaffolding.md` |
+| Direct calls, generated hooks, query keys, mutations, frontend errors | `references/generated-services.md` |
+| `useTypeForm`, field binding, `FileInput`, eager and lazy upload | `references/forms.md` |
+| `useListParams`, URL search state, `useSelection` | `references/lists.md` |
+| `Select`, `EnumSelect`, `IdAsyncSelect`, cascade filters | `references/selects.md` |
+| `SonamuProvider`, `authOptions`, typed `SD`, uploader configuration | `references/provider.md` |
+| `view_list` and `view_form` output or compile failures | `references/scaffolded-views.md` |

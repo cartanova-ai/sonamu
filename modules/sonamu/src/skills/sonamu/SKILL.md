@@ -22,7 +22,7 @@ Where a Sonamu skill and the project's `AGENTS.md` disagree, `AGENTS.md` wins.
 | editing .env, .env.<environment>, or sonamu.config.ts, wiring database, storage, cache, logging, or tasks options, starting the Docker DB, resolving a port conflict, or on an Invalid NODE_ENV, Missing Sonamu dotenv file, or removed database.name error | `sonamu-config` |
 | creating or editing an entity.json, adding a prop or enum, wiring BelongsToOne/HasMany/ManyToMany/parentId, defining a subset or index, or resolving an entity.json validation or sync error | `sonamu-entity` |
 | running fixture gen/fetch/explore/sync/init/import, writing cone.note or fixtureCompanions metadata, seeding sign-in-capable users, or when generated data is unrealistic, a relation fails with "데이터가 없습니다", or fixture rows land in the wrong database | `sonamu-fixture` |
-| calling a generated Service, wiring a TanStack Query hook, building a form or list view, or when a scaffolded view fails to compile | `sonamu-frontend` |
+| consuming services.generated.ts, wiring generated TanStack Query helpers, configuring SonamuProvider, building forms or lists with useTypeForm or useListParams, using IdAsyncSelect or FileInput, or repairing view_list or view_form output | `sonamu-frontend` |
 | registering labels for a new entity or enum, adding a language, or a UI string renders as a raw key | `sonamu-i18n` |
 | a schema change needs a migration, a migration fails or conflicts, FK ordering breaks an apply, or a primary key type must change | `sonamu-migration` |
 | a query or save produces the wrong result and the cause is unclear, or when a test needs to assert on internal state | `sonamu-naite` |
