@@ -53,6 +53,11 @@ class NaiteReporterClass {
   private socket: Socket | null = null;
   private connected = false;
   private buffer: string[] = [];
+  /**
+   * run/start는 뷰어를 초기화하는 프로토콜 메시지이므로 buffer 상한 폐기 대상에서 제외합니다.
+   * 별도 슬롯에 보관했다가 연결 시 가장 먼저 전송합니다.
+   */
+  private bufferedRunStart: string | null = null;
 
   /**
    * 소켓 연결 시도
@@ -70,6 +75,11 @@ class NaiteReporterClass {
 
       this.socket.on("connect", () => {
         this.connected = true;
+        // 뷰어를 현재 run 기준으로 초기화한 뒤 결과들을 전송
+        if (this.bufferedRunStart) {
+          this.socket?.write(this.bufferedRunStart);
+          this.bufferedRunStart = null;
+        }
         // 버퍼에 쌓인 메시지 전송
         for (const msg of this.buffer) {
           this.socket?.write(msg);
@@ -103,10 +113,16 @@ class NaiteReporterClass {
     if (this.connected && this.socket) {
       this.socket.write(msg);
     } else {
-      // 연결 대기 중이면 버퍼에 저장, 상한 초과 시 오래된 메시지부터 폐기
-      this.buffer.push(msg);
-      if (this.buffer.length > MAX_BUFFERED_MESSAGES) {
-        this.buffer.shift();
+      if (data.type === "run/start") {
+        // 새 run이 시작되었으므로 이전 run의 미전송 메시지는 폐기
+        this.bufferedRunStart = msg;
+        this.buffer = [];
+      } else {
+        // 연결 대기 중이면 버퍼에 저장, 상한 초과 시 오래된 메시지부터 폐기
+        this.buffer.push(msg);
+        if (this.buffer.length > MAX_BUFFERED_MESSAGES) {
+          this.buffer.shift();
+        }
       }
     }
   }
