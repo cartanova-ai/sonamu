@@ -1,4 +1,12 @@
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Checkbox,
   Table,
@@ -23,6 +31,7 @@ import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import ToggleLeftIcon from "~icons/lucide/toggle-left";
 import ToggleRightIcon from "~icons/lucide/toggle-right";
 import TrashIcon from "~icons/lucide/trash";
+import TriangleAlertIcon from "~icons/lucide/triangle-alert";
 
 import { useSonamuContext } from "../contexts/sonamu-provider";
 import { SonamuUIService } from "../services/sonamu-ui.service";
@@ -52,6 +61,39 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
     targets: (keyof SonamuDBConfig)[];
   } | null>(null);
   const [isAllCodeViewerOpen, setAllCodeViewerOpen] = useState(false);
+  const [pendingConnKeys, setPendingConnKeys] = useState<(keyof SonamuDBConfig)[] | null>(null);
+
+  const selectConnKeys = (nextConnKeys: (keyof SonamuDBConfig)[]) => {
+    // Production을 새로 포함하는 선택은 사용자가 위험을 확인할 때까지 보류한다.
+    if (!selectedConnKeys.includes("production") && nextConnKeys.includes("production")) {
+      setPendingConnKeys(nextConnKeys);
+      return;
+    }
+    setSelectedConnKeys(nextConnKeys);
+  };
+
+  const handleProductionWarningOpenChange = (open: boolean) => {
+    if (!open) {
+      setPendingConnKeys(null);
+    }
+  };
+
+  const confirmProductionSelection = () => {
+    if (!pendingConnKeys) {
+      return;
+    }
+    setSelectedConnKeys(pendingConnKeys);
+    setPendingConnKeys(null);
+  };
+
+  const cancelProductionSelection = () => {
+    if (!pendingConnKeys) {
+      return;
+    }
+    // 명시적 취소는 운영 연결만 제외한 안전한 후보를 반영한다.
+    setSelectedConnKeys(pendingConnKeys.filter((connKey) => connKey !== "production"));
+    setPendingConnKeys(null);
+  };
 
   const toggleConnKeys = (preset: "ALL" | "LOCAL" | "REMOTE" | "TESTING" | "FIXTURE") => {
     const availableConnKeys = new Set((conns ?? []).map((conn) => conn.connKey));
@@ -75,11 +117,11 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
     }
 
     if (targetKeys.filter((key) => selectedConnKeys.includes(key)).length === targetKeys.length) {
-      setSelectedConnKeys(selectedConnKeys.filter((key) => !targetKeys.includes(key)));
+      selectConnKeys(selectedConnKeys.filter((key) => !targetKeys.includes(key)));
     } else if (diff(targetKeys, selectedConnKeys).length > 0) {
-      setSelectedConnKeys(targetKeys);
+      selectConnKeys(targetKeys);
     } else {
-      setSelectedConnKeys(unique([...selectedConnKeys, ...targetKeys]));
+      selectConnKeys(unique([...selectedConnKeys, ...targetKeys]));
     }
   };
 
@@ -293,11 +335,9 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                         }
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedConnKeys(unique([...selectedConnKeys, conn.connKey]));
+                            selectConnKeys(unique([...selectedConnKeys, conn.connKey]));
                           } else {
-                            setSelectedConnKeys(
-                              selectedConnKeys.filter((key) => key !== conn.connKey),
-                            );
+                            selectConnKeys(selectedConnKeys.filter((key) => key !== conn.connKey));
                           }
                         }}
                       />
@@ -393,6 +433,31 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
           onCompleted={handleActionModalCompleted}
         />
       )}
+      <AlertDialog open={pendingConnKeys !== null} onOpenChange={handleProductionWarningOpenChange}>
+        <AlertDialogContent className="border-2 border-red-600 bg-red-50">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-700">
+              <TriangleAlertIcon className="size-6 shrink-0" />
+              {SD("migration.warning.production.title")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-red-700">
+              {SD("migration.warning.production.description")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {/* oxlint-disable-next-line jsx-a11y/no-autofocus */}
+            <AlertDialogCancel autoFocus onClick={cancelProductionSelection}>
+              {SD("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={confirmProductionSelection}
+            >
+              {SD("migration.warning.production.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
