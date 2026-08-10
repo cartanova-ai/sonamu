@@ -650,7 +650,7 @@ class DashboardModelClass extends BaseModelClass {
 
     // 권한 체크
     if (context.user?.id !== userId && context.user?.role !== "admin") {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException("권한이 없습니다");
     }
 
     // 대시보드 데이터 조회
