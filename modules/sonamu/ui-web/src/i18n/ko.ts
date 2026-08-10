@@ -98,6 +98,10 @@ export default {
   "migration.noCodeFiles": "마이그레이션 코드 파일이 없습니다.",
   "migration.codeCollapsed": "코드 접힘",
   "migration.confirm.deleteCodes": "선택한 {count}개의 마이그레이션 코드를 삭제하시겠습니까?",
+  "migration.warning.production.title": "Production 데이터베이스 선택 경고",
+  "migration.warning.production.description":
+    "Production 마이그레이션은 운영 데이터에 영향을 줄 수 있습니다. 대상을 다시 확인해 주세요.",
+  "migration.warning.production.confirm": "Production 선택",
   "migration.error.connections":
     "일부 연결에서 오류가 발생했습니다. 연결 설정을 확인하고 다시 시도해주세요.",
   "migration.status.pending": "PENDING",

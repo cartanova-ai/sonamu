@@ -104,6 +104,10 @@ const en: Record<DictKey, Dictionary[string]> = {
   "migration.noCodeFiles": "No migration code files",
   "migration.codeCollapsed": "Code is collapsed",
   "migration.confirm.deleteCodes": "Are you sure to delete the selected {count} migration codes?",
+  "migration.warning.production.title": "Production Database Warning",
+  "migration.warning.production.description":
+    "Production migrations can affect live data. Review the target before continuing.",
+  "migration.warning.production.confirm": "Select Production",
   "migration.error.connections":
     "Some connections are in error state. Please check the connection settings and try again.",
   "migration.status.pending": "PENDING",
