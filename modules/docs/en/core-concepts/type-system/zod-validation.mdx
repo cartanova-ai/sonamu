@@ -5,6 +5,70 @@ description: "Runtime data validation guide using Zod"
 
 Sonamu uses Zod to validate TypeScript types at runtime. This document explains all features and patterns of Zod validation.
 
+## API HTTP validator optimization
+
+Sonamu creates the final REST `fastifyCaster` validator once per handler lifetime. This cache is the
+default and needs no configuration. `zod-compiler` is an opt-in compilation step for that final
+validator.
+
+### Configuration
+
+```typescript title="sonamu.config.ts"
+export default defineConfig({
+  validation: {
+    zodCompiler: {
+      api: "jit", // or "aot"
+    },
+  },
+});
+```
+
+- With no setting, or with `zodCompiler: false`, the API uses cached plain Zod.
+- `jit` suits a long-lived Node.js server. Sonamu compiles eagerly while preparing routes and fails
+  server startup if compilation does not install the public parse methods.
+- `aot` compiles only the generated registry during `pnpm sonamu build api`. Source development uses
+  cached plain Zod. Production startup verifies the registry fingerprint and route coverage.
+- Web and Expo compiler targets are unavailable and remain deferred.
+- `validation.zodCompiler.targets` is rejected; configure only `validation.zodCompiler.api` in this
+  API-only phase.
+
+Sonamu carries the runtime dependency used by JIT. Existing projects only need to add the validated
+compiler version to the API package before enabling AOT, because the generated source imports its
+build helper directly:
+
+```bash
+pnpm add -D zod-compiler@1.23.6
+pnpm sonamu sync --force
+```
+
+### As-is and to-be
+
+| Area | As-is | To-be |
+| --- | --- | --- |
+| HTTP schema lifetime | Build the schema and caster on every request | Build once per handler metadata revision |
+| Compilation | Plain Zod only | Choose plain, eager JIT, or production AOT |
+| AOT artifact | None | Sync manages `sonamu.validators.generated.ts` |
+| Failure timing | Request parsing | JIT fails at startup; AOT fails during build or startup |
+
+### Known behavioral differences
+
+In `zod-compiler` 1.23.6, records iterate enumerable string keys, some containers preserve the input
+reference, and per-call parse options are ignored. Schema-level errors and `z.config()` still apply.
+See the upstream
+[Behavioral Differences](https://github.com/gajus/zod-compiler#behavioral-differences-from-zod)
+section for details. Sonamu's representative HTTP coercion and error paths passed parity checks, but
+applications that depend on container identity or symbol keys should verify those cases before
+opting in.
+
+To roll back, remove `validation.zodCompiler` or set it to `false`, remove the API package's
+`zod-compiler` development dependency, then run sync and build again. Sync deletes the generated AOT
+registry. The handler cache and existing `BadRequestException`/`ZodError` contract remain in place.
+
+See `docs/benchmarks/zod-compiler-http-validation.md` in the repository for the measured setup and
+results. In the refreshed five-run benchmark, eager JIT and AOT reduced validator-only median p95 by
+58.7% and 58.0%, respectively, but neither reached the 10% gate at the Fastify inject layer. The
+compiler modes therefore remain opt-in.
+
 ## What is Zod?
 
 <CardGroup cols={2}>
