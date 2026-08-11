@@ -109,8 +109,7 @@ class HealthFrame extends BaseFrameClass {
     let dbResponseTime: number | undefined;
 
     try {
-      // Frame엔 getPuri가 없어 연관 Model(UserModel 등)의 getPuri를 사용
-      const rdb = UserModel.getPuri("r");
+      const rdb = this.getPuri("r");
       const dbStart = Date.now();
       await rdb.raw("SELECT 1");
       dbResponseTime = Date.now() - dbStart;
@@ -595,8 +594,7 @@ class AdminStatsFrame extends BaseFrameClass {
 
   @api({ httpMethod: "GET" })
   async dashboard(): Promise<DashboardStats> {
-    // Frame엔 getPuri가 없어 연관 Model(UserModel 등)의 getPuri를 사용
-    const rdb = UserModel.getPuri("r");
+    const rdb = this.getPuri("r");
 
     // 날짜 계산
     const today = new Date();

@@ -90,8 +90,6 @@ export const HealthFrameInstance = new HealthFrame();
 ```typescript
 // health.frame.ts
 import { BaseFrameClass, api } from "sonamu";
-// Frame에는 getPuri가 없으므로 연관 Model의 getPuri를 사용합니다.
-import { UserModel } from "./user/user.model";
 
 interface HealthCheckResponse {
   status: "ok" | "error";
@@ -114,7 +112,7 @@ class HealthFrame extends BaseFrameClass {
     let dbStatus: "connected" | "disconnected" = "disconnected";
 
     try {
-      const rdb = UserModel.getPuri("r");
+      const rdb = this.getPuri("r");
       await rdb.raw("SELECT 1");
       dbStatus = "connected";
     } catch (error) {
@@ -371,12 +369,13 @@ export const WeatherFrameInstance = new WeatherFrame();
 
 ## DB 접근
 
-Frame에서도 DB에 접근할 수 있습니다. Frame 클래스에는 `getPuri`가 없으므로, 연관된 Model의 `getPuri`를 통해 Puri 쿼리 빌더를 사용합니다.
+Frame에서도 DB에 접근할 수 있습니다. Frame 클래스도 Model과 동일하게 `getPuri`를 제공하므로,
+`this.getPuri()`로 Puri 쿼리 빌더를 얻습니다.
 
 <Info>
-  `getPuri`가 반환하는 핸들은 특정 테이블에 묶이지 않으므로, 어떤 Model의 `getPuri`를
-  사용하든 등록된 모든 테이블을 조회할 수 있습니다. 아래 예제는 `import { UserModel } from
-  "./user/user.model";`와 `import { Puri } from "sonamu";`를 전제로 합니다.
+  `getPuri`가 반환하는 핸들은 특정 테이블에 묶이지 않으므로, Entity와 연결되지 않은 Frame에서도
+  등록된 모든 테이블을 조회할 수 있습니다. 아래 예제는 `import { Puri } from "sonamu";`를
+  전제로 합니다.
 </Info>
 
 ### 읽기 작업
@@ -391,7 +390,7 @@ class StatsFrame extends BaseFrameClass {
     totalPosts: number;
     totalComments: number;
   }> {
-    const rdb = UserModel.getPuri("r");
+    const rdb = this.getPuri("r");
 
     const { userCount } = await rdb
       .table("users")
@@ -428,7 +427,7 @@ class AdminFrame extends BaseFrameClass {
   async clearOldLogs(params: { beforeDate: Date }): Promise<{
     deletedCount: number;
   }> {
-    const wdb = UserModel.getPuri("w");
+    const wdb = this.getPuri("w");
 
     const deletedCount = await wdb
       .table("logs")
