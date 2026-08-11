@@ -1,6 +1,6 @@
 ---
 name: sonamu-entity
-description: Defines and modifies Sonamu entities: props, relations, subsets, and indexes. Use when creating or editing an entity.json, adding a prop or enum, wiring BelongsToOne/HasMany/ManyToMany/parentId, defining a subset or index, or resolving an entity.json validation or sync error. Covers sonamu stub entity, sonamu sync, dbDefault, generated columns, searchText, FieldExpr, and SaveParams.
+description: "Defines and modifies Sonamu entities: props, relations, subsets, and indexes. Use when creating or editing an entity.json, adding a prop or enum, wiring BelongsToOne/HasMany/ManyToMany/parentId, defining a subset or index, or resolving an entity.json validation or sync error. Covers sonamu stub entity, sonamu sync, dbDefault, generated columns, searchText, FieldExpr, and SaveParams."
 ---
 
 # Sonamu Entity
