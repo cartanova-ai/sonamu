@@ -141,7 +141,8 @@
     "radashi": "catalog:",
     "tsicli": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zod-compiler": "catalog:"
   },
   "devDependencies": {
     "@types/bcrypt": "catalog:",
