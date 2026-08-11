@@ -29,7 +29,7 @@ Where a Sonamu skill and the project's `AGENTS.md` disagree, `AGENTS.md` wins.
 | implementing findById/findOne/findMany, pagination, filters, joins, sorting, transactions, relation/batch saves, standalone PostgreSQL text search, PGroonga, pg_trgm, or pgvector query composition, or diagnosing row/TS2589 errors | `sonamu-query` |
 | setting up @sonamu-kit/tasks, defining or enqueuing workflows, starting workers, adding a Sonamu cron workflow, or diagnosing retries, deadlines, leases, duplicate effects, cancellation, and recovery | `sonamu-tasks` |
 | writing a Model or API test, setting up fixtures or mocks, running sonamu test, enabling parallel workers, or diagnosing startup, database, context, trace, or module-cache failures | `sonamu-testing` |
-| generating embeddings, chunking documents, or combining vector similarity with full-text search | `sonamu-vector` |
+| calling Embedding.embed/embedOne, configuring Voyage/OpenAI keys, splitting text with Chunking, persisting embeddings, or handing vectors to Puri vectorSimilarity | `sonamu-vector` |
 
 <!-- SKILL-INDEX:END -->
 

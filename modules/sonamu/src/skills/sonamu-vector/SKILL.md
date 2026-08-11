@@ -1,138 +1,130 @@
 ---
 name: sonamu-vector
-description: Implements semantic and hybrid search with pgvector. Use when generating embeddings, chunking documents, or combining vector similarity with full-text search. Covers the Voyage AI and OpenAI embedding providers, chunking strategies, and hybrid ranking.
+description: Generates text embeddings and character-based chunks for pgvector workflows. Use when calling Embedding.embed/embedOne, configuring Voyage/OpenAI keys, splitting text with Chunking, persisting embeddings, or handing vectors to Puri vectorSimilarity. Covers sonamu/vector, inputType, batchSize, getDimensions, and provider/config capability boundaries.
 ---
 
 # Vector Search Guide
 
-Sonamu supports pgvector-based vector search. It integrates both Voyage AI and OpenAI embedding providers, and also supports hybrid search (Vector + Full-Text Search).
-
-Source code: `modules/sonamu/src/vector/`
+`sonamu/vector` exports embedding, chunking, configuration, and result types. It does not export a
+search service: store vectors through the consuming project's Model and compose pgvector queries
+with Puri from `"sonamu"`.
 
 ## Structure
 
-| File           | Role                                                                              |
-| -------------- | --------------------------------------------------------------------------------- |
-| `types.ts`     | Full type definitions (EmbeddingProvider, VectorSearchResult, VectorConfig, etc.) |
-| `config.ts`    | Default configuration values + `createVectorConfig()` helper                      |
-| `embedding.ts` | Embedding client (Voyage AI and OpenAI integration)                               |
-| `chunking.ts`  | Text chunking (splitting long documents)                                          |
+| Task | Read |
+| --- | --- |
+| Install a provider, configure its key, call `Embedding.embedOne()` / `embed()`, or diagnose provider, batching, token-count, or dimension behavior | `references/embeddings.md` |
+| Split text, tune `Chunking`, interpret offsets and overlap, or decide whether token-aware splitting is needed | `references/chunking.md` |
+| Declare and persist a vector column, add an index, call `Puri.vectorSimilarity()`, or combine vector and text search | `references/persistence-and-search.md` |
+
+Start at the text boundary: use `"document"` while generating stored Voyage vectors and `"query"`
+while generating their search vectors. Then keep the provider/model and vector dimensions aligned
+between both sides and the entity column.
 
 ## Embedding Providers
 
-| Provider | Model                    | Dimensions | maxTokens | batchSize | Package          |
-| -------- | ------------------------ | ---------- | --------- | --------- | ---------------- |
-| `voyage` | `voyage-3`               | 1024       | 32000     | 128       | `voyageai`       |
-| `openai` | `text-embedding-3-small` | 1536       | 8191      | 100       | `@ai-sdk/openai` |
+These are Sonamu's checked-in defaults, not a live statement of provider limits:
+
+| Provider | Default model | `getDimensions()` | Split above | Recorded `maxTokens` | Runtime package |
+| --- | --- | ---: | ---: | ---: | --- |
+| `"voyage"` | `voyage-3` | 1024 | 128 texts | 32000 | `voyageai` |
+| `"openai"` | `text-embedding-3-small` | 1536 | 100 texts | 8191 | `@ai-sdk/openai` |
+
+The batch sizes affect `Embedding.embed()`. `dimensions` is returned as metadata, and `maxTokens`
+is not checked before a request. Sonamu does not validate returned vector length against either
+value.
 
 ### API Key Configuration
 
+`sonamu/vector` eagerly re-exports the embedding module, and that module statically imports `ai`.
+Install `ai` even when the only imported symbol is `Chunking`. The provider SDKs are loaded
+dynamically, so install only the one whose provider path the application invokes:
+
 ```bash
-# Environment variables
-export VOYAGE_API_KEY=pa-...
-export OPENAI_API_KEY=sk-...
+pnpm add ai
+pnpm add voyageai          # before invoking the Voyage path
+pnpm add @ai-sdk/openai    # before invoking the OpenAI path
 ```
 
-Or in `sonamu.config.ts`:
-
-```typescript
-export default defineConfig({
-  secret: {
-    voyage_api_key: "pa-...",
-    openai_api_key: "sk-...",
-  },
-});
+```dotenv
+VOYAGE_API_KEY=pa-...
+OPENAI_API_KEY=sk-...
 ```
 
-Key priority: `Sonamu.secrets.voyage_api_key` → `process.env.VOYAGE_API_KEY`
+There is no `secret` block for these keys in `sonamu.config.ts`. Missing keys throw
+`VOYAGE_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요.` or
+`OPENAI_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요.` before the provider request.
 
 ## Embedding Usage
+
+Import the singleton from the public subpath:
 
 ```typescript
 import { Embedding } from "sonamu/vector";
 
-// Single text
-const result = await Embedding.embedOne("text to search", "voyage", "query");
-// result: { embedding: number[], model: "voyage-3", tokenCount: 15 }
+const stored = await Embedding.embedOne(sourceText, "voyage", "document");
+const query = await Embedding.embedOne(searchText, "voyage", "query");
 
-// Multiple texts (auto-splits when exceeding batchSize)
-const results = await Embedding.embed(
-  ["text1", "text2", ...],
-  "voyage",
-  "document",         // inputType: "document" | "query"
-  (processed, total) => console.log(`${processed}/${total}`),  // progress callback
-);
-
-// Check number of dimensions
-Embedding.getDimensions("voyage");  // 1024
-Embedding.getDimensions("openai");  // 1536
+const batch = await Embedding.embed(sourceTexts, "voyage", "document");
 ```
+
+Each result is `{ embedding: number[]; model: string; tokenCount: number }`. The public batch method
+is `embed()`; there is no exported Sonamu `embedMany()` wrapper. See
+`references/embeddings.md` before treating `tokenCount` as a per-text count or relying on the
+progress callback.
 
 ### Voyage AI inputType (Asymmetric Embedding)
 
-| inputType    | Use case                                |
-| ------------ | --------------------------------------- |
-| `"document"` | When embedding documents to store in DB |
-| `"query"`    | When embedding search queries           |
-
-Asymmetric embedding means the two sides are embedded differently on purpose. Using the same
-`inputType` for both — or swapping them — produces vectors from the wrong half of the model, and
-similarity scores degrade silently rather than erroring.
+`inputType` defaults to `"document"`. Voyage receives it unchanged; the OpenAI path ignores it.
+For Voyage search, swapping the stored-document and query values still type-checks and reaches the
+provider, so keep the two call sites explicit.
 
 ## Chunking Usage
 
-Splits long documents into appropriately-sized pieces.
+`Chunking` is a delimiter-aware character splitter:
 
 ```typescript
 import { Chunking } from "sonamu/vector";
 
-const chunker = new Chunking({
-  chunkSize: 500, // Maximum chunk size (character count)
-  chunkOverlap: 50, // Overlap between chunks
-  minChunkSize: 50, // Minimum chunk size
-});
-
-// Check if chunking is needed
-chunker.needsChunking("short text"); // false
-
-// Split into chunks
-const chunks = chunker.chunk(longText);
-// chunks: [{ index: 0, text: "...", startOffset: 0, endOffset: 500 }, ...]
-
-// Estimate number of chunks
-chunker.estimateChunkCount(longText); // 5
+const chunking = new Chunking({ chunkSize: 500, chunkOverlap: 50 });
+const chunks = chunking.chunk(text);
+// Array<{ index: number; text: string; startOffset: number; endOffset: number }>
 ```
+
+It has no token mode, semantic mode, Markdown mode, or `chunkText()` function. Character counts do
+not enforce either provider's token limit. Read `references/chunking.md` for separator selection,
+trimmed text versus source offsets, and configurations that can stop making progress.
 
 ### Chunking Default Settings
 
-| Option          | Default                           | Description                                              |
-| --------------- | --------------------------------- | -------------------------------------------------------- |
-| `chunkSize`     | 500                               | Maximum chunk size (character count)                     |
-| `chunkOverlap`  | 50                                | Overlap between chunks                                   |
-| `minChunkSize`  | 50                                | Minimum chunk size                                       |
-| `skipThreshold` | 200                               | Passes through without chunking if at or below this size |
-| `separators`    | `["\n\n", "\n", "。", ". ", ...]` | Split delimiters (in priority order)                     |
+| Option | Default | Runtime effect |
+| --- | ---: | --- |
+| `chunkSize` | 500 | Separator target or hard-split size in UTF-16 code units |
+| `chunkOverlap` | 50 | Source characters revisited at the next start position |
+| `minChunkSize` | 50 | After the skip path, drops shorter trimmed chunks and supplies the minimum advance |
+| `skipThreshold` | 200 | Text shorter than this returns as one trimmed chunk |
+| `separators` | paragraph, newline, punctuation, comma, space | Priority order for finding a split at or before `chunkSize` |
+
+`needsChunking()` checks only `text.length > chunkSize`; `estimateChunkCount()` is a fixed-size
+estimate and does not simulate separators or `skipThreshold`.
 
 ## Search Configuration
 
-```typescript
-import { createVectorConfig } from "sonamu/vector";
+`DEFAULT_VECTOR_CONFIG` and `createVectorConfig()` are public configuration-data helpers, but there
+is no public configurable embedding client or search class that accepts their output. In particular,
+`search`, `pgvector`, provider `baseUrl` / `apiKey`, and provider `maxTokens` do not alter requests or
+queries. `Embedding` uses its import-time defaults, while `Chunking` accepts its own partial options.
 
-const config = createVectorConfig({
-  search: {
-    defaultLimit: 10,
-    similarityThreshold: 0.5, // Results below this value are excluded
-    vectorWeight: 0.7, // Vector weight in hybrid search
-    ftsWeight: 0.3, // FTS weight in hybrid search
-  },
-  pgvector: {
-    iterativeScan: true, // Use pgvector iterative scan
-    efSearch: 100, // HNSW index search accuracy
-  },
-});
-```
+Use Puri's `vectorSimilarity()` for database ranking and the PostgreSQL text-search methods in
+`sonamu-query` for hybrid composition. Sonamu currently provides no reranker, embedding cache,
+retry/rate-limit layer, or built-in hybrid rank merger.
 
 ## Type Definitions
+
+`sonamu/vector` re-exports all declarations in its `types` module. `EmbeddingResult`, `Chunk`,
+`EmbeddingProvider`, `VectorInputType`, `ChunkingConfig`, and `VectorConfig` describe active public
+calls or data. The search and benchmark declarations below are types only; no exported runtime
+search implementation produces them.
 
 ### VectorSearchResult
 
@@ -147,7 +139,7 @@ interface VectorSearchResult<T = Record<string, unknown>> {
 ### HybridSearchResult
 
 ```typescript
-interface HybridSearchResult<T> extends VectorSearchResult<T> {
+interface HybridSearchResult<T = Record<string, unknown>> extends VectorSearchResult<T> {
   vectorScore?: number;
   ftsScore?: number;
 }
@@ -155,54 +147,40 @@ interface HybridSearchResult<T> extends VectorSearchResult<T> {
 
 ### VectorSearchOptions
 
-```typescript
-interface VectorSearchOptions {
-  embeddingColumn?: string; // Embedding column name (default: "embedding")
-  limit?: number;
-  threshold?: number; // Similarity threshold
-  where?: string; // SQL WHERE condition
-}
-```
+`VectorSearchOptions` is exported as a shape with `embeddingColumn`, `limit`, `threshold`, and raw
+`where` fields. No public vector function consumes it. Puri has its own typed
+`vectorSimilarity(column, embedding, { method, threshold, distinctOn })` options.
 
 ### HybridSearchOptions
 
-```typescript
-interface HybridSearchOptions extends VectorSearchOptions {
-  vectorWeight?: number; // Vector search weight
-  ftsWeight?: number; // FTS weight
-  ftsColumn?: string; // Target column name for FTS
-}
-```
+`HybridSearchOptions` adds `vectorWeight`, `ftsWeight`, and `ftsColumn` to that inactive type. These
+weights are not applied automatically; compose and normalize scores in project code when hybrid
+ranking is required.
 
 ## pgvector DB Setup
 
+Database structure is entity and migration work; query composition is Puri work. The full handoff is
+in `references/persistence-and-search.md`.
+
 ### Install Extension
 
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-```
+Sonamu's local PostgreSQL initialization installs the `vector` extension. For another database
+environment, make the extension available before applying a migration containing a vector column.
 
 ### Add Embedding Column
 
-```sql
--- Voyage AI (1024 dimensions)
-ALTER TABLE documents ADD COLUMN embedding vector(1024);
-
--- OpenAI (1536 dimensions)
-ALTER TABLE documents ADD COLUMN embedding vector(1536);
-```
+Declare `{ "type": "vector", "dimensions": 1024 }` in the entity for Sonamu's default Voyage
+dimension, or `1536` for its default OpenAI dimension, then generate and run the migration. The
+entity schema requires `dimensions`; embedding generation does not infer or update it.
 
 ### HNSW Index
 
-```sql
--- Cosine similarity-based index
-CREATE INDEX ON documents
-USING hnsw (embedding vector_cosine_ops)
-WITH (m = 16, ef_construction = 64);
-```
+Declare an entity index with `type: "hnsw"` and an opclass matching the query distance operation.
+Index shape and migration defaults belong to `sonamu-entity`; query operators and threshold behavior
+belong to `sonamu-query`.
 
 ## References
 
-- Source code: `modules/sonamu/src/vector/`
-- pgvector official: https://github.com/pgvector/pgvector
-- Voyage AI: https://docs.voyageai.com/
+- `references/embeddings.md` — provider setup, call contracts, batching, results, and failures
+- `references/chunking.md` — exact character splitting and overlap behavior
+- `references/persistence-and-search.md` — entity, persistence, Puri, and capability boundaries
