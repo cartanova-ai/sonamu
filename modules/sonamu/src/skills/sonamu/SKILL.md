@@ -1,6 +1,6 @@
 ---
 name: sonamu
-description: Routes Sonamu work to the right skill and states how these skills relate to a project's own rules. Use when starting work in a Sonamu project, or when no specific Sonamu skill obviously covers the problem. Covers the skill index, the packages/api command path, and sonamu sync for regenerating stale generated output.
+description: Routes Sonamu work to the right skill and states how these skills relate to a project's own rules. Use when starting work in a Sonamu project, or when no specific Sonamu skill obviously covers the problem. Covers the skill index, the API package root, and sonamu sync for regenerating stale generated output.
 ---
 
 # Sonamu
@@ -35,10 +35,10 @@ Where a Sonamu skill and the project's `AGENTS.md` disagree, `AGENTS.md` wins.
 
 ## Command execution path
 
-All `pnpm` commands are run from the `packages/api` directory.
+Run Sonamu `pnpm` commands from the API package root: the directory containing
+`src/sonamu.config.ts` and the package's `sonamu` script. Do not assume a workspace directory name.
 
 ```bash
-cd packages/api
 pnpm dev
 pnpm sonamu sync
 pnpm sonamu test
@@ -48,7 +48,7 @@ pnpm sonamu migrate run
 ## Regenerating Sonamu artifacts
 
 Editing a truth source — `entity.json`, an API file, a `.types.ts` — leaves generated output
-stale until a sync runs. Run it from `packages/api`:
+stale until a sync runs. Run it from the API package root:
 
 ```bash
 pnpm sonamu sync          # regenerate what changed
@@ -66,5 +66,5 @@ built at least once. Without it:
 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../api/dist/sonamu.config.js'
 ```
 
-Fix with `pnpm build` in `packages/api`. (`pnpm dev` sets `HOT=yes`, which switches the loader to
+Fix with `pnpm build` in the API package root. (`pnpm dev` sets `HOT=yes`, which switches the loader to
 `src/sonamu.config.ts` — that is why the watcher path never needs a build.)

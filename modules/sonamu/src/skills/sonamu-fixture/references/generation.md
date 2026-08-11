@@ -158,7 +158,7 @@ real insert collides with a fixture id.
 | `템플릿 필드 "x"이(가) 부모 fixture 데이터에 존재하지 않습니다` | A `{{x}}` in `fixtureCompanions.overrides` names a prop the parent lacks | Use a prop that exists on the parent |
 | `[Companion] No BelongsToOne relation from A to B. Skipping.` | The companion entity has no FK back to the parent | Add the `BelongsToOne` to the companion, or drop the declaration |
 
-The last two come from `fixtureCompanions`; the key itself is documented in `references/cone.md`.
+The last two come from `fixtureCompanions`; the key itself is documented in `cone.md`.
 
 The two constraint violations below reach you straight from the database, so the message names the
 column but not the reason. Each has more than one cause.

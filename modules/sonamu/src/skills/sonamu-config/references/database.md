@@ -71,10 +71,11 @@ Fields outside that set (`ssl`, `application_name`, …) survive in every enviro
 ## Docker DB
 
 ```bash
-cd packages/api
 pnpm docker:up     # docker compose --env-file .env -f database/docker-compose.yml up -d
 pnpm docker:down
 ```
+
+Run these commands from the API package root.
 
 Both scripts pass `--env-file .env` and nothing else, so the values the container itself needs must
 be in `.env`, not in `.env.development`:
@@ -153,6 +154,6 @@ order apply — it emits `ALTER TABLE … ADD CONSTRAINT … FOREIGN KEY` after 
 
 | File | Purpose |
 | --- | --- |
-| `packages/api/.env` and `.env.<environment>` | `SONAMU_DB_*`, `CONTAINER_NAME`, `PROJECT_NAME` |
-| `packages/api/database/docker-compose.yml` | container definition, interpolates the variables above |
-| `packages/api/src/sonamu.config.ts` | `database.database` and `defaultOptions` |
+| `<api-root>/.env` and `<api-root>/.env.<environment>` | `SONAMU_DB_*`, `CONTAINER_NAME`, `PROJECT_NAME` |
+| `<api-root>/database/docker-compose.yml` | container definition, interpolates the variables above |
+| `<api-root>/src/sonamu.config.ts` | `database.database` and `defaultOptions` |

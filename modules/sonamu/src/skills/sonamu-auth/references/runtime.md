@@ -69,4 +69,4 @@ type.
 A project whose `contextProvider` writes to `reply` needs a separate `websocketContextProvider`; the
 WS path has no reply. Session resolution itself is identical on both.
 
-Typing `user.role` and other columns beyond better-auth's own is `references/user-fields.md`.
+Typing `user.role` and other columns beyond better-auth's own is `user-fields.md`.

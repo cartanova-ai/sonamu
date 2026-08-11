@@ -2,7 +2,7 @@
 
 ## What goes in which dotenv file
 
-The layering order and the failure modes are in `SKILL.md`; this is what each file is for. All of them
+The layering order and the failure modes are in `../SKILL.md`; this is what each file is for. All of them
 sit in the api root and are gitignored in a generated project, so the values are per-machine.
 
 | File | Contents |

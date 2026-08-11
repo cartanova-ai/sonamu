@@ -39,7 +39,7 @@ children reference it. State them explicitly for cascade or null-out behavior.
 - `customJoinClause` — a JOIN condition SQL string used instead of the FK equality.
 
 No index is created on the FK column; declare one in `indexes` when the relation is joined or
-filtered — `references/indexes.md`.
+filtered — `indexes.md`.
 
 ### Three names for one relation
 
@@ -51,7 +51,7 @@ filtered — `references/indexes.md`.
 
 Puri's row type is keyed by column names, so `author: 1` is a type error rather than a silently
 unset FK. A subset entry is not type-checked that way — `author_id` there fails at sync;
-see `references/subset.md`.
+see `subset.md`.
 
 ## HasMany (1:N)
 
@@ -244,7 +244,7 @@ named FK column has a non-empty collected value set. It is sufficient only when 
 links are being replaced contributes at least one junction row. An empty array contributes no FK
 value; if all arrays are empty, `ubUpsert()` returns `[]` before cleanup. Use the explicit delete
 pattern above whenever empty sets or mixed batches are valid. The full `cleanOrphans` contract is in
-`sonamu-query`'s `references/upsert.md`.
+`sonamu-query`.
 
 ## parentId — a child managed through its parent
 

@@ -22,7 +22,7 @@ async getProfile() { }
 
 A thrown error takes the normal error path — an HTTP status on the HTTP side, a close code on the WS
 side (`1008` for `UnauthorizedException`, which the generated hook does not retry). Throw a
-`SoException` subclass rather than a plain `Error` to control which. See `references/errors.md`.
+`SoException` subclass rather than a plain `Error` to control which. See `errors.md`.
 
 ## When guards run
 

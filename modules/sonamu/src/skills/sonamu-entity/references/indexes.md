@@ -1,7 +1,7 @@
 # Indexes and Unique Constraints
 
 Indexes are DDL, so every column here is a **real DB column name** — `role_id`, not `role.id`.
-Subsets are the opposite; that split is in `references/subset.md`.
+Subsets are the opposite; that split is in `subset.md`.
 
 ## Shape
 
@@ -101,7 +101,7 @@ PostgreSQL treats NULLs as distinct by default, so a unique index allows any num
 ## GIN index for a searchText column
 
 The pg_trgm search helpers in `sonamu-query` use trigram operators, which read a GIN index declared
-with a trigram opclass. The prop declaration is in `references/field-types.md`.
+with a trigram opclass. The prop declaration is in `field-types.md`.
 
 ```json
 {

@@ -23,7 +23,7 @@ type; long text is `"string"` with `length` omitted.
 | `vector[]` | `dimensions` | — | `vector(n)[]` | `number[][]` |
 | `tsvector` | — | — | `tsvector` | `string` |
 | `virtual` | `id` | `virtualType` (`query` \| `code`, default `code`) | none | the type named by `id` |
-| `relation` | `with`, `relationType` | varies — see `references/relations.md` | FK column or none | the related subset |
+| `relation` | `with`, `relationType` | varies — see `relations.md` | FK column or none | the related subset |
 
 Two rows read as "a number" but are not:
 
@@ -65,8 +65,8 @@ generated schema and is silently ignored.
 | `nullable` | boolean | Appends `.nullable()` to the generated schema and allows NULL. Default `false` |
 | `dbDefault` | string \| number \| boolean | Column DEFAULT — see below |
 | `generated` | object | Generated column — see below |
-| `toFilter` | true | Registers the prop in `BaseListParams` as a filtering target. See `sonamu-query`'s `references/model.md` |
-| `cone` | object | LLM-oriented fixture metadata. See `sonamu-fixture`'s `references/cone.md` |
+| `toFilter` | true | Registers the prop in `BaseListParams` as a filtering target. See `sonamu-query` |
+| `cone` | object | LLM-oriented fixture metadata. See `sonamu-fixture` |
 
 Each prop type's schema is strict: any key not listed for that type fails validation with
 `props.<n>: Unrecognized key: "<key>"`. That covers a whole class of errors — a misspelled `lenght`, a
@@ -75,11 +75,11 @@ so read it as a pointer to the offending prop rather than to the entity.
 
 Nullable props and props with a `dbDefault` are listed in the BaseSchema type's `__hasDefault__`,
 which is what makes them optional to Puri. `SaveParams` does not inherit that — see Step 4 in
-`references/creation-workflow.md`.
+`creation-workflow.md`.
 
 A prop without `nullable: true` is required on **updates** as well as inserts, because `ubUpsert`
 compiles to `ON CONFLICT ... DO UPDATE`: a partial update that omits one fails. Details in
-`sonamu-query`'s `references/upsert.md`, "Required fields on every call, including updates".
+`sonamu-query`.
 
 ## dbDefault — one rule
 
@@ -137,12 +137,12 @@ Three constraints, each a validation error rather than a runtime surprise:
 Generated props — and `searchText`, which is one — are listed in the BaseSchema type's `__generated__`,
 which is how Puri rejects writes to them. They are **not** removed from `SaveParams`: BaseSchema still
 carries the field, so the `.omit()` in `types.ts` is what keeps them out. See "SaveParams shapes" in
-`references/relations.md`.
+`relations.md`.
 
 ## searchText
 
 Consolidates several columns into one generated text column for pg_trgm fuzzy search. Pair it with a
-GIN trigram index — `references/indexes.md`.
+GIN trigram index — `indexes.md`.
 
 ```json
 {
@@ -167,7 +167,7 @@ name matching no prop fails with `searchText source column "<name>"을(를) 찾�
 | `json` (`z.array(z.string())`) | `sonamu_jsonb_array_agg(col)` | `sonamu_jsonb_array_agg(col, false)` |
 
 With a `string[]` or `json` source, the helper function DDL is inserted into the migration
-automatically. Query usage is in `sonamu-query`'s `references/search.md`, "pg_trgm Fuzzy Search".
+automatically. Query usage is in `sonamu-query`.
 
 ## OrderBy and SearchField enums
 

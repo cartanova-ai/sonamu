@@ -5,8 +5,8 @@ description: Configures a Sonamu project through sonamu.config.ts and its dotenv
 
 # Sonamu Configuration
 
-Configuration lives in two places, both under the API package root (`packages/api` in a generated
-project). Sonamu calls that directory the api root; its parent is the app root, which is what
+Configuration lives in two places, both under the API package root. Sonamu calls that directory the
+api root; its parent is the app root, which is what
 `api.dir` and `sync.targets` are relative to.
 
 | File | Holds |
@@ -85,11 +85,11 @@ export default defineConfig({
 | Key | Required | Effect |
 | --- | --- | --- |
 | `projectName` | | Base name for every generated database name, lowercased with non-alphanumerics collapsed to `_`. Omitted means `sonamu` |
-| `api.dir` | ✓ | Api-root directory name relative to the app root — `"api"` for `packages/api`. Used to resolve generated i18n and dictionary files |
+| `api.dir` | ✓ | API-root directory name relative to the app root. Used to resolve generated i18n and dictionary files |
 | `api.route.prefix` | ✓ | Prefix every generated route is mounted under |
 | `api.timezone` | | Rewrites ISO-8601 UTC strings in responses to that zone's offset (`…T00:00:00.000Z` → `…T09:00:00+09:00` for `Asia/Seoul`), and schedules task workflows in it |
 | `i18n` | ✓ | `defaultLocale` plus `supportedLocales`; see `sonamu-i18n` |
-| `sync.targets` | ✓ | Sibling directory names under the app root that receive synced types — `["web"]` means `packages/web` |
+| `sync.targets` | ✓ | Sibling directory names under the app root that receive synced types |
 | `database` | ✓ | `database: "pg" \| "pgnative"` (default `pg`; `pgnative` needs the `pg-native` module) and `defaultOptions` knex options. See `references/database.md` |
 | `server.apiConfig` | ✓ | `contextProvider` and `guardHandler` are both required. See `references/server-options.md` |
 | `server.listen` | | Defaults to port `3000`, host `localhost` |

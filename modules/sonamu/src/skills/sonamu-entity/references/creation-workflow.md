@@ -1,7 +1,7 @@
 # Entity Creation Workflow
 
-Each step consumes the previous step's output, so the order is fixed by the pipeline. All commands run
-from `packages/api`.
+Each step consumes the previous step's output, so the order is fixed by the pipeline. Run all
+commands from the API package root.
 
 | # | Command / edit | Produces |
 | - | --- | --- |
@@ -12,7 +12,7 @@ from `packages/api`.
 | 5 | `pnpm sonamu migrate generate` → `migrate run` | migration file, then the table |
 | 6 | `pnpm sonamu scaffold model\|model_test\|view_list\|view_form {EntityId}` | model body and the admin screens |
 | 7 | `pnpm sonamu sync` again | `services.generated.ts`, `queries.generated.ts`, `sonamu.generated.http` |
-| 8 | `pnpm build` in `packages/api` and `packages/web` | confirms the generated code type-checks |
+| 8 | Run each affected package's build script | confirms the generated code type-checks |
 
 A running `pnpm dev` performs both syncs automatically through its file watcher, so steps 3 and 7
 happen on save while it is up.
@@ -20,7 +20,7 @@ happen on save while it is up.
 `model.ts` is not hand-written — `scaffold model` generates the class with `findById`, `findOne`,
 `findMany`, `save`, and `del` already implemented. It needs `{EntityId}SubsetKey` from
 `sonamu.generated.ts`, which is why it comes after the first sync. What the generated body leaves to
-finish is in `sonamu-query`'s `references/model.md`.
+finish is in `sonamu-query`.
 
 ## Step 1: Stub
 
@@ -49,7 +49,7 @@ object form for `enums` and `subsets`:
 `sonamu-fixture`.
 
 `stub entity` takes only an EntityId — a `parentId` child cannot be created through it. See "parentId"
-in `references/relations.md`.
+in `relations.md`.
 
 ## Step 2: Checklist before syncing
 
@@ -59,10 +59,10 @@ An invalid entity.json fails the sync with `Invalid entity.json schema: <path>`.
 | --- | --- |
 | All seven top-level keys present | `indexes` / `subsets` / `enums` written empty, not omitted |
 | No unknown keys anywhere | A typo yields `Unrecognized key`, not silence |
-| Every enum prop's `id` is a key in `enums` | `references/field-types.md` |
-| `subsets` use FieldExpr, `indexes` use column names | `role.id` vs `role_id` — `references/subset.md` |
+| Every enum prop's `id` is a key in `enums` | `field-types.md` |
+| `subsets` use FieldExpr, `indexes` use column names | `role.id` vs `role_id` — `subset.md` |
 | Subset `A` covers every prop | Scaffolded views only ever request `A` |
-| No `{name}_id` prop beside a BelongsToOne | The FK column is derived — `references/relations.md` |
+| No `{name}_id` prop beside a BelongsToOne | The FK column is derived — `relations.md` |
 | `dbDefault` quoting | A string starting with `"` is a literal, everything else is raw SQL |
 | `{EntityId}OrderBy` holds only `id-desc` | Extra values type-error in the scaffolded `exhaustive()` |
 
@@ -109,11 +109,11 @@ A child entity with `parentId` is typed through its parent by design and never g
 Sync writes across both packages, so these are the places to look when something downstream is
 missing:
 
-```bash
-grep "your-entity" packages/api/sonamu.lock                          # entity.json, model.ts, types.ts
-grep "YourEntityService" packages/web/src/services/services.generated.ts
-grep "entity.YourEntity" packages/web/src/i18n/sd.generated.ts       # FK field labels
-```
+Check these configured output locations:
+
+- `<api-root>/sonamu.lock` for the entity, Model, and types source entries.
+- Each `<sync-target>/src/services/services.generated.ts` for the generated service.
+- Each `<sync-target>/src/i18n/sd.generated.ts` for generated entity and FK labels.
 
 ## Step 4: Adjust SaveParams
 
@@ -150,9 +150,8 @@ export const FAQSaveParams = FAQBaseSchema.partial({
 
 The initial template omits generated and search-text props that exist when `types.ts` is first
 created. Review virtual props, later entity changes, and any model-owned ManyToMany input arrays
-against "SaveParams shapes" in `references/relations.md`. `sonamu-testing`'s linkable "Tasks to Do
-Immediately After Entity Creation" section consumes the resulting contract; production schema
-design stays in this entity skill.
+against "SaveParams shapes" in `relations.md`. `sonamu-testing` consumes the resulting contract;
+production schema design stays in this entity skill.
 
 ## Step 5: Migration
 

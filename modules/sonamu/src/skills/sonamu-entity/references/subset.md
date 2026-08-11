@@ -87,7 +87,7 @@ A dotted path whose leading segment is not a relation fails as `잘못된 FieldE
 
 Referencing a BelongsToOne by `.id` alone reads the FK column directly and skips the JOIN, so the
 relation form is both the valid one and the cheaper one. Index columns are in
-`references/indexes.md`.
+`indexes.md`.
 
 ## Relation fields (dot notation)
 
@@ -152,4 +152,4 @@ const result = await UserModel.executeSubsetQuery({
 });
 ```
 
-Query-side detail is in `sonamu-query`'s `references/model.md`.
+Query-side detail is in `sonamu-query`.

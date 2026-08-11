@@ -28,7 +28,7 @@ Unknown keys are accepted, so a typo in a key name is not rejected — it is sim
 | `dataSource`             | object   | How reference rows are found for a relation prop                          |
 
 Resolution order between these keys, and the post-processing that can overwrite the result, are in
-`references/generation.md`.
+`generation.md`.
 
 ## note
 
@@ -52,7 +52,7 @@ faker, which shows up as bland data rather than a failure.
 ```
 
 Only expressions starting with `faker.` are recognized. `fakerKO.*` and `fakerJA.*` are rejected with
-a warning and the prop falls through to normal default generation — see `references/generation.md`
+a warning and the prop falls through to normal default generation — see `generation.md`
 for the exact message and precedence. Setting this key excludes the prop from the shared row-level
 LLM request, but a non-empty `note` still sends it through the single-field LLM fallback before the
 generator. Do not put a generator on props that must stay consistent with each other:

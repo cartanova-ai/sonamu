@@ -203,6 +203,6 @@ setup files, and timeouts remain in `vitest.config.ts`.
 
 ## References
 
-- `references/quick-start.md` — config/import/hook order
-- `references/patterns.md` — wrappers, context, and module-cache-safe mocks
-- `references/pitfalls.md` — stage-based failure diagnosis
+- `quick-start.md` — config/import/hook order
+- `patterns.md` — wrappers, context, and module-cache-safe mocks
+- `pitfalls.md` — stage-based failure diagnosis

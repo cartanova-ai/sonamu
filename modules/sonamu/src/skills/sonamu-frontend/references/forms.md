@@ -72,4 +72,4 @@ Removal is available whenever the input is not disabled; there is no `clearable`
 
 Both upload modes ultimately call the `uploader` from `SonamuProvider`. Without one, an eager upload
 shows the component's upload-failed alert, and a lazy upload rejects during `submit()`. Configure the
-transport as described in `references/provider.md`.
+transport as described in `provider.md`.

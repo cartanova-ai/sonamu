@@ -67,10 +67,11 @@ assume them.
 Generated output — `types.ts`, `sonamu.generated.ts` — stays stale until a sync runs:
 
 ```bash
-cd packages/api
 pnpm sonamu sync          # regenerate what changed
 pnpm sonamu sync --force  # deletes sonamu.lock, then full re-sync
 ```
+
+Run these commands from the API package root.
 
 A running `pnpm dev` does the same through its file watcher, so no separate command is needed while
 it is up. The standalone command reads `dist/sonamu.config.js` and fails with `ERR_MODULE_NOT_FOUND`
