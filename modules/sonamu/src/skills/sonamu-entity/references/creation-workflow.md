@@ -8,7 +8,7 @@ from `packages/api`.
 | 1 | `pnpm sonamu stub entity {EntityId}` | `application/{entity}/{entity}.entity.json` |
 | 2 | Edit that entity.json | the schema everything below is derived from |
 | 3 | `pnpm sonamu sync` | `{entity}.types.ts`, `sonamu.generated.ts` |
-| 4 | Adjust `SaveParams` in the generated `types.ts` | writable fields only, nullables optional |
+| 4 | Review `SaveParams` in the generated `types.ts` | the application's save input contract |
 | 5 | `pnpm sonamu migrate generate` → `migrate run` | migration file, then the table |
 | 6 | `pnpm sonamu scaffold model\|model_test\|view_list\|view_form {EntityId}` | model body and the admin screens |
 | 7 | `pnpm sonamu sync` again | `services.generated.ts`, `queries.generated.ts`, `sonamu.generated.http` |
@@ -73,7 +73,9 @@ pnpm sonamu sync
 ```
 
 `sync` generates `{entity}.types.ts` and never overwrites it afterwards, so Step 4 is safe to make in
-place. Expected shape:
+place. The initial `SaveParams` starts from `BaseSchema`, automatically omits generated and
+search-text props, makes `id` partial, and also makes `created_at` partial when that prop exists. A
+simple entity without generated props has this shape:
 
 ```typescript
 import { z } from "zod";
@@ -115,25 +117,42 @@ grep "entity.YourEntity" packages/web/src/i18n/sd.generated.ts       # FK field 
 
 ## Step 4: Adjust SaveParams
 
-BaseSchema is generated from every prop, and `partial()` is applied to `id` and `created_at` only. Two
-edits follow from that, both in the generated `types.ts`:
+The scaffolded model exposes `SaveParams[]` as its `save` API input and registers each parsed object
+for persistence. `SaveParams` is therefore a production API contract, not a shape to loosen for a
+test.
 
-- **Nullable props are already `.nullable()`**, so `null` is accepted — what they are not is
-  *optional*. Add them to `partial()` so a save can omit them entirely.
-- **Non-writable props** — `virtual`, `generated`, `searchText` — need `.omit()`, and a ManyToMany id
-  array needs `.extend()`. Both are in "SaveParams shapes" in `references/relations.md`.
+An entity prop with `nullable: true` is already `.nullable()` in `BaseSchema`: callers may send
+`null`, but the key remains required. Database nullability does not by itself mean that callers may
+omit the key. Add a prop to `partial()` only when the application's create or update contract permits
+omission; if callers must choose either a value or explicit `null`, leave it required.
 
 ```typescript
 export const FAQSaveParams = FAQBaseSchema.partial({
   id: true,
   created_at: true,
-  category: true, // nullable
-  order_num: true, // nullable
+  category: true,
 });
 ```
 
-Full treatment: "Tasks to Do Immediately After Entity Creation" in `sonamu-testing`'s
-`references/writing-plan.md`.
+Because `category` is already nullable in `BaseSchema`, this accepts a value, `null`, or omission. A
+separate `.extend()` is unnecessary unless the save contract replaces the generated field schema,
+for example to apply different validation or a custom JSON schema. When that replacement must accept
+both `null` and omission, declare it with `.nullish()`:
+
+```typescript
+export const FAQSaveParams = FAQBaseSchema.partial({
+  id: true,
+  created_at: true,
+}).extend({
+  order_num: z.number().int().nullish(),
+});
+```
+
+The initial template omits generated and search-text props that exist when `types.ts` is first
+created. Review virtual props, later entity changes, and any model-owned ManyToMany input arrays
+against "SaveParams shapes" in `references/relations.md`. `sonamu-testing`'s linkable "Tasks to Do
+Immediately After Entity Creation" section consumes the resulting contract; production schema
+design stays in this entity skill.
 
 ## Step 5: Migration
 

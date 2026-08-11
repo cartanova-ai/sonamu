@@ -143,35 +143,38 @@ no row can be inserted first.
 
 ## SaveParams shapes
 
-`{Entity}BaseSchema` is generated from **every** prop, including ones the database refuses writes to.
-Two adjustments are therefore made by hand in `{entity}.types.ts`, which sync writes once and never
-overwrites.
+`{Entity}BaseSchema` contains every prop, including props that are not direct table inputs. The
+initial `{entity}.types.ts` starts from that schema, automatically omits generated and `searchText`
+props that exist at creation time, then makes `id` and an existing `created_at` partial. Sync writes
+this file once and never overwrites it, so later entity changes need a review of the existing
+`SaveParams` rather than a fresh copy of the template.
 
 ### `.omit()` for non-writable props
 
-`virtual` props (no column at all), `generated` props, and `searchText` props are all in BaseSchema.
-The BaseSchema **type** lists them under `__virtual__`, `__virtual_query__`, and `__generated__`,
-which is how Puri rejects writes at the table level — but nothing strips them from a `SaveParams`
-derived from BaseSchema.
+`virtual` props remain in the initial `SaveParams` even though they have no table column. Omit both
+code and query virtual props so the public save schema does not accept values that the scaffolded
+model would pass to `ubRegister`:
 
 ```typescript
-export const ProductSaveParams = ProductBaseSchema.partial({
-  id: true,
-  created_at: true,
-}).omit({
-  display_name: true, // virtual
-  review_count: true, // virtual, virtualType: "query"
-  total_amount: true, // generated column
-  search_text: true, // searchText
-});
+export const ProductSaveParams = ProductBaseSchema.omit({
+  display_name: true,
+  review_count: true,
+}).partial({ id: true, created_at: true });
 ```
 
-Without it, a form or fixture is typed as if those fields were writable.
+Do not repeat generated or `searchText` keys that the initial template already placed in its
+`.omit({...})` mask. Zod validates omit masks lazily; parsing a schema that omits an already-removed
+key throws `Unrecognized key: "<key>"`.
+
+When a generated, `searchText`, or virtual prop is added **after** the one-time `types.ts` generation,
+add that new key exactly once to the existing omit mask. If the file has no omit mask yet, introduce
+one. BaseSchema metadata constrains Puri's table types, but it does not remove a declared key from a
+parsed `SaveParams` object.
 
 ### `.extend()` for ManyToMany
 
-BaseSchema has no field for a ManyToMany relation — the link lives in the join table — so add an id
-array:
+BaseSchema has no field for a ManyToMany relation because the link lives in the join table. Add an id
+array only when this model's save API owns that link set:
 
 ```typescript
 export const ProductSaveParams = ProductBaseSchema.partial({
@@ -182,10 +185,12 @@ export const ProductSaveParams = ProductBaseSchema.partial({
 });
 ```
 
-Name it `{relation_name}_ids` — `tags` → `tag_ids`. `positive()` rejects `0`, which catches an unset
-id passed through by accident. A bidirectional ManyToMany — both entities declaring a relation over
-the same join table — gets the id array on one side only, so there is a single writer for the join
-table while reads work from both directions.
+Name it `{singular_relation_name}_ids` — `tags` → `tag_ids`. `positive()` rejects `0`, which catches
+an unset id passed through by accident. The model must destructure this array before registering the
+base-table row, then register the corresponding join-table rows; `.extend()` alone would pass a
+non-column key to the default scaffolded `ubRegister` call. A bidirectional ManyToMany — both entities
+declaring a relation over the same join table — gets the id array on one side only, so there is a
+single writer for the join table while reads work from both directions.
 
 Whether the array is required or optional is the decision that matters on update. Required means
 every save must resupply the full set, including a save built from a row loaded through a subset:
@@ -196,8 +201,50 @@ const tag_ids = tags?.map((t) => t.id) ?? [];
 await ProductModel.save([{ ...rest, tag_ids, title: "Updated" }]);
 ```
 
-Writing the join table and removing links the request no longer contains is `ubUpsert`'s
-`cleanOrphans` option — see `sonamu-query`'s `references/upsert.md`.
+When the array replaces the full link set, register the parent and junction rows together, then
+flush and clean them in one transaction:
+
+```typescript
+async save(spa: ProductSaveParams[]): Promise<number[]> {
+  const puri = this.getPuri("w");
+
+  for (const { tag_ids, ...product } of spa) {
+    const productRef = puri.ubRegister("products", product);
+    for (const tagId of tag_ids) {
+      puri.ubRegister("products__tags", {
+        product_id: productRef,
+        tag_id: tagId,
+      });
+    }
+  }
+
+  return puri.transaction(async (trx) => {
+    const productIds = await trx.ubUpsert("products");
+    const junctionIds = await trx.ubUpsert("products__tags");
+
+    await trx
+      .table("products__tags")
+      .whereIn("product_id", productIds)
+      .whereNotIn("id", junctionIds)
+      .delete();
+
+    return productIds;
+  });
+}
+```
+
+The parent flush comes first so the junction rows' `UBRef` values resolve. The junction flush returns
+the IDs kept by this save, and the final delete covers every saved parent ID, including parents
+whose `tag_ids` were empty in a mixed batch. Puri delegates `whereNotIn` to Knex; an empty
+`junctionIds` array becomes a true condition (`1 = 1`), so the preceding parent filter removes all
+links for those saved parents.
+
+`cleanOrphans` only sees FK values present in registered junction rows and skips cleanup unless each
+named FK column has a non-empty collected value set. It is sufficient only when every parent whose
+links are being replaced contributes at least one junction row. An empty array contributes no FK
+value; if all arrays are empty, `ubUpsert()` returns `[]` before cleanup. Use the explicit delete
+pattern above whenever empty sets or mixed batches are valid. The full `cleanOrphans` contract is in
+`sonamu-query`'s `references/upsert.md`.
 
 ## parentId — a child managed through its parent
 
