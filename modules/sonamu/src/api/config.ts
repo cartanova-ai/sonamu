@@ -64,6 +64,41 @@ export type SonamuTestConfig = {
   devRunner?: SonamuDevRunnerConfig;
 };
 
+export type ZodCompilerApiMode = false | "jit" | "aot";
+export type ZodCompilerConfig =
+  | false
+  | {
+      api?: ZodCompilerApiMode;
+    };
+export type NormalizedZodCompilerPolicy = {
+  api: ZodCompilerApiMode;
+  targets: Record<string, never>;
+};
+
+export function normalizeZodCompilerPolicy(
+  value: unknown,
+  _syncTargets: readonly string[] = [],
+): NormalizedZodCompilerPolicy {
+  if (value === undefined || value === false) {
+    return { api: false, targets: {} };
+  }
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("validation.zodCompiler must be false or an object");
+  }
+
+  const policy = value as Record<string, unknown>;
+  const api = policy.api ?? false;
+  if (api !== false && api !== "jit" && api !== "aot") {
+    throw new Error("validation.zodCompiler.api must be false, 'jit', or 'aot'");
+  }
+
+  if ("targets" in policy) {
+    throw new Error("validation.zodCompiler.targets is not supported in the API-only phase");
+  }
+
+  return { api, targets: {} };
+}
+
 export type SonamuConfig<TSinkId extends string = string, TFilterId extends string = string> = {
   projectName?: string;
 
@@ -90,6 +125,10 @@ export type SonamuConfig<TSinkId extends string = string, TFilterId extends stri
 
   sync: {
     targets: string[]; // "web", "app" 등
+  };
+
+  validation?: {
+    zodCompiler?: ZodCompilerConfig;
   };
 
   database: {
