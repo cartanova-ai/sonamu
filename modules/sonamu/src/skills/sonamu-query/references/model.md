@@ -1,12 +1,23 @@
-# Model — Structure, CRUD, Subset Queries
+# Model: Subsets, Lists, Counts, and Filters
 
-## Basic Structure
+## Generated Model contract
+
+`BaseModelClass` supplies Puri and subset execution helpers. The generated Model defines
+`findById`, `findOne`, `findMany`, `save`, and `del`; they are not inherited CRUD methods.
 
 ```typescript
-import { api, BaseModelClass, ListResult, NotFoundException } from "sonamu";
+import {
+  api,
+  asArray,
+  BaseModelClass,
+  exhaustive,
+  NotFoundException,
+  Puri,
+  type ListResult,
+} from "sonamu";
 import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
-import type { UserListParams, UserSaveParams } from "./user.types";
+import type { UserListParams } from "./user.types";
 
 class UserModelClass extends BaseModelClass<
   UserSubsetKey,
@@ -17,348 +28,203 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-}
 
-export const UserModel = new UserModelClass();
+  async findById<T extends UserSubsetKey>(
+    subset: T,
+    id: number,
+  ): Promise<UserSubsetMapping[T]> {
+    const { rows } = await this.findMany(subset, { id, num: 1, page: 1 });
+    if (!rows[0]) throw new NotFoundException(`User ${id} not found`);
+    return rows[0];
+  }
+
+  async findOne<T extends UserSubsetKey>(
+    subset: T,
+    listParams: UserListParams,
+  ): Promise<UserSubsetMapping[T] | null> {
+    const { rows } = await this.findMany(subset, { ...listParams, num: 1, page: 1 });
+    return rows[0] ?? null;
+  }
+
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+  async findMany<T extends UserSubsetKey, LP extends UserListParams>(
+    subset: T,
+    rawParams?: LP,
+  ): Promise<ListResult<LP, UserSubsetMapping[T]>> {
+    const params = {
+      num: 24,
+      page: 1,
+      search: "id" as const,
+      orderBy: "id-desc" as const,
+      ...rawParams,
+    } satisfies UserListParams;
+
+    const { qb } = this.getSubsetQueries(subset);
+    if (params.id) qb.whereIn("users.id", asArray(params.id));
+
+    if (params.search && params.keyword) {
+      if (params.search === "id") qb.where("users.id", Number(params.keyword));
+      else exhaustive(params.search);
+    }
+
+    if (params.orderBy === "id-desc") qb.orderBy("users.id", "desc");
+    else if (params.orderBy) exhaustive(params.orderBy);
+
+    return this.executeSubsetQuery({ subset, qb, params });
+  }
+}
 ```
 
-## CRUD Pattern
+Keep the second `findMany` generic (`LP`) and return `ListResult<LP, ...>`. Replacing it with the
+broad `UserListParams` type loses the conditional result shape for calls that pass a literal
+`queryMode`.
 
-Sonamu Model provides the following basic methods:
+`findById` delegates to `findMany`, limits the list to one row, and throws when the row is absent.
+`findOne` has the same list semantics but returns `null`. Neither method is a primary-key shortcut:
+all default filters, generated subset joins/loaders, and count behavior in `findMany` still run.
 
-| Method     | Purpose                | Notes              |
-| ---------- | ---------------------- | ------------------ |
-| `findById` | Retrieve single record |                    |
-| `findMany` | Retrieve list          |                    |
-| `save`     | Create/update          | upsert behavior    |
-| `del`      | Delete                 | Note: not `delete` |
+## Count, list, and pagination semantics
 
-Avoiding JavaScript reserved words: `delete` is a JS reserved word, so it is named `del`. While TypeScript allows `delete` as a method name without a compile error, it can cause runtime issues, so Sonamu uses `del`.
+`executeSubsetQuery()` treats an omitted `queryMode` as `"both"`.
 
-### findById
+| `queryMode` | Queries | Result |
+| --- | --- | --- |
+| `"both"` or omitted | count, then list | `{ rows, total }` |
+| `"list"` | list only | `{ rows }` |
+| `"count"` | count only | `{ total }` |
+
+- `page` is one-based. A positive `num` applies `LIMIT num OFFSET num * (page - 1)`.
+- `num: 0` applies neither limit nor offset, so the list contains every matching row.
+- Count clones the subset query, clears order/limit/offset and selection, then executes
+  `COUNT(*)::integer`.
+- Count is over SQL rows, not distinct entity IDs. A retained one-to-many JOIN can multiply
+  `total`. `optimizeCountQuery: true` removes LEFT JOIN aliases unused by WHERE, but it is not a
+  distinct count and cannot remove joins required by filters.
+- Loaders, hydration, enhancers, and internal-field removal run only for list rows.
+
+The generic result follows the input type, so retain a literal mode at the callsite:
 
 ```typescript
-@api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "User" })
-async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
-  const { rows } = await this.findMany(subset, { id, num: 1, page: 1 });
-  if (!rows[0]) throw new NotFoundException(`User ID ${id} not found`);
-  return rows[0];
-}
+const { rows } = await UserModel.findMany("A", { queryMode: "list" });
+const { total } = await UserModel.findMany("A", { queryMode: "count" });
 ```
 
-### findMany
+## Generated subset queries and typing
+
+Generated subset queries select to-one relation fields with JOINs and load to-many relations in
+follow-up queries. A to-one relation whose subset field is only `relation.id` can select its local
+foreign key without a JOIN. `executeSubsetQuery()` hydrates flattened aliases into nested objects.
+A nested object from a nullable LEFT JOIN is inferred as `object | null`; its own nullable columns
+remain nullable.
 
 ```typescript
-@api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "Users" })
-async findMany<T extends UserSubsetKey>(
-  subset: T,
-  params: UserListParams = { num: 10, page: 1 }
-): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
-  const { qb } = this.getSubsetQueries(subset);
-
-  if (params.id) qb.whereIn("users.id", asArray(params.id));
-  if (params.keyword) qb.where("users.email", "like", `%${params.keyword}%`);
-  if (params.orderBy === "id-desc") qb.orderBy("users.id", "desc");
-
-  return this.executeSubsetQuery({ subset, qb, params });
-}
+const row = await this.getPuri("r")
+  .table("employees")
+  .leftJoin({ department: "departments" }, "employees.department_id", "department.id")
+  .select({
+    id: "employees.id",
+    department: {
+      id: "department.id",
+      name: "department.name",
+    },
+  })
+  .first();
+// { id: number; department: { id: number; name: string } | null }
 ```
 
-### save
+Puri declares the awaited `first()` result as the selected object type, although Knex can return
+`undefined` at runtime when no employee matches. Guard `row` when absence is possible even though
+the compiler does not enforce it.
 
-```typescript
-@api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
-async save(spa: UserSaveParams[]): Promise<number[]> {
-  const wdb = this.getPuri("w");
-  spa.forEach((sp) => wdb.ubRegister("users", sp));
-
-  return wdb.transaction(async (trx) => {
-    return trx.ubUpsert("users");
-  });
-}
-```
-
-### del
-
-```typescript
-@api({ httpMethod: "POST", guards: ["admin"] })
-async del(ids: number[]): Promise<number> {
-  const wdb = this.getPuri("w");
-  await wdb.transaction(async (trx) => {
-    return trx.table("users").whereIn("id", ids).delete();
-  });
-  return ids.length;
-}
-```
-
-## BaseModel Methods
-
-| Method                        | Description                                       |
-| ----------------------------- | ------------------------------------------------- |
-| `getPuri("r")`                | Read query builder                                |
-| `getPuri("w")`                | Write query builder                               |
-| `getSubsetQueries(subset)`    | Subset query builder (returns `{ qb, onSubset }`) |
-| `executeSubsetQuery(options)` | Execute subset query                              |
-| `createEnhancers(enhancers)`  | Enhancer object creation helper (type inference)  |
-
-## getSubsetQueries
+`getSubsetQueries(subset)` returns two views of the same runtime query:
 
 ```typescript
 const { qb, onSubset } = this.getSubsetQueries(subset);
+qb.where("users.deleted_at", null); // valid for every subset query
 
-// qb: query builder for adding conditions
-qb.where("users.status", "active");
-
-// onSubset: when you need the type for a specific subset
-const typedQb = onSubset("A"); // infers as subset A's type
+if (subset === "P") {
+  onSubset("P").where("employee__department.name", departmentName);
+}
 ```
 
-## executeSubsetQuery Options
+`onSubset("P")` changes only the TypeScript view; it neither switches the selected subset nor adds
+its JOINs at runtime. Guard it with the same runtime subset condition. Passing the wrong key can
+produce SQL that references an alias absent from the active generated query. The array overload
+`onSubset(["A", "P"])` exposes the intersection of those subset query types.
+
+When a condition needs a JOIN that some generated subsets already contain, use `ensureJoin()` or
+`ensureLeftJoin()` rather than `onSubset()`; see `puri.md`.
+
+## Computed and internal fields
+
+Use `appendSelect()` for a query virtual declared on the Entity and `createEnhancers()` for a code
+virtual:
 
 ```typescript
-return this.executeSubsetQuery({
-  subset, // subset key
-  qb, // query builder
-  params, // ListParams (num, page, queryMode, sonamuFilter, etc.)
-  debug: true, // print query log (default: false)
-  optimizeCountQuery: true, // COUNT query optimization - removes unnecessary LEFT JOINs (default: false)
-  enhancers, // Enhancer function object (optional)
-});
-```
+const { qb } = this.getSubsetQueries(subset);
+qb.appendSelect({ normalized_name: Puri.lower("users.name") });
 
-The object returned by `executeSubsetQuery()` is not meant to be mutated. Replacing rows via
-`result.rows = result.rows.map(...)` or `(result as any).rows = ...` detaches them from the `total`
-count, so pagination reports the wrong page size. Virtual fields that need extra computation go
-through `enhancers` instead:
-
-```typescript
-// WRONG — breaks pagination
-const result = await this.executeSubsetQuery({ subset, qb, params });
-(result as any).rows = result.rows.map((row) => ({ ...row, extra: "value" }));
-return result as any;
-
-// CORRECT — enhancers pattern
 const enhancers = this.createEnhancers({
-  A: (row) => ({ ...row, extra: "value" }),
+  A: (row) => ({ ...row, display_name: row.normalized_name.trim() }),
+  P: (row) => ({ ...row, display_name: row.normalized_name.trim() }),
 });
+
 return this.executeSubsetQuery({ subset, qb, params, enhancers });
 ```
 
-### queryMode
+Generated `subsetsInternal` fields participate in the query and are available to enhancers, then
+are removed from returned rows. If a subset's declared mapping contains a code virtual not produced
+by its generated query/loaders, the enhancer for that subset is required by the type contract.
 
-Pass queryMode in params to control the return value:
+## `sonamuFilter`
 
-```typescript
-// List only (skip COUNT query) - performance optimization
-const { rows } = await this.findMany(subset, { ...params, queryMode: "list" });
-
-// Count only (skip list)
-const { total } = await this.findMany(subset, { ...params, queryMode: "count" });
-
-// Both (default)
-const { rows, total } = await this.findMany(subset, { ...params, queryMode: "both" });
-```
-
-### sonamuFilter (FilterQuery)
-
-Automatically apply filter conditions via params.sonamuFilter:
-
-Prerequisite: The corresponding prop in entity.json must have `"toFilter": true` set. Fields without this setting are excluded from filtering.
+`executeSubsetQuery()` normalizes and validates `params.sonamuFilter` before applying it. Runtime
+validation accepts only Entity props with `toFilter: true`; a non-filterable field, unsupported
+operator, malformed `in`/`between` value, or invalid enum value throws before the list/count query.
 
 ```typescript
-// Filter passed from the client
 const params = {
-  num: 10,
+  num: 24,
   page: 1,
   sonamuFilter: {
-    status: "active", // eq (default)
-    age: { gte: 18 }, // >=
-    role: { in: ["admin", "user"] },
-    email: { contains: "@test" }, // LIKE %...%
+    status: { in: ["active", "paused"] },
+    budget: { gte: 1000, lte: 5000 },
+    title: { contains: "launch" },
+    deleted_at: { isNull: true },
   },
 };
-
-// Automatically applied in the Model
-return this.executeSubsetQuery({ subset, qb, params });
 ```
 
-Allowed operators by type:
+A direct scalar is equality. Operator objects may contain more than one operator; they are applied
+with AND.
 
-| Type              | Operators                                                            |
-| ----------------- | -------------------------------------------------------------------- |
-| `string`          | eq, ne, contains, startsWith, endsWith, in, notIn, isNull, isNotNull |
-| `integer`         | eq, ne, gt, gte, lt, lte, in, notIn, between, isNull, isNotNull      |
-| `numeric`         | eq, ne, gt, gte, lt, lte, in, notIn, between, isNull, isNotNull      |
-| `boolean`         | eq, ne, isNull, isNotNull                                            |
-| `date`/`datetime` | eq, ne, before, after, between, isNull, isNotNull                    |
-| `enum`            | eq, ne, in, notIn, isNull, isNotNull                                 |
-| `json`            | isNull, isNotNull                                                    |
+| Prop type | Operators |
+| --- | --- |
+| string | `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in`, `notIn`, `isNull`, `isNotNull` |
+| integer, numeric | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull` |
+| boolean | `eq`, `ne`, `isNull`, `isNotNull` |
+| date, datetime | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull` |
+| enum | `eq`, `ne`, `in`, `notIn`, `isNull`, `isNotNull` |
+| JSON | `isNull`, `isNotNull` |
 
-Operator examples:
+`between: [min, max]` becomes `>= min AND <= max`. URL strings that look numeric or boolean are
+normalized; other strings, including date strings, stay strings. For OR groups, correlated
+conditions, or relation columns, compose the Puri query directly instead of forcing them into
+`sonamuFilter`.
 
-| Operator              | SQL             | Example                                   |
-| --------------------- | --------------- | ----------------------------------------- |
-| `eq` (default)        | `=`             | `{ status: "active" }`                    |
-| `ne`                  | `!=`            | `{ status: { ne: "deleted" } }`           |
-| `gt`, `gte`           | `>`, `>=`       | `{ age: { gte: 18 } }`                    |
-| `lt`, `lte`           | `<`, `<=`       | `{ price: { lte: 1000 } }`                |
-| `in`, `notIn`         | `IN`, `NOT IN`  | `{ role: { in: ["a", "b"] } }`            |
-| `contains`            | `LIKE %...%`    | `{ name: { contains: "kim" } }`           |
-| `startsWith`          | `LIKE ...%`     | `{ code: { startsWith: "A" } }`           |
-| `endsWith`            | `LIKE %...`     | `{ ext: { endsWith: ".pdf" } }`           |
-| `isNull`, `isNotNull` | `IS NULL`       | `{ deleted_at: { isNull: true } }`        |
-| `before`, `after`     | `<`, `>` (date) | `{ created_at: { after: "2024-01-01" } }` |
-| `between`             | `BETWEEN`       | `{ price: { between: [100, 500] } }`      |
+## TS2589 and subset-query type depth
 
-Type definition (`ApplySonamuFilter`):
+For `Type instantiation is excessively deep and possibly infinite` around a Model query:
 
-```typescript
-import type { ApplySonamuFilter } from "sonamu";
-
-// Define sonamuFilter type in ListParams
-type ProjectListParams = {
-  num: number;
-  page: number;
-  sonamuFilter?: ApplySonamuFilter<
-    ProjectSubsetA, // entity type
-    "id" | "created_at", // fields to exclude (TOmitKeys)
-    "budget" // fields to treat as numeric (TNumericKeys)
-  >;
-};
-```
-
-## Enhancers
-
-Post-query processing for virtual field computation and similar needs:
-
-```typescript
-// Define enhancer
-const enhancers = this.createEnhancers({
-  A: async (row) => ({
-    ...row,
-    fullName: `${row.first_name} ${row.last_name}`,
-  }),
-  D: async (row) => ({
-    ...row,
-    age: calculateAge(row.birth_date),
-  }),
-});
-
-// Use in executeSubsetQuery
-return this.executeSubsetQuery({ subset, qb, params, enhancers });
-```
-
-## Types File
-
-```typescript
-// user.types.ts
-import { z } from "zod";
-import {
-  UserOrderBy,
-  UserSearchField,
-  UserBaseSchema,
-  UserBaseListParams,
-} from "../sonamu.generated";
-
-export const UserListParams = UserBaseListParams;
-export type UserListParams = z.infer<typeof UserListParams>;
-
-// Basic pattern: partial from BaseSchema
-export const UserSaveParams = UserBaseSchema.partial({
-  id: true,
-  created_at: true,
-});
-export type UserSaveParams = z.infer<typeof UserSaveParams>;
-```
-
-### SaveParams Patterns
-
-Basic pattern (no relations):
-
-```typescript
-import { UserBaseSchema, UserBaseListParams } from "../sonamu.generated";
-
-export const UserListParams = UserBaseListParams;
-export type UserListParams = z.infer<typeof UserListParams>;
-
-export const UserSaveParams = UserBaseSchema.partial({
-  id: true,
-  created_at: true,
-});
-export type UserSaveParams = z.infer<typeof UserSaveParams>;
-```
-
-If a ManyToMany relation exists:
-
-```typescript
-// ManyToMany relation: add {relation_name}_ids array
-export const ProjectSaveParams = ProjectBaseSchema.partial({
-  id: true,
-  created_at: true,
-})
-  .extend({
-    employee_ids: z.array(z.number().int().positive()),
-    tag_ids: z.array(z.number().int().positive()),
-  })
-  .omit({
-    // omit virtual fields, system-generated fields, etc.
-    virtual_test: true,
-  });
-export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
-```
-
-Handling nullable fields in BelongsToOne relations:
-
-```typescript
-// Nullable relations are automatically optional, so no extra partial is needed
-export const ResponseSaveParams = ResponseBaseSchema.partial({
-  id: true,
-  created_at: true,
-  updated_at: true, // also make timestamp fields partial
-});
-export type ResponseSaveParams = z.infer<typeof ResponseSaveParams>;
-```
-
-Reference working code:
-
-- `sonamu/examples/miomock/api/src/application/project/project.types.ts` - ManyToMany SaveParams example
-- `sonamu/examples/miomock/api/src/application/employee/employee.types.ts` - BelongsToOne SaveParams example
-
-### Handling Relations in the Model
-
-Removing relation objects on update:
-
-```typescript
-// Pattern used in tests for updates
-const original = await UserModel.findById("A", userId);
-
-// Remove relation object and extract FK only
-const { institution, ...userData } = original;
-
-await UserModel.save([
-  {
-    ...userData,
-    institution_id: institution?.id ?? null, // explicitly add FK
-    name: "Updated Name",
-  },
-]);
-```
-
-ManyToMany save:
-
-```typescript
-// ManyToMany is passed as an _ids array
-await ProjectModel.save([
-  {
-    id: projectId,
-    title: "Updated",
-    employee_ids: [1, 2, 3],
-    tag_ids: [4, 5],
-  },
-]);
-```
-
-Reference working code:
-
-- `sonamu/examples/miomock/api/src/application/project/project.model.ts` - ManyToMany save implementation
-- `sonamu/examples/miomock/api/src/application/project/project.model.test.ts` - Save test example
+1. Keep the generated `SubsetKey`, `SubsetMapping`, subset-query object, and loader-query object as
+   the four `BaseModelClass` generic arguments. Hand-written aggregate Puri generics make the type
+   graph larger and can hide the actual generated contract.
+2. Add common conditions through `qb`; use a runtime subset guard plus `onSubset(key)` only for an
+   alias unique to that subset.
+3. Move a long computed expression behind the correctly typed `Puri.rawString`, `rawNumber`,
+   `rawBoolean`, or `rawDate` helper. Bind values in its parameter array.
+4. Split the chain into named steps to identify the operation that expands the type. Do not cast the
+   entire Puri chain to `any`: that also disables column, nullability, and select-shape checks.
+5. If the missing operation is not public Puri surface, keep the untyped boundary to
+   `rawQuery()`/`.knex`, inspect its SQL and bindings, and explicitly type only the returned value.
+   The supported boundaries and their trade-offs are in `puri.md`.

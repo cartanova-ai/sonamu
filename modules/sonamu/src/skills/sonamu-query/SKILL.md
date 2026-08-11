@@ -1,46 +1,40 @@
 ---
 name: sonamu-query
-description: Reads and writes data through Sonamu Models and the Puri query builder. Use when implementing a Model CRUD method, writing a SELECT/WHERE/JOIN query, batch-saving relation data, or when a query returns unexpected rows or an excessively deep type error. Covers BaseModelClass, findMany, executeSubsetQuery, getPuri, transactions, UpsertBuilder, tsvector and PGroonga full-text search, pgvector, and pg_trgm.
+description: Typed Model, Puri, and UpsertBuilder queries. Use when implementing findById/findOne/findMany, pagination, filters, joins, sorting, transactions, relation/batch saves, standalone PostgreSQL text search, PGroonga, pg_trgm, or pgvector query composition, or diagnosing row/TS2589 errors. Covers ListResult, WhereGroup, ensureJoin, UBRef, and cleanOrphans; use sonamu-vector for embedding and chunking.
 ---
 
-# Sonamu Data Access
+# Sonamu Query and Persistence
 
-Working code references:
+Start with the reference for the operation being changed. The generated Model is the baseline for
+ordinary CRUD; add only the filters, computed fields, relations, or persistence behavior the task
+needs.
 
-- `sonamu/examples/miomock/api/src/application/employee/employee.model.ts` — basic CRUD
-- `sonamu/examples/miomock/api/src/application/project/project.model.ts` — ManyToMany save
-- `sonamu/examples/miomock/api/src/application/project/project.model.test.ts` — tests
+## Reference map
 
-## Reference Map
-
-| Need | Read |
+| Task | Read |
 | --- | --- |
-| Model class structure, CRUD methods, getSubsetQueries, executeSubsetQuery options, enhancers, types file | `references/model.md` |
-| Transactions, validation patterns, orderBy after scaffolding, code conventions | `references/model-patterns.md` |
-| SELECT, WHERE, JOIN, GROUP BY, INSERT/UPDATE/DELETE, result methods | `references/puri.md` |
-| tsvector / PGroonga full-text search, pgvector, pg_trgm fuzzy search | `references/search.md` |
-| Batch-saving relations, save order, ManyToMany, bulk insert, UpsertOptions | `references/upsert.md` |
+| Implement `findById`, `findOne`, or `findMany`; reason about subsets, loaders, count, pagination, filters, enhancers, or TS2589 | `references/model.md` |
+| Compose Puri SELECT/WHERE/JOIN/existence/sort queries, transactions, row locks, or use a typed escape hatch | `references/puri.md` |
+| Implement `save`, direct upserts, relation replacement, orphan cleanup, or batch insert/update | `references/upsert.md` |
+| Add PostgreSQL, PGroonga, pgvector, or pg_trgm search | `references/search.md` |
 
-Embedding generation and chunking live in the `sonamu-vector` skill.
-Subset definition lives in `sonamu-entity`.
+Subset declarations and relation shapes belong to `sonamu-entity`. Embedding generation and
+chunking belong to `sonamu-vector`; this skill covers only the database query.
 
-## Non-negotiable rules
+## Contract checkpoints
 
-Puri
-
-- Puri is the standard for BOTH reads and writes in ALL contexts (Model, Frame, scripts) — do NOT run queries on a raw `DB.getDB()` handle (exceptions: migration files, `db.ts`, tests, and the `.knex` escape hatch)
-- MUST use `getPuri("r")` for read queries, `getPuri("w")` for write queries
-- MUST include a WHERE condition for UPDATE/DELETE
-- Multiple write operations go inside `transaction()`, or a partial failure leaves half of them applied
-- Inside a Frame, use the associated Model's `getPuri` (Frame exposes only `getDB` / `getUpsertBuilder`)
-- Outside a Model, wrap knex with `new PuriWrapper(DB.getDB(which), new UpsertBuilder())`
-- Use the `puri.knex` escape hatch only for non-entity / framework-internal tables (e.g. `workflow_runs`)
-- JSON/JSONB columns are automatically JSON.stringify'd on insert/update
-
-UpsertBuilder
-
-- Used inside `transaction()` — it buffers writes and flushes them on `ubUpsert()`
-- `ubUpsert()` on FK-referenced tables first; the referencing rows need those IDs to exist
-- `UBRef` resolves only inside `ubRegister` — it is a deferred reference, not a value a query can use
-- Self-reference is auto-handled by level-based insertion
-- Unique index conflicts are auto-resolved by pre-fetching existing IDs
+- Import framework symbols from `"sonamu"`; import entity-specific subset, schema, and Model types
+  from the consuming project's generated and application modules.
+- `getPuri("r")` and `getPuri("w")` are available on Models and Frames. A Puri table is typed from
+  the generated `DatabaseSchemaExtend` augmentation.
+- `getSubsetQueries(subset)` starts from the generated SELECT/JOIN/loader plan. Add subset fields
+  with `appendSelect()` and compute code virtuals with `createEnhancers()`.
+- `executeSubsetQuery()` applies `sonamuFilter`, count/list mode, pagination, loaders, hydration,
+  enhancers, and internal-field removal. Its result shape follows the literal `queryMode` in the
+  `findMany` input type.
+- Puri has no public `exists()` or `whereExists()` method. Use `first()` for a standalone existence
+  check and a narrow bound raw/Knex boundary for a correlated `EXISTS` predicate.
+- `ubRegister()` buffers rows in the wrapper's `UpsertBuilder`; a transaction wrapper shares that
+  buffer. Flush referenced tables before rows containing their `UBRef`s.
+- Direct Puri `update()` and `delete()` do not require a predicate at runtime. An omitted `where`
+  updates or deletes the entire selected table.

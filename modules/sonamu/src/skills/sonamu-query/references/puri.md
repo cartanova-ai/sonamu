@@ -1,412 +1,242 @@
-# Puri — Query Building
+# Puri: Typed Query Composition
 
-## Starting a Query
+## Obtain a wrapper
+
+Models and Frames both expose `getPuri()`:
 
 ```typescript
-// Read
-const users = await this.getPuri("r").table("users").select({ id: "id", name: "username" });
-
-// Write
-await this.getPuri("w").table("users").where("id", 1).update({ is_active: false });
-
-// Using aliases
-const users = await db.table({ u: "users" }).select({ id: "u.id" });
+const rdb = this.getPuri("r");
+const wdb = this.getPuri("w");
 ```
 
-### Where to obtain a Puri instance
-
-Route every query — reads and writes alike — through Puri. Do NOT run queries directly on a raw `getDB()` knex handle (the only exceptions are migration files, `db.ts`, tests, and the `.knex` escape hatch below).
+In a standalone script, the public wrapper can be created explicitly after Sonamu/DB initialization:
 
 ```typescript
-// Inside a Model
-const rows = await this.getPuri("r").table("users").select({ id: "id" });
-
-// Inside a Frame — Frame has no getPuri (only getDB / getUpsertBuilder),
-// so use the associated Model's getPuri
-const rows = await UserModel.getPuri("r").table("users").select({ id: "id" });
-
-// Outside a Model (seed / batch / monitoring scripts) — wrap knex in a PuriWrapper
 import { DB, PuriWrapper, UpsertBuilder } from "sonamu";
-const puri = new PuriWrapper(DB.getDB("r"), new UpsertBuilder());
-const rows = await puri.table("users").select({ id: "id" });
+
+const db = new PuriWrapper(DB.getDB("r"), new UpsertBuilder());
 ```
 
-`UpsertBuilder` is a required constructor argument even for read-only wrappers; it simply stays unused for pure reads.
-
-### Escape hatch: `.knex` for non-entity / framework-internal tables
-
-Puri's typed `.table()` only knows registered entity tables. For framework-internal or unregistered tables (e.g. `workflow_runs`), reach the raw knex handle via `puri.knex` instead of calling `DB.getDB()` directly:
+`table()` and `from()` have the same overloads for a generated table name, an aliased table, or an
+aliased Puri subquery:
 
 ```typescript
-const puri = new PuriWrapper(DB.getDB("r"), new UpsertBuilder());
-const runs = await puri.knex.table("workflow_runs").where("status", "running").select("*");
+db.table("users");
+db.table({ author: "users" });
+db.from({ recent: recentUsersQuery });
 ```
 
-## SELECT
+The table names and column types come from the generated `DatabaseSchemaExtend` module
+augmentation. An unregistered table is therefore intentionally outside the typed `table()` surface.
 
-`.select()` takes an object argument, not strings. A string argument is spread
-character-by-character, producing SQL like `select "i" as "0", "d" as "1", ...` — valid SQL that
-selects nonsense. The type signature catches this, so it only slips through when the chain follows
-an `as any` cast.
+## SELECT and result types
 
-```typescript
-// WRONG — character spread bug
-db.table("files").select("files.entity_id", "files.file_type");
-
-// CORRECT
-db.table("files").select({ entity_id: "files.entity_id", file_type: "files.file_type" });
-```
+`select()` takes one object. Keys become result property names; values are typed columns, nested
+select objects, or `Puri` SQL expressions.
 
 ```typescript
-// Basic select
-const users = await db.table("users").select({ id: "id", name: "username" });
-
-// All columns
-const users = await db.table("users").selectAll();
-
-// Nested objects (auto-converted during hydration)
-db.select({
-  id: "users.id",
-  parent: {
-    id: "parent.id",
-    name: "parent.name",
-  },
-});
-
-// Append to existing select
-db.select({ id: "id" }).appendSelect({ name: "username" });
-```
-
-## Static Functions (for SELECT)
-
-### Aggregate Functions
-
-```typescript
-// COUNT
-const [{ total }] = await db.table("users").select({ total: Puri.count() });
-const [{ cnt }] = await db.table("users").select({ cnt: Puri.count("id") });
-
-// SUM / AVG / MAX / MIN
-db.select({
-  totalAmount: Puri.sum("amount"),
-  avgPrice: Puri.avg("price"),
-  maxScore: Puri.max("score"),
-  minAge: Puri.min("age"),
-});
-```
-
-### String Functions
-
-```typescript
-db.select({
-  fullName: Puri.concat("first_name", "' '", "last_name"),
-  upperName: Puri.upper("name"),
-  lowerEmail: Puri.lower("email"),
-});
-```
-
-### Raw SQL Expressions
-
-Bind parameters can be passed as the second argument `params`. Do not interpolate values directly into SQL; use params instead.
-
-```typescript
-// Without parameters
-db.select({
-  custom: Puri.rawString("COALESCE(nickname, username)"),
-  total: Puri.rawNumber("price * quantity"),
-  isActive: Puri.rawBoolean("status = 'active'"),
-  expireAt: Puri.rawDate("created_at + INTERVAL '30 days'"),
-  tags: Puri.rawStringArray("string_to_array(tags, ',')"),
-});
-
-// Bind with params array (prevents SQL injection)
-db.select({
-  score: Puri.rawNumber(
-    `word_similarity(?, items.title) * 5 + word_similarity(?, items.tags) * 2`,
-    [query, query],
-  ),
-  label: Puri.rawString(`COALESCE(??, ?)`, ["items.name", "Unspecified"]),
-});
-```
-
-## WHERE
-
-```typescript
-// Basic
-db.where("role", "admin");
-db.where("age", ">=", 18);
-db.where("deleted_at", null); // IS NULL
-db.where("deleted_at", "!=", null); // IS NOT NULL
-
-// Multiple conditions (AND)
-db.where("role", "admin").where("is_active", true);
-
-// IN / NOT IN
-db.whereIn("role", ["admin", "moderator"]);
-db.whereNotIn("status", ["deleted", "banned"]);
-
-// LIKE
-db.where("email", "like", `%${keyword}%`);
-
-// Raw WHERE
-db.whereRaw("EXTRACT(YEAR FROM created_at) = ?", [2024]);
-```
-
-### WHERE Grouping (Parentheses)
-
-```typescript
-// (role = 'admin' OR role = 'moderator') AND is_active = true
-db.whereGroup((g) => {
-  g.where("role", "admin").orWhere("role", "moderator");
-}).where("is_active", true);
-
-// OR group
-db.where("status", "active").orWhereGroup((g) => {
-  g.where("role", "admin").where("is_verified", true);
-});
-```
-
-### JSONB Containment (`@>`)
-
-Use `whereJsonSupersetOf()` to require a JSONB column to contain a JSON value. The column and
-containment value are checked against the generated Entity type, and the value is serialized and
-bound internally.
-
-```typescript
-db.table("products").whereJsonSupersetOf("metadata", { warranty: 2 });
-
-// Aliased columns are supported.
-db.table({ p: "products" }).whereJsonSupersetOf("p.metadata", {
-  tags: ["featured"],
-});
-```
-
-Inside a WHERE group, both AND and OR variants are available:
-
-```typescript
-db.whereGroup((g) => {
-  g.where("status", "active").orWhereJsonSupersetOf("metadata", {
-    tags: ["featured"],
+const rows = await db
+  .table("users")
+  .select({
+    id: "users.id",
+    email: "users.email",
+    normalizedName: Puri.lower("users.username"),
   });
+// Array<{ id: string; email: string; normalizedName: string }>
+```
+
+Do not pass string arguments to `select()`. If an `any` cast bypasses the signature, the runtime
+implementation treats the string as an object and can emit character-index aliases instead of the
+requested columns.
+
+For a generated subset query, extend both its SQL selection and inferred result with
+`appendSelect()`:
+
+```typescript
+const { qb } = this.getSubsetQueries(subset);
+qb.appendSelect({ score: Puri.rawNumber("COALESCE(??, 0)", ["users.score"]) });
+```
+
+Calling `select()` changes the Puri result type to the new selection. `appendSelect()` intersects the
+new selection with the existing result type. Both add SQL select clauses; neither should be used as
+a substitute for changing the Entity subset definition.
+
+Puri's result declarations retain the selected type:
+
+```typescript
+const rows = await query; // T[]
+const row = await query.first(); // T
+const ids = await query.pluck("id"); // Array<T["id"]>
+```
+
+The awaited type of `first()` is declared as `T`, but the underlying Knex query can return
+`undefined` when no row matches. Guard the runtime result whenever absence is possible; the
+compiler does not require that check.
+
+## WHERE and groups
+
+```typescript
+db.table("users")
+  .where("users.status", "active")
+  .where("users.age", ">=", 18)
+  .where("users.deleted_at", null)
+  .whereIn("users.role", ["admin", "member"])
+  .whereNotIn("users.id", blockedIds);
+```
+
+The typed comparison operators are `=`, `!=`, `<>`, `>`, `>=`, `<`, `<=`, `like`, `not like`,
+`ilike`, and `not ilike`. `where(column, null)` becomes `IS NULL`; `where(column, "!=", null)`
+becomes `IS NOT NULL`.
+
+Puri exposes OR through a group so the surrounding precedence is explicit:
+
+```typescript
+db.table("users")
+  .whereGroup((group) => {
+    group.where("users.role", "admin").orWhere("users.role", "owner");
+  })
+  .where("users.is_active", true);
+
+db.table("users").orWhereGroup((group) => {
+  group.where("users.role", "admin").where("users.is_verified", true);
 });
 ```
 
-Do not call `JSON.stringify()` yourself. For other JSONB operators such as `->>`, `->`, and `?`,
-continue to use parameterized `whereRaw()`.
+`WhereGroup` supports nested `whereGroup`/`orWhereGroup`, AND/OR `where`, `whereIn`, `whereNotIn`,
+and the grouped JSON/search variants. Top-level Puri deliberately has no general `orWhere()`.
 
-## JOIN
+For JSONB containment, use the typed serializer instead of pre-stringifying:
 
 ```typescript
-// INNER JOIN
+db.table("events").whereJsonSupersetOf("events.payload", {
+  context: { source: "api" },
+});
+```
+
+For an operation with no typed helper, bind runtime values:
+
+```typescript
+db.table("users").whereRaw("EXTRACT(YEAR FROM ??) = ?", ["users.created_at", year]);
+```
+
+## JOINs and aliases
+
+```typescript
 db.table("employees")
-  .join("users", "employees.user_id", "users.id")
-  .select({ empId: "employees.id", userName: "users.username" });
-
-// LEFT JOIN
-db.table("employees").leftJoin("departments", "employees.department_id", "departments.id");
-
-// Using aliases
-db.table({ e: "employees" })
-  .join({ u: "users" }, "e.user_id", "u.id")
-  .leftJoin({ d: "departments" }, "e.department_id", "d.id");
-
-// Complex JOIN conditions with callback
-db.table("orders").join("products", (j) => {
-  j.on("orders.product_id", "products.id").on("orders.store_id", "products.store_id");
-});
-
-// Subquery JOIN
-const subquery = db
-  .table("order_items")
-  .select({ order_id: "order_id", total: Puri.sum("amount") })
-  .groupBy("order_id");
-
-db.table("orders")
-  .join({ oi: subquery }, "orders.id", "oi.order_id")
-  .select({ id: "orders.id", total: "oi.total" });
+  .join({ user: "users" }, "employees.user_id", "user.id")
+  .leftJoin({ department: "departments" }, "employees.department_id", "department.id")
+  .select({
+    employeeId: "employees.id",
+    user: { id: "user.id", email: "user.email" },
+    department: { id: "department.id", name: "department.name" },
+  });
 ```
 
-### Reusing generated JOINs
+After more than one table is in scope, qualify columns with the table name or alias. Aliases also
+let the same physical table participate more than once.
 
-Use `ensureJoin()` or `ensureLeftJoin()` when a Model adds a JOIN that may already have been added
-by a Subset query.
+Generated subsets may have already registered a relation alias. Use `ensureJoin()` or
+`ensureLeftJoin()` for a simple physical-table equality JOIN that may already exist:
 
 ```typescript
-db.table("patient_timeline_events")
-  .ensureJoin(
-    { patient: "patients" },
-    "patient_timeline_events.patient_id",
-    "patient.id",
-  )
-  .where("patient.organization_id", organizationId);
+qb.ensureJoin({ company: "companies" }, "departments.company_id", "company.id").where(
+  "company.name",
+  companyName,
+);
 ```
 
-Puri compares JOINs by alias. If the alias, table, JOIN type, left column, and right column all
-match, the existing JOIN is reused. If the alias is new, the JOIN is added. Reusing an alias with a
-different definition throws an error before SQL execution.
+Puri compares the alias, physical table, JOIN kind, left column, and right column:
 
-Different aliases for the same physical table remain valid:
+- an identical registered JOIN is reused;
+- an unused alias adds the JOIN;
+- a different definition under the same alias throws
+  `Join alias "..." is already registered with a different definition.` before SQL execution.
+
+Ordinary `join()`/`leftJoin()` also reject a duplicate alias; the identical-definition error directs
+the caller to the matching `ensure*` method. `ensure*` does not accept callback or subquery JOINs,
+because their equivalence is opaque. Use distinct aliases for independent joins.
+
+## Existence queries
+
+There is no public Puri `exists()`, `whereExists()`, `whereNotExists()`, or column-to-column WHERE
+helper.
+
+For a standalone boolean, select one typed row:
 
 ```typescript
-db.table("documents")
-  .ensureJoin({ created_by: "users" }, "documents.created_by_id", "created_by.id")
-  .ensureJoin({ updated_by: "users" }, "documents.updated_by_id", "updated_by.id");
+const found = await db
+  .table("users")
+  .where("users.email", email)
+  .select({ id: "users.id" })
+  .limit(1)
+  .first();
+const exists = found !== undefined;
 ```
 
-`ensureJoin()` and `ensureLeftJoin()` support table equality JOINs only. Callback and subquery JOINs
-continue to use `join()` or `leftJoin()` and are not considered reusable.
-
-## ORDER BY & LIMIT
+For a correlated predicate, a bound `whereRaw()` is the smallest Puri-preserving boundary when the
+table and column identifiers are static:
 
 ```typescript
-db.orderBy("created_at", "desc").limit(20).offset(40); // Page 3
+db.table("projects").whereRaw(
+  `EXISTS (
+     SELECT 1 FROM project_members
+     WHERE project_members.project_id = projects.id
+       AND project_members.user_id = ?
+   )`,
+  [userId],
+);
 ```
 
-### NULLS position & array form
+Do not replace an existence predicate with a JOIN without checking cardinality: multiple matching
+children duplicate parent rows and can inflate both list results and `COUNT(*)`.
 
-`orderBy` has two overloads:
+When Knex's callback API is required, `query.rawQuery()` returns the underlying
+`Knex.QueryBuilder`; `wrapper.knex` exposes the raw connection for an unregistered table. Both
+boundaries discard Puri's schema/result inference for operations performed there. Keep the boundary
+local, bind values, and explicitly type or validate the returned row shape.
 
-1. Single column: `orderBy(column, direction?, nulls?)` — `nulls` is `"first" | "last"`
-2. Array: `orderBy(entries[])` — each entry is a column string, a `Puri.raw*` SQL expression, or an object `{ column, order?, nulls? }`
+## Sorting, limits, and locks
 
 ```typescript
-// Single column with NULLS position
-db.orderBy("published_at", "desc", "last");
-
-// Array form: multiple sort keys, per-key direction and NULLS
-db.orderBy([
+query.orderBy("created_at", "desc", "last");
+query.orderBy([
   { column: "is_pinned", order: "desc" },
   { column: "published_at", order: "desc", nulls: "last" },
-  "title", // bare string defaults to asc
+  "title",
 ]);
-
-// Sort by a SQL expression
-db.orderBy([Puri.rawNumber("view_count * 2"), { column: "id", order: "desc" }]);
+query.orderBy(Puri.rawNumber("COALESCE(??, 0)", ["score"]), "desc");
+query.limit(20).offset(40);
 ```
 
-## GROUP BY & HAVING
+`orderBy` accepts source columns, selected aliases, string/number SQL expressions, `asc`/`desc`,
+and `first`/`last` null placement. Generated `orderBy` enums are normally handled with an
+`exhaustive(params.orderBy)` fallback, so a newly generated enum value remains a compile-time
+prompt to add its query branch.
 
-```typescript
-db.table("orders")
-  .select({
-    userId: "user_id",
-    total: Puri.sum("amount"),
-    count: Puri.count(),
-  })
-  .groupBy("user_id")
-  .having("COUNT(*) > 5");
-
-// Column, operator, value form
-db.groupBy("user_id").having("count", ">", 10);
-```
-
-## INSERT
-
-```typescript
-// Basic INSERT
-await db.table("users").insert({ username: "john", email: "john@test.com" });
-
-// RETURNING
-const [{ id }] = await db.table("users").insert({ username: "john" }).returning("id");
-
-// Multiple columns RETURNING
-const [row] = await db.table("users").insert({ username: "john" }).returning(["id", "created_at"]);
-
-// All columns RETURNING
-const [user] = await db.table("users").insert({ username: "john" }).returning("*");
-```
-
-### INSERT onConflict (Upsert)
-
-```typescript
-// DO NOTHING
-await db.table("users").insert({ id: 1, username: "john" }).onConflict("id"); // or .onConflict("id", "nothing")
-
-// DO UPDATE - specific columns only
-await db
-  .table("users")
-  .insert({ id: 1, username: "john", email: "new@test.com" })
-  .onConflict("id", { update: ["username", "email"] });
-
-// DO UPDATE - with specified values
-await db
-  .table("users")
-  .insert({ id: 1, username: "john" })
-  .onConflict("id", {
-    update: {
-      username: "updated_john",
-      updated_at: Puri.rawDate("NOW()"),
-    },
-  });
-
-// Composite key conflict
-await db
-  .table("user_settings")
-  .insert({ user_id: 1, key: "theme", value: "dark" })
-  .onConflict(["user_id", "key"], { update: ["value"] });
-```
-
-## UPDATE
-
-```typescript
-await db.table("users").where("id", 1).update({ username: "updated" });
-
-// INCREMENT / DECREMENT
-await db.table("users").where("id", 1).increment("points", 10);
-await db.table("users").where("id", 1).decrement("credit", 100);
-```
-
-## DELETE
-
-```typescript
-await db.table("users").where("id", 1).delete();
-```
-
-## Result Methods
-
-| Method         | Returns                   | Description                     |
-| -------------- | ------------------------- | ------------------------------- |
-| `await query`  | `T[]`                     | Array result (Puri is Thenable) |
-| `first()`      | `Promise<T \| undefined>` | First record                    |
-| `pluck("col")` | `Promise<V[]>`            | Array of a specific column only |
-
-```typescript
-const users = await db.table("users").select({ id: "id" }); // T[]
-const user = await db.table("users").where("id", 1).first(); // T | undefined
-const ids = await db.table("users").where("role", "admin").pluck("id"); // number[]
-```
-
-## Utilities
-
-```typescript
-// Inspect query string
-const sql = db.table("users").where("id", 1).toQuery();
-
-// Debug log output (prints query to console, then continues chaining)
-await db.table("users").where("id", 1).debug().first();
-
-// Clone a query
-const baseQuery = db.table("users").where("is_active", true);
-const query1 = baseQuery.clone().where("role", "admin");
-const query2 = baseQuery.clone().where("role", "user");
-
-// Clear parts of a query
-db.clear("select"); // Clear SELECT clause
-db.clear("order"); // Clear ORDER BY
-db.clear("limit"); // Clear LIMIT
-db.clear("offset"); // Clear OFFSET
-
-// Remove a specific JOIN
-db.clearJoin("alias");
-```
+`limit()` and `offset()` reject negative values. `forUpdate()` and `forShare()` preserve the result
+type; use them inside the transaction that protects the subsequent decision/write.
 
 ## Transactions
 
 ```typescript
 await this.getPuri("w").transaction(async (trx) => {
-  await trx.table("users").where("id", fromId).decrement("points", amount);
-  await trx.table("users").where("id", toId).increment("points", amount);
-  await trx.table("point_logs").insert({ from_id: fromId, to_id: toId, amount });
+  const account = await trx
+    .table("accounts")
+    .where("accounts.id", accountId)
+    .forUpdate()
+    .first();
+
+  if (!account) throw new Error("Account not found");
+  await trx.table("accounts").where("accounts.id", accountId).update({ balance: nextBalance });
+  await trx.table("ledger_entries").insert({ account_id: accountId, amount });
 });
 ```
 
+The callback commits on return and rolls back on throw. Nested Puri transactions use a savepoint.
+The wrapper accepts `{ isolation, readOnly, dbPreset }`; `dbPreset` defaults to `"w"`. A Model or
+Frame `getPuri(dbPreset)` called within the matching transaction context resolves to its transaction
+wrapper, but using the callback's `trx` keeps the boundary explicit.
+
+Direct `insert()` and `update()` serialize registered JSON columns by replacing those properties on
+the passed object with JSON strings. `update()` and `delete()` accept an unfiltered table query, so
+predicate scope must be deliberate.

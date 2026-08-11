@@ -1,324 +1,203 @@
-# UpsertBuilder — Batch Saving Relation Data
+# Upsert and Persistence: Save, Relations, and Batches
 
-## UBRef Type
+## Generated save baseline
 
-The reference object returned by `ubRegister()`:
+The generated types file derives a write schema from `BaseSchema`, omits generated/search-text
+columns, and makes `id` plus `created_at` (when present) optional. Extend that schema for relation-ID
+arrays or other API inputs; keep the exported inferred type as the Model contract.
 
 ```typescript
-type UBRef = {
-  uuid: string; // unique identifier
-  of: string; // table name
-  use?: string; // field to reference (default: "id")
-};
+export const ProjectSaveParams = ProjectBaseSchema.omit({ search_text: true }).partial({
+  id: true,
+  created_at: true,
+}).extend({
+  member_ids: z.array(z.number().int().positive()),
+});
+export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 ```
 
-## Basic Pattern
+The ordinary Model save buffers rows, then flushes them through the same wrapper in a transaction:
+
+```typescript
+@api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+async save(spa: UserSaveParams[]): Promise<number[]> {
+  const wdb = this.getPuri("w");
+  for (const sp of spa) wdb.ubRegister("users", sp);
+
+  return wdb.transaction((trx) => trx.ubUpsert("users"));
+}
+```
+
+`ubRegister()` mutates the wrapper's `UpsertBuilder` and returns a `UBRef`. The transaction wrapper
+shares that builder, so rows registered before the callback are visible to `trx.ubUpsert()`.
+`ubUpsert()` returns IDs in flush processing order and clears the buffered rows for that table after
+a successful flush. Without self-references this follows registration order; self-references are
+returned in dependency-level order.
+
+## Upsert behavior
+
+UpsertBuilder performs these steps:
+
+1. EntityManager table metadata supplies unique indexes and JSON columns.
+2. Registered JSON values are serialized. A `UBRef.use` defaults to `"id"`.
+3. Rows without `id` are looked up by each non-null unique-index value; a match fills the existing
+   ID.
+4. The final statement inserts the rows and uses `ON CONFLICT (id) DO UPDATE`.
+
+This is convenient batch identity resolution, but it is not a single atomic natural-key upsert. If
+concurrent writers must arbitrate on a unique or composite key, use direct Puri conflict targeting:
+
+```typescript
+await this.getPuri("w")
+  .table("user_settings")
+  .insert({ user_id: userId, key, value })
+  .onConflict(["user_id", "key"], { update: ["value"] });
+```
+
+### Required fields on every call, including updates
+
+An UpsertBuilder update still executes an INSERT statement before the conflict branch. Every
+required column therefore needs an input value or database default even when `id` already exists.
+`inherit: ["created_at"]` removes that column from the UPDATE list; it does not make the column
+optional on the INSERT path.
+
+Registered rows should have compatible insert shapes within a flush. `ubUpdateBatch()` is the
+partial-update API when only selected columns should change.
+
+## `UBRef` order and self references
 
 ```typescript
 const wdb = this.getPuri("w");
+const companyRef = wdb.ubRegister("companies", { name: companyName });
+wdb.ubRegister("departments", { company_id: companyRef, name: departmentName });
 
-// Register data (returns UBRef)
-const userRef = wdb.ubRegister("users", { email: "john@test.com", username: "john" });
-
-// Use UBRef in related data
-wdb.ubRegister("employees", { user_id: userRef, department_id: deptId });
-
-// Save in order inside a transaction
 return wdb.transaction(async (trx) => {
-  await trx.ubUpsert("users"); // Save first (referenced by FK)
-  return trx.ubUpsert("employees"); // Save after (uses FK)
+  await trx.ubUpsert("companies");
+  return trx.ubUpsert("departments");
 });
 ```
 
-## Required fields on every call, including updates
+Flush a referenced table first. Flushing the child while it still contains a cross-table `UBRef`
+throws that the reference is unresolved. The reference is meaningful only inside buffered rows; it
+is not a value for a Puri WHERE clause.
 
-`ubUpsert` compiles to PostgreSQL `ON CONFLICT ... DO UPDATE`. That is a single statement, so an
-omitted NOT NULL field is not "left alone" on the update path — it is set to NULL, and the DB rejects
-it.
+Self-references within one table are topologically split into levels and resolved by a single
+`ubUpsert(table)` call. A missing target UUID or circular self-reference throws before the table can
+be fully flushed.
 
-```typescript
-// BAD - missing required field
-wdb.ubRegister("posts", {
-  id: 1,
-  title: "Updated Title",
-  // content required field missing! → ON CONFLICT UPDATE tries to set NULL → DB error
-});
-// Error: null value in column "content" violates not-null constraint
+## Replacing many-to-many relations
 
-// GOOD - all required fields included
-wdb.ubRegister("posts", {
-  id: 1,
-  title: "Updated Title",
-  content: "Updated Content", // required field included!
-  author_id: 1, // FK also included if required!
-});
-```
-
-How to identify required fields:
-
-1. Check props in entity.json
-2. Fields without `nullable: true` = required fields
-3. `id`, `created_at`, fields with `dbDefault` can be omitted
-
-```json
-// entity.json example
-{
-  "props": [
-    { "name": "id", "type": "integer" }, // can be omitted
-    { "name": "title", "type": "string" }, // required! (no nullable)
-    { "name": "content", "type": "string" }, // required! (no nullable)
-    { "name": "category", "type": "string", "nullable": true }, // optional
-    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP" } // can be omitted
-  ]
-}
-```
-
-## Save Order
-
-Save the table referenced by FK first:
+UpsertBuilder does not infer relation replacement from a parent `SaveParams`. Register the parent
+and junction rows, flush in FK order, then delete old junction rows not returned by this save:
 
 ```typescript
-await trx.ubUpsert("companies"); // 1. No dependencies
-await trx.ubUpsert("departments"); // 2. Needs company_id
-await trx.ubUpsert("users"); // 3. No dependencies
-await trx.ubUpsert("employees"); // 4. Needs user_id, department_id
-```
-
-## Model save Pattern
-
-```typescript
-@api({ httpMethod: "POST" })
-async save(spa: UserSaveParams[]): Promise<number[]> {
+async save(spa: ProjectSaveParams[]): Promise<number[]> {
   const wdb = this.getPuri("w");
-  spa.forEach((sp) => wdb.ubRegister("users", sp));
 
-  return wdb.transaction(async (trx) => {
-    return trx.ubUpsert("users");
-  });
-}
-```
-
-## Saving Related Data
-
-```typescript
-await this.getPuri("w").transaction(async (trx) => {
-  // Register User
-  const userRef = trx.ubRegister("users", {
-    email: data.email,
-    username: data.username,
-    password: bcrypt.hashSync(data.password, 10),
-  });
-
-  // Register Employee (using userRef)
-  trx.ubRegister("employees", {
-    user_id: userRef,
-    department_id: data.departmentId,
-    salary: data.salary,
-  });
-
-  // Save in order
-  await trx.ubUpsert("users");
-  const [employeeId] = await trx.ubUpsert("employees");
-  return employeeId;
-});
-```
-
-## Upsert (Insert or Update)
-
-```typescript
-// INSERT when no id
-wdb.ubRegister("users", { email: "new@test.com", username: "new" });
-
-// UPDATE when id is present
-wdb.ubRegister("users", { id: 1, email: "updated@test.com" });
-```
-
-Conflict handling: If the Entity has a unique index, automatically pre-fetches to populate the existing record's id, then performs UPDATE
-
-## ManyToMany Relationships
-
-```typescript
-await wdb.transaction(async (trx) => {
-  const projectRef = trx.ubRegister("projects", { name: "Project A" });
-
-  for (const empId of employeeIds) {
-    trx.ubRegister("projects__employees", {
-      project_id: projectRef,
-      employee_id: empId,
-    });
+  for (const { member_ids, ...project } of spa) {
+    const projectRef = wdb.ubRegister("projects", project);
+    for (const memberId of member_ids) {
+      wdb.ubRegister("project_members", {
+        project_id: projectRef,
+        member_id: memberId,
+      });
+    }
   }
 
-  await trx.ubUpsert("projects");
-  await trx.ubUpsert("projects__employees");
-});
-```
-
-## Self-Reference
-
-In hierarchical structures (e.g. categories, org charts), self-referential relationships are automatically processed level by level:
-
-```typescript
-await wdb.transaction(async (trx) => {
-  // Root category
-  const rootRef = trx.ubRegister("categories", { name: "Root", parent_id: null });
-
-  // Child category (references rootRef)
-  const childRef = trx.ubRegister("categories", { name: "Child", parent_id: rootRef });
-
-  // Grandchild category (references childRef)
-  trx.ubRegister("categories", { name: "Grandchild", parent_id: childRef });
-
-  // Internally processed level by level (Root → Child → Grandchild)
-  await trx.ubUpsert("categories");
-});
-```
-
-## Bulk Insert / Bulk Upsert (Large Datasets)
-
-Principle (same as regular saves): call `ubRegister` for every row outside the transaction, then call only `ubUpsert` / `ubInsertOnly` inside the transaction. Split large datasets with `chunkSize`. Calling `ubRegister` inside the transaction is reserved for the special case where a row depends on the real id produced by a preceding `ubUpsert`.
-
-### (a) Bulk insert inside a Model
-
-```typescript
-async createMany(params: PostCreateParams[]): Promise<number[]> {
-  const wdb = this.getPuri("w");
-  params.forEach((p) => wdb.ubRegister("posts", p));
-
   return wdb.transaction(async (trx) => {
-    return trx.ubInsertOnly("posts", { chunkSize: 5000 });
+    const projectIds = await trx.ubUpsert("projects");
+    const relationIds = await trx.ubUpsert("project_members");
+
+    await trx
+      .table("project_members")
+      .whereIn("project_members.project_id", projectIds)
+      .whereNotIn("project_members.id", relationIds)
+      .delete();
+
+    return projectIds;
   });
 }
 ```
 
-### (b) Standalone Puri (seed / batch scripts outside a Model)
+If every `member_ids` array is empty, `ubUpsert("project_members")` returns `[]` and the explicit
+delete removes all junction rows for the saved parents. Keeping registration and cleanup in the
+same transaction prevents a partially replaced relation set.
 
-Outside a Model there is no `this.getPuri("w")`, so build a `PuriWrapper` directly. Use `DB.getDB("w")` only in this script context — inside Models always use `getPuri("w")`.
+When destructuring relation arrays, retain the concrete SaveParams type. Casting the input to `any`
+also makes the remaining database column object `any`, so misspelled columns reach runtime.
 
-```typescript
-import { DB, PuriWrapper, UpsertBuilder } from "sonamu";
+## `cleanOrphans`
 
-const puri = new PuriWrapper(DB.getDB("w"), new UpsertBuilder());
-for (const row of rows) puri.ubRegister("audit_logs", row);
-
-await puri.transaction(async (trx) => {
-  await trx.ubInsertOnly("audit_logs", { chunkSize: 5000 }); // or ubUpsert
-});
-```
-
-### (c) Multiple tables in one transaction (FK order)
-
-Register every table outside the transaction, then upsert parents before children.
+`cleanOrphans` performs post-upsert cleanup for the FK values present in the registered rows:
 
 ```typescript
-const puri = new PuriWrapper(DB.getDB("w"), new UpsertBuilder());
-for (const row of postRows) puri.ubRegister("posts", row);
-for (const row of tagRows) puri.ubRegister("post_tags", row);
-
-await puri.transaction(async (trx) => {
-  await trx.ubInsertOnly("posts", { chunkSize: 5000 }); // parent first
-  await trx.ubInsertOnly("post_tags", { chunkSize: 5000 }); // child next
-});
+await trx.ubUpsert("order_items", { cleanOrphans: "order_id" });
 ```
 
-## ubInsertOnly (INSERT Only)
+After the upsert it collects each named FK column's non-empty value set, deletes rows whose FK is in
+each set, and excludes the IDs just returned. With multiple columns, those independent `WHERE IN`
+sets are combined with AND; they are not matched as an array of FK tuples.
 
-Perform INSERT without UPDATE:
+Cleanup is skipped unless every named FK column has at least one collected value. If no child row
+was registered, `ubUpsert()` returns before cleanup, so `cleanOrphans` cannot clear an empty
+replacement set. Use the explicit junction/child delete pattern above when an empty array means
+"remove all".
+
+## Batch operations
+
+### Insert only
 
 ```typescript
-await trx.ubInsertOnly("logs", { chunkSize: 1000 });
+const wdb = this.getPuri("w");
+for (const row of rows) wdb.ubRegister("audit_logs", row);
+
+const ids = await wdb.transaction((trx) =>
+  trx.ubInsertOnly("audit_logs", { chunkSize: 1000 }),
+);
 ```
 
-## ubUpdateBatch (Batch Update)
+`ubInsertOnly()` performs INSERT with RETURNING and does not handle conflicts. Duplicate unique
+values surface as database errors. `chunkSize` splits statements; the surrounding transaction is
+what makes all chunks atomic.
 
-Bulk UPDATE operations:
+### Batch partial update
 
 ```typescript
-// Register multiple records
-wdb.ubRegister("users", { id: 1, status: "active" });
-wdb.ubRegister("users", { id: 2, status: "active" });
-wdb.ubRegister("users", { id: 3, status: "inactive" });
+for (const row of rows) {
+  wdb.ubRegister("users", { id: row.id, status: row.status });
+}
 
-await wdb.transaction(async (trx) => {
-  await trx.ubUpdateBatch("users", {
-    chunkSize: 500, // batch size (default: 500)
-    where: "id", // WHERE condition column (default: "id")
-  });
-});
-
-// Composite key for WHERE condition
-await trx.ubUpdateBatch("user_settings", {
-  where: ["user_id", "setting_key"],
-});
+await wdb.transaction((trx) =>
+  trx.ubUpdateBatch("users", { chunkSize: 500, where: "id" }),
+);
 ```
 
-## UpsertOptions
+`ubUpdateBatch()` updates only the registered columns. `where` defaults to `"id"` and also accepts
+an array such as `["tenant_id", "external_id"]` for composite matching. It returns `void` and clears
+the processed buffer.
 
-Options for `ubUpsert()`:
+### Conditional mode
 
 ```typescript
-type UpsertOptions = {
-  chunkSize?: number; // batch size
-  cleanOrphans?: string | string[]; // FK column(s) to use as basis for deleting orphan records
-  inherit?: string[]; // columns to preserve existing values on UPDATE
-};
+await trx.ubUpsertOrInsert("users", "upsert", { inherit: ["created_at"] });
+await trx.ubUpsertOrInsert("audit_logs", "insert", { chunkSize: 1000 });
 ```
 
-### chunkSize
+`ubUpsertOrInsert()` selects the UpsertBuilder branch at runtime. `inherit` affects only the upsert
+branch. `cleanOrphans` runs after either branch when its FK-value preconditions are satisfied.
 
-Specify batch size for large data processing:
+## Direct Puri writes
+
+Use direct Puri when the operation is already a single statement or needs an explicit conflict
+target:
 
 ```typescript
-await trx.ubUpsert("logs", { chunkSize: 1000 });
+const inserted = await wdb.table("users").insert(row).returning(["id", "created_at"]);
+await wdb.table("users").where("users.id", id).update({ status: "active" });
+await wdb.table("users").whereIn("users.id", ids).delete();
 ```
 
-### cleanOrphans
-
-Automatically delete orphan records based on FK:
-
-```typescript
-// Single FK
-await trx.ubUpsert("order_items", {
-  cleanOrphans: "order_id", // delete records with the same order_id that were not upserted this time
-});
-
-// Composite FK
-await trx.ubUpsert("project_members", {
-  cleanOrphans: ["project_id", "team_id"],
-});
-```
-
-### inherit
-
-Preserve existing values for specific columns on UPDATE:
-
-```typescript
-await trx.ubUpsert("users", {
-  inherit: ["created_at", "password"], // these columns are excluded from UPDATE
-});
-```
-
-## ubUpsertOrInsert (Conditional Mode)
-
-Select upsert or insert mode at runtime.
-
-```typescript
-await trx.ubUpsertOrInsert("logs", "insert"); // INSERT only
-await trx.ubUpsertOrInsert("users", "upsert"); // UPSERT (default)
-await trx.ubUpsertOrInsert("users", "upsert", { cleanOrphans: "team_id" });
-```
-
-| Parameter   | Type                     | Description                                         |
-| ----------- | ------------------------ | --------------------------------------------------- |
-| `tableName` | string                   | table name                                          |
-| `mode`      | `"upsert"` \| `"insert"` | operation mode                                      |
-| `options`   | `UpsertOptions`          | chunkSize, cleanOrphans, inherit (same as ubUpsert) |
-
-When `mode: "insert"`, unlike `insertOnly`, `UpsertOptions` (cleanOrphans, inherit) can be used.
-
-## Rules
-
-- Used inside `transaction()` — it buffers writes and flushes them on `ubUpsert()`
-- `ubUpsert()` on FK-referenced tables first; the referencing rows need those IDs to exist
-- `UBRef` resolves only inside `ubRegister` — it is a deferred reference, not a value a query can use
-- Self-reference is auto-handled by level-based insertion
-- Unique index conflicts are auto-resolved by pre-fetching existing IDs
+`insert()`/`update()` serialize generated JSON columns in place, so do not reuse the same input
+object expecting its JSON properties to remain objects. Direct `onConflict()` supports `"nothing"`,
+an update-column array, or an update object. Puri does not enforce a WHERE clause for `update()` or
+`delete()`; without one, PostgreSQL applies the operation to every row in the table.
