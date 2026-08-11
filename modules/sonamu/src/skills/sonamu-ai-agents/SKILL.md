@@ -1,187 +1,141 @@
 ---
 name: sonamu-ai-agents
-description: Builds tool-using AI agents on Sonamu. Use when implementing an agent class, defining its tools, or managing per-request agent state. Covers BaseAgentClass, the @tools decorator, ToolLoopAgent, and AsyncLocalStorage state.
+description: Builds tool-using AI agents on Sonamu. Use when implementing an agent class, decorating tools, invoking an agent, or carrying state through tool execution. Covers BaseAgentClass, @tools, use(), agent.generate(), agent.stream(), and default tool names.
 ---
 
-# AI Agent Guide
+# AI agents
 
-Sonamu provides a framework that wraps Vercel AI SDK's `ToolLoopAgent` to build class-based AI Agents.
-
-Source code: `modules/sonamu/src/ai/agents/`
-
-## Structure
-
-| File       | Role                                                                    |
-| ---------- | ----------------------------------------------------------------------- |
-| `agent.ts` | `BaseAgentClass`, `tools` decorator                                     |
-| `types.ts` | `AgentConfig`, `ToolDecoratorOptions`, `RegisteredToolDefinition`, etc. |
-
-## BaseAgentClass
-
-The base class for Agents. Extend it to create a custom Agent.
+Extend `BaseAgentClass`, decorate the methods the model may call with `@tools`, and invoke the
+resulting AI SDK agent inside `use()`.
 
 ```typescript
-import { BaseAgentClass, tools } from "sonamu/ai/agents";
+import { openai } from "@ai-sdk/openai";
+import { BaseAgentClass, tools } from "sonamu/ai";
 import { z } from "zod/v4";
 
-class MyAgentClass extends BaseAgentClass<{ count: number }> {
-  constructor() {
-    super("MyAgent"); // agentName (used as logger category)
-  }
+type SearchState = {
+  queries: string[];
+};
 
+class SearchAgentClass extends BaseAgentClass<SearchState> {
   @tools({
-    description: "Adds two numbers",
+    description: "Searches documents by query",
     schema: {
-      input: z.object({ a: z.number(), b: z.number() }),
-      output: z.object({ result: z.number() }),
+      input: z.object({ query: z.string() }),
+      output: z.object({ titles: z.array(z.string()) }),
     },
   })
-  async add(input: { a: number; b: number }) {
-    return { result: input.a + input.b };
+  async search(input: { query: string }) {
+    const state = this.store;
+    if (state === undefined) {
+      throw new Error("SearchAgent.search must run inside SearchAgent.use()");
+    }
+
+    state.queries.push(input.query);
+    return { titles: await searchDocuments(input.query) };
   }
 }
 
-export const MyAgent = new MyAgentClass();
-```
+export const SearchAgent = new SearchAgentClass();
 
-### Key Features
-
-| Feature       | Description                                 |
-| ------------- | ------------------------------------------- |
-| `this.logger` | LogTape logger (agent category)             |
-| `this.store`  | AsyncLocalStorage-based state access        |
-| `this.tools`  | Registered toolset (ToolSet)                |
-| `this.use()`  | Run the Agent (ALS context + ToolLoopAgent) |
-
-## @tools Decorator
-
-Registers a method as an AI tool. Define input/output using Zod v4 schema.
-
-```typescript
-@tools({
-  name?: string,           // Tool name (default: "className.methodName" format)
-  description?: string,    // Description shown to the LLM
-  schema: {
-    input: z.ZodType,      // Input schema (required)
-    output?: z.ZodType,    // Output schema (optional)
-  },
-  needsApproval?: boolean | function,  // Whether user approval is required
-  toModelOutput?: function,            // Transform output returned to the model
-  providerOptions?: ProviderOptions,   // Provider-specific options
-})
-```
-
-### Automatic Name Generation Rule
-
-If `name` is omitted, it is auto-generated as `{ModelName(camelCase)}.{methodName(camelCase)}`.
-
-```typescript
-class SearchAgentClass extends BaseAgentClass<...> {
-  @tools({ ... })
-  async findDocuments(input: ...) { ... }
-  // → Tool name: "searchAgent.findDocuments"
-}
-```
-
-The suffixes `Class`, `Model`, and `Frame` are automatically stripped from the class name.
-
-## Running an Agent (use)
-
-Run the Agent with the `use()` method. ToolLoopAgent operates within the AsyncLocalStorage context.
-
-```typescript
-import { anthropic } from "@ai-sdk/anthropic";
-
-const result = await MyAgent.use(
-  // AgentConfig
+const text = await SearchAgent.use(
   {
-    model: anthropic("claude-sonnet-4-6"),
-    instructions: "You are a math assistant.",
-    toolChoice: "auto", // "auto" | "none" | "required"
-    maxOutputTokens: 1000,
-    temperature: 0.7,
+    model: openai.chat("gpt-4.1-mini"),
+    instructions: "Answer with help from document search.",
+    toolChoice: "auto",
   },
-  // Initial state (stored in AsyncLocalStorage)
-  { count: 0 },
-  // Callback (receives Agent instance)
+  { queries: [] },
   async (agent) => {
-    // agent is a ToolLoopAgent instance
-    // Use Vercel AI SDK's agent API
-    return agent;
+    const result = await agent.generate({ prompt: "Find the deployment guide" });
+    return result.text;
   },
 );
 ```
 
-### AgentConfig Options
+The public import is `sonamu/ai`. `sonamu/ai/agents` is not a package export.
 
-| Option                                 | Type                             | Description                          |
-| -------------------------------------- | -------------------------------- | ------------------------------------ |
-| `model`                                | `LanguageModel`                  | AI SDK model (required)              |
-| `instructions`                         | `string`                         | System prompt                        |
-| `toolChoice`                           | `"auto" \| "none" \| "required"` | Tool selection strategy              |
-| `stopWhen`                             | `StopCondition`                  | Stop condition                       |
-| `activeTools`                          | `string[]`                       | List of tool names to activate       |
-| `maxOutputTokens`                      | `number`                         | Maximum output tokens                |
-| `temperature`                          | `number`                         | Temperature                          |
-| `topP` / `topK`                        | `number`                         | Sampling parameters                  |
-| `presencePenalty` / `frequencyPenalty` | `number`                         | Penalties                            |
-| `seed`                                 | `number`                         | Seed for reproducibility             |
-| `stopSequences`                        | `string[]`                       | Generation stop sequences            |
-| `providerOptions`                      | `ProviderOptions`                | Additional provider-specific options |
-| `headers`                              | `Record<string, string>`         | Custom HTTP headers                  |
+## Invoke inside `use()`
 
-## State Management (AsyncLocalStorage)
-
-`BaseAgentClass` defines the state type with the generic `TStore`. When you pass the initial state to `use()`, it can be accessed via `this.store` during tool execution.
+`use(config, initialState, callback)` creates a `ToolLoopAgent`, passes it the tools selected for
+this instance's constructor name, and returns the callback's result. Call
+`agent.generate({ prompt })` for a complete result or `agent.stream({ prompt })` for streaming:
 
 ```typescript
-class StatefulAgentClass extends BaseAgentClass<{ processedItems: string[] }> {
-  @tools({ ... })
-  async processItem(input: { item: string }) {
-    // Access state
-    this.store?.processedItems.push(input.item);
-    return { ok: true };
+await SearchAgent.use(config, { queries: [] }, async (agent) => {
+  const result = await agent.stream({ prompt: "Find the deployment guide" });
+
+  for await (const part of result.fullStream) {
+    if (part.type === "text-delta") {
+      sendToken(part.text);
+    }
   }
-}
+});
 ```
 
-Note: `this.store` is `undefined` outside of a `use()` context.
+The `initialState` is active through the async callback and tool executions started by
+`generate()` or `stream()` in that callback. `this.store` returns that state inside the context and
+`undefined` outside it. A tool that requires state should be reached through `use()` and should
+explicitly reject a missing store as in the first example; optional chaining would silently skip
+the intended state update.
 
-## Tool Isolation
+`AgentConfig` requires `model`. It also accepts `instructions`, `toolChoice`, `stopWhen`,
+`activeTools`, provider options, headers, and the standard token and sampling settings exposed by
+the type. The callback receives the AI SDK `Agent`, so its call input is either `prompt` or
+`messages`.
 
-Tools for each Agent class are isolated per class. The `toolSet` getter filters by `def.from === this.constructor.name`.
+## Define tools
+
+Every decorated method needs an input schema. The output schema is optional but, when supplied, is
+forwarded to the AI SDK together with the remaining tool options.
 
 ```typescript
-class AgentA extends BaseAgentClass<void> {
-  @tools({ ... }) async toolX() { ... }
+@tools({
+  name: "documentSearch",
+  description: "Searches documents by query",
+  schema: {
+    input: z.object({ query: z.string() }),
+    output: z.object({ titles: z.array(z.string()) }),
+  },
+  needsApproval: false,
+  toModelOutput: ({ output }) => ({ type: "text", value: output.titles.join("\n") }),
+  providerOptions: {},
+})
+async search(input: { query: string }) {
+  return { titles: await searchDocuments(input.query) };
 }
-class AgentB extends BaseAgentClass<void> {
-  @tools({ ... }) async toolY() { ... }
-}
-
-// AgentA.tools → { contains only toolX }
-// AgentB.tools → { contains only toolY }
 ```
 
-## Logging
+When `needsApproval` is omitted, Sonamu passes `false`. `description`, `toModelOutput`, and
+`providerOptions` are optional.
 
-`this.logger` uses LogTape. The category is generated with `convertDomainToCategory(agentName, "agent")`.
+### Default tool names
 
-Debug logs are automatically recorded on tool execution:
+Set `name` when the model-facing identifier must be explicit. Without it, Sonamu derives the key
+from the decorated class and method names:
 
-```
-tools: {model}.{method} with args: {args}
-```
+1. The class name must end in `Class` to contribute a prefix.
+2. Sonamu removes that trailing `Class`.
+3. It then removes a trailing `Model` or `Frame` from the remainder. It does not remove `Agent`.
+4. It camel-cases the prefix and method name and joins them with `.`.
+5. Without a trailing `Class`, the key is only the camel-cased method name.
 
-## Related Packages
+| Decorated class and method | Default tool key |
+| --- | --- |
+| `SearchAgentClass.findDocuments` | `searchAgent.findDocuments` |
+| `SearchModelClass.findDocuments` | `search.findDocuments` |
+| `SearchFrameClass.findDocuments` | `search.findDocuments` |
+| `SearchAgent.findDocuments` | `findDocuments` |
 
-- `ai`: Vercel AI SDK (`ToolLoopAgent`, `Agent`, `ToolSet`)
-- `@ai-sdk/provider-utils`: `tool()`, `Tool`, `ToolExecutionOptions`
-- `zod/v4`: Schema definitions
-- `@logtape/logtape`: Logging
+The `agentName` passed to `super(agentName)` selects the logging category; it does not change this
+tool-name derivation.
 
-## References
+## Tool visibility
 
-- Source code: `modules/sonamu/src/ai/agents/`
-- Vercel AI SDK: https://sdk.vercel.ai/docs
-- Vector search: `sonamu-vector`
+Decorated definitions are stored in a shared module-level registry and selected by the exact
+`this.constructor.name` string, not by class identity. Distinct agent classes therefore need
+distinct constructor names; classes with the same name receive the same filtered definitions.
+Within that set, definitions are reduced into the public `tools` object in registration order, so a
+later explicit or generated tool key overwrites an earlier duplicate key.
+
+The public `tools` getter is useful when building instructions or inspecting the available
+descriptions. The logger is protected implementation state, not an outside-callable property.

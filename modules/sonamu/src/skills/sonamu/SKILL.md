@@ -16,7 +16,7 @@ Where a Sonamu skill and the project's `AGENTS.md` disagree, `AGENTS.md` wins.
 
 | Situation | Skill |
 | --- | --- |
-| implementing an agent class, defining its tools, or managing per-request agent state | `sonamu-ai-agents` |
+| implementing an agent class, decorating tools, invoking an agent, or carrying state through tool execution | `sonamu-ai-agents` |
 | adding an endpoint, choosing httpMethod or clients options, implementing a file upload, streaming SSE events, opening a WebSocket channel, restricting an endpoint, or mapping a thrown error to a status or close code | `sonamu-api` |
 | running auth generate, configuring server.auth, adding an auth plugin, reading user or session from the Context, typing a custom User field, or when sign-in fails or user is always null | `sonamu-auth` |
 | editing .env, .env.<environment>, or sonamu.config.ts, wiring database, storage, cache, logging, or tasks options, starting the Docker DB, resolving a port conflict, or on an Invalid NODE_ENV, Missing Sonamu dotenv file, or removed database.name error | `sonamu-config` |
