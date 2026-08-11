@@ -2,258 +2,166 @@
 
 ## Enum values in tests
 
-`entity.json` is the source of the enum's values, and a plausible-looking guess (`"user"` where the
-entity says `"normal"`) fails on the value rather than on the behaviour under test. Importing the
-generated enum from `sonamu.generated.ts` moves that failure to compile time:
+Use the generated enum or the literal value declared by the current entity. A plausible string can
+typecheck only when the surrounding object has widened, then fail at parse or persistence time.
 
 ```typescript
-// WRONG: written based on guesses
-role: "user"; // entity.json defines it as "normal"
-status: "in_progress"; // entity.json defines it as "pending"
-
-// CORRECT: written after checking entity.json
-role: "normal"; // exact value from entity.json
-status: "pending"; // exact value from entity.json
-
-// BEST: use TypeScript enum
 import { UserRoleEnum } from "../sonamu.generated";
-role: UserRoleEnum.normal;
+
+await UserModel.save([{ username: "tester", role: UserRoleEnum.normal }]);
 ```
-
-Setting the valid values as defaults in `test-helpers.ts` keeps them in one place rather than in every
-test file.
-
 
 ## Test Basic Patterns
 
 ### bootstrap
 
-`bootstrap(vi)` call required in all test files:
+`bootstrap(vi)` registers hooks in the current Vitest file:
+
+| Hook | Behavior |
+| --- | --- |
+| `beforeAll` | Calls `Sonamu.init(true, false, undefined, forTesting)` |
+| `beforeEach` | Opens `DB.createTestTransaction()` |
+| `afterEach` | Restores real timers, rolls back the test transaction, then reports the result |
+
+The default `{ forTesting: true }` initializes config, DB, entities, cache/auth test state, then
+stops before workflows and Syncer autoload. Framework tests that need the full initialization path
+can opt into `bootstrap(vi, { forTesting: false })`; this still does not create a Fastify server or
+server-owned storage.
+
+Call it once at module scope, before declaring suites:
 
 ```typescript
 import { bootstrap, test } from "sonamu/test";
-import { describe, expect, vi } from "vitest";
+import { describe, vi } from "vitest";
 
 bootstrap(vi);
 
-describe("MyTest", () => {
-  test("test case", async () => {
-    // ...
-  });
+describe("Model", () => {
+  test("동작한다", async () => {});
 });
-```
-
-bootstrap options:
-
-```typescript
-// Default: forTesting: true (fast, skips Syncer/Task)
-bootstrap(vi);
-
-// forTesting: false - full initialization (loads Syncer, Task, EntityManager, etc.)
-// Used in tests for migrator, syncer, template, etc.
-bootstrap(vi, { forTesting: false });
 ```
 
 ### test vs testAs
 
+Sonamu's `test` and `testAs` wrap the callback in `Sonamu.asyncLocalStorage` with a fresh mock
+context and Naite store. The mock context has `transport: "http"`, empty headers, null session,
+null request/reply placeholders, and no SSE implementation.
+
 ```typescript
-// Unauthenticated test - Context.user is null
-test("unauthenticated test", async () => {
-  const me = await UserModel.me();
-  expect(me).toBeNull();
+import { test, testAs } from "sonamu/test";
+
+test("비로그인 요청", async () => {
+  expect(Sonamu.getContext().user).toBeNull();
 });
 
-// Authenticated test - Context.user is set
-import type { UserSubsetSS } from "../sonamu.generated";
-
-const adminUser: UserSubsetSS = {
-  id: 1,
-  created_at: new Date(),
-  email: "admin@test.com",
-  username: "admin",
-  role: "admin",
-};
-
-testAs(adminUser, "admin permission test", async () => {
-  const me = await UserModel.me();
-  expect(me?.role).toBe("admin");
+testAs(admin, "관리자 요청", async () => {
+  expect(Sonamu.getContext().user?.id).toBe(admin.id);
 });
 ```
+
+Both wrappers capture Naite traces on success and failure. `test.only` and `testAs.only` preserve
+that behavior. `skip` delegates to Vitest without running the callback; `todo` only declares the
+case. `testAs` is a declaration replacement for `test`, not a function to call inside a running
+test.
+
+For a callback that needs a custom request/reply/session context, use `runWithContext(context, fn)`.
+Use `runWithMockContext(fn)` when a raw Vitest callback only needs Sonamu context and a Naite store.
 
 ### test.each
 
+`test.each` is Vitest's bound `test.each`; Sonamu does not wrap each row. `bootstrap` hooks still
+create and roll back the DB transaction, but the callback has no Sonamu mock context or trace store
+unless it adds one explicitly.
+
 ```typescript
+import { runWithMockContext, test } from "sonamu/test";
+
 test.each([
-  { input: "user@example.com", expected: true },
-  { input: "invalid-email", expected: false },
-])("email validation: $input → $expected", async ({ input, expected }) => {
-  expect(validateEmail(input)).toBe(expected);
+  ["a@example.com", true],
+  ["invalid", false],
+])("이메일 %s", async (input, expected) => {
+  await runWithMockContext(async () => {
+    expect(validateEmail(input)).toBe(expected);
+  });
 });
 ```
 
+The explicit context makes `Naite.t`/`Naite.get` usable inside the callback. It does not attach
+traces to the Vitest task, so DevRunner `--traces` has nothing to print for this row. Use separately
+declared Sonamu `test`/`testAs` cases when reported traces are part of the task.
+
+There is no `testAs.each`. Declare separate `testAs` cases when each row needs an authenticated
+user, or use Vitest `test.each` plus `runWithContext` inside the row callback.
 
 ## Mock Patterns
 
 ### setup-mocks.ts
 
+Put mocks that must apply before application imports in the configured `setupFiles` module. This is
+especially important when `test.parallel: true`, because Sonamu sets Vitest `isolate: false`; an
+import cached by an earlier file in the same worker is not re-evaluated for a later mock.
+
 ```typescript
-// api/src/testing/setup-mocks.ts
-import { Naite } from "sonamu";
+// src/testing/setup-mocks.ts
 import { vi } from "vitest";
 
-vi.mock("fs/promises", async (importOriginal) => {
-  const actual = (await importOriginal()) as typeof import("fs/promises");
-  return {
-    ...actual,
-    access: vi.fn((path, mode) => {
-      // virtual file system check
-      const vfs = Naite.get("mock:fs/promises:virtualFileSystem").result();
-      if (vfs.some((v) => v === path)) {
-        return Promise.resolve();
-      }
-      return actual.access(path, mode);
-    }),
-    writeFile: vi.fn((path, data) => {
-      Naite.t("fs/promises:writeFile", { path, data });
-    }),
-    rm: vi.fn(async (path, options) => {
-      Naite.t("fs/promises:rm", { path, options });
-      return Promise.resolve();
-    }),
-  };
-});
+vi.mock("../application/mail/send-mail", () => ({
+  sendMail: vi.fn(),
+}));
 ```
+
+Use `vi.spyOn` for behavior selected after import when the target function is called through the
+spied object. `restoreMocks: true` restores spies between tests; it does not invalidate ESM modules.
 
 ### test-helpers.ts
 
-```typescript
-// api/src/testing/test-helpers.ts
-import { Entity, EntityManager, type EntityJson } from "sonamu";
-import { vi } from "vitest";
-
-// Mocking EntityManager.get
-export function mockEntityManagerGet(
-  targetEntityId: string,
-  overrideCallback: (original: EntityJson) => EntityJson,
-) {
-  const originalEntityJson = EntityManager.get(targetEntityId).toJson();
-  const originalGet = EntityManager.get;
-  return vi.spyOn(EntityManager, "get").mockImplementation((entityId) => {
-    if (entityId === targetEntityId) {
-      return new Entity(overrideCallback(originalEntityJson));
-    }
-    return originalGet.call(EntityManager, entityId);
-  });
-}
-```
+Project helpers are useful for expressing a stable dependency chain or building a complete custom
+context. Keep framework initialization in `bootstrap`, and call data-creating helpers inside the
+test transaction so their writes roll back with the test.
 
 ## CRUD Test Patterns
 
 ### Create & Read
 
+Assert the behavior under test through the public model path. Guard generated IDs before passing
+them to a method expecting a definite ID.
+
 ```typescript
-test("Create - create new user", async () => {
-  const [userId] = await UserModel.save([
-    {
-      email: "newuser@test.com",
-      username: "newuser",
-      password: "hashedpassword",
-      role: "normal",
-    },
-  ]);
+test("사용자를 저장하고 조회한다", async () => {
+  const [id] = await UserModel.save([{ username: "tester", role: UserRoleEnum.normal }]);
+  expect(id).toBeDefined();
+  if (id === undefined) throw new Error("사용자 ID가 생성되지 않았다");
 
-  expect(userId).toBeGreaterThan(0);
-
-  const user = await UserModel.findById("A", userId);
-  expect(user.email).toBe("newuser@test.com");
+  const user = await UserModel.findById("A", id);
+  expect(user.username).toBe("tester");
 });
 ```
 
 ### Update
 
-```typescript
-test("Update - update user", async () => {
-  const f0 = await loadFixtures(["user01"]);
-
-  await UserModel.save([
-    {
-      ...f0.user01,
-      username: "updated_username",
-    },
-  ]);
-
-  const f1 = await loadFixtures(["user01"]);
-  expect(f1.user01.username).toBe("updated_username");
-});
-```
+Pass fields accepted by the current save schema. A relation object from a read subset is not a
+foreign-key field.
 
 ### Error Tests
 
-```typescript
-test("error when fetching non-existent user", async () => {
-  await expect(UserModel.findById("A", 99999)).rejects.toThrow("not found");
-});
-
-test("unresolved reference error", async () => {
-  const ub = new UpsertBuilder();
-  const companyRef = ub.register("companies", { name: "Test" });
-  ub.register("departments", { company_id: companyRef, name: "Dept" });
-
-  // attempt upsert in wrong order
-  await expect(ub.upsert(wdb, "departments")).rejects.toThrow(/unresolved reference/);
-});
-```
+Assert the stable error contract available to the caller: error class, code, or a durable message
+fragment. Do not replace a missing error with a loose assertion merely to accommodate fixture data.
 
 ## Test Structuring Patterns
 
-```typescript
-describe("UpsertBuilder", () => {
-  describe("A. Basic registration (register)", () => {
-    test("register() returns UBRef", async () => {
-      /* ... */
-    });
-    test("multiple register() calls accumulate rows", async () => {
-      /* ... */
-    });
-  });
-
-  describe("B. Table management", () => {
-    test("basic behavior of getTable()/hasTable()", async () => {
-      /* ... */
-    });
-  });
-
-  describe("C. Upsert execution", () => {
-    test("upsert() - insert new row", async () => {
-      /* ... */
-    });
-    test("upsert() - update existing row", async () => {
-      /* ... */
-    });
-    test("insertOnly() - insert only", async () => {
-      /* ... */
-    });
-  });
-
-  describe("D. Error handling", () => {
-    test("upsert on non-existent table → empty array", async () => {
-      /* ... */
-    });
-    test("unresolved reference → error", async () => {
-      /* ... */
-    });
-  });
-});
-```
+Suite naming and coverage depth are project policy. Sonamu only requires the module-level bootstrap
+when its DB hooks are needed and a context wrapper when code reads `Sonamu.getContext()` or Naite.
 
 ## File Structure
 
-```
+The generated API keeps these portable project paths:
+
+```text
 api/src/testing/
-├── fixture.ts       # createFixtureLoader definition
-├── global.ts        # globalSetup (dotenv, setup export)
-├── setup-mocks.ts   # global Mock configuration
-├── test-helpers.ts  # test utility functions
-├── expect-query.ts  # SQL query validation helper
-└── expect-ub.ts     # UpsertBuilder validation helper
+├── fixture.ts
+├── global.ts
+└── setup-mocks.ts
 ```
+
+Projects may add `test-helpers.ts`, `expect-query.ts`, or `expect-ub.ts`; those are project-owned,
+not Sonamu exports.

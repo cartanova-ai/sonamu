@@ -2,168 +2,92 @@
 
 ## TypeScript Type Safety
 
-### Optional Chaining Required When Indexing Arrays
+Treat the generated subset and the project-owned schemas as the current contract. Do not repair a
+test type error with a cast until the called public signature and generated shape have been checked.
 
-When accessing a property after indexing into an array, you must use optional chaining (`?.`).
+### Array Indexing and Nullability Guards
 
-Reason:
-
-- Array indexing (`array[0]`, `array[1]`, etc.) can always return `undefined`
-- TypeScript infers the type of `array[0]` as `T | undefined`
-- Accessing a property without optional chaining causes a compile error
-
-Wrong:
+Whether `rows[0]` is typed as possibly undefined depends on the project's TypeScript settings.
+Guarding the value produces a definite type without weakening the assertion:
 
 ```typescript
-// Type error: Object is possibly 'undefined'
-expect(list.rows[0].title).toBe("test");
-expect(searchResults.rows[0].name).toContain("keyword");
+const { rows } = await UserModel.findMany("A", { num: 10, page: 1 });
+const first = rows[0];
+
+expect(first).toBeDefined();
+if (first === undefined) throw new Error("조회 결과가 비어 있다");
+expect(first.username).toBe("tester");
 ```
 
-Correct:
-
-```typescript
-// Use optional chaining
-expect(list.rows[0]?.title).toBe("test");
-expect(searchResults.rows[0]?.name).toContain("keyword");
-
-// Or verify existence first, then access
-expect(list.rows.length).toBeGreaterThanOrEqual(1);
-expect(list.rows[0].title).toBe("test"); // now safe
-```
+Optional chaining is appropriate when `undefined` is an acceptable result. It is not a substitute
+for an existence assertion when the test requires a row.
 
 ### Recommended Patterns
 
-When accessing array elements in test code:
-
-Pattern 1: Use optional chaining
-
-```typescript
-const result = await Model.findMany("A", { num: 10, page: 1 });
-expect(result.rows[0]?.field).toBe(expectedValue);
-```
-
-Pattern 2: Verify length, then access
-
-```typescript
-const result = await Model.findMany("A", { num: 10, page: 1 });
-expect(result.rows.length).toBeGreaterThanOrEqual(1);
-expect(result.rows[0].field).toBe(expectedValue); // type-safe
-```
-
-Pattern 3: Optional chaining required when using find()
-
-```typescript
-const list = await Model.findMany("A", { num: 10, page: 1 });
-const item = list.rows.find((r) => r.id === targetId);
-expect(item?.field).toBe(expectedValue); // find() can return undefined
-```
+- Guard IDs returned from array-shaped save results before using them as definite IDs.
+- Use `assert(value)` or an explicit `undefined` branch when the test requires existence.
+- Keep expected objects typed with `satisfies` when that helps prevent literal widening.
+- Import generated enums rather than duplicating valid string values.
 
 ### General Rules
 
-- Property access after array indexing: `array[0]?.property`
-- Results of `find()`, `filter()[0]`, etc.: always use `?.`
-- Nested object access: `obj.nested?.deep?.property`
-- Non-null assertion (`!`) only when certain
+Use `find()`/array guards according to the behavior being asserted. Avoid `?? 0` as a type-only
+workaround: it can turn "save returned no ID" into an unrelated not-found query.
 
 ## Model Basic Methods (Test Targets)
 
-Sonamu Model provides the following methods by default. Tests are written targeting these methods:
+Generated model signatures vary by entity and Sonamu version. Inspect the model/types in the
+consumer project before writing the call; common shapes include:
 
-| Method                     | Purpose                | Returns                          |
-| -------------------------- | ---------------------- | -------------------------------- |
-| `findById(subset, id)`     | Fetch single record    | `Promise<Subset>`                |
-| `findMany(subset, params)` | Fetch list             | `Promise<ListResult<Subset>>`    |
-| `save(rows)`               | Create/update (upsert) | `Promise<number[]>` (ids)        |
-| `del(ids)`                 | Delete                 | `Promise<number>` (delete count) |
+```typescript
+await Model.findById("A", id);
+await Model.findMany("A", params);
+await Model.save([params]);
+await Model.del([id]);
+```
 
-Note: It's `del`, not `delete`. This avoids JavaScript reserved words.
-
+Do not infer return nullability or parameter order from an older test file when the current generated
+declaration is available.
 
 ## Type Safety Notes
 
 ### Zod Import Method
 
-Zod is imported as a value in test files, not with `import type`. Tests use Zod schemas and `z.infer<>`
-directly, so the object has to exist at runtime — a type-only import compiles and then fails when the
-test runs.
+Use a value import when code calls `z.object`, `z.infer` through the namespace, or another Zod
+runtime member:
 
 ```typescript
-import { z } from "zod";              // value import
-import type { z } from "zod";         // erased at compile time → runtime error
+import { z } from "zod";
 ```
 
-Where this applies:
-
-- `*.model.test.ts` - all test files
-- `test-helpers.ts` - helper files that use Zod schemas
+An `import type` is erased. It is only valid when the imported name is used exclusively in type
+positions supported by the project's compiler.
 
 ### Checking partial Settings in SaveParams
 
-When testing `Model.save()`, you must check the `SaveParams` partial settings in `*.types.ts`:
-
-```typescript
-// user.types.ts
-import { z } from "zod"; // regular import in types files too
-import { UserBaseSchema } from "../sonamu.generated";
-
-export const UserSaveParams = UserBaseSchema.partial({
-  id: true, // auto-generated
-  created_at: true, // auto-generated
-  updated_at: true, // auto-generated
-});
-export type UserSaveParams = z.infer<typeof UserSaveParams>;
-```
+`SaveParams` is project-owned and commonly defined in the entity's `*.types.ts` by transforming a
+generated base schema. Its optional/default/nullish behavior—not database intuition—determines what
+the test can pass to `save()`.
 
 ### Nullable Field Handling Pattern
 
-The `partial` + `extend` + `nullish` pattern is written out in
-`references/writing-plan.md` under "Tasks to Do Immediately After Entity Creation".
+Do not change production schemas merely to make a guessed test object compile. First distinguish:
+
+- database-nullable: the stored value may be `null`;
+- optional input: the key may be omitted;
+- defaulted input: the parser or DB supplies a value;
+- relation subset: reads expose an object while saves usually accept an FK field.
+
+If the production input contract is genuinely wrong, that is a separate schema change with its own
+behavioral validation.
 
 ### Use Nullish Coalescing
 
-Nullish coalescing is required when a variable can be of type `T | undefined`:
-
-```typescript
-// WRONG: userId may be number | undefined
-const user = await UserModel.findById("A", userId);
-
-// CORRECT: guard against undefined with nullish coalescing
-const user = await UserModel.findById("A", userId ?? 0);
-```
-
-Especially be careful when using IDs created in a previous step:
-
-```typescript
-const [userId] = await UserModel.save([{ ... }]);
-
-// WRONG: userId is number | undefined
-const user = await UserModel.findById("A", userId);
-
-// CORRECT:
-const user = await UserModel.findById("A", userId ?? 0);
-```
+Use `??` only when the fallback is meaningful domain behavior. For required generated IDs, assert
+existence instead of querying a sentinel ID.
 
 ### SaveParams Import Location
 
-SaveParams types are exported from each entity's types.ts, not from sonamu.generated.
-
-Wrong:
-
-```typescript
-// test-helpers.ts
-import type { UserSaveParams, TaskSaveParams } from "../application/sonamu.generated"; // WRONG
-```
-
-Correct:
-
-```typescript
-// test-helpers.ts
-import type { UserSaveParams } from "../application/user/user.types";
-import type { TaskSaveParams } from "../application/task/task.types";
-```
-
-Reason:
-
-- sonamu.generated only exports BaseSchema and BaseListParams
-- SaveParams is defined with BaseSchema.partial() in each entity's types.ts
+Import the save type/schema from the entity's current `*.types.ts` (or its public project barrel when
+one exists). `sonamu.generated.ts` provides generated base/subset contracts; it does not universally
+own each project's transformed `SaveParams`.

@@ -1,247 +1,122 @@
 ---
 name: sonamu-testing
-description: Writes and runs Sonamu Vitest tests. Use when authoring a Model or API test, asserting on query behaviour, mocking a dependency, or when sonamu test fails to run. Covers bootstrap, test and testAs, createFixtureLoader, Naite.get assertions, expectQuery, expectUB, DevRunner, HMR integration, and parallel workers.
+description: Configures and diagnoses Sonamu Vitest tests. Use when writing a Model or API test, setting up fixtures or mocks, running sonamu test, enabling parallel workers, or diagnosing startup, database, context, trace, or module-cache failures. Covers bootstrap, test, testAs, getSonamuTestConfig, createFixtureLoader, Naite, and DevRunner.
 ---
 
 # Sonamu Test System
 
-Sonamu provides a Vitest-based test environment. Each test is isolated in a transaction and automatically rolled back.
-
-Example project: `sonamu/examples/miomock` — reference for real test code
-
-Writing tests across many entities at once? `references/writing-plan.md` covers grouping them by
-data dependency so fixtures and FK order do not fight you.
-
-## Reference Map
-
-| Need | Read |
-| --- | --- |
-| First test in a new project, end-to-end | `references/quick-start.md` |
-| Planning what to test, order, batching for 10+ entities | `references/writing-plan.md` |
-| bootstrap / test / testAs, CRUD, mocks, file structure, enum values | `references/patterns.md` |
-| expectQuery, expectUB, Naite assertions, createFixtureLoader | `references/helpers.md` |
-| Type errors in test code, nullable handling, partial/extend | `references/type-safety.md` |
-| Failing for a non-obvious reason, complex entity graphs | `references/pitfalls.md` |
-| `sonamu test` itself fails, HMR, parallel workers, vitest/sonamu config | `references/devrunner.md` |
-
-Fixture generation via CLI (`fixture gen/fetch/explore`) and the 3-Tier DB structure live in the
-`sonamu-fixture` skill, not here.
-
-## Running Tests
-
-Use `pnpm sonamu test` during development. It reuses a Vitest instance living inside the
-`sonamu dev` process, so it is roughly 3.2x faster than a cold start and picks up source changes
-through HMR. Assume the dev server is running; start it first if it is down. `pnpm test` is for CI.
-
-```bash
-# Start dev server if it's down
-pnpm sonamu dev
-
-# Tests during development (default)
-pnpm sonamu test
-pnpm sonamu test user.model
-pnpm sonamu test user.model -p "findMany"   # filter by test name
-pnpm sonamu test user.model -t              # print Naite traces
-
-# CI environments only
-pnpm test
-```
-
-Requires `test.devRunner.enabled: true` in `sonamu.config.ts`:
+Sonamu's public test APIs are exported from `sonamu/test`. A normal test file combines
+`bootstrap(vi)` for framework and transaction hooks with Sonamu's `test` wrapper for request-like
+context and Naite trace capture.
 
 ```typescript
-export default defineConfig({
-  test: {
-    devRunner: { enabled: true }, // required for `pnpm sonamu test`
-    // parallel: true,            // optional: separate DB per worker
-    // maxWorkers: 4,
-  },
+import { bootstrap, test } from "sonamu/test";
+import { describe, expect, vi } from "vitest";
+
+import { UserModel } from "./user.model";
+
+bootstrap(vi);
+
+describe("UserModel", () => {
+  test("사용자를 조회한다", async () => {
+    const user = await UserModel.findById("A", 1);
+    expect(user.id).toBe(1);
+  });
 });
 ```
 
+## Reference Map
+
+| Task | Read |
+| --- | --- |
+| Configure Vitest or add the first test | `references/quick-start.md` |
+| Choose `test`, `testAs`, `test.each`, context, or mock placement | `references/patterns.md` |
+| Load fixtures, inspect Naite traces, or use query/UB assertions | `references/helpers.md` |
+| Diagnose startup, DB, fixture, mock-cache, context, or trace failures | `references/pitfalls.md` |
+| Run DevRunner or configure worker databases | `references/devrunner.md` |
+| Resolve test-only TypeScript errors | `references/type-safety.md` |
+| Arrange a larger fixture-backed test pass by data dependency | `references/writing-plan.md` |
+
+Fixture generation and the destructive `fixture sync` operation belong to the `sonamu-fixture`
+skill. Detailed Naite key/query behavior belongs to `sonamu-naite`.
+
+## Running Tests
+
+Use the package's declared scripts as the source of truth. A generated API package has a `test`
+script that runs `vitest run`; a project can add lifecycle scripts such as `pretest`, which package
+managers run before `pnpm test` but a direct `pnpm exec vitest run` bypasses.
+
+```bash
+pnpm test                         # package script, including pretest when declared
+pnpm exec vitest run path/to/test # direct Vitest, no package pretest
+pnpm sonamu test user.model       # resident DevRunner, when enabled and running
+pnpm sonamu test --status         # inspect DevRunner readiness
+```
+
+`sonamu test` is an HTTP client for the resident Vitest instance in a local `sonamu dev` process.
+It is optional; it does not replace the package's direct Vitest command. See
+`references/devrunner.md` for its flags and activation conditions.
+
 ## What a Model test needs in place
 
-These are what make a test runnable, not a checklist to complete before you are allowed to write
-one:
-
-- The table exists — the entity's migration has been applied to the test DB, or `save` fails on
-  a missing relation
-- Nullable fields are handled in `types.ts` — generated `SaveParams` does not mark nullable
-  props as `partial`, so omitting them is a type error until you add `partial` + `extend`
-  (→ "Tasks to Do Immediately After Entity Creation" in `references/writing-plan.md`)
-- Seed data for non-nullable FKs — a row that cannot exist without its parent needs that parent
-  (→ "minimum seed data" in `sonamu-config`'s `references/database.md`)
+- `vitest.config.ts` calls `getSonamuTestConfig(...)` and registers the exported global setup.
+- `bootstrap(vi)` is called once at test-module scope before test declarations.
+- Tests that need Sonamu context or Naite use `test`/`testAs`, or explicitly call
+  `runWithMockContext`/`runWithContext`.
+- The test database already has the schema and fixture baseline the test expects. Neither
+  `bootstrap` nor `createFixtureLoader` migrates or synchronizes it.
+- Mocks that must win before a dependency is imported live in Vitest `setupFiles` or are hoisted at
+  the top of the test module.
 
 ## Core Test Writing Principles
 
 ### 1. Verify Actual Structure First
 
-Tests written against a guessed structure fail on the field name, not on the behavior they meant to
-check. Read the actual structure first:
-
-```typescript
-// STEP 1: Check entity.json
-// - actual field names and types
-// - nullable status
-// - enum value list
-// - relation structure
-
-// STEP 2: Check types.ts
-// - partial settings in SaveParams
-// - nullish handling for nullable fields
-// - _ids arrays for ManyToMany relations
-
-// STEP 3: Check sonamu.generated.ts
-// - Enum type definitions
-// - Subset type structure
-// - BaseSchema structure
-```
-
-Wrong approach:
-
-```typescript
-// BAD - writing tests based on guesses
-test("create user", async () => {
-  const [userId] = await UserModel.save([
-    {
-      name: "Test",
-      status: "active", // may actually be "normal"
-      role: "user", // may actually be "normal"
-    },
-  ]);
-});
-```
-
-Correct approach:
-
-```typescript
-// GOOD - write after checking entity.json
-// 1. Check user.entity.json:
-//    - role: enum ["admin", "normal", "guest"]
-//    - status: enum ["active", "inactive"] with dbDefault: "active"
-//    - name: string (required)
-//    - email: string (nullable)
-
-// 2. Check user.types.ts:
-//    - status, email are partial in SaveParams
-
-// 3. Write test
-test("create user", async () => {
-  const [userId] = await UserModel.save([
-    {
-      name: "Test",
-      role: "normal", // exact enum value from entity.json
-      // status can be omitted since it has dbDefault
-      // email can be omitted since it's nullable
-    },
-  ]);
-});
-```
+Read the entity's generated subset and project-owned `SaveParams` before constructing data.
+Relation objects exposed by a subset are not automatically valid save fields, and enum values
+should come from the generated enum rather than a guessed string.
 
 ### 2. Understanding Subset Structure
 
-Access nested relations using dot notation.
-
-```typescript
-// Check Subset definition in entity.json
-{
-  "subsets": {
-    "A": [
-      "id",
-      "title",
-      "evaluation_form.id",           // BelongsToOne relation
-      "evaluation_form.title",
-      "evaluation_form.category.id",  // nested relation
-      "evaluation_form.category.name"
-    ]
-  }
-}
-
-// Access in tests
-test("fetch evaluation item", async () => {
-  const { itemId } = await createTestEvaluationItemWithDeps();
-
-  const item = await EvaluationItemModel.findById("A", itemId);
-
-  // CORRECT - nested access via dot notation
-  expect(item.evaluation_form.id).toBe(formId);
-  expect(item.evaluation_form.category.name).toBe("Competency Evaluation");
-
-  // WRONG - attempting direct FK access
-  // expect(item.evaluation_form_id).toBe(formId);  // type error!
-});
-```
-
-Rules:
-
-- FK of BelongsToOne relation is defined as `relation.id` form in Subset
-- Access in tests as `entity.relation.field` form
-- Direct `entity.relation_id` access is not possible (not included in Subset)
+A subset is a read projection. Nested relation fields such as `company.id` appear as relation
+objects in the result; that does not imply that `company` or a direct `company_id` is present in
+every subset or accepted by the save schema. Assert and persist the fields actually declared by the
+current generated mapping.
 
 ### 3. Handling DECIMAL Types
 
-DECIMAL types are returned from PostgreSQL with a `.00` suffix.
+PostgreSQL `numeric`/`decimal` values can reach a model as strings unless the project casts them.
+Assert the public model result: use the exact string when formatting is part of the contract, or
+convert with `Number(...)` when the behavior is explicitly numeric. Do not make snapshots accept
+both shapes without tracing which layer owns the conversion.
 
-```typescript
-// entity.json
-{
-  "props": [
-    { "name": "salary", "type": "number", "precision": 10, "scale": 2 }
-  ]
-}
+### 4. Know which isolation you are using
 
-// Generated in migration
-table.decimal("salary", 10, 2);  // DECIMAL(10,2)
+`bootstrap` opens one transaction before each test and rolls it back afterward. In test mode,
+ordinary `"r"`/`"w"` model access uses that transaction, so writes are immediately visible inside
+the same test and are removed afterward. Explicit concrete presets such as `DB.getDB("test")`, a
+separate Knex instance, external services, and filesystem writes are outside that rollback.
 
-// Writing tests
-test("fetch salary info", async () => {
-  const [userId] = await UserModel.save([{
-    name: "Test",
-    salary: 75000,  // input: number
-  }]);
+Parallel mode adds database isolation between Vitest workers; it does not add module isolation.
+Sonamu configures `isolate: false`, so imports remain cached within a worker and late per-file mocks
+can lose to an earlier import.
 
-  const user = await UserModel.findById("A", userId);
+### 5. Distinguish fixtures from fixture synchronization
 
-  // WRONG - exact comparison may fail
-  // expect(user.salary).toBe(75000);  // DB may return "75000.00"
-
-  // CORRECT - pattern matching with toMatch()
-  expect(String(user.salary)).toMatch(/^75000(\.00)?$/);
-
-  // Or convert to number and compare
-  expect(Number(user.salary)).toBe(75000);
-
-  // Or range check
-  expect(user.salary).toBeGreaterThanOrEqual(74999.99);
-  expect(user.salary).toBeLessThanOrEqual(75000.01);
-});
-```
-
-DECIMAL type comparison patterns:
-
-```typescript
-// Pattern 1: string pattern matching
-expect(String(value)).toMatch(/^1234\.56$/);
-expect(String(value)).toMatch(/^1234(\.56)?$/); // .56 optional
-
-// Pattern 2: convert to number and compare
-expect(Number(value)).toBe(1234.56);
-
-// Pattern 3: range check (considering floating point errors)
-expect(value).toBeCloseTo(1234.56, 2); // up to 2 decimal places
-
-// Pattern 4: toMatchObject (when comparing objects)
-expect(result).toMatchObject({
-  salary: expect.any(Number), // type check only
-});
-```
+`createFixtureLoader` only runs the supplied loader functions concurrently and returns a typed
+object. It does not insert data or run `fixture sync`. If a package uses fixture synchronization in
+`pretest`, reproduce the package script when validating that path; direct Vitest is a different
+preparation path.
 
 ## Rules
 
-- `bootstrap(vi)` call required in all test files
-- Each test is automatically rolled back (test isolation)
-- Use `test` for unauthenticated tests, `testAs` for authenticated tests
-- Define fixtures with `createFixtureLoader` and load with `loadFixtures`
-- Use Naite to track and validate query/UpsertBuilder behavior
-- `toMatchInlineSnapshot()` writes the expected value into the test file on its first run
-- Configure Mocks globally in `setup-mocks.ts` or use `vi.spyOn` within tests
+- Import Sonamu testing APIs from `sonamu/test`; import `Naite` and production APIs from `sonamu`.
+- Call `bootstrap(vi)` at module scope in DB-backed Sonamu test files.
+- Use `testAs(user, title, fn)` as a test declaration, not from inside another test.
+- `test.each` is Vitest's bound implementation and does not install Sonamu context; wrap the body
+  explicitly for context or in-callback Naite assertions. That does not attach traces to Vitest task
+  metadata; use `test`/`testAs` when DevRunner `--traces` output is required. There is no
+  `testAs.each`.
+- Treat `expectQuery` and `expectUB` as optional project-local helpers, not `sonamu/test` exports.
+- Report a fixture/global-setup/transaction bootstrap failure separately from a failing test body.
+- A passing typecheck, build, or root check is static evidence, not proof that DB-backed tests ran.

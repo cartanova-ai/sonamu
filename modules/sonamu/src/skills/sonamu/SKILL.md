@@ -28,7 +28,7 @@ Where a Sonamu skill and the project's `AGENTS.md` disagree, `AGENTS.md` wins.
 | instrumenting a failing path, asserting on Puri/UpsertBuilder internals, filtering traces, diagnosing missing or non-serializable output, or checking LogTape, Vitest metadata, CLI, and extension-socket exposure before recording sensitive data | `sonamu-naite` |
 | implementing findById/findOne/findMany, pagination, filters, joins, sorting, transactions, relation/batch saves, standalone PostgreSQL text search, PGroonga, pg_trgm, or pgvector query composition, or diagnosing row/TS2589 errors | `sonamu-query` |
 | setting up @sonamu-kit/tasks, defining or enqueuing workflows, starting workers, adding a Sonamu cron workflow, or diagnosing retries, deadlines, leases, duplicate effects, cancellation, and recovery | `sonamu-tasks` |
-| authoring a Model or API test, asserting on query behaviour, mocking a dependency, or when sonamu test fails to run | `sonamu-testing` |
+| writing a Model or API test, setting up fixtures or mocks, running sonamu test, enabling parallel workers, or diagnosing startup, database, context, trace, or module-cache failures | `sonamu-testing` |
 | generating embeddings, chunking documents, or combining vector similarity with full-text search | `sonamu-vector` |
 
 <!-- SKILL-INDEX:END -->

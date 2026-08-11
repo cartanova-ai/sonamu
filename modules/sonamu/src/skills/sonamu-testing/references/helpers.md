@@ -4,9 +4,13 @@
 
 ### createFixtureLoader
 
+`createFixtureLoader` turns a record of zero-argument async loaders into a typed `loadFixtures`
+function. Requested loaders run concurrently with `Promise.all`.
+
 ```typescript
-// api/src/testing/fixture.ts
+// src/testing/fixture.ts
 import { createFixtureLoader } from "sonamu/test";
+
 import { CompanyModel } from "../application/company/company.model";
 import { UserModel } from "../application/user/user.model";
 
@@ -19,167 +23,91 @@ export const loadFixtures = createFixtureLoader({
 ### Using in tests
 
 ```typescript
-import { loadFixtures } from "../../testing/fixture";
-
-test("update company info", async () => {
-  const f0 = await loadFixtures(["company01"]);
-
-  await CompanyModel.save([
-    {
-      ...f0.company01,
-      name: "Updated Company",
-    },
-  ]);
-
-  const f1 = await loadFixtures(["company01"]);
-  expect(f1.company01.name).toBe("Updated Company");
-});
+const { company01, user01 } = await loadFixtures(["company01", "user01"]);
 ```
+
+The return keys and values are inferred from the requested names. The helper only calls loaders: it
+does not insert rows, synchronize fixture databases, sequence dependent writes, or cache results.
+Because loaders run concurrently, use them for independent reads of an existing baseline; create a
+dependent write chain explicitly inside the test.
 
 ## Naite (Test Tracing System)
 
-→ Detailed guide (key list, chaining filters, wildcard, del, internal structure): `sonamu-naite`
-
-Naite is a tracing system that records values with `Naite.t("key", value)` in source code and validates them with `Naite.get("key")` in tests.
+`Naite.t(key, value)` records only when `NODE_ENV === "test"` and the current Sonamu context has a
+Naite store. Sonamu's `test` and `testAs` wrappers create that store. `bootstrap` alone does not, and
+raw Vitest `test`/Sonamu `test.each` callbacks therefore see an empty `Naite.get(...)` unless they
+call `runWithMockContext` or `runWithContext`.
 
 ### Commonly Used Patterns in Tests
 
 ```typescript
 import { Naite } from "sonamu";
 
-// Query validation
-expect(Naite.get("esq-query").first()).not.contain("limit");
+const queries = Naite.get("puri:executed-query");
+expect(queries.first()).toContain("select");
+expect(queries.result()).toHaveLength(1);
 
-// UpsertBuilder behavior validation
-const trace = Naite.get("puri:ub-upserted").first();
-expect(trace).toMatchObject({ tableName: "users", rowCount: 3 });
-
-// Fetch methods: .first(), .last(), .at(n), .result() (full array)
-// Filters: .fromFile("user.model.ts"), .fromFunction("findById"), .where("data.tableName", "=", "users")
+const writes = Naite.get("puri:*").fromFunction("save").result();
+expect(writes.length).toBeGreaterThan(0);
 ```
 
+Useful terminal methods are `first()`, `last()`, `at(index)`, and `result()`. Filters include
+`fromFile`, `fromFunction`, and `where`. See `sonamu-naite` for the full query surface.
+
+The `test`/`testAs` wrappers serialize traces into Vitest task metadata after the callback. Explicit
+`runWithMockContext`/`runWithContext` around a raw callback supplies a store for in-callback
+`Naite.get` assertions, but does not perform that metadata assignment. Values exported by the
+Sonamu test wrappers should be JSON-serializable: `Naite.t` accepts any value, but trace export warns
+about non-serializable data and serialization can fail before DevRunner/reporters consume it.
+
+`NaiteVitestReporter` marks run start/end for the local Naite extension. `bootstrap` reports each
+test after rollback, and CI suppresses the extension socket messages. DevRunner's `--traces` output
+comes only from traces attached to the test task by `test`/`testAs`.
 
 ## Test Helper: expectQuery
 
-Helper for validating specific parts of SQL queries (see miomock for reference):
+`expectQuery` is not exported by `sonamu/test`. Some projects define a local helper that parses the
+SQL string recorded under `puri:executed-query` and returns a Vitest expectation for a selected AST
+part.
 
 ```typescript
-// api/src/testing/expect-query.ts
-import { type AST, Parser } from "node-sql-parser";
-import { expect } from "vitest";
+import { Naite } from "sonamu";
 
-export type QueryPart =
-  | "type"
-  | "table"
-  | "columns"
-  | "set"
-  | "where"
-  | "join"
-  | "orderBy"
-  | "pagination"
-  | "groupBy"
-  | "having";
+import { expectQuery } from "../../testing/expect-query";
 
-export function expectQuery(query: string, part?: QueryPart) {
-  if (!part) return expect(query);
-  const ast = parseQuery(query);
-  const extractedSql = extractors[part](ast);
-  return expect(extractedSql);
-}
+await UserModel.getPuri("r").table("users").select({ id: "users.id" });
+const query = Naite.get("puri:executed-query").first();
+
+expectQuery(query, "type").toBe("select");
+expectQuery(query, "table").toBe("users");
 ```
 
 ### Usage Examples
 
-```typescript
-import { expectQuery } from "../testing/expect-query";
-
-test("validate select query", async () => {
-  const db = UserModel.getPuri("r");
-  await db.table("users").select({ id: "users.id" });
-  const query = Naite.get("puri:executed-query").first();
-
-  expectQuery(query, "type").toBe("select");
-  expectQuery(query, "table").toBe("users");
-  expectQuery(query, "columns").toMatchInlineSnapshot(`""users"."id" AS \`id\`"`);
-});
-
-test("validate where condition", async () => {
-  const db = UserModel.getPuri("r");
-  await db.table("users").where("users.id", 1);
-  const query = Naite.get("puri:executed-query").first();
-
-  expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = 1"`);
-});
-
-test("validate join", async () => {
-  const db = UserModel.getPuri("r");
-  await db.table("employees").leftJoin("departments", "employees.department_id", "departments.id");
-  const query = Naite.get("puri:executed-query").first();
-
-  expectQuery(query, "join").toMatchInlineSnapshot(
-    `"LEFT JOIN departments ON "employees"."department_id" = "departments"."id""`,
-  );
-});
-```
+Inspect the project's local `QueryPart` union and parser dialect before using it. Common local parts
+include `type`, `table`, `columns`, `set`, `values`, `where`, `join`, `orderBy`, `pagination`,
+`groupBy`, and `having`, but Sonamu does not promise that helper signature or rendered SQL format.
+For a simple invariant, a direct string or object assertion on the trace is less coupling than an
+AST snapshot.
 
 ## Test Helper: expectUB
 
-UpsertBuilder state validation helper (see miomock for reference):
+`expectUB` is also a project-local helper, not a framework export. A typical implementation reads
+the public `UpsertBuilder.tables`/`hasTable` state, removes generated UUIDs, and returns a Vitest
+expectation.
 
 ```typescript
-// api/src/testing/expect-ub.ts
-import type { UpsertBuilder } from "sonamu";
-import { expect } from "vitest";
+import { expectUB } from "../../testing/expect-ub";
 
-export type UBPart =
-  | "tables"
-  | "hasTable"
-  | "rowCount"
-  | "rows"
-  | "row"
-  | "refs"
-  | "uniquesMap"
-  | "uniqueIndexes";
+const ub = new UpsertBuilder();
+ub.register("users", { email: "test@example.com" });
 
-export function expectUB<P extends UBPart>(
-  ub: UpsertBuilder,
-  part: P,
-  tableName?: string,
-  index?: number,
-) {
-  // ... implementation
-}
+expectUB(ub, "hasTable", "users").toBe(true);
+expectUB(ub, "rowCount", "users").toBe(1);
 ```
 
 ### Usage Examples
 
-```typescript
-import { expectUB } from "../testing/expect-ub";
-
-test("validate UpsertBuilder state", async () => {
-  const ub = new UpsertBuilder();
-
-  // initial state
-  expectUB(ub, "hasTable", "users").toBe(false);
-  expectUB(ub, "tables").toEqual([]);
-
-  // after register
-  ub.register("users", {
-    email: "test@test.com",
-    username: "test",
-    password: "pw",
-    role: "normal",
-  });
-
-  expectUB(ub, "hasTable", "users").toBe(true);
-  expectUB(ub, "rowCount", "users").toBe(1);
-  expectUB(ub, "row", "users", 0).toMatchObject({
-    email: "test@test.com",
-    username: "test",
-  });
-
-  // confirm reset after upsert
-  await ub.upsert(wdb, "users");
-  expectUB(ub, "rowCount", "users").toBe(0);
-});
-```
+Read the local `UBPart` union before use. Common project parts are `tables`, `hasTable`, `rowCount`,
+`rows`, `row`, `refs`, `uniquesMap`, and `uniqueIndexes`. These assertions inspect builder state;
+use Naite's executed-query/upsert traces or query the DB when the behavior under test is execution.

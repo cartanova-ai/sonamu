@@ -1,285 +1,109 @@
 # Quick Start — Getting Started with Tests Quickly
 
-Assumes: the entity's table is migrated, and nullable fields in its `types.ts` are handled — see
-"Tasks to Do Immediately After Entity Creation" in `references/writing-plan.md`.
+## Vitest setup and import order
+
+The generated API layout uses three distinct stages:
+
+```typescript
+// vitest.config.ts
+import { getSonamuTestConfig, NaiteVitestReporter } from "sonamu/test";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig(async () => ({
+  test: await getSonamuTestConfig({
+    include: ["src/**/*.test.ts"],
+    globalSetup: ["./src/testing/global.ts"],
+    setupFiles: ["./src/testing/setup-mocks.ts"],
+    reporters: ["default", NaiteVitestReporter],
+    restoreMocks: true,
+    includeTaskLocation: true,
+  }),
+}));
+```
+
+```typescript
+// src/testing/global.ts
+export { setup } from "sonamu/test";
+```
+
+```typescript
+// src/testing/setup-mocks.ts
+import { vi } from "vitest";
+
+vi.mock("./dependency", () => ({
+  dependency: vi.fn(),
+}));
+```
+
+The effective order is:
+
+1. Vitest evaluates `vitest.config.ts`; `getSonamuTestConfig` loads `sonamu.config.ts` and merges
+   Sonamu's parallel settings with the supplied Vitest options.
+2. The exported global setup creates worker databases when `test.parallel` is enabled.
+3. Vitest executes `setupFiles` before importing each test module, so global mocks are registered
+   before application imports.
+4. A test module imports its dependencies and calls `bootstrap(vi)` at module scope, registering
+   `beforeAll`, `beforeEach`, and `afterEach` hooks.
+5. At runtime, `beforeAll` initializes Sonamu; each test gets a transaction, then `afterEach`
+   restores real timers, rolls the transaction back, and reports the test result.
+
+Do not move test-environment or mock setup into the body of a test: dependency imports have already
+run by then.
 
 ### Step 1: Extend test-helpers.ts
 
-```typescript
-// packages/api/src/application/__tests__/test-helpers.ts
-
-import { User, UserSaveParams } from "../user/user.types";
-import { Post, PostSaveParams } from "../post/post.types";
-import { Comment, CommentSaveParams } from "../comment/comment.types";
-import UserModel from "../user/user.model";
-import PostModel from "../post/post.model";
-import CommentModel from "../comment/comment.model";
-
-// User helper
-export async function createTestUser(params?: Partial<UserSaveParams>): Promise<number> {
-  const user: UserSaveParams = {
-    email: `test-${Date.now()}@example.com`,
-    name: "Test User",
-    ...params,
-  };
-  const [id] = await UserModel.save([user]);
-  return id;
-}
-
-// User with dependencies (dependency chain)
-export async function createTestUserWithDeps() {
-  const userId = await createTestUser();
-  return { userId };
-}
-
-// Post helper
-export async function createTestPost(
-  authorId: number,
-  params?: Partial<PostSaveParams>,
-): Promise<number> {
-  const post: PostSaveParams = {
-    author_id: authorId,
-    title: "Test Post",
-    content: "Test content",
-    ...params,
-  };
-  const [id] = await PostModel.save([post]);
-  return id;
-}
-
-// Post with dependencies
-export async function createTestPostWithDeps() {
-  const { userId } = await createTestUserWithDeps();
-  const postId = await createTestPost(userId);
-  return { userId, postId };
-}
-
-// Comment helper
-export async function createTestComment(
-  postId: number,
-  authorId: number,
-  params?: Partial<CommentSaveParams>,
-): Promise<number> {
-  const comment: CommentSaveParams = {
-    post_id: postId,
-    author_id: authorId,
-    content: "Test comment",
-    ...params,
-  };
-  const [id] = await CommentModel.save([comment]);
-  return id;
-}
-
-// Comment with dependencies
-export async function createTestCommentWithDeps() {
-  const { userId, postId } = await createTestPostWithDeps();
-  const commentId = await createTestComment(postId, userId);
-  return { userId, postId, commentId };
-}
-```
-
-Patterns:
-
-- `createTestX()`: basic creation helper (overridable via params)
-- `createTestXWithDeps()`: helper that automatically handles dependencies (creates all required data together)
-- FK fields use the `_id` suffix (`author_id`, `post_id`)
-- Returns: primarily returns ID; WithDeps returns an object with multiple IDs
-
-All required fields must be included
-
-Sonamu's `ubUpsert` uses PostgreSQL's `ON CONFLICT ... DO UPDATE` query.
-Even for updates, all required fields (fields with NOT NULL constraints) must be included.
-
-When required fields are missing:
-
-```typescript
-// BAD - missing required field content
-const post: PostSaveParams = {
-  author_id: authorId,
-  title: "Test",
-  // content missing! → ubUpsert ON CONFLICT UPDATE attempts to set NULL → DB error
-};
-// Error: null value in column "content" violates not-null constraint
-```
-
-### Distinguishing Required vs Optional Fields
-
-1. Check entity.json
-
-```json
-// post.entity.json
-{
-  "props": [
-    { "name": "id", "type": "integer" }, // auto-generated - exclude
-    { "name": "title", "type": "string", "length": 255 }, // required! (no nullable)
-    { "name": "content", "type": "string" }, // required! (no nullable)
-    { "name": "category", "type": "string", "nullable": true }, // optional (nullable)
-    { "name": "author_id", "type": "integer" }, // required! (FK, no nullable)
-    { "name": "view_count", "type": "integer", "dbDefault": "0" }, // required but has DB default
-    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP" } // automatic
-  ]
-}
-```
-
-Required fields: Fields without `nullable: true`
-
-- `title`, `content`, `author_id`
-- Must provide default values in test-helpers.ts
-
-Optional fields: Fields with `nullable: true`
-
-- `category`
-- Can be omitted in test-helpers.ts
-
-Excluded fields:
-
-- `id`: auto-increment (auto-generated on save)
-- `created_at`: automatically set by dbDefault
-- `view_count`: automatically set by dbDefault="0"
-
-2. Write test-helpers.ts
-
-```typescript
-export async function createTestPost(
-  authorId: number,
-  params?: Partial<PostSaveParams>,
-): Promise<number> {
-  const post: PostSaveParams = {
-    // Required fields must be included (fields without nullable)
-    author_id: authorId,
-    title: "Test Post", // required!
-    content: "Test content", // required!
-
-    // Optional fields can be omitted (fields with nullable: true)
-    // category: null,  // can be omitted
-
-    // Fields with dbDefault can also be omitted
-    // view_count: 0,  // can be omitted since dbDefault="0"
-
-    ...params, // allow override
-  };
-  const saved = await PostModel.save(post);
-  return saved.id;
-}
-```
-
-Rule summary:
-
-1. Fields without `nullable: true` in entity.json = required fields
-2. Required fields must have default values in test-helpers.ts
-3. `id`, `created_at`, fields with `dbDefault` can be excluded
-4. Required fields are also needed for ubUpsert's ON CONFLICT UPDATE
+This step is optional. Add a project helper only when it expresses a repeated, real dependency
+chain. Keep data creation inside the running test transaction; do not hide fixture synchronization
+or external side effects in a helper that appears rollback-safe.
 
 ### Step 2: Write the test file
 
 ```typescript
-// packages/api/src/application/post/__tests__/post.test.ts
+import { bootstrap, test } from "sonamu/test";
+import { assert, describe, expect, vi } from "vitest";
 
-import { bootstrap } from "sonamu";
-import { describe, test, expect, vi } from "vitest";
-import PostModel from "../post.model";
-import { createTestPostWithDeps } from "../../__tests__/test-helpers";
+import { loadFixtures } from "../../testing/fixture";
+import { UserModel } from "./user.model";
 
-bootstrap(vi); // required — without it the test has no DB connection
+bootstrap(vi);
 
-describe("PostModel", () => {
-  describe("A. Create", () => {
-    test("create post", async () => {
-      const { userId, postId } = await createTestPostWithDeps();
+describe("UserModel", () => {
+  test("사용자 이름을 수정한다", async () => {
+    const { user01 } = await loadFixtures(["user01"]);
+    assert(user01);
 
-      const post = await PostModel.findById(postId, ["A"]);
-      expect(post.id).toBe(postId);
-      expect(post.author_id).toBe(userId);
-    });
-  });
+    await UserModel.save([{ id: user01.id, username: "changed" }]);
 
-  describe("B. Read", () => {
-    test("findById - Subset A", async () => {
-      const { postId } = await createTestPostWithDeps();
-
-      const post = await PostModel.findById(postId, ["A"]);
-      expect(post.id).toBe(postId);
-      expect(post).toHaveProperty("title");
-      expect(post).toHaveProperty("content");
-    });
-
-    test("findMany - list query", async () => {
-      await createTestPostWithDeps();
-      await createTestPostWithDeps();
-
-      const { rows } = await PostModel.findMany({ num: 10 });
-      expect(rows.length).toBeGreaterThanOrEqual(2);
-    });
-  });
-
-  describe("C. Update", () => {
-    test("update post", async () => {
-      const { postId } = await createTestPostWithDeps();
-
-      await PostModel.save([
-        {
-          id: postId,
-          title: "Updated Title",
-        },
-      ]);
-
-      const updated = await PostModel.findById("A", postId);
-      expect(updated.title).toBe("Updated Title");
-    });
-  });
-
-  describe("D. Delete", () => {
-    test("delete post", async () => {
-      const { postId } = await createTestPostWithDeps();
-
-      await PostModel.del(postId);
-
-      const post = await PostModel.findById(postId, ["A"]);
-      expect(post).toBeNull();
-    });
-  });
-
-  describe("E. Business Logic", () => {
-    test("full process from post creation to adding a comment", async () => {
-      // 1. create post
-      const { userId, postId } = await createTestPostWithDeps({
-        title: "New Post",
-        content: "Content",
-      });
-
-      // 2. another user writes a comment
-      const commenterId = await createTestUser();
-      const commentId = await createTestComment(postId, commenterId, {
-        content: "Great post!",
-      });
-
-      // 3. fetch post (with comments)
-      const post = await PostModel.findById(postId, ["A"]);
-      expect(post.comments).toHaveLength(1);
-      expect(post.comments[0].id).toBe(commentId);
-    });
+    const saved = await UserModel.findById("A", user01.id);
+    expect(saved.username).toBe("changed");
   });
 });
 ```
 
-Pattern summary:
+Use the live generated subset and project-owned save schema for field names, relation shape,
+nullability, and enum values. `bootstrap` supplies DB hooks but does not create fixture rows.
 
-- `bootstrap(vi)` call is required
-- `describe` + `test` pattern (order: A. Create, B. Read, C. Update, D. Delete, E. Business Logic)
-- Use `createTestXWithDeps()` helper to automatically resolve dependencies
-- The Business Logic section exercises multi-step flows across models, which is where CRUD-only
-  tests tend to miss defects
+### Distinguishing Required vs Optional Fields
+
+The entity definition describes database nullability and defaults; the project-owned `*.types.ts`
+defines the actual `SaveParams` accepted by the model. Construct the smallest object that satisfies
+that current schema. A fetched subset can contain nested relation objects that are not save fields,
+so avoid spreading an entire subset back into `save()` unless the project already provides a
+conversion helper.
 
 ### Step 3: Run tests
 
-```bash
-# Start dev server if it's down
-pnpm sonamu dev
+Inspect `package.json` before choosing the command:
 
-# Tests during development (default)
-pnpm sonamu test
+```bash
+pnpm test
+pnpm exec vitest run src/application/user/user.model.test.ts
 pnpm sonamu test user.model
 ```
 
-Done! See the sections below for detailed information.
+- `pnpm test` runs the declared package lifecycle, including `pretest` if one exists.
+- direct `vitest run` bypasses package lifecycle preparation.
+- `sonamu test` requires an enabled, ready DevRunner in a local dev server.
 
+If the package's `pretest` runs `sonamu fixture sync`, it drops and recreates the test DB before
+Vitest. The stock generated API package has no `pretest`, so fixture preparation is project-specific.
