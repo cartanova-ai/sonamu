@@ -27,7 +27,7 @@ Where a Sonamu skill and the project's `AGENTS.md` disagree, `AGENTS.md` wins.
 | a schema or data-only change needs a migration, generated DDL needs manual data handling, generation, status, apply, deletion, or rollback fails, an applied file is missing, the migration table is locked, or an id type or length changes | `sonamu-migration` |
 | instrumenting a failing path, asserting on Puri/UpsertBuilder internals, filtering traces, diagnosing missing or non-serializable output, or checking LogTape, Vitest metadata, CLI, and extension-socket exposure before recording sensitive data | `sonamu-naite` |
 | implementing findById/findOne/findMany, pagination, filters, joins, sorting, transactions, relation/batch saves, standalone PostgreSQL text search, PGroonga, pg_trgm, or pgvector query composition, or diagnosing row/TS2589 errors | `sonamu-query` |
-| implementing a background job, scheduling recurring work, or building a multi-step process that must survive a restart | `sonamu-tasks` |
+| setting up @sonamu-kit/tasks, defining or enqueuing workflows, starting workers, adding a Sonamu cron workflow, or diagnosing retries, deadlines, leases, duplicate effects, cancellation, and recovery | `sonamu-tasks` |
 | authoring a Model or API test, asserting on query behaviour, mocking a dependency, or when sonamu test fails to run | `sonamu-testing` |
 | generating embeddings, chunking documents, or combining vector similarity with full-text search | `sonamu-vector` |
 

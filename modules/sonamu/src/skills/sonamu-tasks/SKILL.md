@@ -1,236 +1,30 @@
 ---
 name: sonamu-tasks
-description: Runs background work with Sonamu Tasks. Use when implementing a background job, scheduling recurring work, or building a multi-step process that must survive a restart. Covers durable steps, cron scheduling, retry policies, and the task worker.
+description: Runs PostgreSQL-backed workflows with Sonamu Tasks. Use when setting up @sonamu-kit/tasks, defining or enqueuing workflows, starting workers, adding a Sonamu cron workflow, or diagnosing retries, deadlines, leases, duplicate effects, cancellation, and recovery. Covers BackendPostgres, OpenWorkflow, workflow, step.run, step.sleep, WorkflowRunHandle, and Sonamu.workflows.
 ---
 
-# Tasks (Workflow System)
+# Sonamu Tasks
 
-PostgreSQL-based durable workflow engine. Uses the `@sonamu-kit/tasks` package.
+Choose the surface already used by the project:
 
-Source code:
+- `@sonamu-kit/tasks` is the standalone queue. The application initializes a `BackendPostgres`,
+  creates an `OpenWorkflow`, registers implementations, and starts a worker explicitly.
+- `workflow` from `sonamu` is the framework adapter. Sonamu discovers exported metadata from
+  `src/application/**/*.workflow.ts`, manages the backend and worker, and adds schedules, workflow
+  context, a logger, and `step.get`/`step.define`.
 
-- Decorator: `modules/sonamu/src/tasks/decorator.ts`
-- StepWrapper: `modules/sonamu/src/tasks/step-wrapper.ts`
-- WorkflowManager: `modules/sonamu/src/tasks/workflow-manager.ts`
-- @sonamu-kit/tasks: `modules/tasks/`
+Do not import `@sonamu-kit/tasks/internal`. The package root exports the supported constructors and
+helpers; let method return types infer handle, workflow, and run types that are not root exports.
 
-## Workflow Definition
+Both surfaces persist workflow runs and step attempts in PostgreSQL. Persistence does not make an
+arbitrary side effect exactly once: recovery replays the workflow handler, and a step can run again
+when its effect happened before its completion record was saved.
 
-Define with the `workflow()` function. When exported, the syncer automatically collects and registers it with WorkflowManager.
+## Reference map
 
-```typescript
-import { workflow } from "sonamu";
-
-// Method 1: decorator + function separated
-export const myTask = workflow({
-  version: "1",
-})(async ({ input, step, logger, version }) => {
-  // ...
-});
-
-// Method 2: decorator + function inlined
-export const myTask = workflow(
-  {
-    version: "1",
-  },
-  async ({ input, step, logger, version }) => {
-    // ...
-  },
-);
-```
-
-### DefineWorkflowOptions
-
-| Option        | Type               | Required | Description                                                         |
-| ------------- | ------------------ | -------- | ------------------------------------------------------------------- |
-| `version`     | `string`           | Y        | Workflow version (distinguishes from existing runs when changed)    |
-| `name`        | `string`           | N        | Workflow name (default: function name converted to underscore case) |
-| `schema`      | `StandardSchemaV1` | N        | Input validation schema (Zod, etc.)                                 |
-| `schedules`   | `Schedule[]`       | N        | Array of cron schedules                                             |
-| `retryPolicy` | `RetryPolicy`      | N        | Retry policy                                                        |
-
-### Workflow Function Parameters
-
-| Parameter | Type             | Description                               |
-| --------- | ---------------- | ----------------------------------------- |
-| `input`   | `Input`          | Input value passed when the workflow runs |
-| `step`    | `StepWrapper`    | Tool for defining/executing steps         |
-| `logger`  | `Logger`         | @logtape/logtape logger                   |
-| `version` | `string \| null` | Current workflow version                  |
-
-## Step
-
-An atomic unit of execution within a workflow. On failure, retry begins from that step.
-
-### step.define — Inline Function
-
-```typescript
-const result = await step
-  .define({ name: "fetch-data" }, async () => {
-    const data = await fetchSomething();
-    return data;
-  })
-  .run();
-```
-
-### step.get — Wrapping an Existing Method
-
-```typescript
-// Wrap a Model method as a Step
-const result = await step.get(MyModel, "processData").run(inputData);
-
-// Specify a custom name
-const result = await step.get({ name: "custom_step" }, MyService, "execute").run(params);
-```
-
-Overloads for `step.get`:
-
-- `step.get(object, methodName)` — Step name is the methodName converted to underscore case
-- `step.get({ name }, object, methodName)` — Step name specified directly
-
-### step.sleep — Durable Wait
-
-```typescript
-await step.sleep("wait-before-retry", "30m");
-await step.sleep("daily-delay", "1d");
-```
-
-The wait time is preserved even if the server restarts.
-
-DurationString format: `{number}{unit}` — e.g. `"5s"`, `"30m"`, `"2h"`, `"7d"`, `"1w"`, `"1y"`
-
-## Scheduling (cron)
-
-```typescript
-export const dailyReport = workflow(
-  {
-    version: "1",
-    schedules: [
-      {
-        expression: "0 9 * * *", // every day at 9am
-        name: "daily-report", // optional (default: workflowName[expression])
-        input: () => ({ date: new Date().toISOString() }), // optional
-      },
-    ],
-  },
-  async ({ input, step }) => {
-    // ...
-  },
-);
-```
-
-| Field        | Type                | Required | Description                                          |
-| ------------ | ------------------- | -------- | ---------------------------------------------------- |
-| `expression` | `string`            | Y        | cron expression                                      |
-| `name`       | `string`            | N        | Schedule name (default: `workflowName[expression]`)  |
-| `input`      | `Executable<Input>` | N        | Input value to pass on execution (function or value) |
-
-The timezone follows the `api.timezone` setting in `sonamu.config.ts`.
-
-## Retry Policy
-
-### Static Policy (Default)
-
-```typescript
-export const reliableTask = workflow(
-  {
-    version: "1",
-    retryPolicy: {
-      maxAttempts: 5, // maximum retry attempts (default: 5)
-      initialIntervalMs: 1000, // first retry wait time (default: 1000ms)
-      backoffCoefficient: 2, // wait time multiplier (default: 2)
-      maximumIntervalMs: 60000, // maximum wait time
-    },
-  },
-  async ({ step }) => {
-    // ...
-  },
-);
-```
-
-### Dynamic Policy
-
-```typescript
-retryPolicy: {
-  maxAttempts: 10,
-  shouldRetry: (error, attempt) => ({
-    shouldRetry: error.message !== "FATAL",
-    delayMs: attempt * 2000,
-  }),
-}
-```
-
-## sonamu.config.ts Configuration
-
-```typescript
-export default defineConfig({
-  tasks: {
-    enableWorker: true,
-    workerOptions: {
-      concurrency: 4, // concurrent execution count (default: CPU cores - 1)
-      usePubSub: true, // use DB pub/sub (default: true)
-      listenDelay: 500, // execution delay after pub/sub receive in ms (default: 500)
-    },
-    contextProvider: (defaultContext) => {
-      // build Context to use within workflows
-      return { ...defaultContext };
-    },
-  },
-});
-```
-
-| Option                      | Type               | Description                                        |
-| --------------------------- | ------------------ | -------------------------------------------------- |
-| `enableWorker`              | `boolean`          | Whether to enable Worker (use only in daemon mode) |
-| `workerOptions.concurrency` | `number`           | Number of concurrently executing tasks             |
-| `workerOptions.usePubSub`   | `boolean`          | Use PostgreSQL pub/sub                             |
-| `workerOptions.listenDelay` | `number`           | Execution delay after pub/sub receive (ms)         |
-| `contextProvider`           | `(ctx) => Context` | Context creation function when workflow runs       |
-
-## Manual Execution
-
-```typescript
-import { Sonamu } from "sonamu";
-
-// Run via WorkflowManager
-const handle = await Sonamu.workflowManager.run(
-  { name: "my-task", version: "1" },
-  { target: "manual" },
-);
-
-// Wait for result
-const result = await handle.result();
-```
-
-## File Placement
-
-```
-packages/api/src/application/
-├── {domain}/
-│   ├── {domain}.model.ts
-│   ├── {domain}.types.ts
-│   └── {domain}.workflow.ts    ← workflow file
-```
-
-Define with `workflow()` and export in the workflow file; the syncer will collect it automatically.
-
-## Architecture
-
-```
-Dev Server startup
-  → WorkflowManager initialization (BackendPostgres)
-  → Worker startup (when enableWorker: true)
-  → syncer collects .workflow.ts files
-  → registers via WorkflowManager.synchronize()
-  → cron schedules start automatically
-
-On HMR
-  → re-register workflows from changed files (synchronize)
-
-Execution flow
-  → run() called → workflow execution record created in DB
-  → Worker receives via pub/sub → steps executed sequentially
-  → checkpoint saved to DB on each step completion
-  → on failure: retry from that step according to retryPolicy
-  → on server restart: incomplete workflows recovered from DB and continue
-```
+| Task | Read |
+| --- | --- |
+| Install the standalone package; initialize PostgreSQL; configure, start, and stop workers | `references/standalone-runtime.md` |
+| Declare or register a workflow; validate input; enqueue; await, cancel, pause, or resume a run | `references/workflows-and-handles.md` |
+| Design steps; configure retries; reason about idempotency, leases, deadlines, and recovery | `references/reliability-and-recovery.md` |
+| Use `workflow()`, schedules, `contextProvider`, workflow logging, or `Sonamu.workflows` | `references/sonamu-integration.md` |
