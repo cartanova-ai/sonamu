@@ -8,6 +8,7 @@ const mockManager = vi.hoisted(() => ({
   start: vi.fn(),
   run: vi.fn(),
   getStatus: vi.fn(),
+  emitEvent: vi.fn(),
   shutdown: vi.fn(),
 }));
 
@@ -20,6 +21,14 @@ vi.mock("../dev-vitest-manager", () => {
   return { DevVitestManager: MockDevVitestManager };
 });
 
+vi.mock("../../api/sonamu", () => ({
+  Sonamu: {
+    apiRootPath: "/tmp/fixture-api",
+    config: { server: { plugins: {} } },
+    devVitestManager: null,
+  },
+}));
+
 import { registerDevTestRoutes } from "../dev-test-routes";
 
 const defaultConfig = {
@@ -30,8 +39,7 @@ const defaultConfig = {
 const okRunResult: RunResult = {
   ok: true,
   summary: { total: 3, passed: 2, failed: 0, skipped: 1, durationMs: 42 },
-  failed: [],
-  traces: [],
+  results: [],
 };
 
 const okStatus: ManagerStatus = {
@@ -83,10 +91,13 @@ describe("registerDevTestRoutes", () => {
         payload: { files: ["foo.test.ts"], pattern: "my test" },
       });
 
-      expect(mockManager.run).toHaveBeenCalledWith({
-        files: ["foo.test.ts"],
-        pattern: "my test",
-      });
+      expect(mockManager.run).toHaveBeenCalledWith(
+        {
+          files: ["foo.test.ts"],
+          pattern: "my test",
+        },
+        expect.any(String),
+      );
     });
 
     it("manager.run()이 오류를 던지면 500을 반환한다", async () => {

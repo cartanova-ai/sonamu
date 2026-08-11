@@ -1,6 +1,6 @@
 import assert from "assert";
 import { execSync, spawn } from "child_process";
-import { mkdir, readdir, writeFile } from "fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "fs/promises";
 import { createRequire } from "module";
 import path from "path";
 import process from "process";
@@ -31,6 +31,13 @@ import { exists } from "../utils/fs-utils";
 import { findApiRootPath, findAppRootPath } from "../utils/utils";
 import { API_ARTIFACTS, WEB_ARTIFACTS } from "./build-config";
 import { type BuildArtifact } from "./build-config";
+import {
+  assertApiZodCompilerBuildOutput,
+  createApiZodCompilerBuildWrapper,
+  HTTP_VALIDATOR_REGISTRY_BUILD_PATH,
+  HTTP_VALIDATOR_REGISTRY_SOURCE_PATH,
+} from "./build-config";
+import { loadBuildCompilerPolicy } from "./compiler-policy";
 import { fixtureExploreCommand, fixtureFetchCommand, fixtureGenCommand } from "./fixture";
 import { getMigrateRunTargets } from "./migrate-targets";
 import { testCommand } from "./test-command";
@@ -388,8 +395,8 @@ async function dev_web() {
  * API 빌드 설정 파일 경로를 결정합니다.
  * 프로젝트 루트에 `tsdown.config.ts`가 있으면 그것을, 없으면 sonamu 기본 설정을 사용합니다.
  */
-async function resolveApiBuildConfigPath(): Promise<string> {
-  const localConfigPath = path.join(process.cwd(), "tsdown.config.ts");
+async function resolveApiBuildConfigPath(apiRootPath: string): Promise<string> {
+  const localConfigPath = path.join(apiRootPath, "tsdown.config.ts");
 
   try {
     if (await exists(localConfigPath)) {
@@ -421,22 +428,46 @@ async function build_all() {
  * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
  */
 async function build_api() {
-  const appRoot = findAppRootPath();
-  const configFilePath = await resolveApiBuildConfigPath();
+  const apiRootPath = findApiRootPath();
+  const baseConfigPath = await resolveApiBuildConfigPath(apiRootPath);
+  const policy = await loadBuildCompilerPolicy(apiRootPath);
+  const registryPath = path.join(apiRootPath, HTTP_VALIDATOR_REGISTRY_SOURCE_PATH);
+  const configFilePath = await createApiZodCompilerBuildWrapper({
+    apiRootPath,
+    baseConfigPath,
+    policy,
+    registryPath,
+  });
+  const temporaryConfigPath = configFilePath === baseConfigPath ? undefined : configFilePath;
 
   const apiStartedAt = Date.now();
   try {
     for (const artifact of API_ARTIFACTS) {
-      const cwd = path.join(appRoot, artifact.projectPath);
+      const cwd = apiRootPath;
       printTaskHeader(artifact.name, artifact.description, cwd);
 
       await runBuildSteps(artifact, { cwd, buildCommandArgs: { configFilePath } });
     }
+    if (policy.api === "aot") {
+      const outputPath = path.join(apiRootPath, HTTP_VALIDATOR_REGISTRY_BUILD_PATH);
+      if (!(await exists(outputPath))) {
+        throw new Error(`Built HTTP validator registry not found: ${outputPath}`);
+      }
+      assertApiZodCompilerBuildOutput([
+        {
+          code: await readFile(outputPath, "utf8"),
+          path: outputPath,
+        },
+      ]);
+    }
     printBuildSummary("API", true, Date.now() - apiStartedAt);
   } catch (e) {
     printBuildSummary("API", false, Date.now() - apiStartedAt);
-    console.error(e);
-    process.exit(1);
+    throw e;
+  } finally {
+    if (temporaryConfigPath !== undefined) {
+      await rm(temporaryConfigPath, { force: true });
+    }
   }
 }
 
