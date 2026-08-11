@@ -1,5 +1,5 @@
 import assert from "assert";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path, { dirname } from "path";
 
 import chalk from "chalk";
@@ -86,6 +86,29 @@ export async function actionGenerateHttps(): Promise<AbsolutePath> {
   );
   assert(res);
   return res;
+}
+
+/**
+ * 최종 REST caster를 담는 API 전용 validator registry를 재생성합니다.
+ */
+export async function actionGenerateHttpValidators(): Promise<AbsolutePath> {
+  const registryPath = path.join(
+    Sonamu.apiRootPath,
+    "src/application/sonamu.validators.generated.ts",
+  ) as AbsolutePath;
+  const policy = Sonamu.config.validation?.zodCompiler;
+  const isAot = typeof policy === "object" && policy !== null && policy.api === "aot";
+  if (!isAot) {
+    // opt-out/JIT 전환 뒤 AOT compile import가 애플리케이션에 남지 않도록 산출물도 함께 정리합니다.
+    if (await exists(registryPath)) {
+      await unlink(registryPath);
+    }
+    return registryPath;
+  }
+
+  const [generatedPath] = await generateTemplate("http_validators", {}, { overwrite: true });
+  assert(generatedPath);
+  return generatedPath;
 }
 
 /**

@@ -56,6 +56,7 @@ export function getChecksumPatternGroup() {
     // 여기에는 Sonamu의 모든 sync 산출물이 있는 것은 아닙니다.
     // sonamu.shared.ts와 entry-server.generated.tsx와 같은
     // sync 초반 1회성 부트스트랩 파일들은 관리 안 하기 때문에 여기에 리스팅도 안 합니다.
+    httpValidatorsGenerated: api("src/application/**/sonamu.validators.generated.ts"),
     generated: api("src/application/**/*.generated.{ts,tsx,sso.ts}"),
     generatedCopied: targets("src/services/**/sonamu.generated.{ts,tsx}"),
     httpGenerated: api("src/application/**/*.generated.http"),
