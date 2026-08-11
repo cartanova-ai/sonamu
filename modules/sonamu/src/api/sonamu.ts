@@ -37,6 +37,7 @@ import {
   type TelemetryContextProvider,
   type WebSocketTelemetryConnectionContext,
 } from "../stream/ws-telemetry";
+import { type LoadedModels } from "../syncer/module-loader";
 import { type Syncer } from "../syncer/syncer";
 import { type WorkflowManager } from "../tasks/workflow-manager";
 import { type DevVitestManager } from "../testing/dev-vitest-manager";
@@ -46,9 +47,21 @@ import { isDaemonServer } from "../utils/controller";
 import { exists, fileExists } from "../utils/fs-utils";
 import { type AbsolutePath } from "../utils/path-utils";
 import { convertFastifyHeadersToStandard, merge } from "../utils/utils";
-import { type SonamuConfig, type SonamuServerOptions, type SonamuTaskOptions } from "./config";
+import {
+  normalizeZodCompilerPolicy,
+  type SonamuConfig,
+  type SonamuServerOptions,
+  type SonamuTaskOptions,
+} from "./config";
 import { type Context, type RuntimeContext, type WebSocketContext } from "./context";
 import { type ExtendedApi } from "./decorators";
+import {
+  assertHttpValidatorRegistry,
+  createHttpValidator,
+  getHttpValidatorRouteKey,
+  type HttpValidator,
+  type HttpValidatorRegistry,
+} from "./http-validator";
 import { getSecrets } from "./secret";
 import { type SonamuSecrets } from "./secret";
 import {
@@ -70,6 +83,11 @@ class SonamuClass {
   public asyncLocalStorage: AsyncLocalStorage<{
     context: RuntimeContext;
   }> = new AsyncLocalStorage();
+  private httpValidators: WeakMap<ExtendedApi, HttpValidator> = new WeakMap();
+  private pendingHttpValidators: WeakMap<ExtendedApi, Promise<HttpValidator>> = new WeakMap();
+  private aotHttpValidatorRegistry: HttpValidatorRegistry | undefined;
+  private preparedApis: readonly ExtendedApi[] = [];
+  private preparedModels: LoadedModels = {};
 
   public getContext<T extends RuntimeContext = Context>(): T {
     const store = this.asyncLocalStorage.getStore();
@@ -394,6 +412,7 @@ class SonamuClass {
 
     this.server = server;
     this.websocketRuntime ??= new WebSocketRuntime(this.config.server.websocket);
+    await this.refreshHttpValidators();
 
     // timezone 설정
     const timezone = this.config.api.timezone;
@@ -500,7 +519,7 @@ class SonamuClass {
         server.route({
           method: api.options.httpMethod ?? "GET",
           url: this.config.api.route.prefix + api.path,
-          handler: this.createApiHandler(api, config),
+          handler: await this.createApiHandler(api, config),
           compress: toFastifyCompressOption(api.options.compress, globalCompressOptions),
         });
       }
@@ -512,17 +531,17 @@ class SonamuClass {
   }
 
   /**
-   * dev 모드 공통: catch-all에서 syncer.apis를 동적으로 탐색하여 API 요청을 처리합니다.
+   * dev 모드 공통: catch-all에서 마지막 준비 완료 API snapshot을 탐색하여 요청을 처리합니다.
    * server.route()로 개별 등록하면 handler가 고정되어 HMR이 동작하지 않으므로,
-   * 매 요청마다 syncer.apis를 조회하는 이 방식을 사용합니다.
+   * refresh 성공 시 교체되는 snapshot을 매 요청 조회합니다.
    *
    * 요청이 /api(정확히는 this.config.api.route.prefix)로 시작하지 않는 경우라면 null을 반환하며 끝냅니다.
    */
-  private handleDevApiRequest(
+  private async handleDevApiRequest(
     request: FastifyRequest,
     config: SonamuFastifyConfig,
-  ): ((request: FastifyRequest, reply: FastifyReply) => Promise<unknown>) | null {
-    const matchedApi = this.findMatchedApi(request);
+  ): Promise<((request: FastifyRequest, reply: FastifyReply) => Promise<unknown>) | null> {
+    const matchedApi = this.findMatchedApi(request, this.preparedApis, this.preparedModels);
 
     if (!matchedApi) {
       throw new NotFoundException(SD("error.api.notFound"));
@@ -533,10 +552,14 @@ class SonamuClass {
       return this.createWebSocketUpgradeRequiredHandler();
     }
 
-    return this.createApiHandler(matchedApi, config);
+    return await this.createApiHandler(matchedApi, config, this.preparedModels);
   }
 
-  private findMatchedApi(request: FastifyRequest): ExtendedApi | undefined {
+  private findMatchedApi(
+    request: FastifyRequest,
+    apis: readonly ExtendedApi[],
+    models: LoadedModels,
+  ): ExtendedApi | undefined {
     const url = this.getPathnameFromUrl(request.url);
     const method = request.method;
 
@@ -544,8 +567,8 @@ class SonamuClass {
       return undefined;
     }
 
-    return this.syncer.apis.find((api) => {
-      if (this.syncer.models[api.modelName] === undefined) {
+    return apis.find((api) => {
+      if (models[api.modelName] === undefined) {
         return false;
       }
       const apiMethod = api.options.httpMethod ?? "GET";
@@ -558,7 +581,7 @@ class SonamuClass {
 
   /**
    * dev api 모드: Vite 없이 API 동적 라우팅만 제공합니다.
-   * HMR을 위해 catch-all에서 매 요청마다 syncer.apis를 조회합니다.
+   * HMR을 위해 catch-all에서 매 요청마다 준비 완료 API snapshot을 조회합니다.
    */
   private setupDevServer(
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
@@ -569,7 +592,7 @@ class SonamuClass {
       method: "GET",
       url: `${this.config.api.route.prefix}/*`,
       handler: async (request, reply) => {
-        const handler = this.handleDevApiRequest(request, config);
+        const handler = await this.handleDevApiRequest(request, config);
         if (handler) {
           return handler(request, reply);
         }
@@ -585,7 +608,7 @@ class SonamuClass {
       method: ["HEAD", "POST", "PUT", "DELETE", "PATCH"],
       url: `${this.config.api.route.prefix}/*`,
       handler: async (request, reply) => {
-        const handler = this.handleDevApiRequest(request, config);
+        const handler = await this.handleDevApiRequest(request, config);
         if (handler) {
           return handler(request, reply);
         }
@@ -640,7 +663,7 @@ class SonamuClass {
       method: "GET",
       url: `${this.config.api.route.prefix}/*`,
       handler: async (request, reply) => {
-        const result = this.handleDevApiRequest(request, config);
+        const result = await this.handleDevApiRequest(request, config);
         if (result) {
           return result(request, reply);
         }
@@ -655,7 +678,7 @@ class SonamuClass {
       method: ["HEAD", "POST", "PUT", "DELETE", "PATCH"],
       url: `${this.config.api.route.prefix}/*`,
       handler: async (request, reply) => {
-        const result = this.handleDevApiRequest(request, config);
+        const result = await this.handleDevApiRequest(request, config);
         if (result) {
           return result(request, reply);
         }
@@ -899,8 +922,13 @@ class SonamuClass {
   createApiHandler(
     api: ExtendedApi,
     config: SonamuFastifyConfig,
+    models: LoadedModels = this.syncer.models,
   ): (request: FastifyRequest, reply: FastifyReply) => Promise<unknown> {
+    const preparedValidator = this.getOrCreateHttpValidator(api);
+
     return async (request: FastifyRequest, reply: FastifyReply): Promise<unknown> => {
+      const validator =
+        preparedValidator instanceof Promise ? await preparedValidator : preparedValidator;
       // Context 생성
       const context: Context = await this.createContext(config, request, reply);
 
@@ -912,10 +940,6 @@ class SonamuClass {
           request,
           api,
         });
-
-        // 파라미터 정보로 zod 스키마 빌드
-        const { getZodObjectFromApi } = await import("./code-converters");
-        const ReqType = getZodObjectFromApi(api, this.syncer.types);
 
         // request 파싱
         const which = api.options.httpMethod === "GET" ? "query" : "body";
@@ -1001,8 +1025,7 @@ class SonamuClass {
             Object.assign(body, parsed);
           }
 
-          const { fastifyCaster } = await import("./caster");
-          reqBody = fastifyCaster(ReqType).parse(body);
+          reqBody = validator.parse(body);
         } catch (e) {
           const { ZodError } = await import("zod");
           if (e instanceof ZodError) {
@@ -1049,9 +1072,128 @@ class SonamuClass {
           }
         });
 
-        return this.invokeModelMethod(api, args, reply);
+        return this.invokeModelMethod(api, args, reply, models);
       });
     };
+  }
+
+  private getOrCreateHttpValidator(api: ExtendedApi): HttpValidator | Promise<HttpValidator> {
+    const cached = this.httpValidators.get(api);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const existing = this.pendingHttpValidators.get(api);
+    if (existing !== undefined) {
+      return existing;
+    }
+    const pending = this.buildHttpValidator(api);
+    this.pendingHttpValidators.set(api, pending);
+    void pending.then(
+      (validator) => {
+        this.httpValidators.set(api, validator);
+        this.pendingHttpValidators.delete(api);
+      },
+      () => {
+        this.pendingHttpValidators.delete(api);
+      },
+    );
+    return pending;
+  }
+
+  private async buildHttpValidator(api: ExtendedApi): Promise<HttpValidator> {
+    const policy = normalizeZodCompilerPolicy(this.config.validation?.zodCompiler);
+    const sourceAot = process.env.HOT === "yes" || process.env.VITEST === "true";
+    if (policy.api === "aot" && !sourceAot) {
+      const registry = this.aotHttpValidatorRegistry ?? (await this.loadAotHttpValidatorRegistry());
+      return this.getAotHttpValidator(api, registry);
+    }
+
+    return await createHttpValidator({
+      api,
+      policy,
+      types: this.syncer.types,
+      allowAotSourceFallback: sourceAot,
+    });
+  }
+
+  private getAotHttpValidator(api: ExtendedApi, registry: HttpValidatorRegistry): HttpValidator {
+    const routeKey = getHttpValidatorRouteKey(api);
+    const validator = registry.validators.get(routeKey);
+    if (validator === undefined) {
+      throw new Error(`HTTP validator registry is missing ${routeKey}`);
+    }
+    return validator;
+  }
+
+  private async loadAotHttpValidatorRegistry(
+    apis: readonly ExtendedApi[] = this.syncer.apis,
+  ): Promise<HttpValidatorRegistry> {
+    const { pathToFileURL } = await import("node:url");
+    const registryPath = path.join(
+      this.apiRootPath,
+      "dist/application/sonamu.validators.generated.js",
+    );
+    if (!(await exists(registryPath))) {
+      throw new Error(`Generated HTTP validator registry not found: ${registryPath}`);
+    }
+
+    const imported = (await import(pathToFileURL(registryPath).href)) as {
+      fingerprint?: unknown;
+      validators?: unknown;
+    };
+    if (typeof imported.fingerprint !== "string" || !(imported.validators instanceof Map)) {
+      throw new Error(`Invalid generated HTTP validator registry: ${registryPath}`);
+    }
+    for (const [key, validator] of imported.validators) {
+      if (
+        typeof key !== "string" ||
+        typeof validator !== "object" ||
+        validator === null ||
+        !("parse" in validator) ||
+        typeof validator.parse !== "function"
+      ) {
+        throw new Error(`Invalid HTTP validator registry entry: ${String(key)}`);
+      }
+    }
+
+    const registry: HttpValidatorRegistry = {
+      fingerprint: imported.fingerprint,
+      validators: imported.validators,
+    };
+    assertHttpValidatorRegistry(apis, registry);
+    return registry;
+  }
+
+  async refreshHttpValidators(): Promise<void> {
+    const policy = normalizeZodCompilerPolicy(this.config.validation?.zodCompiler);
+    const sourceAot = process.env.HOT === "yes" || process.env.VITEST === "true";
+    const nextApis = [...this.syncer.apis];
+    const nextModels = { ...this.syncer.models };
+    const restApis = nextApis.filter((api) => api.websocketOptions === undefined);
+    const next = new WeakMap<ExtendedApi, HttpValidator>();
+    let nextAotRegistry: HttpValidatorRegistry | undefined;
+
+    if (policy.api === "aot" && !sourceAot) {
+      const registry = await this.loadAotHttpValidatorRegistry(nextApis);
+      for (const api of restApis) {
+        next.set(api, this.getAotHttpValidator(api, registry));
+      }
+      nextAotRegistry = registry;
+    } else {
+      await Promise.all(
+        restApis.map(async (api) => {
+          const validator = await this.buildHttpValidator(api);
+          next.set(api, validator);
+        }),
+      );
+    }
+
+    // validator와 같은 revision의 API/model snapshot을 함께 공개해 HMR 중간 상태를 숨깁니다.
+    this.httpValidators = next;
+    this.pendingHttpValidators = new WeakMap();
+    this.aotHttpValidatorRegistry = nextAotRegistry;
+    this.preparedApis = nextApis;
+    this.preparedModels = nextModels;
   }
 
   // WS path를 일반 HTTP GET으로 호출한 경우 426 + Upgrade 헤더로 명시적으로 websocket 접속을 유도함
@@ -1069,7 +1211,7 @@ class SonamuClass {
     request: FastifyRequest,
     config: SonamuFastifyConfig,
   ): Promise<void> {
-    const matchedApi = this.findMatchedApi(request);
+    const matchedApi = this.findMatchedApi(request, this.syncer.apis, this.syncer.models);
     if (!matchedApi?.websocketOptions) {
       const traceContext = this.websocketRuntime.telemetryController.createConnectionContext({
         headers: request.headers,
@@ -1491,9 +1633,17 @@ class SonamuClass {
     api: ExtendedApi,
     args: unknown[],
     reply?: FastifyReply,
+    models: LoadedModels = this.syncer.models,
   ): Promise<unknown> {
-    const model = this.syncer.models[api.modelName];
-    const result = await (model as any)[api.methodName].apply(model, args);
+    const model = models[api.modelName];
+    if (model === undefined) {
+      throw new Error(`Model not found: ${api.modelName}`);
+    }
+    const method: unknown = Reflect.get(model, api.methodName);
+    if (typeof method !== "function") {
+      throw new Error(`Model method not found: ${api.modelName}.${api.methodName}`);
+    }
+    const result = await Reflect.apply(method, model, args);
     reply?.type(api.options.contentType ?? "application/json");
 
     return result;
