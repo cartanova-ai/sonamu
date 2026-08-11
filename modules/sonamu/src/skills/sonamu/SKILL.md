@@ -25,7 +25,7 @@ Where a Sonamu skill and the project's `AGENTS.md` disagree, `AGENTS.md` wins.
 | consuming services.generated.ts, wiring generated TanStack Query helpers, configuring SonamuProvider, building forms or lists with useTypeForm or useListParams, using IdAsyncSelect or FileInput, or repairing view_list or view_form output | `sonamu-frontend` |
 | adding a locale, key, entity or enum label, switching locale, diagnosing a raw-key fallback, selecting localized columns, pluralizing counts, choosing Korean particles, or formatting locale-aware numbers or dates | `sonamu-i18n` |
 | a schema or data-only change needs a migration, generated DDL needs manual data handling, generation, status, apply, deletion, or rollback fails, an applied file is missing, the migration table is locked, or an id type or length changes | `sonamu-migration` |
-| a query or save produces the wrong result and the cause is unclear, or when a test needs to assert on internal state | `sonamu-naite` |
+| instrumenting a failing path, asserting on Puri/UpsertBuilder internals, filtering traces, diagnosing missing or non-serializable output, or checking LogTape, Vitest metadata, CLI, and extension-socket exposure before recording sensitive data | `sonamu-naite` |
 | implementing a Model CRUD method, writing a SELECT/WHERE/JOIN query, batch-saving relation data, or when a query returns unexpected rows or an excessively deep type error | `sonamu-query` |
 | implementing a background job, scheduling recurring work, or building a multi-step process that must survive a restart | `sonamu-tasks` |
 | authoring a Model or API test, asserting on query behaviour, mocking a dependency, or when sonamu test fails to run | `sonamu-testing` |
