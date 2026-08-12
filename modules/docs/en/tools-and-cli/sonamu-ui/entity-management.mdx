@@ -41,13 +41,12 @@ When the modal opens, enter the following information:
 
 Created Entities include these basic fields by default:
 
-```typescript
+```json
 {
-  properties: [
-    { name: "id", type: "int", primaryKey: true, autoIncrement: true },
-    { name: "title", type: "string", length: 255 },
-    { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
-  ];
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" }
+  ]
 }
 ```
 
@@ -58,21 +57,26 @@ Created Entities include these basic fields by default:
 1. Click **[+ Add Property]** button
 2. Enter Property information:
 
-| Field        | Required    | Description             | Example                    |
-| ------------ | ----------- | ----------------------- | -------------------------- |
-| **Name**     | ✅          | Field name (snake_case) | `email`, `phone_number`    |
-| **Type**     | ✅          | Data type               | `string`, `int`, `decimal` |
-| **Length**   | Conditional | String length           | `255`                      |
-| **Nullable** |             | Allow NULL              | `true`                     |
-| **Default**  |             | Default value           | `0`, `CURRENT_TIMESTAMP`   |
-| **Comment**  |             | Description             | `User email`               |
+| Field           | Required    | Description             | Example                        |
+| --------------- | ----------- | ----------------------- | ------------------------------ |
+| **Name**        | ✅          | Field name (snake_case) | `email`, `phone_number`        |
+| **Type**        | ✅          | Data type               | `string`, `integer`, `numeric` |
+| **Length**      | Conditional | String length           | `255`                          |
+| **Nullable**    |             | Allow NULL              | `true`                         |
+| **DB Default**  |             | Database default value  | `0`, `CURRENT_TIMESTAMP`       |
+| **Description** |             | Description             | `User email`                   |
 
 **Supported data types**:
 
-- **String**: `string`, `text`, `mediumtext`, `longtext`
-- **Number**: `int`, `bigint`, `float`, `double`, `decimal`
-- **Date**: `date`, `datetime`, `timestamp`
-- **Other**: `boolean`, `json`, `enum`
+- **String**: `string` (falls back to `text` without a length), `uuid`, `searchText`
+- **Number**: `integer`, `bigInteger`, `number`, `numeric` (precision/scale)
+- **Date**: `date`
+- **Other**: `boolean`, `enum`, `json`, `virtual`, `vector`, `tsvector`, `relation`
+
+<Note>
+  Most scalar types also have an array form such as `integer[]` or `string[]`. See [Field
+  Types](/en/core-concepts/entity/field-types) for the full list.
+</Note>
 
 ### Editing a Property
 
@@ -97,28 +101,45 @@ Click the **[×]** button on the Property row.
 2. Click **[+ Add Index]** button
 3. Enter Index information:
 
-| Field      | Description                               | Example                       |
-| ---------- | ----------------------------------------- | ----------------------------- |
-| **Fields** | Index target fields (multiple selectable) | `email`, `created_at`         |
-| **Type**   | Index type                                | `index`, `unique`, `fulltext` |
-| **Where**  | Raw SQL predicate for partial indexes     | `deleted_at IS NULL`          |
+| Field              | Description                               | Example                              |
+| ------------------ | ----------------------------------------- | ------------------------------------ |
+| **Target Columns** | Index target fields (multiple selectable) | `email`, `created_at`                |
+| **Type**           | Index type                                | `index`, `unique`, `hnsw`, `ivfflat` |
+| **Where**          | Raw SQL predicate for partial indexes     | `deleted_at IS NULL`                 |
 
 **Index types**:
 
 - **index**: Regular index (improves search performance)
 - **unique**: Unique index (prevents duplicates)
-- **fulltext**: Full-text search index (text search)
+- **hnsw** / **ivfflat**: pgvector vector indexes
+
+<Note>
+  Full-text search is not a separate index type. Use a `searchText`/`tsvector` prop together with the
+  `using: "gin"` option — see [pgvector
+  setup](/en/advanced-features/vector-search/pgvector-setup).
+</Note>
 
 ### Composite Index
 
 Select multiple fields to create a composite index:
 
-```typescript
-indexes: [
-  { fields: ["user_id", "created_at"], type: "index" },
-  { fields: ["email"], type: "unique" },
-  { fields: ["email"], type: "unique", where: "deleted_at IS NULL" },
-];
+```json
+{
+  "indexes": [
+    {
+      "type": "index",
+      "name": "posts_user_id_created_at_index",
+      "columns": [{ "name": "user_id" }, { "name": "created_at" }]
+    },
+    { "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] },
+    {
+      "type": "unique",
+      "name": "users_email_active_unique",
+      "columns": [{ "name": "email" }],
+      "where": "deleted_at IS NULL"
+    }
+  ]
+}
 ```
 
 `where` is emitted as a PostgreSQL partial index predicate. Treat it as raw SQL: do not build it from
@@ -143,8 +164,16 @@ Example: `Post` belongs to `User`
 
 Generated code:
 
-```typescript
-belongsTo: [{ entityId: "User", as: "author" }];
+```json
+{
+  "type": "relation",
+  "name": "author",
+  "relationType": "BelongsToOne",
+  "with": "User",
+  "onUpdate": "CASCADE",
+  "onDelete": "CASCADE",
+  "desc": "Author"
+}
 ```
 
 ### hasMany (1:N Relationship)
@@ -163,8 +192,15 @@ Example: `User` has multiple `Posts`
 
 Generated code:
 
-```typescript
-hasMany: [{ entityId: "Post", as: "posts" }];
+```json
+{
+  "type": "relation",
+  "name": "posts",
+  "relationType": "HasMany",
+  "with": "Post",
+  "joinColumn": "user_id",
+  "desc": "Posts"
+}
 ```
 
 ## Managing Enums
@@ -176,30 +212,30 @@ Use Enums when a field can only have limited values.
 1. Click **[+ Add Enum]** button in the **Enums** section
 2. Enter Enum information:
 
-| Field      | Description                  | Example              |
-| ---------- | ---------------------------- | -------------------- |
-| **Name**   | Enum name                    | `UserRole`           |
-| **Values** | Value list (comma-separated) | `admin, user, guest` |
+| Field      | Description       | Example                      |
+| ---------- | ----------------- | ---------------------------- |
+| **Name**   | Enum name         | `UserRole`                   |
+| **Values** | Value/label pairs | `admin: Admin`, `user: User` |
 
 Generated code:
 
-```typescript
-enums: [
-  {
-    name: "UserRole",
-    values: ["admin", "user", "guest"],
-  },
-];
+```json
+{
+  "enums": {
+    "UserRole": { "admin": "Admin", "user": "User", "guest": "Guest" }
+  }
+}
 ```
 
 Using in Property:
 
-```typescript
+```json
 {
-  name: "role",
-  type: "enum",
-  enum: "UserRole",
-  default: "user"
+  "name": "role",
+  "type": "enum",
+  "id": "UserRole",
+  "desc": "Role",
+  "dbDefault": "user"
 }
 ```
 
@@ -237,37 +273,51 @@ AI analyzes the existing Entity and applies the modifications.
 
 ### E-commerce Product Entity
 
-```typescript
-export const ProductEntity = {
-  properties: [
-    { name: "id", type: "int", primaryKey: true, autoIncrement: true },
-    { name: "title", type: "string", length: 255 },
-    { name: "description", type: "text", nullable: true },
-    { name: "price", type: "decimal", precision: 10, scale: 2 },
-    { name: "stock", type: "int", default: 0 },
-    { name: "category_id", type: "int" },
-    { name: "status", type: "enum", enum: "ProductStatus" },
-    { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
-    { name: "updated_at", type: "datetime", onUpdate: "CURRENT_TIMESTAMP" },
-  ],
-
-  indexes: [
-    { fields: ["category_id"] },
-    { fields: ["title"], type: "fulltext" },
-    { fields: ["status", "created_at"] },
-  ],
-
-  belongsTo: [{ entityId: "Category", as: "category" }],
-
-  hasMany: [{ entityId: "Review", as: "reviews" }],
-
-  enums: [
+```json title="src/application/product/product.entity.json"
+{
+  "id": "Product",
+  "title": "Product",
+  "table": "products",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "Created at", "dbDefault": "CURRENT_TIMESTAMP" },
+    { "name": "title", "type": "string", "length": 255, "desc": "Title" },
+    { "name": "description", "type": "string", "nullable": true, "desc": "Description" },
+    { "name": "price", "type": "numeric", "precision": 10, "scale": 2, "desc": "Price" },
+    { "name": "stock", "type": "integer", "desc": "Stock", "dbDefault": 0 },
+    { "name": "status", "type": "enum", "id": "ProductStatus", "desc": "Status" },
     {
-      name: "ProductStatus",
-      values: ["active", "inactive", "soldout"],
+      "type": "relation",
+      "name": "category",
+      "relationType": "BelongsToOne",
+      "with": "Category",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "desc": "Category"
     },
+    {
+      "type": "relation",
+      "name": "reviews",
+      "relationType": "HasMany",
+      "with": "Review",
+      "joinColumn": "product_id",
+      "desc": "Reviews"
+    }
   ],
-} satisfies EntityType;
+  "indexes": [
+    {
+      "type": "index",
+      "name": "products_status_created_at_index",
+      "columns": [{ "name": "status" }, { "name": "created_at" }]
+    }
+  ],
+  "subsets": { "A": ["id", "created_at", "title", "price", "status", "category.id"] },
+  "enums": {
+    "ProductStatus": { "active": "Active", "inactive": "Inactive", "soldout": "Sold out" },
+    "ProductOrderBy": { "id-desc": "Newest" },
+    "ProductSearchField": { "id": "ID", "title": "Title" }
+  }
+}
 ```
 
 ## Applying Changes
@@ -281,7 +331,7 @@ After modifying an Entity, you need to **create and run a migration** to reflect
 3. **Run Migration**: Run migration to apply to DB
 4. **Scaffolding**: Generate Model and test code
 
-<Info>Entity files (`.entity.ts`) are **automatically saved** when modified in the UI.</Info>
+<Info>Entity files (`.entity.json`) are **automatically saved** when modified in the UI.</Info>
 
 ## Next Steps
 
