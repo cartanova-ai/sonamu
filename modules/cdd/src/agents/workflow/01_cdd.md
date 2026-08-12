@@ -69,7 +69,7 @@ ac_targets:
 rules:
   - "contract/rules/api.rules.json"
 required_skills:
-  - "modules/sonamu/src/skills/sonamu/migration.md"
+  - "sonamu-migration"
 required_cli_commands:
   - "pnpm sonamu sync"
   - "pnpm sonamu scaffold model User"
@@ -89,7 +89,7 @@ findings: []
 | `scope.write` | Ownership boundary. Editing outside this is prohibited |
 | `ac_targets` | ACs to satisfy. For implement: "must pass to complete". For test: "write tests for these" |
 | `rules` | Paths to applicable rule files |
-| `required_skills` | Canonical skill files the worker must follow when the Claim needs them |
+| `required_skills` | Installed skill names the worker must follow when the Claim needs them |
 | `required_cli_commands` | Required CLI commands for migration/scaffolding/sync work |
 | `expected_generated_targets` | Files or modules the worker must leave ready for downstream stages |
 | `depends_on` | Predecessor Claim IDs. Determines parallel/sequential execution |

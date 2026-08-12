@@ -99,6 +99,5 @@ export function runAgentsInit(force: boolean): void {
   ensureSymlink(claudeMdLink, "AGENTS.md", force);
 
   console.log(chalk.cyan("\n  agents init complete."));
-  console.log(chalk.dim("  Run 'pnpm sonamu skills sync' if you haven't already."));
   console.log(chalk.dim("  Then use /cdd slash command to start CDD workflow."));
 }

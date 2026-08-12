@@ -35,11 +35,11 @@ The planner never edits code, never creates Claim YAML files, and never spawns o
    - Sonamu model scaffolding
    - any frame/module entry readiness required before test or implementation starts
 10. When migration or scaffolding is needed, require Sonamu CLI usage and include both:
-    - `required_skills`
+    - `required_skills` with externally installed skill names
     - `required_cli_commands`
-11. Use these canonical Sonamu skill references when applicable:
-    - `modules/sonamu/src/skills/sonamu/migration.md`
-    - `modules/sonamu/src/skills/sonamu/scaffolding.md`
+11. Use these installed Sonamu skills when applicable:
+    - `sonamu-migration`
+    - `sonamu-entity`
 
 ## Downstream output
 
@@ -107,7 +107,7 @@ claim_blueprint:
     rules:
       - "contract/rules/..."
     required_skills:
-      - "modules/sonamu/src/skills/sonamu/migration.md"
+      - "sonamu-migration"
     required_cli_commands:
       - "pnpm sonamu sync"
       - "pnpm sonamu scaffold model <EntityId>"

@@ -16,7 +16,7 @@ Implement production code for exactly one Claim unit within `scope.write`.
 2. `../workflow/01_cdd.md`
 3. `../workflow/04_worker_contract.md`
 4. Every file in the Claim's `rules`.
-5. Every file in the Claim's `required_skills` when present.
+5. Every installed skill named in the Claim's `required_skills` when present.
 6. `scope.read` files.
 
 ## Upstream inputs
@@ -30,7 +30,7 @@ Claim YAML with `type: implement` (schema: `01_cdd.md#claim-format`).
 ## Procedure
 
 1. If `findings` is non-empty, address review feedback first.
-2. Read rules and skills files.
+2. Read rule files and load the named skills.
 3. Read `scope.read` for context.
 4. Implement production code in `scope.write` files.
 5. Run `pnpm build` and `pnpm check`.

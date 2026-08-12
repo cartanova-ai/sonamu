@@ -1,18 +1,7 @@
 import assert from "assert";
 import { execSync, spawn } from "child_process";
-import {
-  cp,
-  mkdir,
-  readdir,
-  readFile,
-  readlink,
-  realpath,
-  rm,
-  symlink,
-  writeFile,
-} from "fs/promises";
+import { mkdir, readdir, writeFile } from "fs/promises";
 import { createRequire } from "module";
-import os from "os";
 import path from "path";
 import process from "process";
 
@@ -187,7 +176,6 @@ async function bootstrap() {
         ["dev", "web"],
         ["start"],
         ["skills", "sync"],
-        ["skills", "index"],
         ["test"],
         ["auth", "generate"],
         ["auth", "add-companions"],
@@ -218,8 +206,7 @@ async function bootstrap() {
         dev_api,
         dev_web,
         start,
-        skills_sync,
-        skills_index,
+        skills_sync: skillsMigrationNotice,
         test: testCommand,
         auth_generate,
         "auth_add-companions": auth_add_companions,
@@ -248,6 +235,16 @@ async function sync() {
   } else {
     await Sonamu.syncer.sync();
   }
+}
+
+/**
+ * 이전 생성 프로젝트의 postinstall이 업그레이드를 막지 않도록 구 명령만 안전하게 종료합니다.
+ */
+async function skillsMigrationNotice() {
+  console.log(chalk.yellow("'sonamu skills sync' is no longer supported."));
+  console.log(
+    chalk.cyan("Install Sonamu skills with 'npx skills@latest add cartanova-ai/skills'."),
+  );
 }
 
 /**
@@ -1004,366 +1001,6 @@ async function scaffold_view_form(entityId: string) {
   await Sonamu.syncer.generateTemplate("view_form", {
     entityId,
   });
-}
-
-/**
- * pnpm sonamu skills sync 하면 실행되는 함수입니다.
- * 공식 Skills를 로컬 프로젝트 또는 글로벌 ~/.claude/로 동기화합니다.
- *
- * --global 플래그: ~/.claude/에 동기화 (프로젝트 생성 전 사용 가능)
- */
-async function skills_sync() {
-  const { flags } = parseCliOptions();
-  const isGlobal = flags.has("global");
-
-  // 개발 환경 - cli.ts: sonamu/modules/sonamu/src/bin/cli.ts
-  // 빌드 후 - cli.js: node_modules/sonamu/dist/bin/cli.js (실제 실행)
-  // skills 위치: node_modules/sonamu/src/skills (npm 배포 시)
-  const sourceBase = path.resolve(import.meta.dirname, "..", "..", "src", "skills");
-  if (!(await exists(sourceBase))) {
-    console.log(chalk.yellow("Skills source not found in sonamu package."));
-    return;
-  }
-
-  if (isGlobal) {
-    await skills_sync_to(os.homedir(), {
-      useSymlink: false,
-      sourceBase,
-    });
-
-    // 구버전이 설치한 /sonamu-skills 커맨드 제거.
-    // 수동 스킬 메뉴는 자동 discovery와 AGENTS.md 스킬 인덱스로 대체됐습니다.
-    await rm(path.join(os.homedir(), ".claude", "commands", "sonamu-skills.md"), { force: true });
-
-    console.log(chalk.cyan(`\n  Global sync complete → ~/.agents/skills/`));
-    console.log(chalk.dim(`  These skills are available in every agent session.`));
-    console.log(
-      chalk.dim(
-        `  Once a project is created, run 'pnpm sonamu skills sync' for project-local sync.`,
-      ),
-    );
-  } else {
-    await skills_sync_to(findProjectRoot(), {
-      useSymlink: true,
-      createSettings: true,
-      sourceBase,
-    });
-  }
-}
-
-/**
- * 두 경로가 심볼릭 링크를 따라 같은 실체를 가리키는지 확인합니다.
- */
-async function resolvesToSameDir(a: string, b: string): Promise<boolean> {
-  try {
-    return (await realpath(a)) === (await realpath(b));
-  } catch {
-    return false;
-  }
-}
-
-/**
- * `.claude/<entry>`가 `../.agents/<entry>`를 가리키도록 보장합니다.
- *
- * 원본은 에이전트 중립인 `.agents/`에 두고, Claude Code용 `.claude/`는 심볼릭
- * 링크로만 연결합니다. 이 저장소의 `CLAUDE.md -> AGENTS.md` 규약과 같은 방식입니다.
- * 이미 심볼릭 링크가 아닌 실체가 있으면 사용자 파일일 수 있으므로 건드리지 않습니다.
- */
-async function linkClaudeEntry(root: string, relative: string): Promise<boolean> {
-  // `.claude` 자체가 `.agents`를 가리키는 심볼릭 링크인 저장소에서는 두 경로가
-  // 같은 실체를 가리킵니다. 이때 링크를 걸면 원본을 자기 자신을 가리키는
-  // 링크로 덮어쓰게 되므로 아무것도 하지 않습니다.
-  if (await resolvesToSameDir(path.join(root, ".claude"), path.join(root, ".agents"))) {
-    return false;
-  }
-
-  const target = path.join(root, ".claude", relative);
-  const source = path.join(root, ".agents", relative);
-
-  let existing: string | undefined;
-  try {
-    existing = await readlink(target);
-  } catch {
-    // 심볼릭 링크가 아니거나 존재하지 않음
-  }
-
-  if (existing === undefined && (await exists(target))) {
-    return false;
-  }
-
-  await mkdir(path.dirname(target), { recursive: true });
-  await rm(target, { recursive: true, force: true });
-  await symlink(path.relative(path.dirname(target), source), target, "dir");
-  return true;
-}
-
-/**
- * 스킬을 배치할 프로젝트 루트를 찾습니다.
- *
- * Sonamu 프로젝트는 두 가지 레이아웃이 공존합니다.
- *
- * - `<root>/api`          (예: examples/miomock)
- * - `<root>/packages/api` (create-sonamu가 생성하는 레이아웃)
- *
- * `findAppRootPath()`는 api의 부모를 그대로 돌려주므로 후자에서 `<root>/packages`가
- * 나오고, `findWorkspaceRoot()`는 pnpm-workspace.yaml을 찾아 올라가므로 모노레포에
- * 든 프로젝트에서 바깥 저장소가 잡힙니다. api의 부모가 `packages`면 한 단계 더
- * 올라가는 방식으로 두 경우를 모두 맞춥니다.
- */
-function findProjectRoot(): string {
-  const apiParent = findAppRootPath();
-  return path.basename(apiParent) === "packages" ? path.dirname(apiParent) : apiParent;
-}
-
-/**
- * 구버전이 남긴 `skills/sonamu` 평면 디렉토리를 제거합니다.
- *
- * 예전에는 모든 스킬 문서를 `skills/sonamu/*.md` 한 디렉토리에 복사했습니다.
- * 지금은 `sonamu`가 라우팅 테이블을 담은 루트 스킬 이름이라 경로가 겹치는데,
- * 남아 있는 구버전 디렉토리에는 삭제된 문서를 가리키는 옛 SKILL.md가 들어 있어
- * 그대로 두면 낡은 라우팅 테이블이 스킬로 계속 로드됩니다.
- *
- * 심볼릭 링크는 정상 배치 경로에서 처리하므로 건드리지 않습니다. 최상위에
- * SKILL.md 외의 `.md`가 있으면 구버전 산출물로 판정합니다 — 새 루트 스킬은
- * SKILL.md 하나만 가집니다.
- */
-async function removeLegacyFlatSkillDir(root: string): Promise<void> {
-  for (const base of [".agents", ".claude"]) {
-    const target = path.join(root, base, "skills", "sonamu");
-
-    try {
-      await readlink(target);
-      continue; // 심볼릭 링크는 정상 경로에서 갱신됩니다
-    } catch {
-      // 심볼릭 링크가 아님
-    }
-
-    if (!(await exists(target))) {
-      continue;
-    }
-
-    let entries: string[];
-    try {
-      entries = await readdir(target);
-    } catch {
-      continue;
-    }
-
-    const hasLegacyDocs = entries.some((e) => e.endsWith(".md") && e !== "SKILL.md");
-    if (!hasLegacyDocs) {
-      continue;
-    }
-
-    await rm(target, { recursive: true, force: true });
-    console.log(chalk.yellow(`✓ Removed legacy ${base}/skills/sonamu (flat layout)`));
-  }
-}
-
-/**
- * 배치 대상 스킬 디렉토리를 나열합니다.
- *
- * 에이전트는 `skills/<name>/SKILL.md` 단위로 스킬을 인식하므로,
- * SKILL.md를 가진 디렉토리만 대상으로 삼습니다.
- */
-async function listSkillDirs(sourceBase?: string): Promise<{ source: string; name: string }[]> {
-  if (!sourceBase || !(await exists(sourceBase))) {
-    return [];
-  }
-
-  const entries = await readdir(sourceBase, { withFileTypes: true });
-  const result: { source: string; name: string }[] = [];
-
-  for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith("sonamu")) {
-      continue;
-    }
-    const source = path.join(sourceBase, entry.name);
-    if (!(await exists(path.join(source, "SKILL.md")))) {
-      continue;
-    }
-    result.push({ source, name: entry.name });
-  }
-
-  return result.sort((a, b) => a.name.localeCompare(b.name));
-}
-
-/**
- * 프로젝트(또는 홈) 루트에 skills를 동기화하는 공통 로직입니다.
- *
- * 원본은 `.agents/`에 두고 `.claude/`에는 심볼릭 링크만 겁니다.
- */
-async function skills_sync_to(
-  root: string,
-  options: {
-    useSymlink: boolean;
-    createSettings?: boolean;
-    sourceBase?: string;
-  },
-) {
-  const agentsDir = path.join(root, ".agents");
-  const skillsRoot = path.join(agentsDir, "skills");
-  await mkdir(skillsRoot, { recursive: true });
-
-  await removeLegacyFlatSkillDir(root);
-
-  // 에이전트는 skills/<name>/SKILL.md 단위로 스킬을 인식하므로 각각 별도 배치해야 합니다.
-  const targets = await listSkillDirs(options.sourceBase);
-
-  for (const { source, name } of targets) {
-    const targetDir = path.join(skillsRoot, name);
-
-    // exists()는 broken symlink를 감지하지 못하므로 rm을 무조건 시도합니다
-    try {
-      await rm(targetDir, { recursive: true, force: true });
-    } catch {
-      // 파일이 없으면 무시
-    }
-
-    if (options.useSymlink) {
-      try {
-        await symlink(source, targetDir, "dir");
-      } catch (error) {
-        console.log(
-          chalk.yellow(
-            `⚠ Symlink failed (${name}): ${error instanceof Error ? error.message : String(error)}`,
-          ),
-        );
-        console.log(chalk.yellow(`  Falling back to copy...`));
-        await skillsCopy(source, targetDir);
-      }
-    } else {
-      await skillsCopy(source, targetDir);
-    }
-
-    await linkClaudeEntry(root, path.join("skills", name));
-  }
-
-  console.log(
-    chalk.green(
-      `✓ Skills ${options.useSymlink ? "linked" : "copied"} → .agents/skills/ (${targets.length}): ${targets.map((t) => t.name).join(", ")}`,
-    ),
-  );
-  console.log(chalk.dim(`  .claude/skills/* symlinked for Claude Code`));
-
-  // settings.local.json — Claude Code 전용 파일이므로 .claude/에 직접 둡니다.
-  // project-local 모드에서만, 없을 때만 생성합니다.
-  if (options.createSettings) {
-    await mkdir(path.join(root, ".claude"), { recursive: true });
-    const settingsLocalPath = path.join(root, ".claude", "settings.local.json");
-    if (!(await exists(settingsLocalPath))) {
-      try {
-        const settingsContent = {
-          hooks: {
-            PostToolUse: [
-              {
-                matcher: "Edit|Write|MultiEdit",
-                hooks: [
-                  {
-                    type: "command",
-                    command: "pnpm check 2>&1 | head -60",
-                  },
-                ],
-              },
-            ],
-          },
-        };
-        await writeFile(settingsLocalPath, `${JSON.stringify(settingsContent, null, 2)}\n`);
-        console.log(chalk.green(`✓ .claude/settings.local.json created`));
-      } catch (error) {
-        console.error(
-          chalk.red(
-            `✗ Failed to create settings.local.json: ${error instanceof Error ? error.message : String(error)}`,
-          ),
-        );
-      }
-    } else {
-      console.log(chalk.dim(`⏭ .claude/settings.local.json already exists (preserved)`));
-    }
-  }
-
-  console.log(
-    chalk.dim(
-      `\n  To also write the skill index into this project's AGENTS.md, run 'sonamu skills index'.`,
-    ),
-  );
-}
-
-/**
- * 루트 스킬(`sonamu`)의 라우팅 테이블과 공통 규약을 프로젝트 AGENTS.md에 씁니다.
- *
- * 개별 스킬의 description은 각자의 발동 순간에만 걸리므로, 어느 스킬에도 맞지
- * 않는 작업에서는 아무것도 안 걸립니다. 상시 로드되는 AGENTS.md에 인덱스를 두면
- * 그 공백을 메울 수 있습니다.
- *
- * 다만 사용자의 에이전트 프롬프트 파일을 고치는 동작이므로 `skills sync`에
- * 포함하지 않고, 사용자가 명시적으로 실행할 때만 수행합니다.
- * `<!-- SONAMU:START -->` ~ `<!-- SONAMU:END -->` 구간만 갱신하며 나머지는 보존합니다.
- */
-async function skills_index() {
-  const appRoot = findProjectRoot();
-  const sourceBase = path.resolve(import.meta.dirname, "..", "..", "src", "skills");
-  const rootSkill = path.join(sourceBase, "sonamu", "SKILL.md");
-
-  if (!(await exists(rootSkill))) {
-    console.log(chalk.yellow("Root skill not found in sonamu package."));
-    return;
-  }
-
-  // frontmatter는 스킬 메타데이터이므로 주입 대상에서 제외합니다
-  const body = (await readFile(rootSkill, "utf-8")).replace(/^---\n[\s\S]*?\n---\n+/, "");
-
-  const startMarker = "<!-- SONAMU:START -->";
-  const endMarker = "<!-- SONAMU:END -->";
-  const section = `${startMarker}\n${body.trim()}\n${endMarker}`;
-
-  const targetPath = path.join(appRoot, "AGENTS.md");
-  const existing = (await exists(targetPath)) ? await readFile(targetPath, "utf-8") : undefined;
-
-  let next: string;
-  let action: string;
-  if (existing === undefined) {
-    next = `${section}\n`;
-    action = "created";
-  } else {
-    const startIdx = existing.indexOf(startMarker);
-    const endIdx = existing.indexOf(endMarker);
-    if (startIdx !== -1 && endIdx !== -1 && startIdx < endIdx) {
-      next = existing.slice(0, startIdx) + section + existing.slice(endIdx + endMarker.length);
-      action = "updated";
-    } else {
-      next = `${existing.trimEnd()}\n\n${section}\n`;
-      action = "appended";
-    }
-  }
-
-  if (next === existing) {
-    console.log(chalk.dim(`⏭ AGENTS.md already up to date`));
-    return;
-  }
-
-  await writeFile(targetPath, next);
-  console.log(chalk.green(`✓ AGENTS.md ${action} (Sonamu marker region)`));
-
-  if (!(await exists(path.join(appRoot, "CLAUDE.md")))) {
-    await symlink("AGENTS.md", path.join(appRoot, "CLAUDE.md"));
-    console.log(chalk.dim(`  CLAUDE.md → AGENTS.md`));
-  }
-
-  console.log(chalk.dim(`  Remove the marker region to undo.`));
-}
-
-async function skillsCopy(src: string, dest: string) {
-  try {
-    await cp(src, dest, { recursive: true });
-    console.log(chalk.green(`✓ Skills copied`));
-  } catch (copyError) {
-    console.error(
-      chalk.red(
-        `✗ Failed to copy skills: ${copyError instanceof Error ? copyError.message : String(copyError)}`,
-      ),
-    );
-    throw copyError;
-  }
 }
 
 async function auth_generate() {

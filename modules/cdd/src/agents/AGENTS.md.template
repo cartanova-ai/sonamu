@@ -4,8 +4,7 @@
 
 This project follows Contract-Driven Development (CDD).
 
-- Detailed protocol: `.agents/workflow/cdd.md`
-- Concept reference: `.claude/skills/sonamu/cdd.md`
+- Detailed protocol and concept reference: `.agents/workflow/01_cdd.md`
 - Start CDD work: `/cdd` slash command
 
 ## Canonical control files

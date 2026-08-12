@@ -26,7 +26,7 @@ When a Claim's `scope.write` or `required_cli_commands` matches one of these con
 - May only modify/create files listed in `scope.write`.
 - If changes outside `scope.write` are needed, report to orchestrator and stop.
 - Read and apply every rule file listed in `rules` before starting work.
-- Read and apply every file listed in `required_skills` when the Claim provides them.
+- Load and apply every installed skill named in `required_skills` when the Claim provides them.
 - Use the commands listed in `required_cli_commands` when the Claim requires migration, scaffolding, or sync work.
 - Business logic documents (`contract/`) are read-only.
 - `as any` and `as unknown as T` are strictly prohibited.
@@ -44,7 +44,7 @@ Every worker receives a Claim YAML (schema in `01_cdd.md#claim-format`) with:
 | `scope.write`                | Files to create/modify. Absolute boundary.                  |
 | `ac_targets`                 | ACs to satisfy (implement) or write tests for (test).       |
 | `rules`                      | Rule files to read and comply with.                         |
-| `required_skills`            | Skill files to follow.                                      |
+| `required_skills`            | Installed skill names to follow.                            |
 | `required_cli_commands`      | CLI commands to execute.                                    |
 | `expected_generated_targets` | Files that must exist after completion.                     |
 | `findings`                   | Review feedback from previous attempt. Address these first. |
@@ -53,7 +53,7 @@ Every worker receives a Claim YAML (schema in `01_cdd.md#claim-format`) with:
 
 1. If `findings` is non-empty, read findings first and plan fixes before other work.
 2. Read all files listed in `rules`.
-3. Read all files listed in `required_skills` when present.
+3. Load all installed skills named in `required_skills` when present.
 4. Read `scope.read` files to understand context.
 5. Work within the `scope.write` boundary.
 6. If the Claim includes `required_cli_commands`, execute the relevant commands.

@@ -195,7 +195,6 @@ pnpm dev
 | `pnpm docker:reset`                | 데이터베이스 초기화 (볼륨 삭제 후 재시작) |
 | `pnpm dump`                        | 테스트 DB → 덤프 파일 생성                |
 | `pnpm seed`                        | 덤프 파일 → fixture DB 적용               |
-| `pnpm sonamu skills sync`          | 공식 Skills 동기화                        |
 
 ### 개발 서버 모드
 
@@ -308,74 +307,39 @@ function UserListPage() {
 
 ## 🤖 AI 개발 도우미 (Skills)
 
-Sonamu 프로젝트는 **Claude Code**와 함께 사용하도록 설계되었습니다. Skills는 AI가 Sonamu 프레임워크를 더 잘 이해하고 활용할 수 있도록 돕는 지식 베이스입니다.
+Sonamu Skills는 프레임워크 사용법을 에이전트에 제공하는 별도 외부 패키지입니다.
+필요할 때 아래 경로 중 하나를 선택해 사용자가 직접 설치할 수 있습니다.
 
-### 자동 설치
-
-프로젝트를 생성하면 postinstall 스크립트가 스킬을 자동으로 배치합니다.
-
-```
-.agents/
-└── skills/              # 원본 (에이전트 공통)
-    ├── sonamu/          # 루트 스킬 — 라우팅 테이블
-    │   └── SKILL.md
-    ├── sonamu-entity/   # 작업별 스킬
-    │   ├── SKILL.md
-    │   └── references/
-    └── ...
-
-.claude/
-└── skills/              # 위 디렉토리들을 가리키는 심볼릭 링크
-```
-
-### Skills 동기화
-
-Sonamu 업데이트 후 최신 Skills를 반영하려면:
+### npx skills
 
 ```bash
-pnpm sonamu skills sync
+npx skills@latest add cartanova-ai/skills
 ```
 
-이 명령은:
-
-- 최신 공식 Skills를 `.agents/skills/`에 스킬별 디렉토리로 배치 (symlink, 실패 시 복사)
-- `.claude/skills/*`에 그 디렉토리들을 가리키는 심볼릭 링크 생성
-- 구버전이 남긴 평면 구조(`skills/sonamu/*.md`)가 있으면 제거
-
-프로젝트의 `AGENTS.md`는 건드리지 않습니다. 라우팅 테이블을 상시 컨텍스트로
-두고 싶으면 별도로 실행하세요:
+### Claude Code 플러그인
 
 ```bash
-pnpm sonamu skills index
+claude plugin marketplace add cartanova-ai/skills
+claude plugin install sonamu@cartanova-ai
 ```
 
-`AGENTS.md`의 `<!-- SONAMU:START -->` 구간만 갱신하며, 그 밖의 내용은 보존합니다.
+### Codex 플러그인
 
-### 사용 가능한 Skills
+```bash
+codex plugin marketplace add cartanova-ai/skills
+codex plugin add sonamu@cartanova-ai
+```
 
-생성된 프로젝트에 포함된 주요 Skills:
+프로젝트 생성, 의존성 설치, Sonamu 패키지 lifecycle에서는 Skills를 설치하지 않으며,
+외부 또는 비공개 저장소를 자동으로 가져오거나 인증하지 않습니다.
 
-| Skill                   | 설명                                                   |
-| ----------------------- | ------------------------------------------------------ |
-| **sonamu**              | 루트 스킬 — 작업에 맞는 스킬로 라우팅, 공통 규약       |
-| **sonamu-config**       | .env / sonamu.config.ts, Docker DB, 포트 충돌          |
-| **sonamu-entity**       | entity.json, 필드, 관계, subset, sync 오류             |
-| **sonamu-migration**    | 마이그레이션 생성·적용, FK 순서, PK 타입 변경          |
-| **sonamu-query**        | Model CRUD, Puri 쿼리, UpsertBuilder, FTS/pgvector     |
-| **sonamu-api**          | @api / @upload 엔드포인트                              |
-| **sonamu-auth**         | better-auth, Guards, 세션, 플러그인                    |
-| **sonamu-i18n**         | SD 번역 키, enum 라벨                                  |
-| **sonamu-testing**      | 테스트 작성, sonamu test 실행, DevRunner               |
-| **sonamu-fixture**      | fixture 생성/조회, cone.note, 3-Tier DB                |
-| **sonamu-naite**        | 값 추적으로 예상 밖 동작 원인 규명                     |
-| **sonamu-frontend**     | Service 호출, TanStack Query, 폼/목록, 스캐폴딩        |
-| **sonamu-vector**       | 임베딩, 청킹, 하이브리드 검색                          |
-| **sonamu-tasks**        | 백그라운드 잡, cron, durable step                      |
-| **sonamu-ai-agents**    | BaseAgentClass, @tools                                 |
+이전 버전으로 생성한 프로젝트의 `packages/api/package.json`에
+`postinstall: sonamu skills sync`가 남아 있다면 해당 스크립트를 제거합니다. 호환 명령은
+설치를 실패시키지 않고 외부 설치 경로만 안내하며 Skills 파일을 변경하지 않습니다.
 
 ### Claude Code 사용 팁
 
-Skills가 설정되면 Claude에게 다음과 같이 요청할 수 있습니다:
+Skills를 설치한 뒤 Claude에게 다음과 같이 요청할 수 있습니다:
 
 ```
 "User 엔티티를 생성하고 CRUD API를 만들어줘"

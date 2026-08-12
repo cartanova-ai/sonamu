@@ -19,12 +19,12 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 
 ## PHASE 0: Project Creation and Initial Setup
 
-**Reference skills:** project-init.md, create-sonamu.md, auth.md, auth-plugins.md
+**Reference skills:** `sonamu-config`, `sonamu-auth`
 
 ### 1. Gather Requirements and Create Project
 
 1. User provides requirements prompt
-2. Read Sonamu skills, then create the project: `pnpm create sonamu [project-name] --yes`
+2. Load the applicable installed Sonamu skills, then create the project: `pnpm create sonamu [project-name] --yes`
 3. Run `pnpm install`
 
 ### 2. Identify Domains
@@ -61,7 +61,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 
 ### 6. Generate Auth Entities
 
-**If plugins are needed, use the `--plugins` option. See `auth-plugins.md`.**
+**If plugins are needed, use the `--plugins` option and follow the installed `sonamu-auth` skill.**
 
 14. Run `pnpm sonamu auth generate` to create better-auth entities
 15. Add `"fixtureStrategy": "sequence"` to the `cone` of the `id` prop in the User entity
@@ -91,7 +91,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 
 ## PHASE 1: Domain Logic Documentation
 
-**Reference skills:** cdd.md
+**Reference skill:** `cdd`
 
 **CRITICAL: Do not begin entity design (PHASE 2) until this PHASE is complete.**
 
@@ -140,7 +140,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 
 ## PHASE 2: Entity Design
 
-**Reference skills:** entity-basic.md, entity-relations.md
+**Reference skill:** `sonamu-entity`
 
 **Prerequisite:** PHASE 1 complete (all domain `*.contract.md` files user-confirmed)
 
@@ -155,7 +155,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
       - How will file types (`file_type`) be categorized? (e.g., `task_order`, `result_report`)
       - Should status change automatically when a file is attached?
       - Use a separate File entity with `entity_type` + `entity_id`, or another approach?
-21. Record the finalized design in `.claude/skills/project/architecture.md`
+21. Record the finalized design in `contract/architecture.md`
 
 **Done criteria:**
 
@@ -166,7 +166,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 
 ## PHASE 3: Entity Creation and Migration
 
-**Reference skills:** entity-basic.md, entity-validation-checklist.md, migration.md
+**Reference skills:** `sonamu-entity`, `sonamu-migration`
 
 ### 9. Create Entities
 
@@ -181,7 +181,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 
 ### 11. Cone and Scaffolding
 
-**Reference skills:** cone.md
+**Reference skill:** `sonamu-fixture`
 
 **CRITICAL: Always generate Cone before Scaffolding. Without Cone, fixture generation will fail.**
 
@@ -189,7 +189,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
     - Must use LLM to generate context-appropriate cone based on requirements
     - Verify `ANTHROPIC_API_KEY` is set in `.env`. If not, inform the user.
     - Have the user confirm the generated cone
-    - See cone.md for detailed usage
+    - Follow the installed `sonamu-fixture` skill for detailed usage
 28. Run Scaffolding — all of the following must be scaffolded:
     - model
     - model_test
@@ -215,14 +215,13 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 
 ## PHASE 4: Testing and API Implementation
 
-**Reference skills:** testing.md, testing-devrunner.md, naite.md, cdd.md
+**Reference skills:** `sonamu-testing`, `sonamu-naite`, `cdd`
 
 ### 12. Run CDD
 
-- Concept definitions (Claim structure, AC principles, contract.md purpose): `.claude/skills/sonamu/cdd.md`
-- Execution protocol (flow, Claim format, review stages): `.agents/workflow/01_cdd.md`
+- Concept definitions and execution protocol: `.agents/workflow/01_cdd.md`
 
-Read both documents before starting.
+Read the workflow document before starting.
 
 **Done criteria:**
 
@@ -246,7 +245,7 @@ Read both documents before starting.
     - Generate in order: User → Account → Session
     - `pnpm sonamu fixture gen --include User,Account,Session --count 10 --use-llm`
     - **CRITICAL**: `users_id_seq` must exist for User.id string PK (configured in PHASE 0 Steps 18–19)
-    - See `auth-migration.md` "Better-auth Entity Fixture Generation" section for details
+    - Follow the installed `sonamu-auth` and `sonamu-fixture` skills for Better Auth fixture dependencies
 46. After approval, generate fixtures per Claim (LLM required)
     - `--use-llm` is mandatory (domain context from `cone.note` must be reflected)
 47. Ask the user to confirm data exists in the DB
@@ -266,7 +265,7 @@ Read both documents before starting.
 
 ## PHASE 6: Frontend Development
 
-**Reference skills:** frontend.md
+**Reference skill:** `sonamu-frontend`
 
 ### 16. Plan Frontend
 
@@ -296,15 +295,13 @@ The following documents are created during the workflow:
 ```
 contract/
 ├── planning.md               # PHASE 1: project background, domains, roles, tech stack
+├── architecture.md           # PHASE 2: entity design
 ├── {domain}/
 │   └── {domain}.contract.md  # PHASE 1: domain rules + decision rationale (permanent)
 └── rules/
     ├── web.rules.json        # PHASE 1: frontend conventions
     ├── api.rules.json        # PHASE 1: backend/API conventions
     └── *.known-issues.json   # PHASE 4+: add when recurring issues are found
-
-.claude/skills/project/
-└── architecture.md           # PHASE 2: entity design
 
 tmp/claims/                   # PHASE 4: in-progress Claim YAML (discard after completion)
 ```
