@@ -65,23 +65,12 @@ class DocumentModelClass extends BaseModelClass {
       "query", // for search
     );
 
-    // 2. Write vector search SQL with Puri
-    const results = await this.getPuri("r").raw(
-      `
-      SELECT
-        id,
-        title,
-        content,
-        1 - (embedding <=> ?) AS similarity
-      FROM documents
-      WHERE embedding IS NOT NULL
-      ORDER BY embedding <=> ?
-      LIMIT ?
-    `,
-      [JSON.stringify(embedding.embedding), JSON.stringify(embedding.embedding), limit],
-    );
-
-    return results.rows;
+    // 2. Run the vector search with Puri's vectorSimilarity()
+    return this.getPuri("r")
+      .table("documents")
+      .select({ id: "id", title: "title", content: "content" })
+      .vectorSimilarity("embedding", embedding.embedding)
+      .limit(limit);
   }
 }
 ```
@@ -93,26 +82,33 @@ class DocumentModelClass extends BaseModelClass {
 3. Calculate similarity in PostgreSQL (pgvector)
 4. Return top N results
 
-### Why Use Puri's raw()?
+### Why Use vectorSimilarity()?
 
-Knex doesn't directly support pgvector's special operators (`<=>`):
+pgvector's special operators (`<=>`) cannot be expressed with ordinary `where` conditions:
 
 ```typescript
-// Hard with Knex
+// Cannot be expressed with findMany's wq
 await this.findMany({
   wq: [
     /* how to use pgvector operators? */
   ],
 });
 
-// Write SQL directly with Puri.raw()
-await this.getPuri("r").raw(`
-  SELECT * FROM docs
-  WHERE embedding <=> ? < 0.5
-`);
+// Puri's vectorSimilarity()
+await this.getPuri("r")
+  .table("documents")
+  .select({ id: "id" })
+  .vectorSimilarity("embedding", embedding.embedding, { threshold: 0.5 });
 ```
 
-Sonamu's `Puri` wraps Knex and provides the `raw()` method.
+`vectorSimilarity()` handles all of the following at once:
+
+- Adds a `similarity` column to the SELECT clause
+- Adds `WHERE {column} IS NOT NULL`
+- Adds a similarity filter when `threshold` is given
+- Sets `ORDER BY` on the distance operator (so the HNSW index is used)
+
+The embedding is bound internally, so you never need to concatenate the vector into SQL yourself.
 
 ## Understanding Similarity Functions
 
@@ -176,20 +172,21 @@ ORDER BY embedding <#> ?;
 
 ### Use Cosine Similarity in Sonamu
 
+All three methods are selected via the `method` option of `vectorSimilarity()`. The default is `"cosine"`.
+
+| method               | Operator | similarity value           |
+| -------------------- | -------- | -------------------------- |
+| `"cosine"` (default) | `<=>`    | `1 - distance`             |
+| `"l2"`               | `<->`    | distance (lower is closer) |
+| `"inner_product"`    | `<#>`    | `-distance`                |
+
 ```typescript
-// Recommended: Cosine similarity
-const results = await this.getPuri("r").raw(
-  `
-  SELECT
-    id, title, content,
-    1 - (embedding <=> ?) AS similarity
-  FROM documents
-  WHERE embedding IS NOT NULL
-  ORDER BY embedding <=> ?
-  LIMIT ?
-`,
-  [JSON.stringify(embedding.embedding), JSON.stringify(embedding.embedding), limit],
-);
+// Recommended: Cosine similarity (the default when method is omitted)
+const results = await this.getPuri("r")
+  .table("documents")
+  .select({ id: "id", title: "title", content: "content" })
+  .vectorSimilarity("embedding", embedding.embedding, { method: "cosine" })
+  .limit(limit);
 ```
 
 ## Threshold Filtering
@@ -205,25 +202,11 @@ async searchWithThreshold(
 ) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
-  const results = await this.getPuri("r").raw(`
-    SELECT
-      id, title, content,
-      1 - (embedding <=> ?) AS similarity
-    FROM documents
-    WHERE
-      embedding IS NOT NULL
-      AND 1 - (embedding <=> ?) > ?
-    ORDER BY embedding <=> ?
-    LIMIT ?
-  `, [
-    JSON.stringify(embedding.embedding),
-    JSON.stringify(embedding.embedding),
-    threshold,
-    JSON.stringify(embedding.embedding),
-    limit,
-  ]);
-
-  return results.rows;
+  return this.getPuri("r")
+    .table("documents")
+    .select({ id: "id", title: "title", content: "content" })
+    .vectorSimilarity("embedding", embedding.embedding, { threshold })
+    .limit(limit);
 }
 ```
 
@@ -244,32 +227,26 @@ class KnowledgeBaseModelClass extends BaseModelClass {
   async searchKnowledge(query: string, category?: string, limit: number = 5) {
     const embedding = await Embedding.embedOne(query, "voyage", "query");
 
-    // Category filter (optional)
-    const categoryFilter = category ? `AND category = '${category}'` : "";
+    const qb = this.getPuri("r")
+      .table("knowledge_base")
+      .select({
+        id: "id",
+        title: "title",
+        content: "content",
+        category: "category",
+        createdAt: "created_at",
+      });
 
-    const results = await this.getPuri("r").raw(
-      `
-      SELECT
-        id, title, content, category,
-        1 - (embedding <=> ?) AS similarity,
-        created_at
-      FROM knowledge_base
-      WHERE
-        embedding IS NOT NULL
-        ${categoryFilter}
-      ORDER BY embedding <=> ?
-      LIMIT ?
-    `,
-      [JSON.stringify(embedding.embedding), JSON.stringify(embedding.embedding), limit],
-    );
+    // Category filter (optional) — the value is bound, so no string concatenation is needed
+    if (category) {
+      qb.where("category", category);
+    }
 
-    return results.rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      content: row.content,
-      category: row.category,
+    const rows = await qb.vectorSimilarity("embedding", embedding.embedding).limit(limit);
+
+    return rows.map((row) => ({
+      ...row,
       similarity: parseFloat(row.similarity.toFixed(3)),
-      createdAt: row.created_at,
     }));
   }
 }
@@ -301,27 +278,12 @@ class ProductModelClass extends BaseModelClass {
     }
 
     // Search similar products (exclude self)
-    const results = await this.getPuri("r").raw(
-      `
-      SELECT
-        id, name, description, price,
-        1 - (embedding <=> ?) AS similarity
-      FROM products
-      WHERE
-        embedding IS NOT NULL
-        AND id != ?
-      ORDER BY embedding <=> ?
-      LIMIT ?
-    `,
-      [
-        JSON.stringify(baseProduct.embedding),
-        productId,
-        JSON.stringify(baseProduct.embedding),
-        limit,
-      ],
-    );
-
-    return results.rows;
+    return this.getPuri("r")
+      .table("products")
+      .select({ id: "id", name: "name", description: "description", price: "price" })
+      .where("id", "!=", productId)
+      .vectorSimilarity("embedding", baseProduct.embedding)
+      .limit(limit);
   }
 }
 ```
@@ -359,49 +321,34 @@ async advancedSearch(
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
   // Dynamic WHERE conditions
-  const conditions = ['embedding IS NOT NULL'];
-  const params: any[] = [
-    JSON.stringify(embedding.embedding),
-    JSON.stringify(embedding.embedding),
-  ];
+  const qb = this.getPuri("r")
+    .table("documents")
+    .select({
+      id: "id",
+      title: "title",
+      content: "content",
+      category: "category",
+      createdAt: "created_at",
+    });
 
   if (filters.category) {
-    conditions.push(`category = ?`);
-    params.push(filters.category);
-  }
-
-  if (filters.minSimilarity) {
-    conditions.push(`1 - (embedding <=> ?) > ?`);
-    params.push(
-      JSON.stringify(embedding.embedding),
-      filters.minSimilarity
-    );
+    qb.where("category", filters.category);
   }
 
   if (filters.dateFrom) {
-    conditions.push(`created_at >= ?`);
-    params.push(filters.dateFrom);
+    qb.where("created_at", ">=", filters.dateFrom);
   }
 
   if (filters.dateTo) {
-    conditions.push(`created_at <= ?`);
-    params.push(filters.dateTo);
+    qb.where("created_at", "<=", filters.dateTo);
   }
 
-  params.push(limit);
-
-  const results = await this.getPuri("r").raw(`
-    SELECT
-      id, title, content, category,
-      1 - (embedding <=> ?) AS similarity,
-      created_at
-    FROM documents
-    WHERE ${conditions.join(' AND ')}
-    ORDER BY embedding <=> ?
-    LIMIT ?
-  `, params);
-
-  return results.rows;
+  // Pass the similarity cutoff through vectorSimilarity's threshold option
+  return qb
+    .vectorSimilarity("embedding", embedding.embedding, {
+      threshold: filters.minSimilarity,
+    })
+    .limit(limit);
 }
 ```
 
@@ -418,24 +365,22 @@ async searchDocumentChunks(
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
   // Search by chunk (fetch more)
-  const chunks = await this.getPuri("r").raw(`
-    SELECT
-      id, parent_id, title, content, chunk_index,
-      1 - (embedding <=> ?) AS similarity
-    FROM document_chunks
-    WHERE embedding IS NOT NULL
-    ORDER BY embedding <=> ?
-    LIMIT ?
-  `, [
-    JSON.stringify(embedding.embedding),
-    JSON.stringify(embedding.embedding),
-    limit * 3,
-  ]);
+  const chunks = await this.getPuri("r")
+    .table("document_chunks")
+    .select({
+      id: "id",
+      parent_id: "parent_id",
+      title: "title",
+      content: "content",
+      chunk_index: "chunk_index",
+    })
+    .vectorSimilarity("embedding", embedding.embedding)
+    .limit(limit * 3);
 
   // Group by parent document
   const grouped = new Map();
 
-  for (const chunk of chunks.rows) {
+  for (const chunk of chunks) {
     const parentId = chunk.parent_id;
 
     if (!grouped.has(parentId)) {
@@ -486,17 +431,16 @@ USING hnsw (embedding vector_cosine_ops);
 ### Verify with EXPLAIN ANALYZE
 
 ```typescript
-const explain = await this.getPuri("r").raw(
-  `
-  EXPLAIN ANALYZE
-  SELECT id, title, 1 - (embedding <=> ?) AS similarity
-  FROM documents
-  WHERE embedding IS NOT NULL
-  ORDER BY embedding <=> ?
-  LIMIT 10
-`,
-  [JSON.stringify(embedding.embedding), JSON.stringify(embedding.embedding)],
-);
+const rdb = this.getPuri("r");
+
+const query = rdb
+  .table("documents")
+  .select({ id: "id", title: "title" })
+  .vectorSimilarity("embedding", embedding.embedding)
+  .limit(10);
+
+// Build the finished SQL with toQuery() and pass it to EXPLAIN
+const explain = await rdb.raw(`EXPLAIN ANALYZE ${query.toQuery()}`);
 
 console.log(explain.rows);
 ```
@@ -521,8 +465,16 @@ SET LOCAL hnsw.ef_search = 100;  -- default: 40
 In Sonamu:
 
 ```typescript
-await this.getPuri("r").raw("SET LOCAL hnsw.ef_search = 100");
-const results = await this.getPuri("r").raw(`SELECT ...`);
+const rdb = this.getPuri("r");
+
+// SET LOCAL only applies within a transaction, so run it inside @transactional
+await rdb.raw("SET LOCAL hnsw.ef_search = 100");
+
+const results = await rdb
+  .table("documents")
+  .select({ id: "id", title: "title" })
+  .vectorSimilarity("embedding", embedding.embedding)
+  .limit(10);
 ```
 
 ## Benchmarks
@@ -543,11 +495,7 @@ const results = await this.getPuri("r").raw(`SELECT ...`);
 <Warning>
 **Cautions for vector search in Sonamu**:
 
-1. **NULL check required**: Exclude documents without embeddings
-
-   ```sql
-   WHERE embedding IS NOT NULL
-   ```
+1. **NULL check**: `vectorSimilarity()` adds `WHERE {column} IS NOT NULL` automatically, so you don't need to write it
 
 2. **Dimension match**: Query and DB vector dimensions must match
 
@@ -561,23 +509,22 @@ const results = await this.getPuri("r").raw(`SELECT ...`);
    // Query: Voyage (1024)
    ```
 
-3. **JSON.stringify required**: Convert array to JSON string
+3. **Pass the embedding as a plain number[]**: `vectorSimilarity()` handles the vector literal conversion
 
    ```typescript
-   JSON.stringify(embedding.embedding);
+   qb.vectorSimilarity("embedding", embedding.embedding);
    ```
 
-4. **Operator used twice**: In WHERE and ORDER BY
-
-   ```sql
-   WHERE 1 - (embedding <=> ?) > 0.5
-   ORDER BY embedding <=> ?
-   ```
-
-5. **Use Puri.raw()**: Cannot use Knex's wq
+4. **Use the threshold option for cutoffs**: no need to write WHERE/ORDER BY yourself
 
    ```typescript
-   await this.getPuri("r").raw(`SELECT ...`);
+   qb.vectorSimilarity("embedding", embedding.embedding, { threshold: 0.5 });
+   ```
+
+5. **Cannot use findMany's wq**: use `vectorSimilarity()` for vector search
+
+   ```typescript
+   await this.getPuri("r").table("documents").vectorSimilarity("embedding", vector);
    ```
 
 6. **Index creation timing**: After data
