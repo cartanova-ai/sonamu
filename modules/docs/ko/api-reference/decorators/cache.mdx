@@ -485,10 +485,12 @@ export default defineConfig({
       @api({ httpMethod: "GET" })
       @cache({ ttl: "5m", tags: ["products"] })
       async list(params: ProductListParams) {
+        const { num = 20, page = 1 } = params;
         const rdb = this.getPuri("r");
         return rdb.table("products")
           .where("active", true)
-          .paginate(params);
+          .limit(num)
+          .offset(num * (page - 1));
       }
 
       @api({ httpMethod: "GET" })

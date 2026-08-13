@@ -488,14 +488,12 @@ const results = await db
 
 ```typescript
 // Check query execution plan
-const plan = await db
-  .table("employees")
-  .select({ id: "id" })
-  .where("department_id", 1)
-  .rawQuery()
-  .explain();
+// Puri has no explain(), so build the SQL with toQuery() and pass it to EXPLAIN.
+const query = db.table("employees").select({ id: "id" }).where("department_id", 1);
 
-console.log(plan);
+const plan = await db.raw(`EXPLAIN ANALYZE ${query.toQuery()}`);
+
+console.log(plan.rows);
 ```
 
 ### Index Hints (Not supported in PostgreSQL)
