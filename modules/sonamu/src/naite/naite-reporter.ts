@@ -6,6 +6,11 @@
  *
  * 프로젝트별로 고유한 소켓을 사용하기 위해 sonamu.config.ts 경로의 해시를 사용합니다.
  *
+ * 모듈 싱글턴이지만 인스턴스는 프로세스마다 별개입니다. run/start·run/end는
+ * Vitest 메인 프로세스(NaiteVitestReporter 커스텀 리포터)에서, test/result는
+ * 각 worker 프로세스(bootstrap의 afterEach)에서 전송되므로 buffer와 소켓
+ * 연결을 서로 공유하지 않습니다.
+ *
  * fs mock 충돌을 피하기 위해 net 모듈만 사용합니다.
  */
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // Naite는 expect와 호응하도록 any를 허용함
@@ -112,7 +117,7 @@ class NaiteReporterClass {
   }
 
   /**
-   * beforeAll에서 호출합니다.
+   * Vitest 커스텀 리포터(NaiteVitestReporter)의 onTestRunStart에서 호출합니다.
    * 테스트 run 시작을 알립니다 (데이터 클리어 신호).
    */
   async startTestRun(): Promise<void> {
@@ -127,7 +132,7 @@ class NaiteReporterClass {
   }
 
   /**
-   * afterEach에서 호출합니다.
+   * bootstrap()의 afterEach에서 호출합니다.
    * 테스트 케이스 결과를 traces와 함께 전송합니다.
    */
   async reportTestResult(
@@ -145,7 +150,7 @@ class NaiteReporterClass {
   }
 
   /**
-   * afterAll에서 호출합니다.
+   * Vitest 커스텀 리포터(NaiteVitestReporter)의 onTestRunEnd에서 호출합니다.
    * 테스트 run 종료를 알립니다.
    */
   async endTestRun(): Promise<void> {
