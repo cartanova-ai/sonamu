@@ -407,7 +407,7 @@ class UserModelClass extends BaseModelClass {
 
     // Authorization checks possible
     if (!context.user) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException("Login is required");
     }
 
     return this.findById(id, [subset]);

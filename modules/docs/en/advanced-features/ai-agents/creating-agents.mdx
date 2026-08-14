@@ -299,7 +299,7 @@ class DataAnalystAgentClass extends BaseAgentClass<{
       throw new Error("Only SELECT queries are allowed");
     }
 
-    const result = await BaseModel.getDB("r").raw(input.query);
+    const result = await BaseModel.getPuri("r").raw(input.query);
 
     return {
       rows: result.rows,
