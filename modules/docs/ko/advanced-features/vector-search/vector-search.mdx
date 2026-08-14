@@ -65,23 +65,12 @@ class DocumentModelClass extends BaseModelClass {
       "query", // 검색용
     );
 
-    // 2. Puri로 벡터 검색 SQL 작성
-    const results = await this.getPuri("r").raw(
-      `
-      SELECT 
-        id,
-        title,
-        content,
-        1 - (embedding <=> ?) AS similarity
-      FROM documents
-      WHERE embedding IS NOT NULL
-      ORDER BY embedding <=> ?
-      LIMIT ?
-    `,
-      [JSON.stringify(embedding.embedding), JSON.stringify(embedding.embedding), limit],
-    );
-
-    return results.rows;
+    // 2. Puri의 vectorSimilarity()로 벡터 검색
+    return this.getPuri("r")
+      .table("documents")
+      .select({ id: "id", title: "title", content: "content" })
+      .vectorSimilarity("embedding", embedding.embedding)
+      .limit(limit);
   }
 }
 ```
@@ -93,26 +82,33 @@ class DocumentModelClass extends BaseModelClass {
 3. PostgreSQL에서 유사도 계산 (pgvector)
 4. 상위 N개 반환
 
-### 왜 Puri의 raw()를 쓰나요?
+### 왜 vectorSimilarity()를 쓰나요?
 
-pgvector의 특수 연산자(`<=>`)는 Knex가 직접 지원하지 않습니다:
+pgvector의 특수 연산자(`<=>`)는 일반 `where` 조건으로 표현할 수 없습니다:
 
 ```typescript
-// ❌ Knex로는 어려움
+// ❌ findMany의 wq로는 표현 불가
 await this.findMany({
   wq: [
     /* pgvector 연산자 어떻게? */
   ],
 });
 
-// ✅ Puri.raw()로 SQL 직접 작성
-await this.getPuri("r").raw(`
-  SELECT * FROM docs
-  WHERE embedding <=> ? < 0.5
-`);
+// ✅ Puri의 vectorSimilarity()
+await this.getPuri("r")
+  .table("documents")
+  .select({ id: "id" })
+  .vectorSimilarity("embedding", embedding.embedding, { threshold: 0.5 });
 ```
 
-Sonamu의 `Puri`는 Knex를 감싸므로 `raw()` 메서드를 제공합니다.
+`vectorSimilarity()`는 다음을 한 번에 처리합니다:
+
+- `similarity` 컬럼을 SELECT에 추가
+- `WHERE {컬럼} IS NOT NULL` 추가
+- `threshold`가 주어지면 유사도 필터 추가
+- 거리 연산자 기준 `ORDER BY` 설정 (HNSW 인덱스를 타도록)
+
+임베딩 값은 내부에서 바인딩되므로, 벡터를 직접 문자열로 이어붙일 필요가 없습니다.
 
 ## 유사도 함수 이해하기
 
@@ -176,20 +172,21 @@ ORDER BY embedding <#> ?;
 
 ### Sonamu에서는 코사인 유사도 사용
 
+세 방식 모두 `vectorSimilarity()`의 `method` 옵션으로 선택합니다. 기본값은 `"cosine"`입니다.
+
+| method            | 연산자 | similarity 값       |
+| ----------------- | ------ | ------------------- |
+| `"cosine"` (기본) | `<=>`  | `1 - distance`      |
+| `"l2"`            | `<->`  | 거리 (낮을수록 유사) |
+| `"inner_product"` | `<#>`  | `-distance`         |
+
 ```typescript
-// ✅ 권장: 코사인 유사도
-const results = await this.getPuri("r").raw(
-  `
-  SELECT 
-    id, title, content,
-    1 - (embedding <=> ?) AS similarity
-  FROM documents
-  WHERE embedding IS NOT NULL
-  ORDER BY embedding <=> ?
-  LIMIT ?
-`,
-  [JSON.stringify(embedding.embedding), JSON.stringify(embedding.embedding), limit],
-);
+// ✅ 권장: 코사인 유사도 (method 생략 시 기본값)
+const results = await this.getPuri("r")
+  .table("documents")
+  .select({ id: "id", title: "title", content: "content" })
+  .vectorSimilarity("embedding", embedding.embedding, { method: "cosine" })
+  .limit(limit);
 ```
 
 ## 임계값 필터링
@@ -205,25 +202,11 @@ async searchWithThreshold(
 ) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
-  const results = await this.getPuri("r").raw(`
-    SELECT
-      id, title, content,
-      1 - (embedding <=> ?) AS similarity
-    FROM documents
-    WHERE
-      embedding IS NOT NULL
-      AND 1 - (embedding <=> ?) > ?
-    ORDER BY embedding <=> ?
-    LIMIT ?
-  `, [
-    JSON.stringify(embedding.embedding),
-    JSON.stringify(embedding.embedding),
-    threshold,
-    JSON.stringify(embedding.embedding),
-    limit,
-  ]);
-
-  return results.rows;
+  return this.getPuri("r")
+    .table("documents")
+    .select({ id: "id", title: "title", content: "content" })
+    .vectorSimilarity("embedding", embedding.embedding, { threshold })
+    .limit(limit);
 }
 ```
 
@@ -244,32 +227,26 @@ class KnowledgeBaseModelClass extends BaseModelClass {
   async searchKnowledge(query: string, category?: string, limit: number = 5) {
     const embedding = await Embedding.embedOne(query, "voyage", "query");
 
-    // 카테고리 필터 (선택)
-    const categoryFilter = category ? `AND category = '${category}'` : "";
+    const qb = this.getPuri("r")
+      .table("knowledge_base")
+      .select({
+        id: "id",
+        title: "title",
+        content: "content",
+        category: "category",
+        createdAt: "created_at",
+      });
 
-    const results = await this.getPuri("r").raw(
-      `
-      SELECT 
-        id, title, content, category,
-        1 - (embedding <=> ?) AS similarity,
-        created_at
-      FROM knowledge_base
-      WHERE 
-        embedding IS NOT NULL
-        ${categoryFilter}
-      ORDER BY embedding <=> ?
-      LIMIT ?
-    `,
-      [JSON.stringify(embedding.embedding), JSON.stringify(embedding.embedding), limit],
-    );
+    // 카테고리 필터 (선택) — 값은 바인딩되므로 문자열 이어붙이기가 필요 없습니다
+    if (category) {
+      qb.where("category", category);
+    }
 
-    return results.rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      content: row.content,
-      category: row.category,
+    const rows = await qb.vectorSimilarity("embedding", embedding.embedding).limit(limit);
+
+    return rows.map((row) => ({
+      ...row,
       similarity: parseFloat(row.similarity.toFixed(3)),
-      createdAt: row.created_at,
     }));
   }
 }
@@ -301,27 +278,12 @@ class ProductModelClass extends BaseModelClass {
     }
 
     // 유사 상품 검색 (자기 자신 제외)
-    const results = await this.getPuri("r").raw(
-      `
-      SELECT 
-        id, name, description, price,
-        1 - (embedding <=> ?) AS similarity
-      FROM products
-      WHERE 
-        embedding IS NOT NULL
-        AND id != ?
-      ORDER BY embedding <=> ?
-      LIMIT ?
-    `,
-      [
-        JSON.stringify(baseProduct.embedding),
-        productId,
-        JSON.stringify(baseProduct.embedding),
-        limit,
-      ],
-    );
-
-    return results.rows;
+    return this.getPuri("r")
+      .table("products")
+      .select({ id: "id", name: "name", description: "description", price: "price" })
+      .where("id", "!=", productId)
+      .vectorSimilarity("embedding", baseProduct.embedding)
+      .limit(limit);
   }
 }
 ```
@@ -359,49 +321,34 @@ async advancedSearch(
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
   // WHERE 조건 동적 생성
-  const conditions = ['embedding IS NOT NULL'];
-  const params: any[] = [
-    JSON.stringify(embedding.embedding),
-    JSON.stringify(embedding.embedding),
-  ];
+  const qb = this.getPuri("r")
+    .table("documents")
+    .select({
+      id: "id",
+      title: "title",
+      content: "content",
+      category: "category",
+      createdAt: "created_at",
+    });
 
   if (filters.category) {
-    conditions.push(`category = ?`);
-    params.push(filters.category);
-  }
-
-  if (filters.minSimilarity) {
-    conditions.push(`1 - (embedding <=> ?) > ?`);
-    params.push(
-      JSON.stringify(embedding.embedding),
-      filters.minSimilarity
-    );
+    qb.where("category", filters.category);
   }
 
   if (filters.dateFrom) {
-    conditions.push(`created_at >= ?`);
-    params.push(filters.dateFrom);
+    qb.where("created_at", ">=", filters.dateFrom);
   }
 
   if (filters.dateTo) {
-    conditions.push(`created_at <= ?`);
-    params.push(filters.dateTo);
+    qb.where("created_at", "<=", filters.dateTo);
   }
 
-  params.push(limit);
-
-  const results = await this.getPuri("r").raw(`
-    SELECT
-      id, title, content, category,
-      1 - (embedding <=> ?) AS similarity,
-      created_at
-    FROM documents
-    WHERE ${conditions.join(' AND ')}
-    ORDER BY embedding <=> ?
-    LIMIT ?
-  `, params);
-
-  return results.rows;
+  // 유사도 임계값은 vectorSimilarity의 threshold 옵션으로 전달합니다
+  return qb
+    .vectorSimilarity("embedding", embedding.embedding, {
+      threshold: filters.minSimilarity,
+    })
+    .limit(limit);
 }
 ```
 
@@ -418,24 +365,22 @@ async searchDocumentChunks(
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
 
   // 청크별 검색 (더 많이 가져옴)
-  const chunks = await this.getPuri("r").raw(`
-    SELECT
-      id, parent_id, title, content, chunk_index,
-      1 - (embedding <=> ?) AS similarity
-    FROM document_chunks
-    WHERE embedding IS NOT NULL
-    ORDER BY embedding <=> ?
-    LIMIT ?
-  `, [
-    JSON.stringify(embedding.embedding),
-    JSON.stringify(embedding.embedding),
-    limit * 3,
-  ]);
+  const chunks = await this.getPuri("r")
+    .table("document_chunks")
+    .select({
+      id: "id",
+      parent_id: "parent_id",
+      title: "title",
+      content: "content",
+      chunk_index: "chunk_index",
+    })
+    .vectorSimilarity("embedding", embedding.embedding)
+    .limit(limit * 3);
 
   // 부모 문서별로 그룹화
   const grouped = new Map();
 
-  for (const chunk of chunks.rows) {
+  for (const chunk of chunks) {
     const parentId = chunk.parent_id;
 
     if (!grouped.has(parentId)) {
@@ -486,17 +431,16 @@ USING hnsw (embedding vector_cosine_ops);
 ### EXPLAIN ANALYZE로 확인
 
 ```typescript
-const explain = await this.getPuri("r").raw(
-  `
-  EXPLAIN ANALYZE
-  SELECT id, title, 1 - (embedding <=> ?) AS similarity
-  FROM documents
-  WHERE embedding IS NOT NULL
-  ORDER BY embedding <=> ?
-  LIMIT 10
-`,
-  [JSON.stringify(embedding.embedding), JSON.stringify(embedding.embedding)],
-);
+const rdb = this.getPuri("r");
+
+const query = rdb
+  .table("documents")
+  .select({ id: "id", title: "title" })
+  .vectorSimilarity("embedding", embedding.embedding)
+  .limit(10);
+
+// toQuery()로 완성된 SQL을 뽑아 EXPLAIN에 넘깁니다
+const explain = await rdb.raw(`EXPLAIN ANALYZE ${query.toQuery()}`);
 
 console.log(explain.rows);
 ```
@@ -521,8 +465,16 @@ SET LOCAL hnsw.ef_search = 100;  -- 기본: 40
 Sonamu에서:
 
 ```typescript
-await this.getPuri("r").raw("SET LOCAL hnsw.ef_search = 100");
-const results = await this.getPuri("r").raw(`SELECT ...`);
+const rdb = this.getPuri("r");
+
+// SET LOCAL은 트랜잭션 범위에서만 유효하므로 @transactional 안에서 실행합니다
+await rdb.raw("SET LOCAL hnsw.ef_search = 100");
+
+const results = await rdb
+  .table("documents")
+  .select({ id: "id", title: "title" })
+  .vectorSimilarity("embedding", embedding.embedding)
+  .limit(10);
 ```
 
 ## 벤치마크
@@ -543,11 +495,7 @@ const results = await this.getPuri("r").raw(`SELECT ...`);
 <Warning>
 **Sonamu에서 벡터 검색 시 주의사항**:
 
-1. **NULL 체크 필수**: 임베딩 없는 문서 제외
-
-   ```sql
-   WHERE embedding IS NOT NULL
-   ```
+1. **NULL 체크**: `vectorSimilarity()`가 `WHERE {컬럼} IS NOT NULL`을 자동으로 추가하므로 직접 쓸 필요 없음
 
 2. **차원 일치**: 쿼리와 DB 벡터 차원 같아야 함
 
@@ -561,23 +509,22 @@ const results = await this.getPuri("r").raw(`SELECT ...`);
    // 쿼리: Voyage (1024)
    ```
 
-3. **JSON.stringify 필수**: 배열을 JSON 문자열로
+3. **임베딩은 number[] 그대로 전달**: 벡터 리터럴 변환은 `vectorSimilarity()`가 처리
 
    ```typescript
-   JSON.stringify(embedding.embedding);
+   qb.vectorSimilarity("embedding", embedding.embedding);
    ```
 
-4. **연산자 두 번 사용**: WHERE와 ORDER BY
-
-   ```sql
-   WHERE 1 - (embedding <=> ?) > 0.5
-   ORDER BY embedding <=> ?
-   ```
-
-5. **Puri.raw() 사용**: Knex의 wq로는 안 됨
+4. **임계값은 threshold 옵션으로**: WHERE/ORDER BY를 직접 쓰지 않아도 됨
 
    ```typescript
-   await this.getPuri("r").raw(`SELECT ...`);
+   qb.vectorSimilarity("embedding", embedding.embedding, { threshold: 0.5 });
+   ```
+
+5. **findMany의 wq로는 불가**: 벡터 검색은 `vectorSimilarity()`를 사용
+
+   ```typescript
+   await this.getPuri("r").table("documents").vectorSimilarity("embedding", vector);
    ```
 
 6. **인덱스 생성 시점**: 데이터 후

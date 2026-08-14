@@ -527,10 +527,12 @@ async findById(id: number) {
     class UserModelClass extends BaseModelClass {
       @api({ httpMethod: "GET" })
       async list(params: UserListParams) {
+        const { num = 20, page = 1 } = params;
         const rdb = this.getPuri("r");
         return rdb.table("users")
           .where("deleted_at", null)
-          .paginate(params);
+          .limit(num)
+          .offset(num * (page - 1));
       }
 
       @api({ httpMethod: "GET" })

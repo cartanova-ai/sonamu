@@ -488,14 +488,12 @@ const results = await db
 
 ```typescript
 // 쿼리 실행 계획 확인
-const plan = await db
-  .table("employees")
-  .select({ id: "id" })
-  .where("department_id", 1)
-  .rawQuery()
-  .explain();
+// Puri에는 explain()이 없으므로, toQuery()로 SQL을 만들어 EXPLAIN에 넘깁니다.
+const query = db.table("employees").select({ id: "id" }).where("department_id", 1);
 
-console.log(plan);
+const plan = await db.raw(`EXPLAIN ANALYZE ${query.toQuery()}`);
+
+console.log(plan.rows);
 ```
 
 ### 인덱스 힌트 (PostgreSQL은 지원 안함)
