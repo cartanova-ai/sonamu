@@ -234,8 +234,7 @@ class HealthFrame extends BaseFrameClass {
     let dbStatus: "connected" | "disconnected" = "disconnected";
 
     try {
-      // Frames have no getPuri, so use an associated Model's getPuri (e.g. UserModel).
-      const rdb = UserModel.getPuri("r");
+      const rdb = this.getPuri("r");
       await rdb.raw("SELECT 1");
       dbStatus = "connected";
     } catch (error) {

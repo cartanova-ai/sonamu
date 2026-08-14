@@ -109,8 +109,7 @@ class HealthFrame extends BaseFrameClass {
     let dbResponseTime: number | undefined;
 
     try {
-      // Frames have no getPuri, so use an associated Model's getPuri (e.g. UserModel).
-      const rdb = UserModel.getPuri("r");
+      const rdb = this.getPuri("r");
       const dbStart = Date.now();
       await rdb.raw("SELECT 1");
       dbResponseTime = Date.now() - dbStart;
@@ -595,8 +594,7 @@ class AdminStatsFrame extends BaseFrameClass {
 
   @api({ httpMethod: "GET" })
   async dashboard(): Promise<DashboardStats> {
-    // Frames have no getPuri, so use an associated Model's getPuri (e.g. UserModel).
-    const rdb = UserModel.getPuri("r");
+    const rdb = this.getPuri("r");
 
     // Date calculations
     const today = new Date();

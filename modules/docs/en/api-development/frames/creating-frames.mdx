@@ -90,8 +90,6 @@ export const HealthFrameInstance = new HealthFrame();
 ```typescript
 // health.frame.ts
 import { BaseFrameClass, api } from "sonamu";
-// Frames have no getPuri, so use an associated Model's getPuri.
-import { UserModel } from "./user/user.model";
 
 interface HealthCheckResponse {
   status: "ok" | "error";
@@ -114,7 +112,7 @@ class HealthFrame extends BaseFrameClass {
     let dbStatus: "connected" | "disconnected" = "disconnected";
 
     try {
-      const rdb = UserModel.getPuri("r");
+      const rdb = this.getPuri("r");
       await rdb.raw("SELECT 1");
       dbStatus = "connected";
     } catch (error) {
@@ -371,12 +369,13 @@ export const WeatherFrameInstance = new WeatherFrame();
 
 ## DB Access
 
-Frame can also access DB. Frame classes have no `getPuri`, so use an associated Model's `getPuri` to obtain the Puri query builder.
+Frame can also access DB. Frame classes provide `getPuri` just like Models, so obtain the Puri
+query builder with `this.getPuri()`.
 
 <Info>
-  The handle returned by `getPuri` is not bound to a specific table, so no matter which
-  Model's `getPuri` you use, you can query every registered table. The examples below assume
-  `import { UserModel } from "./user/user.model";` and `import { Puri } from "sonamu";`.
+  The handle returned by `getPuri` is not bound to a specific table, so even a Frame that is not
+  tied to an Entity can query every registered table. The examples below assume `import { Puri }
+  from "sonamu";`.
 </Info>
 
 ### Read Operations
@@ -391,7 +390,7 @@ class StatsFrame extends BaseFrameClass {
     totalPosts: number;
     totalComments: number;
   }> {
-    const rdb = UserModel.getPuri("r");
+    const rdb = this.getPuri("r");
 
     const { userCount } = await rdb
       .table("users")
@@ -428,7 +427,7 @@ class AdminFrame extends BaseFrameClass {
   async clearOldLogs(params: { beforeDate: Date }): Promise<{
     deletedCount: number;
   }> {
-    const wdb = UserModel.getPuri("w");
+    const wdb = this.getPuri("w");
 
     const deletedCount = await wdb
       .table("logs")
