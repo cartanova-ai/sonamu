@@ -361,39 +361,54 @@ async findMany<T extends UserSubsetKey>(
 ### 복잡한 JOIN
 
 ```typescript
-async findUsersWithStats(): Promise<UserWithStats[]> {
+async findUsersWithStats() {
   const rdb = this.getPuri("r");
 
-  return rdb.knex("users")
-    .select([
-      "users.*",
-      rdb.knex.raw("COUNT(DISTINCT posts.id) as post_count"),
-      rdb.knex.raw("COUNT(DISTINCT comments.id) as comment_count"),
-      rdb.knex.raw("AVG(posts.views) as avg_post_views"),
-    ])
-    .leftJoin("posts", "posts.user_id", "users.id")
-    .leftJoin("comments", "comments.user_id", "users.id")
+  return rdb
+    .table("users")
+    .select({
+      id: "users.id",
+      name: "users.name",
+      // COUNT(DISTINCT ...)는 Puri.count()로 표현할 수 없으므로 rawNumber를 사용합니다
+      post_count: Puri.rawNumber("COUNT(DISTINCT posts.id)"),
+      comment_count: Puri.rawNumber("COUNT(DISTINCT comments.id)"),
+      avg_post_views: Puri.avg("posts.views"),
+    })
+    .leftJoin("posts", "users.id", "posts.user_id")
+    .leftJoin("comments", "users.id", "comments.user_id")
     .groupBy("users.id");
 }
 ```
 
+<Note>
+  Puri의 `join`/`leftJoin`은 첫 번째 컬럼에 **이미 참조 가능한 테이블의 컬럼**을, 두 번째 컬럼에
+  **새로 조인하는 테이블의 컬럼**을 받습니다. Knex와 인자 순서가 반대인 점에 유의하세요.
+</Note>
+
 ### 서브쿼리 활용
 
 ```typescript
-async findTopUsers(limit: number): Promise<User[]> {
+async findTopUsers(limit: number) {
   const rdb = this.getPuri("r");
 
-  const subquery = rdb.knex("orders")
-    .select("user_id")
-    .sum("total_price as total_spent")
-    .groupBy("user_id")
+  const topUsers = rdb
+    .table("orders")
+    .select({
+      user_id: "orders.user_id",
+      total_spent: Puri.sum("orders.total_price"),
+    })
+    .groupBy("orders.user_id")
     .orderBy("total_spent", "desc")
-    .limit(limit)
-    .as("top_users");
+    .limit(limit);
 
-  return rdb.knex("users")
-    .select("users.*", "top_users.total_spent")
-    .joinRaw("JOIN ? ON users.id = top_users.user_id", [subquery]);
+  return rdb
+    .table("users")
+    .join({ top_users: topUsers }, "users.id", "top_users.user_id")
+    .select({
+      id: "users.id",
+      name: "users.name",
+      total_spent: "top_users.total_spent",
+    });
 }
 ```
 

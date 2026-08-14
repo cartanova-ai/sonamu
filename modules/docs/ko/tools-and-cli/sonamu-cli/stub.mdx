@@ -88,29 +88,27 @@ pnpm stub entity Product --no-cones
 
 **생성된 파일**:
 
-```typescript title="src/entities/Product.entity.ts"
-import type { EntityType } from "sonamu";
-
-export const ProductEntity = {
-  properties: [
+```json title="src/application/product/product.entity.json"
+{
+  "id": "Product",
+  "title": "Product",
+  "table": "products",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
     {
-      name: "id",
-      type: "int",
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    {
-      name: "title",
-      type: "string",
-      length: 255,
-    },
-    {
-      name: "created_at",
-      type: "datetime",
-      default: "CURRENT_TIMESTAMP",
-    },
+      "name": "created_at",
+      "type": "date",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    }
   ],
-} satisfies EntityType;
+  "indexes": [],
+  "subsets": { "A": ["id", "created_at"] },
+  "enums": {
+    "ProductOrderBy": { "id-desc": "ID최신순" },
+    "ProductSearchField": { "id": "ID" }
+  }
+}
 ```
 
 ## Practice 스크립트
@@ -229,43 +227,76 @@ Sonamu.runScript(async () => {
 
 `stub entity`로 생성된 Entity는 기본 필드들을 포함합니다:
 
-```typescript
-export const ProductEntity = {
-  properties: [
-    { name: "id", type: "int", primaryKey: true, autoIncrement: true },
-    { name: "title", type: "string", length: 255 },
-    { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
+```json
+{
+  "id": "Product",
+  "title": "Product",
+  "table": "products",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    {
+      "name": "created_at",
+      "type": "date",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    }
   ],
-} satisfies EntityType;
+  "indexes": [],
+  "subsets": { "A": ["id", "created_at"] },
+  "enums": {
+    "ProductOrderBy": { "id-desc": "ID최신순" },
+    "ProductSearchField": { "id": "ID" }
+  }
+}
 ```
 
 ### 커스터마이징
 
 생성 후 필요한 필드를 추가합니다:
 
-```typescript
-export const ProductEntity = {
-  properties: [
-    // 기본 필드
-    { name: "id", type: "int", primaryKey: true, autoIncrement: true },
-    { name: "title", type: "string", length: 255 },
-
-    // 추가 필드
-    { name: "description", type: "text", nullable: true },
-    { name: "price", type: "decimal", precision: 10, scale: 2 },
-    { name: "stock", type: "int", default: 0 },
-    { name: "category_id", type: "int" },
-
-    // 타임스탬프
-    { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
-    { name: "updated_at", type: "datetime", onUpdate: "CURRENT_TIMESTAMP" },
+```json
+{
+  "id": "Product",
+  "title": "Product",
+  "table": "products",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    {
+      "name": "created_at",
+      "type": "date",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
+    { "name": "title", "type": "string", "length": 255, "desc": "상품명" },
+    { "name": "description", "type": "string", "nullable": true, "desc": "설명" },
+    { "name": "price", "type": "numeric", "precision": 10, "scale": 2, "desc": "가격" },
+    { "name": "stock", "type": "integer", "desc": "재고", "dbDefault": 0 },
+    {
+      "type": "relation",
+      "name": "category",
+      "relationType": "BelongsToOne",
+      "with": "Category",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "desc": "카테고리"
+    }
   ],
-
-  indexes: [{ fields: ["category_id"] }, { fields: ["title"], type: "fulltext" }],
-
-  belongsTo: [{ entityId: "Category", as: "category" }],
-} satisfies EntityType;
+  "indexes": [
+    { "type": "index", "name": "products_title_index", "columns": [{ "name": "title" }] }
+  ],
+  "subsets": { "A": ["id", "created_at", "title", "price", "category.id"] },
+  "enums": {
+    "ProductOrderBy": { "id-desc": "ID최신순" },
+    "ProductSearchField": { "id": "ID", "title": "상품명" }
+  }
+}
 ```
+
+<Note>
+  `category_id` 같은 FK 컬럼은 `relation` prop으로 정의하면 마이그레이션 생성 시 자동으로
+  만들어집니다. Entity의 prop 타입과 필드 규칙은
+  [Entity 정의하기](/ko/core-concepts/entity/defining-entities)를 참고하세요.
+</Note>
 
 ## 개발 워크플로우
 
@@ -288,7 +319,7 @@ pnpm node -r dotenv/config --enable-source-maps dist/practices/p1-test-idea.js
 pnpm stub entity Order
 
 # Entity 정의 작성
-# src/entities/Order.entity.ts
+# src/application/order/order.entity.json
 
 # 마이그레이션 생성 및 적용
 pnpm migrate run

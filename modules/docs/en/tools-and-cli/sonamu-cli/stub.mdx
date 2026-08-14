@@ -88,30 +88,33 @@ pnpm stub entity Product --no-cones
 
 **Generated file**:
 
-```typescript title="src/entities/Product.entity.ts"
-import type { EntityType } from "sonamu";
-
-export const ProductEntity = {
-  properties: [
+```json title="src/application/product/product.entity.json"
+{
+  "id": "Product",
+  "title": "Product",
+  "table": "products",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
     {
-      name: "id",
-      type: "int",
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    {
-      name: "title",
-      type: "string",
-      length: 255,
-    },
-    {
-      name: "created_at",
-      type: "datetime",
-      default: "CURRENT_TIMESTAMP",
-    },
+      "name": "created_at",
+      "type": "date",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    }
   ],
-} satisfies EntityType;
+  "indexes": [],
+  "subsets": { "A": ["id", "created_at"] },
+  "enums": {
+    "ProductOrderBy": { "id-desc": "ID최신순" },
+    "ProductSearchField": { "id": "ID" }
+  }
+}
 ```
+
+<Note>
+  The default `desc` labels are emitted in Korean by the generator template. Rewrite them to match
+  your project's locale.
+</Note>
 
 ## Practice Scripts
 
@@ -229,43 +232,71 @@ Sonamu.runScript(async () => {
 
 Entities generated with `stub entity` include basic fields:
 
-```typescript
-export const ProductEntity = {
-  properties: [
-    { name: "id", type: "int", primaryKey: true, autoIncrement: true },
-    { name: "title", type: "string", length: 255 },
-    { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
+```json
+{
+  "id": "Product",
+  "title": "Product",
+  "table": "products",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    {
+      "name": "created_at",
+      "type": "date",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    }
   ],
-} satisfies EntityType;
+  "indexes": [],
+  "subsets": { "A": ["id", "created_at"] },
+  "enums": {
+    "ProductOrderBy": { "id-desc": "ID최신순" },
+    "ProductSearchField": { "id": "ID" }
+  }
+}
 ```
 
 ### Customization
 
 Add needed fields after generation:
 
-```typescript
-export const ProductEntity = {
-  properties: [
-    // Basic fields
-    { name: "id", type: "int", primaryKey: true, autoIncrement: true },
-    { name: "title", type: "string", length: 255 },
-
-    // Additional fields
-    { name: "description", type: "text", nullable: true },
-    { name: "price", type: "decimal", precision: 10, scale: 2 },
-    { name: "stock", type: "int", default: 0 },
-    { name: "category_id", type: "int" },
-
-    // Timestamps
-    { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
-    { name: "updated_at", type: "datetime", onUpdate: "CURRENT_TIMESTAMP" },
+```json
+{
+  "id": "Product",
+  "title": "Product",
+  "table": "products",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "Created at", "dbDefault": "CURRENT_TIMESTAMP" },
+    { "name": "title", "type": "string", "length": 255, "desc": "Title" },
+    { "name": "description", "type": "string", "nullable": true, "desc": "Description" },
+    { "name": "price", "type": "numeric", "precision": 10, "scale": 2, "desc": "Price" },
+    { "name": "stock", "type": "integer", "desc": "Stock", "dbDefault": 0 },
+    {
+      "type": "relation",
+      "name": "category",
+      "relationType": "BelongsToOne",
+      "with": "Category",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "desc": "Category"
+    }
   ],
-
-  indexes: [{ fields: ["category_id"] }, { fields: ["title"], type: "fulltext" }],
-
-  belongsTo: [{ entityId: "Category", as: "category" }],
-} satisfies EntityType;
+  "indexes": [
+    { "type": "index", "name": "products_title_index", "columns": [{ "name": "title" }] }
+  ],
+  "subsets": { "A": ["id", "created_at", "title", "price", "category.id"] },
+  "enums": {
+    "ProductOrderBy": { "id-desc": "Newest" },
+    "ProductSearchField": { "id": "ID", "title": "Title" }
+  }
+}
 ```
+
+<Note>
+  FK columns such as `category_id` are created automatically from a `relation` prop when the
+  migration is generated. See [Defining Entities](/en/core-concepts/entity/defining-entities) for
+  the full list of prop types and field rules.
+</Note>
 
 ## Development Workflow
 
@@ -288,7 +319,7 @@ pnpm node -r dotenv/config --enable-source-maps dist/practices/p1-test-idea.js
 pnpm stub entity Order
 
 # Write Entity definition
-# src/entities/Order.entity.ts
+# src/application/order/order.entity.json
 
 # Create and apply migration
 pnpm migrate run

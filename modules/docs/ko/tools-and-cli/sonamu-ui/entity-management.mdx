@@ -40,13 +40,12 @@ Entity 탭은 두 가지 주요 영역으로 구성됩니다:
 
 생성된 Entity는 기본적으로 다음 필드를 포함합니다:
 
-```typescript
+```json
 {
-  properties: [
-    { name: "id", type: "int", primaryKey: true, autoIncrement: true },
-    { name: "title", type: "string", length: 255 },
-    { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
-  ];
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" }
+  ]
 }
 ```
 
@@ -57,21 +56,26 @@ Entity 탭은 두 가지 주요 영역으로 구성됩니다:
 1. **[+ Add Property]** 버튼 클릭
 2. Property 정보 입력:
 
-| 필드         | 필수   | 설명                | 예시                       |
-| ------------ | ------ | ------------------- | -------------------------- |
-| **Name**     | ✅     | 필드명 (snake_case) | `email`, `phone_number`    |
-| **Type**     | ✅     | 데이터 타입         | `string`, `int`, `decimal` |
-| **Length**   | 조건부 | 문자열 길이         | `255`                      |
-| **Nullable** |        | NULL 허용 여부      | `true`                     |
-| **Default**  |        | 기본값              | `0`, `CURRENT_TIMESTAMP`   |
-| **Comment**  |        | 설명                | `사용자 이메일`            |
+| 필드            | 필수   | 설명                | 예시                           |
+| --------------- | ------ | ------------------- | ------------------------------ |
+| **Name**        | ✅     | 필드명 (snake_case) | `email`, `phone_number`        |
+| **Type**        | ✅     | 데이터 타입         | `string`, `integer`, `numeric` |
+| **Length**      | 조건부 | 문자열 길이         | `255`                          |
+| **Nullable**    |        | NULL 허용 여부      | `true`                         |
+| **DB Default**  |        | DB 기본값           | `0`, `CURRENT_TIMESTAMP`       |
+| **Description** |        | 설명                | `사용자 이메일`                |
 
 **지원하는 데이터 타입**:
 
-- **문자열**: `string`, `text`, `mediumtext`, `longtext`
-- **숫자**: `int`, `bigint`, `float`, `double`, `decimal`
-- **날짜**: `date`, `datetime`, `timestamp`
-- **기타**: `boolean`, `json`, `enum`
+- **문자열**: `string`(길이 미지정 시 `text`), `uuid`, `searchText`
+- **숫자**: `integer`, `bigInteger`, `number`, `numeric`(precision/scale)
+- **날짜**: `date`
+- **기타**: `boolean`, `enum`, `json`, `virtual`, `vector`, `tsvector`, `relation`
+
+<Note>
+  대부분의 스칼라 타입은 `integer[]`, `string[]`처럼 `[]`를 붙인 배열 타입도 지원합니다. 전체 목록은
+  [필드 타입](/ko/core-concepts/entity/field-types) 문서를 참고하세요.
+</Note>
 
 ### Property 수정
 
@@ -96,26 +100,37 @@ Property 행의 **[×]** 버튼을 클릭합니다.
 2. **[+ Add Index]** 버튼 클릭
 3. Index 정보 입력:
 
-| 필드       | 설명                              | 예시                          |
-| ---------- | --------------------------------- | ----------------------------- |
-| **Fields** | 인덱스 대상 필드 (복수 선택 가능) | `email`, `created_at`         |
-| **Type**   | 인덱스 타입                       | `index`, `unique`, `fulltext` |
+| 필드               | 설명                              | 예시                                 |
+| ------------------ | --------------------------------- | ------------------------------------ |
+| **Target Columns** | 인덱스 대상 필드 (복수 선택 가능) | `email`, `created_at`                |
+| **Type**           | 인덱스 타입                       | `index`, `unique`, `hnsw`, `ivfflat` |
 
 **Index 타입**:
 
 - **index**: 일반 인덱스 (검색 성능 향상)
 - **unique**: 유니크 인덱스 (중복 방지)
-- **fulltext**: 전문 검색 인덱스 (텍스트 검색)
+- **hnsw** / **ivfflat**: pgvector 벡터 인덱스
+
+<Note>
+  전문 검색은 별도의 인덱스 타입이 아니라 `searchText`/`tsvector` prop과 `using: "gin"` 옵션으로
+  구성합니다. [벡터 검색](/ko/advanced-features/vector-search/pgvector-setup) 문서를 참고하세요.
+</Note>
 
 ### 복합 Index
 
 여러 필드를 선택하여 복합 인덱스를 생성할 수 있습니다:
 
-```typescript
-indexes: [
-  { fields: ["user_id", "created_at"], type: "index" },
-  { fields: ["email"], type: "unique" },
-];
+```json
+{
+  "indexes": [
+    {
+      "type": "index",
+      "name": "posts_user_id_created_at_index",
+      "columns": [{ "name": "user_id" }, { "name": "created_at" }]
+    },
+    { "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }
+  ]
+}
 ```
 
 ## Relations 관리
@@ -137,8 +152,16 @@ indexes: [
 
 생성되는 코드:
 
-```typescript
-belongsTo: [{ entityId: "User", as: "author" }];
+```json
+{
+  "type": "relation",
+  "name": "author",
+  "relationType": "BelongsToOne",
+  "with": "User",
+  "onUpdate": "CASCADE",
+  "onDelete": "CASCADE",
+  "desc": "작성자"
+}
 ```
 
 ### hasMany (1:N 관계)
@@ -157,8 +180,15 @@ belongsTo: [{ entityId: "User", as: "author" }];
 
 생성되는 코드:
 
-```typescript
-hasMany: [{ entityId: "Post", as: "posts" }];
+```json
+{
+  "type": "relation",
+  "name": "posts",
+  "relationType": "HasMany",
+  "with": "Post",
+  "joinColumn": "user_id",
+  "desc": "게시글목록"
+}
 ```
 
 ## Enums 관리
@@ -170,30 +200,30 @@ hasMany: [{ entityId: "Post", as: "posts" }];
 1. **Enums** 섹션의 **[+ Add Enum]** 버튼 클릭
 2. Enum 정보 입력:
 
-| 필드       | 설명                  | 예시                 |
-| ---------- | --------------------- | -------------------- |
-| **Name**   | Enum 이름             | `UserRole`           |
-| **Values** | 값 목록 (쉼표로 구분) | `admin, user, guest` |
+| 필드       | 설명             | 예시                          |
+| ---------- | ---------------- | ----------------------------- |
+| **Name**   | Enum 이름        | `UserRole`                    |
+| **Values** | 값과 레이블의 쌍 | `admin: 관리자`, `user: 일반` |
 
 생성되는 코드:
 
-```typescript
-enums: [
-  {
-    name: "UserRole",
-    values: ["admin", "user", "guest"],
-  },
-];
+```json
+{
+  "enums": {
+    "UserRole": { "admin": "관리자", "user": "일반", "guest": "게스트" }
+  }
+}
 ```
 
 Property에서 사용:
 
-```typescript
+```json
 {
-  name: "role",
-  type: "enum",
-  enum: "UserRole",
-  default: "user"
+  "name": "role",
+  "type": "enum",
+  "id": "UserRole",
+  "desc": "권한",
+  "dbDefault": "user"
 }
 ```
 
@@ -231,37 +261,56 @@ AI가 기존 Entity를 분석하고 수정 사항을 적용합니다.
 
 ### 전자상거래 Product Entity
 
-```typescript
-export const ProductEntity = {
-  properties: [
-    { name: "id", type: "int", primaryKey: true, autoIncrement: true },
-    { name: "title", type: "string", length: 255 },
-    { name: "description", type: "text", nullable: true },
-    { name: "price", type: "decimal", precision: 10, scale: 2 },
-    { name: "stock", type: "int", default: 0 },
-    { name: "category_id", type: "int" },
-    { name: "status", type: "enum", enum: "ProductStatus" },
-    { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
-    { name: "updated_at", type: "datetime", onUpdate: "CURRENT_TIMESTAMP" },
-  ],
-
-  indexes: [
-    { fields: ["category_id"] },
-    { fields: ["title"], type: "fulltext" },
-    { fields: ["status", "created_at"] },
-  ],
-
-  belongsTo: [{ entityId: "Category", as: "category" }],
-
-  hasMany: [{ entityId: "Review", as: "reviews" }],
-
-  enums: [
+```json title="src/application/product/product.entity.json"
+{
+  "id": "Product",
+  "title": "상품",
+  "table": "products",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
     {
-      name: "ProductStatus",
-      values: ["active", "inactive", "soldout"],
+      "name": "created_at",
+      "type": "date",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
     },
+    { "name": "title", "type": "string", "length": 255, "desc": "상품명" },
+    { "name": "description", "type": "string", "nullable": true, "desc": "설명" },
+    { "name": "price", "type": "numeric", "precision": 10, "scale": 2, "desc": "가격" },
+    { "name": "stock", "type": "integer", "desc": "재고", "dbDefault": 0 },
+    { "name": "status", "type": "enum", "id": "ProductStatus", "desc": "상태" },
+    {
+      "type": "relation",
+      "name": "category",
+      "relationType": "BelongsToOne",
+      "with": "Category",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "desc": "카테고리"
+    },
+    {
+      "type": "relation",
+      "name": "reviews",
+      "relationType": "HasMany",
+      "with": "Review",
+      "joinColumn": "product_id",
+      "desc": "리뷰목록"
+    }
   ],
-} satisfies EntityType;
+  "indexes": [
+    {
+      "type": "index",
+      "name": "products_status_created_at_index",
+      "columns": [{ "name": "status" }, { "name": "created_at" }]
+    }
+  ],
+  "subsets": { "A": ["id", "created_at", "title", "price", "status", "category.id"] },
+  "enums": {
+    "ProductStatus": { "active": "판매중", "inactive": "판매중지", "soldout": "품절" },
+    "ProductOrderBy": { "id-desc": "ID최신순" },
+    "ProductSearchField": { "id": "ID", "title": "상품명" }
+  }
+}
 ```
 
 ## 변경사항 적용
@@ -275,7 +324,7 @@ Entity를 수정한 후에는 **마이그레이션을 생성하고 실행**해�
 3. **Migration 실행**: 마이그레이션 실행하여 DB 반영
 4. **Scaffolding**: Model과 테스트 코드 생성
 
-<Info>Entity 파일(`.entity.ts`)은 UI에서 수정 시 **자동으로 저장**됩니다.</Info>
+<Info>Entity 파일(`.entity.json`)은 UI에서 수정 시 **자동으로 저장**됩니다.</Info>
 
 ## 다음 단계
 

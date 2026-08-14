@@ -77,21 +77,28 @@ Click the **[Generate]** button to create the following file:
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
 <FileTree>
-  <FileItem name="src/models/">
-    <FileItem name="User.model.ts" description="User Model class" />
+  <FileItem name="src/application/user/">
+    <FileItem name="user.model.ts" description="User Model class" />
   </FileItem>
 </FileTree>
 
 ### Generated Code
 
-```typescript title="src/models/User.model.ts"
-import { BaseModelClass } from "sonamu";
-import type { InferSelectModel } from "sonamu";
-import { UserEntity } from "../entities/User.entity";
-import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
-import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
+```typescript title="src/application/user/user.model.ts"
+import {
+  api,
+  asArray,
+  BadRequestException,
+  BaseModelClass,
+  exhaustive,
+  NotFoundException,
+  type ListResult,
+} from "sonamu";
 
-export type User = InferSelectModel<typeof UserEntity>;
+import { SD } from "../../i18n/sd.generated";
+import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
+import { UserListParams, UserSaveParams } from "./user.types";
 
 class UserModelClass extends BaseModelClass<
   UserSubsetKey,
@@ -103,7 +110,7 @@ class UserModelClass extends BaseModelClass<
     super("User", userSubsetQueries, userLoaderQueries);
   }
 
-  // TODO: Add Model methods
+  // findById / findOne / findMany / save / del are generated with @api decorators
 }
 
 export const UserModel = new UserModelClass();
@@ -136,46 +143,34 @@ Check the **☑ Model Test** checkbox.
 Click the **[Generate]** button to create the following file:
 
 <FileTree>
-  <FileItem name="src/models/">
-    <FileItem name="User.model.test.ts" description="User Model test" />
+  <FileItem name="src/application/user/">
+    <FileItem name="user.model.test.ts" description="User Model test" />
   </FileItem>
 </FileTree>
 
 ### Generated Code
 
-```typescript title="src/models/User.model.test.ts"
-import { beforeAll, describe, test } from "bun:test";
-import { expect } from "@jest/globals";
-import { FixtureManager } from "sonamu/test";
-import { UserModel } from "./User.model";
+```typescript title="src/application/user/user.model.test.ts"
+import { bootstrap, test } from "sonamu/test";
+import { describe, expect, vi } from "vitest";
 
-describe("User Model", () => {
-  beforeAll(async () => {
-    await FixtureManager.sync();
+bootstrap(vi);
+describe.skip("UserModelTest", () => {
+  test("Query", async () => {
+    expect(true).toBe(true);
   });
-
-  test("findById", async () => {
-    const user = await UserModel.findById(1);
-    expect(user).toBeDefined();
-    expect(user?.id).toBe(1);
-  });
-
-  test("findMany", async () => {
-    const users = await UserModel.findMany({
-      num: 10,
-      page: 1,
-    });
-    expect(users.rows.length).toBeGreaterThan(0);
-  });
-
-  // TODO: Add more tests
 });
 ```
 
-**Auto-generated tests**:
+<Warning>
+  The generated test starts as `describe.skip`. Remove `.skip` once you have written real
+  assertions.
+</Warning>
 
-- ✅ `findById`: Query single record by ID
-- ✅ `findMany`: List query (pagination)
+**What is generated**:
+
+- ✅ A `bootstrap(vi)` call (Sonamu init + per-test transaction wrapping)
+- ✅ An empty `describe.skip` block — you write the actual cases
 
 ## Batch Generation
 
@@ -188,12 +183,12 @@ describe("User Model", () => {
 **Result**:
 
 ```
-✓ User.model.ts created
-✓ User.model.test.ts created
-✓ Post.model.ts created
-✓ Post.model.test.ts created
-✓ Comment.model.ts created
-✓ Comment.model.test.ts created
+✓ user.model.ts created
+✓ user.model.test.ts created
+✓ post.model.ts created
+✓ post.model.test.ts created
+✓ comment.model.ts created
+✓ comment.model.test.ts created
 
 6 files generated successfully!
 ```
@@ -230,10 +225,10 @@ For new Entity only when adding:
 ✅ Code Generation Complete
 
 Generated files:
-  ✓ src/models/User.model.ts
-  ✓ src/models/User.model.test.ts
-  ✓ src/models/Post.model.ts
-  ✓ src/models/Post.model.test.ts
+  ✓ src/application/user/user.model.ts
+  ✓ src/application/user/user.model.test.ts
+  ✓ src/application/post/post.model.ts
+  ✓ src/application/post/post.model.test.ts
 
 Total: 4 files
 ```
@@ -246,8 +241,8 @@ When trying to generate files that already exist, a confirmation modal appears:
 ⚠️ Files Already Exist
 
 The following files will be overwritten:
-  • src/models/User.model.ts
-  • src/models/User.model.test.ts
+  • src/application/user/user.model.ts
+  • src/application/user/user.model.test.ts
 
 [Cancel] [Backup & Overwrite] [Overwrite]
 ```
@@ -263,20 +258,19 @@ The following files will be overwritten:
   overwriting customized Models.
 </Warning>
 
-## View Generation (In Development)
+## View Generation
 
-View component auto-generation is currently under development.
+The TemplateKey list on the Scaffolding tab includes View templates in addition to the Model ones.
 
-### Alternative: Use Other Sonamu UI Features
-
-Currently, you can manage Views through these methods:
-
-1. **Entity-based auto-generation**: Basic View templates are provided when creating Entities
-2. **Manual writing**: Write React components directly
-3. **Component library**: Use `@sonamu-kit/react-components`
+| TemplateKey         | Output location                                |
+| ------------------- | ---------------------------------------------- |
+| `view_list`         | `web/src/routes/admin/{entities}/index.tsx`    |
+| `view_form`         | `web/src/routes/admin/{entities}/form.tsx`     |
+| `view_search_input` | Search input component used by the list screen |
 
 <Info>
-  This document will be updated when View List and View Form generation features are added.
+  The same templates are available from the CLI: `pnpm scaffold view_list`, `pnpm scaffold
+  view_form`.
 </Info>
 
 ## Post-Generation Workflow
@@ -285,7 +279,7 @@ Currently, you can manage Views through these methods:
 
 Add business logic to the generated Model:
 
-```typescript title="src/models/User.model.ts"
+```typescript title="src/application/user/user.model.ts"
 class UserModelClass extends BaseModelClass<
   UserSubsetKey,
   UserSubsetMapping,
@@ -312,7 +306,7 @@ class UserModelClass extends BaseModelClass<
 
 Add more tests to the generated test file:
 
-```typescript title="src/models/User.model.test.ts"
+```typescript title="src/application/user/user.model.test.ts"
 describe("User Model - Extended", () => {
   test("findByEmail", async () => {
     const user = await UserModel.findByEmail("user@example.com");
@@ -392,7 +386,7 @@ When Entity structure changes significantly and Model needs regeneration:
 
 ```bash
 # Backup existing file
-cp src/models/User.model.ts src/models/User.model.ts.bak
+cp src/application/user/user.model.ts src/application/user/user.model.ts.bak
 
 # Regenerate in UI
 [Backup & Overwrite]

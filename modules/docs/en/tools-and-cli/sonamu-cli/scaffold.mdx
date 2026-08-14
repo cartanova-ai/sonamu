@@ -38,22 +38,32 @@ An interactive prompt appears:
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
 <FileTree>
-  <FileItem name="src/models/">
-    <FileItem name="User.model.ts" description="User Model class" />
+  <FileItem name="src/application/user/">
+    <FileItem name="user.model.ts" description="User Model class" />
   </FileItem>
 </FileTree>
 
 **Generated code**:
 
-```typescript title="src/models/User.model.ts"
-import { BaseModelClass } from "sonamu";
-import type { InferSelectModel } from "sonamu";
-import { UserEntity } from "../entities/User.entity";
-import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+```typescript title="src/application/user/user.model.ts"
+import {
+  api,
+  asArray,
+  BadRequestException,
+  BaseModelClass,
+  exhaustive,
+  NotFoundException,
+  type ListResult,
+} from "sonamu";
+
+import { SD } from "../../i18n/sd.generated";
+import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
+import { UserListParams, UserSaveParams } from "./user.types";
 
-export type User = InferSelectModel<typeof UserEntity>;
-
+/*
+  User Model
+*/
 class UserModelClass extends BaseModelClass<
   UserSubsetKey,
   UserSubsetMapping,
@@ -64,11 +74,37 @@ class UserModelClass extends BaseModelClass<
     super("User", userSubsetQueries, userLoaderQueries);
   }
 
-  // TODO: Add Model methods
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "User" })
+  async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
+    // ...
+  }
+
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "Users" })
+  async findMany<T extends UserSubsetKey, LP extends UserListParams>(
+    subset: T,
+    rawParams?: LP,
+  ): Promise<ListResult<LP, UserSubsetMapping[T]>> {
+    // handles id / search-keyword / orderBy, then calls executeSubsetQuery
+  }
+
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  async save(spa: UserSaveParams[]): Promise<number[]> {
+    // ubRegister + transaction(ubUpsert)
+  }
+
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
+  async del(ids: number[]): Promise<number> {
+    // ...
+  }
 }
 
 export const UserModel = new UserModelClass();
 ```
+
+<Note>
+  The real output contains full bodies for `findById`/`findOne`/`findMany`/`save`/`del`; they are
+  elided above for brevity. When the Entity has a string primary key, `id` is generated as `string`.
+</Note>
 
 ### model_test - Generate Test File
 
@@ -81,56 +117,52 @@ pnpm scaffold model_test
 **Generated files**:
 
 <FileTree>
-  <FileItem name="src/models/">
-    <FileItem name="User.model.test.ts" description="User Model tests" />
+  <FileItem name="src/application/user/">
+    <FileItem name="user.model.test.ts" description="User Model tests" />
   </FileItem>
 </FileTree>
 
 **Generated code**:
 
-```typescript title="src/models/User.model.test.ts"
-import { beforeAll, describe, test } from "bun:test";
-import { expect } from "@jest/globals";
-import { FixtureManager } from "sonamu/test";
-import { UserModel } from "./User.model";
+```typescript title="src/application/user/user.model.test.ts"
+import { bootstrap, test } from "sonamu/test";
+import { describe, expect, vi } from "vitest";
 
-describe("User Model", () => {
-  beforeAll(async () => {
-    await FixtureManager.sync();
+bootstrap(vi);
+describe.skip("UserModelTest", () => {
+  test("Query", async () => {
+    expect(true).toBe(true);
   });
-
-  test("findById", async () => {
-    const user = await UserModel.findById(1);
-    expect(user).toBeDefined();
-    expect(user?.id).toBe(1);
-  });
-
-  test("findMany", async () => {
-    const users = await UserModel.findMany({
-      num: 10,
-      page: 1,
-    });
-    expect(users.rows.length).toBeGreaterThan(0);
-  });
-
-  // TODO: Add more tests
 });
 ```
 
-## View Scaffolding (In Development)
+<Warning>
+  The generated test starts as `describe.skip`. Remove `.skip` once you have written real
+  assertions.
+</Warning>
 
-<Info>
-View component auto-generation is currently in development.
-You can generate React components through **Sonamu UI**.
+## View Scaffolding
+
+Admin list and form components can also be generated from the CLI.
 
 ```bash
-# Run Sonamu UI
-pnpm sonamu ui
+# Generate the list screen
+pnpm scaffold view_list
 
-# Generate View in Scaffolding tab
+# Generate the create/edit form
+pnpm scaffold view_form
 ```
 
-</Info>
+**Generated files**:
+
+<FileTree>
+  <FileItem name="web/src/routes/admin/users/">
+    <FileItem name="index.tsx" description="User list screen" />
+    <FileItem name="form.tsx" description="User create/edit form" />
+  </FileItem>
+</FileTree>
+
+<Info>The same generators are available in the Scaffolding tab of **Sonamu UI**.</Info>
 
 ## Generated Code Structure
 
@@ -149,9 +181,6 @@ class UserModelClass extends BaseModelClass<
     super("User", userSubsetQueries, userLoaderQueries);
   }
 
-  // Entity type
-  entity = UserEntity;
-
   // Add methods here
   async findByEmail(email: string): Promise<User | null> {
     return this.getPuri("r").table("users").where("email", email).first();
@@ -162,9 +191,9 @@ class UserModelClass extends BaseModelClass<
 **Auto-generated features**:
 
 - ✅ TypeScript types
-- ✅ Entity connection
-- ✅ BaseModel inheritance
-- ✅ Basic CRUD methods
+- ✅ Subset/Loader query wiring
+- ✅ BaseModelClass inheritance
+- ✅ Basic CRUD methods (`findById`/`findOne`/`findMany`/`save`/`del`)
 
 **You need to add**:
 
@@ -178,17 +207,13 @@ class UserModelClass extends BaseModelClass<
 Generated test files include basic tests:
 
 ```typescript
-describe("User Model", () => {
-  beforeAll(async () => {
-    await FixtureManager.sync(); // Load fixtures
-  });
+import { bootstrap, test } from "sonamu/test";
+import { describe, expect, vi } from "vitest";
 
-  test("findById", async () => {
-    // Basic CRUD test
-  });
-
-  test("findMany", async () => {
-    // List query test
+bootstrap(vi); // Sonamu init + per-test transaction wrapping
+describe.skip("UserModelTest", () => {
+  test("Query", async () => {
+    expect(true).toBe(true);
   });
 });
 ```
@@ -204,17 +229,33 @@ describe("User Model", () => {
 
 ### 1. Define Entity
 
-```typescript title="src/entities/Product.entity.ts"
-export const ProductEntity = {
-  properties: [
-    { name: "id", type: "int", primaryKey: true, autoIncrement: true },
-    { name: "title", type: "string", length: 255 },
-    { name: "price", type: "decimal", precision: 10, scale: 2 },
-    { name: "category_id", type: "int" },
-    { name: "created_at", type: "datetime" },
+```json title="src/application/product/product.entity.json"
+{
+  "id": "Product",
+  "title": "Product",
+  "table": "products",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "Created at", "dbDefault": "CURRENT_TIMESTAMP" },
+    { "name": "title", "type": "string", "length": 255, "desc": "Title" },
+    { "name": "price", "type": "numeric", "precision": 10, "scale": 2, "desc": "Price" },
+    {
+      "type": "relation",
+      "name": "category",
+      "relationType": "BelongsToOne",
+      "with": "Category",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "desc": "Category"
+    }
   ],
-  belongsTo: [{ entityId: "Category", as: "category" }],
-} satisfies EntityType;
+  "indexes": [],
+  "subsets": { "A": ["id", "created_at", "title", "price", "category.id"] },
+  "enums": {
+    "ProductOrderBy": { "id-desc": "Newest" },
+    "ProductSearchField": { "id": "ID", "title": "Title" }
+  }
+}
 ```
 
 ### 2. Migration
@@ -235,7 +276,7 @@ pnpm scaffold model
 
 ### 4. Add Business Logic
 
-```typescript title="src/models/Product.model.ts"
+```typescript title="src/application/product/product.model.ts"
 class ProductModelClass extends BaseModelClass<
   ProductSubsetKey,
   ProductSubsetMapping,
@@ -269,12 +310,14 @@ pnpm scaffold model_test
 
 ### 6. Write Tests
 
-```typescript title="src/models/Product.model.test.ts"
-describe("Product Model", () => {
-  beforeAll(async () => {
-    await FixtureManager.sync();
-  });
+```typescript title="src/application/product/product.model.test.ts"
+import { bootstrap, test } from "sonamu/test";
+import { describe, expect, vi } from "vitest";
 
+import { ProductModel } from "./product.model";
+
+bootstrap(vi);
+describe("ProductModelTest", () => {
   test("findByCategory", async () => {
     const products = await ProductModel.findByCategory(1);
     expect(products.length).toBeGreaterThan(0);
@@ -293,7 +336,7 @@ describe("Product Model", () => {
 
 ### 7. Add API
 
-```typescript title="src/models/Product.model.ts"
+```typescript title="src/application/product/product.model.ts"
 class ProductModelClass extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async findByCategory(categoryId: number) {
@@ -410,19 +453,25 @@ done
 
 ### 1. Complete Entity First
 
-```typescript
+```json
 // ✅ Scaffold after Entity is fully defined
-export const UserEntity = {
-  properties: [
-    // Define all fields
+{
+  "id": "User",
+  "title": "User",
+  "table": "users",
+  "props": [
+    // Define normal and relation props
   ],
-  indexes: [
+  "indexes": [
     // Define indexes
   ],
-  belongsTo: [
-    // Define relations
-  ],
-} satisfies EntityType;
+  "subsets": {
+    // Define response field sets
+  },
+  "enums": {
+    // Define OrderBy / SearchField and friends
+  }
+}
 ```
 
 ### 2. Incremental Extension
@@ -459,8 +508,8 @@ Promise<ListResult<UserListParams, User>> // Pagination
 
 ```bash
 # Commit generated files
-git add src/models/User.model.ts
-git add src/models/User.model.test.ts
+git add src/application/user/user.model.ts
+git add src/application/user/user.model.test.ts
 git commit -m "Add User model and tests"
 ```
 
@@ -474,7 +523,7 @@ git commit -m "Add User model and tests"
 
 ```bash
 # Backup existing file
-cp src/models/User.model.ts src/models/User.model.ts.bak
+cp src/application/user/user.model.ts src/application/user/user.model.ts.bak
 
 # Regenerate
 pnpm scaffold model
