@@ -6,6 +6,11 @@
  *
  * 프로젝트별로 고유한 소켓을 사용하기 위해 sonamu.config.ts 경로의 해시를 사용합니다.
  *
+ * 모듈 싱글턴이지만 인스턴스는 프로세스마다 별개입니다. run/start·run/end는
+ * Vitest 메인 프로세스(NaiteVitestReporter 커스텀 리포터)에서, test/result는
+ * 각 worker 프로세스(bootstrap의 afterEach)에서 전송되므로 buffer와 소켓
+ * 연결을 서로 공유하지 않습니다.
+ *
  * fs mock 충돌을 피하기 위해 net 모듈만 사용합니다.
  */
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // Naite는 expect와 호응하도록 any를 허용함
@@ -53,11 +58,6 @@ class NaiteReporterClass {
   private socket: Socket | null = null;
   private connected = false;
   private buffer: string[] = [];
-  /**
-   * run/start는 뷰어를 초기화하는 프로토콜 메시지이므로 buffer 상한 폐기 대상에서 제외합니다.
-   * 별도 슬롯에 보관했다가 연결 시 가장 먼저 전송합니다.
-   */
-  private bufferedRunStart: string | null = null;
 
   /**
    * 소켓 연결 시도
@@ -75,11 +75,6 @@ class NaiteReporterClass {
 
       this.socket.on("connect", () => {
         this.connected = true;
-        // 뷰어를 현재 run 기준으로 초기화한 뒤 결과들을 전송
-        if (this.bufferedRunStart) {
-          this.socket?.write(this.bufferedRunStart);
-          this.bufferedRunStart = null;
-        }
         // 버퍼에 쌓인 메시지 전송
         for (const msg of this.buffer) {
           this.socket?.write(msg);
@@ -113,22 +108,16 @@ class NaiteReporterClass {
     if (this.connected && this.socket) {
       this.socket.write(msg);
     } else {
-      if (data.type === "run/start") {
-        // 새 run이 시작되었으므로 이전 run의 미전송 메시지는 폐기
-        this.bufferedRunStart = msg;
-        this.buffer = [];
-      } else {
-        // 연결 대기 중이면 버퍼에 저장, 상한 초과 시 오래된 메시지부터 폐기
-        this.buffer.push(msg);
-        if (this.buffer.length > MAX_BUFFERED_MESSAGES) {
-          this.buffer.shift();
-        }
+      // 연결 대기 중이면 버퍼에 저장, 상한 초과 시 오래된 메시지부터 폐기
+      this.buffer.push(msg);
+      if (this.buffer.length > MAX_BUFFERED_MESSAGES) {
+        this.buffer.shift();
       }
     }
   }
 
   /**
-   * beforeAll에서 호출합니다.
+   * Vitest 커스텀 리포터(NaiteVitestReporter)의 onTestRunStart에서 호출합니다.
    * 테스트 run 시작을 알립니다 (데이터 클리어 신호).
    */
   async startTestRun(): Promise<void> {
@@ -143,7 +132,7 @@ class NaiteReporterClass {
   }
 
   /**
-   * afterEach에서 호출합니다.
+   * bootstrap()의 afterEach에서 호출합니다.
    * 테스트 케이스 결과를 traces와 함께 전송합니다.
    */
   async reportTestResult(
@@ -161,7 +150,7 @@ class NaiteReporterClass {
   }
 
   /**
-   * afterAll에서 호출합니다.
+   * Vitest 커스텀 리포터(NaiteVitestReporter)의 onTestRunEnd에서 호출합니다.
    * 테스트 run 종료를 알립니다.
    */
   async endTestRun(): Promise<void> {
