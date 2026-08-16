@@ -387,10 +387,8 @@ AWS_SECRET_ACCESS_KEY=your_secret_key_here
 스토리지 설정 후 `@upload` 데코레이터와 `BufferedFile.saveToDisk()`를 사용하여 파일을 업로드할 수 있습니다.
 
 ```typescript
+import { BaseModelClass, Sonamu, upload } from "sonamu";
 import { type DriverKey } from "sonamu/storage";
-import { Sonamu } from "sonamu";
-import { upload } from "sonamu/decorators";
-import { BaseModelClass } from "sonamu";
 
 export class FileModel extends BaseModelClass {
   @upload()

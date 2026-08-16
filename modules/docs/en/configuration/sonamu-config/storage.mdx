@@ -389,10 +389,8 @@ AWS_SECRET_ACCESS_KEY=your_secret_key_here
 After storage configuration, you can upload files using the `@upload` decorator and `BufferedFile.saveToDisk()`.
 
 ```typescript
+import { BaseModelClass, Sonamu, upload } from "sonamu";
 import { type DriverKey } from "sonamu/storage";
-import { Sonamu } from "sonamu";
-import { upload } from "sonamu/decorators";
-import { BaseModelClass } from "sonamu";
 
 export class FileModel extends BaseModelClass {
   @upload()
