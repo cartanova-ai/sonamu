@@ -130,7 +130,7 @@ better-auth를 사용하려면 먼저 필요한 엔티티들을 생성해야 합
 ### CLI로 엔티티 생성
 
 ```bash
-pnpm sonamu better-auth
+pnpm sonamu auth generate
 ```
 
 이 명령은 다음 엔티티들을 생성합니다:
@@ -150,10 +150,10 @@ better-auth 플러그인을 사용하려면 `--plugins` 옵션으로 필요한 �
 
 ```bash
 # 단일 플러그인
-pnpm sonamu better-auth --plugins=2fa
+pnpm sonamu auth generate --plugins=2fa
 
 # 여러 플러그인 (쉼표로 구분)
-pnpm sonamu better-auth --plugins=2fa,admin,username
+pnpm sonamu auth generate --plugins=2fa,admin,username
 ```
 
 지원하는 플러그인:
@@ -404,7 +404,7 @@ export function GoogleLoginButton() {
 better-auth 플러그인을 사용하려면 `sonamu.config.ts`의 `auth.plugins` 배열에 플러그인을 추가합니다.
 
 <Warning>
-  플러그인을 설정하기 전에 먼저 `pnpm sonamu better-auth --plugins=...` 명령으로 필요한 엔티티와
+  플러그인을 설정하기 전에 먼저 `pnpm sonamu auth generate --plugins=...` 명령으로 필요한 엔티티와
   필드를 생성해야 합니다.
 </Warning>
 
@@ -804,7 +804,7 @@ export default defineConfig({
 
 ```bash
 # auth 설정 전에 먼저 엔티티 생성
-pnpm sonamu better-auth
+pnpm sonamu auth generate
 
 # 마이그레이션 실행
 pnpm sonamu migrate run
@@ -843,7 +843,7 @@ export default defineConfig({
 
 ### 4. 기존 User 엔티티와의 호환성
 
-이미 User 엔티티가 있는 경우, `pnpm sonamu better-auth` 실행 시 누락된 필드만 추가됩니다. 기존 데이터는 유지됩니다.
+이미 User 엔티티가 있는 경우, `pnpm sonamu auth generate` 실행 시 누락된 필드만 추가됩니다. 기존 데이터는 유지됩니다.
 
 ## 다음 단계
 

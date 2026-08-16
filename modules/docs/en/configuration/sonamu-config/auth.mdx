@@ -130,7 +130,7 @@ You need to generate the required entities before using better-auth.
 ### Generate Entities via CLI
 
 ```bash
-pnpm sonamu better-auth
+pnpm sonamu auth generate
 ```
 
 This command generates the following entities:
@@ -152,10 +152,10 @@ To use better-auth plugins, specify the required plugins with the `--plugins` op
 
 ```bash
 # Single plugin
-pnpm sonamu better-auth --plugins=2fa
+pnpm sonamu auth generate --plugins=2fa
 
 # Multiple plugins (comma-separated)
-pnpm sonamu better-auth --plugins=2fa,admin,username
+pnpm sonamu auth generate --plugins=2fa,admin,username
 ```
 
 Supported plugins:
@@ -408,7 +408,7 @@ To use better-auth plugins, add them to the `auth.plugins` array in `sonamu.conf
 
 <Warning>
   Before configuring plugins, you must first generate the required entities and fields using `pnpm
-  sonamu better-auth --plugins=...`.
+  sonamu auth generate --plugins=...`.
 </Warning>
 
 ### Two-Factor Authentication (2FA)
@@ -807,7 +807,7 @@ export default defineConfig({
 
 ```bash
 # Generate entities before auth configuration
-pnpm sonamu better-auth
+pnpm sonamu auth generate
 
 # Run migrations
 pnpm sonamu migrate run
@@ -846,7 +846,7 @@ export default defineConfig({
 
 ### 4. Compatibility with Existing User Entity
 
-If a User entity already exists, running `pnpm sonamu better-auth` will only add missing fields. Existing data is preserved.
+If a User entity already exists, running `pnpm sonamu auth generate` will only add missing fields. Existing data is preserved.
 
 ## Next Steps
 
