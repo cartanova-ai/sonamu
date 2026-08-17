@@ -1,43 +1,60 @@
 ---
 title: "Rolling Back"
-description: "Undo changes with migrate rollback"
+description: "Undo changes from Sonamu UI"
 ---
 
 Rollback migrations to restore the database to a previous state.
 
-## Rollback Commands
+## Rollback Methods
 
 <CardGroup cols={2}>
-  <Card title="rollback" icon="rotate-left">
-    Rollback recent batch Multiple at once
+  <Card title="Sonamu UI" icon="rotate-left">
+    Rollback button on the Migrations tab Rolls back the most recent batch
   </Card>
-  <Card title="rollback --all" icon="arrows-rotate">
-    Rollback all migrations Return to initial state
+  <Card title="runAction()" icon="code">
+    Call the Migrator API directly For scripts and automation
   </Card>
-  <Card title="down" icon="arrow-down">
-    One at a time Step-by-step rollback
-  </Card>
-  <Card title="status" icon="list-check">
+  <Card title="migrate status" icon="list-check">
     Check status before rollback Verify batches
+  </Card>
+  <Card title="down function" icon="arrow-down">
+    Reverse operation in the migration file Determines the rollback result
   </Card>
 </CardGroup>
 
+<Warning>
+  **There is no rollback CLI command.** `sonamu migrate` provides exactly four subcommands: `run`,
+  `apply`, `generate`, and `status`. Rollback is performed only from Sonamu UI or via
+  `Migrator.runAction("rollback", ...)`.
+</Warning>
+
 ## Basic Rollback
 
-### Rollback Recent Batch
+### Rollback from Sonamu UI
+
+1. Start the API dev server (`pnpm dev`).
+2. Open the **Migrations** tab at `http://localhost:34900/sonamu-ui`.
+3. Select the database connections to roll back.
+4. Click **Rollback** and confirm in the modal.
+
+<Info>A rollback reverts **every migration in the most recent batch** of the selected database.</Info>
+
+### Rollback from a Script
+
+For CI or operational scripts, call `Migrator` directly.
+
+```typescript title="src/scripts/rollback-migration.ts"
+import { Migrator, Sonamu } from "sonamu";
+
+Sonamu.runScript(async () => {
+  const migrator = new Migrator();
+  await migrator.runAction("rollback", ["development"]);
+});
+```
 
 ```bash
-pnpm sonamu migrate rollback
+pnpm tsx src/scripts/rollback-migration.ts
 ```
-
-**Execution Result**:
-
-```
-Batch 2 rolled back: 1 migration
-✅ 20251220143200_alter_users_add1.ts
-```
-
-<Info>`migrate rollback` rolls back all migrations in the most recent batch.</Info>
 
 ### Check Current Status
 
@@ -59,70 +76,32 @@ Pending migrations:
   ⏳ 20251220143300_alter_posts_add1.ts
 ```
 
-## Rollback Methods
+## Rollback Granularity
 
 ### Batch-based Rollback
 
-```bash
-# Check status
-pnpm sonamu migrate status
-
-# Batch 3 (most recent)
-✅ 20251220150000_alter_users_add2.ts
-✅ 20251220150100_alter_posts_add2.ts
-
-# Batch 2
-✅ 20251220143200_alter_users_add1.ts
-
-# Rollback (Batch 3 only)
-pnpm sonamu migrate rollback
-
-# Result: 2 migrations in Batch 3 rolled back
-Batch 3 rolled back: 2 migrations
-✅ 20251220150000_alter_users_add2.ts
-✅ 20251220150100_alter_posts_add2.ts
-```
-
-### One at a Time
-
-```bash
-pnpm sonamu migrate down
-```
-
-**First Run**:
+The unit of a rollback is a **batch**. A single rollback reverts every migration in the most recent
+batch.
 
 ```
-Batch 2 rolled back: 1 migration
-✅ 20251220143200_alter_users_add1.ts
+# Before rollback
+Batch 3 (most recent): 20251220150000_alter_users_add2.ts
+                       20251220150100_alter_posts_add2.ts
+Batch 2:               20251220143200_alter_users_add1.ts
+
+# One rollback → both migrations in Batch 3 are rolled back together
+Batch 2:               20251220143200_alter_users_add1.ts  ← kept
 ```
 
-**Second Run**:
+### Reverting Multiple Batches
 
-```
-Batch 1 rolled back: 1 migration
-✅ 20251220143100_create__posts.ts
-```
+There is no way to roll back a single selected migration or several batches at once. To go further
+back, **run the rollback once per batch**, checking `pnpm sonamu migrate status` between runs.
 
-### Full Rollback
-
-```bash
-pnpm sonamu migrate rollback --all
-```
-
-**Execution Result**:
-
-```
-Batch 2 rolled back: 1 migration
-✅ 20251220143200_alter_users_add1.ts
-
-Batch 1 rolled back: 2 migrations
-✅ 20251220143100_create__posts.ts
-✅ 20251220143022_create__users.ts
-
-All migrations rolled back successfully
-```
-
-<Warning>`rollback --all` deletes all tables! Never use in production.</Warning>
+<Warning>
+  Repeating rollbacks eventually returns the database to its initial schema (all tables dropped).
+  Verify the impact of each run in production.
+</Warning>
 
 ## The down Function
 
@@ -198,8 +177,7 @@ pnpm sonamu migrate run
 
 # 2. Discover problem (wrong column type)
 
-# 3. Rollback
-pnpm sonamu migrate rollback
+# 3. Roll back from the Migrations tab in Sonamu UI
 
 # 4. Fix migration file
 vim src/migrations/20251220143200_alter_users_add1.ts
@@ -210,27 +188,34 @@ pnpm sonamu migrate run
 
 ### Scenario 2: Production Emergency Rollback
 
+The production database is often unreachable from wherever Sonamu UI runs, so run the rollback
+script with production environment variables.
+
 ```bash
 # 1. Problem discovered after production deployment
 
-# 2. Immediate rollback
-NODE_ENV=production pnpm sonamu migrate rollback
+# 2. Immediate rollback (script calling runAction("rollback", ["production"]))
+NODE_ENV=production pnpm tsx src/scripts/rollback-migration.ts
 
 # 3. Deploy previous application version
 
 # 4. Fix problem and redeploy
 ```
 
+<Info>
+  When `NODE_ENV` is not `local`, only the connection whose name matches the environment is allowed
+  as a target. Any other target is rejected with an error.
+</Info>
+
 ### Scenario 3: Partial Rollback
 
-```bash
+```
 # Current status
 Batch 3: alter_users_add2.ts, alter_posts_add2.ts
 Batch 2: alter_users_add1.ts
 Batch 1: create__users.ts, create__posts.ts
 
-# Rollback only Batch 3 (keep Batch 2, 1)
-pnpm sonamu migrate rollback
+# One rollback → only Batch 3 is rolled back (Batch 2, 1 kept)
 
 # Result
 Batch 2: alter_users_add1.ts  ← Retained
@@ -239,7 +224,7 @@ Batch 1: create__users.ts, create__posts.ts  ← Retained
 
 ```mermaid
 flowchart TD
-    A[Batch 3<br/>alter_users_add2<br/>alter_posts_add2] --> B[rollback command]
+    A[Batch 3<br/>alter_users_add2<br/>alter_posts_add2] --> B[one rollback run]
     C[Batch 2<br/>alter_users_add1] --> D[Continue retained]
     E[Batch 1<br/>create__users<br/>create__posts] --> D
 
@@ -346,8 +331,7 @@ export async function down(knex: Knex): Promise<void> {
 # PostgreSQL backup
 pg_dump -U postgres -d mydb > backup_before_rollback.sql
 
-# Rollback
-pnpm sonamu migrate rollback
+# Rollback (Sonamu UI or the rollback script)
 
 # Restore if issues occur
 psql -U postgres -d mydb < backup_before_rollback.sql
@@ -357,34 +341,30 @@ psql -U postgres -d mydb < backup_before_rollback.sql
 
 ```bash
 # Test rollback in staging
-NODE_ENV=staging pnpm sonamu migrate rollback
+NODE_ENV=staging pnpm tsx src/scripts/rollback-migration.ts
 
 # If no issues, production
-NODE_ENV=production pnpm sonamu migrate rollback
+NODE_ENV=production pnpm tsx src/scripts/rollback-migration.ts
 ```
 
 ### 3. Incremental Rollback
 
 ```bash
-# Rollback one at a time
-pnpm sonamu migrate down
+# Roll back once (most recent batch)
 
 # Check status
 pnpm sonamu migrate status
 
 # Test application
 
-# Next rollback
-pnpm sonamu migrate down
+# If everything looks fine, roll back the next batch
 ```
 
 ## Error Handling
 
 ### Rollback Failure
 
-```bash
-pnpm sonamu migrate rollback
-```
+When a down function fails during rollback, an error like the following is raised.
 
 **Error**:
 
@@ -418,21 +398,18 @@ ALTER TABLE users DROP COLUMN phone;
 
 ## Rollback Logs
 
-### Verbose Logs
+### Checking the Result
 
-```bash
-pnpm sonamu migrate rollback --verbose
+`runAction("rollback", ...)` returns the batch number and the list of rolled back files per target
+connection.
+
+```typescript
+const results = await migrator.runAction("rollback", ["development"]);
+console.log(results);
+// [{ connKey: "development", batchNo: 2, applied: ["20251220143200_alter_users_add1.ts"] }]
 ```
 
-**Output**:
-
-```
-Rolling back migration: 20251220143200_alter_users_add1.ts
-SQL: ALTER TABLE "users" DROP COLUMN "phone"
-✅ Completed in 23ms
-
-Batch 2 rolled back: 1 migration
-```
+Sonamu UI shows the same information in the result modal.
 
 ### Querying Rollback History
 
@@ -474,7 +451,7 @@ test("migration reversibility", async () => {
 
 ### Rollback Steps
 
-1. `pnpm sonamu migrate rollback`
+1. Roll back from the Migrations tab in Sonamu UI (or run the rollback script)
 2. Deploy previous app version
 3. Verify phone field not used
 ```
@@ -489,7 +466,7 @@ echo "Creating backup..."
 pg_dump -U postgres -d mydb > backup.sql
 
 echo "Rolling back..."
-pnpm sonamu migrate rollback
+pnpm tsx src/scripts/rollback-migration.ts
 
 if [ $? -eq 0 ]; then
   echo "✅ Rollback successful"

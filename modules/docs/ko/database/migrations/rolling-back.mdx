@@ -1,43 +1,60 @@
 ---
 title: "롤백하기"
-description: "migrate rollback으로 변경 사항 되돌리기"
+description: "Sonamu UI에서 변경 사항 되돌리기"
 ---
 
 Migration을 롤백하여 데이터베이스를 이전 상태로 되돌릴 수 있습니다.
 
-## 롤백 명령어
+## 롤백 수단
 
 <CardGroup cols={2}>
-  <Card title="rollback" icon="rotate-left">
-    최근 batch 롤백 한 번에 여러 개
+  <Card title="Sonamu UI" icon="rotate-left">
+    Migrations 탭의 롤백 버튼 최근 batch 롤백
   </Card>
-  <Card title="rollback --all" icon="arrows-rotate">
-    모든 Migration 롤백 초기 상태로
+  <Card title="runAction()" icon="code">
+    Migrator API 직접 호출 스크립트/자동화용
   </Card>
-  <Card title="down" icon="arrow-down">
-    한 번에 하나씩 단계별 롤백
-  </Card>
-  <Card title="status" icon="list-check">
+  <Card title="migrate status" icon="list-check">
     롤백 전 상태 확인 batch 확인
+  </Card>
+  <Card title="down 함수" icon="arrow-down">
+    Migration 파일의 역작업 롤백 결과를 결정
   </Card>
 </CardGroup>
 
+<Warning>
+  **롤백 전용 CLI 명령은 없습니다.** `sonamu migrate`가 제공하는 서브커맨드는 `run`, `apply`,
+  `generate`, `status` 네 가지뿐입니다. 롤백은 Sonamu UI 또는 `Migrator.runAction("rollback", ...)`
+  으로만 수행합니다.
+</Warning>
+
 ## 기본 롤백
 
-### 최근 batch 롤백
+### Sonamu UI에서 롤백
+
+1. API 개발 서버를 실행합니다(`pnpm dev`).
+2. `http://localhost:34900/sonamu-ui`의 **Migrations** 탭을 엽니다.
+3. 롤백할 DB 커넥션을 선택합니다.
+4. **롤백** 버튼을 클릭하고 확인 모달에서 실행합니다.
+
+<Info>롤백은 선택한 DB의 **가장 최근 batch에 속한 모든 Migration**을 되돌립니다.</Info>
+
+### 스크립트에서 롤백
+
+CI나 운영 스크립트에서는 `Migrator`를 직접 호출합니다.
+
+```typescript title="src/scripts/rollback-migration.ts"
+import { Migrator, Sonamu } from "sonamu";
+
+Sonamu.runScript(async () => {
+  const migrator = new Migrator();
+  await migrator.runAction("rollback", ["development"]);
+});
+```
 
 ```bash
-pnpm sonamu migrate rollback
+pnpm tsx src/scripts/rollback-migration.ts
 ```
-
-**실행 결과**:
-
-```
-Batch 2 rolled back: 1 migration
-✅ 20251220143200_alter_users_add1.ts
-```
-
-<Info>`migrate rollback`은 가장 최근 batch의 모든 Migration을 롤백합니다.</Info>
 
 ### 현재 상태 확인
 
@@ -63,66 +80,28 @@ Pending migrations:
 
 ### Batch 단위 롤백
 
-```bash
-# 상태 확인
-pnpm sonamu migrate status
-
-# Batch 3 (가장 최근)
-✅ 20251220150000_alter_users_add2.ts
-✅ 20251220150100_alter_posts_add2.ts
-
-# Batch 2
-✅ 20251220143200_alter_users_add1.ts
-
-# 롤백 (Batch 3만)
-pnpm sonamu migrate rollback
-
-# 결과: Batch 3의 2개 Migration 롤백
-Batch 3 rolled back: 2 migrations
-✅ 20251220150000_alter_users_add2.ts
-✅ 20251220150100_alter_posts_add2.ts
-```
-
-### 한 번에 하나씩
-
-```bash
-pnpm sonamu migrate down
-```
-
-**첫 번째 실행**:
+롤백의 단위는 **batch**입니다. 한 번의 롤백은 가장 최근 batch에 속한 Migration을 모두 되돌립니다.
 
 ```
-Batch 2 rolled back: 1 migration
-✅ 20251220143200_alter_users_add1.ts
+# 롤백 전
+Batch 3 (가장 최근): 20251220150000_alter_users_add2.ts
+                     20251220150100_alter_posts_add2.ts
+Batch 2:             20251220143200_alter_users_add1.ts
+
+# 롤백 1회 실행 → Batch 3의 2개 Migration이 함께 롤백됨
+Batch 2:             20251220143200_alter_users_add1.ts  ← 유지
 ```
 
-**두 번째 실행**:
+### 여러 batch 되돌리기
 
-```
-Batch 1 rolled back: 1 migration
-✅ 20251220143100_create__posts.ts
-```
+Migration 하나만 골라서 되돌리거나, 여러 batch를 한 번에 되돌리는 기능은 제공되지 않습니다.
+더 과거로 되돌리려면 **롤백을 batch 수만큼 반복 실행**하고, 각 회차 사이에
+`pnpm sonamu migrate status`로 상태를 확인하세요.
 
-### 전체 롤백
-
-```bash
-pnpm sonamu migrate rollback --all
-```
-
-**실행 결과**:
-
-```
-Batch 2 rolled back: 1 migration
-✅ 20251220143200_alter_users_add1.ts
-
-Batch 1 rolled back: 2 migrations
-✅ 20251220143100_create__posts.ts
-✅ 20251220143022_create__users.ts
-
-All migrations rolled back successfully
-```
-
-<Warning>`rollback --all`은 모든 테이블을 삭제합니다! 프로덕션에서는 절대 사용하지 마세요.</Warning>
+<Warning>
+  롤백을 반복하면 결국 초기 스키마(모든 테이블 삭제)까지 되돌아갑니다. 프로덕션에서는 각 회차마다
+  영향 범위를 확인하세요.
+</Warning>
 
 ## down 함수
 
@@ -198,8 +177,7 @@ pnpm sonamu migrate run
 
 # 2. 문제 발견 (잘못된 컬럼 타입)
 
-# 3. 롤백
-pnpm sonamu migrate rollback
+# 3. Sonamu UI의 Migrations 탭에서 롤백
 
 # 4. Migration 파일 수정
 vim src/migrations/20251220143200_alter_users_add1.ts
@@ -210,27 +188,34 @@ pnpm sonamu migrate run
 
 ### 시나리오 2: 프로덕션 긴급 롤백
 
+프로덕션 DB는 Sonamu UI가 실행되는 환경에서 접근할 수 없는 경우가 많으므로,
+롤백 스크립트를 프로덕션 환경 변수로 실행합니다.
+
 ```bash
 # 1. 프로덕션 배포 후 문제 발견
 
-# 2. 즉시 롤백
-NODE_ENV=production pnpm sonamu migrate rollback
+# 2. 즉시 롤백 (runAction("rollback", ["production"]) 스크립트)
+NODE_ENV=production pnpm tsx src/scripts/rollback-migration.ts
 
 # 3. 이전 버전 애플리케이션 배포
 
 # 4. 문제 수정 후 재배포
 ```
 
+<Info>
+  `NODE_ENV`가 `local`이 아니면 해당 환경과 이름이 같은 DB 커넥션만 작업 대상으로 허용됩니다. 다른
+  대상을 넘기면 에러로 차단됩니다.
+</Info>
+
 ### 시나리오 3: 부분 롤백
 
-```bash
+```
 # 현재 상태
 Batch 3: alter_users_add2.ts, alter_posts_add2.ts
 Batch 2: alter_users_add1.ts
 Batch 1: create__users.ts, create__posts.ts
 
-# Batch 3만 롤백 (Batch 2, 1은 유지)
-pnpm sonamu migrate rollback
+# 롤백 1회 → Batch 3만 롤백 (Batch 2, 1은 유지)
 
 # 결과
 Batch 2: alter_users_add1.ts  ← 유지
@@ -239,7 +224,7 @@ Batch 1: create__users.ts, create__posts.ts  ← 유지
 
 ```mermaid
 flowchart TD
-    A[Batch 3<br/>alter_users_add2<br/>alter_posts_add2] --> B[rollback 명령어]
+    A[Batch 3<br/>alter_users_add2<br/>alter_posts_add2] --> B[롤백 1회 실행]
     C[Batch 2<br/>alter_users_add1] --> D[계속 유지]
     E[Batch 1<br/>create__users<br/>create__posts] --> D
 
@@ -346,8 +331,7 @@ export async function down(knex: Knex): Promise<void> {
 # PostgreSQL 백업
 pg_dump -U postgres -d mydb > backup_before_rollback.sql
 
-# 롤백
-pnpm sonamu migrate rollback
+# 롤백 (Sonamu UI 또는 롤백 스크립트)
 
 # 문제 발생 시 복원
 psql -U postgres -d mydb < backup_before_rollback.sql
@@ -357,34 +341,30 @@ psql -U postgres -d mydb < backup_before_rollback.sql
 
 ```bash
 # 스테이징에서 롤백 테스트
-NODE_ENV=staging pnpm sonamu migrate rollback
+NODE_ENV=staging pnpm tsx src/scripts/rollback-migration.ts
 
 # 문제 없으면 프로덕션
-NODE_ENV=production pnpm sonamu migrate rollback
+NODE_ENV=production pnpm tsx src/scripts/rollback-migration.ts
 ```
 
 ### 3. 점진적 롤백
 
 ```bash
-# 한 번에 하나씩 롤백
-pnpm sonamu migrate down
+# 롤백 1회 실행 (최근 batch)
 
 # 상태 확인
 pnpm sonamu migrate status
 
 # 애플리케이션 테스트
 
-# 다음 롤백
-pnpm sonamu migrate down
+# 이상 없으면 다음 batch 롤백
 ```
 
 ## 에러 처리
 
 ### 롤백 실패
 
-```bash
-pnpm sonamu migrate rollback
-```
+롤백 중 down 함수가 실패하면 다음과 같은 에러가 발생합니다.
 
 **에러**:
 
@@ -418,21 +398,17 @@ ALTER TABLE users DROP COLUMN phone;
 
 ## 롤백 로그
 
-### 상세 로그
+### 실행 결과 확인
 
-```bash
-pnpm sonamu migrate rollback --verbose
+`runAction("rollback", ...)`은 대상 커넥션별로 batch 번호와 롤백된 파일 목록을 반환합니다.
+
+```typescript
+const results = await migrator.runAction("rollback", ["development"]);
+console.log(results);
+// [{ connKey: "development", batchNo: 2, applied: ["20251220143200_alter_users_add1.ts"] }]
 ```
 
-**출력**:
-
-```
-Rolling back migration: 20251220143200_alter_users_add1.ts
-SQL: ALTER TABLE "users" DROP COLUMN "phone"
-✅ Completed in 23ms
-
-Batch 2 rolled back: 1 migration
-```
+Sonamu UI에서 실행한 경우 같은 내용이 결과 모달에 표시됩니다.
 
 ### 롤백 기록 조회
 
@@ -474,7 +450,7 @@ test("migration reversibility", async () => {
 
 ### Rollback Steps
 
-1. `pnpm sonamu migrate rollback`
+1. Sonamu UI Migrations 탭에서 롤백 (또는 롤백 스크립트 실행)
 2. Deploy previous app version
 3. Verify phone field not used
 ```
@@ -489,7 +465,7 @@ echo "Creating backup..."
 pg_dump -U postgres -d mydb > backup.sql
 
 echo "Rolling back..."
-pnpm sonamu migrate rollback
+pnpm tsx src/scripts/rollback-migration.ts
 
 if [ $? -eq 0 ]; then
   echo "✅ Rollback successful"
