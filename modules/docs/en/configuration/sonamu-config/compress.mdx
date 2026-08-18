@@ -75,7 +75,7 @@ export default defineConfig({
 ```
 
 - `true`: Auto-compress all responses (default)
-- `false`: Control per API with `@compress()` decorator
+- `false`: Control per API with the `@api({ compress })` option
 
 <Tip>
   We recommend `global: false`. Small responses or already compressed files (images, videos) don't
@@ -197,15 +197,14 @@ export default defineConfig({
 
 ## Per-API Compression Control
 
-If you set `global: false`, you can control compression per API with the `@compress()` decorator.
+If you set `global: false`, you can control compression per API with the `compress` option of the `@api()` decorator.
 
 ```typescript
-import { api, compress } from "sonamu";
+import { api } from "sonamu";
 
 export class DataModel {
-  // Apply compression
-  @compress()
-  @api()
+  // Apply compression (reuses the global compress options)
+  @api({ compress: true })
   static async getLargeData() {
     return {
       // Large data...
@@ -220,7 +219,7 @@ export class DataModel {
 }
 ```
 
-→ [Compress Decorator Usage](/en/advanced-features/compress/per-api-control)
+→ [Per-API Compression Control Usage](/en/advanced-features/compress/per-api-control)
 
 ## Practical Examples
 
@@ -233,7 +232,7 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: false, // Control with @compress() decorator
+        global: false, // Control with the compress option of @api()
         threshold: 1024, // Above 1KB only
         encodings: ["gzip"],
       },
@@ -246,14 +245,12 @@ export default defineConfig({
 
 ```typescript
 export class ArticleModel {
-  @compress() // Large list response
-  @api()
+  @api({ compress: true }) // Large list response
   static async list() {
     return this.getPuri("r").table("articles").select("*");
   }
 
-  @compress() // Large detail data
-  @api()
+  @api({ compress: true }) // Large detail data
   static async detail(id: number) {
     return this.findById(id, ["**"]);
   }
@@ -470,7 +467,7 @@ compress: {
 
 // ✅ Good: Control per API
 compress: {
-  global: false,  // Only @compress() where needed
+  global: false,  // Only @api({ compress: true }) where needed
 }
 ```
 
