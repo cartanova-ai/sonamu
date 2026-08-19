@@ -624,23 +624,28 @@ class AuthModel extends BaseModelClass {
 Periodically delete expired Refresh Tokens to manage database size.
 
 ```typescript
-// tasks/cleanup-tokens.ts
-import { task } from "sonamu";
+// src/workflows/cleanup-tokens.workflow.ts
+import { BaseModel, workflow } from "sonamu";
 
 /**
  * Delete expired Refresh Tokens at midnight every day
  */
-@task({ cron: "0 0 * * *" })
-export async function cleanupExpiredTokens() {
-  const db = getDatabase();
+export const cleanupExpiredTokens = workflow(
+  {
+    name: "cleanup_expired_tokens",
+    schedules: [{ expression: "0 0 * * *" }],
+  },
+  async ({ logger }) => {
+    const wdb = BaseModel.getPuri("w");
 
-  const result = await db
-    .table("refresh_tokens")
-    .where("expires_at", "<", new Date())
-    .delete();
+    const deleted = await wdb
+      .table("refresh_tokens")
+      .where("expires_at", "<", new Date())
+      .delete();
 
-  console.log(`Deleted ${result} expired refresh tokens`);
-}
+    logger.info(`Deleted ${deleted} expired refresh tokens`);
+  },
+);
 ```
 
 ## Cautions

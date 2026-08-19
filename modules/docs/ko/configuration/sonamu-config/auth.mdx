@@ -130,7 +130,7 @@ better-auth를 사용하려면 먼저 필요한 엔티티들을 생성해야 합
 ### CLI로 엔티티 생성
 
 ```bash
-pnpm sonamu better-auth
+pnpm sonamu auth generate
 ```
 
 이 명령은 다음 엔티티들을 생성합니다:
@@ -150,10 +150,10 @@ better-auth 플러그인을 사용하려면 `--plugins` 옵션으로 필요한 �
 
 ```bash
 # 단일 플러그인
-pnpm sonamu better-auth --plugins=2fa
+pnpm sonamu auth generate --plugins=2fa
 
 # 여러 플러그인 (쉼표로 구분)
-pnpm sonamu better-auth --plugins=2fa,admin,username
+pnpm sonamu auth generate --plugins=2fa,admin,username
 ```
 
 지원하는 플러그인:
@@ -404,7 +404,7 @@ export function GoogleLoginButton() {
 better-auth 플러그인을 사용하려면 `sonamu.config.ts`의 `auth.plugins` 배열에 플러그인을 추가합니다.
 
 <Warning>
-  플러그인을 설정하기 전에 먼저 `pnpm sonamu better-auth --plugins=...` 명령으로 필요한 엔티티와
+  플러그인을 설정하기 전에 먼저 `pnpm sonamu auth generate --plugins=...` 명령으로 필요한 엔티티와
   필드를 생성해야 합니다.
 </Warning>
 
@@ -413,8 +413,7 @@ better-auth 플러그인을 사용하려면 `sonamu.config.ts`의 `auth.plugins`
 TOTP 기반 2단계 인증을 활성화합니다:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { twoFactor, TWO_FACTOR_SCHEMA } from "sonamu/auth";
+import { defineConfig, twoFactor, TWO_FACTOR_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -442,8 +441,7 @@ export default defineConfig({
 사용자 역할, 차단 기능, 대리 로그인(impersonation)을 지원합니다:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { admin, ADMIN_SCHEMA } from "sonamu/auth";
+import { defineConfig, admin, ADMIN_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -471,8 +469,7 @@ Admin 플러그인이 User 테이블에 추가하는 필드:
 이메일 대신 사용자명으로 로그인할 수 있습니다:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { username, USERNAME_SCHEMA } from "sonamu/auth";
+import { defineConfig, username, USERNAME_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -497,8 +494,7 @@ Username 플러그인이 User 테이블에 추가하는 필드:
 전화번호 인증을 지원합니다:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { phoneNumber, PHONE_NUMBER_SCHEMA } from "sonamu/auth";
+import { defineConfig, phoneNumber, PHONE_NUMBER_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -523,8 +519,7 @@ Phone Number 플러그인이 User 테이블에 추가하는 필드:
 WebAuthn/FIDO2 기반 패스키 인증을 지원합니다:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { passkey, PASSKEY_SCHEMA } from "sonamu/auth";
+import { defineConfig, passkey, PASSKEY_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -558,8 +553,7 @@ Passkey 관련 API:
 외부 IdP(OIDC, SAML)를 통한 SSO 로그인을 지원합니다:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { sso, SSO_SCHEMA } from "sonamu/auth";
+import { defineConfig, sso, SSO_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -585,8 +579,7 @@ SSO 플러그인이 생성하는 테이블:
 API 키 기반 인증을 지원합니다:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { apiKey, API_KEY_SCHEMA } from "sonamu/auth";
+import { defineConfig, apiKey, API_KEY_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -616,8 +609,7 @@ API Key 관련 API:
 JWT 토큰 발급 및 JWKS 키 관리를 지원합니다:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { jwt, JWT_SCHEMA } from "sonamu/auth";
+import { defineConfig, jwt, JWT_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -646,8 +638,7 @@ JWT 관련 API:
 조직, 멤버, 초대, 팀 관리를 지원합니다:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { organization, ORGANIZATION_SCHEMA } from "sonamu/auth";
+import { defineConfig, organization, ORGANIZATION_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -687,8 +678,7 @@ Organization 관련 API:
 익명 사용자 인증을 지원합니다. 회원가입 없이 임시 사용자를 생성할 수 있습니다:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { anonymous, ANONYMOUS_SCHEMA } from "sonamu/auth";
+import { defineConfig, anonymous, ANONYMOUS_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -715,8 +705,8 @@ Anonymous 관련 API:
 ### 여러 플러그인 함께 사용
 
 ```typescript
-import { defineConfig } from "sonamu";
 import {
+  defineConfig,
   admin,
   ADMIN_SCHEMA,
   twoFactor,
@@ -727,7 +717,7 @@ import {
   PASSKEY_SCHEMA,
   organization,
   ORGANIZATION_SCHEMA,
-} from "sonamu/auth";
+} from "sonamu";
 
 export default defineConfig({
   server: {
@@ -814,7 +804,7 @@ export default defineConfig({
 
 ```bash
 # auth 설정 전에 먼저 엔티티 생성
-pnpm sonamu better-auth
+pnpm sonamu auth generate
 
 # 마이그레이션 실행
 pnpm sonamu migrate run
@@ -853,7 +843,7 @@ export default defineConfig({
 
 ### 4. 기존 User 엔티티와의 호환성
 
-이미 User 엔티티가 있는 경우, `pnpm sonamu better-auth` 실행 시 누락된 필드만 추가됩니다. 기존 데이터는 유지됩니다.
+이미 User 엔티티가 있는 경우, `pnpm sonamu auth generate` 실행 시 누락된 필드만 추가됩니다. 기존 데이터는 유지됩니다.
 
 ## 다음 단계
 

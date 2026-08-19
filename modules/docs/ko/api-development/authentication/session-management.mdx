@@ -623,23 +623,28 @@ class AuthModel extends BaseModelClass {
 주기적으로 만료된 Refresh Token을 삭제하여 데이터베이스 크기를 관리합니다.
 
 ```typescript
-// tasks/cleanup-tokens.ts
-import { task } from "sonamu";
+// src/workflows/cleanup-tokens.workflow.ts
+import { BaseModel, workflow } from "sonamu";
 
 /**
  * 매일 자정에 만료된 Refresh Token 삭제
  */
-@task({ cron: "0 0 * * *" })
-export async function cleanupExpiredTokens() {
-  const db = getDatabase();
+export const cleanupExpiredTokens = workflow(
+  {
+    name: "cleanup_expired_tokens",
+    schedules: [{ expression: "0 0 * * *" }],
+  },
+  async ({ logger }) => {
+    const wdb = BaseModel.getPuri("w");
 
-  const result = await db
-    .table("refresh_tokens")
-    .where("expires_at", "<", new Date())
-    .delete();
+    const deleted = await wdb
+      .table("refresh_tokens")
+      .where("expires_at", "<", new Date())
+      .delete();
 
-  console.log(`Deleted ${result} expired refresh tokens`);
-}
+    logger.info(`Deleted ${deleted} expired refresh tokens`);
+  },
+);
 ```
 
 ## 주의사항

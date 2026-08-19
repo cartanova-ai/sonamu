@@ -130,7 +130,7 @@ You need to generate the required entities before using better-auth.
 ### Generate Entities via CLI
 
 ```bash
-pnpm sonamu better-auth
+pnpm sonamu auth generate
 ```
 
 This command generates the following entities:
@@ -152,10 +152,10 @@ To use better-auth plugins, specify the required plugins with the `--plugins` op
 
 ```bash
 # Single plugin
-pnpm sonamu better-auth --plugins=2fa
+pnpm sonamu auth generate --plugins=2fa
 
 # Multiple plugins (comma-separated)
-pnpm sonamu better-auth --plugins=2fa,admin,username
+pnpm sonamu auth generate --plugins=2fa,admin,username
 ```
 
 Supported plugins:
@@ -408,7 +408,7 @@ To use better-auth plugins, add them to the `auth.plugins` array in `sonamu.conf
 
 <Warning>
   Before configuring plugins, you must first generate the required entities and fields using `pnpm
-  sonamu better-auth --plugins=...`.
+  sonamu auth generate --plugins=...`.
 </Warning>
 
 ### Two-Factor Authentication (2FA)
@@ -416,8 +416,7 @@ To use better-auth plugins, add them to the `auth.plugins` array in `sonamu.conf
 Enable TOTP-based two-factor authentication:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { twoFactor, TWO_FACTOR_SCHEMA } from "sonamu/auth";
+import { defineConfig, twoFactor, TWO_FACTOR_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -445,8 +444,7 @@ export default defineConfig({
 Supports user roles, banning, and impersonation:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { admin, ADMIN_SCHEMA } from "sonamu/auth";
+import { defineConfig, admin, ADMIN_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -474,8 +472,7 @@ Fields added to User table by Admin plugin:
 Allows login with username instead of email:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { username, USERNAME_SCHEMA } from "sonamu/auth";
+import { defineConfig, username, USERNAME_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -500,8 +497,7 @@ Fields added to User table by Username plugin:
 Supports phone number verification:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { phoneNumber, PHONE_NUMBER_SCHEMA } from "sonamu/auth";
+import { defineConfig, phoneNumber, PHONE_NUMBER_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -526,8 +522,7 @@ Fields added to User table by Phone Number plugin:
 Supports WebAuthn/FIDO2 based passkey authentication:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { passkey, PASSKEY_SCHEMA } from "sonamu/auth";
+import { defineConfig, passkey, PASSKEY_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -561,8 +556,7 @@ Passkey-related APIs:
 Supports SSO login through external IdPs (OIDC, SAML):
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { sso, SSO_SCHEMA } from "sonamu/auth";
+import { defineConfig, sso, SSO_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -588,8 +582,7 @@ Tables created by SSO plugin:
 Supports API key based authentication:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { apiKey, API_KEY_SCHEMA } from "sonamu/auth";
+import { defineConfig, apiKey, API_KEY_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -619,8 +612,7 @@ API Key-related APIs:
 Supports JWT token issuance and JWKS key management:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { jwt, JWT_SCHEMA } from "sonamu/auth";
+import { defineConfig, jwt, JWT_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -649,8 +641,7 @@ JWT-related APIs:
 Supports organization, member, invitation, and team management:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { organization, ORGANIZATION_SCHEMA } from "sonamu/auth";
+import { defineConfig, organization, ORGANIZATION_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -690,8 +681,7 @@ Organization-related APIs:
 Supports anonymous user authentication. Allows creating temporary users without sign-up:
 
 ```typescript
-import { defineConfig } from "sonamu";
-import { anonymous, ANONYMOUS_SCHEMA } from "sonamu/auth";
+import { defineConfig, anonymous, ANONYMOUS_SCHEMA } from "sonamu";
 
 export default defineConfig({
   server: {
@@ -718,8 +708,8 @@ Anonymous-related APIs:
 ### Using Multiple Plugins Together
 
 ```typescript
-import { defineConfig } from "sonamu";
 import {
+  defineConfig,
   admin,
   ADMIN_SCHEMA,
   twoFactor,
@@ -730,7 +720,7 @@ import {
   PASSKEY_SCHEMA,
   organization,
   ORGANIZATION_SCHEMA,
-} from "sonamu/auth";
+} from "sonamu";
 
 export default defineConfig({
   server: {
@@ -817,7 +807,7 @@ export default defineConfig({
 
 ```bash
 # Generate entities before auth configuration
-pnpm sonamu better-auth
+pnpm sonamu auth generate
 
 # Run migrations
 pnpm sonamu migrate run
@@ -856,7 +846,7 @@ export default defineConfig({
 
 ### 4. Compatibility with Existing User Entity
 
-If a User entity already exists, running `pnpm sonamu better-auth` will only add missing fields. Existing data is preserved.
+If a User entity already exists, running `pnpm sonamu auth generate` will only add missing fields. Existing data is preserved.
 
 ## Next Steps
 
