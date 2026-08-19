@@ -213,34 +213,10 @@ async transferPoints(fromUserId: number, toUserId: number, points: number) {
 }
 ```
 
-## 트랜잭션 컨텍스트 자동 감지
+## 트랜잭션 연동
 
-`getPuri`는 트랜잭션 컨텍스트를 자동으로 감지하고 재사용합니다. 이는 `@transactional` 데코레이터와 함께 사용할 때 중요한 기능입니다.
-
-### 동작 원리
-
-`getPuri` 메서드는 내부적으로 다음과 같이 동작합니다:
-
-1. `DB.getTransactionContext()`를 통해 현재 실행 중인 트랜잭션 확인
-2. 트랜잭션이 있으면 해당 트랜잭션을 재사용
-3. 트랜잭션이 없으면 새로운 PuriWrapper 생성
-
-```typescript
-// getPuri 내부 로직 (참고용)
-getPuri(which: DBPreset): PuriWrapper {
-  // 1. 트랜잭션 컨텍스트에서 트랜잭션 획득 시도
-  const trx = DB.getTransactionContext().getTransaction(which);
-
-  if (trx) {
-    // 2. 트랜잭션이 있으면 재사용
-    return trx;
-  }
-
-  // 3. 트랜잭션이 없으면 새로운 PuriWrapper 반환
-  const db = this.getDB(which);
-  return new PuriWrapper(db, new UpsertBuilder());
-}
-```
+요청한 preset에 이미 활성 트랜잭션이 있으면 `getPuri`는 해당 DB 트랜잭션에 참여합니다. 활성
+트랜잭션이 없으면 preset에 설정된 DB에 접근합니다.
 
 ### @transactional 내에서 사용
 
@@ -276,7 +252,7 @@ class UserModelClass extends BaseModelClass {
 
 ### 중첩 메서드 호출 안전성
 
-이 기능 덕분에 트랜잭션 내에서 다른 메서드를 호출해도 안전합니다. 모든 `getPuri` 호출이 동일한 트랜잭션을 사용합니다.
+트랜잭션 안에서 호출한 메서드가 같은 preset을 요청하면 동일한 DB 트랜잭션에 참여합니다.
 
 ```typescript
 class UserModelClass extends BaseModelClass {
@@ -306,13 +282,17 @@ class UserModelClass extends BaseModelClass {
 ```
 
 <Info>
-  `@transactional` 데코레이터가 설정한 트랜잭션 컨텍스트는 모든 하위 메서드 호출에서 자동으로
-  공유됩니다. 이는 AsyncLocalStorage를 통해 구현됩니다.
+  `@transactional` 안에서 같은 dbPreset으로 호출한 `getPuri`는 동일한 DB 트랜잭션에 참여합니다.
+  가장 바깥 데코레이터 호출이 커밋과 롤백을 담당합니다.
 </Info>
 
 <Warning>
-  트랜잭션 내에서 `getPuri`로 얻은 PuriWrapper와 `wdb.transaction()`으로 시작한 새로운 트랜잭션은
-  **서로 다른 트랜잭션**입니다. 중첩 트랜잭션이 필요한 경우 명시적으로 관리해야 합니다.
+  같은 dbPreset의 트랜잭션이 이미 활성 상태라면 중첩 `.transaction()`은 Savepoint를 생성합니다.
+  중첩 호출은 하나씩 순차적으로 `await`하고 sibling Savepoint를 `Promise.all`로 병렬 실행하지 마세요.
+  설정된 DB마다 고유한 dbPreset을 일관되게 사용하고, 서로 다른 DB 연결에 같은 preset 이름을
+  재사용하지 마세요. 이 부분 롤백 안내는 직접 DB 쿼리에 적용됩니다. 하나의 UpsertBuilder batch나
+  graph를 공유한다면 실패를 잡고 계속하지 말고 가장 바깥 트랜잭션까지 전파해 전체 작업을
+  롤백하세요.
 </Warning>
 
 ## 실전 예시
@@ -630,7 +610,7 @@ const wdb = this.getPuri("w");
 await wdb.table("users").insert({ ... });
 ```
 
-### 2. 트랜잭션 컨텍스트
+### 2. @transactional 내에서 사용
 
 `@transactional` 내에서는 트랜잭션이 자동으로 관리됩니다.
 
