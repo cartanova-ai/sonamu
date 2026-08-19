@@ -67,6 +67,15 @@ export class BaseModelClass<
     return new PuriWrapper(db, new UpsertBuilder());
   }
 
+  private getSubsetQueryPuri(): PuriWrapper {
+    const activeTransaction = DB.getTransactionContext().getActiveTransaction();
+    if (activeTransaction) {
+      return activeTransaction;
+    }
+
+    return new PuriWrapper(this.getDB("r"), new UpsertBuilder());
+  }
+
   async destroy() {
     return DB.destroy();
   }
@@ -120,7 +129,7 @@ export class BaseModelClass<
       throw new Error("subsetQueries is not defined");
     }
 
-    const puriWrapper = new PuriWrapper(this.getDB("r"), new UpsertBuilder());
+    const puriWrapper = this.getSubsetQueryPuri();
     const qb = this.subsetQueries[subset]?.(puriWrapper);
 
     // NonAllowedAsSingleTable: 단일 테이블 컬럼 접근 방지용 마커
@@ -201,6 +210,8 @@ export class BaseModelClass<
     }
 
     const { num, page } = queryParams;
+    // 모든 로더가 root query와 같은 연결을 사용하도록 실행 시점의 knex에서 한 번만 파생한다.
+    const puriWrapper = new PuriWrapper(qb.knex, new UpsertBuilder());
 
     // COUNT 쿼리 실행 (queryMode: list일 때는 0 리턴)
     const total = await this.executeCountQuery(qb, queryParams, debug, optimizeCountQuery);
@@ -210,7 +221,15 @@ export class BaseModelClass<
     }
 
     // LIST 쿼리 실행
-    const computedRows = await this.executeListQuery(subset, qb, queryParams, num, page, debug);
+    const computedRows = await this.executeListQuery(
+      subset,
+      qb,
+      queryParams,
+      num,
+      page,
+      debug,
+      puriWrapper,
+    );
 
     // Enhancer 적용
     const enhancer = (params as any).enhancers?.[subset];
@@ -457,6 +476,7 @@ export class BaseModelClass<
     num: number,
     page: number,
     debug: boolean,
+    puriWrapper: PuriWrapper,
   ): Promise<any[]> {
     if (params.queryMode === "count") {
       return [];
@@ -478,7 +498,7 @@ export class BaseModelClass<
     // 로더 처리
     const loaders = (this.loaderQueries as any)[subset];
     if (loaders && Array.isArray(loaders)) {
-      unloadedRows = await this.processLoaders(unloadedRows, loaders, debug);
+      unloadedRows = await this.processLoaders(unloadedRows, loaders, debug, puriWrapper);
     }
 
     return this.hydrate(unloadedRows);
@@ -487,12 +507,17 @@ export class BaseModelClass<
   /**
    * 재귀적 로더 처리
    */
-  private async processLoaders(rows: any[], loaders: any[], debug: boolean): Promise<any[]> {
+  private async processLoaders(
+    rows: any[],
+    loaders: any[],
+    debug: boolean,
+    puriWrapper: PuriWrapper,
+  ): Promise<any[]> {
     for (const resolveLoader of loaders) {
       const { as, refId, qb: resolveLoaderQbFn, loaders: nestedLoaders } = resolveLoader;
 
       const resolveLoaderQb = resolveLoaderQbFn(
-        new PuriWrapper(this.getDB("r"), new UpsertBuilder()),
+        puriWrapper,
         rows.map((row) => row[refId]),
       );
 
@@ -504,7 +529,7 @@ export class BaseModelClass<
 
       // 중첩 loaders가 있으면 재귀 처리
       if (nestedLoaders && nestedLoaders.length > 0) {
-        loadedRows = await this.processLoaders(loadedRows, nestedLoaders, debug);
+        loadedRows = await this.processLoaders(loadedRows, nestedLoaders, debug, puriWrapper);
       }
 
       const subRowGroups = group(loadedRows, (row) => row.refId);

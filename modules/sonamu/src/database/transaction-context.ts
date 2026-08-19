@@ -2,17 +2,25 @@ import { type DBPreset } from "./db";
 import { type PuriTransactionWrapper } from "./puri-wrapper";
 
 export class TransactionContext {
-  private transactions: Map<DBPreset, PuriTransactionWrapper> = new Map();
+  constructor(
+    private readonly parent?: TransactionContext,
+    private local?: {
+      preset: DBPreset;
+      transaction: PuriTransactionWrapper;
+    },
+  ) {}
 
   getTransaction(preset: DBPreset): PuriTransactionWrapper | undefined {
-    return this.transactions.get(preset);
+    return this.local?.preset === preset
+      ? this.local.transaction
+      : this.parent?.getTransaction(preset);
   }
 
-  setTransaction(preset: DBPreset, trx: PuriTransactionWrapper): void {
-    this.transactions.set(preset, trx);
+  getActiveTransaction(): PuriTransactionWrapper | undefined {
+    return this.local?.transaction ?? this.parent?.getActiveTransaction();
   }
 
-  deleteTransaction(preset: DBPreset): void {
-    this.transactions.delete(preset);
+  clearLocal(): void {
+    this.local = undefined;
   }
 }
