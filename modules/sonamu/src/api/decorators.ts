@@ -396,9 +396,7 @@ export function transactional(options: TransactionalOptions = {}) {
         method: methodName,
       });
 
-      const existingContext = DB.transactionStorage.getStore();
-
-      // AsyncLocalStorage 컨텍스트 없거나 해당 preset의 트랜잭션이 없으면 새로 시작
+      // 해당 preset의 트랜잭션이 없으면 새 트랜잭션과 scope를 함께 시작한다.
       const startTransaction = async () => {
         const puri = this.getPuri(dbPreset);
 
@@ -406,33 +404,24 @@ export function transactional(options: TransactionalOptions = {}) {
           async (trx) => {
             this.logger.debug("new transaction context: {dbPreset}", { dbPreset });
             const trxWrapper = new PuriTransactionWrapper(trx, new UpsertBuilder());
-            // TransactionContext에 트랜잭션 저장
-            DB.getTransactionContext().setTransaction(dbPreset, trxWrapper);
 
-            try {
-              return await originalMethod.apply(this, args);
-            } finally {
-              // 트랜잭션 제거
-              this.logger.debug("delete transaction context: {dbPreset}", { dbPreset });
-              DB.getTransactionContext().deleteTransaction(dbPreset);
-            }
+            return DB.runWithTransactionScope(dbPreset, trxWrapper, () =>
+              originalMethod.apply(this, args),
+            );
           },
           { isolationLevel: isolation, readOnly },
         );
       };
 
-      // AsyncLocalStorage 컨텍스트가 없으면 새로 생성
-      if (!existingContext) {
-        return DB.runWithTransaction(startTransaction);
-      }
-
-      // 이미 AsyncLocalStorage 컨텍스트 안에 있는지 확인 후 해당 preset의 트랜잭션이 이미 있으면 재사용
-      if (existingContext?.getTransaction(dbPreset)) {
+      const existingTransaction = DB.transactionStorage.getStore()?.getTransaction(dbPreset);
+      if (existingTransaction) {
         this.logger.debug("reuse transaction context: {dbPreset}", { dbPreset });
-        return originalMethod.apply(this, args);
+        // 다른 preset이 안쪽에 있어도 이 메서드가 재사용한 트랜잭션을 현재 scope로 표시한다.
+        return DB.runWithTransactionScope(dbPreset, existingTransaction, () =>
+          originalMethod.apply(this, args),
+        );
       }
 
-      // 컨텍스트는 있지만 이 preset의 트랜잭션은 없는 경우 (같은 컨텍스트 내에서 실행)
       return startTransaction();
     };
 

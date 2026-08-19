@@ -6,6 +6,7 @@ import { type Knex } from "knex";
 import { type DatabaseConfig, type SonamuConfig } from "../api/config";
 import { getSonamuEnvironment, type EnvironmentSnapshots, type SonamuEnvironment } from "../env";
 import { createKnexInstance } from "./knex";
+import { type PuriTransactionWrapper } from "./puri-wrapper";
 import { TransactionContext } from "./transaction-context";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -155,8 +156,22 @@ export class DBClass {
 
   public transactionStorage = new AsyncLocalStorage<TransactionContext>();
 
-  public runWithTransaction<T>(callback: () => Promise<T>): Promise<T> {
-    return this.transactionStorage.run(new TransactionContext(), callback);
+  public runWithTransactionScope<T>(
+    preset: DBPreset,
+    transaction: PuriTransactionWrapper,
+    callback: () => Promise<T>,
+  ): Promise<T> {
+    const parentContext = this.transactionStorage.getStore();
+    const transactionContext = new TransactionContext(parentContext, { preset, transaction });
+
+    return this.transactionStorage.run(transactionContext, async () => {
+      try {
+        return await callback();
+      } finally {
+        // detached descendant가 완료된 트랜잭션을 다시 사용하지 않도록 local scope를 비운다.
+        transactionContext.clearLocal();
+      }
+    });
   }
 
   setConfig(dbConfig: SonamuDBConfig): void {
