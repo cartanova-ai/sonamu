@@ -257,7 +257,7 @@ export async function down(knex: Knex): Promise<void> {
 **Run**:
 
 ```bash
-pnpm sonamu migrate:latest
+pnpm sonamu migrate run
 ```
 
 ### 4. Creating a Vector Table from Scratch
@@ -455,7 +455,7 @@ class KnowledgeBaseModelClass extends BaseModelClass {
 4. **Manage with Migration**: Use Migration instead of direct SQL
 
    ```bash
-   pnpm sonamu migrate:latest
+   pnpm sonamu migrate run
    ```
 
 5. **Extension version**: 0.5.1 or higher recommended
