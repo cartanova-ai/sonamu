@@ -178,46 +178,37 @@ pnpm sonamu migrate run
 # Production
 NODE_ENV=production pnpm sonamu migrate run
 
-# Rollback
-pnpm sonamu migrate rollback
+# Rollback is done from Sonamu UI (Migrations tab) or the Migrator API, not the CLI
+# → see /en/database/migrations/rolling-back
 ```
 
 </Accordion>
 
 <Accordion title="How do I safely test migrations?">
 
-Use Shadow DB for testing:
+Use the Shadow DB test by calling `Migrator.runShadowTest()` from a script. There is no dedicated CLI
+command. (The Migrations tab in Sonamu UI currently exposes only Apply and Rollback buttons.)
 
-```bash
-# Shadow DB test
-pnpm sonamu migrate shadow-test
-# → Creates temporary Shadow DB
-# → Applies Migration
-# → Confirms success
-# → Deletes Shadow DB
+```typescript title="src/scripts/shadow-test.ts"
+import { Migrator, Sonamu } from "sonamu";
+
+Sonamu.runScript(async () => {
+  const migrator = new Migrator();
+  await migrator.runShadowTest();
+});
 ```
 
-Shadow DB configuration:
+What it does:
 
-```typescript
-// sonamu.config.ts
-export default {
-  database: {
-    connections: {
-      main: {
-        // ...
-      },
-      shadow: {
-        host: "localhost",
-        port: 5432,
-        database: "myapp_shadow",
-        user: "postgres",
-        password: "password",
-      },
-    },
-  },
-} satisfies SonamuConfig;
-```
+- Creates `{test_db}__migration_shadow` using the `test` connection's database as TEMPLATE
+- Applies every pending Migration to that Shadow DB
+- Returns the result and drops the Shadow DB
+
+<Warning>
+  The Shadow DB is derived from the **`test` connection** and its name is decided automatically. There
+  is no option to configure a separate shadow connection, so the `test` connection needs
+  CREATE/DROP DATABASE privileges.
+</Warning>
 
 </Accordion>
 
