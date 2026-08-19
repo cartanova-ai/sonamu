@@ -14,13 +14,18 @@ description: "pnpm sonamu migrate로 데이터베이스 적용하기"
   <Card title="migrate status" icon="list-check">
     실행 상태 확인 pending 목록
   </Card>
-  <Card title="migrate latest" icon="forward">
-    최신까지 실행 run과 동일
+  <Card title="migrate apply" icon="database">
+    대상 DB를 골라서 실행
   </Card>
-  <Card title="migrate up" icon="arrow-up">
-    한 번에 하나씩 단계별 실행
+  <Card title="migrate generate" icon="plus">
+    준비된 Migration 파일 생성
   </Card>
 </CardGroup>
+
+<Info>
+  `sonamu migrate`의 서브커맨드는 `run`, `apply`, `generate`, `status` 네 가지입니다. 롤백은 CLI가
+  아닌 Sonamu UI에서 수행합니다. [롤백하기](/ko/database/migrations/rolling-back) 문서를 참고하세요.
+</Info>
 
 ## 기본 실행
 
@@ -85,29 +90,34 @@ flowchart TD
     style E fill:#fff3e0
 ```
 
-## 단계별 실행
+## 대상 DB 지정 실행
 
-### 한 번에 하나씩
+### migrate apply
+
+`migrate run`은 현재 `NODE_ENV`에 해당하는 DB에만 적용합니다(`NODE_ENV=test`인 경우 `test`와
+`fixture`). 대상 DB를 직접 고르려면 `migrate apply`를 사용합니다.
 
 ```bash
-pnpm sonamu migrate up
+pnpm sonamu migrate apply
 ```
 
-**첫 번째 실행**:
+실행하면 대상 선택 프롬프트가 나타납니다.
 
 ```
-Batch 1 run: 1 migration
-✅ 20251220143022_create__users.ts
+? Please input #targets ›
+◯ Development
+◯ Staging
+◯ Production
+◯ Fixture
+◯ Test
 ```
 
-**두 번째 실행**:
+<Warning>
+  `NODE_ENV`가 `local`이 아니면 해당 환경과 이름이 같은 커넥션만 허용됩니다. 그 외 대상을 고르면
+  `Migration targets are not allowed in NODE_ENV=...` 에러로 차단됩니다.
+</Warning>
 
-```
-Batch 2 run: 1 migration
-✅ 20251220143100_create__posts.ts
-```
-
-<Info>`migrate up`은 pending 중 가장 오래된 Migration 하나만 실행합니다.</Info>
+<Info>Migration 하나씩만 골라서 실행하는 명령은 제공되지 않습니다. 실행 단위는 항상 pending 전체입니다.</Info>
 
 ## Batch 시스템
 
@@ -249,31 +259,11 @@ Batch 1 run: 2 migrations (1 successful, 1 failed)
 
 ## 실행 로그 확인
 
-### 상세 로그
+### 실행 결과
 
-```bash
-pnpm sonamu migrate run --verbose
-```
-
-**출력**:
-
-```
-Running migration: 20251220143022_create__users.ts
-SQL: CREATE TABLE "users" (
-  "id" serial primary key,
-  "email" varchar(255) not null
-)
-✅ Completed in 45ms
-
-Running migration: 20251220143100_create__posts.ts
-SQL: CREATE TABLE "posts" (
-  "id" serial primary key,
-  "title" varchar(200) not null
-)
-✅ Completed in 32ms
-
-Total time: 77ms
-```
+`migrate run`은 대상 커넥션별로 batch 번호와 적용된 파일 목록을 출력합니다. SQL 단위의 상세 로그를
+남기는 옵션은 제공되지 않으므로, 실제 실행된 SQL을 확인하려면 아래 `knex_migrations` 조회나 DB
+서버 로그를 사용하세요.
 
 ### 실행 기록 조회
 
@@ -422,7 +412,7 @@ console.log(`Migration completed in ${duration}ms`);
 
 <CardGroup cols={2}>
   <Card title="롤백하기" icon="rotate-left" href="/ko/database/migrations/rolling-back">
-    migrate rollback으로 되돌리기
+    Sonamu UI에서 되돌리기
   </Card>
   <Card title="전략" icon="chess" href="/ko/database/migrations/migration-strategies">
     안전한 마이그레이션

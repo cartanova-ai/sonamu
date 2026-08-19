@@ -14,13 +14,18 @@ How to apply generated Migration files to the database.
   <Card title="migrate status" icon="list-check">
     Check execution status Pending list
   </Card>
-  <Card title="migrate latest" icon="forward">
-    Run to latest Same as run
+  <Card title="migrate apply" icon="database">
+    Run against selected databases
   </Card>
-  <Card title="migrate up" icon="arrow-up">
-    One at a time Step-by-step execution
+  <Card title="migrate generate" icon="plus">
+    Generate prepared migration files
   </Card>
 </CardGroup>
+
+<Info>
+  `sonamu migrate` has exactly four subcommands: `run`, `apply`, `generate`, and `status`. Rollback
+  is not a CLI command — see [Rolling Back](/en/database/migrations/rolling-back).
+</Info>
 
 ## Basic Execution
 
@@ -85,29 +90,34 @@ flowchart TD
     style E fill:#fff3e0
 ```
 
-## Step-by-step Execution
+## Targeting Specific Databases
 
-### One at a Time
+### migrate apply
+
+`migrate run` applies migrations only to the database matching the current `NODE_ENV` (`test` and
+`fixture` when `NODE_ENV=test`). To choose the targets yourself, use `migrate apply`.
 
 ```bash
-pnpm sonamu migrate up
+pnpm sonamu migrate apply
 ```
 
-**First Run**:
+A target selection prompt appears.
 
 ```
-Batch 1 run: 1 migration
-✅ 20251220143022_create__users.ts
+? Please input #targets ›
+◯ Development
+◯ Staging
+◯ Production
+◯ Fixture
+◯ Test
 ```
 
-**Second Run**:
+<Warning>
+  When `NODE_ENV` is not `local`, only the connection whose name matches the environment is allowed.
+  Choosing any other target fails with `Migration targets are not allowed in NODE_ENV=...`.
+</Warning>
 
-```
-Batch 2 run: 1 migration
-✅ 20251220143100_create__posts.ts
-```
-
-<Info>`migrate up` executes only the oldest pending migration.</Info>
+<Info>There is no command to run a single migration at a time. The execution unit is always all pending migrations.</Info>
 
 ## Batch System
 
@@ -249,31 +259,11 @@ Batch 1 run: 2 migrations (1 successful, 1 failed)
 
 ## Checking Execution Logs
 
-### Verbose Logs
+### Execution Result
 
-```bash
-pnpm sonamu migrate run --verbose
-```
-
-**Output**:
-
-```
-Running migration: 20251220143022_create__users.ts
-SQL: CREATE TABLE "users" (
-  "id" serial primary key,
-  "email" varchar(255) not null
-)
-✅ Completed in 45ms
-
-Running migration: 20251220143100_create__posts.ts
-SQL: CREATE TABLE "posts" (
-  "id" serial primary key,
-  "title" varchar(200) not null
-)
-✅ Completed in 32ms
-
-Total time: 77ms
-```
+`migrate run` prints the batch number and the list of applied files per target connection. There is
+no option for SQL-level verbose logging, so use the `knex_migrations` queries below or your database
+server logs to inspect the executed SQL.
 
 ### Querying Execution History
 
@@ -422,7 +412,7 @@ console.log(`Migration completed in ${duration}ms`);
 
 <CardGroup cols={2}>
   <Card title="Rolling Back" icon="rotate-left" href="/en/database/migrations/rolling-back">
-    Undo with migrate rollback
+    Undo from Sonamu UI
   </Card>
   <Card title="Strategies" icon="chess" href="/en/database/migrations/migration-strategies">
     Safe migration practices

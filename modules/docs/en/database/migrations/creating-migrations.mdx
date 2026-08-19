@@ -44,8 +44,13 @@ First, modify the Entity JSON file:
 
 ### 2. Open Sonamu UI
 
+Start the API dev server and open it in a browser. Sonamu UI is served from the API server's
+`/sonamu-ui` path, without a separate port.
+
 ```bash
-pnpm sonamu ui
+pnpm dev
+
+# http://localhost:34900/sonamu-ui
 ```
 
 <Frame>
@@ -359,11 +364,11 @@ psql -U postgres -h localhost -p 5432 -d mydb
 pnpm sonamu migrate status
 ```
 
-### 3. Validate Entity
+### 3. Sync Entities
 
 ```bash
-# Validate Entity syntax
-pnpm sonamu validate
+# Read Entity definitions and regenerate types/schemas (fails on invalid definitions)
+pnpm sonamu sync
 ```
 
 ## Manual Modification
