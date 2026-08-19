@@ -75,7 +75,7 @@ export default defineConfig({
 ```
 
 - `true`: 모든 응답을 자동 압축 (기본값)
-- `false`: `@compress()` 데코레이터로 API별 제어
+- `false`: `@api({ compress })` 옵션으로 API별 제어
 
 <Tip>
   `global: false`를 권장합니다. 작은 응답이나 이미 압축된 파일(이미지, 동영상)은 압축할 필요가 없기
@@ -197,15 +197,14 @@ export default defineConfig({
 
 ## API별 압축 제어
 
-`global: false`로 설정했다면 `@compress()` 데코레이터로 API별로 압축을 제어할 수 있습니다.
+`global: false`로 설정했다면 `@api()` 데코레이터의 `compress` 옵션으로 API별로 압축을 제어할 수 있습니다.
 
 ```typescript
-import { api, compress } from "sonamu";
+import { api } from "sonamu";
 
 export class DataModel {
-  // 압축 적용
-  @compress()
-  @api()
+  // 압축 적용 (전역 compress 옵션을 그대로 사용)
+  @api({ compress: true })
   static async getLargeData() {
     return {
       // 큰 데이터...
@@ -220,7 +219,7 @@ export class DataModel {
 }
 ```
 
-→ [Compress 데코레이터 사용법](/ko/advanced-features/compress/per-api-control)
+→ [API별 압축 제어 사용법](/ko/advanced-features/compress/per-api-control)
 
 ## 실전 예시
 
@@ -233,7 +232,7 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: false, // @compress() 데코레이터로 제어
+        global: false, // @api()의 compress 옵션으로 제어
         threshold: 1024, // 1KB 이상만
         encodings: ["gzip"],
       },
@@ -246,14 +245,12 @@ export default defineConfig({
 
 ```typescript
 export class ArticleModel {
-  @compress() // 큰 목록 응답
-  @api()
+  @api({ compress: true }) // 큰 목록 응답
   static async list() {
     return this.getPuri("r").table("articles").select("*");
   }
 
-  @compress() // 큰 상세 데이터
-  @api()
+  @api({ compress: true }) // 큰 상세 데이터
   static async detail(id: number) {
     return this.findById(id, ["**"]);
   }
@@ -470,7 +467,7 @@ compress: {
 
 // ✅ 좋은 예: API별로 제어
 compress: {
-  global: false,  // 필요한 것만 @compress()
+  global: false,  // 필요한 것만 @api({ compress: true })
 }
 ```
 

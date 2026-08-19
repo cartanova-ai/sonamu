@@ -3,7 +3,7 @@ title: "@workflow"
 description: "워크플로우 정의 데코레이터"
 ---
 
-`@workflow` 데코레이터는 장기 실행 작업, 백그라운드 작업, 스케줄링 작업을 정의합니다. OpenWorkflow를 기반으로 내구성 있는 실행, 재시도, 모니터링을 제공합니다.
+`workflow()` 함수는 장기 실행 작업, 백그라운드 작업, 스케줄링 작업을 정의합니다. OpenWorkflow를 기반으로 내구성 있는 실행, 재시도, 모니터링을 제공합니다.
 
 ## 기본 사용법
 
@@ -541,28 +541,31 @@ export const handleErrors = workflow({ name: "handle_errors" }, async ({ step, l
 });
 ```
 
-## 데코레이터 스타일 (TypeScript Decorator)
+## 커링 스타일 (옵션 우선 적용)
 
-함수 스타일 대신 데코레이터 스타일도 사용 가능합니다:
+`workflow()`는 옵션만 먼저 넘기고 실행 함수를 나중에 넘기는 오버로드도 제공합니다. 옵션 정의와 실행 로직을 분리해서 읽고 싶을 때 사용합니다.
 
 ```typescript
-@workflow({
+export const processOrder = workflow({
   name: "process_order",
-  version: "1.0"
-})
-async function processOrder({ input, step, logger }) {
+  version: "1.0",
+})(async ({ input, step, logger }) => {
   logger.info("Processing order", { orderId: input.orderId });
 
-  const payment = await step.define(
-    { name: "charge" },
-    async () => {
+  const payment = await step
+    .define({ name: "charge" }, async () => {
       return await PaymentService.charge(input.amount);
-    }
-  ).run();
+    })
+    .run();
 
   return { paymentId: payment.id };
-}
+});
 ```
+
+<Warning>
+  `workflow`는 함수이며 TypeScript 데코레이터가 아닙니다. `@workflow(...)`를 함수 선언 위에 붙이는
+  형태는 지원하지 않습니다. 데코레이터는 클래스와 클래스 멤버에만 적용할 수 있습니다.
+</Warning>
 
 ## 주의사항
 

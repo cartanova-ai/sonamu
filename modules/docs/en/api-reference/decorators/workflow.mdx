@@ -3,7 +3,7 @@ title: "@workflow"
 description: "Workflow Definition Decorator"
 ---
 
-The `@workflow` decorator defines long-running tasks, background jobs, and scheduled tasks. Built on OpenWorkflow, it provides durable execution, retries, and monitoring.
+The `workflow()` function defines long-running tasks, background jobs, and scheduled tasks. Built on OpenWorkflow, it provides durable execution, retries, and monitoring.
 
 ## Basic Usage
 
@@ -541,28 +541,31 @@ export const handleErrors = workflow({ name: "handle_errors" }, async ({ step, l
 });
 ```
 
-## Decorator Style (TypeScript Decorator)
+## Curried Style (Options First)
 
-You can also use decorator style instead of function style:
+`workflow()` also provides an overload that takes the options first and the execution function afterwards. Use it when you want to read the option definition separately from the execution logic.
 
 ```typescript
-@workflow({
+export const processOrder = workflow({
   name: "process_order",
-  version: "1.0"
-})
-async function processOrder({ input, step, logger }) {
+  version: "1.0",
+})(async ({ input, step, logger }) => {
   logger.info("Processing order", { orderId: input.orderId });
 
-  const payment = await step.define(
-    { name: "charge" },
-    async () => {
+  const payment = await step
+    .define({ name: "charge" }, async () => {
       return await PaymentService.charge(input.amount);
-    }
-  ).run();
+    })
+    .run();
 
   return { paymentId: payment.id };
-}
+});
 ```
+
+<Warning>
+  `workflow` is a function, not a TypeScript decorator. Applying `@workflow(...)` above a function
+  declaration is not supported: decorators can only be applied to classes and class members.
+</Warning>
 
 ## Cautions
 
