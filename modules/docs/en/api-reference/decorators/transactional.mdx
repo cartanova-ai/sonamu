@@ -188,7 +188,8 @@ async transfer(fromId: number, toId: number, amount: number) {
 
 ### Transaction Nesting
 
-Transactions with the same dbPreset are **reused**:
+Nested `@transactional` calls with the same dbPreset participate in the **same DB transaction**. The
+outermost call owns commit and rollback:
 
 ```typescript
 class UserModelClass extends BaseModelClass {
@@ -220,7 +221,6 @@ class UserModelClass extends BaseModelClass {
 [DEBUG] new transaction context: w
 [DEBUG] transactional: UserModel.createProfile
 [DEBUG] reuse transaction context: w
-[DEBUG] delete transaction context: w
 ```
 
 ### Different Preset Transactions
@@ -293,39 +293,6 @@ async uploadAvatar() {
     .update({ avatar_url: url });
 
   return { url };
-}
-```
-
-## AsyncLocalStorage
-
-`@transactional` uses Node.js's AsyncLocalStorage to manage transaction context.
-
-### Context Creation
-
-```typescript
-// When no transaction exists
-@transactional()
-async save() {
-  // 1. Create new AsyncLocalStorage context
-  // 2. Start transaction
-  // 3. Execute method
-  // 4. Commit/rollback
-  // 5. Clean up context
-}
-```
-
-### Context Reuse
-
-```typescript
-@transactional()
-async parent() {
-  // Creates context
-  await this.child();  // Uses same context
-}
-
-@transactional()
-async child() {
-  // Reuses parent's context
 }
 ```
 
@@ -480,7 +447,6 @@ async save() {
   // Automatic logs:
   // [DEBUG] transactional: UserModel.save
   // [DEBUG] new transaction context: w
-  // [DEBUG] delete transaction context: w
 }
 ```
 

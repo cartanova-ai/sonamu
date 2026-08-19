@@ -18,7 +18,7 @@ description: "메서드를 자동으로 트랜잭션으로 감싸기"
     트랜잭션 격리 수준 설정 동시성 제어
   </Card>
   <Card title="중첩 트랜잭션" icon="layer-group">
-    자동 컨텍스트 공유 Savepoint 지원
+    같은 preset의 DB 트랜잭션 Savepoint 자동 생성 안 함
   </Card>
 </CardGroup>
 
@@ -286,7 +286,10 @@ class UserModel extends BaseModelClass {
 
 ## 중첩 트랜잭션
 
-### 자동 컨텍스트 공유
+### 자동 트랜잭션 재사용
+
+같은 preset의 중첩 `@transactional` 호출은 하나의 DB 트랜잭션에 참여합니다. 같은 preset의 가장
+바깥 호출이 커밋과 롤백을 담당합니다.
 
 ```typescript
 class UserModel extends BaseModelClass {
@@ -298,7 +301,7 @@ class UserModel extends BaseModelClass {
     const [userId] = await wdb.table("users").insert(userData).returning("id");
 
     // 다른 @transactional 메서드 호출
-    // 같은 트랜잭션 컨텍스트 공유
+    // 같은 DB 트랜잭션에 참여
     await this.updateBio(userId, bio);
 
     return userId;
@@ -320,12 +323,12 @@ flowchart TD
     C --> D[User INSERT]
     D --> E[updateBio 호출]
     E --> F[@transactional 2]
-    F --> G{기존 트랜잭션?}
+    F --> G{같은 preset의 기존 트랜잭션?}
     G -->|Yes| H[같은 트랜잭션 재사용]
     G -->|No| I[새 트랜잭션 생성]
     H --> J[Bio UPDATE]
     J --> K[메서드 종료]
-    K --> L[COMMIT]
+    K --> L[같은 preset의 가장 바깥 호출 COMMIT]
 
     style C fill:#e8f5e9
     style H fill:#c8e6c9
@@ -336,221 +339,47 @@ flowchart TD
   **중첩 트랜잭션의 이점**: - 코드 재사용성 향상 - 메서드 조합 자유로움 - 트랜잭션 경계 자동 관리
 </Info>
 
-### 중첩 트랜잭션 메커니즘 상세
+### 에러와 Savepoint 의미
 
-Sonamu의 중첩 트랜잭션은 **트랜잭션 컨텍스트 공유** 방식으로 동작합니다.
-
-#### 트랜잭션 컨텍스트 공유
+같은 preset의 중첩 `@transactional` 호출은 바깥 DB 트랜잭션에 참여합니다. 새 트랜잭션이나
+Savepoint를 만들지 않으며, 같은 preset의 가장 바깥 호출이 커밋과 롤백을 담당합니다.
 
 ```typescript
-// 외부 트랜잭션
 @transactional()
 async outerMethod() {
   const wdb = this.getPuri("w");
+  await wdb.table("users").insert({ id: 1 });
 
-  // 여기서 트랜잭션 A가 시작됨
-  await wdb.table("users").insert({ ... });
+  try {
+    await this.innerMethod();
+  } catch (error) {
+    // 이 애플리케이션 에러를 잡으면 바깥 트랜잭션은 계속된다.
+    console.error(error);
+  }
 
-  // 내부 메서드 호출
-  await this.innerMethod();  // ← 트랜잭션 A를 공유
-
-  await wdb.table("logs").insert({ ... });
-
-  // 여기서 트랜잭션 A가 커밋됨
+  // 앞에서 성공한 작업과 함께 커밋될 수 있다.
+  await wdb.table("logs").insert({ action: "user_created" });
 }
 
 @transactional()
 async innerMethod() {
   const wdb = this.getPuri("w");
-
-  // 새 트랜잭션을 시작하지 않고, 외부 트랜잭션 A를 재사용
-  await wdb.table("profiles").insert({ ... });
-
-  // 여기서 커밋하지 않음 (외부 트랜잭션이 커밋)
+  await wdb.table("profiles").insert({ user_id: 1 });
+  throw new Error("Application validation failed");
 }
 ```
-
-**동작 원리**:
-
-1. `outerMethod` 실행 → 트랜잭션 A 시작
-2. `innerMethod` 호출 → 기존 트랜잭션 A 감지
-3. `innerMethod`는 새 트랜잭션을 시작하지 않고 A를 재사용
-4. `innerMethod` 종료 → 커밋하지 않음
-5. `outerMethod` 종료 → 트랜잭션 A 커밋
-
-#### Savepoint는 생성되지 않음
-
-Sonamu는 **Savepoint를 자동으로 생성하지 않습니다**. 모든 중첩된 메서드가 같은 트랜잭션을 공유하므로:
-
-```typescript
-@transactional()
-async methodA() {
-  const wdb = this.getPuri("w");
-
-  await wdb.table("users").insert({ id: 1 });
-
-  try {
-    await this.methodB();  // ← 실패하면?
-  } catch (error) {
-    // ⚠️ methodB가 실패해도 이미 전체 트랜잭션이 롤백됨
-    // Savepoint가 없으므로 users INSERT도 함께 롤백
-    console.error("Failed:", error);
-  }
-
-  // ❌ 여기는 실행되지 않음 (트랜잭션이 이미 롤백됨)
-  await wdb.table("logs").insert({ ... });
-}
-
-@transactional()
-async methodB() {
-  const wdb = this.getPuri("w");
-
-  throw new Error("Failed!");  // ← 전체 트랜잭션 롤백
-}
-```
-
-**결과**:
-
-- `methodB`에서 에러 발생 → 전체 트랜잭션 롤백
-- `methodA`의 users INSERT도 롤백됨
-- Savepoint가 없으므로 부분 롤백 불가
-
-#### Savepoint가 필요한 경우
-
-부분 롤백이 필요하면 **수동으로 Savepoint를 관리**해야 합니다:
-
-```typescript
-@transactional()
-async methodWithSavepoint() {
-  const wdb = this.getPuri("w");
-
-  // 기본 데이터 삽입
-  await wdb.table("users").insert({ id: 1, name: "John" });
-
-  // Savepoint 생성
-  await wdb.raw("SAVEPOINT sp1");
-
-  try {
-    // 위험한 작업
-    await wdb.table("profiles").insert({ user_id: 1, bio: "..." });
-
-    // 성공 시 Savepoint 해제
-    await wdb.raw("RELEASE SAVEPOINT sp1");
-  } catch (error) {
-    // 실패 시 Savepoint까지만 롤백
-    await wdb.raw("ROLLBACK TO SAVEPOINT sp1");
-    console.error("Profile creation failed, but user is saved");
-  }
-
-  // 로그는 항상 삽입
-  await wdb.table("logs").insert({ action: "user_created" });
-
-  // 전체 커밋
-}
-```
-
-**Savepoint 사용 시나리오**:
-
-- 선택적 작업이 실패해도 메인 작업은 성공시켜야 할 때
-- 여러 단계의 작업 중 일부만 롤백하고 싶을 때
-- 복잡한 비즈니스 로직에서 부분 실패 처리가 필요할 때
-
-#### 트랜잭션 컨텍스트 확인
-
-현재 실행 중인 트랜잭션이 있는지 확인하는 방법:
-
-```typescript
-import { DB } from "sonamu";
-
-@transactional()
-async checkContext() {
-  const wdb = this.getPuri("w");
-
-  // 트랜잭션 컨텍스트 가져오기
-  const txContext = DB.getTransactionContext();
-  const transaction = txContext.getTransaction("w");
-
-  if (transaction) {
-    console.log("현재 트랜잭션이 활성화되어 있습니다.");
-  } else {
-    console.log("트랜잭션이 없습니다.");
-  }
-}
-```
-
-#### 중첩 레벨 제한 없음
-
-Sonamu는 중첩 레벨에 제한이 없습니다:
-
-```typescript
-@transactional()
-async level1() {
-  await this.level2();  // OK
-}
-
-@transactional()
-async level2() {
-  await this.level3();  // OK
-}
-
-@transactional()
-async level3() {
-  await this.level4();  // OK
-}
-
-// 모두 같은 트랜잭션 컨텍스트 공유
-```
-
-#### 커밋 시점
-
-**오직 최상위 트랜잭션만** 커밋합니다:
-
-```typescript
-@transactional()
-async topLevel() {
-  // 트랜잭션 시작
-
-  await this.middleLevel();
-
-  // ✅ 여기서 커밋 (최상위)
-}
-
-@transactional()
-async middleLevel() {
-  await this.bottomLevel();
-
-  // ❌ 여기서 커밋하지 않음 (중첩)
-}
-
-@transactional()
-async bottomLevel() {
-  // 작업 수행
-
-  // ❌ 여기서도 커밋하지 않음 (중첩)
-}
-```
-
-**정리**:
-
-| 항목              | 동작                            |
-| ----------------- | ------------------------------- |
-| **트랜잭션 생성** | 최상위 메서드만 생성            |
-| **트랜잭션 공유** | 모든 중첩 메서드가 공유         |
-| **Savepoint**     | 자동 생성 안됨 (수동 관리 필요) |
-| **커밋**          | 최상위 메서드만 커밋            |
-| **롤백**          | 어디서든 에러 발생 시 전체 롤백 |
-| **중첩 레벨**     | 제한 없음                       |
 
 <Warning>
-  **중첩 트랜잭션 주의사항**: 1. **전체 롤백**: 중첩된 메서드에서 에러 발생 시 전체 트랜잭션이
-  롤백됨 2. **Savepoint 없음**: 부분 롤백이 필요하면 수동으로 Savepoint 관리 3. **커밋 시점**:
-  중첩된 메서드 종료 시 커밋되지 않음 (최상위만 커밋) 4. **에러 처리**: try-catch로 잡아도
-  트랜잭션은 이미 롤백된 상태
+  이 예시는 DB 문장이 성공한 뒤 발생한 애플리케이션 에러를 잡습니다. 바깥 트랜잭션은 계속되어
+  앞선 작업을 커밋할 수 있습니다. 반면 제약조건이나 SQL 실패 같은 PostgreSQL 문장 오류는 현재
+  트랜잭션을 중단하므로 catch만으로 다시 사용할 수 없습니다.
 </Warning>
 
 <Info>
-  **권장 사항**: - 간단한 중첩: `@transactional` 자동 공유 사용 - 복잡한 로직: 수동 Savepoint 관리
-  고려 - 에러 처리: 최상위 메서드에서 처리
+  실패 후에도 바깥 트랜잭션을 계속해야 하는 직접 DB 쿼리는 중첩
+  `getPuri("w").transaction(...)` Savepoint 안에서 실행하세요. 전체 작업을 원자적으로 처리해야
+  한다면 애플리케이션 에러를 같은 preset의 가장 바깥 `@transactional` 호출까지 전파해 모두
+  롤백하세요.
 </Info>
 
 ## @api와 함께 사용
@@ -662,8 +491,9 @@ async createUserComplex(data: UserSaveParams): Promise<number> {
 ## 주의사항
 
 <Warning>
-  **반드시 지켜야 할 사항**: 1. 메서드는 `async` 함수여야 함 2. `this.getPuri("r"/"w")`로 DB 접근 3. 에러는
-  throw로 전파 (자동 롤백) 4. 중첩 트랜잭션은 같은 컨텍스트 공유
+  **반드시 지켜야 할 사항**: 1. 메서드는 `async` 함수여야 함 2. `this.getPuri("r"/"w")`로 DB 접근 3.
+  애플리케이션 에러는 throw로 전파 (자동 롤백) 4. 같은 preset의 중첩 호출은 같은 DB 트랜잭션에
+  참여하며 가장 바깥 호출이 커밋/롤백
 </Warning>
 
 ### 흔한 실수
@@ -673,17 +503,17 @@ class UserModel extends BaseModelClass {
   // ❌ 잘못된 사용
   @transactional()
   async wrongUsage1(data: UserSaveParams): Promise<number> {
-    // getPuri를 다른 변수에 저장하지 말 것
-    const db = this.getPuri("w");
+    const wdb = this.getPuri("w");
 
-    // 에러를 catch로 숨기면 롤백 안 됨
+    wdb.ubRegister("users", data);
+    const [id] = await wdb.ubUpsert("users");
+
+    // 성공한 DB 작업 뒤의 애플리케이션 에러를 숨기면 해당 작업이 커밋될 수 있음
     try {
-      db.ubRegister("users", data);
-      const [id] = await db.ubUpsert("users");
-      return id;
+      throw new Error("Application validation failed");
     } catch (error) {
       console.error(error);
-      return 0; // ❌ 에러를 숨김 → 롤백 안 됨
+      return id;
     }
   }
 

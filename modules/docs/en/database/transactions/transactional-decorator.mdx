@@ -18,7 +18,7 @@ The `@transactional` decorator automatically wraps methods in transactions, redu
     Configure transaction isolation level Concurrency control
   </Card>
   <Card title="Nested Transactions" icon="layer-group">
-    Automatic context sharing Savepoint support
+    Same-preset DB transaction No automatic savepoint
   </Card>
 </CardGroup>
 
@@ -286,7 +286,10 @@ class UserModel extends BaseModelClass {
 
 ## Nested Transactions
 
-### Automatic Context Sharing
+### Automatic Transaction Reuse
+
+Same-preset nested `@transactional` calls participate in one DB transaction. The outermost
+same-preset call owns commit and rollback.
 
 ```typescript
 class UserModel extends BaseModelClass {
@@ -298,7 +301,7 @@ class UserModel extends BaseModelClass {
     const [userId] = await wdb.table("users").insert(userData).returning("id");
 
     // Call another @transactional method
-    // Shares same transaction context
+    // Participates in the same DB transaction
     await this.updateBio(userId, bio);
 
     return userId;
@@ -320,12 +323,12 @@ flowchart TD
     C --> D[User INSERT]
     D --> E[Call updateBio]
     E --> F[@transactional 2]
-    F --> G{Existing Transaction?}
+    F --> G{Existing Same-preset Transaction?}
     G -->|Yes| H[Reuse Same Transaction]
     G -->|No| I[Create New Transaction]
     H --> J[Bio UPDATE]
     J --> K[Method End]
-    K --> L[COMMIT]
+    K --> L[Outermost Same-preset Call COMMIT]
 
     style C fill:#e8f5e9
     style H fill:#c8e6c9
@@ -335,6 +338,50 @@ flowchart TD
 <Info>
   **Benefits of Nested Transactions**: - Improved code reusability - Freedom to combine methods -
   Automatic transaction boundary management
+</Info>
+
+### Error and Savepoint Semantics
+
+A same-preset nested `@transactional` call participates in the outer DB transaction. It does not
+create a new database transaction or savepoint, and the outermost call owns commit and rollback.
+
+```typescript
+@transactional()
+async outerMethod() {
+  const wdb = this.getPuri("w");
+  await wdb.table("users").insert({ id: 1 });
+
+  try {
+    await this.innerMethod();
+  } catch (error) {
+    // Catching this application-level error lets the outer transaction continue.
+    console.error(error);
+  }
+
+  // Runs normally and may commit with earlier successful writes.
+  await wdb.table("logs").insert({ action: "user_created" });
+}
+
+@transactional()
+async innerMethod() {
+  const wdb = this.getPuri("w");
+  await wdb.table("profiles").insert({ user_id: 1 });
+  throw new Error("Application validation failed");
+}
+```
+
+<Warning>
+  This example catches an application-level error thrown after the DB statements succeeded. The
+  outer transaction may continue and commit those writes. A PostgreSQL statement error, such as a
+  constraint or SQL failure, aborts the current PostgreSQL transaction; catching it alone does not
+  make that transaction usable again.
+</Warning>
+
+<Info>
+  If a direct DB query may fail and the outer transaction must recover, run that query in a nested
+  `getPuri("w").transaction(...)` savepoint. If the whole composition must remain atomic, let an
+  application-level error propagate out of the outermost `@transactional` call to roll everything
+  back.
 </Info>
 
 ## Using with @api
@@ -447,7 +494,8 @@ async createUserComplex(data: UserSaveParams): Promise<number> {
 
 <Warning>
   **Must Follow**: 1. Method must be `async` function 2. Access DB with `this.getPuri("r" or "w")` 3.
-  Propagate errors with throw (auto rollback) 4. Nested transactions share same context
+  Propagate application-level errors with throw (auto rollback) 4. Same-preset nested calls
+  participate in the same DB transaction, and the outermost call owns commit/rollback
 </Warning>
 
 ### Common Mistakes
@@ -457,17 +505,17 @@ class UserModel extends BaseModelClass {
   // ❌ Wrong usage
   @transactional()
   async wrongUsage1(data: UserSaveParams): Promise<number> {
-    // Don't store getPuri in different variable
-    const db = this.getPuri("w");
+    const wdb = this.getPuri("w");
 
-    // Hiding errors with catch prevents rollback
+    wdb.ubRegister("users", data);
+    const [id] = await wdb.ubUpsert("users");
+
+    // Hiding an application-level error after a successful DB write may commit that write.
     try {
-      db.ubRegister("users", data);
-      const [id] = await db.ubUpsert("users");
-      return id;
+      throw new Error("Application validation failed");
     } catch (error) {
       console.error(error);
-      return 0; // ❌ Hiding error → no rollback
+      return id;
     }
   }
 

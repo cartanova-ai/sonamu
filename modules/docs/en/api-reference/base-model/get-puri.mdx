@@ -213,34 +213,10 @@ async transferPoints(fromUserId: number, toUserId: number, points: number) {
 }
 ```
 
-## Automatic Transaction Context Detection
+## Transaction Integration
 
-`getPuri` automatically detects and reuses transaction contexts. This is an important feature when used with the `@transactional` decorator.
-
-### How It Works
-
-The `getPuri` method works internally as follows:
-
-1. Check for an active transaction via `DB.getTransactionContext()`
-2. If a transaction exists, reuse it
-3. If no transaction exists, create a new PuriWrapper
-
-```typescript
-// Internal logic of getPuri (for reference)
-getPuri(which: DBPreset): PuriWrapper {
-  // 1. Attempt to get transaction from transaction context
-  const trx = DB.getTransactionContext().getTransaction(which);
-
-  if (trx) {
-    // 2. If transaction exists, reuse it
-    return trx;
-  }
-
-  // 3. If no transaction, return a new PuriWrapper
-  const db = this.getDB(which);
-  return new PuriWrapper(db, new UpsertBuilder());
-}
-```
+When a transaction is already active for the requested preset, `getPuri` participates in that DB
+transaction. Otherwise, it accesses the DB configured for the preset.
 
 ### Using Within @transactional
 
@@ -276,7 +252,8 @@ class UserModelClass extends BaseModelClass {
 
 ### Nested Method Call Safety
 
-Thanks to this feature, it's safe to call other methods within a transaction. All `getPuri` calls use the same transaction.
+Methods called inside a transaction participate in the same DB transaction when they request the
+same preset.
 
 ```typescript
 class UserModelClass extends BaseModelClass {
@@ -306,14 +283,17 @@ class UserModelClass extends BaseModelClass {
 ```
 
 <Info>
-  The transaction context set by the `@transactional` decorator is automatically shared across all
-  sub-method calls. This is implemented via AsyncLocalStorage.
+  Within `@transactional`, calls to `getPuri` with the same dbPreset participate in the same DB
+  transaction. The outermost decorated call owns commit and rollback.
 </Info>
 
 <Warning>
-  A PuriWrapper obtained via `getPuri` within a transaction and a new transaction started with
-  `wdb.transaction()` are **different transactions**. If you need nested transactions, you must
-  manage them explicitly.
+  When a transaction for the same dbPreset is already active, nested `.transaction()` creates a
+  savepoint. Await nested calls sequentially; do not run sibling savepoints in parallel with
+  `Promise.all`. Use a distinct dbPreset consistently for each configured DB; do not reuse one
+  preset name for different DB connections. This partial-rollback guidance is for direct DB
+  queries. For a shared UpsertBuilder batch or graph, propagate failures to the outermost
+  transaction and roll back the whole unit instead of catching and continuing.
 </Warning>
 
 ## Practical Examples
@@ -632,7 +612,7 @@ const wdb = this.getPuri("w");
 await wdb.table("users").insert({ ... });
 ```
 
-### 2. Transaction Context
+### 2. Using @transactional
 
 Within `@transactional`, transactions are automatically managed.
 
