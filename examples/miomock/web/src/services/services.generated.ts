@@ -185,7 +185,7 @@ export namespace UserService {
 
   export const useSaveMutation = () =>
     useMutation({
-      mutationFn: (params: { spa: UserSaveParams[] }) => save(params.spa),
+      mutationFn: (params: { spa: UserSaveParams[] }) => UserService.save(params.spa),
     });
 
   export async function del(ids: string[]): Promise<number> {
@@ -198,7 +198,7 @@ export namespace UserService {
 
   export const useDelMutation = () =>
     useMutation({
-      mutationFn: (params: { ids: string[] }) => del(params.ids),
+      mutationFn: (params: { ids: string[] }) => UserService.del(params.ids),
     });
 
   export async function getMyIP(): Promise<{ ip: string }> {
@@ -373,7 +373,7 @@ export namespace TagService {
 
   export const useSaveMutation = () =>
     useMutation({
-      mutationFn: (params: { spa: TagSaveParams[] }) => save(params.spa),
+      mutationFn: (params: { spa: TagSaveParams[] }) => TagService.save(params.spa),
     });
 
   export async function del(ids: number[]): Promise<number> {
@@ -386,7 +386,7 @@ export namespace TagService {
 
   export const useDelMutation = () =>
     useMutation({
-      mutationFn: (params: { ids: number[] }) => del(params.ids),
+      mutationFn: (params: { ids: number[] }) => TagService.del(params.ids),
     });
 
   export async function cached(): Promise<TagSubsetMapping["A"]> {
@@ -557,7 +557,7 @@ export namespace SyncFixtureService {
 
   export const useSaveMutation = () =>
     useMutation({
-      mutationFn: (params: { spa: SyncFixtureSaveParams[] }) => save(params.spa),
+      mutationFn: (params: { spa: SyncFixtureSaveParams[] }) => SyncFixtureService.save(params.spa),
     });
 
   export async function del(ids: number[]): Promise<number> {
@@ -570,7 +570,7 @@ export namespace SyncFixtureService {
 
   export const useDelMutation = () =>
     useMutation({
-      mutationFn: (params: { ids: number[] }) => del(params.ids),
+      mutationFn: (params: { ids: number[] }) => SyncFixtureService.del(params.ids),
     });
 }
 
@@ -678,7 +678,7 @@ export namespace ProjectService {
 
   export const useSaveMutation = () =>
     useMutation({
-      mutationFn: (params: { spa: ProjectSaveParams[] }) => save(params.spa),
+      mutationFn: (params: { spa: ProjectSaveParams[] }) => ProjectService.save(params.spa),
     });
 
   export async function del(ids: number[]): Promise<number> {
@@ -691,7 +691,7 @@ export namespace ProjectService {
 
   export const useDelMutation = () =>
     useMutation({
-      mutationFn: (params: { ids: number[] }) => del(params.ids),
+      mutationFn: (params: { ids: number[] }) => ProjectService.del(params.ids),
     });
 
   export function useAsk(
@@ -863,7 +863,7 @@ export namespace MilestoneService {
 
   export const useSaveMutation = () =>
     useMutation({
-      mutationFn: (params: { spa: MilestoneSaveParams[] }) => save(params.spa),
+      mutationFn: (params: { spa: MilestoneSaveParams[] }) => MilestoneService.save(params.spa),
     });
 
   export async function del(ids: number[]): Promise<number> {
@@ -876,7 +876,7 @@ export namespace MilestoneService {
 
   export const useDelMutation = () =>
     useMutation({
-      mutationFn: (params: { ids: number[] }) => del(params.ids),
+      mutationFn: (params: { ids: number[] }) => MilestoneService.del(params.ids),
     });
 
   export async function complete(id: number): Promise<MilestoneSubsetMapping["A"]> {
@@ -889,7 +889,7 @@ export namespace MilestoneService {
 
   export const useCompleteMutation = () =>
     useMutation({
-      mutationFn: (params: { id: number }) => complete(params.id),
+      mutationFn: (params: { id: number }) => MilestoneService.complete(params.id),
     });
 
   export async function uncomplete(id: number): Promise<MilestoneSubsetMapping["A"]> {
@@ -902,7 +902,7 @@ export namespace MilestoneService {
 
   export const useUncompleteMutation = () =>
     useMutation({
-      mutationFn: (params: { id: number }) => uncomplete(params.id),
+      mutationFn: (params: { id: number }) => MilestoneService.uncomplete(params.id),
     });
 }
 
@@ -1007,7 +1007,7 @@ export namespace FileService {
 
   export const useSaveMutation = () =>
     useMutation({
-      mutationFn: (params: { spa: FileSaveParams[] }) => save(params.spa),
+      mutationFn: (params: { spa: FileSaveParams[] }) => FileService.save(params.spa),
     });
 
   export async function del(ids: number[]): Promise<number> {
@@ -1020,7 +1020,7 @@ export namespace FileService {
 
   export const useDelMutation = () =>
     useMutation({
-      mutationFn: (params: { ids: number[] }) => del(params.ids),
+      mutationFn: (params: { ids: number[] }) => FileService.del(params.ids),
     });
 
   export async function upload(
@@ -1046,7 +1046,7 @@ export namespace FileService {
     },
   ) =>
     useMutation({
-      mutationFn: (params: { files: File[] }) => upload(params.files),
+      mutationFn: (params: { files: File[] }) => FileService.upload(params.files),
       retry: false,
       ...options,
     });
@@ -1080,7 +1080,7 @@ export namespace FileService {
   ) =>
     useMutation({
       mutationFn: (params: { params: { category: string }; files: File[] }) =>
-        inlineUpload(params.params, params.files),
+        FileService.inlineUpload(params.params, params.files),
       retry: false,
       ...options,
     });
@@ -1117,7 +1117,7 @@ export namespace FileService {
   ) =>
     useMutation({
       mutationFn: (params: { params: string; files: File[] }) =>
-        inlineUploadFlat(params.params, params.files),
+        FileService.inlineUploadFlat(params.params, params.files),
       retry: false,
       ...options,
     });
@@ -1157,7 +1157,7 @@ export namespace FileService {
   ) =>
     useMutation({
       mutationFn: (params: { params: { name: string }; files: File[] }) =>
-        testBufferUpload(params.params, params.files),
+        FileService.testBufferUpload(params.params, params.files),
       retry: false,
       ...options,
     });
@@ -1197,7 +1197,7 @@ export namespace FileService {
   ) =>
     useMutation({
       mutationFn: (params: { params: { name: string }; files: File[] }) =>
-        testStreamUpload(params.params, params.files),
+        FileService.testStreamUpload(params.params, params.files),
       retry: false,
       ...options,
     });
@@ -1310,7 +1310,7 @@ export namespace EmployeeService {
 
   export const useSaveMutation = () =>
     useMutation({
-      mutationFn: (params: { spa: EmployeeSaveParams[] }) => save(params.spa),
+      mutationFn: (params: { spa: EmployeeSaveParams[] }) => EmployeeService.save(params.spa),
     });
 
   export async function del(ids: number[]): Promise<number> {
@@ -1323,7 +1323,7 @@ export namespace EmployeeService {
 
   export const useDelMutation = () =>
     useMutation({
-      mutationFn: (params: { ids: number[] }) => del(params.ids),
+      mutationFn: (params: { ids: number[] }) => EmployeeService.del(params.ids),
     });
 }
 
@@ -1463,7 +1463,7 @@ export namespace DocumentService {
 
   export const useSaveMutation = () =>
     useMutation({
-      mutationFn: (params: { spa: DocumentSaveParams[] }) => save(params.spa),
+      mutationFn: (params: { spa: DocumentSaveParams[] }) => DocumentService.save(params.spa),
     });
 
   export async function del(ids: number[]): Promise<number> {
@@ -1476,7 +1476,7 @@ export namespace DocumentService {
 
   export const useDelMutation = () =>
     useMutation({
-      mutationFn: (params: { ids: number[] }) => del(params.ids),
+      mutationFn: (params: { ids: number[] }) => DocumentService.del(params.ids),
     });
 }
 
@@ -1590,7 +1590,7 @@ export namespace DepartmentService {
 
   export const useSaveMutation = () =>
     useMutation({
-      mutationFn: (params: { spa: DepartmentSaveParams[] }) => save(params.spa),
+      mutationFn: (params: { spa: DepartmentSaveParams[] }) => DepartmentService.save(params.spa),
     });
 
   export async function del(ids: number[]): Promise<number> {
@@ -1603,7 +1603,7 @@ export namespace DepartmentService {
 
   export const useDelMutation = () =>
     useMutation({
-      mutationFn: (params: { ids: number[] }) => del(params.ids),
+      mutationFn: (params: { ids: number[] }) => DepartmentService.del(params.ids),
     });
 }
 
@@ -1774,7 +1774,7 @@ export namespace CompanyService {
 
   export const useSaveMutation = () =>
     useMutation({
-      mutationFn: (params: { spa: CompanySaveParams[] }) => save(params.spa),
+      mutationFn: (params: { spa: CompanySaveParams[] }) => CompanyService.save(params.spa),
     });
 
   export async function del(ids: number[]): Promise<number> {
@@ -1787,7 +1787,7 @@ export namespace CompanyService {
 
   export const useDelMutation = () =>
     useMutation({
-      mutationFn: (params: { ids: number[] }) => del(params.ids),
+      mutationFn: (params: { ids: number[] }) => CompanyService.del(params.ids),
     });
 }
 
@@ -2014,7 +2014,7 @@ export namespace AuditEventService {
 
   export const useSaveMutation = () =>
     useMutation({
-      mutationFn: (params: { spa: AuditEventSaveParams[] }) => save(params.spa),
+      mutationFn: (params: { spa: AuditEventSaveParams[] }) => AuditEventService.save(params.spa),
     });
 
   export async function del(ids: number[]): Promise<number> {
@@ -2027,7 +2027,7 @@ export namespace AuditEventService {
 
   export const useDelMutation = () =>
     useMutation({
-      mutationFn: (params: { ids: number[] }) => del(params.ids),
+      mutationFn: (params: { ids: number[] }) => AuditEventService.del(params.ids),
     });
 }
 
