@@ -353,7 +353,7 @@ export const ${infiniteHookName} = ${typeParamsDef}(${paramsDef}${
           functions.push(
             `
 export const use${hookName}Mutation = ${typeParamsDef}() => useMutation({
-  mutationFn: (params: ${mutationParamType}) => ${methodName}(${mutationParamNames})
+  mutationFn: (params: ${mutationParamType}) => ${modelName}Service.${methodName}(${mutationParamNames})
 });
           `.trim(),
           );
@@ -378,8 +378,8 @@ export const use${hookName}Mutation = ${typeParamsDef}() => useMutation({
           // mutationFn 호출 파라미터
           const mutationFnCall =
             paramsWithoutContext.length > 0
-              ? `${methodName}(params.params, params.files)`
-              : `${methodName}(params.files)`;
+              ? `${modelName}Service.${methodName}(params.params, params.files)`
+              : `${modelName}Service.${methodName}(params.files)`;
 
           functions.push(
             `
