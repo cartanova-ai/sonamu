@@ -1,6 +1,7 @@
 import { knex } from "knex";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
+import { EntityManager } from "../../entity/entity-manager";
 import { Puri } from "../puri";
 
 type TestSchema = {
@@ -17,6 +18,7 @@ type TestSchema = {
     };
     tags: string[];
     state: string;
+    readonly __hasDefault__: readonly ["payload", "tags", "state"];
     readonly __json__: readonly ["payload", "tags", "state"];
   };
   departments: {
@@ -106,6 +108,79 @@ describe("Puri JSONB containment", () => {
       "Puri JSONB containment value must be JSON-serializable; JSON.stringify returned undefined.",
     );
     expect(query.rawQuery().toSQL().sql).toBe('select * from "users"');
+  });
+});
+
+describe("Puri onConflict JSON 직렬화", () => {
+  function withJsonTableSpec<T>(jsonColumns: string[], callback: () => T): T {
+    const tableSpecSpy = vi.spyOn(EntityManager, "getTableSpec").mockReturnValue({
+      name: "users",
+      uniqueIndexes: [],
+      jsonColumns,
+    });
+
+    try {
+      return callback();
+    } finally {
+      tableSpecSpy.mockRestore();
+    }
+  }
+
+  it("객체 update의 배열을 JSON 문자열 binding으로 변환한다", () => {
+    const binding = withJsonTableSpec(["tags"], () =>
+      usersQuery()
+        .insert({ id: 1, name: "user", department_id: null, tags: ["inserted"] })
+        .onConflict("id", { update: { tags: ["updated"] } })
+        .knexQuery.toSQL()
+        .bindings.at(-1),
+    );
+
+    expect(binding).toBe(JSON.stringify(["updated"]));
+  });
+
+  it("객체 update의 문자열을 JSON 문자열 binding으로 변환한다", () => {
+    const binding = withJsonTableSpec(["state"], () =>
+      usersQuery()
+        .insert({ id: 1, name: "user", department_id: null, state: "inserted" })
+        .onConflict("id", { update: { state: "updated" } })
+        .knexQuery.toSQL()
+        .bindings.at(-1),
+    );
+
+    expect(binding).toBe(JSON.stringify("updated"));
+  });
+
+  it("객체 update의 객체를 JSON 문자열 binding으로 변환한다", () => {
+    const binding = withJsonTableSpec(["payload"], () =>
+      usersQuery()
+        .insert({
+          id: 1,
+          name: "user",
+          department_id: null,
+          payload: { actor: { id: "1", role: "user" }, message: "inserted" },
+        })
+        .onConflict("id", {
+          update: {
+            payload: { actor: { id: "1", role: "admin" }, message: "updated" },
+          },
+        })
+        .knexQuery.toSQL()
+        .bindings.at(-1),
+    );
+
+    expect(binding).toBe(JSON.stringify({ actor: { id: "1", role: "admin" }, message: "updated" }));
+  });
+
+  it("컬럼 update는 직렬화된 EXCLUDED 값을 사용한다", () => {
+    const query = withJsonTableSpec(["tags"], () =>
+      usersQuery()
+        .insert({ id: 1, name: "user", department_id: null, tags: ["updated"] })
+        .onConflict("id", { update: ["tags"] })
+        .knexQuery.toSQL(),
+    );
+
+    expect(query.sql).toContain('"tags" = excluded."tags"');
+    expect(query.bindings.at(-1)).toBe(JSON.stringify(["updated"]));
   });
 });
 

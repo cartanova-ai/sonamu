@@ -102,6 +102,18 @@ function serializeJsonSupersetValue(value: unknown): string {
   return serialized;
 }
 
+function serializeJsonColumnValue(
+  tableSpec: TableSpec | null,
+  column: string,
+  value: unknown,
+): unknown {
+  if (!tableSpec?.jsonColumns.includes(column) || value === undefined || value === null) {
+    return value;
+  }
+
+  return JSON.stringify(value);
+}
+
 function normalizeOrderByDirection(direction: PuriOrderByDirection = "asc"): PuriOrderByDirection {
   if (direction !== "asc" && direction !== "desc") {
     throw new Error(`Invalid order direction: ${direction}`);
@@ -1383,7 +1395,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // 하나만 쿼리
   first(): ResolvedPuri<Expand<TResult>, never> {
     this.knexQuery.first();
-    return new ResolvedPuri(this.knexQuery, this.knex);
+    return new ResolvedPuri(this.knexQuery, this.knex, this.tableSpec);
   }
 
   // 쿼리한 레코드에서 특정 컬럼만 추출한 배열 리턴
@@ -1396,7 +1408,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     never
   > {
     this.knexQuery.pluck(column as string);
-    return new ResolvedPuri(this.knexQuery, this.knex);
+    return new ResolvedPuri(this.knexQuery, this.knex, this.tableSpec);
   }
 
   // INSERT : 단일 객체
@@ -1414,7 +1426,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     // JSON 컬럼 stringify 로직을 메서드로 분리하여 중복 제거
     const refinedData = this.refineJsonColumns(rawData);
     this.knexQuery.insert(refinedData);
-    return new ResolvedPuri(this.knexQuery, this.knex);
+    return new ResolvedPuri(this.knexQuery, this.knex, this.tableSpec);
   }
 
   // UPDATE
@@ -1422,7 +1434,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     // JSON 컬럼 stringify 로직을 메서드로 분리하여 중복 제거
     const refinedData = this.refineJsonColumns(rawData);
     this.knexQuery.update(refinedData);
-    return new ResolvedPuri(this.knexQuery, this.knex);
+    return new ResolvedPuri(this.knexQuery, this.knex, this.tableSpec);
   }
 
   /**
@@ -1445,7 +1457,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
         for (const column of jsonColumns) {
           const value = item[column];
           if (value !== undefined && value !== null) {
-            item[column] = JSON.stringify(value);
+            item[column] = serializeJsonColumnValue(this.tableSpec, column, value);
           }
         }
       }
@@ -1453,7 +1465,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       for (const column of jsonColumns) {
         const value = data[column];
         if (value !== undefined && value !== null) {
-          data[column] = JSON.stringify(value);
+          data[column] = serializeJsonColumnValue(this.tableSpec, column, value);
         }
       }
     }
@@ -1469,7 +1481,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       throw new Error("Increment value must be greater than 0");
     }
     this.knexQuery.increment(column, value);
-    return new ResolvedPuri(this.knexQuery, this.knex);
+    return new ResolvedPuri(this.knexQuery, this.knex, this.tableSpec);
   }
   // Decrement
   decrement<TColumn extends NumericColumns<TTables>>(
@@ -1480,13 +1492,13 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       throw new Error("Decrement value must be greater than 0");
     }
     this.knexQuery.decrement(column, value);
-    return new ResolvedPuri(this.knexQuery, this.knex);
+    return new ResolvedPuri(this.knexQuery, this.knex, this.tableSpec);
   }
 
   // DELETE
   delete(): ResolvedPuri<number, SingleTableValue<TTables>> {
     this.knexQuery.delete();
-    return new ResolvedPuri(this.knexQuery, this.knex);
+    return new ResolvedPuri(this.knexQuery, this.knex, this.tableSpec);
   }
 
   // 확인 쿼리 리턴
@@ -1504,6 +1516,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     // 'dual'은 더미 테이블이며, 바로 아래 줄에서 knexQuery가 덮어씌워집니다.
     const newPuri = new Puri<TSchema, TTables, TResult>(this.knex, "dual");
     newPuri.knexQuery = this.knexQuery.clone();
+    newPuri.tableSpec = this.tableSpec;
     newPuri.correlationRegistry = new Map(this.correlationRegistry);
     return newPuri;
   }
@@ -2012,6 +2025,7 @@ export class ResolvedPuri<TResolved, TReturning> implements Promise<TResolved> {
   constructor(
     public knexQuery: Knex.QueryBuilder,
     private knex: Knex,
+    private tableSpec: TableSpec | null = null,
   ) {}
 
   [Symbol.toStringTag]: string = "Promise";
@@ -2075,7 +2089,7 @@ export class ResolvedPuri<TResolved, TReturning> implements Promise<TResolved> {
             mergeObj[key] = this.knex.raw((value as SqlExpression<any>)._sql);
           } else {
             // 일반 값
-            mergeObj[key] = value;
+            mergeObj[key] = serializeJsonColumnValue(this.tableSpec, key, value);
           }
         }
 
@@ -2099,6 +2113,6 @@ export class ResolvedPuri<TResolved, TReturning> implements Promise<TResolved> {
   // RETURNING 구현
   returning(columnOrColumns: string | string[]): ResolvedPuri<any[], never> {
     this.knexQuery.returning(columnOrColumns);
-    return new ResolvedPuri(this.knexQuery, this.knex);
+    return new ResolvedPuri(this.knexQuery, this.knex, this.tableSpec);
   }
 }

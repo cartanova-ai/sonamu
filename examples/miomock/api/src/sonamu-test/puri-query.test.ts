@@ -27,6 +27,27 @@ describe("Puri Query", () => {
       await cleanupTestRecords(fixtureMaxIds);
     });
 
+    async function expectConflictJsonValue(value: string[] | string | Record<string, unknown>) {
+      const db = UserModel.getPuri("w");
+      const [inserted] = await db
+        .table("sync_fixtures")
+        .insert({ name: "충돌 전", status: "draft", tags: ["tag1"] })
+        .returning("id");
+
+      expect(inserted).toBeDefined();
+      if (!inserted) {
+        return;
+      }
+
+      const [updated] = await db
+        .table("sync_fixtures")
+        .insert({ id: inserted.id, name: "충돌 후", status: "active", tags: ["tag2"] })
+        .onConflict("id", { update: { tags: JSON.parse(JSON.stringify(value)) } })
+        .returning("*");
+
+      expect(updated?.tags).toEqual(value);
+    }
+
     test("select", async () => {
       const db = UserModel.getPuri("r");
       await db.table("users").select({ id: "users.id" });
@@ -146,6 +167,39 @@ describe("Puri Query", () => {
       expectQuery(query, "type").toMatchInlineSnapshot(`"update"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"sync_fixtures"`);
       expectQuery(query, "set").toMatchInlineSnapshot(`"tags = '["tag3","tag4"]'"`);
+    });
+
+    test("onConflict 객체 update - JSON 배열", async () => {
+      await expectConflictJsonValue(["tag3", "tag4"]);
+    });
+
+    test("onConflict 객체 update - JSON 문자열", async () => {
+      await expectConflictJsonValue("tag3");
+    });
+
+    test("onConflict 객체 update - JSON 객체", async () => {
+      await expectConflictJsonValue({ primary: "tag3" });
+    });
+
+    test("onConflict 컬럼 update - EXCLUDED JSON 값을 사용", async () => {
+      const db = UserModel.getPuri("w");
+      const [inserted] = await db
+        .table("sync_fixtures")
+        .insert({ name: "충돌 전", status: "draft", tags: ["tag1"] })
+        .returning("id");
+
+      expect(inserted).toBeDefined();
+      if (!inserted) {
+        return;
+      }
+
+      const [updated] = await db
+        .table("sync_fixtures")
+        .insert({ id: inserted.id, name: "충돌 후", status: "active", tags: ["tag2", "tag3"] })
+        .onConflict("id", { update: ["tags"] })
+        .returning("*");
+
+      expect(updated?.tags).toEqual(["tag2", "tag3"]);
     });
 
     test("delete", async () => {
