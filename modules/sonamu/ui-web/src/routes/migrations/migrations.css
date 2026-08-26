@@ -1,0 +1,86 @@
+@keyframes migration-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes migration-pop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.3;
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes migration-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes migration-slide-move {
+  from {
+    transform: translateX(-6px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes migration-slide-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.migration-shimmer {
+  background-image: linear-gradient(90deg, #6b7280 40%, #d4d4d8 50%, #6b7280 60%);
+  background-size: 200% 100%;
+  background-clip: text;
+  color: transparent;
+  animation: migration-shimmer 1.6s linear infinite;
+}
+
+.migration-pop {
+  animation: migration-pop 0.35s ease-out both;
+}
+.migration-pop-after-line {
+  animation-delay: 0.22s;
+}
+.migration-step-fill {
+  transform-origin: left;
+  animation: migration-fill 0.25s ease-out;
+}
+.migration-status-in {
+  animation:
+    migration-slide-move 0.18s ease-out both,
+    migration-slide-fade 0.4s ease-out both;
+}
+.migration-height-reveal {
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.migration-height-reveal-open {
+  grid-template-rows: 1fr;
+}
+.migration-progress {
+  transition: width 0.5s ease-out;
+}
+.migration-rollback-arm {
+  transition: max-width 0.5s ease-out;
+}

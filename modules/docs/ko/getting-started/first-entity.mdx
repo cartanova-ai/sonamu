@@ -206,17 +206,13 @@ Sonamu UI 상단 메뉴에서 **Entity** 탭을 클릭하여 현재 존재하는
 
 <Steps>
 <Step title="Migration 탭으로 이동">
-Sonamu UI에서 **Migration** 탭을 클릭합니다.
-
-<Frame caption="Migration 탭 화면 (마이그레이션 목록 또는 Generate Migration 버튼)">
-  <img src="/images/sonamuUI-db-migration2.png" alt="Migration 탭 화면" style={{width: '100%', borderRadius: '0.75rem'}} />
-</Frame>
+Sonamu UI에서 **Migration** 탭을 클릭합니다. 상단에는 비교·생성 영역이, 하단에는 DB별 마이그레이션 상태 매트릭스가 표시됩니다.
 </Step>
 
 <Step title="마이그레이션 생성">
-**Generate** 버튼을 클릭하면 새로운 마이그레이션 Code File이 자동 생성됩니다.
+**마이그레이션 생성** 버튼을 클릭하면 새로운 마이그레이션 Code File이 자동 생성됩니다.
 
-생성된 파일 목록에서 `<>` 버튼을 클릭하면 Cursor의 해당 마이그레이션 파일 페이지가 열립니다. 파일 내용은 다음과 같습니다:
+생성된 파일 목록에서 코드 버튼을 열고 **Cursor**를 선택하면 해당 마이그레이션 파일이 열립니다. 파일 내용은 다음과 같습니다:
 
 <Frame caption="Cursor에서 열린 마이그레이션 파일">
   <img src="/images/sonamuUI-db-migration3.png" alt="Cursor에서 열린 마이그레이션 파일" style={{width: '100%', borderRadius: '0.75rem'}} />
@@ -226,9 +222,9 @@ Sonamu UI에서 **Migration** 탭을 클릭합니다.
 <Step title="마이그레이션 실행">
 Migration 탭에서 pending 상태의 마이그레이션을 확인할 수 있습니다.
 
-**all** 버튼을 클릭한 후 **Apply to Latest**를 클릭하면 모달 창에서 migration targets를 확인할 수 있습니다.
+마이그레이션 상태 표의 헤더에서 적용할 DB를 선택한 후 **최신으로 적용**을 클릭하면 검토 창에서 migration targets를 확인할 수 있습니다.
 
-**Shadow DB Testing**을 선택한 후 **commit** 버튼을 클릭하면 데이터베이스 테이블이 생성됩니다.
+검토 창의 **적용 전 shadow 검증**을 필요에 따라 켜고 적용 버튼을 누릅니다. Shadow 검증에 성공하면 선택한 DB에 마이그레이션을 적용해 테이블을 생성합니다.
 
 <Frame caption="Migration 실행 완료">
   <video 

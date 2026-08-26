@@ -206,17 +206,13 @@ Now you need to apply the entity definition to the database.
 
 <Steps>
 <Step title="Go to Migration Tab">
-Click the **Migration** tab in Sonamu UI.
-
-<Frame caption="Migration tab screen (migration list or Generate Migration button)">
-  <img src="/images/sonamuUI-db-migration2.png" alt="Migration tab screen" style={{width: '100%', borderRadius: '0.75rem'}} />
-</Frame>
+Click the **Migration** tab in Sonamu UI. The comparison and generation area appears above the per-database migration status matrix.
 </Step>
 
 <Step title="Generate Migration">
-Click the **Generate** button to auto-generate a new migration Code File.
+Click **Generate Migration** to create a new migration Code File automatically.
 
-Click the `<>` button in the generated file list to open the migration file page in Cursor. The file content looks like this:
+Open the code menu for the generated file and select **Cursor** to open it in that editor. The file content looks like this:
 
 <Frame caption="Migration file opened in Cursor">
   <img src="/images/sonamuUI-db-migration3.png" alt="Migration file opened in Cursor" style={{width: '100%', borderRadius: '0.75rem'}} />
@@ -226,9 +222,9 @@ Click the `<>` button in the generated file list to open the migration file page
 <Step title="Run Migration">
 You can see pending migrations in the Migration tab.
 
-Click the **all** button, then click **Apply to Latest** to see migration targets in the modal.
+Select the target database columns in the migration status matrix, then click **Apply Latest** to review the migration targets.
 
-Select **Shadow DB Testing** and click the **commit** button to create the database table.
+Enable **Shadow validation before apply** in the review dialog when needed, then click Apply. Once Shadow validation succeeds, Sonamu applies the migration to the selected databases and creates the table.
 
 <Frame caption="Migration execution complete">
   <video 

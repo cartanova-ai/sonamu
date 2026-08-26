@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 
@@ -19,10 +19,6 @@ import {
   isSoException,
   ServiceUnavailableException,
 } from "../exceptions/so-exceptions";
-import { Migrator } from "../migration/migrator";
-import { type MigrationResult } from "../migration/migrator";
-import { SlackConfirm } from "../migration/slack-confirm";
-import { type SlackConfirmPendingResult } from "../migration/slack-confirm";
 import { TemplateManager } from "../template/template-manager";
 import { DataExplorer } from "../testing/data-explorer";
 import { FixtureGenerator } from "../testing/fixture-generator";
@@ -52,13 +48,11 @@ import {
   readContent,
   readRule,
 } from "./cdd-service";
+import { registerMigrationsApi } from "./migrations-api";
 
 export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
   fastify.register(
     async (server) => {
-      // migrator
-      const migrator = new Migrator();
-
       // waitForHMRCompleted
       async function waitForHMRCompleted<T>(fn: () => Promise<T>): Promise<T> {
         const waitPromise = new Promise<void>((resolve) => {
@@ -81,6 +75,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       }
 
       await setAiApi(server);
+      await registerMigrationsApi(server);
 
       server.get("/api/sonamu/config", async () => {
         return Sonamu.config;
@@ -120,6 +115,26 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           }
         })();
         execSync(`code ${targetPath}`);
+      });
+
+      server.get<{
+        Querystring: {
+          editor: "vscode" | "cursor" | "zed";
+          absPath: string;
+        };
+      }>("/api/tools/openEditor", async (request) => {
+        const commands = {
+          vscode: "code",
+          cursor: "cursor",
+          zed: "zed",
+        } as const;
+        const command = commands[request.query.editor];
+        if (command === undefined) {
+          throw new BadRequestException(SD("error.badRequest"));
+        }
+
+        // 셸을 거치지 않아 파일 경로가 명령으로 해석되지 않도록 합니다.
+        execFileSync(command, [request.query.absPath]);
       });
 
       server.get<{
@@ -718,176 +733,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         const entity = EntityManager.get(entityId);
         const columns = entity.getTableColumns();
         return { columns };
-      });
-
-      server.get("/api/migrations/status", async () => {
-        const status = await migrator.getStatus();
-
-        return { status };
-      });
-
-      server.post<{
-        Body: {
-          action: "apply" | "rollback" | "shadow";
-          targets: (keyof SonamuDBConfig)[];
-          force?: boolean;
-          forceReason?: string;
-          requestor?: string;
-        };
-      }>(
-        "/api/migrations/runAction",
-        async (request): Promise<MigrationResult | SlackConfirmPendingResult> => {
-          const { action, targets, force, forceReason, requestor } = request.body;
-
-          if (action === "shadow") {
-            return migrator.runShadowTest();
-          }
-
-          // Slack 승인 체크 (apply 시에만)
-          if (action === "apply") {
-            const slackConfirm = new SlackConfirm();
-            const requiresApproval = targets.some((t) => slackConfirm.isTargetRequiresApproval(t));
-
-            // 로컬 DB인 경우 승인 스킵
-            const localHosts = ["localhost", "127.0.0.1", "0.0.0.0", "::1"];
-            const isLocalTarget = targets.every((target) => {
-              const targetConfig = Sonamu.dbConfig[target];
-              const host = (targetConfig?.connection as { host?: string })?.host ?? "localhost";
-              return localHosts.includes(host.toLowerCase());
-            });
-
-            if (requiresApproval && slackConfirm.isConfigured() && !isLocalTarget) {
-              const { conns } = await migrator.getStatus();
-
-              // 모든 타겟 DB에서 pending인 마이그레이션의 합집합을 구합니다.
-              const pendingMigrations = [
-                ...new Set(
-                  conns
-                    .filter((conn) => targets.includes(conn.connKey))
-                    .flatMap((conn) => conn.pending),
-                ),
-              ];
-
-              if (pendingMigrations.length > 0) {
-                // 기존 승인 요청 확인
-                const existing = await slackConfirm.getExistingRequest(pendingMigrations);
-
-                if (existing) {
-                  // 기존 요청이 있으면 승인 상태 확인
-                  const { approved, rejected } = await slackConfirm.checkApproval(
-                    existing.channel,
-                    existing.ts,
-                  );
-
-                  if (approved) {
-                    // 승인됨 → 실행
-                    const result = await migrator.runAction(action, targets);
-                    if (result.length > 0) {
-                      await slackConfirm.logExecution(
-                        existing.channel,
-                        existing.ts,
-                        result,
-                        requestor,
-                      );
-                    }
-                    return result;
-                  } else if (rejected) {
-                    throw new BadRequestException(SD("sonamu.error.migrationRejected"));
-                  } else if (force) {
-                    // Force 진행
-                    await slackConfirm.forceApproval(
-                      existing.channel,
-                      existing.ts,
-                      forceReason ?? "사유 없음",
-                      requestor,
-                    );
-                    const result = await migrator.runAction(action, targets);
-                    if (result.length > 0) {
-                      await slackConfirm.logExecution(
-                        existing.channel,
-                        existing.ts,
-                        result,
-                        requestor,
-                      );
-                    }
-                    return result;
-                  } else {
-                    // 대기중
-                    return {
-                      type: "pending",
-                      channel: existing.channel,
-                      ts: existing.ts,
-                    };
-                  }
-                } else {
-                  // 새 승인 요청 발송
-                  const { channel, ts } = await slackConfirm.postApprovalRequest(
-                    pendingMigrations,
-                    targets,
-                    requestor,
-                  );
-                  await slackConfirm.saveRequest(pendingMigrations, channel, ts);
-
-                  return {
-                    type: "pending",
-                    channel,
-                    ts,
-                  };
-                }
-              }
-            }
-          }
-
-          return migrator.runAction(action, targets);
-        },
-      );
-
-      server.post<{
-        Body: {
-          channel: string;
-          ts: string;
-        };
-      }>("/api/migrations/checkApproval", async (request) => {
-        const { channel, ts } = request.body;
-        const slackConfirm = new SlackConfirm();
-
-        if (!slackConfirm.isConfigured()) {
-          return { approved: true, rejected: false };
-        }
-
-        return slackConfirm.checkApproval(channel, ts);
-      });
-
-      server.post<{
-        Body: {
-          channel: string;
-          ts: string;
-          reason: string;
-          requestor?: string;
-        };
-      }>("/api/migrations/forceApproval", async (request) => {
-        const { channel, ts, reason, requestor } = request.body;
-        const slackConfirm = new SlackConfirm();
-
-        if (!slackConfirm.isConfigured()) {
-          throw new BadRequestException(SD("sonamu.error.slackConfirmNotConfigured"));
-        }
-
-        await slackConfirm.forceApproval(channel, ts, reason, requestor);
-        return { success: true };
-      });
-
-      server.post<{
-        Body: {
-          codeNames: string[];
-        };
-      }>("/api/migrations/delCodes", async (request) => {
-        const { codeNames } = request.body;
-        return await migrator.delCodes(codeNames);
-      });
-
-      server.post("/api/migrations/generatePreparedCodes", async (_requestt) => {
-        return await migrator.generatePreparedCodes();
       });
 
       server.post<{

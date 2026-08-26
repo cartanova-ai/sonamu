@@ -1,274 +1,60 @@
 ---
 title: "Migration 탭"
-description: "마이그레이션 생성 및 실행하기"
+description: "마이그레이션 비교, 생성, 적용 및 롤백"
 ---
 
-Migration 탭에서는 **Entity 변경사항을 데이터베이스에 반영**하기 위한 마이그레이션을 시각적으로 관리할 수 있습니다. CLI의 `pnpm migrate` 명령어를 UI로 대체합니다.
+Migration 탭은 Entity와 데이터베이스 스키마의 차이를 비교하고, 마이그레이션 파일을 생성하거나 여러 데이터베이스에 적용하는 화면입니다.
 
-## Migration 탭 구조
+## 비교·생성
 
-<Frame caption="Migration 관리 화면">
-  <img src="/images/sonamuUI-db-migration1.png" alt="Migration 관리 화면" />
-  <img src="/images/sonamuUI-db-migration2.png" alt="Migration 실행 화면" />
-</Frame>
+**기준 DB**에는 모든 마이그레이션이 적용된 연결만 나타납니다. Sonamu는 이 데이터베이스의 실제 스키마를 Entity 정의와 비교해 생성할 변경사항과 코드를 보여줍니다.
 
-Migration 탭은 두 가지 주요 영역으로 구성됩니다:
+1. 기준 DB를 선택합니다.
+2. 필요하면 **모두 펼치기**로 생성 코드를 검토합니다.
+3. **마이그레이션 생성**을 눌러 파일을 만듭니다.
 
-- **왼쪽 Sidebar**: 마이그레이션 목록 (Pending/Applied 상태별로 그룹화)
-- **오른쪽 Content**: 선택한 마이그레이션의 상세 정보와 Preview
+파일 생성 후에는 모든 데이터베이스의 Pending 상태가 다시 계산됩니다.
 
-## 마이그레이션 상태 확인
+## 마이그레이션 상태
 
-### Status 확인
+행은 마이그레이션 파일, 열은 데이터베이스 연결입니다. 각 셀은 `APPLIED` 또는 `PENDING`을 표시합니다. 연결은 각각 독립적으로 조회되므로 느리거나 실패한 데이터베이스가 다른 열의 표시를 막지 않습니다.
 
-**[Check Status]** 버튼을 클릭하면 현재 마이그레이션 상태를 확인할 수 있습니다.
+- 열 머리글이나 셀을 눌러 실행 대상을 선택합니다.
+- **자세히**를 켜면 host, database, remote 여부와 열 새로고침 버튼을 볼 수 있습니다.
+- 연결 오류의 **오류** 배지를 누르면 서버가 반환한 원인을 확인할 수 있습니다.
 
-| 상태        | 설명                            | 표시      |
-| ----------- | ------------------------------- | --------- |
-| **Pending** | 아직 적용되지 않은 마이그레이션 | 📋 노란색 |
-| **Applied** | 이미 적용된 마이그레이션        | ✅ 초록색 |
-| **Failed**  | 실행 중 오류 발생               | ❌ 빨간색 |
+## 최신으로 적용
 
-### 데이터베이스별 상태
+**최신으로 적용**은 선택한 데이터베이스에 대해 `knex.migrate.latest()`를 순서대로 실행합니다. 한 데이터베이스에서 적용되는 파일은 하나의 Knex batch를 유지합니다.
 
-여러 데이터베이스가 설정된 경우 각 DB의 상태를 개별적으로 확인할 수 있습니다:
+실행 창은 다음 순서로 진행됩니다.
 
-```
-Development Master: ✅ Up to date (v20240115_143022)
-Testing: ⚠️ 2 pending migrations
-Production: ✅ Up to date (v20240115_143022)
-```
+1. **검토**: 대상과 Pending 파일을 확인하고 Shadow 검증 여부를 선택합니다.
+2. **승인**: 설정된 원격 대상이 있으면 Slack 승인을 요청하고 2초마다 상태를 확인합니다.
+3. **적용**: 파일별 실행 진행률과 데이터베이스별 완료 상태를 표시합니다.
 
-## 마이그레이션 생성
-
-Entity를 수정하면 Sonamu가 자동으로 마이그레이션을 생성합니다.
-
-### 자동 생성되는 경우
-
-다음과 같은 Entity 변경사항이 있을 때:
-
-| 변경 타입       | 예시                |
-| --------------- | ------------------- |
-| **테이블 생성** | 새 Entity 추가      |
-| **컬럼 추가**   | Property 추가       |
-| **컬럼 수정**   | 타입/길이 변경      |
-| **컬럼 삭제**   | Property 삭제       |
-| **인덱스 추가** | Index 추가          |
-| **외래키 추가** | belongsTo 관계 추가 |
-
-### 마이그레이션 파일 확인
-
-생성된 마이그레이션 파일을 클릭하면 내용을 미리 볼 수 있습니다:
-
-```typescript
-import type { Knex } from "knex";
-
-export async function up(knex: Knex): Promise<void> {
-  await knex.schema.alterTable("users", (table) => {
-    table.string("phone", 20).nullable();
-  });
-}
-
-export async function down(knex: Knex): Promise<void> {
-  await knex.schema.alterTable("users", (table) => {
-    table.dropColumn("phone");
-  });
-}
-```
-
-## 마이그레이션 실행
-
-### 단일 마이그레이션 실행
-
-1. 마이그레이션 파일 선택
-2. **[Apply]** 버튼 클릭
-3. 확인 모달에서 **[Confirm]** 클릭
-
-**실행 과정**:
-
-```
-Development Master:
-  ✓ 20240116_101530_add_user_phone (0.2s)
-
-Testing:
-  ✓ 20240116_101530_add_user_phone (0.2s)
-
-All migrations applied successfully!
-```
-
-### 모든 Pending 마이그레이션 실행
-
-**[Run All]** 버튼을 클릭하면 대기 중인 모든 마이그레이션을 순서대로 실행합니다.
+Shadow를 켜면 점선 Shadow 검증 카드가 대상 목록 맨 위에 표시됩니다. 적용을 시작하면 같은 카드가 실제 검증 진행률과 결과를 보여주며, Shadow 검증이 성공한 경우에만 실제 대상 적용을 시작합니다.
 
 <Warning>
-  **프로덕션 주의**: 프로덕션 데이터베이스에 마이그레이션을 실행하기 전에는 **반드시 백업**하세요.
+  파일별 `실행됨` 표시는 해당 migration 함수가 끝났다는 뜻입니다. 전체 batch가 확정된 것은 데이터베이스 카드가 완료된 뒤입니다.
 </Warning>
 
-## 마이그레이션 롤백
+브라우저 연결이 끊겨도 서버에서 시작한 migration은 계속될 수 있습니다. 자동으로 다시 실행하지 말고 상태를 새로고침해 실제 결과를 확인하세요.
 
-### 단일 롤백
+## 롤백
 
-1. Applied 상태의 마이그레이션 선택
-2. **[Rollback]** 버튼 클릭
-3. 확인 모달에서 **[Confirm]** 클릭
+Rollback은 파일 행 선택과 무관하게, 선택한 각 데이터베이스의 **가장 최근 Knex batch 전체**를 되돌립니다. `down()`은 Knex가 제공한 역순으로 실행됩니다.
 
-**롤백 과정**:
-
-```
-Rolling back last migration...
-
-Development Master:
-  ✓ Rollback 20240116_101530_add_user_phone
-
-Rollback completed successfully!
-```
+파괴적인 동작이므로 롤백 버튼을 처음 누르면 확인 문구로 바뀌고, 한 번 더 눌러야 실행됩니다. 도중에 오류가 발생하면 해당 파일에서 중단됩니다. 다만 롤백 트랜잭션도 취소되기 때문에 아무런 변화가 없어 보일 수 있습니다. 롤백은 최신 마이그레이션부터 순서대로 실행되므로, 이렇게 중간에 문제가 발생하는 경우 다음 롤백으로 넘어갈 수 없습니다.
 
 <Warning>
-  **데이터 손실 위험**: 롤백은 테이블이나 컬럼을 삭제할 수 있으므로 **데이터가 손실**될 수 있습니다.
+  롤백은 컬럼이나 테이블을 삭제해 데이터를 유실할 수 있습니다. Production에서는 백업과 `down()` 구현을 먼저 확인하세요.
 </Warning>
-
-## Migration Preview
-
-마이그레이션을 실행하기 전에 어떤 변경이 발생할지 미리 확인할 수 있습니다.
-
-### Preview 내용
-
-```
-📋 Migration: 20240116_101530_add_user_profile
-
-Changes:
-  ✅ Table: users
-     + column: profile_image (string, nullable)
-     + column: bio (text, nullable)
-     + index: (email) unique
-
-  ⚠️ Table: posts
-     - column: deprecated_field
-     ⚠️ Warning: Data in this column will be lost!
-```
-
-**아이콘 의미**:
-
-- ✅ 추가: 새로운 테이블/컬럼/인덱스
-- 🔄 수정: 기존 컬럼 타입/길이 변경
-- ⚠️ 삭제: 테이블/컬럼 삭제 (데이터 손실 가능)
-
-## 다중 데이터베이스 관리
-
-Sonamu는 여러 데이터베이스를 동시에 관리할 수 있습니다.
-
-### 데이터베이스 선택
-
-마이그레이션 실행 시 대상 데이터베이스를 선택할 수 있습니다:
-
-- ☑️ Development Master
-- ☑️ Testing
-- ☐ Production (수동 선택)
-
-<Info>
-  기본적으로 `_master`로 끝나는 데이터베이스와 `test` 데이터베이스에 자동으로 적용됩니다. 프로덕션
-  데이터베이스는 **명시적으로 선택**해야 적용됩니다.
-</Info>
-
-## 마이그레이션 순서
-
-마이그레이션은 **파일명의 타임스탬프 순서**대로 실행됩니다:
-
-```
-✅ 20240115_120000_create_users_table.ts
-✅ 20240115_130000_create_posts_table.ts
-📋 20240116_101530_add_user_phone.ts      ← 다음 실행
-📋 20240116_102045_add_post_tags.ts
-```
-
-### 순서 변경
-
-순서를 변경해야 하는 경우:
-
-1. 마이그레이션 파일명의 타임스탬프 수정
-2. 파일 시스템에서 직접 변경
-3. UI에서 새로고침
-
-<Warning>
-  **외래키 관계 주의**: 참조하는 테이블이 먼저 생성되어야 합니다. 예: `posts.user_id` → `users.id`
-  관계라면 `users` 테이블을 먼저 생성해야 함
-</Warning>
-
-## 문제 해결
-
-### 마이그레이션 실패
-
-**증상**: 마이그레이션 실행 중 오류 발생
-
-**원인 및 해결**:
-
-| 오류                   | 원인                          | 해결 방법               |
-| ---------------------- | ----------------------------- | ----------------------- |
-| Foreign key constraint | 참조 테이블이 없음            | 참조 테이블을 먼저 생성 |
-| Column already exists  | 이미 존재하는 컬럼            | 마이그레이션 파일 확인  |
-| Cannot drop column     | 데이터가 있거나 제약조건 존재 | 제약조건 먼저 삭제      |
-
-### 마이그레이션 기록 불일치
-
-**증상**: 실제 DB 상태와 마이그레이션 기록이 다름
-
-**해결**:
-
-```bash
-# CLI에서 실행
-pnpm migrate clear  # 마이그레이션 기록 삭제
-pnpm migrate status # 현재 상태 확인
-```
-
-### 롤백 불가능
-
-**증상**: 롤백 시도 시 오류 발생
-
-**원인**: `down()` 함수가 제대로 정의되지 않음
-
-**해결**: 마이그레이션 파일을 열어 `down()` 함수를 수정
-
-## 실전 팁
-
-### 1. 작은 단위로 마이그레이션
-
-```bash
-# ❌ 나쁜 예: 모든 변경사항을 한 번에
-- 10개 Entity 동시 수정
-- 한 번에 마이그레이션 실행
-
-# ✅ 좋은 예: 작은 단위로 나누기
-- Entity 1개씩 수정
-- 마이그레이션 생성 및 실행
-- 테스트 후 다음 Entity 진행
-```
-
-### 2. 프로덕션 전 테스트
-
-```
-1. Development DB에서 테스트
-   ↓
-2. Testing DB에서 검증
-   ↓
-3. 데이터 백업
-   ↓
-4. Production DB에 적용
-```
-
-### 3. 마이그레이션 기록 관리
-
-- Git에 마이그레이션 파일 커밋
-- 커밋 메시지에 변경 내용 명시
-- 팀원들과 마이그레이션 순서 공유
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card
-    title="Scaffolding 탭"
-    icon="wand-magic-sparkles"
-    href="/ko/tools-and-cli/sonamu-ui/scaffolding-tab"
-  >
+  <Card title="Scaffolding 탭" icon="wand-magic-sparkles" href="/ko/tools-and-cli/sonamu-ui/scaffolding-tab">
     Model 코드 자동 생성
   </Card>
   <Card title="migrate CLI" icon="terminal" href="/ko/tools-and-cli/sonamu-cli/migrate">

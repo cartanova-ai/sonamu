@@ -7,433 +7,211 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  Button,
-  Checkbox,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
 } from "@sonamu-kit/react-components";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import classNames from "classnames";
-import { diff, unique } from "radashi";
-import { Fragment, useState } from "react";
-import { type SonamuDBConfig } from "sonamu";
-import CheckIcon from "~icons/lucide/check";
-import CodeIcon from "~icons/lucide/code";
-import PlayIcon from "~icons/lucide/play";
-import RefreshCwIcon from "~icons/lucide/refresh-cw";
-import ToggleLeftIcon from "~icons/lucide/toggle-left";
-import ToggleRightIcon from "~icons/lucide/toggle-right";
-import TrashIcon from "~icons/lucide/trash";
+import { useState } from "react";
+import { type MigrationTarget } from "sonamu";
 import TriangleAlertIcon from "~icons/lucide/triangle-alert";
 
 import { useSonamuContext } from "../contexts/sonamu-provider";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { defaultCatch } from "../services/sonamu.shared";
-import { MigrationActionModal } from "./migrations/_migration_action_modal";
+import { MigrationApplyDialog } from "./migrations/_migration_apply_dialog";
+import { MigrationMatrix } from "./migrations/_migration_matrix";
+import { useMigrationDetailedMode } from "./migrations/_migration_preferences";
+import { MigrationPreview } from "./migrations/_migration_preview";
+import { MigrationRollbackDialog } from "./migrations/_migration_rollback_dialog";
 
-export const Route = createFileRoute("/migrations")({
-  component: MigrationsIndex,
-});
+import "./migrations/migrations.css";
 
-type MigrationsIndexProps = {};
-function MigrationsIndex(_props: MigrationsIndexProps) {
+export const Route = createFileRoute("/migrations")({ component: MigrationsIndex });
+
+type DialogSession = {
+  kind: "apply" | "rollback";
+  targets: MigrationTarget[];
+  pendingByConnection: Record<string, string[]>;
+  sessionId: number;
+};
+
+function normalizeMigrationTargets(
+  targets: MigrationTarget[],
+  connections: Array<{ connKey: MigrationTarget; host: string; port: number; database: string }>,
+) {
+  const selectedTargets = new Set(targets);
+  const physicalDatabases = new Set<string>();
+  return connections.flatMap((connection) => {
+    if (!selectedTargets.has(connection.connKey)) return [];
+    const physicalKey = `${connection.host}:${connection.port}/${connection.database}`;
+    if (physicalDatabases.has(physicalKey)) return [];
+    physicalDatabases.add(physicalKey);
+    return [connection.connKey];
+  });
+}
+
+function MigrationsIndex() {
   const { SD } = useSonamuContext();
-  const { data, error, refetch } = SonamuUIService.useMigrationStatus();
-  const { status } = data ?? {};
-  const { preparedCodes, conns, codes } = status ?? {};
-  const migrationStatusError = status?.error;
+  const queryClient = useQueryClient();
+  const connectionsQuery = SonamuUIService.useMigrationConnections();
+  const codesQuery = SonamuUIService.useMigrationCodes();
+  const connections = connectionsQuery.data?.connections ?? [];
+  const codes = codesQuery.data?.codes ?? [];
+  const statusQueries = SonamuUIService.useMigrationConnectionStatuses(connections);
+  const [selectedConnections, setSelectedConnections] = useState<MigrationTarget[]>([]);
+  const [productionSelectionPending, setProductionSelectionPending] = useState(false);
+  const [requestedCompareKey, setRequestedCompareKey] = useState<MigrationTarget>("development");
+  const [dialog, setDialog] = useState<DialogSession>();
+  const [generating, setGenerating] = useState(false);
+  const [detailed, setDetailed] = useMigrationDetailedMode();
 
-  const isLoading = !error && !data;
-  const [loading, setLoading] = useState(false);
-
-  const [selectedConnKeys, setSelectedConnKeys] = useState<(keyof SonamuDBConfig)[]>([]);
-  const [selectedCodeNames, setSelectedCodeNames] = useState<string[]>([]);
-  const [actionModalOpen, setActionModalOpen] = useState(false);
-  const [actionModalData, setActionModalData] = useState<{
-    action: "apply" | "rollback" | "shadow";
-    targets: (keyof SonamuDBConfig)[];
-  } | null>(null);
-  const [isAllCodeViewerOpen, setAllCodeViewerOpen] = useState(false);
-  const [pendingConnKeys, setPendingConnKeys] = useState<(keyof SonamuDBConfig)[] | null>(null);
-
-  const selectConnKeys = (nextConnKeys: (keyof SonamuDBConfig)[]) => {
-    // Production을 새로 포함하는 선택은 사용자가 위험을 확인할 때까지 보류한다.
-    if (!selectedConnKeys.includes("production") && nextConnKeys.includes("production")) {
-      setPendingConnKeys(nextConnKeys);
-      return;
-    }
-    setSelectedConnKeys(nextConnKeys);
-  };
-
-  const handleProductionWarningOpenChange = (open: boolean) => {
-    if (!open) {
-      setPendingConnKeys(null);
-    }
-  };
-
-  const confirmProductionSelection = () => {
-    if (!pendingConnKeys) {
-      return;
-    }
-    setSelectedConnKeys(pendingConnKeys);
-    setPendingConnKeys(null);
-  };
-
-  const cancelProductionSelection = () => {
-    if (!pendingConnKeys) {
-      return;
-    }
-    // 명시적 취소는 운영 연결만 제외한 안전한 후보를 반영한다.
-    setSelectedConnKeys(pendingConnKeys.filter((connKey) => connKey !== "production"));
-    setPendingConnKeys(null);
-  };
-
-  const toggleConnKeys = (preset: "ALL" | "LOCAL" | "REMOTE" | "TESTING" | "FIXTURE") => {
-    const availableConnKeys = new Set((conns ?? []).map((conn) => conn.connKey));
-    const presetTargetKeys: (keyof SonamuDBConfig)[] = (() => {
-      switch (preset) {
-        case "ALL":
-          return ["test", "fixture", "development", "staging", "production"];
-        case "LOCAL":
-          return ["test"];
-        case "REMOTE":
-          return ["development", "staging", "production"];
-        case "TESTING":
-          return ["test", "fixture"];
-        case "FIXTURE":
-          return ["fixture"];
-      }
-    })();
-    const targetKeys = presetTargetKeys.filter((key) => availableConnKeys.has(key));
-    if (targetKeys.length === 0) {
-      return;
-    }
-
-    if (targetKeys.filter((key) => selectedConnKeys.includes(key)).length === targetKeys.length) {
-      selectConnKeys(selectedConnKeys.filter((key) => !targetKeys.includes(key)));
-    } else if (diff(targetKeys, selectedConnKeys).length > 0) {
-      selectConnKeys(targetKeys);
-    } else {
-      selectConnKeys(unique([...selectedConnKeys, ...targetKeys]));
-    }
-  };
-
-  const confirmDelCodes = () => {
-    if (selectedCodeNames.length === 0) {
-      return;
-    }
-    const answer = confirm(
-      SD("migration.confirm.deleteCodes").replace("{count}", String(selectedCodeNames.length)),
+  const eligibleCompareConnections = connections.filter((_connection, index) => {
+    const status = statusQueries[index]?.data?.status;
+    return status?.status === 0 && status.error === undefined;
+  });
+  const compareConnKey = eligibleCompareConnections.some(
+    ({ connKey }) => connKey === requestedCompareKey,
+  )
+    ? requestedCompareKey
+    : eligibleCompareConnections[0]?.connKey;
+  const preparedCodesQuery = SonamuUIService.useMigrationPreparedCodes(compareConnKey);
+  const selectedHasUnavailableConnection = selectedConnections.some((connKey) => {
+    const index = connections.findIndex((connection) => connection.connKey === connKey);
+    const query = statusQueries[index];
+    return (
+      query === undefined ||
+      query.isFetching ||
+      query.error !== null ||
+      query.data?.status.status === "error" ||
+      query.data?.status.error !== undefined
     );
-    if (!answer) {
+  });
+  const actionsDisabled = selectedConnections.length === 0 || selectedHasUnavailableConnection;
+
+  const toggleConnection = (connKey: MigrationTarget) => {
+    // Production 신규 선택은 사용자가 위험을 확인할 때까지 반영하지 않습니다.
+    if (connKey === "production" && !selectedConnections.includes(connKey)) {
+      setProductionSelectionPending(true);
       return;
     }
-
-    setLoading(true);
-    SonamuUIService.migrationsDelCodes(selectedCodeNames)
-      .then(() => {
-        refetch();
-      })
-      .catch(defaultCatch)
-      .finally(() => {
-        setLoading(false);
-      });
+    setSelectedConnections((current) =>
+      current.includes(connKey) ? current.filter((key) => key !== connKey) : [...current, connKey],
+    );
   };
-
-  const generatePreparedCodes = () => {
-    setLoading(true);
-    SonamuUIService.migrationsGeneratePreparedCodes()
-      .then(() => {
-        // TS컴파일을 위해 0.5초 대기
-        setTimeout(() => {
-          refetch();
-        }, 500);
-      })
-      .catch(defaultCatch)
-      .finally(() => {
-        setLoading(false);
-      });
+  const confirmProductionSelection = () => {
+    setSelectedConnections((current) =>
+      current.includes("production") ? current : [...current, "production"],
+    );
+    setProductionSelectionPending(false);
   };
-
-  const openActionModal = (
-    action: "apply" | "rollback" | "shadow",
-    _targets?: (keyof SonamuDBConfig)[],
-  ) => {
-    if (!conns) {
-      return;
-    }
-    const targets = _targets ?? selectedConnKeys;
-    setActionModalData({ action, targets });
-    setActionModalOpen(true);
+  const openDialog = (kind: DialogSession["kind"]) => {
+    // 같은 물리 DB의 alias는 core 실행과 동일하게 커넥션 목록에서 앞선 항목만 유지합니다.
+    const targets = normalizeMigrationTargets(selectedConnections, connections);
+    const pendingByConnection = Object.fromEntries(
+      targets.map((connKey) => {
+        const index = connections.findIndex((connection) => connection.connKey === connKey);
+        return [connKey, statusQueries[index]?.data?.status.pending ?? []];
+      }),
+    );
+    setDialog({
+      kind,
+      targets,
+      pendingByConnection,
+      sessionId: Date.now(),
+    });
   };
-
-  const handleActionModalCompleted = () => {
-    refetch();
+  const handleExecutionSettled = async (success: boolean) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["migrations", "status"] }),
+      queryClient.invalidateQueries({ queryKey: ["migrations", "prepared-codes"] }),
+    ]);
+    if (success) setSelectedConnections([]);
   };
-
-  const toggleAllFiles = () => {
-    if (!codes) {
-      return;
-    }
-
-    if (selectedCodeNames.length === 0) {
-      setSelectedCodeNames(codes.map((code) => code.name));
-    } else {
-      setSelectedCodeNames([]);
+  const handleGenerate = async () => {
+    if (compareConnKey === undefined) return;
+    setGenerating(true);
+    try {
+      await SonamuUIService.migrationsGeneratePreparedCodes(compareConnKey);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["migrations", "codes"] }),
+        queryClient.invalidateQueries({ queryKey: ["migrations", "status"] }),
+        queryClient.invalidateQueries({ queryKey: ["migrations", "prepared-codes"] }),
+      ]);
+    } catch (error) {
+      defaultCatch(error);
+    } finally {
+      setGenerating(false);
     }
   };
-
-  if (error) {
+  if (connectionsQuery.error || codesQuery.error) {
     return (
       <div className="p-8">
-        <div className="w-[50em] my-[30vh] mx-auto whitespace-pre-line p-[3em] bg-white leading-[2em] border-2 border-red-500">
-          {error.message}
+        <div className="mx-auto my-[30vh] w-[50em] whitespace-pre-line border-2 border-red-500 bg-white p-[3em] leading-[2em]">
+          {(connectionsQuery.error ?? codesQuery.error)?.message}
         </div>
       </div>
     );
   }
+
+  const dialogConnections = (dialog?.targets ?? []).flatMap((target) => {
+    const connection = connections.find(({ connKey }) => connKey === target);
+    return connection === undefined ? [] : [connection];
+  });
   return (
     <div className="p-8">
-      <div
-        className={`block p-4 bg-white border border-gray-200 rounded-md shadow-sm ${loading || isLoading ? "opacity-50 pointer-events-none" : ""}`}
-      >
-        {preparedCodes && (
-          <div className="p-4">
-            <h3 className="relative ">
-              {SD("migration.preparedCodes")}{" "}
-              <div className="absolute right-0 top-0 flex gap-2">
-                <Button
-                  icon={isAllCodeViewerOpen ? <ToggleRightIcon /> : <ToggleLeftIcon />}
-                  size="xs"
-                  onClick={() => setAllCodeViewerOpen(!isAllCodeViewerOpen)}
-                >
-                  {SD("migration.toggleCodes")}
-                </Button>
-                <Button size="xs" icon={<PlayIcon />} onClick={() => generatePreparedCodes()}>
-                  {SD("migration.generate")}
-                </Button>
-              </div>
-            </h3>
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent bg-gray-100">
-                  <TableHead>{SD("common.type")}</TableHead>
-                  <TableHead>{SD("common.table")}</TableHead>
-                  <TableHead>{SD("common.name")}</TableHead>
-                  <TableHead>{SD("common.code")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {migrationStatusError && (
-                  <TableRow>
-                    <TableCell colSpan={6}>{migrationStatusError}</TableCell>
-                  </TableRow>
-                )}
-                {!migrationStatusError && preparedCodes.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center">
-                      {SD("migration.noPreparedCodes")}
-                    </TableCell>
-                  </TableRow>
-                )}
-                {preparedCodes.map((pcode, pcodeIndex) => (
-                  <TableRow key={pcodeIndex}>
-                    <TableCell>{pcode.type}</TableCell>
-                    <TableCell>{pcode.table}</TableCell>
-                    <TableCell>{pcode.title}</TableCell>
-                    <TableCell style={{ padding: 0, width: 700, textAlign: "center" }}>
-                      <CodeViewer
-                        code={pcode.formatted ?? ""}
-                        open={isAllCodeViewerOpen}
-                        collapsedText={SD("migration.codeCollapsed")}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <div className="border-b border-gray-200" />
-          </div>
-        )}
-        <div className="p-4">
-          <h3>{SD("migration.codeFiles")}</h3>
-          <div className="flex gap-8">
-            <div className="flex-1">
-              <Button
-                variant="destructive"
-                icon={<TrashIcon />}
-                disabled={selectedCodeNames.length === 0}
-                onClick={() => confirmDelCodes()}
-              >
-                {SD("migration.deleteCodes")}
-              </Button>
-            </div>
-            <div className="flex gap-2 justify-end">
-              {(["ALL", "LOCAL", "REMOTE", "TESTING", "FIXTURE"] as const).map((preset) => (
-                <Button key={preset} variant="yellow" onClick={() => toggleConnKeys(preset)}>
-                  {preset}
-                </Button>
-              ))}
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="default"
-                icon={<PlayIcon />}
-                disabled={selectedConnKeys.length === 0 || !!migrationStatusError}
-                onClick={() => openActionModal("apply")}
-              >
-                {SD("migration.applyToLatest")}
-              </Button>
-              <Button
-                variant="destructive"
-                icon={<RefreshCwIcon />}
-                disabled={selectedConnKeys.length === 0 || !!migrationStatusError}
-                onClick={() => openActionModal("rollback")}
-              >
-                {SD("migration.rollback")}
-              </Button>
-            </div>
-          </div>
-          {conns && codes && (
-            <Table className="mt-4 text-[0.9em]">
-              <TableHeader>
-                <TableRow className="hover:bg-transparent bg-gray-100">
-                  <TableHead className="flex items-center gap-1">
-                    Name{" "}
-                    <Button
-                      icon={<CheckIcon />}
-                      size="xs"
-                      variant="blue"
-                      onClick={() => toggleAllFiles()}
-                    />
-                  </TableHead>
-                  {conns.map((conn, connIndex) => (
-                    <TableHead
-                      key={connIndex}
-                      style={{ width: "150px" }}
-                      className={classNames("py-2 px-3", {
-                        "bg-[#dafde6]": selectedConnKeys.includes(conn.connKey),
-                      })}
-                    >
-                      <Checkbox
-                        disabled={conn.status === "error" || !!migrationStatusError}
-                        checked={selectedConnKeys.includes(conn.connKey)}
-                        label={
-                          <Tooltip>
-                            <TooltipTrigger>{`${conn.name} / ${conn.status}`}</TooltipTrigger>
-                            <TooltipContent>
-                              <p>{conn.connString}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        }
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            selectConnKeys(unique([...selectedConnKeys, conn.connKey]));
-                          } else {
-                            selectConnKeys(selectedConnKeys.filter((key) => key !== conn.connKey));
-                          }
-                        }}
-                      />
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(conns.some((conn) => conn.status === "error") || !!migrationStatusError) && (
-                  <TableRow>
-                    <TableCell colSpan={6}>
-                      <b className="text-destructive">{SD("migration.error.connections")}</b>
-                      {/* 실제 연결 실패 원인(대상 DB·에러 메시지)을 노출해 진단을 돕는다. */}
-                      {migrationStatusError && (
-                        <pre className="mt-1 text-xs text-destructive whitespace-pre-wrap break-all">
-                          {migrationStatusError}
-                        </pre>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )}
-                {codes.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6}>{SD("migration.noCodeFiles")}</TableCell>
-                  </TableRow>
-                )}
-                {codes.map((code, codeIndex) => (
-                  <Fragment key={codeIndex}>
-                    <TableRow>
-                      <TableCell className="flex items-center gap-1">
-                        <Checkbox
-                          checked={selectedCodeNames.includes(code.name)}
-                          label={code.name}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedCodeNames(unique([...selectedCodeNames, code.name]));
-                            } else {
-                              setSelectedCodeNames(
-                                selectedCodeNames.filter((name) => name !== code.name),
-                              );
-                            }
-                          }}
-                        />
-                        &nbsp;{" "}
-                        <Button
-                          size="xs"
-                          variant="secondary"
-                          icon={<CodeIcon />}
-                          onClick={() => {
-                            SonamuUIService.openVscode({
-                              absPath: code.path,
-                            });
-                          }}
-                        />
-                      </TableCell>
-                      {conns.map((conn, connIndex) => (
-                        <TableCell
-                          key={connIndex}
-                          className={classNames("text-center py-2 px-3", {
-                            "bg-[#dafde6]": selectedConnKeys.includes(conn.connKey),
-                          })}
-                        >
-                          {conn.pending.includes(code.name) ? (
-                            <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-yellow-500 text-white">
-                              PENDING
-                            </span>
-                          ) : conn.status === "error" || !!migrationStatusError ? (
-                            <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-red-500 text-white">
-                              ERROR
-                            </span>
-                          ) : (
-                            <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-green-500 text-white">
-                              APPLIED
-                            </span>
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  </Fragment>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+      <div className="block rounded-md border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="space-y-6 p-4">
+          <MigrationPreview
+            connections={eligibleCompareConnections}
+            compareConnKey={compareConnKey}
+            preparedCodes={preparedCodesQuery.data?.preparedCodes}
+            error={preparedCodesQuery.error}
+            loading={preparedCodesQuery.isFetching}
+            generating={generating}
+            onCompareConnKeyChange={setRequestedCompareKey}
+            onGenerate={() => void handleGenerate()}
+          />
+          <MigrationMatrix
+            connections={connections}
+            statusQueries={statusQueries}
+            codes={codes}
+            selectedConnections={selectedConnections}
+            detailed={detailed}
+            actionsDisabled={actionsDisabled}
+            onDetailedChange={setDetailed}
+            onConnectionToggle={toggleConnection}
+            onApply={() => openDialog("apply")}
+            onRollback={() => openDialog("rollback")}
+            onOpenCode={(path, editor) => {
+              void SonamuUIService.openEditor({ absPath: path, editor }).catch(defaultCatch);
+            }}
+          />
         </div>
       </div>
-      {conns && actionModalData && (
-        <MigrationActionModal
-          action={actionModalData.action}
-          targets={actionModalData.targets}
-          conns={conns}
-          open={actionModalOpen}
-          onOpenChange={setActionModalOpen}
-          onCompleted={handleActionModalCompleted}
+      {dialog?.kind === "apply" ? (
+        <MigrationApplyDialog
+          key={dialog.sessionId}
+          open
+          connections={dialogConnections}
+          shadowConnection={connections.find(({ connKey }) => connKey === "test")}
+          pendingByConnection={dialog.pendingByConnection}
+          onOpenChange={(open) => {
+            if (!open) setDialog(undefined);
+          }}
+          onSettled={handleExecutionSettled}
         />
-      )}
-      <AlertDialog open={pendingConnKeys !== null} onOpenChange={handleProductionWarningOpenChange}>
+      ) : null}
+      {dialog?.kind === "rollback" ? (
+        <MigrationRollbackDialog
+          key={dialog.sessionId}
+          open
+          connections={dialogConnections}
+          onOpenChange={(open) => {
+            if (!open) setDialog(undefined);
+          }}
+          onSettled={handleExecutionSettled}
+        />
+      ) : null}
+      <AlertDialog open={productionSelectionPending} onOpenChange={setProductionSelectionPending}>
         <AlertDialogContent className="border-2 border-red-600 bg-red-50">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-red-700">
@@ -445,10 +223,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            {/* oxlint-disable-next-line jsx-a11y/no-autofocus */}
-            <AlertDialogCancel autoFocus onClick={cancelProductionSelection}>
-              {SD("common.cancel")}
-            </AlertDialogCancel>
+            <AlertDialogCancel>{SD("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 text-white hover:bg-red-700"
               onClick={confirmProductionSelection}
@@ -458,25 +233,6 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-type CodeViewerProps = {
-  code: string;
-  open: boolean;
-  collapsedText: string;
-};
-function CodeViewer({ code, open, collapsedText }: CodeViewerProps) {
-  return (
-    <div className="flex items-start">
-      {open ? (
-        <pre className="bg-green-50 text-gray-900 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed text-left">
-          <code>{code}</code>
-        </pre>
-      ) : (
-        <div className="m-auto">{collapsedText}</div>
-      )}
     </div>
   );
 }

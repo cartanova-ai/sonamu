@@ -554,12 +554,12 @@ async function setupFixtureManager() {
 
 async function migrate_apply(targets: (keyof SonamuDBConfig)[]) {
   await setupMigrator();
-  await migrator.runAction("apply", targets);
+  await migrator.apply(targets);
 }
 
 async function migrate_run() {
   await setupMigrator();
-  await migrator.runAction("apply", getMigrateRunTargets());
+  await migrator.apply(getMigrateRunTargets());
 }
 
 async function migrate_generate() {
