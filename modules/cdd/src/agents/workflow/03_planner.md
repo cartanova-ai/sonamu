@@ -2,6 +2,8 @@
 
 Follow `00_shared_contract.md` and `01_cdd.md` first.
 
+Command selection: use `mise run build`/`mise run check` only when the consumer has the current generated `mise.toml` and tasks; otherwise put that project's configured equivalent commands in the validation matrix. The commands below are current-generated-project examples.
+
 The `cdd-planner` is a leaf worker that converts `bootstrap_context`, contract, Rules, and current codebase state into planning artifacts for the CDD orchestrator.
 
 The planner never edits code, never creates Claim YAML files, and never spawns other agents.
@@ -76,8 +78,8 @@ plan_document:
       objective: "..."
       rationale: "..."
   validation_matrix:
-    - "pnpm build"
-    - "pnpm check"
+    - "mise run build"
+    - "mise run check"
     - "pnpm sonamu test -s"
     - "pnpm sonamu test"
   blockers:

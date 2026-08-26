@@ -2,6 +2,8 @@
 
 Follow `00_shared_contract.md` and `01_cdd.md` first.
 
+Command selection: use `mise run build`/`mise run check` only when the consumer has the current generated `mise.toml` and tasks; otherwise use that project's configured equivalent build and check commands.
+
 This document defines the canonical review protocol for all CDD review sessions.
 
 ## Review modes
@@ -76,7 +78,7 @@ Stage reviews may be skipped when ALL of the following are true:
 
 - Total changed lines <= 30.
 - Changes are docs, formatting, or config only.
-- All verification gates (`pnpm build`, `pnpm check`) pass.
+- All selected build and check verification gates pass.
 
 The orchestrator decides fast-path eligibility. The reviewer does not self-skip.
 

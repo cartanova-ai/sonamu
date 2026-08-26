@@ -1,0 +1,65 @@
+[tools]
+node = "24.19"
+"npm:pnpm" = "11.24"
+
+[settings]
+auto_install = true
+lockfile = true
+locked = true
+
+[tasks."build:tools:ts-loader"]
+run = "pnpm --filter @sonamu-kit/ts-loader build"
+
+[tasks."build:tools:hmr-hook"]
+run = "pnpm --filter @sonamu-kit/hmr-hook build"
+
+[tasks."build:tools:hmr-runner"]
+run = "pnpm --filter @sonamu-kit/hmr-runner build"
+
+[tasks."build:tools"]
+run = "pnpm -r --filter @sonamu-kit/* --filter !@sonamu-kit/react-sui --filter !@sonamu-kit/react-components --filter !@sonamu-kit/tasks build"
+
+[tasks."build:lib:tasks"]
+run = "pnpm --filter @sonamu-kit/tasks build"
+
+[tasks."build:lib:sonamu"]
+run = "pnpm --filter sonamu build"
+
+[tasks."build:lib"]
+run = "pnpm -r --filter sonamu --filter @sonamu-kit/react-sui --filter @sonamu-kit/tasks build"
+
+[tasks."build:miomock:api"]
+run = "pnpm --filter miomock-api build"
+
+[tasks."build:miomock:web"]
+run = "pnpm --filter miomock-web build"
+
+[tasks."build:miomock"]
+run = "pnpm --filter miomock-api --filter miomock-web build"
+
+[tasks.build]
+run = "pnpm --filter !ui-web -r build"
+
+[tasks.dev]
+run = "pnpm --parallel --filter !sonamu-docs --filter !@sonamu-kit/react-sui --filter !ui-web dev"
+
+[tasks."publish:image"]
+run = "pnpm exec tsx scripts/publish-image.ts"
+
+[tasks."publish:packages"]
+run = "pnpm exec tsx scripts/publish.ts"
+
+[tasks.format]
+run = "pnpm exec oxlint --type-aware --fix && pnpm exec oxfmt"
+
+[tasks.check]
+run = "pnpm exec oxlint --type-aware && pnpm exec oxfmt --check"
+
+[tasks."check:fix"]
+run = "pnpm exec oxlint --type-aware --fix --fix-suggestions && pnpm exec oxfmt"
+
+[tasks."verify:clean"]
+run = "pnpm exec tsx scripts/verify.ts clean"
+
+[tasks."verify:fast"]
+run = "pnpm exec tsx scripts/verify.ts fast"

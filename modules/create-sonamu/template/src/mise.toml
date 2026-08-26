@@ -1,0 +1,20 @@
+[tools]
+node = "24.19"
+"npm:pnpm" = "11.24"
+
+[settings]
+auto_install = true
+lockfile = true
+locked = true
+
+[tasks.build]
+run = "pnpm -r build"
+
+[tasks.dev]
+run = "pnpm --parallel dev"
+
+[tasks.format]
+run = "pnpm exec oxfmt"
+
+[tasks.check]
+run = "pnpm exec oxlint && pnpm exec oxfmt --check"

@@ -28,6 +28,8 @@
 │           ├── admin-common/   # 공통 컴포넌트 (ApiLogViewer 등)
 │           ├── entry-client.tsx    # 클라이언트 진입점
 │           └── entry-server.generated.tsx  # SSR 진입점
+├── mise.toml                   # Node.js, pnpm, 루트 작업 설정
+├── mise.lock                   # 플랫폼별 도구 버전 잠금
 └── pnpm-workspace.yaml         # pnpm workspace 설정
 ```
 
@@ -35,45 +37,49 @@
 
 ## 🚀 빠른 시작
 
-### 1. 의존성 설치 (프로젝트 루트에서)
+이 프로젝트는 mise 전용입니다. 먼저 [mise](https://mise.jdx.dev/getting-started.html)를
+설치한 뒤, 프로젝트에 고정된 도구로 명령을 실행하세요.
+
+### 1. 개발 도구와 의존성 설치 (프로젝트 루트에서)
 
 ```bash
-pnpm install
+mise install --locked
+mise exec -- pnpm install
 ```
 
 ### 2. 데이터베이스 시작
 
 ```bash
 cd packages/api
-pnpm docker:up
+mise exec -- pnpm docker:up
 ```
 
 ### 3. 개발 서버 시작
 
 ```bash
 cd packages/api
-pnpm dev
+mise exec -- pnpm dev
 ```
 
 개발 서버가 시작되면 다음 주소로 접속할 수 있습니다:
 
-- **API + Web (통합)**: http://localhost:34900
-- **Sonamu UI**: http://localhost:34900/sonamu-ui (엔티티 관리)
+- **API + Web (통합)**: <http://localhost:34900>
+- **Sonamu UI**: <http://localhost:34900/sonamu-ui> (엔티티 관리)
 
-> `pnpm dev`는 `sonamu dev`를 실행하며, 기본적으로 API와 Web을 하나의 포트로 통합 서빙합니다 (`sonamu dev all`과 동일).
+> `mise exec -- pnpm dev`는 `sonamu dev`를 실행하며, 기본적으로 API와 Web을 하나의 포트로 통합 서빙합니다 (`sonamu dev all`과 동일).
 
 ### 4. 첫 번째 엔티티 생성
 
-1. Sonamu UI 열기: http://localhost:34900/sonamu-ui
+1. Sonamu UI 열기: <http://localhost:34900/sonamu-ui>
 2. **Entities** 탭 → **"+ Entity"** 클릭
 3. 엔티티 정의 (예: `User`, `Post`)
 4. `api/src/application/`과 `web/src/services/`에 파일이 자동으로 생성됩니다
 
 ### 5. 앱 확인
 
-http://localhost:34900 을 열어서 앱을 확인하세요!
+<http://localhost:34900> 을 열어서 앱을 확인하세요!
 
-> Web만 별도로 실행하고 싶다면 `sonamu dev web`을 사용할 수 있습니다 (`--` 뒤에 Vite 옵션 전달 가능).
+> Web만 별도로 실행하고 싶다면 `mise exec -- pnpm sonamu dev web`을 사용할 수 있습니다 (`--` 뒤에 Vite 옵션 전달 가능).
 
 ---
 
@@ -107,52 +113,54 @@ web/src/services/
 
 ## 🌐 포트 구성
 
-| 서비스           | 포트                     | URL                              |
-| ---------------- | ------------------------ | -------------------------------- |
-| API + Web (통합) | `BASE_PORT` (기본 34900) | http://localhost:34900           |
-| Sonamu UI        | -                        | http://localhost:34900/sonamu-ui |
-| PostgreSQL       | 5432                     | -                                |
+| 서비스           | 포트                     | URL                                |
+| ---------------- | ------------------------ | ---------------------------------- |
+| API + Web (통합) | `BASE_PORT` (기본 34900) | <http://localhost:34900>           |
+| Sonamu UI        | -                        | <http://localhost:34900/sonamu-ui> |
+| PostgreSQL       | 5432                     | -                                  |
 
 ## 📜 주요 스크립트
 
 ### Root (workspace)
 
-| 명령어          | 설명                        |
-| --------------- | --------------------------- |
-| `pnpm install`  | 모든 패키지 의존성 설치     |
-| `pnpm -r build` | 모든 패키지 빌드 (api, web) |
-| `pnpm -r test`  | 모든 패키지 테스트 실행     |
+| 명령어                      | 설명                        |
+| --------------------------- | --------------------------- |
+| `mise exec -- pnpm install` | 모든 패키지 의존성 설치     |
+| `mise run build`            | 모든 패키지 빌드 (api, web) |
+| `mise run dev`              | 모든 패키지 개발 서버 실행  |
+| `mise run format`           | 모든 패키지 코드 포맷팅     |
+| `mise run check`            | 모든 패키지 코드 검사       |
 
 ### API (`packages/api/`)
 
-| 명령어              | 설명                                      |
-| ------------------- | ----------------------------------------- |
-| `pnpm dev`          | 통합 개발 서버 시작 (= `sonamu dev all`)  |
-| `pnpm build`        | 전체 프로덕션 빌드 (= `sonamu build all`) |
-| `pnpm build api`    | API만 빌드 (= `sonamu build api`)         |
-| `pnpm build web`    | Web만 빌드 (= `sonamu build web`)         |
-| `pnpm start`        | 프로덕션 서버 시작                        |
-| `pnpm test`         | 테스트 실행                               |
-| `pnpm docker:up`    | Docker DB 시작                            |
-| `pnpm docker:down`  | Docker DB 중지                            |
-| `pnpm docker:reset` | Docker DB 초기화 (볼륨 삭제 후 재시작)    |
-| `pnpm dump`         | 테스트 DB 덤프 생성                       |
-| `pnpm seed`         | 덤프를 fixture DB에 적용                  |
+| 명령어                           | 설명                                      |
+| -------------------------------- | ----------------------------------------- |
+| `mise exec -- pnpm dev`          | 통합 개발 서버 시작 (= `sonamu dev all`)  |
+| `mise exec -- pnpm build`        | 전체 프로덕션 빌드 (= `sonamu build all`) |
+| `mise exec -- pnpm build api`    | API만 빌드 (= `sonamu build api`)         |
+| `mise exec -- pnpm build web`    | Web만 빌드 (= `sonamu build web`)         |
+| `mise exec -- pnpm start`        | 프로덕션 서버 시작                        |
+| `mise exec -- pnpm test`         | 테스트 실행                               |
+| `mise exec -- pnpm docker:up`    | Docker DB 시작                            |
+| `mise exec -- pnpm docker:down`  | Docker DB 중지                            |
+| `mise exec -- pnpm docker:reset` | Docker DB 초기화 (볼륨 삭제 후 재시작)    |
+| `mise exec -- pnpm dump`         | 테스트 DB 덤프 생성                       |
+| `mise exec -- pnpm seed`         | 덤프를 fixture DB에 적용                  |
 
 ### 개발 서버 모드
 
-| 명령어                                         | 설명                            |
-| ---------------------------------------------- | ------------------------------- |
-| `sonamu dev` / `sonamu dev all`                | 통합 모드 (one-port: API + Web) |
-| `sonamu dev api`                               | API-only 모드                   |
-| `sonamu dev web`                               | Vite 단독 실행                  |
-| `sonamu dev web -- --port 3028 --host 0.0.0.0` | Vite 옵션 전달                  |
+| 명령어                                                              | 설명                            |
+| ------------------------------------------------------------------- | ------------------------------- |
+| `mise exec -- pnpm sonamu dev` / `mise exec -- pnpm sonamu dev all` | 통합 모드 (one-port: API + Web) |
+| `mise exec -- pnpm sonamu dev api`                                  | API-only 모드                   |
+| `mise exec -- pnpm sonamu dev web`                                  | Vite 단독 실행                  |
+| `mise exec -- pnpm sonamu dev web -- --port 3028 --host 0.0.0.0`    | Vite 옵션 전달                  |
 
 ## 🛠️ 개발 워크플로우
 
 ### 1. 엔티티 생성
 
-1. API 서버 시작 후 Sonamu UI 열기 (http://localhost:34900/sonamu-ui)
+1. API 서버 시작 후 Sonamu UI 열기 (<http://localhost:34900/sonamu-ui>)
 2. **Entities** 탭 → **"+ Entity"** 클릭
 3. 엔티티 정보 입력 (이름, 필드 등)
 4. **Create** 클릭 - 파일이 자동으로 생성됩니다!
@@ -213,7 +221,7 @@ function UserDetailPage() {
 # 1. DB 클라이언트(TablePlus 등)로 테스트 데이터 수정
 
 # 2. 덤프 생성
-pnpm dump
+mise exec -- pnpm dump
 
 # 3. Git에 커밋
 git add database/dumps/
@@ -222,10 +230,10 @@ git commit -m "feat: 테스트 데이터 추가"
 # --- 팀원이 pull 받은 후 ---
 
 # 4. fixture DB에 덤프 적용
-pnpm seed
+mise exec -- pnpm seed
 
 # 5. test DB에 fixture 동기화
-pnpm sonamu fixture sync
+mise exec -- pnpm sonamu fixture sync
 ```
 
 ---
@@ -238,7 +246,7 @@ Sonamu Skills는 프레임워크 사용법을 에이전트에 제공하는 별�
 ### npx skills
 
 ```bash
-npx skills@latest add cartanova-ai/skills
+mise exec -- npx skills@latest add cartanova-ai/skills
 ```
 
 ### Claude Code 플러그인

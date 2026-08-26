@@ -2,6 +2,8 @@
 
 Follow `00_shared_contract.md` and `01_cdd.md` first.
 
+Command selection: use `mise run build`/`mise run check` only when the consumer has the current generated `mise.toml` and tasks; otherwise use that project's configured equivalent build and check commands.
+
 All CDD execution workers must read this document before starting work.
 
 ## Sonamu CLI required sequences
@@ -72,9 +74,9 @@ Every worker receives a Claim YAML (schema in `01_cdd.md#claim-format`) with:
 
 | type        | Completion condition                                                             |
 | ----------- | -------------------------------------------------------------------------------- |
-| `surface`   | `pnpm build` passes and downstream migration/scaffolding prerequisites are ready |
+| `surface`   | The selected build command passes and downstream migration/scaffolding prerequisites are ready |
 | `test`      | Meaningful test bodies written for all AC skeletons                              |
-| `implement` | `pnpm build` + `pnpm check` pass                                                 |
+| `implement` | The selected build and check commands pass                                       |
 
 ## Downstream output: `worker_result`
 

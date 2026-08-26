@@ -87,22 +87,22 @@ function getChangedPackages(fromCommit: string): Set<string> {
 async function verifyClean() {
   console.log("🧹 Running clean verification...\n");
 
-  exec("pnpm install");
+  exec("mise exec -- pnpm install");
   console.log("✓ Install completed\n");
 
-  exec("pnpm build");
+  exec("mise run build");
   console.log("✓ Build completed\n");
 
-  exec("pnpm --filter miomock-api sonamu migrate run");
+  exec("mise exec -- pnpm --filter miomock-api sonamu migrate run");
   console.log("✓ Migration completed\n");
 
-  exec("pnpm --filter miomock-api sonamu fixture sync");
+  exec("mise exec -- pnpm --filter miomock-api sonamu fixture sync");
   console.log("✓ Fixture sync completed\n");
 
-  exec("pnpm --filter miomock-api test");
+  exec("mise exec -- pnpm --filter miomock-api test");
   console.log("✓ Test completed\n");
 
-  exec("pnpm check");
+  exec("mise run check");
   console.log("✓ Lint/format check completed\n");
 
   writeLastVerified(getCurrentState());
@@ -129,19 +129,19 @@ async function verifyFast() {
 
   if (lockChanged) {
     console.log("📦 Lock files changed, running install + full build...\n");
-    exec("pnpm install");
+    exec("mise exec -- pnpm install");
     console.log("✓ Install completed\n");
 
-    exec("pnpm build");
+    exec("mise run build");
     console.log("✓ Build completed\n");
 
-    exec("pnpm --filter miomock-api sonamu migrate run");
+    exec("mise exec -- pnpm --filter miomock-api sonamu migrate run");
     console.log("✓ Migration completed\n");
 
-    exec("pnpm --filter miomock-api sonamu fixture sync");
+    exec("mise exec -- pnpm --filter miomock-api sonamu fixture sync");
     console.log("✓ Fixture sync completed\n");
 
-    exec("pnpm --filter miomock-api test");
+    exec("mise exec -- pnpm --filter miomock-api test");
     console.log("✓ Test completed\n");
 
     writeLastVerified(currentState);
@@ -164,19 +164,19 @@ async function verifyFast() {
     .map((pkg) => `{${pkg}}`)
     .join("");
 
-  exec(`pnpm --filter "${filterStr}..." build`);
+  exec(`mise exec -- pnpm --filter "${filterStr}..." build`);
   console.log("✓ Build completed\n");
 
-  exec("pnpm --filter miomock-api sonamu migrate run");
+  exec("mise exec -- pnpm --filter miomock-api sonamu migrate run");
   console.log("✓ Migration completed\n");
 
-  exec("pnpm --filter miomock-api sonamu fixture sync");
+  exec("mise exec -- pnpm --filter miomock-api sonamu fixture sync");
   console.log("✓ Fixture sync completed\n");
 
-  exec("pnpm --filter miomock-api test");
+  exec("mise exec -- pnpm --filter miomock-api test");
   console.log("✓ Test completed\n");
 
-  exec("pnpm check");
+  exec("mise run check");
   console.log("✓ Lint/format check completed\n");
 
   writeLastVerified(currentState);

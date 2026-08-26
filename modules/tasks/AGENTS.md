@@ -8,9 +8,9 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Required checks
 
-- `pnpm --filter @sonamu-kit/tasks check`
-- `pnpm --filter @sonamu-kit/tasks test`
-- `pnpm --filter @sonamu-kit/tasks build`
+- `mise exec -- pnpm --filter @sonamu-kit/tasks check`
+- `mise exec -- pnpm --filter @sonamu-kit/tasks test`
+- `mise exec -- pnpm --filter @sonamu-kit/tasks build`
 
 ## Testing policy
 
@@ -18,4 +18,4 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Cross-workspace gate
 
-- For changes in this scope, root `pnpm check` (oxlint + oxfmt) must pass before handoff.
+- For changes in this scope, root `mise run check` (oxlint + oxfmt) must pass before handoff.

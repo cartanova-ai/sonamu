@@ -1,11 +1,5 @@
 {
   "private": true,
-  "scripts": {
-    "build": "pnpm -r build",
-    "dev": "pnpm --parallel dev",
-    "format": "oxfmt",
-    "check": "oxlint && oxfmt --check"
-  },
   "devDependencies": {
     "@types/node": "^25",
     "@vitest/coverage-v8": "^4.1.2",
@@ -17,5 +11,5 @@
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   },
-  "packageManager": "pnpm@10.33.1"
+  "packageManager": "pnpm@11.24.0"
 }

@@ -117,6 +117,6 @@ for (const file of templateFiles) {
 
 // 6. 빌드
 console.log("\n🔨 Building...");
-await $`pnpm build`;
+await $`mise exec -- pnpm build`;
 
 console.log("\n✅ prepublish completed");

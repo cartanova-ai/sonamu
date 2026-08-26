@@ -19,9 +19,20 @@ Before performing a task, read and follow `.agents/agents/orchestrator.md`.
 - `modules/hmr-*` and `modules/ts-loader`: Development runtime and tooling.
 - `modules/tasks`: Distributed task queue.
 
+## Toolchain
+
+- Run `mise install --locked` for explicit toolchain setup.
+- Use `mise run <task>` for repository-wide tasks.
+- Use `mise exec -- pnpm ...`, `mise exec -- node ...`, and equivalent
+  wrappers for package-local or raw tool commands. Do not invoke host
+  `node`, `npm`, `npx`, or `pnpm` directly.
+- The root `mise.toml` resolves from repository subdirectories.
+- Docker, EAS, and container build files are explicit exceptions where mise
+  is intentionally absent.
+
 ## Validation
 
-- Run `pnpm check` at the repository root for every code change.
+- Run `mise run check` at the repository root for every code change.
 - Run applicable tests and builds for each affected package.
 - For framework-core, generator, template, or generated-output changes, validate
   the resulting behavior in `examples/miomock`.
