@@ -2,7 +2,6 @@ import {
   Badge,
   Button,
   Select,
-  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -88,14 +87,7 @@ export function MigrationPreview({
           </TableRow>
         </TableHeader>
         <TableBody id="proposed-code-previews">
-          {loading ? (
-            <TableRow>
-              <TableCell colSpan={4}>
-                <Skeleton className="h-8 w-full" />
-              </TableCell>
-            </TableRow>
-          ) : null}
-          {!loading && (preparedCodes?.length ?? 0) === 0 ? (
+          {(preparedCodes?.length ?? 0) === 0 ? (
             <TableRow>
               <TableCell colSpan={4} className="text-center text-muted-foreground">
                 생성할 변경사항이 없습니다.
