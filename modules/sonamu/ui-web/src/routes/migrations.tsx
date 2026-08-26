@@ -1,8 +1,20 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@sonamu-kit/react-components";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { type MigrationTarget } from "sonamu";
+import TriangleAlertIcon from "~icons/lucide/triangle-alert";
 
+import { useSonamuContext } from "../contexts/sonamu-provider";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { defaultCatch } from "../services/sonamu.shared";
 import { MigrationApplyDialog } from "./migrations/_migration_apply_dialog";
@@ -38,6 +50,7 @@ function normalizeMigrationTargets(
 }
 
 function MigrationsIndex() {
+  const { SD } = useSonamuContext();
   const queryClient = useQueryClient();
   const connectionsQuery = SonamuUIService.useMigrationConnections();
   const codesQuery = SonamuUIService.useMigrationCodes();
@@ -45,6 +58,7 @@ function MigrationsIndex() {
   const codes = codesQuery.data?.codes ?? [];
   const statusQueries = SonamuUIService.useMigrationConnectionStatuses(connections);
   const [selectedConnections, setSelectedConnections] = useState<MigrationTarget[]>([]);
+  const [productionSelectionPending, setProductionSelectionPending] = useState(false);
   const [requestedCompareKey, setRequestedCompareKey] = useState<MigrationTarget>("development");
   const [dialog, setDialog] = useState<DialogSession>();
   const [generating, setGenerating] = useState(false);
@@ -74,9 +88,20 @@ function MigrationsIndex() {
   const actionsDisabled = selectedConnections.length === 0 || selectedHasUnavailableConnection;
 
   const toggleConnection = (connKey: MigrationTarget) => {
+    // Production 신규 선택은 사용자가 위험을 확인할 때까지 반영하지 않습니다.
+    if (connKey === "production" && !selectedConnections.includes(connKey)) {
+      setProductionSelectionPending(true);
+      return;
+    }
     setSelectedConnections((current) =>
       current.includes(connKey) ? current.filter((key) => key !== connKey) : [...current, connKey],
     );
+  };
+  const confirmProductionSelection = () => {
+    setSelectedConnections((current) =>
+      current.includes("production") ? current : [...current, "production"],
+    );
+    setProductionSelectionPending(false);
   };
   const openDialog = (kind: DialogSession["kind"]) => {
     // 같은 물리 DB의 alias는 core 실행과 동일하게 커넥션 목록에서 앞선 항목만 유지합니다.
@@ -185,6 +210,28 @@ function MigrationsIndex() {
           onSettled={handleExecutionSettled}
         />
       ) : null}
+      <AlertDialog open={productionSelectionPending} onOpenChange={setProductionSelectionPending}>
+        <AlertDialogContent className="border-2 border-red-600 bg-red-50">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-700">
+              <TriangleAlertIcon className="size-6 shrink-0" />
+              {SD("migration.warning.production.title")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-red-700">
+              {SD("migration.warning.production.description")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{SD("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={confirmProductionSelection}
+            >
+              {SD("migration.warning.production.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
