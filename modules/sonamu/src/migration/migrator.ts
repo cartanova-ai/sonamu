@@ -1,10 +1,10 @@
 import assert from "assert";
-import { mkdir, readdir, unlink, writeFile } from "fs/promises";
+import { mkdir, readdir, writeFile } from "fs/promises";
 import path from "path";
 
 import chalk from "chalk";
 import { type Knex } from "knex";
-import { group, sum, unique } from "radashi";
+import { group, unique } from "radashi";
 
 import { Sonamu } from "../api/sonamu";
 import { DB } from "../database/db";
@@ -506,60 +506,6 @@ export class Migrator {
         }),
       );
     }
-  }
-
-  /**
-   * 삭제 가능한 마이그레이션 코드 파일을 검증합니다.
-   *
-   * @param conns 마이그레이션 상태 배열
-   * @param codeNames 삭제할 마이그레이션 코드 파일 이름 배열
-   * @returns 삭제 가능 여부 및 적용된 마이그레이션 코드 파일 이름
-   */
-  validateDeletable(conns: MigrationStatus["conns"], codeNames: string[]) {
-    const appliedCodes = codeNames.filter((codeName) =>
-      conns.some((conn) => !conn.pending.includes(codeName)),
-    );
-
-    return {
-      canDelete: appliedCodes.length === 0,
-      appliedCodes,
-    };
-  }
-
-  /**
-   * 마이그레이션 코드 파일을 삭제합니다.
-   *
-   * Sonamu UI에서 사용됩니다.
-   *
-   * @param codeNames 삭제할 마이그레이션 코드 파일 이름 배열
-   * @returns 삭제된 마이그레이션 코드 파일 개수
-   * @deprecated deleteCodes를 사용합니다.
-   */
-  async delCodes(codeNames: string[]): Promise<number> {
-    return this.deleteCodes(codeNames);
-  }
-
-  async deleteCodes(codeNames: string[]): Promise<number> {
-    const { conns } = await this.getStatus();
-    const { canDelete, appliedCodes } = this.validateDeletable(conns, codeNames);
-    if (!canDelete) {
-      throw new Error(
-        `You cannot delete a migration file if there is already applied. Applied codes: ${appliedCodes.join(", ")}`,
-      );
-    }
-
-    return sum(
-      await Promise.all(
-        codeNames.map(async (codeName) => {
-          const filePath = `${Sonamu.apiRootPath}/src/migrations/${codeName}.ts`;
-          if (await exists(filePath)) {
-            await unlink(filePath);
-            return 1;
-          }
-          return 0;
-        }),
-      ),
-    );
   }
 
   private genDateTag(index: number, baseDate: Date = new Date()): string {

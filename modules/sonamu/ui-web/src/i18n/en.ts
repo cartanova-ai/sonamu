@@ -97,13 +97,11 @@ const en: Record<DictKey, Dictionary[string]> = {
   "migration.codeFiles": "Migration Code Files",
   "migration.toggleCodes": "Toggle codes",
   "migration.generate": "Generate",
-  "migration.deleteCodes": "Delete codes",
   "migration.applyToLatest": "Apply to Latest",
   "migration.rollback": "Rollback",
   "migration.noPreparedCodes": "No prepared migration codes.",
   "migration.noCodeFiles": "No migration code files",
   "migration.codeCollapsed": "Code is collapsed",
-  "migration.confirm.deleteCodes": "Are you sure to delete the selected {count} migration codes?",
   "migration.warning.production.title": "Production Database Warning",
   "migration.warning.production.description":
     "Production migrations can affect live data. Review the target before continuing.",

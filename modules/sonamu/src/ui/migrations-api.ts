@@ -341,9 +341,6 @@ export async function registerMigrationsApi(server: FastifyInstance) {
     },
   );
 
-  server.post<{ Body: { codeNames: string[] } }>("/api/migrations/delCodes", async (request) =>
-    migrator.deleteCodes(request.body.codeNames),
-  );
   server.post<{ Body: { compareConnKey?: MigrationTarget } }>(
     "/api/migrations/generatePreparedCodes",
     async (request) => migrator.generatePreparedCodes(request.body.compareConnKey),

@@ -493,16 +493,6 @@ export namespace SonamuUIService {
     });
   }
 
-  export function migrationsDelCodes(codeNames: string[]): Promise<number> {
-    return fetch({
-      method: "POST",
-      url: `/sonamu-ui/api/migrations/delCodes`,
-      data: {
-        codeNames,
-      },
-    });
-  }
-
   export function migrationsGeneratePreparedCodes(
     compareConnKey?: MigrationTarget,
   ): Promise<number> {

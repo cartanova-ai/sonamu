@@ -91,13 +91,11 @@ export default {
   "migration.codeFiles": "Migration Code Files",
   "migration.toggleCodes": "코드 토글",
   "migration.generate": "생성",
-  "migration.deleteCodes": "코드 삭제",
   "migration.applyToLatest": "최신으로 적용",
   "migration.rollback": "롤백",
   "migration.noPreparedCodes": "준비된 마이그레이션 코드가 없습니다.",
   "migration.noCodeFiles": "마이그레이션 코드 파일이 없습니다.",
   "migration.codeCollapsed": "코드 접힘",
-  "migration.confirm.deleteCodes": "선택한 {count}개의 마이그레이션 코드를 삭제하시겠습니까?",
   "migration.warning.production.title": "Production 데이터베이스 선택 경고",
   "migration.warning.production.description":
     "Production 마이그레이션은 운영 데이터에 영향을 줄 수 있습니다. 대상을 다시 확인해 주세요.",
