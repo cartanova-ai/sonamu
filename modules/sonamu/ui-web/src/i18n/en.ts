@@ -93,24 +93,88 @@ const en: Record<DictKey, Dictionary[string]> = {
   "entity.index.columns": "Columns",
 
   // Migration
-  "migration.preparedCodes": "Prepared Migration Codes",
-  "migration.codeFiles": "Migration Code Files",
-  "migration.toggleCodes": "Toggle codes",
-  "migration.generate": "Generate",
   "migration.applyToLatest": "Apply to Latest",
   "migration.rollback": "Rollback",
-  "migration.noPreparedCodes": "No prepared migration codes.",
-  "migration.noCodeFiles": "No migration code files",
-  "migration.codeCollapsed": "Code is collapsed",
+  "migration.running": "Running",
+  "migration.remoteDb": "remote DB",
+  "migration.remoteTag": "remote",
+  "migration.status.pending": "PENDING",
+  "migration.status.applied": "APPLIED",
+  "migration.streamEndedWithoutComplete": "The migration stream ended without a complete event.",
+  "migration.disconnectedNotice":
+    "Connection lost. Please check the Sonamu development server status.",
   "migration.warning.production.title": "Production Database Warning",
   "migration.warning.production.description":
     "Production migrations can affect live data. Review the target before continuing.",
   "migration.warning.production.confirm": "Select Production",
-  "migration.error.connections":
-    "Some connections are in error state. Please check the connection settings and try again.",
-  "migration.status.pending": "PENDING",
-  "migration.status.applied": "APPLIED",
-  "migration.status.error": "ERROR",
+
+  // Migration - Progress card
+  "migration.verb.apply": "Applied",
+  "migration.verb.verify": "Verified",
+  "migration.verb.rollback": "Rolled back",
+  "migration.progress.passed": "Passed",
+  "migration.progress.done": "Done",
+  "migration.progress.preparing": "preparing",
+
+  // Migration - Compare & Generate
+  "migration.preview.title": "Compare & Generate",
+  "migration.preview.compareBase": "Base DB:",
+  "migration.preview.noComparable": "No up-to-date DB available for comparison.",
+  "migration.preview.expandAll": "Expand All",
+  "migration.preview.collapseAll": "Collapse All",
+  "migration.preview.generate": "Generate Migrations ({count})",
+  "migration.preview.fileToCreate": "File to Create",
+  "migration.preview.noChanges": "No changes to generate.",
+
+  // Migration - Status matrix
+  "migration.matrix.title": "Migration Status",
+  "migration.matrix.detailed": "Detailed",
+  "migration.matrix.filename": "Filename",
+  "migration.matrix.noFiles": "No migration files.",
+  "migration.matrix.selectConnection": "Select {name} DB",
+  "migration.matrix.refreshStatus": "Refresh {name} DB status",
+  "migration.matrix.error": "Error",
+  "migration.matrix.errorDetail": "View {name} error details",
+  "migration.matrix.errorTitle": "Error — {name}",
+  "migration.matrix.connectionChecking": "Connection status: checking",
+  "migration.matrix.connectionOk": "Connection status: connected",
+  "migration.matrix.openCode": "Open {name} code",
+  "migration.matrix.previewHere": "View code here",
+  "migration.matrix.openInEditor": "Open in editor",
+
+  // Migration - Apply dialog
+  "migration.apply.description": "Review and execute the migration plan for the selected DBs.",
+  "migration.apply.stage.review": "Review",
+  "migration.apply.stage.approval": "Approval",
+  "migration.apply.stage.apply": "Apply",
+  "migration.apply.shadowLabel": "Shadow Verification",
+  "migration.apply.shadowToggle": "Verify with shadow before applying",
+  "migration.apply.approvalWaiting": "Waiting for approval",
+  "migration.apply.forcePrompt": "Proceed without approval?",
+  "migration.apply.forceChip.harmless": "Harmless to production.",
+  "migration.apply.forceChip.agreed": "Already agreed.",
+  "migration.apply.forceChip.urgent": "Urgent.",
+  "migration.apply.forceReasonPlaceholder": "Reason for forcing",
+  "migration.apply.forceSkip": "Skip Approval",
+  "migration.apply.bypassed": "Approval skipped — {reason}",
+  "migration.apply.approved": "Approved",
+  "migration.apply.requestApproval": "Request Slack Approval",
+  "migration.apply.applyToCount": "Apply to {count} DBs",
+  "migration.apply.approvalRejected": "Slack approval was rejected.",
+  "migration.apply.approvalCheckFailed": "Failed to check Slack approval status: {message}",
+  "migration.apply.failed": "Execution failed.",
+
+  // Migration - Rollback dialog
+  "migration.rollbackDialog.description":
+    "Reverts the most recently executed migration batch on each DB.",
+  "migration.rollbackDialog.note1":
+    "For each DB, knex.migrate.rollback() is called, running down() of the files in the last batch in reverse order.",
+  "migration.rollbackDialog.note2":
+    "Rolling back can cause data loss such as dropped columns or tables. Make sure you fully understand what will be rolled back before executing.",
+  "migration.rollbackDialog.note3":
+    "If an error occurs midway, execution stops at that file. Since the rollback transaction is also cancelled, it may look like nothing changed. Rollbacks run from the latest migration in order, so a failure in the middle blocks further rollbacks.",
+  "migration.rollbackDialog.confirmArm": "Are you sure? Click once more.",
+  "migration.rollbackDialog.failed": "Rollback failed.",
 
   // Scaffolding
   "scaffolding.entities": "Entities",

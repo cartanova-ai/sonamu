@@ -36,6 +36,7 @@ import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import TriangleAlertIcon from "~icons/lucide/triangle-alert";
 import Undo2Icon from "~icons/lucide/undo-2";
 
+import { useSonamuContext } from "../../contexts/sonamu-provider";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 
 type MigrationEditor = "vscode" | "cursor" | "zed";
@@ -75,21 +76,22 @@ function FileState({ children, tone }: { children: ReactNode; tone: "green" | "y
 }
 
 function RemoteIndicator() {
+  const { SD } = useSonamuContext();
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label="remote DB"
-          title="remote DB"
+          aria-label={SD("migration.remoteDb")}
+          title={SD("migration.remoteDb")}
           className="inline-flex shrink-0 cursor-pointer rounded-sm border-0 bg-transparent p-0 text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-muted-foreground/40"
           onClick={(event) => event.stopPropagation()}
         >
           <GlobeIcon className="size-3.5" aria-hidden="true" />
         </button>
       </PopoverTrigger>
-      <PopoverContent aria-label="remote DB" className="w-auto px-3 py-2 text-xs">
-        <p>remote DB</p>
+      <PopoverContent aria-label={SD("migration.remoteDb")} className="w-auto px-3 py-2 text-xs">
+        <p>{SD("migration.remoteDb")}</p>
       </PopoverContent>
     </Popover>
   );
@@ -108,6 +110,7 @@ function ConnectionHeader({
   detailed: boolean;
   onToggle: () => void;
 }) {
+  const { SD } = useSonamuContext();
   const [errorOpen, setErrorOpen] = useState(false);
   const status = query.data?.status;
   const error = status?.error ?? query.error?.message;
@@ -124,7 +127,10 @@ function ConnectionHeader({
         >
           <div className="flex items-center gap-1.5">
             <Checkbox
-              aria-label={`${connection.name} DB 선택`}
+              aria-label={SD("migration.matrix.selectConnection").replace(
+                "{name}",
+                connection.name,
+              )}
               checked={selected}
               disabled={!ready}
               onCheckedChange={onToggle}
@@ -143,16 +149,19 @@ function ConnectionHeader({
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    aria-label={`${connection.name} 오류 상세 보기`}
+                    aria-label={SD("migration.matrix.errorDetail").replace(
+                      "{name}",
+                      connection.name,
+                    )}
                     className="shrink-0 cursor-pointer rounded-full border border-destructive/40 bg-transparent px-1.5 py-0.5 text-[10px]! font-medium leading-none! text-destructive outline-none hover:bg-destructive/5 focus-visible:ring-2 focus-visible:ring-destructive/30"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    오류
+                    {SD("migration.matrix.error")}
                   </button>
                 </PopoverTrigger>
                 <PopoverContent
                   align="start"
-                  aria-label={`오류 — ${connection.name}`}
+                  aria-label={SD("migration.matrix.errorTitle").replace("{name}", connection.name)}
                   className="w-[440px] max-w-[calc(100vw-2rem)] space-y-2 normal-case"
                   tabIndex={-1}
                   onKeyDown={(event) => {
@@ -160,7 +169,8 @@ function ConnectionHeader({
                   }}
                 >
                   <div className="flex items-center gap-2 font-bold text-destructive">
-                    <TriangleAlertIcon className="size-4 shrink-0" /> 오류 — {connection.name}
+                    <TriangleAlertIcon className="size-4 shrink-0" />{" "}
+                    {SD("migration.matrix.errorTitle").replace("{name}", connection.name)}
                   </div>
                   <pre className="max-h-60 overflow-y-auto whitespace-pre-wrap break-all rounded-md border border-red-200 bg-red-50 p-3 font-mono text-xs text-red-800">
                     {error}
@@ -175,7 +185,7 @@ function ConnectionHeader({
                 className="-mr-1 ml-auto hover:bg-black/10 hover:text-foreground"
                 icon={<RefreshCwIcon className={query.isFetching ? "animate-spin" : ""} />}
                 disabled={query.isFetching}
-                aria-label={`${connection.name} DB 상태 새로고침`}
+                aria-label={SD("migration.matrix.refreshStatus").replace("{name}", connection.name)}
                 onClick={(event) => {
                   event.stopPropagation();
                   void query.refetch();
@@ -195,7 +205,11 @@ function ConnectionHeader({
             </div>
           ) : null}
           {error === undefined && (query.isFetching || status !== undefined) ? (
-            <span className="sr-only">연결 상태: {query.isFetching ? "확인 중" : "연결됨"}</span>
+            <span className="sr-only">
+              {query.isFetching
+                ? SD("migration.matrix.connectionChecking")
+                : SD("migration.matrix.connectionOk")}
+            </span>
           ) : null}
         </div>
       </TooltipTrigger>
@@ -221,6 +235,7 @@ export function MigrationMatrix({
   onRollback,
   onOpenCode,
 }: MigrationMatrixProps) {
+  const { SD } = useSonamuContext();
   const [expandedCodes, setExpandedCodes] = useState<string[]>([]);
   const [loadingCodes, setLoadingCodes] = useState<string[]>([]);
   const [codeContents, setCodeContents] = useState<Record<string, string>>({});
@@ -262,7 +277,7 @@ export function MigrationMatrix({
   return (
     <section>
       <h3 className="flex items-center gap-3">
-        마이그레이션 상태
+        {SD("migration.matrix.title")}
         <label
           htmlFor="matrix-detailed-toggle"
           className="flex w-fit cursor-pointer items-center gap-1.5 text-sm leading-none! font-normal text-muted-foreground"
@@ -272,7 +287,7 @@ export function MigrationMatrix({
             checked={detailed}
             onCheckedChange={(checked) => onDetailedChange(checked === true)}
           />
-          자세히
+          {SD("migration.matrix.detailed")}
         </label>
         <span className="ml-auto flex items-center gap-2 text-sm font-normal">
           <Button
@@ -281,7 +296,7 @@ export function MigrationMatrix({
             disabled={actionsDisabled || totalPending === 0}
             onClick={onApply}
           >
-            최신으로 적용
+            {SD("migration.applyToLatest")}
           </Button>
           <Button
             size="sm"
@@ -290,14 +305,14 @@ export function MigrationMatrix({
             disabled={actionsDisabled}
             onClick={onRollback}
           >
-            롤백
+            {SD("migration.rollback")}
           </Button>
         </span>
       </h3>
       <Table className="border-separate border-spacing-x-0.5 border-spacing-y-0 text-[0.9em]">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead className="bg-gray-100">파일명</TableHead>
+            <TableHead className="bg-gray-100">{SD("migration.matrix.filename")}</TableHead>
             {connections.map((connection, index) => {
               const query = statusQueries[index];
               const selected = selectedConnections.includes(connection.connKey);
@@ -335,7 +350,9 @@ export function MigrationMatrix({
         <TableBody>
           {codes.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={connections.length + 1}>마이그레이션 파일이 없습니다.</TableCell>
+              <TableCell colSpan={connections.length + 1}>
+                {SD("migration.matrix.noFiles")}
+              </TableCell>
             </TableRow>
           ) : null}
           {codes.map((code) => (
@@ -347,7 +364,7 @@ export function MigrationMatrix({
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
-                          aria-label={`${code.name} 코드 열기`}
+                          aria-label={SD("migration.matrix.openCode").replace("{name}", code.name)}
                           size="xs"
                           variant="secondary"
                           icon={<CodeIcon />}
@@ -356,11 +373,11 @@ export function MigrationMatrix({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
                         <DropdownMenuItem onClick={() => void toggleCodePreview(code.name)}>
-                          여기서 코드 보기
+                          {SD("migration.matrix.previewHere")}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel className="text-xs text-muted-foreground">
-                          에디터에서 열기
+                          {SD("migration.matrix.openInEditor")}
                         </DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => onOpenCode(code.path, "vscode")}>
                           VS Code
@@ -400,9 +417,9 @@ export function MigrationMatrix({
                       ) : status.status === "error" || status.error !== undefined || query.error ? (
                         <span className="text-muted-foreground/40">—</span>
                       ) : status.pending.includes(code.name) ? (
-                        <FileState tone="yellow">PENDING</FileState>
+                        <FileState tone="yellow">{SD("migration.status.pending")}</FileState>
                       ) : (
-                        <FileState tone="green">APPLIED</FileState>
+                        <FileState tone="green">{SD("migration.status.applied")}</FileState>
                       )}
                     </TableCell>
                   );

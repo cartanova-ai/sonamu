@@ -87,24 +87,87 @@ export default {
   "entity.index.columns": "Columns",
 
   // Migration
-  "migration.preparedCodes": "Prepared Migration Codes",
-  "migration.codeFiles": "Migration Code Files",
-  "migration.toggleCodes": "코드 토글",
-  "migration.generate": "생성",
   "migration.applyToLatest": "최신으로 적용",
   "migration.rollback": "롤백",
-  "migration.noPreparedCodes": "준비된 마이그레이션 코드가 없습니다.",
-  "migration.noCodeFiles": "마이그레이션 코드 파일이 없습니다.",
-  "migration.codeCollapsed": "코드 접힘",
+  "migration.running": "실행 중",
+  "migration.remoteDb": "remote DB",
+  "migration.remoteTag": "remote",
+  "migration.status.pending": "PENDING",
+  "migration.status.applied": "APPLIED",
+  "migration.streamEndedWithoutComplete": "마이그레이션 스트림이 완료 이벤트 없이 종료되었습니다.",
+  "migration.disconnectedNotice": "연결이 끊겼습니다. Sonamu 개발 서버 상태를 확인해주세요.",
   "migration.warning.production.title": "Production 데이터베이스 선택 경고",
   "migration.warning.production.description":
     "Production 마이그레이션은 운영 데이터에 영향을 줄 수 있습니다. 대상을 다시 확인해 주세요.",
   "migration.warning.production.confirm": "Production 선택",
-  "migration.error.connections":
-    "일부 연결에서 오류가 발생했습니다. 연결 설정을 확인하고 다시 시도해주세요.",
-  "migration.status.pending": "PENDING",
-  "migration.status.applied": "APPLIED",
-  "migration.status.error": "ERROR",
+
+  // Migration - 진행 카드
+  "migration.verb.apply": "적용",
+  "migration.verb.verify": "검증",
+  "migration.verb.rollback": "롤백",
+  "migration.progress.passed": "통과",
+  "migration.progress.done": "완료",
+  "migration.progress.preparing": "준비 중",
+
+  // Migration - 비교·생성
+  "migration.preview.title": "비교·생성",
+  "migration.preview.compareBase": "기준 DB:",
+  "migration.preview.noComparable": "비교 가능한 최신 DB가 없습니다.",
+  "migration.preview.expandAll": "모두 펼치기",
+  "migration.preview.collapseAll": "모두 접기",
+  "migration.preview.generate": "마이그레이션 생성 ({count})",
+  "migration.preview.fileToCreate": "생성될 파일",
+  "migration.preview.noChanges": "생성할 변경사항이 없습니다.",
+
+  // Migration - 상태 매트릭스
+  "migration.matrix.title": "마이그레이션 상태",
+  "migration.matrix.detailed": "자세히",
+  "migration.matrix.filename": "파일명",
+  "migration.matrix.noFiles": "마이그레이션 파일이 없습니다.",
+  "migration.matrix.selectConnection": "{name} DB 선택",
+  "migration.matrix.refreshStatus": "{name} DB 상태 새로고침",
+  "migration.matrix.error": "오류",
+  "migration.matrix.errorDetail": "{name} 오류 상세 보기",
+  "migration.matrix.errorTitle": "오류 — {name}",
+  "migration.matrix.connectionChecking": "연결 상태: 확인 중",
+  "migration.matrix.connectionOk": "연결 상태: 연결됨",
+  "migration.matrix.openCode": "{name} 코드 열기",
+  "migration.matrix.previewHere": "여기서 코드 보기",
+  "migration.matrix.openInEditor": "에디터에서 열기",
+
+  // Migration - 적용 다이얼로그
+  "migration.apply.description": "선택한 DB에 적용될 마이그레이션 계획을 검토하고 실행합니다.",
+  "migration.apply.stage.review": "검토",
+  "migration.apply.stage.approval": "승인",
+  "migration.apply.stage.apply": "적용",
+  "migration.apply.shadowLabel": "Shadow 검증",
+  "migration.apply.shadowToggle": "적용 전 shadow 검증",
+  "migration.apply.approvalWaiting": "승인 대기 중",
+  "migration.apply.forcePrompt": "승인 없이 진행할까요?",
+  "migration.apply.forceChip.harmless": "운영에 무해함.",
+  "migration.apply.forceChip.agreed": "이미 합의됨.",
+  "migration.apply.forceChip.urgent": "긴급함.",
+  "migration.apply.forceReasonPlaceholder": "force 진행 사유",
+  "migration.apply.forceSkip": "승인 생략",
+  "migration.apply.bypassed": "승인 생략됨 — {reason}",
+  "migration.apply.approved": "승인됨",
+  "migration.apply.requestApproval": "Slack 승인 요청",
+  "migration.apply.applyToCount": "{count}개 DB에 적용",
+  "migration.apply.approvalRejected": "Slack 승인이 거절되었습니다.",
+  "migration.apply.approvalCheckFailed": "Slack 승인 상태 확인에 실패했습니다: {message}",
+  "migration.apply.failed": "실행에 실패했습니다.",
+
+  // Migration - 롤백 다이얼로그
+  "migration.rollbackDialog.description":
+    "각 DB에서 가장 최근에 실행한 마이그레이션 batch를 되돌립니다.",
+  "migration.rollbackDialog.note1":
+    "DB마다 knex.migrate.rollback()이 호출되어, 마지막 batch에 포함된 파일들의 down()이 역순으로 실행됩니다.",
+  "migration.rollbackDialog.note2":
+    "롤백을 진행하면 컬럼·테이블 삭제 등으로 데이터가 유실될 수 있으니, 롤백의 내용을 모두 숙지하신 상태로 실행하실 것을 권장합니다.",
+  "migration.rollbackDialog.note3":
+    "도중에 오류가 발생하면 해당 파일에서 중단됩니다. 다만 롤백 트랜잭션도 취소되기 때문에 아무런 변화가 없어 보일 수 있습니다. 롤백은 최신 마이그레이션부터 순서대로 실행되므로, 이렇게 중간에 문제가 발생하는 경우 다음 롤백으로 넘어갈 수 없습니다.",
+  "migration.rollbackDialog.confirmArm": "확실하십니까? 한 번만 더 눌러주세요.",
+  "migration.rollbackDialog.failed": "롤백에 실패했습니다.",
 
   // Scaffolding
   "scaffolding.entities": "Entities",

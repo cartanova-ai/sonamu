@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import { type MigrationConnectionMeta } from "sonamu";
 import GlobeIcon from "~icons/lucide/globe";
 
+import { useSonamuContext } from "../../contexts/sonamu-provider";
 import { type MigrationExecutionTarget } from "./_migration_execution";
 
 export function MigrationHeightReveal({ open, children }: { open: boolean; children: ReactNode }) {
@@ -32,10 +33,11 @@ export function MigrationErrorMessage({ message }: { message: string }) {
 }
 
 export function RemoteTag() {
+  const { SD } = useSonamuContext();
   return (
     <span className="inline-flex items-center gap-0.5 text-xs font-normal text-muted-foreground">
       <GlobeIcon className="size-3.5 shrink-0" />
-      remote
+      {SD("migration.remoteTag")}
     </span>
   );
 }
@@ -45,7 +47,7 @@ type MigrationProgressCardProps = {
   connectionDisplay?: string;
   target: MigrationExecutionTarget;
   label?: string;
-  verb: "적용" | "검증" | "롤백";
+  verb: "apply" | "verify" | "rollback";
   dashed?: boolean;
   showProgress?: boolean;
   showDone?: boolean;
@@ -63,6 +65,7 @@ export function MigrationProgressCard({
   showDone = true,
   showZeroFileDone = false,
 }: MigrationProgressCardProps) {
+  const { SD } = useSonamuContext();
   const total = target.files.length;
   const completed = Math.min(target.completed, total);
   const currentFile = target.currentFile ?? target.files[completed];
@@ -79,7 +82,7 @@ export function MigrationProgressCard({
         {connection?.remote === true ? <RemoteTag /> : null}
         {showDone && target.done && (total > 0 || showZeroFileDone) ? (
           <Badge className="migration-pop ml-auto h-5 border border-primary/30 bg-primary/5 text-primary">
-            {verb === "검증" ? "통과" : "완료"}
+            {verb === "verify" ? SD("migration.progress.passed") : SD("migration.progress.done")}
           </Badge>
         ) : null}
       </div>
@@ -99,7 +102,7 @@ export function MigrationProgressCard({
           <div className="font-mono text-[11px] text-muted-foreground">
             {target.done
               ? `${total}/${total}`
-              : `${verb} ${completed}/${total} · ${currentFile ?? "준비 중"}`}
+              : `${SD(`migration.verb.${verb}`)} ${completed}/${total} · ${currentFile ?? SD("migration.progress.preparing")}`}
           </div>
         </div>
       ) : null}

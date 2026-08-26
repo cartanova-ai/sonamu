@@ -15,6 +15,8 @@ import { type GenMigrationCode, type MigrationConnectionMeta, type MigrationTarg
 import CodeIcon from "~icons/lucide/code";
 import PlayIcon from "~icons/lucide/play";
 
+import { useSonamuContext } from "../../contexts/sonamu-provider";
+
 type MigrationPreviewProps = {
   connections: MigrationConnectionMeta[];
   compareConnKey?: MigrationTarget;
@@ -34,14 +36,15 @@ export function MigrationPreview({
   onCompareConnKeyChange,
   onGenerate,
 }: MigrationPreviewProps) {
+  const { SD } = useSonamuContext();
   const [expanded, setExpanded] = useState(false);
 
   return (
     <section>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h3 className="my-0! flex h-10 shrink-0 items-center">비교·생성</h3>
+        <h3 className="my-0! flex h-10 shrink-0 items-center">{SD("migration.preview.title")}</h3>
         <span className="flex h-10 min-w-0 basis-full items-center gap-2 text-sm font-normal sm:ml-4 sm:basis-auto">
-          <span className="shrink-0">기준 DB:</span>
+          <span className="shrink-0">{SD("migration.preview.compareBase")}</span>
           {connections.length > 0 && compareConnKey !== undefined ? (
             <Select
               className="min-w-0 flex-1 border-border sm:w-[180px] sm:flex-none"
@@ -52,7 +55,7 @@ export function MigrationPreview({
               }}
             />
           ) : (
-            <span className="text-muted-foreground">비교 가능한 최신 DB가 없습니다.</span>
+            <span className="text-muted-foreground">{SD("migration.preview.noComparable")}</span>
           )}
         </span>
         <span className="flex min-w-0 basis-full flex-wrap items-center gap-2 sm:ml-auto sm:basis-auto sm:flex-nowrap">
@@ -65,7 +68,7 @@ export function MigrationPreview({
             aria-controls="proposed-code-previews"
             onClick={() => setExpanded((current) => !current)}
           >
-            {expanded ? "모두 접기" : "모두 펼치기"}
+            {expanded ? SD("migration.preview.collapseAll") : SD("migration.preview.expandAll")}
           </Button>
           <Button
             size="sm"
@@ -73,24 +76,27 @@ export function MigrationPreview({
             disabled={compareConnKey === undefined || loading || generating}
             onClick={onGenerate}
           >
-            마이그레이션 생성 ({preparedCodes?.length ?? 0})
+            {SD("migration.preview.generate").replace(
+              "{count}",
+              String(preparedCodes?.length ?? 0),
+            )}
           </Button>
         </span>
       </div>
       <Table className="text-[0.9em]">
         <TableHeader>
           <TableRow className="hover:bg-transparent bg-gray-100">
-            <TableHead style={{ width: "90px" }}>유형</TableHead>
-            <TableHead style={{ width: "160px" }}>테이블</TableHead>
-            <TableHead>생성될 파일</TableHead>
-            <TableHead style={{ width: "50%" }}>코드</TableHead>
+            <TableHead style={{ width: "90px" }}>{SD("common.type")}</TableHead>
+            <TableHead style={{ width: "160px" }}>{SD("common.table")}</TableHead>
+            <TableHead>{SD("migration.preview.fileToCreate")}</TableHead>
+            <TableHead style={{ width: "50%" }}>{SD("common.code")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody id="proposed-code-previews">
           {(preparedCodes?.length ?? 0) === 0 ? (
             <TableRow>
               <TableCell colSpan={4} className="text-center text-muted-foreground">
-                생성할 변경사항이 없습니다.
+                {SD("migration.preview.noChanges")}
               </TableCell>
             </TableRow>
           ) : null}

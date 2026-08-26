@@ -18,6 +18,7 @@ import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import SendIcon from "~icons/lucide/send";
 import TriangleAlertIcon from "~icons/lucide/triangle-alert";
 
+import { useSonamuContext } from "../../contexts/sonamu-provider";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { createMigrationExecutionState, migrationExecutionReducer } from "./_migration_execution";
 import {
@@ -28,12 +29,27 @@ import {
 
 type ApplyPhase = "review" | "approval" | "ready" | "running" | "done" | "failed" | "disconnected";
 type StreamOutcome = "complete" | "error" | "disconnected";
-const FORCE_REASON_CHIPS = ["운영에 무해함.", "이미 합의됨.", "긴급함."];
+const FORCE_REASON_CHIP_KEYS = [
+  "migration.apply.forceChip.harmless",
+  "migration.apply.forceChip.agreed",
+  "migration.apply.forceChip.urgent",
+] as const;
 
 function ApplyStepper({ phase, needsApproval }: { phase: ApplyPhase; needsApproval: boolean }) {
-  const stages = ["검토", ...(needsApproval ? ["승인"] : []), "적용"];
-  const current =
-    phase === "review" ? "검토" : phase === "approval" || phase === "ready" ? "승인" : "적용";
+  const { SD } = useSonamuContext();
+  const stageKeys = [
+    "migration.apply.stage.review" as const,
+    ...(needsApproval ? ["migration.apply.stage.approval" as const] : []),
+    "migration.apply.stage.apply" as const,
+  ];
+  const stages = stageKeys.map((key) => SD(key));
+  const current = SD(
+    phase === "review"
+      ? "migration.apply.stage.review"
+      : phase === "approval" || phase === "ready"
+        ? "migration.apply.stage.approval"
+        : "migration.apply.stage.apply",
+  );
   const currentIndex = Math.max(stages.indexOf(current), 0);
   return (
     <div className="flex w-full items-start px-2 pt-3 pb-1">
@@ -99,6 +115,7 @@ export function MigrationApplyDialog({
   onOpenChange,
   onSettled,
 }: MigrationApplyDialogProps) {
+  const { SD } = useSonamuContext();
   const [phase, setPhase] = useState<ApplyPhase>("review");
   const [shadowEnabled, setShadowEnabled] = useState(true);
   const [approval, setApproval] = useState<{ channel: string; ts: string }>();
@@ -153,7 +170,7 @@ export function MigrationApplyDialog({
       dispatch({
         type: "error",
         action: "apply",
-        message: "Slack 승인이 거절되었습니다.",
+        message: SD("migration.apply.approvalRejected"),
         completedTargets: [],
         pendingTargets: connections.map(({ connKey }) => connKey),
       });
@@ -165,7 +182,10 @@ export function MigrationApplyDialog({
     dispatch({
       type: "error",
       action: "apply",
-      message: `Slack 승인 상태 확인에 실패했습니다: ${approvalQuery.error.message}`,
+      message: SD("migration.apply.approvalCheckFailed").replace(
+        "{message}",
+        approvalQuery.error.message,
+      ),
       completedTargets: [],
       pendingTargets: targets,
     });
@@ -195,7 +215,7 @@ export function MigrationApplyDialog({
     dispatch({
       type: "disconnected",
       action: "apply",
-      message: "마이그레이션 스트림이 완료 이벤트 없이 종료되었습니다.",
+      message: SD("migration.streamEndedWithoutComplete"),
     });
     return "disconnected";
   };
@@ -304,10 +324,10 @@ export function MigrationApplyDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <PlayIcon className="size-4" />
-            최신으로 적용
+            {SD("migration.applyToLatest")}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            선택한 DB에 적용될 마이그레이션 계획을 검토하고 실행합니다.
+            {SD("migration.apply.description")}
           </DialogDescription>
           <ApplyStepper phase={phase} needsApproval={needsApproval} />
         </DialogHeader>
@@ -317,8 +337,8 @@ export function MigrationApplyDialog({
               <MigrationProgressCard
                 connectionDisplay={shadowConnectionDisplay}
                 target={shadowTarget}
-                label="Shadow 검증"
-                verb="검증"
+                label={SD("migration.apply.shadowLabel")}
+                verb="verify"
                 dashed
                 showProgress={shadowProgress !== undefined}
                 showZeroFileDone
@@ -338,7 +358,7 @@ export function MigrationApplyDialog({
                   key={connection.connKey}
                   connection={connection}
                   target={progress}
-                  verb="적용"
+                  verb="apply"
                   showDone={phase === "done"}
                   showProgress={
                     (phase === "running" && runningStage === "apply") ||
@@ -360,7 +380,7 @@ export function MigrationApplyDialog({
                   disabled={phase !== "review"}
                   onCheckedChange={(checked) => setShadowEnabled(checked === true)}
                 />
-                적용 전 shadow 검증
+                {SD("migration.apply.shadowToggle")}
               </label>
             ) : null}
           </div>
@@ -369,7 +389,8 @@ export function MigrationApplyDialog({
               <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-3">
                 <div className="flex items-center gap-2 py-0.5 text-xs font-semibold text-foreground">
                   <RefreshCwIcon className="size-3.5 shrink-0 animate-spin text-primary" />
-                  <span className="font-mono">#{approval?.channel}</span> 승인 대기 중
+                  <span className="font-mono">#{approval?.channel}</span>{" "}
+                  {SD("migration.apply.approvalWaiting")}
                 </div>
                 <button
                   type="button"
@@ -377,34 +398,37 @@ export function MigrationApplyDialog({
                   aria-expanded={forceOpen}
                   onClick={() => setForceOpen((value) => !value)}
                 >
-                  승인 없이 진행할까요?
+                  {SD("migration.apply.forcePrompt")}
                 </button>
                 <MigrationHeightReveal open={forceOpen}>
                   <div className="flex flex-wrap items-center gap-1.5 pt-2">
-                    {FORCE_REASON_CHIPS.map((chip) => (
-                      <button
-                        key={chip}
-                        type="button"
-                        className={classNames(
-                          "cursor-pointer rounded-full border px-2 py-0.5 text-[11px]! leading-normal!",
-                          forceChips.includes(chip)
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-gray-300 bg-transparent text-muted-foreground hover:bg-gray-100",
-                        )}
-                        onClick={() =>
-                          setForceChips((current) =>
-                            current.includes(chip)
-                              ? current.filter((value) => value !== chip)
-                              : [...current, chip],
-                          )
-                        }
-                      >
-                        {chip}
-                      </button>
-                    ))}
+                    {FORCE_REASON_CHIP_KEYS.map((chipKey) => {
+                      const chip = SD(chipKey);
+                      return (
+                        <button
+                          key={chipKey}
+                          type="button"
+                          className={classNames(
+                            "cursor-pointer rounded-full border px-2 py-0.5 text-[11px]! leading-normal!",
+                            forceChips.includes(chip)
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-gray-300 bg-transparent text-muted-foreground hover:bg-gray-100",
+                          )}
+                          onClick={() =>
+                            setForceChips((current) =>
+                              current.includes(chip)
+                                ? current.filter((value) => value !== chip)
+                                : [...current, chip],
+                            )
+                          }
+                        >
+                          {chip}
+                        </button>
+                      );
+                    })}
                     <Input
                       className="h-8 min-w-32 flex-1 border-gray-300 text-xs"
-                      placeholder="force 진행 사유"
+                      placeholder={SD("migration.apply.forceReasonPlaceholder")}
                       value={forceReason}
                       onChange={(event) => setForceReason(event.target.value)}
                     />
@@ -414,7 +438,7 @@ export function MigrationApplyDialog({
                       disabled={combinedForceReason.length === 0}
                       onClick={() => void handleForce()}
                     >
-                      승인 생략
+                      {SD("migration.apply.forceSkip")}
                     </Button>
                   </div>
                 </MigrationHeightReveal>
@@ -433,8 +457,8 @@ export function MigrationApplyDialog({
               >
                 {bypassed ? <TriangleAlertIcon className="size-3.5 shrink-0" /> : null}
                 {bypassed
-                  ? `승인 생략됨 — ${combinedForceReason}`
-                  : `승인됨${approvalQuery.data?.approver ? ` — @${approvalQuery.data.approver}` : ""}`}
+                  ? SD("migration.apply.bypassed").replace("{reason}", combinedForceReason)
+                  : `${SD("migration.apply.approved")}${approvalQuery.data?.approver ? ` — @${approvalQuery.data.approver}` : ""}`}
               </div>
             </div>
           </MigrationHeightReveal>
@@ -445,8 +469,8 @@ export function MigrationApplyDialog({
               <MigrationErrorMessage
                 message={
                   phase === "disconnected"
-                    ? "연결이 끊겨도 실행은 계속될 수 있으니 상태를 다시 확인하세요."
-                    : (execution.message ?? "실행에 실패했습니다.")
+                    ? SD("migration.disconnectedNotice")
+                    : (execution.message ?? SD("migration.apply.failed"))
                 }
               />
             </div>
@@ -460,40 +484,45 @@ export function MigrationApplyDialog({
                 disabled={requestingApproval}
                 onClick={() => handleOpenChange(false)}
               >
-                취소
+                {SD("common.cancel")}
               </Button>
               <Button
                 icon={needsApproval ? <SendIcon /> : <PlayIcon />}
                 disabled={requestingApproval}
                 onClick={() => void handleReviewAction()}
               >
-                {needsApproval ? "Slack 승인 요청" : `${connections.length}개 DB에 적용`}
+                {needsApproval
+                  ? SD("migration.apply.requestApproval")
+                  : SD("migration.apply.applyToCount").replace(
+                      "{count}",
+                      String(connections.length),
+                    )}
               </Button>
             </>
           ) : null}
           {phase === "approval" ? (
             <Button disabled icon={<RefreshCwIcon className="animate-spin" />}>
-              승인 대기 중
+              {SD("migration.apply.approvalWaiting")}
             </Button>
           ) : null}
           {phase === "ready" ? (
             <>
               <Button variant="secondary" onClick={() => onOpenChange(false)}>
-                취소
+                {SD("common.cancel")}
               </Button>
               <Button icon={<PlayIcon />} onClick={() => void runApply()}>
-                {connections.length}개 DB에 적용
+                {SD("migration.apply.applyToCount").replace("{count}", String(connections.length))}
               </Button>
             </>
           ) : null}
           {phase === "running" ? (
             <Button disabled icon={<RefreshCwIcon className="animate-spin" />}>
-              실행 중
+              {SD("migration.running")}
             </Button>
           ) : null}
           {phase === "done" || phase === "failed" || phase === "disconnected" ? (
             <Button variant="secondary" onClick={() => handleOpenChange(false)}>
-              닫기
+              {SD("common.close")}
             </Button>
           ) : null}
         </DialogFooter>
