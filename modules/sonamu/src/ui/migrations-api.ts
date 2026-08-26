@@ -367,6 +367,6 @@ export async function registerMigrationsApi(server: FastifyInstance) {
     }
     assertTargets(migrator, request.body.targets);
     await getAvailableTargetStatuses(migrator, request.body.targets);
-    return migrator.runAction(request.body.action, request.body.targets);
+    return migrator.rollback(request.body.targets);
   });
 }

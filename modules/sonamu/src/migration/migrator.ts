@@ -207,6 +207,12 @@ export class Migrator {
     }
   }
 
+  /**
+   * 마이그레이션 대상 커넥션의 정적 메타데이터를 반환합니다.
+   * DB에 연결하지 않으므로 CLI와 Web이 상태 조회 전에 즉시 사용할 수 있습니다.
+   *
+   * @category 분리형 마이그레이션 API
+   */
   getConnections(): MigrationConnectionMeta[] {
     const slackConfirm = new SlackConfirm();
     return this.getMigrationTargetKeys().map((connKey) => {
@@ -224,6 +230,11 @@ export class Migrator {
     });
   }
 
+  /**
+   * 소스에 존재하는 마이그레이션 파일 목록을 반환합니다.
+   *
+   * @category 분리형 마이그레이션 API
+   */
   async getMigrationCodes(): Promise<MigrationCode[]> {
     const srcMigrationsDir = path.join(Sonamu.apiRootPath, "src", "migrations"); // 이건 환경에 관계없이 항상 src에서 찾아야 해요.
 
@@ -245,6 +256,12 @@ export class Migrator {
     return codes;
   }
 
+  /**
+   * 커넥션 하나의 현재 버전과 pending 목록을 독립적으로 조회합니다.
+   * 여러 대상은 호출자가 병렬로 조립할 수 있습니다.
+   *
+   * @category 분리형 마이그레이션 API
+   */
   async getConnectionStatus(connKey: MigrationTarget): Promise<MigrationConnectionStatus> {
     this.assertMigrationTarget(connKey);
     const startedAt = performance.now();
@@ -332,6 +349,11 @@ export class Migrator {
     }
   }
 
+  /**
+   * 최신 상태인 기준 DB와 엔티티 정의를 비교해 생성 예정 코드를 반환합니다.
+   *
+   * @category 분리형 마이그레이션 API
+   */
   async getPreparedCodes(compareConnKey: MigrationTarget): Promise<GenMigrationCode[]> {
     const status = await this.getConnectionStatus(compareConnKey);
     if (status.status !== 0 || status.error !== undefined) {
@@ -355,6 +377,7 @@ export class Migrator {
   /**
    * @deprecated 신규 UI에서는 커넥션별 조회 API를 사용합니다.
    * 기존 CLI와 스크립트 호환을 위해 전체 상태를 조립합니다.
+   * @category 호환용 마이그레이션 API
    */
   async getStatus(): Promise<MigrationStatus> {
     const [codes, connections] = await Promise.all([
@@ -398,31 +421,38 @@ export class Migrator {
   }
 
   /**
-   * 마이그레이션을 적용하거나 롤백합니다.
-   * Sonamu UI에서 마이그레이션 작업을 수행할 때 사용됩니다.
+   * 대상 DB에 pending 마이그레이션을 적용합니다.
+   * CLI와 Web은 같은 메서드를 사용하며, Web은 `onProgress`를 stream으로 변환합니다.
    *
-   * CLI와 Sonamu UI에서 사용됩니다.
+   * @category 분리형 마이그레이션 API
+   */
+  async apply(targets: MigrationTarget[], options?: MigrationRunOptions): Promise<MigrationResult> {
+    return this.runActionWithProgress("apply", targets, options);
+  }
+
+  /**
+   * 대상 DB에서 가장 최근 migration batch를 롤백합니다.
+   * CLI와 Web은 같은 메서드를 사용하며, Web은 `onProgress`를 stream으로 변환합니다.
    *
-   * @param action 작업 유형 (apply/rollback)
-   * @param targets 작업 대상 DB 설정 키 (keyof SonamuDBConfig)
-   * @returns 작업 결과
+   * @category 분리형 마이그레이션 API
+   */
+  async rollback(
+    targets: MigrationTarget[],
+    options?: MigrationRunOptions,
+  ): Promise<MigrationResult> {
+    return this.runActionWithProgress("rollback", targets, options);
+  }
+
+  /**
+   * @deprecated action 문자열 대신 {@link apply} 또는 {@link rollback}을 직접 사용합니다.
+   * 기존 외부 호출의 하위 호환만을 위해 유지합니다.
+   * @category 호환용 마이그레이션 API
    */
   async runAction(
     action: "apply" | "rollback",
     targets: (keyof SonamuDBConfig)[],
   ): Promise<MigrationResult> {
     return action === "apply" ? this.apply(targets) : this.rollback(targets);
-  }
-
-  async apply(targets: MigrationTarget[], options?: MigrationRunOptions): Promise<MigrationResult> {
-    return this.runActionWithProgress("apply", targets, options);
-  }
-
-  async rollback(
-    targets: MigrationTarget[],
-    options?: MigrationRunOptions,
-  ): Promise<MigrationResult> {
-    return this.runActionWithProgress("rollback", targets, options);
   }
 
   private async runActionWithProgress(
@@ -648,11 +678,10 @@ export class Migrator {
   }
 
   /**
-   * Shadow DB 테스트를 진행합니다.
+   * test DB의 snapshot으로 임시 Shadow DB를 만들고 전체 마이그레이션을 검증합니다.
+   * CLI와 Web은 `onProgress` 유무만 달리해 같은 실행 의미를 공유할 수 있습니다.
    *
-   * Sonamu UI에서 사용됩니다.
-   *
-   * @returns Shadow DB 테스트 결과
+   * @category 분리형 마이그레이션 API
    */
   async runShadowTest(options?: MigrationRunOptions): Promise<MigrationResult> {
     const baseTestConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
