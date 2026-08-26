@@ -107,6 +107,7 @@ export default {
   "migration.verb.rollback": "롤백",
   "migration.progress.passed": "통과",
   "migration.progress.done": "완료",
+  "migration.progress.error": "오류",
   "migration.progress.preparing": "준비 중",
 
   // Migration - 비교·생성
@@ -118,6 +119,8 @@ export default {
   "migration.preview.generate": "마이그레이션 생성 ({count})",
   "migration.preview.fileToCreate": "생성될 파일",
   "migration.preview.noChanges": "생성할 변경사항이 없습니다.",
+  "migration.preview.errorTitle": "비교 실패",
+  "migration.preview.retry": "다시 시도",
 
   // Migration - 상태 매트릭스
   "migration.matrix.title": "마이그레이션 상태",

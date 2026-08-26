@@ -80,7 +80,11 @@ export function MigrationProgressCard({
       <div className="flex h-6 items-center gap-2">
         <b>{label ?? connection?.name ?? target.connKey}</b>
         {connection?.remote === true ? <RemoteTag /> : null}
-        {showDone && target.done && (total > 0 || showZeroFileDone) ? (
+        {target.error !== undefined ? (
+          <Badge className="migration-pop ml-auto h-5 border border-destructive/30 bg-destructive/5 text-destructive">
+            {SD("migration.progress.error")}
+          </Badge>
+        ) : showDone && target.done && (total > 0 || showZeroFileDone) ? (
           <Badge className="migration-pop ml-auto h-5 border border-primary/30 bg-primary/5 text-primary">
             {verb === "verify" ? SD("migration.progress.passed") : SD("migration.progress.done")}
           </Badge>

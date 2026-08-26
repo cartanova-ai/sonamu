@@ -164,10 +164,12 @@ function MigrationsIndex() {
             connections={eligibleCompareConnections}
             compareConnKey={compareConnKey}
             preparedCodes={preparedCodesQuery.data?.preparedCodes}
+            error={preparedCodesQuery.error}
             loading={preparedCodesQuery.isFetching}
             generating={generating}
             onCompareConnKeyChange={setRequestedCompareKey}
             onGenerate={() => void handleGenerate()}
+            onRetry={() => void preparedCodesQuery.refetch()}
           />
           <MigrationMatrix
             connections={connections}

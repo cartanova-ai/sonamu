@@ -114,6 +114,7 @@ const en: Record<DictKey, Dictionary[string]> = {
   "migration.verb.rollback": "Rolled back",
   "migration.progress.passed": "Passed",
   "migration.progress.done": "Done",
+  "migration.progress.error": "Error",
   "migration.progress.preparing": "preparing",
 
   // Migration - Compare & Generate
@@ -125,6 +126,8 @@ const en: Record<DictKey, Dictionary[string]> = {
   "migration.preview.generate": "Generate Migrations ({count})",
   "migration.preview.fileToCreate": "File to Create",
   "migration.preview.noChanges": "No changes to generate.",
+  "migration.preview.errorTitle": "Comparison Failed",
+  "migration.preview.retry": "Retry",
 
   // Migration - Status matrix
   "migration.matrix.title": "Migration Status",

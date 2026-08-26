@@ -14,6 +14,8 @@ import { useState } from "react";
 import { type GenMigrationCode, type MigrationConnectionMeta, type MigrationTarget } from "sonamu";
 import CodeIcon from "~icons/lucide/code";
 import PlayIcon from "~icons/lucide/play";
+import RefreshCwIcon from "~icons/lucide/refresh-cw";
+import TriangleAlertIcon from "~icons/lucide/triangle-alert";
 
 import { useSonamuContext } from "../../contexts/sonamu-provider";
 
@@ -21,20 +23,24 @@ type MigrationPreviewProps = {
   connections: MigrationConnectionMeta[];
   compareConnKey?: MigrationTarget;
   preparedCodes?: GenMigrationCode[];
+  error: Error | null;
   loading: boolean;
   generating: boolean;
   onCompareConnKeyChange: (connKey: MigrationTarget) => void;
   onGenerate: () => void;
+  onRetry: () => void;
 };
 
 export function MigrationPreview({
   connections,
   compareConnKey,
   preparedCodes,
+  error,
   loading,
   generating,
   onCompareConnKeyChange,
   onGenerate,
+  onRetry,
 }: MigrationPreviewProps) {
   const { SD } = useSonamuContext();
   const [expanded, setExpanded] = useState(false);
@@ -73,7 +79,13 @@ export function MigrationPreview({
           <Button
             size="sm"
             icon={<PlayIcon />}
-            disabled={compareConnKey === undefined || loading || generating}
+            disabled={
+              compareConnKey === undefined ||
+              preparedCodes === undefined ||
+              error !== null ||
+              loading ||
+              generating
+            }
             onClick={onGenerate}
           >
             {SD("migration.preview.generate").replace(
@@ -93,39 +105,58 @@ export function MigrationPreview({
           </TableRow>
         </TableHeader>
         <TableBody id="proposed-code-previews">
-          {(preparedCodes?.length ?? 0) === 0 ? (
+          {error !== null ? (
+            <TableRow className="bg-destructive/5 hover:bg-destructive/5">
+              <TableCell colSpan={4} className="border border-destructive/30 py-3">
+                <div role="alert" className="flex items-start gap-2 text-destructive">
+                  <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="font-medium">{SD("migration.preview.errorTitle")}</div>
+                    <pre className="m-0 whitespace-pre-wrap break-all font-mono text-xs leading-relaxed">
+                      {error.message}
+                    </pre>
+                  </div>
+                  <Button size="xs" variant="outline" icon={<RefreshCwIcon />} onClick={onRetry}>
+                    {SD("migration.preview.retry")}
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ) : (preparedCodes?.length ?? 0) === 0 ? (
             <TableRow>
               <TableCell colSpan={4} className="text-center text-muted-foreground">
                 {SD("migration.preview.noChanges")}
               </TableCell>
             </TableRow>
           ) : null}
-          {preparedCodes?.map((change, index) => (
-            <TableRow key={`${change.title}-${index}`}>
-              <TableCell className="align-top py-3">
-                <Badge
-                  variant="outline"
-                  className={classNames("w-16 justify-center", {
-                    "border-green-300 bg-green-100/60 text-green-800": change.type === "normal",
-                    "border-gray-300 bg-gray-100 text-gray-600": change.type === "foreign",
-                  })}
-                >
-                  {change.type.toUpperCase()}
-                </Badge>
-              </TableCell>
-              <TableCell className="font-mono align-top py-3">{change.table}</TableCell>
-              <TableCell className="font-mono align-top py-3">{change.title}</TableCell>
-              <TableCell className="py-2">
-                {expanded ? (
-                  <pre className="max-w-full overflow-x-auto whitespace-pre rounded-lg bg-green-50 p-4 font-mono text-sm leading-relaxed text-gray-900">
-                    <code>{change.formatted ?? ""}</code>
-                  </pre>
-                ) : (
-                  <span className="text-muted-foreground/40">—</span>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
+          {error === null
+            ? preparedCodes?.map((change, index) => (
+                <TableRow key={`${change.title}-${index}`}>
+                  <TableCell className="align-top py-3">
+                    <Badge
+                      variant="outline"
+                      className={classNames("w-16 justify-center", {
+                        "border-green-300 bg-green-100/60 text-green-800": change.type === "normal",
+                        "border-gray-300 bg-gray-100 text-gray-600": change.type === "foreign",
+                      })}
+                    >
+                      {change.type.toUpperCase()}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-mono align-top py-3">{change.table}</TableCell>
+                  <TableCell className="font-mono align-top py-3">{change.title}</TableCell>
+                  <TableCell className="py-2">
+                    {expanded ? (
+                      <pre className="max-w-full overflow-x-auto whitespace-pre rounded-lg bg-green-50 p-4 font-mono text-sm leading-relaxed text-gray-900">
+                        <code>{change.formatted ?? ""}</code>
+                      </pre>
+                    ) : (
+                      <span className="text-muted-foreground/40">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            : null}
         </TableBody>
       </Table>
     </section>
