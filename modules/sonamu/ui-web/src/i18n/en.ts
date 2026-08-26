@@ -126,8 +126,9 @@ const en: Record<DictKey, Dictionary[string]> = {
   "migration.preview.generate": "Generate Migrations ({count})",
   "migration.preview.fileToCreate": "File to Create",
   "migration.preview.noChanges": "No changes to generate.",
-  "migration.preview.errorTitle": "Comparison Failed",
-  "migration.preview.retry": "Retry",
+  "migration.preview.errorTitle": "Comparison failed.",
+  "migration.preview.error": "Error",
+  "migration.preview.errorDetail": "View comparison error details",
 
   // Migration - Status matrix
   "migration.matrix.title": "Migration Status",

@@ -1,6 +1,9 @@
 import {
   Badge,
   Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Select,
   Table,
   TableBody,
@@ -14,7 +17,6 @@ import { useState } from "react";
 import { type GenMigrationCode, type MigrationConnectionMeta, type MigrationTarget } from "sonamu";
 import CodeIcon from "~icons/lucide/code";
 import PlayIcon from "~icons/lucide/play";
-import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import TriangleAlertIcon from "~icons/lucide/triangle-alert";
 
 import { useSonamuContext } from "../../contexts/sonamu-provider";
@@ -28,7 +30,6 @@ type MigrationPreviewProps = {
   generating: boolean;
   onCompareConnKeyChange: (connKey: MigrationTarget) => void;
   onGenerate: () => void;
-  onRetry: () => void;
 };
 
 export function MigrationPreview({
@@ -40,10 +41,10 @@ export function MigrationPreview({
   generating,
   onCompareConnKeyChange,
   onGenerate,
-  onRetry,
 }: MigrationPreviewProps) {
   const { SD } = useSonamuContext();
   const [expanded, setExpanded] = useState(false);
+  const [errorOpen, setErrorOpen] = useState(false);
 
   return (
     <section>
@@ -106,19 +107,38 @@ export function MigrationPreview({
         </TableHeader>
         <TableBody id="proposed-code-previews">
           {error !== null ? (
-            <TableRow className="bg-destructive/5 hover:bg-destructive/5">
-              <TableCell colSpan={4} className="border border-destructive/30 py-3">
-                <div role="alert" className="flex items-start gap-2 text-destructive">
-                  <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="font-medium">{SD("migration.preview.errorTitle")}</div>
-                    <pre className="m-0 whitespace-pre-wrap break-all font-mono text-xs leading-relaxed">
-                      {error.message}
-                    </pre>
-                  </div>
-                  <Button size="xs" variant="outline" icon={<RefreshCwIcon />} onClick={onRetry}>
-                    {SD("migration.preview.retry")}
-                  </Button>
+            <TableRow>
+              <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <div role="alert" className="flex items-center justify-center gap-2">
+                  <span>{SD("migration.preview.errorTitle")}</span>
+                  <Popover open={errorOpen} onOpenChange={setErrorOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={SD("migration.preview.errorDetail")}
+                        className="shrink-0 cursor-pointer rounded-full border border-destructive/40 bg-transparent px-1.5 py-0.5 text-[10px]! font-medium leading-none! text-destructive outline-none hover:bg-destructive/5 focus-visible:ring-2 focus-visible:ring-destructive/30"
+                      >
+                        {SD("migration.preview.error")}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="center"
+                      aria-label={SD("migration.preview.errorDetail")}
+                      className="w-[440px] max-w-[calc(100vw-2rem)] space-y-2 normal-case"
+                      tabIndex={-1}
+                      onKeyDown={(event) => {
+                        if (event.key === "Tab") setErrorOpen(false);
+                      }}
+                    >
+                      <div className="flex items-center gap-2 font-bold text-destructive">
+                        <TriangleAlertIcon className="size-4 shrink-0" />
+                        {SD("migration.preview.errorTitle")}
+                      </div>
+                      <pre className="max-h-60 overflow-y-auto whitespace-pre-wrap break-all rounded-md border border-red-200 bg-red-50 p-3 font-mono text-xs text-red-800">
+                        {error.message}
+                      </pre>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </TableCell>
             </TableRow>

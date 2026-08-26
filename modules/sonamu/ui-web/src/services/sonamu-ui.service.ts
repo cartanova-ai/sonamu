@@ -315,6 +315,9 @@ export namespace SonamuUIService {
         }) as Promise<{ preparedCodes: GenMigrationCode[] }>,
       enabled: compareConnKey !== undefined,
       ...migrationQueryOptions,
+      // 기준 DB를 바꾸면 이전 비교 결과를 즉시 폐기해 새 결과와 섞이지 않게 합니다.
+      staleTime: 0,
+      gcTime: 0,
     });
   }
 

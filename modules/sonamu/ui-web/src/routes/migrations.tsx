@@ -169,7 +169,6 @@ function MigrationsIndex() {
             generating={generating}
             onCompareConnKeyChange={setRequestedCompareKey}
             onGenerate={() => void handleGenerate()}
-            onRetry={() => void preparedCodesQuery.refetch()}
           />
           <MigrationMatrix
             connections={connections}
