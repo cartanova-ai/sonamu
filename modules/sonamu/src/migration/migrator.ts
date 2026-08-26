@@ -76,6 +76,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => Error)
   });
 }
 
+/**
+ * Note 2026-08-26, 병준
+ * 이 클래스에서 deprecated 붙어있는 친구들은 현 CLI를 위한 하위 호환이니,
+ * CLI 리팩토링 시점에서 제거해주셔도 무방합니다.
+ */
 export class Migrator {
   private isMissingMigrationTableError(error: unknown): boolean {
     if (typeof error !== "object" || error === null) {
