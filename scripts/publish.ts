@@ -85,8 +85,8 @@ async function publishPackage(localPackage: LocalPackageInfo, publishTag?: strin
     console.log(`${localPackage.name}@${localPackage.version}: 퍼블리시 중입니다...`);
 
     const command = publishTag
-      ? `pnpm --filter ${localPackage.name} publish --no-git-checks --tag ${publishTag}`
-      : `pnpm --filter ${localPackage.name} publish --no-git-checks`;
+      ? `mise exec -- pnpm --filter ${localPackage.name} publish --no-git-checks --tag ${publishTag}`
+      : `mise exec -- pnpm --filter ${localPackage.name} publish --no-git-checks`;
     console.log(command);
 
     const child = exec(command);

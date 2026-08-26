@@ -49,12 +49,12 @@ wait_for_http() {
 }
 
 echo "Testing miomock-api (start)..."
-cd examples/miomock/api && pnpm start > /tmp/miomock-api-start.log 2>&1 & PID=$!
+cd examples/miomock/api && mise exec -- pnpm start > /tmp/miomock-api-start.log 2>&1 & PID=$!
 wait_for_http $PID http://localhost:10280/api/user/getMyIP /tmp/miomock-api-start.log
 kill_port 10280
 
 echo "Testing miomock-api (dev)..."
-cd examples/miomock/api && pnpm dev > /tmp/miomock-api-dev.log 2>&1 & PID=$!
+cd examples/miomock/api && mise exec -- pnpm dev > /tmp/miomock-api-dev.log 2>&1 & PID=$!
 wait_for_http $PID http://localhost:10280/api/user/getMyIP /tmp/miomock-api-dev.log
 kill_port 10280
 

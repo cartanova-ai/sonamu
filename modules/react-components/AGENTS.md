@@ -8,8 +8,8 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Required checks
 
-- `pnpm --filter @sonamu-kit/react-components build`
-- `pnpm --filter @sonamu-kit/react-components lint`
+- `mise exec -- pnpm --filter @sonamu-kit/react-components build`
+- `mise exec -- pnpm --filter @sonamu-kit/react-components lint`
 
 ## Frontend policy
 
@@ -18,4 +18,4 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Cross-workspace gate
 
-- For changes in this scope, root `pnpm check` (oxlint + oxfmt) must pass before handoff.
+- For changes in this scope, root `mise run check` (oxlint + oxfmt) must pass before handoff.

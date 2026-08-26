@@ -10,6 +10,8 @@ model: opus
 
 Create downstream prerequisites (types, interfaces, migrations, scaffolds, frame shells) that must exist before test or implementation starts.
 
+Command selection: use `mise run build` only when the consumer has the current generated `mise.toml` and tasks; otherwise use that project's configured equivalent build command.
+
 ## Required reads (in order)
 
 1. `../workflow/00_shared_contract.md`
@@ -45,7 +47,7 @@ Evidence fields are mandatory for this worker type:
    - migration preparation
    - Sonamu model scaffolding
    - frame/module entry readiness
-6. Run `pnpm build` to verify.
+6. Run the selected build command to verify (current generated project example: `mise run build`).
 7. Record all CLI commands and generated targets in evidence.
 8. Return `worker_result`.
 

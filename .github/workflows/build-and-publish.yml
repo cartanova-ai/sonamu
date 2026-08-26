@@ -57,25 +57,30 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup mise
+        uses: jdx/mise-action@v3
         with:
-          node-version: "25"
-          cache: "pnpm"
-          registry-url: "https://registry.npmjs.org"
+          cache: true
+          install_args: --locked
+
+      - name: Configure npm registry
+        shell: bash
+        run: |
+          npmrc="${RUNNER_TEMP}/npmrc"
+          printf '%s\n' \
+            'registry=https://registry.npmjs.org/' \
+            'always-auth=false' > "${npmrc}"
+          echo "NPM_CONFIG_USERCONFIG=${npmrc}" >> "${GITHUB_ENV}"
 
       - name: Install dependencies
-        run: pnpm install
+        run: mise exec -- pnpm install
 
       # 빌드와는 별개로 우선 업데이트일 경우에만, ECR Public에 이미지를 배포합니다.
       - name: Publish Image
-        run: pnpm publish:image
+        run: mise run publish:image
 
       - name: Build
-        run: pnpm build
+        run: mise run build
 
       - name: Setup PostgreSQL (Miomock)
         run: |
@@ -117,4 +122,4 @@ jobs:
           fi
 
           echo "Publishing npm packages with dist-tag: ${NPM_DIST_TAG}"
-          pnpm publish:packages
+          mise run publish:packages

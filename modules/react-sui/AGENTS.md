@@ -8,8 +8,8 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Required checks
 
-- `pnpm --filter @sonamu-kit/react-sui dev` (interactive verification when needed)
-- `pnpm --filter @sonamu-kit/react-sui build__deprecated` when build-path validation is required
+- `mise exec -- pnpm --filter @sonamu-kit/react-sui dev` (interactive verification when needed)
+- `mise exec -- pnpm --filter @sonamu-kit/react-sui build__deprecated` when build-path validation is required
 
 ## Frontend policy
 
@@ -17,4 +17,4 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Cross-workspace gate
 
-- For changes in this scope, root `pnpm check` (oxlint + oxfmt) must pass before handoff.
+- For changes in this scope, root `mise run check` (oxlint + oxfmt) must pass before handoff.

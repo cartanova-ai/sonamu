@@ -25,10 +25,10 @@ Inherits root rules from `../../AGENTS.md`.
 ## Validation requirements
 
 - Minimum package checks:
-  - `pnpm --filter sonamu build`
-  - `pnpm --filter sonamu test:type`
+  - `mise exec -- pnpm --filter sonamu build`
+  - `mise exec -- pnpm --filter sonamu test:type`
 - Integration regression checks:
-  - `pnpm --filter miomock-api test`
+  - `mise exec -- pnpm --filter miomock-api test`
 - If templates/generation paths changed, validate sync result and generated outputs in miomock.
 
 ## Notes
@@ -38,4 +38,4 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Cross-workspace gate
 
-- For changes in this scope, root `pnpm check` (oxlint + oxfmt) must pass before handoff.
+- For changes in this scope, root `mise run check` (oxlint + oxfmt) must pass before handoff.

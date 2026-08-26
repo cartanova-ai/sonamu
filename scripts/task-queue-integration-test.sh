@@ -45,4 +45,4 @@ fi
 wait_for_postgres
 
 # 모든 마이그레이션은 테스트 전에 pretest 스크립트를 통해 실행됩니다.
-pnpm --filter @sonamu-kit/tasks test
+mise exec -- pnpm --filter @sonamu-kit/tasks test

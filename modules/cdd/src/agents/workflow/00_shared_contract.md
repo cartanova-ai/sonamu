@@ -43,8 +43,12 @@ These apply to every CDD participant regardless of role.
 
 All stages that produce code changes must pass these gates before reporting completion:
 
-- `pnpm build` (type check + build)
-- `pnpm check` (oxlint + oxfmt lint/format at workspace root)
+Select commands from the consumer project: use `mise run` only when the project has
+the current generated `mise.toml` configuration and tasks; otherwise use that project's
+configured equivalent task runner and commands. For current generated projects:
+
+- `mise run build` (type check + build)
+- `mise run check` (oxlint + oxfmt lint/format at workspace root)
 
 Project-level gates (test, migration validation) are stage-specific and defined in respective workflow prompts.
 

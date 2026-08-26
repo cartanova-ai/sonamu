@@ -24,15 +24,18 @@ Sonamu는 **Entity-driven 풀스택 TypeScript 프레임워크**입니다. 엔�
 
 ## 빠른 시작
 
+먼저 [mise](https://mise.jdx.dev/getting-started.html)를 설치하세요. 생성기는 프로젝트의
+`mise.lock`에 고정된 Node.js와 pnpm만 사용합니다.
+
 ### 대화형 모드
 
 ```bash
-pnpm create sonamu
+mise exec -- pnpm create sonamu
 ```
 
 ```
 ? Project name: my_app
-? Would you like to set up pnpm? Yes
+? Would you like to install the mise toolchain and project dependencies? Yes
 ? Would you like to set up a database using Docker? Yes
 ? Enter the Docker project name: my-app-container
 ? Enter the database user: postgres
@@ -51,32 +54,32 @@ pnpm create sonamu
 
 ```bash
 # 프로젝트명만 지정 (언더스코어 사용)
-pnpm create sonamu my_project
+mise exec -- pnpm create sonamu my_project
 
 # 모든 질문을 기본값으로 자동 응답
-pnpm create sonamu my_project --yes
+mise exec -- pnpm create sonamu my_project --yes
 
-# pnpm/docker 설정 여부를 명시적으로 지정
-pnpm create sonamu my_app --pnpm y --docker y
+# mise 의존성 설정/docker 설정 여부를 명시적으로 지정
+mise exec -- pnpm create sonamu my_app --pnpm y --docker y
 
-# pnpm만 자동 진행 (docker는 프롬프트로 물어봄)
-pnpm create sonamu my_app --pnpm y
+# mise 의존성 설정만 자동 진행 (docker는 프롬프트로 물어봄)
+mise exec -- pnpm create sonamu my_app --pnpm y
 
-# docker만 자동 진행 (pnpm은 프롬프트로 물어봄, DB 옵션은 기본값)
-pnpm create sonamu my_app --docker y
+# docker만 자동 진행 (mise 의존성 설정은 프롬프트로 물어봄, DB 옵션은 기본값)
+mise exec -- pnpm create sonamu my_app --docker y
 
-# pnpm 설치 스킵
-pnpm create sonamu my_app --pnpm n
+# mise 도구와 의존성 설치 스킵
+mise exec -- pnpm create sonamu my_app --pnpm n
 # 또는
-pnpm create sonamu my_app --skip-pnpm
+mise exec -- pnpm create sonamu my_app --skip-pnpm
 
 # Docker 설정 스킵
-pnpm create sonamu my_app --docker n
+mise exec -- pnpm create sonamu my_app --docker n
 # 또는
-pnpm create sonamu my_app --skip-docker
+mise exec -- pnpm create sonamu my_app --skip-docker
 
 # 완전한 비대화형 모드 (모든 옵션 지정)
-pnpm create sonamu my_app \
+mise exec -- pnpm create sonamu my_app \
   --pnpm y \
   --docker y \
   --db-user=postgres \
@@ -85,8 +88,8 @@ pnpm create sonamu my_app \
   --container-name=myapp-pg \
   --docker-project=myapp-docker
 
-# DB 옵션만 지정 (pnpm/docker 설정은 프롬프트로 물어봄)
-pnpm create sonamu my_app \
+# DB 옵션만 지정 (mise 의존성/docker 설정은 프롬프트로 물어봄)
+mise exec -- pnpm create sonamu my_app \
   --db-name=myapp \
   --db-password=1234
 ```
@@ -96,9 +99,9 @@ pnpm create sonamu my_app \
 | 옵션                                   | 설명                                          | 기본값                 |
 | -------------------------------------- | --------------------------------------------- | ---------------------- |
 | `--yes`, `-y`                          | 모든 질문에 기본값으로 자동 응답              | -                      |
-| `--pnpm`                               | pnpm 설치 여부 (`y`/`n`)                      | (프롬프트로 질문)      |
+| `--pnpm`                               | mise 도구와 의존성 설치 여부 (`y`/`n`)         | (프롬프트로 질문)      |
 | `--docker`                             | Docker DB 설정 여부 (`y`/`n`)                 | (프롬프트로 질문)      |
-| `--skip-pnpm`                          | pnpm 설치 건너뛰기 (`--pnpm n`과 동일)        | false                  |
+| `--skip-pnpm`                          | mise 도구와 의존성 설치 건너뛰기 (`--pnpm n`) | false                  |
 | `--skip-docker`                        | Docker DB 설정 건너뛰기 (`--docker n`과 동일) | false                  |
 | `--db-user`                            | 데이터베이스 사용자                           | postgres               |
 | `--db-password`                        | 데이터베이스 비밀번호                         | 1234                   |
@@ -113,10 +116,10 @@ pnpm create sonamu my_app \
 ```bash
 # 1. 데이터베이스 시작
 cd my_app/packages/api
-pnpm docker:up
+mise exec -- pnpm docker:up
 
 # 2. 개발 서버 시작 (API + Web 통합 모드)
-pnpm dev
+mise exec -- pnpm dev
 ```
 
 🎉 **완료!**
@@ -124,7 +127,7 @@ pnpm dev
 - API + Web: http://localhost:34900 (통합 모드)
 - Sonamu UI: http://localhost:34900/sonamu-ui (엔티티 관리)
 
-> **참고**: `pnpm dev`는 `sonamu dev`를 실행하며, 기본적으로 API와 Web을 하나의 포트로 통합 서빙합니다.
+> **참고**: `mise exec -- pnpm dev`는 `sonamu dev`를 실행하며, 기본적으로 API와 Web을 하나의 포트로 통합 서빙합니다.
 > Web만 별도로 실행하려면 `sonamu dev web`을 사용하세요.
 
 ---
@@ -155,6 +158,8 @@ pnpm dev
 │           ├── admin-common/   # 공통 컴포넌트 (ApiLogViewer 등)
 │           ├── entry-client.tsx    # 클라이언트 엔트리
 │           └── entry-server.generated.tsx  # SSR 엔트리
+├── mise.toml                   # Node.js, pnpm, 루트 작업 설정
+├── mise.lock                   # 플랫폼별 도구 버전 잠금
 └── pnpm-workspace.yaml         # pnpm workspace 설정
 ```
 
@@ -184,17 +189,17 @@ pnpm dev
 
 | 명령어                             | 설명                                      |
 | ---------------------------------- | ----------------------------------------- |
-| `pnpm dev`                         | 통합 개발 서버 시작 (= `sonamu dev all`)  |
-| `pnpm build`                       | 전체 프로덕션 빌드 (= `sonamu build all`) |
-| `pnpm build api`                   | API만 빌드 (= `sonamu build api`)         |
-| `pnpm build web`                   | Web만 빌드 (= `sonamu build web`)         |
-| `pnpm start`                       | 프로덕션 서버 실행                        |
-| `pnpm test`                        | 테스트 실행                               |
-| `pnpm docker:up`                   | Docker 데이터베이스 시작                  |
-| `pnpm docker:down`                 | Docker 데이터베이스 중지                  |
-| `pnpm docker:reset`                | 데이터베이스 초기화 (볼륨 삭제 후 재시작) |
-| `pnpm dump`                        | 테스트 DB → 덤프 파일 생성                |
-| `pnpm seed`                        | 덤프 파일 → fixture DB 적용               |
+| `mise exec -- pnpm dev`            | 통합 개발 서버 시작 (= `sonamu dev all`)  |
+| `mise exec -- pnpm build`          | 전체 프로덕션 빌드 (= `sonamu build all`) |
+| `mise exec -- pnpm build api`      | API만 빌드 (= `sonamu build api`)         |
+| `mise exec -- pnpm build web`      | Web만 빌드 (= `sonamu build web`)         |
+| `mise exec -- pnpm start`          | 프로덕션 서버 실행                        |
+| `mise exec -- pnpm test`           | 테스트 실행                               |
+| `mise exec -- pnpm docker:up`      | Docker 데이터베이스 시작                  |
+| `mise exec -- pnpm docker:down`    | Docker 데이터베이스 중지                  |
+| `mise exec -- pnpm docker:reset`   | 데이터베이스 초기화 (볼륨 삭제 후 재시작) |
+| `mise exec -- pnpm dump`           | 테스트 DB → 덤프 파일 생성                |
+| `mise exec -- pnpm seed`           | 덤프 파일 → fixture DB 적용               |
 
 ### 개발 서버 모드
 
@@ -377,22 +382,21 @@ Skills를 설치한 뒤 Claude에게 다음과 같이 요청할 수 있습니다
 
 ```bash
 # 테스트 데이터 수정 후
-pnpm dump                      # 덤프 생성
+mise exec -- pnpm dump         # 덤프 생성
 git add database/dumps/
 git commit -m "update fixture"
 
 # 동료가 받을 때
 git pull
-pnpm seed                      # fixture DB에 적용
-pnpm sonamu fixture sync       # 테스트 DB로 동기화
+mise exec -- pnpm seed         # fixture DB에 적용
+mise exec -- pnpm sonamu fixture sync # 테스트 DB로 동기화
 ```
 
 ---
 
 ## 📋 요구사항
 
-- **Node.js** >= 18
-- **pnpm** >= 10
+- **mise** (프로젝트의 Node.js 24.19.0과 pnpm 11.24.0 설치)
 - **Docker** (데이터베이스용)
 
 ---
@@ -401,7 +405,7 @@ pnpm sonamu fixture sync       # 테스트 DB로 동기화
 
 ### Q: yarn이나 npm으로도 사용할 수 있나요?
 
-- 프로젝트는 pnpm workspace를 사용하도록 설계되었습니다. pnpm 사용을 권장합니다.
+- 프로젝트 명령은 `mise run ...` 또는 `mise exec -- pnpm ...`으로 실행합니다.
 
 ### Q: MySQL을 사용할 수 있나요?
 

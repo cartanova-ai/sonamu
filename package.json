@@ -3,25 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:tools:ts-loader": "pnpm --filter @sonamu-kit/ts-loader build",
-    "build:tools:hmr-hook": "pnpm --filter @sonamu-kit/hmr-hook build",
-    "build:tools:hmr-runner": "pnpm --filter @sonamu-kit/hmr-runner build",
-    "build:tools": "pnpm -r --filter @sonamu-kit/* --filter !@sonamu-kit/react-sui --filter !@sonamu-kit/react-components --filter !@sonamu-kit/tasks build",
-    "build:lib:tasks": "pnpm --filter @sonamu-kit/tasks build",
-    "build:lib:sonamu": "pnpm --filter sonamu build",
-    "build:lib": "pnpm -r --filter sonamu --filter @sonamu-kit/react-sui --filter @sonamu-kit/tasks build",
-    "build:miomock:api": "pnpm --filter miomock-api build",
-    "build:miomock:web": "pnpm --filter miomock-web build",
-    "build:miomock": "pnpm --filter miomock-api --filter miomock-web build",
-    "build": "pnpm --filter !ui-web -r build",
-    "dev": "pnpm --parallel --filter !sonamu-docs --filter !@sonamu-kit/react-sui --filter !ui-web dev",
-    "publish:image": "tsx scripts/publish-image.ts",
-    "publish:packages": "tsx scripts/publish.ts",
-    "format": "oxlint --type-aware --fix && oxfmt",
-    "check": "oxlint --type-aware && oxfmt --check",
-    "check:fix": "oxlint --type-aware --fix --fix-suggestions && oxfmt",
-    "verify:clean": "tsx scripts/verify.ts clean",
-    "verify:fast": "tsx scripts/verify.ts fast",
     "prepare": "if [ -n \"$CI\" ] || [ \"$SKIP_LEFTHOOK\" = \"1\" ] || [ ! -d .git ]; then exit 0; fi; git config --unset-all core.hooksPath 2>/dev/null; lefthook install"
   },
   "devDependencies": {
@@ -38,5 +19,5 @@
     "typescript": "catalog:",
     "zx": "catalog:"
   },
-  "packageManager": "pnpm@10.33.1"
+  "packageManager": "pnpm@11.24.0"
 }

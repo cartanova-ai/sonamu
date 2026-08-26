@@ -2,6 +2,8 @@
 
 Follow `00_shared_contract.md` and `01_cdd.md` first.
 
+Command selection: use `mise run build`/`mise run check` only when the consumer has the current generated `mise.toml` and tasks; otherwise use that project's configured equivalent build and check commands.
+
 This document defines the final delivery stage after all reviews and AC verification pass.
 
 ## Preconditions
@@ -12,7 +14,7 @@ The orchestrator must not trigger handoff until ALL of the following are true:
 - All stage reviews have `status: clean`.
 - Integration review has `status: clean`.
 - AC verification has passed (or the feature has no ACs by design).
-- `pnpm build` and `pnpm check` pass at workspace root.
+- The selected build and check commands pass at the workspace root.
 
 ## Procedure
 

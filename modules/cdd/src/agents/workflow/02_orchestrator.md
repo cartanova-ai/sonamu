@@ -8,9 +8,11 @@ The main agent reads this document and assumes the orchestrator role. This is NO
 
 The orchestrator never edits code or tests directly. All implementation work is delegated to workers.
 
+Command selection: use `mise run build`/`mise run check` only when the consumer has the current generated `mise.toml` and tasks; otherwise use that project's configured equivalent commands.
+
 What the orchestrator CAN do:
 
-- Run CLI commands (`pnpm cdd ac add/list`, `pnpm sonamu test`, `pnpm build`, `pnpm check`)
+- Run CLI commands (`pnpm cdd ac add/list`, `pnpm sonamu test`; for current generated projects, `mise run build` and `mise run check`)
 - Run Sonamu setup commands needed to support Claim execution (`pnpm sonamu sync`, `pnpm sonamu migrate generate`, `pnpm sonamu migrate run`, `pnpm sonamu scaffold ...`)
 - Delegate planning to `cdd-planner`
 - Create/manage Claims (`tmp/claims/`)

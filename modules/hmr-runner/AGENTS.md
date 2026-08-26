@@ -9,10 +9,10 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Required checks
 
-- `pnpm --filter @sonamu-kit/hmr-runner typecheck`
-- `pnpm --filter @sonamu-kit/hmr-runner lint`
-- `pnpm --filter @sonamu-kit/hmr-runner test`
-- `pnpm --filter @sonamu-kit/hmr-runner build`
+- `mise exec -- pnpm --filter @sonamu-kit/hmr-runner typecheck`
+- `mise exec -- pnpm --filter @sonamu-kit/hmr-runner lint`
+- `mise exec -- pnpm --filter @sonamu-kit/hmr-runner test`
+- `mise exec -- pnpm --filter @sonamu-kit/hmr-runner build`
 
 ## Testing policy
 
@@ -20,4 +20,4 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Cross-workspace gate
 
-- For changes in this scope, root `pnpm check` (oxlint + oxfmt) must pass before handoff.
+- For changes in this scope, root `mise run check` (oxlint + oxfmt) must pass before handoff.

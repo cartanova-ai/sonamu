@@ -2,7 +2,7 @@ pre-commit:
   commands:
     oxlint:
       glob: "**/*.{js,jsx,ts,tsx,mjs,cjs,cts,mts}"
-      run: pnpm exec oxlint --type-aware --fix {staged_files}
+      run: mise exec -- pnpm exec oxlint --type-aware --fix {staged_files}
       stage_fixed: true
     oxfmt:
       glob: "**/*.{js,jsx,ts,tsx,mjs,cjs,cts,mts,json,jsonc}"
@@ -17,26 +17,26 @@ pre-commit:
         - "**/*.gen.ts"
         - "**/*.generated.ts"
         - "**/*.generated.tsx"
-      run: pnpm exec oxfmt {staged_files}
+      run: mise exec -- pnpm exec oxfmt {staged_files}
       stage_fixed: true
     sonamu-typecheck:
       glob: "modules/sonamu/**/*.{ts,tsx,mts,cts}"
-      run: pnpm --filter sonamu test:type
+      run: mise exec -- pnpm --filter sonamu test:type
     tasks-typecheck:
       glob: "modules/tasks/**/*.{ts,tsx,mts,cts}"
-      run: pnpm --filter @sonamu-kit/tasks check:type
+      run: mise exec -- pnpm --filter @sonamu-kit/tasks check:type
     cdd-typecheck:
       glob: "modules/cdd/**/*.{ts,tsx,mts,cts}"
-      run: pnpm --filter @sonamu-kit/cdd check:type
+      run: mise exec -- pnpm --filter @sonamu-kit/cdd check:type
     hmr-hook-typecheck:
       glob: "modules/hmr-hook/**/*.{ts,tsx,mts,cts}"
-      run: pnpm --filter @sonamu-kit/hmr-hook typecheck
+      run: mise exec -- pnpm --filter @sonamu-kit/hmr-hook typecheck
     hmr-runner-typecheck:
       glob: "modules/hmr-runner/**/*.{ts,tsx,mts,cts}"
-      run: pnpm --filter @sonamu-kit/hmr-runner typecheck
+      run: mise exec -- pnpm --filter @sonamu-kit/hmr-runner typecheck
     miomock-api-typecheck:
       glob: "examples/miomock/api/**/*.{ts,tsx,mts,cts}"
-      run: pnpm --filter miomock-api typecheck
+      run: mise exec -- pnpm --filter miomock-api typecheck
     miomock-web-typecheck:
       glob: "examples/miomock/web/**/*.{ts,tsx,mts,cts}"
-      run: pnpm --filter miomock-web typecheck
+      run: mise exec -- pnpm --filter miomock-web typecheck

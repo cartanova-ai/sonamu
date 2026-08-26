@@ -4,9 +4,11 @@
 
 Follow this workflow when the user requests a system to be built from scratch.
 
+Command selection: use `mise run build`/`mise run check`/`mise run dev` only when the consumer has the current generated `mise.toml` and tasks; otherwise use that project's configured equivalent build, check, and dev commands. The mise commands below are current-generated-project examples.
+
 **CRITICAL: Execute steps within each PHASE in order. Do not skip or reorder steps.** If the user specifies a starting point, begin from that PHASE (see SKILL.md "Starting Point Determination").
 
-**CRITICAL: The dev server (`pnpm dev`) must always be running.** If it is not, start it before proceeding.
+**CRITICAL: The dev server (for example, `mise run dev` in a current generated project) must always be running.** If it is not, start it before proceeding.
 
 **CRITICAL: Use `pnpm sonamu test` for tests.** Use `pnpm test` only for CI or when the dev server is unavailable.
 
@@ -57,7 +59,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 
 11. Start Docker (`pnpm docker:up` or equivalent)
 12. Attempt build — the first build may fail; do not try to fix everything immediately. Try starting the dev server first.
-13. Start dev server (`pnpm dev`)
+13. Start the dev server with the selected command (current generated project example: `mise run dev`)
 
 ### 6. Generate Auth Entities
 
@@ -171,7 +173,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
 ### 9. Create Entities
 
 22. Create entity.json files in batch according to the design
-23. Run lint/format check (`pnpm check`) and type check
+23. Run the selected lint/format check (current generated project example: `mise run check`) and type check
 24. Confirm the build succeeds without errors
 
 ### 10. Run Migration
@@ -198,7 +200,7 @@ Requirements are a starting point only. Entity structure, relationships, fields,
     - view_form
     - Run via Sonamu UI or via Claude Code CLI
 29. Confirm generation completes without errors
-30. Run lint/format check (`pnpm check`) and type check
+30. Run the selected lint/format check (current generated project example: `mise run check`) and type check
 31. Confirm the build succeeds without errors
 32. Run `pnpm dump` to generate a DB dump file
 

@@ -235,14 +235,14 @@ async function init() {
 catalog:
 ${catalogEntries.join("\n")}
 
-onlyBuiltDependencies:
-  - "@parcel/watcher"
-  - bcrypt
-  - esbuild
-  - libpq
-  - sharp
-  - sodium-native
-  - unrs-resolver
+allowBuilds:
+  "@parcel/watcher": true
+  bcrypt: true
+  esbuild: true
+  libpq: true
+  sharp: true
+  sodium-native: true
+  unrs-resolver: true
 
 overrides:
   axios@<0.30.0: ">=0.30.0"
@@ -250,13 +250,15 @@ overrides:
   axios@>=0.8.1 <0.28.0: ">=0.28.0"
   mdast-util-to-hast@>=13.0.0 <13.2.1: ">=13.2.1"
   prismjs@<1.30.0: ">=1.30.0"
+  # pnpm 11에서 호환되는 serializer 패키지군을 유지하도록 seroval 버전을 고정합니다.
+  seroval: 1.4.2
 `;
   fs.writeFileSync(path.join(targetRoot, "pnpm-workspace.yaml"), workspaceContent);
   console.log(`${chalk.green("CREATE")} ${path.join(targetRoot, "pnpm-workspace.yaml")}`);
 
   console.log(`\n🌲 Created project in ${targetRoot}\n`);
 
-  // 3. Set up pnpm
+  // 3. mise 도구와 의존성 설정
   let isPnpm = true; // 기본값
   const pnpmOption = parseYesNo(argv.pnpm);
 
@@ -272,7 +274,7 @@ overrides:
       {
         type: "confirm",
         name: "isPnpm",
-        message: "Would you like to set up pnpm?",
+        message: "Would you like to install the mise toolchain and project dependencies?",
         initial: true,
       },
       {
@@ -284,16 +286,18 @@ overrides:
 
   if (isPnpm) {
     try {
-      // Install dependencies from the root directory (workspace)
+      // 생성된 프로젝트의 잠금된 도구만 사용해 의존성을 설치합니다.
       await setupPnpm(targetRoot);
     } catch (error) {
       cleanup();
       throw error;
     }
   } else {
-    console.log(`\nTo set up pnpm, run the following commands:\n`);
+    console.log(`\nTo install the mise toolchain and project dependencies, run:\n`);
     console.log(chalk.gray(`  $ cd ${targetRoot}`));
-    console.log(chalk.gray(`  $ pnpm install`));
+    console.log(chalk.gray(`  $ mise trust`));
+    console.log(chalk.gray(`  $ mise install --locked`));
+    console.log(chalk.gray(`  $ mise exec -- pnpm install`));
   }
 
   // 4. Set up Database using Docker
@@ -432,11 +436,22 @@ async function setupPnpm(projectName: string, dir?: string) {
   const cwd = dir ? path.resolve(projectName, dir) : path.resolve(projectName);
 
   try {
-    console.log(chalk.blue(`Setting up pnpm in ${cwd}...`));
-    await executeCommand("pnpm", ["install"], cwd);
-    console.log(chalk.green(`✅ pnpm has been set up in ${cwd}\n`));
+    console.log(chalk.blue(`Trusting the generated mise configuration in ${cwd}...`));
+    await executeCommand("mise", ["trust"], cwd);
+    console.log(chalk.blue(`Installing the locked mise toolchain in ${cwd}...`));
+    await executeCommand("mise", ["install", "--locked"], cwd);
+    console.log(chalk.blue(`Installing project dependencies with mise in ${cwd}...`));
+    await executeCommand("mise", ["exec", "--", "pnpm", "install"], cwd);
+    console.log(chalk.green(`✅ mise toolchain and dependencies are ready in ${cwd}\n`));
   } catch (error) {
-    console.error(chalk.red(`❌ Failed to set up pnpm in ${cwd}`));
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      console.error(
+        chalk.red(
+          "mise is required. Install it from https://mise.jdx.dev/getting-started.html, then rerun create-sonamu.",
+        ),
+      );
+    }
+    console.error(chalk.red(`❌ Failed to set up the mise toolchain and dependencies in ${cwd}`));
     console.error(error);
     throw error;
   }

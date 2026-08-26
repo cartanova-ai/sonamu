@@ -4,7 +4,8 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Module role
 
-- `modules/create-sonamu` is the project generator (`pnpm create sonamu`).
+- `modules/create-sonamu` is the project generator
+  (`mise exec -- pnpm create sonamu`).
 - `index.ts` drives the prompts, copies `template/`, and writes the generated
   `package.json` and `pnpm-workspace.yaml`.
 - `template/` is the source of every generated project. Anything wrong here
@@ -29,4 +30,4 @@ new projects start a minor behind until create-sonamu is republished.
 
 ## Cross-workspace gate
 
-- For changes in this scope, root `pnpm check` must pass before handoff.
+- For changes in this scope, root `mise run check` must pass before handoff.

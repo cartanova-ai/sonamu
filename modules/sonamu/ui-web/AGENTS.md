@@ -11,8 +11,8 @@ Inherits rules from:
 
 ## Required checks
 
-- `pnpm --filter ui-web build`
-- `pnpm --filter ui-web dev` for behavior verification when needed
+- `mise exec -- pnpm --filter ui-web build`
+- `mise exec -- pnpm --filter ui-web dev` for behavior verification when needed
 
 ## Validation policy
 
@@ -20,4 +20,4 @@ Inherits rules from:
 
 ## Cross-workspace gate
 
-- For changes in this scope, root `pnpm check` (oxlint + oxfmt) must pass before handoff.
+- For changes in this scope, root `mise run check` (oxlint + oxfmt) must pass before handoff.

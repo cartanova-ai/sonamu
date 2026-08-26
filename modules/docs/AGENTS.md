@@ -8,7 +8,7 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Validation
 
-- `pnpm --filter sonamu-docs dev` for local docs verification.
+- `mise exec -- pnpm --filter sonamu-docs dev` for local docs verification.
 - Use package scripts (`migrate`, `upload-videos`, `upload-videos:dry`) only when task scope explicitly requires them.
 
 ## Scope caution
@@ -17,4 +17,4 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## Cross-workspace gate
 
-- For changes in this scope, root `pnpm check` (oxlint + oxfmt) must pass before handoff.
+- For changes in this scope, root `mise run check` (oxlint + oxfmt) must pass before handoff.

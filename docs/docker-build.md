@@ -23,7 +23,7 @@ docker buildx create --use
 아래 명령어로 스크립트를 실행하면, 이미지가 빌드되어 퍼블릭 레지스트리에 업로드됩니다.
 
 ```bash
-pnpm publish:image
+mise run publish:image
 ```
 
 스크립트는 `package.json`의 버전을 읽어서, 동일한 버전 태그가 레지스트리에 이미 배포되어 있으면 건너뜁니다. 만약 신규 버전이라면 멀티 아키텍처(amd64/arm64)로 빌드 후 배포합니다.

@@ -50,11 +50,11 @@ wait_for_postgres
 
 # 새롭게 생성된 miomock, miomock_fixture_remote, miomock_test에 
 # 마이그레이션을 적용합니다.
-pnpm --filter miomock-api sonamu migrate run
+mise exec -- pnpm --filter miomock-api sonamu migrate run
 
 # miomock_fixture_remote에 seed 데이터를 삽입합니다.
 # 이 seed 동작에는 fixture sync가 포함됩니다.
-pnpm --filter miomock-api seed
+mise exec -- pnpm --filter miomock-api seed
 
 # 이제 테스트를 실행할 수 있습니다!
-pnpm --filter miomock-api test
+mise exec -- pnpm --filter miomock-api test
