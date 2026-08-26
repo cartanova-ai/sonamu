@@ -38,7 +38,7 @@ import Undo2Icon from "~icons/lucide/undo-2";
 
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 
-type MigrationEditor = "vscode" | "cursor" | "webstorm";
+type MigrationEditor = "vscode" | "cursor" | "zed";
 
 export type MigrationStatusQueryView = {
   data?: { status: MigrationConnectionStatus };
@@ -368,8 +368,8 @@ export function MigrationMatrix({
                         <DropdownMenuItem onClick={() => onOpenCode(code.path, "cursor")}>
                           Cursor
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onOpenCode(code.path, "webstorm")}>
-                          WebStorm
+                        <DropdownMenuItem onClick={() => onOpenCode(code.path, "zed")}>
+                          Zed
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

@@ -119,14 +119,14 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
 
       server.get<{
         Querystring: {
-          editor: "vscode" | "cursor" | "webstorm";
+          editor: "vscode" | "cursor" | "zed";
           absPath: string;
         };
       }>("/api/tools/openEditor", async (request) => {
         const commands = {
           vscode: "code",
           cursor: "cursor",
-          webstorm: "webstorm",
+          zed: "zed",
         } as const;
         const command = commands[request.query.editor];
         if (command === undefined) {

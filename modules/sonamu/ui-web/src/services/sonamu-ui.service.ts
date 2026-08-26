@@ -531,7 +531,7 @@ export namespace SonamuUIService {
   }
 
   export function openEditor(params: {
-    editor: "vscode" | "cursor" | "webstorm";
+    editor: "vscode" | "cursor" | "zed";
     absPath: string;
   }): Promise<void> {
     return fetch({
