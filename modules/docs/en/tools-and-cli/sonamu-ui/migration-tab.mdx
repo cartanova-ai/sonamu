@@ -1,277 +1,63 @@
 ---
 title: "Migration Tab"
-description: "Create and run migrations"
+description: "Compare, create, apply, and roll back migrations"
 ---
 
-In the Migration tab, you can visually manage migrations to **reflect Entity changes in the database**. It replaces the CLI `pnpm migrate` command with a UI.
+The Migration tab compares Entity definitions with database schemas, creates migration files, and applies migrations to one or more databases.
 
-## Migration Tab Structure
+## Compare and generate
 
-<Frame caption="Migration Management Screen">
-  <img src="/images/sonamuUI-db-migration1.png" alt="Migration Management Screen" />
-  <img src="/images/sonamuUI-db-migration2.png" alt="Migration Execution Screen" />
-</Frame>
+The **baseline DB** selector only includes connections where every migration is applied. Sonamu compares that database's schema with the Entity definitions and previews the changes and generated code.
 
-The Migration tab consists of two main areas:
+1. Select a baseline database.
+2. Use **Expand all** to review the generated code when needed.
+3. Select **Generate migrations** to create the files.
 
-- **Left Sidebar**: Migration list (grouped by Pending/Applied status)
-- **Right Content**: Selected migration details and Preview
+After files are generated, Pending state is refreshed for every database.
 
-## Checking Migration Status
+## Migration status
 
-### Check Status
+Rows are migration files and columns are database connections. Each cell shows `APPLIED` or `PENDING`. Connections load independently, so a slow or failed database does not block other columns.
 
-Click the **[Check Status]** button to check the current migration status.
+- Select an execution target by clicking its column header or cells.
+- Enable **Details** to show the host, database, remote marker, and per-column refresh action.
+- Select an **Error** badge to inspect the server error.
 
-| Status      | Description                     | Display   |
-| ----------- | ------------------------------- | --------- |
-| **Pending** | Migrations not yet applied      | 📋 Yellow |
-| **Applied** | Already applied migrations      | ✅ Green  |
-| **Failed**  | Error occurred during execution | ❌ Red    |
+## Apply latest
 
-### Per-Database Status
+**Apply latest** runs `knex.migrate.latest()` for each selected database in order. Files applied to one database remain in one Knex batch.
 
-When multiple databases are configured, you can check status for each DB individually:
+The execution dialog has these stages:
 
-```
-Development Master: ✅ Up to date (v20240115_143022)
-Testing: ⚠️ 2 pending migrations
-Production: ✅ Up to date (v20240115_143022)
-```
+1. **Review** the targets and Pending files, and choose whether to run Shadow validation.
+2. **Approval** requests Slack approval for configured remote targets and checks it every two seconds.
+3. **Apply** displays per-file progress and per-database completion.
 
-## Creating Migrations
-
-Sonamu automatically generates migrations when you modify an Entity.
-
-### Auto-generated Cases
-
-When there are Entity changes like:
-
-| Change Type              | Example                |
-| ------------------------ | ---------------------- |
-| **Table creation**       | Add new Entity         |
-| **Column addition**      | Add Property           |
-| **Column modification**  | Change type/length     |
-| **Column deletion**      | Delete Property        |
-| **Index addition**       | Add Index              |
-| **Foreign key addition** | Add belongsTo relation |
-
-### Checking Migration Files
-
-Click on a generated migration file to preview its contents:
-
-```typescript
-import type { Knex } from "knex";
-
-export async function up(knex: Knex): Promise<void> {
-  await knex.schema.alterTable("users", (table) => {
-    table.string("phone", 20).nullable();
-  });
-}
-
-export async function down(knex: Knex): Promise<void> {
-  await knex.schema.alterTable("users", (table) => {
-    table.dropColumn("phone");
-  });
-}
-```
-
-## Running Migrations
-
-### Run Single Migration
-
-1. Select migration file
-2. Click **[Apply]** button
-3. Click **[Confirm]** in the confirmation modal
-
-**Execution process**:
-
-```
-Development Master:
-  ✓ 20240116_101530_add_user_phone (0.2s)
-
-Testing:
-  ✓ 20240116_101530_add_user_phone (0.2s)
-
-All migrations applied successfully!
-```
-
-### Run All Pending Migrations
-
-Click the **[Run All]** button to run all pending migrations in order.
+When Shadow validation is enabled, a dotted Shadow card is shown at the top of the target list. Once Apply starts, the same card shows real validation progress and its result. Sonamu only starts the target databases after Shadow succeeds.
 
 <Warning>
-  **Production caution**: **Always backup** before running migrations on production databases.
+  A file-level `executed` state means that migration function returned. The batch is only final after the database card completes.
 </Warning>
 
-## Rolling Back Migrations
+If the browser connection drops, a migration already started on the server may continue. Do not run it again automatically; refresh connection status to verify the result.
 
-### Single Rollback
+## Rollback
 
-1. Select an Applied status migration
-2. Click **[Rollback]** button
-3. Click **[Confirm]** in the confirmation modal
+Rollback ignores migration-file row selection and rolls back the **entire latest Knex batch** on each selected database. Knex runs the batch's `down()` functions in reverse order.
 
-**Rollback process**:
-
-```
-Rolling back last migration...
-
-Development Master:
-  ✓ Rollback 20240116_101530_add_user_phone
-
-Rollback completed successfully!
-```
+Because this is destructive, the first click only arms the Rollback button and changes its confirmation text. The second click starts the operation. If a file fails, execution stops at that file. The rollback transaction is canceled, so the database may appear unchanged. Rollbacks run from the latest migration backward, so execution cannot continue to the next rollback after a failure in the middle.
 
 <Warning>
-  **Data loss risk**: Rollback can delete tables or columns, which may result in **data loss**.
+  Rollback can drop columns or tables and lose data. Verify backups and each `down()` implementation before using it on Production.
 </Warning>
 
-## Migration Preview
-
-You can preview what changes will occur before running a migration.
-
-### Preview Contents
-
-```
-📋 Migration: 20240116_101530_add_user_profile
-
-Changes:
-  ✅ Table: users
-     + column: profile_image (string, nullable)
-     + column: bio (text, nullable)
-     + index: (email) unique
-
-  ⚠️ Table: posts
-     - column: deprecated_field
-     ⚠️ Warning: Data in this column will be lost!
-```
-
-**Icon meanings**:
-
-- ✅ Addition: New tables/columns/indexes
-- 🔄 Modification: Existing column type/length changes
-- ⚠️ Deletion: Table/column deletion (potential data loss)
-
-## Multi-Database Management
-
-Sonamu can manage multiple databases simultaneously.
-
-### Database Selection
-
-You can select target databases when running migrations:
-
-- ☑️ Development Master
-- ☑️ Testing
-- ☐ Production (manual selection)
-
-<Info>
-  By default, migrations are automatically applied to databases ending with `_master` and the `test`
-  database. Production databases require **explicit selection** to apply.
-</Info>
-
-## Migration Order
-
-Migrations are executed in **timestamp order of filenames**:
-
-```
-✅ 20240115_120000_create_users_table.ts
-✅ 20240115_130000_create_posts_table.ts
-📋 20240116_101530_add_user_phone.ts      ← Next to run
-📋 20240116_102045_add_post_tags.ts
-```
-
-### Changing Order
-
-If you need to change the order:
-
-1. Modify the timestamp in the migration filename
-2. Change directly in the file system
-3. Refresh in the UI
-
-<Warning>
-  **Foreign key caution**: Referenced tables must be created first. Example: For `posts.user_id` →
-  `users.id` relationship, `users` table must be created first
-</Warning>
-
-## Troubleshooting
-
-### Migration Failed
-
-**Symptom**: Error during migration execution
-
-**Causes and solutions**:
-
-| Error                  | Cause                            | Solution                      |
-| ---------------------- | -------------------------------- | ----------------------------- |
-| Foreign key constraint | Referenced table doesn't exist   | Create referenced table first |
-| Column already exists  | Column already exists            | Check migration file          |
-| Cannot drop column     | Data exists or constraints exist | Delete constraints first      |
-
-### Migration Record Mismatch
-
-**Symptom**: Actual DB state differs from migration records
-
-**Solution**:
-
-```bash
-# Run in CLI
-pnpm migrate clear  # Delete migration records
-pnpm migrate status # Check current status
-```
-
-### Cannot Rollback
-
-**Symptom**: Error when attempting rollback
-
-**Cause**: `down()` function not properly defined
-
-**Solution**: Open migration file and fix the `down()` function
-
-## Practical Tips
-
-### 1. Migrate in Small Units
-
-```bash
-# ❌ Bad example: All changes at once
-- Modify 10 Entities simultaneously
-- Run migration once
-
-# ✅ Good example: Break into small units
-- Modify 1 Entity at a time
-- Create and run migration
-- Test, then proceed to next Entity
-```
-
-### 2. Test Before Production
-
-```
-1. Test on Development DB
-   ↓
-2. Verify on Testing DB
-   ↓
-3. Backup data
-   ↓
-4. Apply to Production DB
-```
-
-### 3. Migration Record Management
-
-- Commit migration files to Git
-- Specify changes in commit messages
-- Share migration order with team members
-
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
-  <Card
-    title="Scaffolding Tab"
-    icon="wand-magic-sparkles"
-    href="/en/tools-and-cli/sonamu-ui/scaffolding-tab"
-  >
-    Auto-generate Model code
+  <Card title="Scaffolding Tab" icon="wand-magic-sparkles" href="/en/tools-and-cli/sonamu-ui/scaffolding-tab">
+    Generate Model code
   </Card>
   <Card title="migrate CLI" icon="terminal" href="/en/tools-and-cli/sonamu-cli/migrate">
-    Manage migrations via CLI
+    Manage migrations from the CLI
   </Card>
 </CardGroup>

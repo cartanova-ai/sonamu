@@ -41,6 +41,63 @@ describe("Migrator - getStatus", () => {
     expect(status.preparedCodes).toEqual([]);
   });
 
+  test("분리된 조회 API가 기존 전체 상태와 같은 결과를 반환", async () => {
+    const connections = migrator.getConnections();
+    const codes = await migrator.getMigrationCodes();
+    const connectionStatus = await migrator.getConnectionStatus("test");
+    const legacyStatus = await migrator.getStatus();
+    const legacyTestStatus = legacyStatus.conns.find((conn) => conn.connKey === "test");
+
+    expect(connections.map((conn) => conn.connKey)).toEqual([
+      "test",
+      "fixture",
+      "development",
+      "staging",
+      "production",
+    ]);
+    connections.forEach((conn) => {
+      const configured = Sonamu.dbConfig[conn.connKey].connection as {
+        host?: string;
+        port?: number;
+        database?: string;
+      };
+      const localHosts = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
+
+      expect(Object.keys(conn).toSorted()).toEqual([
+        "connKey",
+        "database",
+        "host",
+        "name",
+        "port",
+        "remote",
+        "requiresApproval",
+      ]);
+      expect(conn).toMatchObject({
+        name: conn.connKey,
+        host: configured.host,
+        port: configured.port ?? 5432,
+        database: configured.database,
+        remote: !localHosts.has((configured.host ?? "localhost").toLowerCase()),
+        requiresApproval: Sonamu.config.slackConfirm?.targets.includes(conn.connKey) ?? false,
+      });
+    });
+
+    expect(codes).toEqual(legacyStatus.codes);
+    expect(legacyTestStatus).toBeDefined();
+    expect(connectionStatus).toMatchObject({
+      connKey: "test",
+      currentVersion: legacyTestStatus?.currentVersion,
+      pending: legacyTestStatus?.pending,
+      status: legacyTestStatus?.status,
+      latencyMs: expect.any(Number),
+    });
+    expect(connectionStatus.latencyMs).toBeGreaterThanOrEqual(0);
+  });
+
+  test("readonly 커넥션은 마이그레이션 조회 대상으로 허용하지 않음", async () => {
+    await expect(migrator.getConnectionStatus("test_readonly")).rejects.toThrow();
+  });
+
   test("일부 DB 미적용 상태 확인", async () => {
     // given: test DB에 미적용 마이그레이션 코드가 있는 상태
 

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import {
   type Cone,
   type DuplicateCheckOptions,
@@ -10,7 +10,13 @@ import {
   type FixtureSearchOptions,
   type FlattenSubsetRow,
   type MigrationResult,
+  type MigrationCode,
+  type MigrationConnectionMeta,
+  type MigrationConnectionStatus,
   type MigrationStatus,
+  type MigrationStreamEvent,
+  type MigrationTarget,
+  type GenMigrationCode,
   type PathAndCode,
   type SonamuDBConfig,
 } from "sonamu";
@@ -245,6 +251,187 @@ export namespace SonamuUIService {
     });
   }
 
+  const migrationQueryOptions = {
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
+  } as const;
+
+  export function useMigrationConnections() {
+    return useQuery({
+      queryKey: ["migrations", "connections"],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: "/sonamu-ui/api/migrations/connections",
+        }) as Promise<{ connections: MigrationConnectionMeta[] }>,
+      ...migrationQueryOptions,
+    });
+  }
+
+  export function useMigrationCodes() {
+    return useQuery({
+      queryKey: ["migrations", "codes"],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: "/sonamu-ui/api/migrations/codes",
+        }) as Promise<{ codes: MigrationCode[] }>,
+      ...migrationQueryOptions,
+    });
+  }
+
+  export function getMigrationCode(codeName: string): Promise<{ code: string }> {
+    return fetch({
+      method: "GET",
+      url: "/sonamu-ui/api/migrations/code",
+      params: { codeName },
+    });
+  }
+
+  export function useMigrationConnectionStatuses(connections: MigrationConnectionMeta[]) {
+    return useQueries({
+      queries: connections.map(({ connKey }) => ({
+        queryKey: ["migrations", "status", connKey],
+        queryFn: () =>
+          fetch({
+            method: "GET",
+            url: "/sonamu-ui/api/migrations/status",
+            params: { connKey },
+          }) as Promise<{ status: MigrationConnectionStatus }>,
+        ...migrationQueryOptions,
+      })),
+    });
+  }
+
+  export function useMigrationPreparedCodes(compareConnKey?: MigrationTarget) {
+    return useQuery({
+      queryKey: ["migrations", "prepared-codes", compareConnKey],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: "/sonamu-ui/api/migrations/prepared-codes",
+          params: { compareConnKey },
+        }) as Promise<{ preparedCodes: GenMigrationCode[] }>,
+      enabled: compareConnKey !== undefined,
+      ...migrationQueryOptions,
+    });
+  }
+
+  export type MigrationApprovalResult =
+    | { type: "ready" }
+    | { type: "pending"; channel: string; ts: string };
+
+  export class MigrationResponseError extends Error {
+    constructor(
+      message: string,
+      public readonly status?: number,
+    ) {
+      super(message);
+      this.name = "MigrationResponseError";
+    }
+  }
+
+  export function requestMigrationApproval(
+    targets: MigrationTarget[],
+    requestor?: string,
+  ): Promise<MigrationApprovalResult> {
+    return fetch({
+      method: "POST",
+      url: "/sonamu-ui/api/migrations/request-approval",
+      data: { targets, requestor },
+    });
+  }
+
+  async function readMigrationError(response: Response): Promise<MigrationResponseError> {
+    const body = await response.text();
+    try {
+      const parsed = JSON.parse(body) as { message?: string; error?: string };
+      return new MigrationResponseError(
+        parsed.message ?? parsed.error ?? `${response.status} ${response.statusText}`,
+        response.status,
+      );
+    } catch {
+      return new MigrationResponseError(
+        body || `${response.status} ${response.statusText}`,
+        response.status,
+      );
+    }
+  }
+
+  function parseNdjsonLine<T>(line: string): T {
+    try {
+      return JSON.parse(line) as T;
+    } catch (caught) {
+      const reason = caught instanceof Error ? caught.message : String(caught);
+      throw new MigrationResponseError(`Invalid migration stream response: ${reason}`);
+    }
+  }
+
+  export async function* readNdjson<T>(response: Response): AsyncGenerator<T> {
+    if (!response.ok) {
+      throw await readMigrationError(response);
+    }
+    if (response.body === null) {
+      throw new MigrationResponseError("Migration stream response body is empty");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (line.trim() !== "") {
+            yield parseNdjsonLine<T>(line);
+          }
+        }
+        if (done) {
+          break;
+        }
+      }
+      if (buffer.trim() !== "") {
+        yield parseNdjsonLine<T>(buffer);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
+  async function* migrationStream(
+    path: "shadow" | "apply" | "rollback",
+    body: object,
+    signal?: AbortSignal,
+  ): AsyncGenerator<MigrationStreamEvent> {
+    const response = await globalThis.fetch(`/sonamu-ui/api/migrations/${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+    yield* readNdjson<MigrationStreamEvent>(response);
+  }
+
+  export function shadowMigrations(signal?: AbortSignal) {
+    return migrationStream("shadow", {}, signal);
+  }
+
+  export function applyMigrations(
+    targets: MigrationTarget[],
+    requestor?: string,
+    signal?: AbortSignal,
+  ) {
+    return migrationStream("apply", { targets, requestor }, signal);
+  }
+
+  export function rollbackMigrations(targets: MigrationTarget[], signal?: AbortSignal) {
+    return migrationStream("rollback", { targets }, signal);
+  }
+
   export function useMigrationStatus() {
     return useQuery({
       queryKey: ["migrations", "status"],
@@ -316,11 +503,13 @@ export namespace SonamuUIService {
     });
   }
 
-  export function migrationsGeneratePreparedCodes(): Promise<number> {
+  export function migrationsGeneratePreparedCodes(
+    compareConnKey?: MigrationTarget,
+  ): Promise<number> {
     return fetch({
       method: "POST",
       url: `/sonamu-ui/api/migrations/generatePreparedCodes`,
-      data: {},
+      data: { compareConnKey },
     });
   }
 
@@ -337,6 +526,17 @@ export namespace SonamuUIService {
     return fetch({
       method: "GET",
       url: `/sonamu-ui/api/tools/openVscode`,
+      params,
+    });
+  }
+
+  export function openEditor(params: {
+    editor: "vscode" | "cursor" | "webstorm";
+    absPath: string;
+  }): Promise<void> {
+    return fetch({
+      method: "GET",
+      url: `/sonamu-ui/api/tools/openEditor`,
       params,
     });
   }

@@ -21,7 +21,18 @@ import { exists } from "../utils/fs-utils";
 import { generateAlterCode, generateCreateCode } from "./code-generation";
 import { getMigrationSetFromEntity } from "./migration-set";
 import { PostgreSQLSchemaReader } from "./postgresql-schema-reader";
-import { type ConnString, type MigrationCode, type MigrationStatus } from "./types";
+import { SlackConfirm } from "./slack-confirm";
+import {
+  type ConnString,
+  type MigrationAction,
+  type MigrationCode,
+  type MigrationConnectionMeta,
+  type MigrationConnectionStatus,
+  type MigrationProgressEvent,
+  type MigrationRunOptions,
+  type MigrationStatus,
+  type MigrationTarget,
+} from "./types";
 
 export type MigrationResult = {
   connKey: string;
@@ -29,10 +40,21 @@ export type MigrationResult = {
   applied: string[];
 }[];
 
+export class MigrationTargetExecutionError extends Error {
+  constructor(
+    public readonly connKey: MigrationTarget | "shadow",
+    caught: unknown,
+  ) {
+    super(caught instanceof Error ? caught.message : String(caught));
+    this.name = "MigrationTargetExecutionError";
+  }
+}
+
 // 마이그레이션 상태 조회 시 DB 연결 확인 타임아웃(ms).
 // createKnexInstance의 커넥션 획득 타임아웃(30초)에 status/list/currentVersion이
 // 각각 걸리면 CLI/UI가 최대 수십 초 hang한다. 정상 응답은 수백 ms이므로 5초면 충분하다.
 const MIGRATION_CONN_TIMEOUT_MS = 5000;
+const LOCAL_DB_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 
 /**
  * 주어진 Promise가 ms 안에 완료되지 않으면 onTimeout 에러로 reject한다.
@@ -68,7 +90,7 @@ export class Migrator {
     );
   }
 
-  private getMigrationTargetKeys(): (keyof SonamuDBConfig)[] {
+  private getMigrationTargetKeys(): MigrationTarget[] {
     const connKeys = Object.keys(Sonamu.dbConfig).filter(
       (key) => !key.endsWith("_readonly"),
     ) as (keyof SonamuDBConfig)[];
@@ -84,24 +106,125 @@ export class Migrator {
   private async runMigrationsSequentially(
     conns: { connKey: keyof SonamuDBConfig; knex: Knex }[],
     action: "apply" | "rollback",
+    options?: MigrationRunOptions,
   ): Promise<MigrationResult> {
     const results: MigrationResult = [];
 
     for (const { connKey, knex } of conns) {
-      const [batchNo, applied] =
-        action === "apply" ? await knex.migrate.latest() : await knex.migrate.rollback();
+      const progress = this.createProgressHooks(action, connKey, options);
+      let migrationResult: [number, string[]];
+      try {
+        migrationResult =
+          action === "apply"
+            ? await knex.migrate.latest(progress)
+            : await knex.migrate.rollback(progress);
+      } catch (caught) {
+        // lifecycle hook 이전의 연결·lock·목록 조회 실패도 실제 대상 DB에 귀속합니다.
+        throw new MigrationTargetExecutionError(connKey, caught);
+      }
+      const [batchNo, applied] = migrationResult;
 
       results.push({
         connKey,
         batchNo,
         applied,
       });
+      this.emitProgress(options, {
+        type: "target-complete",
+        action,
+        connKey,
+        batchNo,
+        files: applied,
+      });
     }
 
     return results;
   }
 
-  private async getMigrationCodes(): Promise<MigrationCode[]> {
+  private migrationName(migration: unknown): string {
+    if (typeof migration === "string") {
+      return path.basename(migration);
+    }
+    if (typeof migration === "object" && migration !== null) {
+      const candidate = migration as { file?: unknown; name?: unknown };
+      if (typeof candidate.file === "string") {
+        return path.basename(candidate.file);
+      }
+      if (typeof candidate.name === "string") {
+        return path.basename(candidate.name);
+      }
+    }
+    return String(migration);
+  }
+
+  private emitProgress(options: MigrationRunOptions | undefined, event: MigrationProgressEvent) {
+    try {
+      options?.onProgress?.(event);
+    } catch (error) {
+      // 진행률 소비자의 실패가 이미 시작한 DB 작업과 정리를 방해하면 안 됩니다.
+      console.warn("Migration progress observer failed:", error);
+    }
+  }
+
+  private createProgressHooks(
+    action: MigrationAction,
+    connKey: MigrationTarget | "shadow",
+    options?: MigrationRunOptions,
+  ): Knex.MigratorConfigWithLifecycleHooks {
+    let files: string[] = [];
+    const emitFile = (type: "file-start" | "file-executed", migration: unknown) => {
+      const file = this.migrationName(migration);
+      const index = Math.max(files.indexOf(file), 0);
+      this.emitProgress(options, {
+        type,
+        action,
+        connKey,
+        file,
+        index,
+        total: files.length,
+      });
+    };
+
+    return {
+      beforeAll: async (_knex, migrations) => {
+        files = migrations.map((migration) => this.migrationName(migration));
+        this.emitProgress(options, { type: "target-start", action, connKey, files });
+      },
+      beforeEach: async (_knex, migrations) => {
+        migrations.forEach((migration) => emitFile("file-start", migration));
+      },
+      afterEach: async (_knex, migrations) => {
+        migrations.forEach((migration) => emitFile("file-executed", migration));
+      },
+    };
+  }
+
+  private assertMigrationTarget(connKey: MigrationTarget): void {
+    if (!this.getMigrationTargetKeys().includes(connKey)) {
+      throw new Error(
+        `Migration target is not allowed in NODE_ENV=${getSonamuEnvironment()}: ${String(connKey)}`,
+      );
+    }
+  }
+
+  getConnections(): MigrationConnectionMeta[] {
+    const slackConfirm = new SlackConfirm();
+    return this.getMigrationTargetKeys().map((connKey) => {
+      const connection = Sonamu.dbConfig[connKey].connection as Knex.PgConnectionConfig;
+      const host = connection.host ?? "localhost";
+      return {
+        connKey,
+        name: String(connKey),
+        host,
+        port: connection.port ?? 5432,
+        database: connection.database ?? "",
+        remote: !LOCAL_DB_HOSTS.has(host.toLowerCase()),
+        requiresApproval: slackConfirm.isTargetRequiresApproval(connKey),
+      };
+    });
+  }
+
+  async getMigrationCodes(): Promise<MigrationCode[]> {
     const srcMigrationsDir = path.join(Sonamu.apiRootPath, "src", "migrations"); // 이건 환경에 관계없이 항상 src에서 찾아야 해요.
 
     if (!(await exists(srcMigrationsDir))) {
@@ -122,168 +245,155 @@ export class Migrator {
     return codes;
   }
 
+  async getConnectionStatus(connKey: MigrationTarget): Promise<MigrationConnectionStatus> {
+    this.assertMigrationTarget(connKey);
+    const startedAt = performance.now();
+    const codes = await this.getMigrationCodes();
+    const knexOptions = Sonamu.dbConfig[connKey];
+    const connection = knexOptions.connection as Knex.PgConnectionConfig;
+    const tConn = createKnexInstance({
+      ...knexOptions,
+      connection: {
+        ...(connection as Record<string, unknown>),
+        connectionTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
+      },
+      pool: {
+        ...knexOptions.pool,
+        min: 0,
+        acquireTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
+        createTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
+        propagateCreateError: true,
+      },
+    });
+
+    try {
+      await withTimeout(tConn.raw("select 1"), MIGRATION_CONN_TIMEOUT_MS, () => {
+        return new Error(
+          `DB 연결 시간 초과 (${MIGRATION_CONN_TIMEOUT_MS}ms) — ${connection.host}:${connection.port}/${connection.database}`,
+        );
+      });
+
+      let error: string | undefined;
+      const status: number | "error" = await tConn.migrate.status().catch((caught) => {
+        if (this.isMissingMigrationTableError(caught)) {
+          return codes.length;
+        }
+        error = caught instanceof Error ? caught.message : String(caught);
+        return "error" as const;
+      });
+      const pending: string[] = await tConn.migrate.list().then(
+        ([, files]: [unknown[], { file: string }[]]) =>
+          files.map(({ file }) => file.replace(/\.ts$/, "")),
+        (caught: unknown) => {
+          if (this.isMissingMigrationTableError(caught)) {
+            return codes.map(({ name }) => name);
+          }
+          error ??= caught instanceof Error ? caught.message : String(caught);
+          return [];
+        },
+      );
+      const currentVersion: string | "none" | "error" = await tConn.migrate
+        .currentVersion()
+        .catch((caught: unknown) => {
+          if (this.isMissingMigrationTableError(caught)) {
+            return "none" as const;
+          }
+          error ??= caught instanceof Error ? caught.message : String(caught);
+          return "error" as const;
+        });
+      Naite.t("migrator:getStatus:status", status);
+      return {
+        connKey,
+        currentVersion,
+        status,
+        pending,
+        latencyMs: performance.now() - startedAt,
+        ...(error === undefined ? {} : { error }),
+      };
+    } catch (caught) {
+      const error = caught instanceof Error ? caught.message : String(caught);
+      console.warn(
+        chalk.yellow(
+          `${String(connKey)}의 마이그레이션 상태를 가져오는 데에 실패하였습니다.\n${error}`,
+        ),
+      );
+      return {
+        connKey,
+        currentVersion: "error",
+        status: "error",
+        pending: [],
+        latencyMs: performance.now() - startedAt,
+        error,
+      };
+    } finally {
+      await withTimeout(tConn.destroy(), MIGRATION_CONN_TIMEOUT_MS, () => {
+        return new Error("connection destroy timeout");
+      }).catch(() => {});
+    }
+  }
+
+  async getPreparedCodes(compareConnKey: MigrationTarget): Promise<GenMigrationCode[]> {
+    const status = await this.getConnectionStatus(compareConnKey);
+    if (status.status !== 0 || status.error !== undefined) {
+      throw new Error(
+        `Migration comparison requires an up-to-date database: ${String(compareConnKey)}`,
+      );
+    }
+
+    return this.compareWithConnection(compareConnKey);
+  }
+
+  private async compareWithConnection(compareConnKey: MigrationTarget) {
+    const compareDB = createKnexInstance(Sonamu.dbConfig[compareConnKey]);
+    try {
+      return await this.compareMigrations(compareDB);
+    } finally {
+      await compareDB.destroy();
+    }
+  }
+
   /**
-   * 타겟별 마이그레이션 상태와 코드 생성/준비 상태를 구해옵니다.
-   * 실제로 DB에 접근도 하고 마이그레이션 코드 파일도 확인하고,
-   * 필요하다면 적용할 수 있는 코드를 생성까지 해옵니다.
-   *
-   * CLI와 Sonamu UI에서 사용됩니다.
-   *
-   * @returns
+   * @deprecated 신규 UI에서는 커넥션별 조회 API를 사용합니다.
+   * 기존 CLI와 스크립트 호환을 위해 전체 상태를 조립합니다.
    */
   async getStatus(): Promise<MigrationStatus> {
-    const codes = await this.getMigrationCodes();
+    const [codes, connections] = await Promise.all([
+      this.getMigrationCodes(),
+      Promise.resolve(this.getConnections()),
+    ]);
     Naite.t("migrator:getStatus:codes", codes);
 
-    const connKeys = this.getMigrationTargetKeys();
-
-    let migrationStatusError: string | undefined;
-
-    const statuses = await Promise.all(
-      connKeys.map(async (connKey) => {
-        const knexOptions = Sonamu.dbConfig[connKey];
-        const connection = knexOptions.connection as Knex.PgConnectionConfig;
-        // 상태 조회용 커넥션은 fail-fast로 만든다: 불통 DB에서 커넥션 획득을 무한정
-        // 재시도하며 CLI 프로세스가 종료되지 않는 것을 막는다.
-        // - connectionTimeoutMillis: 소켓 연결 자체를 5초 안에 포기 → 소켓이 정리되어 프로세스가 종료됨
-        // - propagateCreateError: 첫 연결 실패를 즉시 전파(풀 재시도 없이 바로 실패)
-        const tConn = createKnexInstance({
-          ...knexOptions,
-          connection: {
-            ...(connection as Record<string, unknown>),
-            connectionTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
-          },
-          pool: {
-            ...knexOptions.pool,
-            min: 0,
-            acquireTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
-            createTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
-            propagateCreateError: true,
-          },
-        });
-        const connString =
-          `pg://${connection.user ?? ""}@${connection.host}:${connection.port}/${connection.database}` as ConnString;
-
-        try {
-          // DB 연결 확인: 불통 DB에서 status/list/currentVersion이 커넥션 획득
-          // 타임아웃까지 hang하는 것을 막기 위해, 먼저 5초 안에 응답하는지 확인한다.
-          try {
-            await withTimeout(
-              tConn.raw("select 1"),
-              MIGRATION_CONN_TIMEOUT_MS,
-              () =>
-                new Error(
-                  `DB 연결 시간 초과 (${MIGRATION_CONN_TIMEOUT_MS}ms) — ${connection.host}:${connection.port}/${connection.database}`,
-                ),
-            );
-          } catch (err) {
-            console.warn(
-              chalk.yellow(
-                `${connKey}의 마이그레이션 상태를 가져오는 데에 실패하였습니다. 데이터베이스에 연결할 수 없습니다.\n시도한 연결 설정:\n${JSON.stringify(knexOptions.connection, null, 2)}\n발생한 에러:\n${err}\n`,
-              ),
-            );
-            migrationStatusError = err instanceof Error ? err.message : String(err);
-            return {
-              name: connKey,
-              connKey,
-              connString,
-              currentVersion: "error" as const,
-              status: "error" as const,
-              pending: [] as string[],
-            };
-          }
-
-          const status: number | "error" = await (async () => {
-            try {
-              return await tConn.migrate.status();
-            } catch (err) {
-              if (this.isMissingMigrationTableError(err)) {
-                return codes.length;
-              }
-
-              console.warn(
-                chalk.yellow(
-                  `${connKey}의 마이그레이션 상태를 가져오는 데에 실패하였습니다. 데이터베이스가 올바르게 구성되지 않은 것 같습니다. 확인하시고 다시 시도해주세요.\n시도한 연결 설정:\n${JSON.stringify(knexOptions.connection, null, 2)}\n발생한 에러:\n${err}\n`,
-                ),
-              );
-              migrationStatusError = err instanceof Error ? err.message : String(err);
-              return "error";
-            }
-          })();
-          const pending: string[] = await (async () => {
-            try {
-              const [, fdList] = await tConn.migrate.list();
-              return fdList.map((fd: { file: string }) => fd.file.replace(".ts", ""));
-            } catch (err) {
-              if (this.isMissingMigrationTableError(err)) {
-                return codes.map((code) => code.name);
-              }
-
-              migrationStatusError = err instanceof Error ? err.message : String(err);
-              return [];
-            }
-          })();
-          const currentVersion: string | "error" = await (async () => {
-            try {
-              return await tConn.migrate.currentVersion();
-            } catch (_err) {
-              if (this.isMissingMigrationTableError(_err)) {
-                return "none";
-              }
-
-              migrationStatusError = _err instanceof Error ? _err.message : String(_err);
-              return "error";
-            }
-          })();
-          Naite.t("migrator:getStatus:status", status);
-
-          return {
-            name: connKey,
-            connKey,
-            connString,
-            currentVersion,
-            status: status,
-            pending,
-          };
-        } finally {
-          // 불통 DB의 커넥션 정리가 커넥션 획득 타임아웃까지 hang하지 않도록 감싼다.
-          await withTimeout(
-            tConn.destroy(),
-            MIGRATION_CONN_TIMEOUT_MS,
-            () => new Error("connection destroy timeout"),
-          ).catch(() => {});
-        }
-      }),
+    const connectionStatuses = await Promise.all(
+      connections.map(({ connKey }) => this.getConnectionStatus(connKey)),
     );
+    const conns = connections.map((connection, index) => {
+      const status = connectionStatuses[index];
+      assert(status !== undefined);
+      const configured = Sonamu.dbConfig[connection.connKey].connection as Knex.PgConnectionConfig;
+      return {
+        name: connection.name,
+        connKey: connection.connKey,
+        connString:
+          `pg://${configured.user ?? ""}@${configured.host}:${configured.port}/${configured.database}` as ConnString,
+        currentVersion: status.currentVersion,
+        status: status.status,
+        pending: status.pending,
+      };
+    });
+    Naite.t("migrator:getStatus:conns", conns);
 
-    Naite.t("migrator:getStatus:conns", statuses);
-
-    const preparedCodes: GenMigrationCode[] = await (async () => {
-      const status0conn = statuses.find((status) => status.status === 0);
-      if (status0conn === undefined) {
-        console.warn(
-          chalk.yellow(
-            `While trying to prepare migration codes, we found that there is no database to compare migrations. We need at least one database where every migration is applied(status === 0). You might want to apply your existing migrations to one of the databases.`,
-          ),
-        );
-        return [];
-      }
-
-      const compareDBconn = createKnexInstance(Sonamu.dbConfig[status0conn.connKey]);
-      try {
-        return await this.compareMigrations(compareDBconn);
-      } finally {
-        await compareDBconn.destroy();
-      }
-    })();
-
+    const compareConn = connectionStatuses.find(
+      ({ status, error }) => status === 0 && error === undefined,
+    );
+    const preparedCodes =
+      compareConn === undefined ? [] : await this.compareWithConnection(compareConn.connKey);
     Naite.t("migrator:getStatus:preparedCodes", preparedCodes);
 
     return {
-      conns: statuses,
+      conns,
       codes,
       preparedCodes,
-      error: migrationStatusError,
+      error: connectionStatuses.find(({ error }) => error !== undefined)?.error,
     };
   }
 
@@ -300,6 +410,25 @@ export class Migrator {
   async runAction(
     action: "apply" | "rollback",
     targets: (keyof SonamuDBConfig)[],
+  ): Promise<MigrationResult> {
+    return action === "apply" ? this.apply(targets) : this.rollback(targets);
+  }
+
+  async apply(targets: MigrationTarget[], options?: MigrationRunOptions): Promise<MigrationResult> {
+    return this.runActionWithProgress("apply", targets, options);
+  }
+
+  async rollback(
+    targets: MigrationTarget[],
+    options?: MigrationRunOptions,
+  ): Promise<MigrationResult> {
+    return this.runActionWithProgress("rollback", targets, options);
+  }
+
+  private async runActionWithProgress(
+    action: "apply" | "rollback",
+    targets: MigrationTarget[],
+    options?: MigrationRunOptions,
   ): Promise<MigrationResult> {
     Naite.t("migrator:runAction:action", action);
     Naite.t("migrator:runAction:targets", targets);
@@ -335,15 +464,7 @@ export class Migrator {
     );
 
     try {
-      // action
-      const result = await (async () => {
-        switch (action) {
-          case "apply":
-            return this.runMigrationsSequentially(conns, "apply");
-          case "rollback":
-            return this.runMigrationsSequentially(conns, "rollback");
-        }
-      })();
+      const result = await this.runMigrationsSequentially(conns, action, options);
 
       Naite.t("migrator:runAction:result", result);
 
@@ -382,8 +503,13 @@ export class Migrator {
    *
    * @param codeNames 삭제할 마이그레이션 코드 파일 이름 배열
    * @returns 삭제된 마이그레이션 코드 파일 개수
+   * @deprecated deleteCodes를 사용합니다.
    */
   async delCodes(codeNames: string[]): Promise<number> {
+    return this.deleteCodes(codeNames);
+  }
+
+  async deleteCodes(codeNames: string[]): Promise<number> {
     const { conns } = await this.getStatus();
     const { canDelete, appliedCodes } = this.validateDeletable(conns, codeNames);
     if (!canDelete) {
@@ -426,8 +552,11 @@ export class Migrator {
    *
    * @returns 생성된 마이그레이션 코드 파일 개수
    */
-  async generatePreparedCodes(): Promise<number> {
-    const { preparedCodes } = await this.getStatus();
+  async generatePreparedCodes(compareConnKey?: MigrationTarget): Promise<number> {
+    const preparedCodes =
+      compareConnKey === undefined
+        ? (await this.getStatus()).preparedCodes
+        : await this.getPreparedCodes(compareConnKey);
     Naite.t("migrator:generatePreparedCodes:preparedCodes", preparedCodes);
     if (preparedCodes.length === 0) {
       console.log(chalk.green("\n현재 모두 싱크된 상태입니다."));
@@ -525,7 +654,7 @@ export class Migrator {
    *
    * @returns Shadow DB 테스트 결과
    */
-  async runShadowTest(): Promise<MigrationResult> {
+  async runShadowTest(options?: MigrationRunOptions): Promise<MigrationResult> {
     const baseTestConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
     const workerId = process.env.SONAMU_WORKER_DB === "true" ? process.env.VITEST_POOL_ID : null;
     const templateDatabase =
@@ -570,12 +699,21 @@ export class Migrator {
 
       // shadow DB 테스트 진행
       try {
-        const [batchNo, applied] = await sdb.migrate.latest();
+        const progress = this.createProgressHooks("shadow", "shadow", options);
+        const [batchNo, applied] = await sdb.migrate.latest(progress);
         !isTest() &&
           console.log(chalk.green("Shadow DB 테스트에 성공했습니다!"), {
             batchNo,
             applied,
           });
+
+        this.emitProgress(options, {
+          type: "target-complete",
+          action: "shadow",
+          connKey: "shadow",
+          batchNo,
+          files: applied,
+        });
 
         return [
           {
@@ -586,7 +724,10 @@ export class Migrator {
         ];
       } catch (e) {
         console.error(e);
-        throw new ServiceUnavailableException(SD("sonamu.error.shadowDbTestFailed"));
+        throw new MigrationTargetExecutionError(
+          "shadow",
+          new ServiceUnavailableException(SD("sonamu.error.shadowDbTestFailed")),
+        );
       } finally {
         await sdb.destroy();
       }
