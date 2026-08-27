@@ -137,7 +137,7 @@ export namespace EntityPropZodSchema {
     virtualType: z.enum(["code", "query"]).optional(),
   });
   export const RelationOn = z.enum(["CASCADE", "SET NULL", "NO ACTION", "SET DEFAULT", "RESTRICT"]);
-  export const _RelationProp = z.object({
+  export const RelationPropBase = z.object({
     type: z.literal("relation"),
     name: z.string(),
     with: z.string(),
@@ -145,7 +145,7 @@ export namespace EntityPropZodSchema {
     toFilter: z.boolean().optional(),
     desc: z.string().optional(),
   });
-  export const OneToOneRelationCommon = _RelationProp.extend({
+  export const OneToOneRelationCommon = RelationPropBase.extend({
     relationType: z.literal("OneToOne"),
     customJoinClause: z.string().optional(),
   });
@@ -159,18 +159,18 @@ export namespace EntityPropZodSchema {
       onDelete: RelationOn,
     }),
   ]);
-  export const BelongsToOneRelationProp = _RelationProp.extend({
+  export const BelongsToOneRelationProp = RelationPropBase.extend({
     relationType: z.literal("BelongsToOne"),
     customJoinClause: z.string().optional(),
     onUpdate: RelationOn,
     onDelete: RelationOn,
   });
-  export const HasManyRelationProp = _RelationProp.extend({
+  export const HasManyRelationProp = RelationPropBase.extend({
     relationType: z.literal("HasMany"),
     joinColumn: z.string(),
     fromColumn: z.string().optional(),
   });
-  export const ManyToManyRelationProp = _RelationProp.extend({
+  export const ManyToManyRelationProp = RelationPropBase.extend({
     relationType: z.literal("ManyToMany"),
     joinTable: z.string(),
     onUpdate: RelationOn,
@@ -296,7 +296,7 @@ export namespace EntityPropZodSchema {
 
         // VIRTUAL Generated Column 타입 제한 검증
         if (result.data.generated.type === "VIRTUAL") {
-          if ((VirtualGeneratedDisallowedTypes as readonly string[]).includes(result.data.type)) {
+          if (VirtualGeneratedDisallowedTypes.includes(result.data.type)) {
             return {
               success: false,
               error: new z.ZodError([

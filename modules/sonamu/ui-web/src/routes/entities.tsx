@@ -31,10 +31,10 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
   const [showAIChat, setShowAIChat] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  const handleEntityCreated = (entityId: string) => {
+  const handleEntityCreated = (createdEntityId: string) => {
     refetch();
     setTimeout(() => {
-      navigate({ to: "/entities/$entityId", params: { entityId } });
+      navigate({ to: "/entities/$entityId", params: { entityId: createdEntityId } });
     }, 200);
   };
 

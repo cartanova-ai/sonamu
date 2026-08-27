@@ -2,7 +2,7 @@
 import { useChat } from "@ai-sdk/react";
 import { Button, Textarea } from "@sonamu-kit/react-components";
 import { DefaultChatTransport } from "ai";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type FixtureRecord } from "sonamu";
 import AlertCircleIcon from "~icons/lucide/alert-circle";
 import CheckIcon from "~icons/lucide/check";
@@ -17,11 +17,9 @@ type ChatComponentProps = {
 
 export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: ChatComponentProps) {
   const [input, setInput] = useState("");
-  const [processedToolCallIds, setProcessedToolCallIds] = useState(new Set());
-  const [toolState, setToolState] = useState<ToolState>("idle");
-  const [toolName, setToolName] = useState<string | null>(null);
-  const [summaryMessage, setSummaryMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [requestStartIndex, setRequestStartIndex] = useState(0);
+  const processedToolCallIdsRef = useRef(new Set<string>());
+  const [transportErrorMessage, setTransportErrorMessage] = useState<string | null>(null);
 
   const { messages, status, sendMessage, setMessages, stop } = useChat({
     // @ts-expect-error TODO: fix this (ai-sdk stable/beta 이슈)
@@ -38,73 +36,67 @@ export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: Chat
       })();
 
       if ("statusCode" in err && err.statusCode === 404) {
-        setErrorMessage(
+        setTransportErrorMessage(
           "API Key 설정이 필요합니다. process.env.ANTHROPIC_API_KEY 설정 후 다시 시도하세요.",
         );
       } else {
-        setErrorMessage(err.message);
+        setTransportErrorMessage(err.message);
       }
     },
   });
 
-  // messages에서 tool result 감시
+  // 도구 결과 콜백은 메시지당 한 번만 외부 상태에 반영합니다.
   useEffect(() => {
-    let hasError = false;
-    let errorText: string | null = null;
-    let lastAssistantText: string | null = null;
-
     for (const msg of messages) {
       for (const part of msg.parts) {
-        if (part.type === "step-start") {
-          setToolState("running");
-        }
-
-        // "tool-"로 시작하는 모든 part 처리
         if (part.type.startsWith("tool-") && "state" in part && "toolCallId" in part) {
-          const name = part.type.slice(5); // "tool-" 제거
-          setToolName(name);
-
-          if (part.state === "output-available" && !processedToolCallIds.has(part.toolCallId)) {
+          if (
+            part.state === "output-available" &&
+            !processedToolCallIdsRef.current.has(part.toolCallId)
+          ) {
             // updateFixtures 또는 createFixtures 도구인 경우 결과 처리
             if (
               (part.type === "tool-updateFixtures" || part.type === "tool-createFixtures") &&
               "output" in part
             ) {
+              // SAFETY: 해당 도구의 서버 응답 스키마는 성공 여부와 픽스쳐 배열을 항상 함께 반환합니다.
               const result = part.output as { success: boolean; updatedRecords: FixtureRecord[] };
               if (result?.success && result?.updatedRecords && onUpdateFixtures) {
                 onUpdateFixtures(result.updatedRecords);
               }
             }
-            setProcessedToolCallIds((prev) => new Set([...prev, part.toolCallId]));
-            setToolState("success");
-          } else if (part.state === "output-error") {
-            hasError = true;
-            errorText = ("errorText" in part ? part.errorText : null) ?? "알 수 없는 오류";
+            processedToolCallIdsRef.current.add(part.toolCallId);
           }
-        }
-
-        // assistant의 text 메시지 캡처
-        if (msg.role === "assistant" && part.type === "text" && part.text.trim()) {
-          lastAssistantText = part.text;
         }
       }
     }
+  }, [messages, onUpdateFixtures]);
 
-    if (hasError) {
-      setToolState("error");
-      setErrorMessage(errorText);
+  let toolState: ToolState = "idle";
+  let toolName: string | null = null;
+  let summaryMessage: string | null = null;
+  let toolErrorMessage: string | null = null;
+  // 현재 요청 이후의 메시지만 상태 표시에 사용해 이전 요청 결과가 섞이지 않게 합니다.
+  for (const msg of messages.slice(requestStartIndex)) {
+    for (const part of msg.parts) {
+      if (part.type === "step-start") toolState = "running";
+      if (part.type.startsWith("tool-") && "state" in part) {
+        toolName = part.type.slice(5);
+        if (part.state === "output-available") toolState = "success";
+        if (part.state === "output-error") {
+          toolState = "error";
+          toolErrorMessage = ("errorText" in part ? part.errorText : null) ?? "알 수 없는 오류";
+        }
+      }
+      if (msg.role === "assistant" && part.type === "text" && part.text.trim()) {
+        summaryMessage = part.text;
+      }
     }
+  }
 
-    setSummaryMessage(lastAssistantText);
-  }, [messages, onUpdateFixtures, processedToolCallIds]);
-
-  // status 변경 감시
-  useEffect(() => {
-    if (status === "ready" && toolState === "running") {
-      // streaming 완료 후에도 running이면 성공으로 처리
-      setToolState("success");
-    }
-  }, [status, toolState]);
+  // 스트리밍이 끝났지만 완료 결과가 없는 도구도 기존과 같이 성공으로 표시합니다.
+  if (status === "ready" && toolState === "running") toolState = "success";
+  const errorMessage = transportErrorMessage ?? toolErrorMessage;
 
   const isLoading = status === "streaming" || status === "submitted";
 
@@ -113,23 +105,21 @@ export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: Chat
     if (!input.trim() || isLoading) return;
 
     if (!fixtureRecords || fixtureRecords.length === 0) {
-      setErrorMessage("픽스쳐 레코드가 없습니다. 픽스쳐 조회 후 시도하세요.");
+      setTransportErrorMessage("픽스쳐 레코드가 없습니다. 픽스쳐 조회 후 시도하세요.");
       return;
     }
 
-    setToolState("idle");
-    setErrorMessage(null);
+    setTransportErrorMessage(null);
+    setRequestStartIndex(messages.length);
     sendMessage({ text: input }, { body: { fixtureRecords } });
     setInput("");
   };
 
   const handleClear = () => {
     setMessages([]);
-    setToolState("idle");
-    setToolName(null);
-    setSummaryMessage(null);
-    setErrorMessage(null);
-    setProcessedToolCallIds(new Set());
+    setRequestStartIndex(0);
+    setTransportErrorMessage(null);
+    processedToolCallIdsRef.current.clear();
   };
 
   const renderStatus = () => {

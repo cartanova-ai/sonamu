@@ -15,7 +15,7 @@ import {
 } from "@sonamu-kit/react-components";
 import { type TableCol } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
-import { Fragment, useState } from "react";
+import { type Dispatch, Fragment, type SetStateAction, useState } from "react";
 import CheckIcon from "~icons/lucide/check";
 import CodeIcon from "~icons/lucide/code";
 import PlayIcon from "~icons/lucide/play";
@@ -31,6 +31,100 @@ export const Route = createFileRoute("/scaffolding")({
 });
 
 type ScaffoldingIndexProps = {};
+type GenerateOptions = Record<string, { overwrite: boolean }>;
+type Translate = ReturnType<typeof useSonamuContext>["SD"];
+
+function getScaffoldingKey(status: ScaffoldingStatus): string {
+  return [status.entityId, status.templateKey].join("///");
+}
+
+function createScaffoldingColumns(
+  SD: Translate,
+  generateOptions: GenerateOptions,
+  setGenerateOptions: Dispatch<SetStateAction<GenerateOptions>>,
+  toggleOverwrite: () => void,
+  openPreviewModal: (status: ScaffoldingStatus) => void,
+): TableCol<ScaffoldingStatus>[] {
+  return [
+    {
+      label: "Entity",
+      tc: (row) => <>{row.entityId}</>,
+      fit: true,
+    },
+    {
+      label: "TemplateKey",
+      tc: (row) => <>{row.templateKey}</>,
+      fit: true,
+    },
+    {
+      label: SD("common.path"),
+      tc: (row) => <>{row.subPath}</>,
+    },
+    {
+      label: SD("scaffolding.isExists"),
+      tc: (row) =>
+        row.isExists ? (
+          <Button
+            icon={<CodeIcon />}
+            size="xs"
+            variant="yellow"
+            onClick={(event) => {
+              event.stopPropagation();
+              SonamuUIService.openVscode({ absPath: row.fullPath });
+            }}
+          />
+        ) : (
+          <XIcon />
+        ),
+      fit: true,
+    },
+    {
+      label: (
+        <Button
+          size="xs"
+          variant="destructive"
+          icon={<CheckIcon />}
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleOverwrite();
+          }}
+        >
+          {SD("common.overwrite")}
+        </Button>
+      ),
+      tc: (row) =>
+        row.isExists ? (
+          <Checkbox
+            checked={generateOptions[getScaffoldingKey(row)]?.overwrite ?? false}
+            onCheckedChange={(checked) => {
+              setGenerateOptions({
+                ...generateOptions,
+                [getScaffoldingKey(row)]: { overwrite: checked === true },
+              });
+            }}
+          />
+        ) : null,
+      fit: true,
+    },
+    {
+      label: SD("common.preview"),
+      tc: (row) => (
+        <Button
+          size="xs"
+          variant="green"
+          onClick={(event) => {
+            event.stopPropagation();
+            openPreviewModal(row);
+          }}
+        >
+          {SD("common.preview")}
+        </Button>
+      ),
+      fit: true,
+    },
+  ];
+}
+
 function ScaffoldingIndex({}: ScaffoldingIndexProps) {
   const { SD } = useSonamuContext();
   const { data: entitiesData } = SonamuUIService.useEntities();
@@ -52,11 +146,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
     pathAndCodes: null,
   });
 
-  const [generateOptions, setGenerateOptions] = useState<{
-    [key: string]: {
-      overwrite: boolean;
-    };
-  }>({});
+  const [generateOptions, setGenerateOptions] = useState<GenerateOptions>({});
 
   const entities = (allEntities ?? []).filter((e) => !e.parentId);
   const templateKeys = ["model", "model_test", "view_list", "view_search_input", "view_form"];
@@ -81,98 +171,6 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
   } = SonamuUIService.useScaffoldingStatus(selected);
   const { statuses } = scaffoldingData ?? {};
 
-  const getScaffoldingKey = (status: ScaffoldingStatus) =>
-    [status.entityId, status.templateKey].join("///");
-
-  const columns: TableCol<ScaffoldingStatus>[] = [
-    {
-      label: "Entity",
-      tc: (row) => <>{row.entityId}</>,
-      fit: true,
-    },
-    {
-      label: "TemplateKey",
-      tc: (row) => <>{row.templateKey}</>,
-      fit: true,
-    },
-    {
-      label: SD("common.path"),
-      tc: (row) => <>{row.subPath}</>,
-    },
-    {
-      label: SD("scaffolding.isExists"),
-      tc: (row) => (
-        <>
-          {row.isExists ? (
-            <Button
-              icon={<CodeIcon />}
-              size="xs"
-              variant="yellow"
-              onClick={(e) => {
-                e.stopPropagation();
-                SonamuUIService.openVscode({
-                  absPath: row.fullPath,
-                });
-              }}
-            />
-          ) : (
-            <XIcon />
-          )}
-        </>
-      ),
-      fit: true,
-    },
-    {
-      label: (
-        <Button
-          size="xs"
-          variant="destructive"
-          icon={<CheckIcon />}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleOverwrite();
-          }}
-        >
-          {SD("common.overwrite")}
-        </Button>
-      ),
-      tc: (row) => (
-        <>
-          {row.isExists && (
-            <Checkbox
-              checked={generateOptions[getScaffoldingKey(row)]?.overwrite ?? false}
-              onCheckedChange={(checked) => {
-                setGenerateOptions({
-                  ...generateOptions,
-                  [getScaffoldingKey(row)]: {
-                    overwrite: (checked as boolean) ?? false,
-                  },
-                });
-              }}
-            />
-          )}
-        </>
-      ),
-      fit: true,
-    },
-    {
-      label: SD("common.preview"),
-      tc: (row) => (
-        <Button
-          size="xs"
-          variant="green"
-          onClick={(e) => {
-            e.stopPropagation();
-            openPreviewModal(row);
-          }}
-        >
-          {SD("common.preview")}
-        </Button>
-      ),
-      fit: true,
-    },
-  ];
-
   const toggleOverwrite = () => {
     if (!statuses) {
       return;
@@ -185,19 +183,32 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
     if (allOverwrite) {
       setGenerateOptions({});
     } else {
-      setGenerateOptions(
-        filtered.reduce(
-          (acc, st) => {
-            acc[getScaffoldingKey(st)] = {
-              overwrite: true,
-            };
-            return acc;
-          },
-          {} as { [key: string]: { overwrite: boolean } },
-        ),
-      );
+      const nextGenerateOptions: typeof generateOptions = {};
+      for (const status of filtered) {
+        nextGenerateOptions[getScaffoldingKey(status)] = { overwrite: true };
+      }
+      setGenerateOptions(nextGenerateOptions);
     }
   };
+
+  const openPreviewModal = (status: ScaffoldingStatus) => {
+    SonamuUIService.scaffoldingPreview(status)
+      .then(({ pathAndCodes }) => {
+        setPreviewModalState({
+          open: true,
+          pathAndCodes,
+        });
+      })
+      .catch(defaultCatch);
+  };
+
+  const columns = createScaffoldingColumns(
+    SD,
+    generateOptions,
+    setGenerateOptions,
+    toggleOverwrite,
+    openPreviewModal,
+  );
 
   const generate = () => {
     if (!statuses) {
@@ -212,17 +223,6 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
     SonamuUIService.scaffoldingGenerate(options)
       .then(() => {
         scaffoldRefetch();
-      })
-      .catch(defaultCatch);
-  };
-
-  const openPreviewModal = (status: ScaffoldingStatus) => {
-    SonamuUIService.scaffoldingPreview(status)
-      .then(({ pathAndCodes }) => {
-        setPreviewModalState({
-          open: true,
-          pathAndCodes,
-        });
       })
       .catch(defaultCatch);
   };

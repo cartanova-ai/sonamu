@@ -1,6 +1,6 @@
 import { Input } from "@sonamu-kit/react-components";
 import { type InputProps } from "@sonamu-kit/react-components";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type FormNumberInputProps = Omit<InputProps, "onChange" | "type"> & {
   inputType?: "text" | "number";
@@ -14,13 +14,14 @@ export function FormNumberInput({
   value: propValue,
   ...props
 }: FormNumberInputProps) {
-  const [str, setStr] = useState("");
-
-  useEffect(() => {
-    if (Number((str ?? "").replace(/[.]/g, "")) !== propValue) {
-      setStr(String(propValue ?? ""));
-    }
-  }, [propValue, str]);
+  const [editedValue, setEditedValue] = useState<{
+    origin: number | string | undefined;
+    value: string;
+  }>();
+  const str =
+    editedValue !== undefined && editedValue.origin === propValue
+      ? editedValue.value
+      : String(propValue ?? "");
 
   return (
     <Input
@@ -31,7 +32,7 @@ export function FormNumberInput({
       onChange={(e) => {
         if (onChange) {
           const newValue = e.target.value;
-          setStr(newValue);
+          setEditedValue({ origin: propValue, value: newValue });
           if (newValue === "-") {
             return;
           }

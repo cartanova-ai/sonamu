@@ -1,7 +1,7 @@
 import { Input } from "@sonamu-kit/react-components";
 import { type InputProps } from "@sonamu-kit/react-components";
 import classNames from "classnames";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type EditableInputProps = Omit<InputProps, "onChange"> & {
   value: string;
@@ -9,13 +9,8 @@ type EditableInputProps = Omit<InputProps, "onChange"> & {
 };
 export function EditableInput({ onChange, value: originValue, ...inputProps }: EditableInputProps) {
   const [loading, setLoading] = useState(false);
-  const [value, setValue] = useState(originValue);
-
-  useEffect(() => {
-    if (value !== originValue) {
-      setValue(originValue);
-    }
-  }, [originValue]);
+  const [editedValue, setEditedValue] = useState<{ origin: string; value: string }>();
+  const value = editedValue?.origin === originValue ? editedValue.value : originValue;
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     event.stopPropagation();
@@ -28,7 +23,7 @@ export function EditableInput({ onChange, value: originValue, ...inputProps }: E
         setLoading(false);
       });
     } else if (event.key === "Escape") {
-      setValue(originValue);
+      setEditedValue(undefined);
     }
   };
 
@@ -37,7 +32,7 @@ export function EditableInput({ onChange, value: originValue, ...inputProps }: E
       {...inputProps}
       onKeyDown={handleKeyDown}
       value={value ?? ""}
-      onValueChange={setValue}
+      onValueChange={(nextValue) => setEditedValue({ origin: originValue, value: nextValue })}
       className={classNames({
         "border-red-500! bg-[rgb(255,217,217)]!": !!originValue && originValue !== value,
         "opacity-50": loading,

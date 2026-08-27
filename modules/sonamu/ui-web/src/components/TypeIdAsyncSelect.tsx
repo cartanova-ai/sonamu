@@ -5,6 +5,7 @@ import RefreshCwIcon from "~icons/lucide/refresh-cw";
 
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { defaultCatch } from "../services/sonamu.shared";
+import { createFormEvent } from "./form-event";
 
 type TypeIdAsyncSelectProps = {
   filter?: "enums" | "types";
@@ -40,7 +41,7 @@ export function TypeIdAsyncSelect({
       onValueChange(newValue);
     }
     if (onChange) {
-      onChange({} as React.FormEvent, { value: newValue });
+      onChange(createFormEvent(), { value: newValue });
     }
   };
 

@@ -58,7 +58,8 @@ export function MigrationPreview({
               items={connections.map(({ connKey, name }) => ({ value: connKey, label: name }))}
               value={compareConnKey}
               onValueChange={(value) => {
-                if (value !== undefined) onCompareConnKeyChange(value as MigrationTarget);
+                const connection = connections.find(({ connKey }) => connKey === value);
+                if (connection !== undefined) onCompareConnKeyChange(connection.connKey);
               }}
             />
           ) : (

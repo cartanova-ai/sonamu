@@ -1,6 +1,7 @@
 import { Select } from "@sonamu-kit/react-components";
 
 import { SonamuUIService } from "../services/sonamu-ui.service";
+import { createFormEvent } from "./form-event";
 
 type EntityIdSelectProps = {
   value?: string;
@@ -31,7 +32,7 @@ export function EntityIdSelect({
       onValueChange(newValue);
     }
     if (onChange) {
-      onChange({} as React.FormEvent, { value: newValue });
+      onChange(createFormEvent(), { value: newValue });
     }
   };
 

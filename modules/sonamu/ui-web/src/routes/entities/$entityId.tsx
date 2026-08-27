@@ -18,7 +18,7 @@ import {
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import classNames from "classnames";
 import { unique } from "radashi";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { type EntityIndex, type EntityProp, type FlattenSubsetRow } from "sonamu";
 import CheckIcon from "~icons/lucide/check";
 import Loader2Icon from "~icons/lucide/loader-2";
@@ -44,6 +44,19 @@ export const Route = createFileRoute("/entities/$entityId")({
   component: EntitiesShowPage,
 });
 
+function scrollToAndHighlight(elementId: string, highlightClasses: string[]): void {
+  const element = document.getElementById(elementId);
+  if (element) {
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+    element.classList.remove(...highlightClasses);
+    void element.offsetWidth;
+    element.classList.add(...highlightClasses);
+    setTimeout(() => {
+      element.classList.remove(...highlightClasses);
+    }, 1500);
+  }
+}
+
 type EntitiesShowPageProps = {};
 function EntitiesShowPage({}: EntitiesShowPageProps) {
   const { SD } = useSonamuContext();
@@ -55,14 +68,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
 
   const { entityId } = Route.useParams();
 
-  const entity = entities?.find((entity) => entity.id === entityId) ?? null;
-  useEffect(() => {
-    setCursor({
-      sheet: "props",
-      y: 0,
-      x: 0,
-    });
-  }, [entityId]);
+  const entity = entities?.find((candidate) => candidate.id === entityId) ?? null;
   const delEntity = () => {
     if (!entity) {
       return;
@@ -203,6 +209,17 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
   // AI Cone 생성 상태
   const [generatingCones, setGeneratingCones] = useState(false);
 
+  const enumLabelsArray: {
+    [enumId: string]: { key: string; label: string }[];
+  } = entity
+    ? Object.fromEntries(
+        Object.entries(entity.enumLabels).map(([enumId, enumLabels]) => [
+          enumId,
+          Object.entries(enumLabels).map(([key, label]) => ({ key, label })),
+        ]),
+      )
+    : {};
+
   // useSheetTable
   const { regRow, regCell, cursor, setCursor, setFocusedCursor, turnKeyHandler, isFocused } =
     useSheetTable({
@@ -224,6 +241,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
             ]
           : []),
       ],
+      resetKey: entityId,
       onExecute: (sheet, y, x) => {
         if (sheet === "props") {
           openPropModal("modify", y, x);
@@ -318,57 +336,23 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
       disable: propModalOpen,
     });
 
-  // subsets
-  const enumLabelsArray: {
+  const enumPropMap = entity
+    ? new Map(entity.props.filter((p) => p.type === "enum").map((p) => [p.id, p.name]))
+    : new Map<string, string>();
+
+  function enumLabelsArrayToEnumLabels(labelsByEnum: {
     [enumId: string]: { key: string; label: string }[];
-  } = useMemo(() => {
+  }) {
     if (!entity) {
       return {};
     }
     return Object.fromEntries(
-      Object.entries(entity.enumLabels).map(([enumId, enumLabels]) => [
-        enumId,
-        Object.entries(enumLabels).map(([key, label]) => ({
-          key,
-          label,
-        })),
-      ]),
-    );
-  }, [entity]);
-
-  const scrollToAndHighlight = (elementId: string, highlightClasses: string[]) => {
-    const el = document.getElementById(elementId);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.remove(...highlightClasses);
-      void el.offsetWidth;
-      el.classList.add(...highlightClasses);
-      setTimeout(() => {
-        el.classList.remove(...highlightClasses);
-      }, 1500);
-    }
-  };
-
-  const enumPropMap = useMemo(() => {
-    if (!entity) {
-      return new Map<string, string>();
-    }
-    return new Map(entity.props.filter((p) => p.type === "enum").map((p) => [p.id, p.name]));
-  }, [entity]);
-
-  const enumLabelsArrayToEnumLabels = (enumLabelsArray: {
-    [enumId: string]: { key: string; label: string }[];
-  }) => {
-    if (!entity) {
-      return {};
-    }
-    return Object.fromEntries(
-      Object.entries(enumLabelsArray).map(([enumId, enumLabels]) => [
+      Object.entries(labelsByEnum).map(([enumId, enumLabels]) => [
         enumId,
         Object.fromEntries(enumLabels.map(({ key, label }) => [key, label])),
       ]),
     );
-  };
+  }
   const appendFieldOnSubset = (subsetKey: string, field: string, at?: number) => {
     if (!entity) {
       return;
@@ -584,15 +568,15 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
     turnKeyHandler(false);
   };
 
-  const handlePropModalCompleted = async (data: EntityProp) => {
+  const handlePropModalCompleted = async (propData: EntityProp) => {
     if (!entity || !propModalData) return;
 
     const { mode, at } = propModalData;
 
     if (mode === "modify") {
-      await SonamuUIService.modifyProp(entity.id, data, at!);
+      await SonamuUIService.modifyProp(entity.id, propData, at!);
     } else {
-      await SonamuUIService.createProp(entity.id, data, at);
+      await SonamuUIService.createProp(entity.id, propData, at);
     }
 
     refetch();
@@ -621,8 +605,8 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
     }
   };
 
-  const handleSelectorModalCompleted = (entityId: string) => {
-    navigate({ to: "/entities/$entityId", params: { entityId } });
+  const handleSelectorModalCompleted = (selectedEntityId: string) => {
+    navigate({ to: "/entities/$entityId", params: { entityId: selectedEntityId } });
   };
 
   const confirmDelProp = async (at: number) => {
@@ -660,10 +644,10 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
     turnKeyHandler(false);
   };
 
-  const handleIndexModalCompleted = async (data: EntityIndex | null) => {
+  const handleIndexModalCompleted = async (indexData: EntityIndex | null) => {
     if (!entity || !indexModalData) return;
 
-    if (data === null) {
+    if (indexData === null) {
       // Cancel 처리
       setIndexModalOpen(false);
       setIndexModalData(null);
@@ -675,12 +659,12 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
     const newIndexes = [...entity.indexes];
 
     if (mode === "modify") {
-      newIndexes[at!] = data;
+      newIndexes[at!] = indexData;
     } else {
       if (at === undefined) {
-        newIndexes.push(data);
+        newIndexes.push(indexData);
       } else {
-        newIndexes.splice(at, 0, data);
+        newIndexes.splice(at, 0, indexData);
       }
     }
 

@@ -94,6 +94,7 @@ const TestEventSchema = z.object({
       ready: z.boolean(),
       running: z.boolean(),
       lastRunAt: z.string().nullable(),
+      sseAvailable: z.boolean(),
     }),
   }),
   runQueued: z.object({
@@ -213,7 +214,8 @@ export async function registerDevTestRoutes(
       sse.publish("snapshot", {
         schemaVersion: SCHEMA_VERSION,
         serverTime: new Date().toISOString(),
-        status,
+        // UI는 HTTP status와 같은 형태를 기대하므로 SSE 스냅샷에도 sseAvailable을 포함합니다.
+        status: { ...status, sseAvailable },
       });
 
       const heartbeatTimer = setInterval(() => {

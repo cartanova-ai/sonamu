@@ -13,6 +13,7 @@ import {
 import classNames from "classnames";
 import { type SetStateAction } from "react";
 import { type FixtureRecord } from "sonamu";
+import { z } from "zod";
 import InfoIcon from "~icons/lucide/info";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import TriangleAlertIcon from "~icons/lucide/triangle-alert";
@@ -29,6 +30,24 @@ type EntityTableProps = {
   setFixtureRecords: (value: SetStateAction<FixtureRecord[]>) => void;
   isGraphNode?: boolean;
 };
+
+// 컬럼 목록에서 'id'를 제외합니다.
+function refineColumns(columns: FixtureRecord["columns"]) {
+  return Object.entries(columns).filter(([column]) => column !== "id");
+}
+
+/** 레코드의 target, unique 행을 포함한 행 수를 계산합니다. */
+function getRowSpan(record: FixtureRecord): number {
+  let rowSpan = 1;
+  if (record.target) rowSpan++;
+  if (record.unique) rowSpan++;
+  return rowSpan;
+}
+
+/** 레코드의 중복 상태를 확인합니다. */
+function hasDuplicate(record: FixtureRecord): boolean {
+  return Boolean(record.target || record.unique);
+}
 
 /**
  * FixtureRecord 배열을 받아 하나의 엔티티 테이블을 렌더링하는 공통 컴포넌트
@@ -47,28 +66,6 @@ export default function EntityTable({
   setFixtureRecords,
   isGraphNode = false,
 }: EntityTableProps) {
-  // 컬럼 목록에서 'id'를 제외하는 헬퍼 함수
-  const refineColumns = (columns: Record<string, unknown>) => {
-    return Object.entries(columns).filter(([c]) => c !== "id");
-  };
-
-  /**
-   * 레코드의 행 수 계산 (target, unique 포함)
-   */
-  const getRowSpan = (record: FixtureRecord): number => {
-    let rowSpan = 1;
-    if (record.target) rowSpan++;
-    if (record.unique) rowSpan++;
-    return rowSpan;
-  };
-
-  /**
-   * 중복 상태 확인
-   */
-  const hasDuplicate = (record: FixtureRecord): boolean => {
-    return !!(record.target || record.unique);
-  };
-
   /**
    * override 토글 핸들러
    */
@@ -181,10 +178,8 @@ export default function EntityTable({
 
               <TableCell className="w-[1%] whitespace-nowrap">source</TableCell>
               {refineColumns(record.columns).map(([key, columnData]) => {
-                const { prop, value } = columnData as {
-                  prop: { type: string; relationType?: string; with?: string };
-                  value: unknown;
-                };
+                const { prop, value } = columnData;
+                const relatedEntityId = prop.type === "relation" ? prop.with : undefined;
                 return (
                   <TableCell key={key} className="w-[1%] whitespace-nowrap">
                     <div className="scrollable-cell-content">
@@ -192,16 +187,18 @@ export default function EntityTable({
                         prop.type === "relation" && prop.relationType !== "BelongsToOne" ? (
                           <div key={index}>
                             {JSON.stringify(v)}
-                            {v !== null && prop.with && (
+                            {v !== null && relatedEntityId && (
                               <Checkbox
                                 className={isGraphNode ? "nodrag nopan" : ""}
-                                checked={selectedIds.has(`${prop.with}#${v}`)}
+                                checked={selectedIds.has(`${relatedEntityId}#${v}`)}
                                 onCheckedChange={(checked) => {
+                                  const relationId = z.number().safeParse(v);
+                                  if (!relationId.success) return;
                                   onRelationToggle(
                                     record.fixtureId,
-                                    prop.with as string,
-                                    v as number,
-                                    checked as boolean,
+                                    relatedEntityId,
+                                    relationId.data,
+                                    Boolean(checked),
                                   );
                                 }}
                               />
@@ -229,7 +226,7 @@ export default function EntityTable({
                   </Tooltip>
                 </TableCell>
                 {refineColumns(record.target.columns).map(([key, columnData]) => {
-                  const { value } = columnData as { value: unknown };
+                  const { value } = columnData;
                   return (
                     <TableCell key={key} className="w-[1%] whitespace-nowrap">
                       <div className="scrollable-cell-content">{JSON.stringify(value)}</div>
@@ -251,7 +248,7 @@ export default function EntityTable({
                   </Tooltip>
                 </TableCell>
                 {refineColumns(record.unique.columns).map(([key, columnData]) => {
-                  const { value } = columnData as { value: unknown };
+                  const { value } = columnData;
                   return (
                     <TableCell key={key} className="w-[1%] whitespace-nowrap">
                       <div className="scrollable-cell-content">{JSON.stringify(value)}</div>

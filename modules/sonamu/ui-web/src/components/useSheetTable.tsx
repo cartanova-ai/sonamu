@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useSheetTable(options: {
   sheets: {
@@ -9,8 +9,9 @@ export function useSheetTable(options: {
   onKeywordChanged?: (sheet: string, keyword: string) => void;
   onKeydown: (e: KeyboardEvent) => boolean;
   disable?: boolean;
+  resetKey?: string;
 }) {
-  const { sheets, onExecute, onKeywordChanged, onKeydown, disable } = options;
+  const { sheets, onExecute, onKeywordChanged, onKeydown, disable, resetKey } = options;
 
   const sheetConfigsRef = useRef(
     sheets.map((sheet) => ({
@@ -25,7 +26,7 @@ export function useSheetTable(options: {
       width: 0,
       height: 0,
     }));
-  }, [sheets.length]);
+  }, [sheets]);
 
   // cursor
   type Cursor = {
@@ -38,79 +39,84 @@ export function useSheetTable(options: {
     y: 0,
     x: 0,
   });
+  const [previousResetKey, setPreviousResetKey] = useState(resetKey);
+  if (previousResetKey !== resetKey) {
+    setPreviousResetKey(resetKey);
+    setCursor({ sheet: "props", y: 0, x: 0 });
+  }
   const [focusedCursor, setFocusedCursor] = useState<Cursor | null>(null);
 
   // Key
-  const moveCursorToDown = (amount: number) => {
-    setCursor((cursor) => {
+  const moveCursorToDown = useCallback((amount: number) => {
+    setCursor((previousCursor) => {
       const sheetIndex = sheetConfigsRef.current.findIndex(
-        (sheetConfig) => sheetConfig.name === cursor.sheet,
+        (sheetConfig) => sheetConfig.name === previousCursor.sheet,
       );
       if (sheetIndex === -1) {
-        return { ...cursor, y: 0 };
+        return { ...previousCursor, y: 0 };
       }
       const sheet = sheetConfigsRef.current[sheetIndex];
-      if (cursor.y === sheet.height - 1) {
+      if (previousCursor.y === sheet.height - 1) {
         const nextSheet = sheetConfigsRef.current[sheetIndex + 1];
         if (!nextSheet) {
-          return cursor;
+          return previousCursor;
         } else {
           return {
             sheet: nextSheet.name,
             y: 0,
-            x: Math.min(nextSheet.width - 1, cursor.x),
+            x: Math.min(nextSheet.width - 1, previousCursor.x),
           };
         }
       } else {
         return {
-          ...cursor,
-          sheet: cursor.sheet,
-          y: Math.min(sheet.height - 1, cursor.y + amount),
+          ...previousCursor,
+          sheet: previousCursor.sheet,
+          y: Math.min(sheet.height - 1, previousCursor.y + amount),
         };
       }
     });
     // TODO: 커서 위치에 따라 스크롤 이동
-  };
-  const moveCursorToUp = (amount: number) => {
-    setCursor((cursor) => {
+  }, []);
+  const moveCursorToUp = useCallback((amount: number) => {
+    setCursor((previousCursor) => {
       const sheetIndex = sheetConfigsRef.current.findIndex(
-        (sheetConfig) => sheetConfig.name === cursor.sheet,
+        (sheetConfig) => sheetConfig.name === previousCursor.sheet,
       );
       if (sheetIndex === -1) {
-        return { ...cursor, y: 0 };
+        return { ...previousCursor, y: 0 };
       }
-      if (cursor.y === 0) {
+      if (previousCursor.y === 0) {
         const prevSheet = sheetConfigsRef.current[sheetIndex - 1];
         if (!prevSheet) {
-          return cursor;
+          return previousCursor;
         } else {
           return { sheet: prevSheet.name, y: prevSheet.height - 1, x: 0 };
         }
       } else {
         return {
-          ...cursor,
-          sheet: cursor.sheet,
-          y: Math.max(0, cursor.y - amount),
+          ...previousCursor,
+          sheet: previousCursor.sheet,
+          y: Math.max(0, previousCursor.y - amount),
         };
       }
     });
     // TODO: 커서 위치에 따라 스크롤 이동
-  };
-  const moveCursorToLeft = (amount: number) => {
-    setCursor((cursor) => {
+  }, []);
+  const moveCursorToLeft = useCallback((amount: number) => {
+    setCursor((previousCursor) => {
       const sheetIndex = sheetConfigsRef.current.findIndex(
-        (sheetConfig) => sheetConfig.name === cursor.sheet,
+        (sheetConfig) => sheetConfig.name === previousCursor.sheet,
       );
       if (sheetIndex === -1) {
-        return { ...cursor, y: 0 };
+        return { ...previousCursor, y: 0 };
       }
-      if (cursor.x === 0) {
+      if (previousCursor.x === 0) {
         const prevSheet = sheetConfigsRef.current[sheetIndex - 1];
         if (!prevSheet) {
-          return cursor;
+          return previousCursor;
         } else {
           return {
-            ...cursor,
+            ...previousCursor,
             sheet: prevSheet.name,
             y: 0,
             x: prevSheet.width - 1,
@@ -118,33 +124,33 @@ export function useSheetTable(options: {
         }
       } else {
         return {
-          ...cursor,
-          sheet: cursor.sheet,
-          x: Math.max(0, cursor.x - amount),
+          ...previousCursor,
+          sheet: previousCursor.sheet,
+          x: Math.max(0, previousCursor.x - amount),
         };
       }
     });
     // TODO: 커서 위치에 따라 스크롤 이동
-  };
-  const moveCursorToRight = (amount: number) => {
-    setCursor((cursor) => {
+  }, []);
+  const moveCursorToRight = useCallback((amount: number) => {
+    setCursor((previousCursor) => {
       const sheetIndex = sheetConfigsRef.current.findIndex(
-        (sheetConfig) => sheetConfig.name === cursor.sheet,
+        (sheetConfig) => sheetConfig.name === previousCursor.sheet,
       );
       if (sheetIndex === -1) {
-        return { ...cursor, y: 0 };
+        return { ...previousCursor, y: 0 };
       }
       const sheet = sheetConfigsRef.current.find(
-        (sheetConfig) => sheetConfig.name === cursor.sheet,
+        (sheetConfig) => sheetConfig.name === previousCursor.sheet,
       );
       if (!sheet) {
-        return { ...cursor, y: 0 };
+        return { ...previousCursor, y: 0 };
       }
 
-      if (cursor.x === sheet.width - 1) {
+      if (previousCursor.x === sheet.width - 1) {
         const nextSheet = sheetConfigsRef.current[sheetIndex + 1];
         if (!nextSheet) {
-          return cursor;
+          return previousCursor;
         } else {
           return {
             sheet: nextSheet.name,
@@ -154,21 +160,21 @@ export function useSheetTable(options: {
         }
       } else {
         return {
-          ...cursor,
-          sheet: cursor.sheet,
-          x: Math.min(sheet.width - 1, cursor.x + amount),
+          ...previousCursor,
+          sheet: previousCursor.sheet,
+          x: Math.min(sheet.width - 1, previousCursor.x + amount),
         };
       }
     });
     // TODO: 커서 위치에 따라 스크롤 이동
-  };
+  }, []);
 
   // 키 타이머 (1초 이내 입력인 경우 keyword를 누적하고 아닌 경우 초기화 후 입력)
   const keyTimerRef = useRef<{ keyword: string; timestamp: number } | null>(null);
   const keySwitchRef = useRef(true);
   useEffect(() => {
     if (disable) {
-      return;
+      return undefined;
     }
 
     // keydown
@@ -262,11 +268,22 @@ export function useSheetTable(options: {
       document.removeEventListener("keydown", applyingOnKeyDown);
       document.removeEventListener("mousedown", onMousedown);
     };
-  }, [options, cursor, focusedCursor, disable]);
+  }, [
+    cursor,
+    disable,
+    focusedCursor,
+    moveCursorToDown,
+    moveCursorToLeft,
+    moveCursorToRight,
+    moveCursorToUp,
+    onExecute,
+    onKeydown,
+    onKeywordChanged,
+  ]);
 
   return {
     regRow: (sheet: string, y: number, className?: string) => {
-      const sheetConfig = sheetConfigsRef.current.find((sheetConfig) => sheetConfig.name === sheet);
+      const sheetConfig = sheetConfigsRef.current.find((config) => config.name === sheet);
       if (sheetConfig) {
         sheetConfig.height = Math.max(sheetConfig.height, y + 1);
       }
@@ -278,7 +295,7 @@ export function useSheetTable(options: {
       };
     },
     regCell: (sheet: string, y: number, x: number) => {
-      const sheetConfig = sheetConfigsRef.current.find((sheetConfig) => sheetConfig.name === sheet);
+      const sheetConfig = sheetConfigsRef.current.find((config) => config.name === sheet);
       if (sheetConfig) {
         sheetConfig.width = Math.max(sheetConfig.width, x + 1);
         sheetConfig.height = Math.max(sheetConfig.height, y + 1);

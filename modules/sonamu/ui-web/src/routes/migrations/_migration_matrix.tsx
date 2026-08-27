@@ -45,7 +45,7 @@ export type MigrationStatusQueryView = {
   data?: { status: MigrationConnectionStatus };
   error: Error | null;
   isFetching: boolean;
-  refetch: () => Promise<unknown>;
+  refetch: () => void;
 };
 
 type MigrationMatrixProps = {
@@ -188,7 +188,7 @@ function ConnectionHeader({
                 aria-label={SD("migration.matrix.refreshStatus").replace("{name}", connection.name)}
                 onClick={(event) => {
                   event.stopPropagation();
-                  void query.refetch();
+                  query.refetch();
                 }}
               />
             ) : null}

@@ -5,22 +5,48 @@
 
 import { Button, Checkbox, Select } from "@sonamu-kit/react-components";
 import { camelize } from "inflection";
-import { useEffect, useState } from "react";
-import Markdown from "react-markdown";
+import { useState } from "react";
 // 진짜 얼탱이없는 이슈: https://github.com/react-syntax-highlighter/react-syntax-highlighter/issues/539#issuecomment-1869182939
 // 울며 겨자먹기 workaround입니다. 누가 고쳐주세요 ㅠㅡㅠ
 import { Prism } from "react-syntax-highlighter";
-import { type SyntaxHighlighterProps } from "react-syntax-highlighter";
 import * as markdownTheme from "react-syntax-highlighter/dist/esm/styles/prism";
 import { type FixtureImportResult } from "sonamu";
+import { z } from "zod";
 import CheckCircleIcon from "~icons/lucide/check-circle";
 import ClipboardIcon from "~icons/lucide/clipboard";
 
 import { type ExtendedEntity } from "../../services/sonamu-ui.service";
 
-const SyntaxHighlighter = Prism as any as React.FC<SyntaxHighlighterProps>;
+const markdownThemes = { ...markdownTheme };
 
-type ThemeKey = keyof typeof markdownTheme;
+type ThemeKey = keyof typeof markdownThemes;
+type FixtureJsonValue = null | boolean | number | string | FixtureJsonValue[] | FixtureJsonObject;
+type FixtureJsonObject = { [key: string]: FixtureJsonValue };
+
+const fixtureJsonValueSchema: z.ZodType<FixtureJsonValue> = z.lazy(() =>
+  z.union([
+    z.null(),
+    z.boolean(),
+    z.number(),
+    z.string(),
+    z.array(fixtureJsonValueSchema),
+    z.record(z.string(), fixtureJsonValueSchema),
+  ]),
+);
+const fixtureJsonObjectSchema: z.ZodType<FixtureJsonObject> = z.record(
+  z.string(),
+  fixtureJsonValueSchema,
+);
+
+function isThemeKey(value: string): value is ThemeKey {
+  return value in markdownThemes;
+}
+
+function getFixtureLoaderCode(entityId: string, id: number, subset: string): string {
+  return `${camelize(entityId, true)}${id
+    .toString()
+    .padStart(2, "0")}: async () => ${entityId}Model.findById("${subset}", ${id}),`;
+}
 
 type FixtureCodeViewerProps = {
   fixtureResults: FixtureImportResult[];
@@ -32,14 +58,14 @@ export default function FixtureCodeViewer({
   entities,
   targetDB,
 }: FixtureCodeViewerProps) {
-  const [theme, setTheme] = useState(
-    (localStorage.getItem("markdown-theme") as ThemeKey) ?? "oneDark",
-  );
+  const storedTheme = localStorage.getItem("markdown-theme");
+  const [theme, setTheme] = useState<ThemeKey>(() => {
+    if (storedTheme && isThemeKey(storedTheme)) return storedTheme;
+    return "oneDark";
+  });
 
-  const getThemeOptions = () => Object.keys(markdownTheme);
-
-  const setMarkdownTheme = (value: ThemeKey | undefined) => {
-    if (!value) return;
+  const setMarkdownTheme = (value: string | undefined) => {
+    if (!value || !isThemeKey(value)) return;
     setTheme(value);
     localStorage.setItem("markdown-theme", value);
   };
@@ -49,8 +75,8 @@ export default function FixtureCodeViewer({
       <div className="top-controls">
         <Select
           value={theme}
-          onValueChange={(value) => setMarkdownTheme(value as ThemeKey)}
-          items={getThemeOptions()}
+          onValueChange={setMarkdownTheme}
+          items={Object.keys(markdownThemes)}
           placeholder="Theme"
           className="theme-dropdown"
         />
@@ -77,7 +103,7 @@ export default function FixtureCodeViewer({
 const FixtureCode = ({
   fixture,
   entity,
-  targetDB,
+  targetDB: _targetDB,
   theme,
 }: {
   fixture: FixtureImportResult;
@@ -87,65 +113,47 @@ const FixtureCode = ({
 }) => {
   const subsetKeys = Object.keys(entity.subsets);
   const [selectedSubset, setSelectedSubset] = useState(subsetKeys[0]);
-  const [codes, setCodes] = useState(new Map());
 
-  const getFixtureLoaderCode = (entityId: string, id: number, subset: string) => {
-    return `${camelize(entityId, true)}${id
-      .toString()
-      .padStart(2, "0")}: async () => ${entityId}Model.findById("${subset}", ${id}),`;
-  };
-
-  const getFixtureTestCode = (entityId: string, id: number, res: { [key: string]: any }) => {
+  const getFixtureTestCode = (entityId: string, id: number, res: FixtureImportResult["data"]) => {
     const fixtureName = camelize(entityId, true) + id.toString().padStart(2, "0");
+    const parsed = fixtureJsonObjectSchema.safeParse(res);
+    if (!parsed.success) {
+      return Object.entries(res)
+        .map(([key, value]) => `expect(${fixtureName}.${key}).toBe(${JSON.stringify(value)});`)
+        .join("\n");
+    }
 
-    const generateExpects = (obj: { [key: string]: any }, path = "") => {
-      let expects = "";
-      for (const [key, value] of Object.entries(obj)) {
-        const currentPath = path ? `${path}.${key}` : key;
-        if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-          expects += generateExpects(value, currentPath);
-        } else if (Array.isArray(value)) {
-          value.forEach((item, index) => {
-            if (typeof item === "object" && item !== null) {
-              expects += generateExpects(item, `${currentPath}[${index}]`);
-            } else {
-              expects += `expect(${fixtureName}${
-                currentPath ? `.${currentPath}` : ""
-              }[${index}]).toBe(${JSON.stringify(item)});\n`;
-            }
-          });
-        } else {
-          expects += `expect(${fixtureName}${
-            currentPath ? `.${currentPath}` : ""
-          }).toBe(${JSON.stringify(value)});\n`;
-        }
-      }
-      return expects;
-    };
+    const generateExpects = (obj: FixtureJsonObject, path = ""): string =>
+      Object.entries(obj)
+        .flatMap(([key, value]) => {
+          const currentPath = path ? `${path}.${key}` : key;
+          if (Array.isArray(value)) {
+            return value.flatMap((item, index) => {
+              const itemPath = `${currentPath}[${index}]`;
+              const nestedItem = fixtureJsonObjectSchema.safeParse(item);
+              return nestedItem.success
+                ? generateExpects(nestedItem.data, itemPath)
+                : `expect(${fixtureName}.${itemPath}).toBe(${JSON.stringify(item)});`;
+            });
+          }
 
-    return generateExpects(res);
+          const nestedValue = fixtureJsonObjectSchema.safeParse(value);
+          return nestedValue.success
+            ? generateExpects(nestedValue.data, currentPath)
+            : `expect(${fixtureName}.${currentPath}).toBe(${JSON.stringify(value)});`;
+        })
+        .join("\n");
+
+    return generateExpects(parsed.data);
   };
 
-  useEffect(() => {
-    if (selectedSubset) {
-      // FIXME: fixture.data를 서브셋 쿼리 조회하는 방식 변경 필요
-      setCodes(
-        new Map([
-          [
-            selectedSubset,
-            {
-              fixture: getFixtureLoaderCode(
-                fixture.entityId,
-                Number(fixture.data.id),
-                selectedSubset,
-              ),
-              test: getFixtureTestCode(fixture.entityId, Number(fixture.data.id), fixture.data),
-            },
-          ],
-        ]),
-      );
-    }
-  }, [fixture, selectedSubset, targetDB]);
+  // FIXME: fixture.data를 서브셋 쿼리 조회하는 방식 변경 필요
+  const codes = selectedSubset
+    ? {
+        fixture: getFixtureLoaderCode(fixture.entityId, Number(fixture.data.id), selectedSubset),
+        test: getFixtureTestCode(fixture.entityId, Number(fixture.data.id), fixture.data),
+      }
+    : undefined;
 
   return (
     <div>
@@ -174,16 +182,16 @@ const FixtureCode = ({
 
         {/* 2. Generated Code Blocks */}
         <div style={{ margin: "15px 0" }}>
-          {codes.get(selectedSubset) && (
+          {codes && (
             <>
               <CodeBlock
-                code={codes.get(selectedSubset)?.fixture ?? ""}
+                code={codes.fixture}
                 language="javascript"
                 theme={theme}
                 filename="fixture-loader.ts"
               />
               <CodeBlock
-                code={codes.get(selectedSubset)?.test ?? ""}
+                code={codes.test}
                 language="javascript"
                 theme={theme}
                 filename="fixture-test-expects.ts"
@@ -210,23 +218,31 @@ const CodeBlock = ({
   theme?: ThemeKey;
   lineSelection?: boolean;
 }) => {
-  const [selectedLines, setSelectedLines] = useState<boolean[]>([]);
+  const createEmptySelection = () => Array.from({ length: code.split("\n").length }, () => false);
+  const [selectedLinesState, setSelectedLinesState] = useState(() => ({
+    code,
+    lines: createEmptySelection(),
+  }));
+  const selectedLines =
+    selectedLinesState.code === code ? selectedLinesState.lines : createEmptySelection();
   const [hoveredLine, setHoveredLine] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
 
   const handleLineToggle = (index: number) => {
-    setSelectedLines((prev) => {
-      const newLines = [...prev];
+    setSelectedLinesState(() => {
+      const newLines = [...selectedLines];
       newLines[index] = !newLines[index];
-      return newLines;
+      return { code, lines: newLines };
     });
   };
 
-  const handleCopy = (code: string) => {
-    const lines = String(code).split("\n");
+  const codeContent = code.trimEnd();
+
+  const handleCopy = (content: string) => {
+    const lines = content.split("\n");
     const textToCopy = lineSelection
       ? lines.filter((_, index) => selectedLines[index]).join("\n")
-      : String(code);
+      : content;
 
     // Use execCommand for broader compatibility in iFrames
     try {
@@ -244,116 +260,102 @@ const CodeBlock = ({
     }
   };
 
-  useEffect(() => {
-    setSelectedLines(Array.from({ length: code.split("\n").length }, () => false));
-  }, [code]);
-
   return (
-    <Markdown
-      children={`\`\`\`${language} ${filename ? `title="${filename}"` : ""}\n${code}\n\`\`\``}
-      components={{
-        code({ children, className: _className, node: _node, ref: _ref, ...rest }) {
-          // Remove leading/trailing newlines which might be added by the markdown parser
-          const codeContent = String(children).trimEnd();
+    <div className="code">
+      <div className="code-header">
+        <span>{filename ?? language}</span>
+        <div>
+          {lineSelection && (
+            <Checkbox
+              checked={selectedLines.every((line) => line)}
+              label={selectedLines.every((line) => line) ? "전체 해제" : "전체 선택"}
+              onCheckedChange={() => {
+                const allSelected = selectedLines.every((line) => line);
+                setSelectedLinesState({
+                  code,
+                  lines: selectedLines.map(() => !allSelected),
+                });
+              }}
+            />
+          )}
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => handleCopy(codeContent)}
+            icon={copied ? <CheckCircleIcon /> : <ClipboardIcon />}
+          >
+            {copied ? "복사 완료" : "복사"}
+          </Button>
+        </div>
+      </div>
 
-          return (
-            <div className="code">
-              <div className="code-header">
-                <span>{filename ?? language}</span>
-                <div>
+      <Prism
+        children={codeContent}
+        language={language}
+        style={markdownThemes[theme ?? "materialDark"]}
+        renderer={({ rows, stylesheet }) => (
+          <div style={{ position: "relative" }}>
+            {rows.map((row, i) => {
+              const isSelected = selectedLines[i] ?? false;
+              const isHovered = hoveredLine === i;
+
+              return (
+                <div
+                  key={i}
+                  className={`code-line ${isHovered ? "hovered" : ""}`}
+                  style={isSelected ? { backgroundColor: "rgba(0, 123, 255, 0.1)" } : {}}
+                  onMouseEnter={() => setHoveredLine(i)}
+                  onMouseLeave={() => setHoveredLine(null)}
+                  onClick={() => lineSelection && handleLineToggle(i)}
+                >
                   {lineSelection && (
                     <Checkbox
-                      checked={selectedLines.every((line) => line)}
-                      label={selectedLines.every((line) => line) ? "전체 해제" : "전체 선택"}
-                      onCheckedChange={() => {
-                        const allSelected = selectedLines.every((line) => line);
-                        setSelectedLines(selectedLines.map(() => !allSelected));
-                      }}
+                      checked={isSelected}
+                      // Prevent click on checkbox from triggering the parent div's onClick
+                      onClick={(e) => e.stopPropagation()}
+                      onCheckedChange={() => handleLineToggle(i)}
                     />
                   )}
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    onClick={() => handleCopy(codeContent)}
-                    icon={copied ? <CheckCircleIcon /> : <ClipboardIcon />}
-                  >
-                    {copied ? "복사 완료" : "복사"}
-                  </Button>
-                </div>
-              </div>
-
-              <SyntaxHighlighter
-                {...rest}
-                children={codeContent}
-                language={language}
-                style={markdownTheme[theme ?? "materialDark"]}
-                renderer={({ rows, stylesheet }) => (
-                  <div style={{ position: "relative" }}>
-                    {rows.map((row, i) => {
-                      const isSelected = selectedLines[i] ?? false;
-                      const isHovered = hoveredLine === i;
-
-                      return (
-                        <div
-                          key={i}
-                          className={`code-line ${isHovered ? "hovered" : ""}`}
-                          style={isSelected ? { backgroundColor: "rgba(0, 123, 255, 0.1)" } : {}}
-                          onMouseEnter={() => setHoveredLine(i)}
-                          onMouseLeave={() => setHoveredLine(null)}
-                          onClick={() => lineSelection && handleLineToggle(i)}
-                        >
-                          {lineSelection && (
-                            <Checkbox
-                              checked={isSelected}
-                              // Prevent click on checkbox from triggering the parent div's onClick
-                              onClick={(e) => e.stopPropagation()}
-                              onCheckedChange={() => handleLineToggle(i)}
-                            />
-                          )}
-                          <span>
-                            {row.children?.map((child: any, j: number) => {
-                              if (child.type === "element") {
-                                return (
-                                  <span
-                                    key={j}
-                                    className={child.properties.className.join(" ")}
-                                    // SyntaxHighlighter 스타일 적용
-                                    style={{
-                                      ...child.properties.className.reduce(
-                                        (acc: any, className: string) => {
-                                          if (stylesheet[className]) {
-                                            return {
-                                              ...acc,
-                                              ...stylesheet[className],
-                                            };
-                                          }
-                                          return acc;
-                                        },
-                                        {},
-                                      ),
-                                      // Line-specific style adjustment (optional, but good practice)
-                                      fontWeight: isHovered ? "normal" : "normal",
-                                    }}
-                                  >
-                                    {child.children.map((grandChild: any, k: number) => (
-                                      <span key={k}>{grandChild.value}</span>
-                                    ))}
-                                  </span>
-                                );
-                              }
-                              return <span key={j}>{child.value}</span>;
-                            })}
+                  <span>
+                    {row.children?.map((child: any, j: number) => {
+                      if (child.type === "element") {
+                        return (
+                          <span
+                            key={j}
+                            className={child.properties.className.join(" ")}
+                            // SyntaxHighlighter 스타일 적용
+                            style={{
+                              ...child.properties.className.reduce(
+                                (acc: any, className: string) => {
+                                  if (stylesheet[className]) {
+                                    return {
+                                      ...acc,
+                                      ...stylesheet[className],
+                                    };
+                                  }
+                                  return acc;
+                                },
+                                {},
+                              ),
+                              // Line-specific style adjustment (optional, but good practice)
+                              fontWeight: isHovered ? "normal" : "normal",
+                            }}
+                          >
+                            {child.children.map((grandChild: any, k: number) => (
+                              <span key={k}>{grandChild.value}</span>
+                            ))}
                           </span>
-                        </div>
-                      );
+                        );
+                      }
+                      return <span key={j}>{child.value}</span>;
                     })}
-                  </div>
-                )}
-              />
-            </div>
-          );
-        },
-      }}
-    />
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      />
+    </div>
   );
 };

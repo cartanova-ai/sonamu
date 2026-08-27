@@ -42,7 +42,7 @@ const WORKFLOW_RUN_STATUS_OPTIONS = [
 ] as const;
 type FilterableStatus = (typeof WORKFLOW_RUN_STATUS_OPTIONS)[number];
 const WorkflowRunStatusEnum = { options: WORKFLOW_RUN_STATUS_OPTIONS };
-const WORKFLOW_RUN_STATUS_LABELS: Record<FilterableStatus, string> = {
+const WORKFLOW_RUN_STATUS_LABELS = {
   pending: "PENDING",
   running: "RUNNING",
   sleeping: "SLEEPING",
@@ -50,7 +50,7 @@ const WORKFLOW_RUN_STATUS_LABELS: Record<FilterableStatus, string> = {
   completed: "COMPLETED",
   failed: "FAILED",
   canceled: "CANCELED",
-};
+} satisfies Record<FilterableStatus, string>;
 
 function formatMs(ms: number): string {
   if (ms >= 60000) return `${ms / 60000}m`;
@@ -72,17 +72,18 @@ function formatRetryPolicy(policy: WorkflowDefinitionInfo["retryPolicy"]): strin
 function LiveElapsedTime({ startedAt }: { startedAt: string | null }) {
   const [, setTick] = useState(0);
   useEffect(() => {
-    if (!startedAt) return;
+    if (!startedAt) return undefined;
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, [startedAt]);
   return <span className="font-mono text-sm">{formatDuration(startedAt, null)}</span>;
 }
 
-const STEP_CHIP_STYLES: Record<string, string> = {
+const STEP_CHIP_STYLES = {
   succeeded: "bg-green-100 text-green-700 border-green-200",
   completed: "bg-green-100 text-green-700 border-green-200",
   running: "bg-blue-100 text-blue-700 border-blue-200 animate-pulse",
+  paused: "bg-gray-100 text-gray-600 border-gray-200",
   failed: "bg-red-100 text-red-700 border-red-200",
 };
 
@@ -96,7 +97,7 @@ function StepTimeline({ steps }: { steps: StepAttempt[] }) {
           <span
             className={classNames(
               "inline-block px-1.5 py-0.5 text-[11px] font-mono rounded border",
-              STEP_CHIP_STYLES[step.status] ?? "bg-gray-100 text-gray-600 border-gray-200",
+              STEP_CHIP_STYLES[step.status],
             )}
           >
             {step.stepName}
@@ -254,7 +255,7 @@ function TasksIndex() {
     return { options: names };
   }, [definitions]);
   const workflowNameLabels = useMemo(() => {
-    return Object.fromEntries(definitions.map((d) => [d.name, d.name])) as Record<string, string>;
+    return Object.fromEntries(definitions.map((d) => [d.name, d.name]));
   }, [definitions]);
 
   const hasActiveFilter =
@@ -263,14 +264,15 @@ function TasksIndex() {
     filterCreatedAfter ||
     filterCreatedBefore;
 
-  const { data, error, refetch, isLoading } = SonamuUIService.useWorkflowRuns({
+  const workflowRunQuery: Parameters<typeof SonamuUIService.useWorkflowRuns>[0] = {
     limit: PAGE_SIZE,
     ...cursors,
-    ...(filterStatus.length > 0 ? { status: filterStatus } : {}),
-    ...(filterWorkflowName ? { workflowName: filterWorkflowName } : {}),
-    ...(filterCreatedAfter ? { createdAfter: filterCreatedAfter.toISOString() } : {}),
-    ...(filterCreatedBefore ? { createdBefore: filterCreatedBefore.toISOString() } : {}),
-  });
+  };
+  if (filterStatus.length > 0) workflowRunQuery.status = filterStatus;
+  if (filterWorkflowName) workflowRunQuery.workflowName = filterWorkflowName;
+  if (filterCreatedAfter) workflowRunQuery.createdAfter = filterCreatedAfter.toISOString();
+  if (filterCreatedBefore) workflowRunQuery.createdBefore = filterCreatedBefore.toISOString();
+  const { data, error, refetch, isLoading } = SonamuUIService.useWorkflowRuns(workflowRunQuery);
 
   const workflowRuns = data?.data ?? [];
   const pagination = data?.pagination;
@@ -348,7 +350,7 @@ function TasksIndex() {
               labels={WORKFLOW_RUN_STATUS_LABELS}
               value={filterStatus}
               onValueChange={(v) => {
-                setFilterStatus((v as FilterableStatus[]) ?? []);
+                setFilterStatus(Array.isArray(v) ? v : []);
                 setCursors({});
               }}
               multiple
@@ -366,7 +368,7 @@ function TasksIndex() {
                 labels={workflowNameLabels}
                 value={filterWorkflowName}
                 onValueChange={(v) => {
-                  setFilterWorkflowName((v as string) ?? "");
+                  setFilterWorkflowName(Array.isArray(v) ? "" : (v ?? ""));
                   setCursors({});
                 }}
                 clearable

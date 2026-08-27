@@ -50,9 +50,9 @@ export function EntityCreateModal({ open, onOpenChange, onCompleted }: EntityCre
   }, [open, setForm]);
 
   const handleSubmit = () => {
-    const ifError = ["id", "table", "title"]
+    const ifError = (["id", "table", "title"] as const)
       .map((key) => {
-        if (!form[key as keyof typeof form]) {
+        if (!form[key]) {
           addError(key, {
             content: `${camelize(key)} is required.`,
             pointing: "above",

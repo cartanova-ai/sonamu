@@ -152,4 +152,59 @@ describe("registerDevTestRoutes", () => {
       await customApp.close();
     });
   });
+
+  describe("GET /__test__/events (SSE)", () => {
+    it("snapshot 이벤트가 sseAvailable을 포함한 상태를 발행한다", async () => {
+      const sseApp = Fastify();
+      const { FastifySSEPlugin } = await import("fastify-sse-v2");
+      await sseApp.register(FastifySSEPlugin);
+      mockManager.start.mockResolvedValue(undefined);
+      mockManager.getStatus.mockReturnValue(okStatus);
+      mockManager.shutdown.mockResolvedValue(undefined);
+
+      await registerDevTestRoutes(sseApp, defaultConfig, {
+        ...dependencies,
+        sseAvailable: true,
+      });
+      const baseUrl = await sseApp.listen({ port: 0, host: "127.0.0.1" });
+
+      const abortController = new AbortController();
+      try {
+        const res = await fetch(baseUrl + "/__test__/events", {
+          headers: { accept: "text/event-stream" },
+          signal: abortController.signal,
+        });
+        expect(res.body).not.toBeNull();
+        if (res.body === null) throw new Error("SSE 응답 본문이 비어 있습니다");
+
+        // 첫 snapshot 프레임이 도착할 때까지 스트림을 읽습니다.
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (!buffer.includes("event: snapshot")) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+        }
+
+        const dataLine = buffer.split("\n").find((line) => line.startsWith("data: "));
+        expect(dataLine).toBeDefined();
+        if (dataLine === undefined) throw new Error("snapshot data 프레임이 없습니다");
+
+        const payload: { status: ManagerStatus & { sseAvailable?: boolean } } = JSON.parse(
+          dataLine.slice("data: ".length),
+        );
+        // SSE 스냅샷 상태는 HTTP status 응답과 같은 형태(sseAvailable 포함)여야 합니다.
+        expect(payload.status).toEqual({
+          ready: true,
+          running: false,
+          lastRunAt: null,
+          sseAvailable: true,
+        });
+      } finally {
+        abortController.abort();
+        await sseApp.close();
+      }
+    });
+  });
 });
