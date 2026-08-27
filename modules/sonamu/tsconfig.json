@@ -46,6 +46,7 @@
   },
   "exclude": [
     "node_modules",
+    "benchmarks",
     "dist",
     "ui-web",
     "src/**/*.test.ts",
