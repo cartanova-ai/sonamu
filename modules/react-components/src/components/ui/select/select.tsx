@@ -1,3 +1,4 @@
+import { isObject } from "radashi";
 import * as React from "react";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import CheckIcon from "~icons/lucide/check";
@@ -132,7 +133,7 @@ type CommonState<Item> = {
   selectRef: React.RefObject<HTMLSelectElement | null>;
   // Popover 상태
   isPopoverOpen: boolean;
-  setIsPopoverOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsPopoverOpen: (open: boolean) => void;
   // 검색 상태
   searchValue: string;
   handleSearchChange: (value: string) => void;
@@ -160,7 +161,7 @@ type CommandBasedSelectProps<Item> = {
   isMultiple: boolean;
   isAsync: boolean;
   isPopoverOpen: boolean;
-  setIsPopoverOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsPopoverOpen: (open: boolean) => void;
   searchValue: string;
   handleSearchChange: (value: string) => void;
   filteredOptions: NormalizedItem<ExtractValue<Item>>[];
@@ -176,7 +177,60 @@ type CommandBasedSelectProps<Item> = {
 function isItemObject<V>(
   item: V | { value: V; label?: React.ReactNode; disabled?: boolean },
 ): item is { value: V; label?: React.ReactNode; disabled?: boolean } {
-  return item !== null && typeof item === "object" && "value" in item;
+  return isObject(item) && "value" in item;
+}
+
+function normalizeItem<Item>(item: Item): NormalizedItem<ExtractValue<Item>> {
+  // SAFETY: 객체 분기는 value 속성을 직접 검사했고, 값 분기는 ExtractValue가 Item 자체로 귀결됩니다.
+  return isItemObject(item)
+    ? (item as NormalizedItem<ExtractValue<Item>>)
+    : { value: item as ExtractValue<Item> };
+}
+
+type LabelCacheBoundaryProps = {
+  labels: ReadonlyMap<string, React.ReactNode>;
+  selectedKeys: ReadonlySet<string>;
+  valueKeyIdentity: object | undefined;
+  children: (labels: ReadonlyMap<string, React.ReactNode>) => React.ReactNode;
+};
+
+type LabelCacheBoundaryState = {
+  labels: ReadonlyMap<string, React.ReactNode>;
+  valueKeyIdentity: object | undefined;
+};
+
+class LabelCacheBoundary extends React.Component<LabelCacheBoundaryProps, LabelCacheBoundaryState> {
+  state: LabelCacheBoundaryState = {
+    labels: new Map(),
+    valueKeyIdentity: this.props.valueKeyIdentity,
+  };
+
+  static getDerivedStateFromProps(
+    props: LabelCacheBoundaryProps,
+    state: LabelCacheBoundaryState,
+  ): LabelCacheBoundaryState | null {
+    const valueKeyChanged = props.valueKeyIdentity !== state.valueKeyIdentity;
+    const labels = new Map(props.labels);
+
+    // 비동기 검색 결과에서 사라진 선택 항목도 마지막으로 확인한 라벨을 유지합니다.
+    if (!valueKeyChanged) {
+      for (const key of props.selectedKeys) {
+        const cachedLabel = state.labels.get(key);
+        if (!labels.has(key) && cachedLabel !== undefined) labels.set(key, cachedLabel);
+      }
+    }
+
+    const unchanged =
+      !valueKeyChanged &&
+      labels.size === state.labels.size &&
+      Array.from(labels).every(([key, label]) => state.labels.get(key) === label);
+
+    return unchanged ? null : { labels, valueKeyIdentity: props.valueKeyIdentity };
+  }
+
+  render() {
+    return this.props.children(this.state.labels);
+  }
 }
 
 // ============================================================================
@@ -186,22 +240,29 @@ function isItemObject<V>(
 function useSelectCommon<Item>(
   props: SelectProps<Item>,
   ref: React.ForwardedRef<HTMLSelectElement>,
+  cachedLabels: ReadonlyMap<string, React.ReactNode>,
 ): CommonState<Item> {
   type Value = ExtractValue<Item>;
 
   // 모드 파생
   const isMultiple = props.multiple === true;
   const isAsync = props.async === true;
+  const valueKey = props.valueKey;
+  const selectedValues = props.multiple ? props.value : undefined;
+  const selectedValue = props.multiple ? undefined : props.value;
+  const renderItem = props.renderItem;
 
   // native select 연결
   const selectRef = useRef<HTMLSelectElement>(null);
-  useImperativeHandle(ref, () => selectRef.current as HTMLSelectElement);
+  useImperativeHandle(ref, () => {
+    const element = selectRef.current;
+    if (!element) throw new Error("Select 요소가 아직 마운트되지 않았습니다.");
+    return element;
+  });
 
   // popover + 검색 상태
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
-  // async 모드에서 선택된 옵션 캐시
-  const [reservedOptions, setReservedOptions] = useState(new Map());
 
   // Popover 열림/닫힘 전이 감지해 외부 onOpenChange 콜백 발사. async 모드에서만 의미가 있습니다.
   // 실제 값 변화가 있을 때만 트리거하여 불필요한 호출을 피합니다.
@@ -220,18 +281,15 @@ function useSelectCommon<Item>(
   const getKeyForValue = useCallback(
     (val: Value): string => {
       if (val === undefined || val === null) return "";
-      if (props.valueKey) return props.valueKey(val);
+      if (valueKey) return valueKey(val);
       return String(val);
     },
-    [props.valueKey],
+    [valueKey],
   );
 
   // 아이템 정규화
   const normalizedItems = useMemo(() => {
-    return props.items.map(
-      (item): NormalizedItem<Value> =>
-        isItemObject(item) ? (item as NormalizedItem<Value>) : { value: item as Value },
-    );
+    return props.items.map(normalizeItem);
   }, [props.items]);
 
   // 키 → 값 매핑 (Single-Sync 모드용)
@@ -243,12 +301,41 @@ function useSelectCommon<Item>(
     return mapping;
   }, [normalizedItems, getKeyForValue]);
 
+  // Async 모드: 현재 선택된 옵션을 검색 결과와 함께 유지
+  const reservedOptions = useMemo(() => {
+    if (!isAsync) return new Map<string, NormalizedItem<Value>>();
+
+    const values = selectedValues
+      ? selectedValues
+      : selectedValue === undefined || selectedValue === null
+        ? []
+        : [selectedValue];
+
+    const next = new Map<string, NormalizedItem<Value>>();
+
+    // 선택된 값들만 캐시에 저장
+    for (const val of values) {
+      const key = getKeyForValue(val);
+      const matchingItem = normalizedItems.find((candidate) => candidate.value === val);
+      if (matchingItem) {
+        next.set(key, matchingItem);
+      } else {
+        const label = cachedLabels.get(key);
+        if (label !== undefined) {
+          next.set(key, { value: val, label });
+        }
+      }
+    }
+
+    return next;
+  }, [isAsync, selectedValues, selectedValue, normalizedItems, getKeyForValue, cachedLabels]);
+
   // 값 → 라벨 렌더링
   const getItemLabel = useCallback(
     (value: Value): React.ReactNode => {
       // renderItem이 있으면 바로 사용 (대부분의 경우 여기서 종료)
-      if (props.renderItem) {
-        return props.renderItem(value);
+      if (renderItem) {
+        return renderItem(value);
       }
 
       // label 찾기: normalizedItems에서 먼저 확인
@@ -257,46 +344,30 @@ function useSelectCommon<Item>(
         return item.label;
       }
 
-      // async 모드면 reservedOptions에서도 확인
+      // async 모드면 이전 검색 결과에서 확인한 라벨도 사용
       if (isAsync) {
-        const cached = reservedOptions.get(getKeyForValue(value));
-        if (cached?.label !== undefined) {
-          return cached.label;
+        const cachedLabel = cachedLabels.get(getKeyForValue(value));
+        if (cachedLabel !== undefined) {
+          return cachedLabel;
         }
       }
 
       // 마지막 폴백: String 변환
       return String(value);
     },
-    [props.renderItem, normalizedItems, isAsync, reservedOptions, getKeyForValue],
+    [renderItem, normalizedItems, isAsync, cachedLabels, getKeyForValue],
   );
-
-  // Async 모드: 선택된 옵션을 캐시에 저장
-  useEffect(() => {
-    if (!isAsync) return;
-
-    // 현재 선택된 값들 추출
-    const values = isMultiple
-      ? (props as MultiAsyncProps<Item>).value
-      : [(props as SingleAsyncProps<Item>).value as Value].filter(Boolean);
-
-    const next = new Map<string, NormalizedItem<Value>>();
-
-    // 선택된 값들만 캐시에 저장
-    for (const val of values) {
-      const key = getKeyForValue(val);
-      const item = normalizedItems.find((item) => item.value === val);
-      if (item) {
-        next.set(key, item);
-      }
-    }
-
-    setReservedOptions(next);
-  }, [isAsync, isMultiple, props, normalizedItems, getKeyForValue]);
 
   // 검색어 변경
   const handleSearchChange = useCallback((value: string) => {
     setSearchValue(value);
+  }, []);
+
+  const handlePopoverOpenChange = useCallback((open: boolean) => {
+    setIsPopoverOpen(open);
+    if (!open) {
+      setSearchValue("");
+    }
   }, []);
 
   // 검색 디바운스
@@ -347,19 +418,12 @@ function useSelectCommon<Item>(
     }
   }, [isAsync, normalizedItems, reservedOptions, searchValue, getKeyForValue, getItemLabel]);
 
-  // Popover 닫힐 때 검색어 초기화
-  useEffect(() => {
-    if (!isPopoverOpen) {
-      setSearchValue("");
-    }
-  }, [isPopoverOpen]);
-
   return {
     isMultiple,
     isAsync,
     selectRef,
     isPopoverOpen,
-    setIsPopoverOpen,
+    setIsPopoverOpen: handlePopoverOpenChange,
     searchValue,
     handleSearchChange,
     filteredOptions,
@@ -375,11 +439,13 @@ function useSelectCommon<Item>(
 // - 모든 모드를 처리하는 통합 Command Popover UI
 // ============================================================================
 function highlightMatch(label: React.ReactNode, searchTerm: string): React.ReactNode {
-  if (!searchTerm || typeof label !== "string") {
+  if (!searchTerm || Object.prototype.toString.call(label) !== "[object String]") {
     return label;
   }
 
-  const lowerLabel = label.toLowerCase();
+  const text = String(label);
+
+  const lowerLabel = text.toLowerCase();
   const lowerSearch = searchTerm.toLowerCase();
   const idx = lowerLabel.indexOf(lowerSearch);
 
@@ -387,9 +453,9 @@ function highlightMatch(label: React.ReactNode, searchTerm: string): React.React
     return label;
   }
 
-  const before = label.slice(0, idx);
-  const match = label.slice(idx, idx + searchTerm.length);
-  const after = label.slice(idx + searchTerm.length);
+  const before = text.slice(0, idx);
+  const match = text.slice(idx, idx + searchTerm.length);
+  const after = text.slice(idx + searchTerm.length);
 
   return (
     <>
@@ -485,72 +551,72 @@ function CommandBasedSelect<Item>({
     (value: Value) => {
       if (props.disabled) return;
 
-      if (isMultiple) {
-        const currentValues = (props as MultiSyncProps<Item> | MultiAsyncProps<Item>).value;
+      if (props.multiple) {
+        const currentValues = props.value;
         const newValues = currentValues.includes(value)
           ? currentValues.filter((v) => v !== value)
           : [...currentValues, value];
-        (props as MultiSyncProps<Item> | MultiAsyncProps<Item>).onValueChange(newValues);
+        props.onValueChange(newValues);
       } else {
-        (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).onValueChange?.(value);
+        props.onValueChange?.(value);
         setIsPopoverOpen(false);
       }
     },
-    [isMultiple, props, setIsPopoverOpen],
+    [props, setIsPopoverOpen],
   );
 
   // 전체 선택 토글 (multi만)
   const toggleAll = useCallback(() => {
-    if (!isMultiple || props.disabled) return;
+    if (!props.multiple || props.disabled) return;
 
     const allOptions = filteredOptions.filter((option) => !option.disabled);
-    const currentValues = (props as MultiSyncProps<Item> | MultiAsyncProps<Item>).value;
+    const currentValues = props.value;
 
     if (currentValues.length === allOptions.length) {
-      (props as MultiSyncProps<Item> | MultiAsyncProps<Item>).onValueChange([]);
+      props.onValueChange([]);
     } else {
       const allValues = allOptions.map((option) => option.value);
-      (props as MultiSyncProps<Item> | MultiAsyncProps<Item>).onValueChange(allValues);
+      props.onValueChange(allValues);
     }
-  }, [isMultiple, props, filteredOptions]);
+  }, [props, filteredOptions]);
 
   // Clear 처리
   const handleClear = useCallback(() => {
     if (props.disabled) return;
 
-    if (isMultiple) {
-      (props as MultiSyncProps<Item> | MultiAsyncProps<Item>).onValueChange([]);
+    if (props.multiple) {
+      props.onValueChange([]);
     } else {
-      (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).onValueChange?.(undefined);
+      props.onValueChange?.(undefined);
     }
-  }, [isMultiple, props]);
+  }, [props]);
 
   // 선택 여부 확인
   const isSelected = useCallback(
     (value: Value): boolean => {
-      if (isMultiple) {
-        return (props as MultiSyncProps<Item> | MultiAsyncProps<Item>).value.includes(value);
+      if (props.multiple) {
+        return props.value.includes(value);
       } else {
-        return (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value === value;
+        return props.value === value;
       }
     },
-    [isMultiple, props],
+    [props],
   );
 
   // async 상태
   const loading = isAsync && "loading" in props ? props.loading : false;
   const error = isAsync && "error" in props ? props.error : undefined;
-  const hasValue = isMultiple
-    ? (props as MultiSyncProps<Item> | MultiAsyncProps<Item>).value.length > 0
-    : (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value !== undefined &&
-      (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value !== null &&
-      (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value !== "";
+  const hasValue = props.multiple
+    ? props.value.length > 0
+    : props.value !== undefined && props.value !== null && props.value !== "";
+  const selectedValues = props.multiple ? props.value : [];
+  const selectedValue = props.multiple ? undefined : props.value;
 
   // Badge 렌더링 헬퍼 (multi 모드 전용)
   const renderBadges = () => {
-    if (!isMultiple) return null;
+    if (!props.multiple) return null;
 
-    const values = (props as MultiSyncProps<Item> | MultiAsyncProps<Item>).value;
+    const values = props.value;
 
     return (
       <>
@@ -626,9 +692,10 @@ function CommandBasedSelect<Item>({
           ) : !isMultiple && hasValue ? (
             <div className="flex justify-between items-center w-full px-2 py-1">
               {(() => {
-                const value = (props as SingleSyncProps<Item> | SingleAsyncProps<Item>).value;
-                return value !== undefined && value !== null ? (
-                  <span className="flex-1 truncate text-left text-sm">{getItemLabel(value)}</span>
+                return selectedValue !== undefined && selectedValue !== null ? (
+                  <span className="flex-1 truncate text-left text-sm">
+                    {getItemLabel(selectedValue)}
+                  </span>
                 ) : null;
               })()}
               <div className="flex items-center gap-1 shrink-0">
@@ -684,7 +751,7 @@ function CommandBasedSelect<Item>({
                       <div
                         className={cn(
                           "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                          (props as MultiSyncProps<Item> | MultiAsyncProps<Item>).value.length ===
+                          selectedValues.length ===
                             filteredOptions.filter((opt) => !opt.disabled).length
                             ? "bg-primary text-primary-foreground"
                             : "opacity-50 [&_svg]:invisible",
@@ -754,26 +821,21 @@ function CommandBasedSelect<Item>({
 // Main Component & Export
 // ============================================================================
 
-export const Select = React.forwardRef(function Select<Item>(
-  props: SelectProps<Item>,
-  ref: React.ForwardedRef<HTMLSelectElement>,
-) {
+function SelectContent<Item>({
+  props,
+  forwardedRef,
+  cachedLabels,
+}: {
+  props: SelectProps<Item>;
+  forwardedRef: React.ForwardedRef<HTMLSelectElement>;
+  cachedLabels: ReadonlyMap<string, React.ReactNode>;
+}) {
   // 공통 상태/유틸
-  const common = useSelectCommon(props, ref);
-
-  // 모든 모드를 CommandBasedSelect로 통합
-  const commandProps = props as (
-    | SingleSyncProps<Item>
-    | SingleAsyncProps<Item>
-    | MultiSyncProps<Item>
-    | MultiAsyncProps<Item>
-  ) &
-    SelectPropsBase<Item> &
-    SelectPropsWithValueKey<Item>;
+  const common = useSelectCommon(props, forwardedRef, cachedLabels);
 
   return (
     <CommandBasedSelect
-      props={commandProps}
+      props={props}
       isMultiple={common.isMultiple}
       isAsync={common.isAsync}
       isPopoverOpen={common.isPopoverOpen}
@@ -785,8 +847,44 @@ export const Select = React.forwardRef(function Select<Item>(
       getItemLabel={common.getItemLabel}
     />
   );
-}) as <Item>(
-  props: SelectProps<Item> & React.RefAttributes<HTMLSelectElement>,
-) => React.ReactElement;
+}
+
+export const Select =
+  // SAFETY: forwardRef가 보존하지 못하는 Item 제네릭 호출 시그니처만 다시 선언합니다.
+  React.forwardRef(function Select<Item>(
+    props: SelectProps<Item>,
+    ref: React.ForwardedRef<HTMLSelectElement>,
+  ) {
+    const labels = new Map<string, React.ReactNode>();
+    for (const item of props.items) {
+      const normalized = normalizeItem(item);
+      if (normalized.label === undefined) continue;
+      const key = props.valueKey ? props.valueKey(normalized.value) : String(normalized.value);
+      labels.set(key, normalized.label);
+    }
+
+    const selectedValues = props.multiple
+      ? props.value
+      : props.value === undefined || props.value === null
+        ? []
+        : [props.value];
+    const selectedKeys = new Set(
+      selectedValues.map((value) => (props.valueKey ? props.valueKey(value) : String(value))),
+    );
+
+    return (
+      <LabelCacheBoundary
+        labels={labels}
+        selectedKeys={selectedKeys}
+        valueKeyIdentity={props.valueKey}
+      >
+        {(cachedLabels) => (
+          <SelectContent props={props} forwardedRef={ref} cachedLabels={cachedLabels} />
+        )}
+      </LabelCacheBoundary>
+    );
+  }) as <Item>(
+    props: SelectProps<Item> & React.RefAttributes<HTMLSelectElement>,
+  ) => React.ReactElement;
 
 export type { SelectProps, SelectItemDef, ExtractValue };

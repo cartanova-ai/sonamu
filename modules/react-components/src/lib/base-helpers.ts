@@ -27,12 +27,14 @@ export function searchParamsToParams<T extends z.ZodType<any>>(
   return caster(paramsSchema, obj);
 }
 
-export function paramsToSearchParams<T>(params: T): {
+export function paramsToSearchParams<T extends object>(
+  params: T,
+): {
   [key in string]: string | string[];
 } {
   return Object.fromEntries(
     // oxlint-disable-next-line unicorn/prefer-array-flat-map -- 여기는 flatMap 사용하면 깨짐
-    Object.entries(params as any)
+    Object.entries(params)
       .filter(([, value]) => {
         return value !== undefined;
       })
@@ -40,8 +42,8 @@ export function paramsToSearchParams<T>(params: T): {
         if (Array.isArray(value)) {
           return [[`${key}[]`, value]];
         } else if (isObject(value)) {
-          return Object.keys(value).map((subKey) => {
-            return [`${key}[${subKey}]`, String(value[subKey as keyof typeof value])];
+          return Object.entries(value).map(([subKey, subValue]) => {
+            return [`${key}[${subKey}]`, String(subValue)];
           });
         } else {
           return [[key, String(value)]];
@@ -103,16 +105,17 @@ export function arrayableToArray<T extends number | string | boolean>(
 // Function Reference Utilities
 // ============================================================================
 
-export function caller<T extends Function>() {
-  let savedFunc: T | null = null;
+export function caller<T extends Function>(): { set: (func: T) => void; call: T };
+export function caller() {
+  let savedFunc: Function | null = null;
   return {
-    set: (func: T) => {
+    set: (func: Function) => {
       savedFunc = func;
     },
-    call: ((...args: unknown[]) => {
+    call: (...args: unknown[]) => {
       if (savedFunc) {
         savedFunc.call(args);
       }
-    }) as unknown as T,
+    },
   };
 }

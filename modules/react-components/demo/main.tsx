@@ -16,7 +16,12 @@ const mockUploader = async (files: File[]): Promise<SonamuFile[]> => {
   }));
 };
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+const rootElement = document.getElementById("root");
+if (rootElement === null) {
+  throw new Error("루트 요소를 찾을 수 없습니다.");
+}
+
+ReactDOM.createRoot(rootElement).render(
   <SonamuProvider uploader={mockUploader}>
     <App />
   </SonamuProvider>,

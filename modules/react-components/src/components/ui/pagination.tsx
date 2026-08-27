@@ -1,6 +1,8 @@
+import { isFunction } from "radashi";
 import * as React from "react";
 
 import { useSonamuBaseContext } from "../../contexts";
+import { type RCKeys } from "../../i18n/rc-keys";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 
@@ -15,23 +17,19 @@ export interface PaginationProps {
 
 export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
   ({ value, onValueChange, total, itemsPerPage, className, maxVisible = 6 }, ref) => {
-    const { SD } = useSonamuBaseContext();
+    const { SD } = useSonamuBaseContext<RCKeys>();
     const totalPages = Math.ceil(total / itemsPerPage);
     const currentPage = value;
     const startItem = (currentPage - 1) * itemsPerPage + 1;
     const endItem = Math.min(currentPage * itemsPerPage, total);
+    const showingTranslation = SD("rc.pagination.showing");
+    const showingLabel = isFunction(showingTranslation)
+      ? showingTranslation(startItem, endItem, total)
+      : showingTranslation;
 
     return (
       <div ref={ref} className={cn("flex items-center justify-between pt-6", className)}>
-        <div className="text-xs text-muted-foreground">
-          {(
-            SD("rc.pagination.showing") as unknown as (
-              start: number,
-              end: number,
-              total: number,
-            ) => string
-          )(startItem, endItem, total)}
-        </div>
+        <div className="text-xs text-muted-foreground">{showingLabel}</div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

@@ -61,6 +61,7 @@ export function MonthPickerMultiple({
   const [tempYear, setTempYear] = React.useState(new Date().getFullYear());
   const [tempRangeStartYear, setTempRangeStartYear] = React.useState(new Date().getFullYear());
   const [tempRangeEndYear, setTempRangeEndYear] = React.useState(new Date().getFullYear());
+  const [draftSource, setDraftSource] = React.useState(() => ({ value, defaultRangeMode }));
 
   const years = React.useMemo(
     () =>
@@ -68,30 +69,46 @@ export function MonthPickerMultiple({
     [yearRange.start, yearRange.end],
   );
 
-  // Initialize temp states when popover opens
-  React.useEffect(() => {
-    if (isOpen) {
-      if (value?.type === "range") {
-        setTempIsRangeMode(true);
-        setTempDateRange({ from: value.from, to: value.to });
-        setTempDate(undefined);
-        setTempRangeStartYear(value.from.getFullYear());
-        setTempRangeEndYear(value.to.getFullYear());
-      } else if (value?.type === "single") {
-        setTempIsRangeMode(false);
-        setTempDate(value.date);
-        setTempDateRange(undefined);
-        setTempYear(value.date.getFullYear());
-      } else {
-        setTempIsRangeMode(defaultRangeMode);
-        setTempDate(undefined);
-        setTempDateRange(undefined);
-        setTempYear(new Date().getFullYear());
-        setTempRangeStartYear(new Date().getFullYear());
-        setTempRangeEndYear(new Date().getFullYear());
-      }
+  const resetDraft = (nextValue: MonthPickerValue | undefined, nextDefaultRangeMode: boolean) => {
+    if (nextValue?.type === "range") {
+      setTempIsRangeMode(true);
+      setTempDateRange({ from: nextValue.from, to: nextValue.to });
+      setTempDate(undefined);
+      setTempRangeStartYear(nextValue.from.getFullYear());
+      setTempRangeEndYear(nextValue.to.getFullYear());
+    } else if (nextValue?.type === "single") {
+      setTempIsRangeMode(false);
+      setTempDate(nextValue.date);
+      setTempDateRange(undefined);
+      setTempYear(nextValue.date.getFullYear());
+    } else {
+      const currentYear = new Date().getFullYear();
+      setTempIsRangeMode(nextDefaultRangeMode);
+      setTempDate(undefined);
+      setTempDateRange(undefined);
+      setTempYear(currentYear);
+      setTempRangeStartYear(currentYear);
+      setTempRangeEndYear(currentYear);
     }
-  }, [isOpen, value, defaultRangeMode]);
+  };
+
+  // 열린 편집기에서 외부 값이 바뀌면 기존 effect와 동일하게 임시 상태를 다시 맞춥니다.
+  if (
+    isOpen &&
+    (draftSource.value !== value || draftSource.defaultRangeMode !== defaultRangeMode)
+  ) {
+    setDraftSource({ value, defaultRangeMode });
+    resetDraft(value, defaultRangeMode);
+  }
+
+  // 팝오버를 열 때 확정된 값을 임시 편집 상태로 복사합니다.
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      setDraftSource({ value, defaultRangeMode });
+      resetDraft(value, defaultRangeMode);
+    }
+    setIsOpen(open);
+  };
 
   const getDisplayDate = () => {
     if (!value) {
@@ -135,7 +152,7 @@ export function MonthPickerMultiple({
 
   return (
     <div className="flex items-center gap-4">
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button variant="outline" className={`gap-2 h-8 text-xs ${className}`}>
             <CalendarIcon className="h-4 w-4" />
@@ -173,8 +190,8 @@ export function MonthPickerMultiple({
                 </div>
                 <Select
                   value={tempRangeStartYear}
-                  onValueChange={(value) => {
-                    if (value !== undefined) setTempRangeStartYear(value);
+                  onValueChange={(nextYear) => {
+                    if (nextYear !== undefined) setTempRangeStartYear(nextYear);
                   }}
                   items={years.map((year) => ({
                     value: year,
@@ -230,8 +247,8 @@ export function MonthPickerMultiple({
                 </div>
                 <Select
                   value={tempRangeEndYear}
-                  onValueChange={(value) => {
-                    if (value !== undefined) setTempRangeEndYear(value);
+                  onValueChange={(nextYear) => {
+                    if (nextYear !== undefined) setTempRangeEndYear(nextYear);
                   }}
                   items={years.map((year) => ({
                     value: year,
@@ -283,8 +300,8 @@ export function MonthPickerMultiple({
             <div className="p-4 space-y-2">
               <Select
                 value={tempYear}
-                onValueChange={(value) => {
-                  if (value !== undefined) setTempYear(value);
+                onValueChange={(nextYear) => {
+                  if (nextYear !== undefined) setTempYear(nextYear);
                 }}
                 items={years.map((year) => ({ value: year, label: String(year) }))}
                 className="h-8 text-xs"

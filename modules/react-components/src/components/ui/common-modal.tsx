@@ -7,11 +7,11 @@ import { useEffect } from "react";
 import { cn } from "../../lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./dialog";
 
-type ExtendedModalProps = {
+type ExtendedModalProps<CompletionData = unknown> = {
   title?: string;
   description?: string;
   className?: string;
-  onCompleted?: (data?: unknown) => void;
+  onCompleted?: (data?: CompletionData) => void;
   onControlledOpen?: () => void;
   onControlledClose?: () => void;
 };
@@ -85,10 +85,10 @@ export function useCommonModal() {
   const [atomValue, setAtomValue] = useAtom(commonModalAtom);
   const { open, reactNode, onCompleted } = atomValue;
 
-  const openModal = (reactNode: React.ReactNode, props?: ExtendedModalProps) => {
+  const openModal = (content: React.ReactNode, props?: ExtendedModalProps) => {
     setAtomValue({
       open: true,
-      reactNode,
+      reactNode: content,
       ...props,
     });
   };
@@ -100,7 +100,7 @@ export function useCommonModal() {
     });
   };
 
-  const doneModal = (data?: unknown) => {
+  const doneModal = <CompletionData,>(data?: CompletionData) => {
     closeModal();
     if (onCompleted) {
       onCompleted(data);

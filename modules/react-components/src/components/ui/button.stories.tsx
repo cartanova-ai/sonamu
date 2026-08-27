@@ -1,9 +1,26 @@
 import { type Meta, type StoryObj } from "@storybook/react-vite";
 
-import { Button, buttonVariantsConfig } from "./button";
+import { Button, type buttonVariantsConfig } from "./button";
 
-const variantKeys = Object.keys(buttonVariantsConfig.variant);
-const sizeKeys = Object.keys(buttonVariantsConfig.size);
+const variantKeys = [
+  "default",
+  "destructive",
+  "outline",
+  "secondary",
+  "ghost",
+  "link",
+  "red",
+  "yellow",
+  "green",
+  "blue",
+  "cyan",
+  "purple",
+  "pink",
+  "orange",
+] satisfies Array<keyof typeof buttonVariantsConfig.variant>;
+const sizeKeys = ["xs", "sm", "default", "lg", "xl"] satisfies Array<
+  keyof typeof buttonVariantsConfig.size
+>;
 
 const meta = {
   component: Button,
@@ -29,7 +46,7 @@ export const Variants: Story = {
   render: (args) => (
     <div className="flex flex-wrap gap-2">
       {variantKeys.map((v) => (
-        <Button key={v} {...args} variant={v as typeof args.variant}>
+        <Button key={v} {...args} variant={v}>
           {v}
         </Button>
       ))}
@@ -41,7 +58,7 @@ export const Sizes: Story = {
   render: (args) => (
     <div className="flex items-center gap-2">
       {sizeKeys.map((s) => (
-        <Button key={s} {...args} size={s as typeof args.size}>
+        <Button key={s} {...args} size={s}>
           {s}
         </Button>
       ))}

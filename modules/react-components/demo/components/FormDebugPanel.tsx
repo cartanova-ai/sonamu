@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { z } from "zod";
 import BugIcon from "~icons/lucide/bug";
 import CloseIcon from "~icons/lucide/x";
 
@@ -8,35 +9,46 @@ interface Section {
 }
 
 interface FormDebugPanelProps {
-  formData: Record<string, unknown>;
+  formData: object;
   title?: string;
   sections?: Section[];
 }
+
+type DebugValue = z.input<ReturnType<typeof z.any>>;
+
+const stringValue = z.string();
+const numberValue = z.number();
+const booleanValue = z.boolean();
 
 export function FormDebugPanel({ formData, title = "Form State", sections }: FormDebugPanelProps) {
   const [isOpen, setIsOpen] = useState(true);
 
   // 필드 값을 포맷팅
-  const formatValue = (value: unknown): string => {
+  const formatValue = (value: DebugValue): string => {
     if (value === null) return "null";
     if (value === undefined) return "undefined";
-    if (typeof value === "string") return `"${value}"`;
-    if (typeof value === "boolean") return value.toString();
-    if (typeof value === "number") return value.toString();
+    if (stringValue.safeParse(value).success) return `"${String(value)}"`;
+    if (booleanValue.safeParse(value).success || numberValue.safeParse(value).success) {
+      return String(value);
+    }
     if (Array.isArray(value)) {
       if (value.length === 0) return "[]";
       // 배열 요소를 문자열로 변환하여 표시
       const items = value.map((item) => {
-        if (typeof item === "string") return item;
-        if (typeof item === "number" || typeof item === "boolean") return String(item);
-        if (item && typeof item === "object" && "label" in item) return String(item.label);
-        if (item && typeof item === "object") return JSON.stringify(item);
+        if (stringValue.safeParse(item).success) return String(item);
+        if (numberValue.safeParse(item).success || booleanValue.safeParse(item).success) {
+          return String(item);
+        }
+        if (item !== null && z.object({ label: z.unknown() }).safeParse(item).success) {
+          return JSON.stringify(item);
+        }
+        if (item !== null) return JSON.stringify(item);
         return String(item);
       });
       return `[${items.join(", ")}]`;
     }
     if (value instanceof File) return `File: ${value.name}`;
-    if (typeof value === "object") return JSON.stringify(value, null, 2);
+    if (value !== undefined) return JSON.stringify(value, null, 2);
     return String(value);
   };
 
@@ -73,9 +85,10 @@ export function FormDebugPanel({ formData, title = "Form State", sections }: For
       <div className="p-4 overflow-auto max-h-80 space-y-3">
         {displaySections.map((section) => {
           // 섹션의 필드들 중에서 formData에 있는 것만 필터링
-          const sectionData = section.fields
-            .filter((field) => field in formData)
-            .map((field) => ({ field, value: formData[field] }));
+          const requestedFields = new Set(section.fields);
+          const sectionData = Object.entries(formData)
+            .filter(([field]) => requestedFields.has(field))
+            .map(([field, value]) => ({ field, value }));
 
           // 섹션에 데이터가 없으면 표시하지 않음
           if (sectionData.length === 0) return null;

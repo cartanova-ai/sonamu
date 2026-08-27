@@ -1,3 +1,4 @@
+import { isFunction } from "radashi";
 import * as React from "react";
 import XIcon from "~icons/lucide/x";
 
@@ -24,7 +25,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const setRefs = React.useCallback(
       (node: HTMLInputElement | null) => {
         innerRef.current = node;
-        if (typeof ref === "function") {
+        if (isFunction(ref)) {
           ref(node);
         } else if (ref) {
           ref.current = node;

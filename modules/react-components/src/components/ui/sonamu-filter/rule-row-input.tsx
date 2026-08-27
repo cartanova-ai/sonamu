@@ -31,7 +31,7 @@ export function RuleRowInput({ rule, fieldMeta, onUpdate, onRemove }: RuleRowPro
   const handleOperatorChange = (newOperator: string | null | undefined) => {
     // operator 변경 시 value도 초기화
     onUpdate({
-      operator: (newOperator as FilterOperator) ?? null,
+      operator: newOperator && isFilterOperator(newOperator) ? newOperator : null,
       value: undefined,
     });
   };
@@ -83,4 +83,8 @@ export function RuleRowInput({ rule, fieldMeta, onUpdate, onRemove }: RuleRowPro
       </Button>
     </div>
   );
+}
+
+function isFilterOperator(value: string): value is FilterOperator {
+  return value in operatorLabels;
 }

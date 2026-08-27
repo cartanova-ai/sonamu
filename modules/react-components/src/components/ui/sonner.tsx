@@ -8,12 +8,15 @@ import TriangleAlertIcon from "~icons/lucide/triangle-alert";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
+const SONNER_THEMES: Array<NonNullable<ToasterProps["theme"]>> = ["light", "dark", "system"];
+
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
+  const { theme } = useTheme();
+  const sonnerTheme = SONNER_THEMES.find((candidate) => candidate === theme) ?? "system";
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={sonnerTheme}
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="h-4 w-4" />,

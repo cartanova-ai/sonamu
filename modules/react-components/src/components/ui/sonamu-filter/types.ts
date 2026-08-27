@@ -13,6 +13,7 @@ export type FieldMeta = {
     labels: Record<string, string>;
   };
 };
+export type FilterFieldMetadata = Record<string, FieldMeta>;
 
 /**
  * Rule 타입 정의
@@ -21,8 +22,13 @@ export type Rule = {
   id: string;
   field: string | null;
   operator: FilterOperator | null;
-  value: unknown;
+  value: FilterValue;
 };
+
+export type FilterScalar = string | number | boolean | Date | null | undefined;
+export type FilterValue = FilterScalar | FilterScalar[];
+export type FilterExpression = Partial<Record<FilterOperator, FilterValue>>;
+export type FilterQuery = Record<string, FilterExpression>;
 
 /**
  * Zod 내부 API 접근을 위한 타입 정의
@@ -30,7 +36,7 @@ export type Rule = {
 export type ZodDef = {
   type: string;
   innerType?: z.ZodTypeAny;
-  meta?: Record<string, unknown>;
+  description?: string;
 };
 
 export type ZodWithDef = z.ZodTypeAny & {
@@ -41,11 +47,11 @@ export type ZodWithDef = z.ZodTypeAny & {
  * SonamuFilterModal Props
  */
 export type SonamuFilterModalProps = {
-  baseSchema: z.ZodObject<z.ZodRawShape>;
+  baseSchema: z.ZodObject;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialRules?: Rule[];
-  onApply?: (filters: Record<string, unknown>, rules: Rule[]) => void;
+  onApply?: (filters: FilterQuery, rules: Rule[]) => void;
 };
 
 /**
@@ -54,8 +60,8 @@ export type SonamuFilterModalProps = {
 export type ValueInputProps = {
   propType: FilterPropType;
   operator: FilterOperator;
-  value: unknown;
-  onChange: (value: unknown) => void;
+  value: FilterValue;
+  onChange: (value: FilterValue) => void;
   fieldMeta?: FieldMeta;
 };
 
@@ -64,7 +70,7 @@ export type ValueInputProps = {
  */
 export type RuleRowProps = {
   rule: Rule;
-  fieldMeta: Record<string, FieldMeta>;
+  fieldMeta: FilterFieldMetadata;
   onUpdate: (updates: Partial<Rule>) => void;
   onRemove: () => void;
 };
@@ -74,7 +80,7 @@ export type RuleRowProps = {
  */
 export type SonamuFilterBadgeProps = {
   rules: Rule[];
-  fieldMeta: Record<string, FieldMeta>;
+  fieldMeta: FilterFieldMetadata;
   onRemove: (ruleId: string) => void;
   onClearAll: () => void;
 };
@@ -89,7 +95,7 @@ export type SonamuFilterTooltipProps = SonamuFilterPopoverProps;
  */
 export type SonamuFilterPopoverProps = {
   rules: Rule[];
-  fieldMeta: Record<string, FieldMeta>;
+  fieldMeta: FilterFieldMetadata;
   children: React.ReactNode;
   side?: "top" | "bottom" | "left" | "right";
   align?: "start" | "center" | "end";

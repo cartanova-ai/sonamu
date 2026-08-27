@@ -12,6 +12,31 @@ const BOOLEAN_ENUM = {
   options: ["true", "false"] as const,
   labels: { true: "True", false: "False" },
 };
+const stringValueSchema = z.string();
+const stringValuesSchema = z.array(stringValueSchema);
+const numberValueSchema = z.number();
+
+function stringValues(value: ValueInputProps["value"]): string[] {
+  const result = stringValuesSchema.safeParse(value);
+  return result.success ? result.data : [];
+}
+
+function numberRange(value: ValueInputProps["value"]): [number | undefined, number | undefined] {
+  if (!Array.isArray(value)) return [undefined, undefined];
+  const [start, end] = value;
+  const parsedStart = numberValueSchema.safeParse(start);
+  const parsedEnd = numberValueSchema.safeParse(end);
+  return [
+    parsedStart.success ? parsedStart.data : undefined,
+    parsedEnd.success ? parsedEnd.data : undefined,
+  ];
+}
+
+function dateRange(value: ValueInputProps["value"]): [Date | undefined, Date | undefined] {
+  if (!Array.isArray(value)) return [undefined, undefined];
+  const [start, end] = value;
+  return [start instanceof Date ? start : undefined, end instanceof Date ? end : undefined];
+}
 
 /**
  * ValueInput 컴포넌트
@@ -39,7 +64,7 @@ export function ValueInput({ propType, operator, value, onChange, fieldMeta }: V
         <EnumSelect
           enum={{ options: fieldMeta.enumData.options }}
           labels={fieldMeta.enumData.labels}
-          value={(value as string[]) ?? []}
+          value={stringValues(value)}
           onValueChange={onChange}
           multiple={true}
         />
@@ -48,7 +73,7 @@ export function ValueInput({ propType, operator, value, onChange, fieldMeta }: V
     // string/number: TagInput
     return (
       <TagInput
-        value={(value as string[]) ?? []}
+        value={stringValues(value)}
         onChange={onChange}
         type={propType === "integer" || propType === "numeric" ? "number" : "text"}
       />
@@ -58,16 +83,11 @@ export function ValueInput({ propType, operator, value, onChange, fieldMeta }: V
   // between: 범위 입력
   if (operator === "between") {
     if (propType === "integer" || propType === "numeric") {
-      return (
-        <RangeNumberInput
-          value={(value as [number, number]) ?? [undefined, undefined]}
-          onChange={onChange}
-        />
-      );
+      return <RangeNumberInput value={numberRange(value)} onChange={onChange} />;
     }
     if (propType === "date" || propType === "datetime") {
       // DateInput 2개로 범위 입력 (간단 버전)
-      const [start, end] = (value as [Date, Date]) ?? [undefined, undefined];
+      const [start, end] = dateRange(value);
       return (
         <div className="flex items-center gap-2">
           <DateInput
@@ -94,7 +114,7 @@ export function ValueInput({ propType, operator, value, onChange, fieldMeta }: V
       <EnumSelect
         enum={{ options: fieldMeta.enumData.options }}
         labels={fieldMeta.enumData.labels}
-        value={(value as string) ?? ""}
+        value={stringValueSchema.safeParse(value).data ?? ""}
         onValueChange={onChange}
       />
     );
@@ -102,7 +122,9 @@ export function ValueInput({ propType, operator, value, onChange, fieldMeta }: V
 
   // date/datetime: DatePicker
   if (propType === "date" || propType === "datetime") {
-    return <DatePicker value={(value as Date) ?? undefined} onValueChange={onChange} />;
+    return (
+      <DatePicker value={value instanceof Date ? value : undefined} onValueChange={onChange} />
+    );
   }
 
   // string: text input
@@ -110,7 +132,7 @@ export function ValueInput({ propType, operator, value, onChange, fieldMeta }: V
     return (
       <Input
         type="text"
-        value={(value as string) ?? ""}
+        value={stringValueSchema.safeParse(value).data ?? ""}
         onValueChange={onChange}
         placeholder={SD("rc.sonamuFilter.enterValue")}
       />
@@ -145,3 +167,4 @@ export function ValueInput({ propType, operator, value, onChange, fieldMeta }: V
   // json 타입은 isNull/isNotNull만 지원
   return <Input type="text" value="" placeholder={SD("rc.sonamuFilter.notSupported")} disabled />;
 }
+import { z } from "zod";
