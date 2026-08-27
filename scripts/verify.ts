@@ -1,7 +1,9 @@
-import { execSync } from "child_process";
-import { createHash } from "crypto";
-import { existsSync, readFileSync, writeFileSync } from "fs";
-import { resolve } from "path";
+/// <reference types="node" />
+
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const LAST_VERIFIED_FILE = ".last-verified";
 const ROOT_DIR = resolve(import.meta.dirname, "..");
@@ -12,18 +14,16 @@ interface VerifiedState {
   "pnpm-workspace.yaml": string;
 }
 
-function exec(command: string, silent = false): string {
-  try {
-    return (
-      execSync(command, {
-        cwd: ROOT_DIR,
-        encoding: "utf-8",
-        stdio: silent ? "pipe" : "inherit",
-      }) ?? ""
-    ).trim();
-  } catch {
-    throw new Error(`Command failed: ${command}`);
+function exec(command: string, args: string[], silent = false): string {
+  const result = spawnSync(command, args, {
+    cwd: ROOT_DIR,
+    encoding: "utf-8",
+    stdio: silent ? "pipe" : "inherit",
+  });
+  if (result.status !== 0) {
+    throw new Error(`Command failed: ${[command, ...args].join(" ")}`);
   }
+  return result.stdout?.trim() ?? "";
 }
 
 function getFileHash(filepath: string): string {
@@ -36,14 +36,30 @@ function readLastVerified(): VerifiedState | null {
   if (!existsSync(filepath)) return null;
 
   const lines = readFileSync(filepath, "utf-8").trim().split("\n");
-  const state: Record<string, string> = {};
+  let head: string | undefined;
+  let pnpmLockHash: string | undefined;
+  let pnpmWorkspaceHash: string | undefined;
 
   for (const line of lines) {
     const [key, value] = line.split("=");
-    state[key] = value;
+    if (key === "head") {
+      head = value;
+    } else if (key === "pnpm-lock.yaml") {
+      pnpmLockHash = value;
+    } else if (key === "pnpm-workspace.yaml") {
+      pnpmWorkspaceHash = value;
+    }
   }
 
-  return state as unknown as VerifiedState;
+  if (head === undefined || pnpmLockHash === undefined || pnpmWorkspaceHash === undefined) {
+    return null;
+  }
+
+  return {
+    head,
+    "pnpm-lock.yaml": pnpmLockHash,
+    "pnpm-workspace.yaml": pnpmWorkspaceHash,
+  };
 }
 
 function writeLastVerified(state: VerifiedState): void {
@@ -56,14 +72,14 @@ function writeLastVerified(state: VerifiedState): void {
 
 function getCurrentState(): VerifiedState {
   return {
-    head: exec("git rev-parse HEAD", true),
+    head: exec("git", ["rev-parse", "HEAD"], true),
     "pnpm-lock.yaml": getFileHash("pnpm-lock.yaml"),
     "pnpm-workspace.yaml": getFileHash("pnpm-workspace.yaml"),
   };
 }
 
 function getChangedPackages(fromCommit: string): Set<string> {
-  const changedFiles = exec(`git diff --name-only ${fromCommit} HEAD`, true)
+  const changedFiles = exec("git", ["diff", "--name-only", fromCommit, "HEAD"], true)
     .split("\n")
     .filter(Boolean);
 
@@ -87,22 +103,22 @@ function getChangedPackages(fromCommit: string): Set<string> {
 async function verifyClean() {
   console.log("🧹 Running clean verification...\n");
 
-  exec("mise exec -- pnpm install");
+  exec("mise", ["exec", "--", "pnpm", "install"]);
   console.log("✓ Install completed\n");
 
-  exec("mise run build");
+  exec("mise", ["run", "build"]);
   console.log("✓ Build completed\n");
 
-  exec("mise exec -- pnpm --filter miomock-api sonamu migrate run");
+  exec("mise", ["exec", "--", "pnpm", "--filter", "miomock-api", "sonamu", "migrate", "run"]);
   console.log("✓ Migration completed\n");
 
-  exec("mise exec -- pnpm --filter miomock-api sonamu fixture sync");
+  exec("mise", ["exec", "--", "pnpm", "--filter", "miomock-api", "sonamu", "fixture", "sync"]);
   console.log("✓ Fixture sync completed\n");
 
-  exec("mise exec -- pnpm --filter miomock-api test");
+  exec("mise", ["exec", "--", "pnpm", "--filter", "miomock-api", "test"]);
   console.log("✓ Test completed\n");
 
-  exec("mise run check");
+  exec("mise", ["run", "check"]);
   console.log("✓ Lint/format check completed\n");
 
   writeLastVerified(getCurrentState());
@@ -129,19 +145,19 @@ async function verifyFast() {
 
   if (lockChanged) {
     console.log("📦 Lock files changed, running install + full build...\n");
-    exec("mise exec -- pnpm install");
+    exec("mise", ["exec", "--", "pnpm", "install"]);
     console.log("✓ Install completed\n");
 
-    exec("mise run build");
+    exec("mise", ["run", "build"]);
     console.log("✓ Build completed\n");
 
-    exec("mise exec -- pnpm --filter miomock-api sonamu migrate run");
+    exec("mise", ["exec", "--", "pnpm", "--filter", "miomock-api", "sonamu", "migrate", "run"]);
     console.log("✓ Migration completed\n");
 
-    exec("mise exec -- pnpm --filter miomock-api sonamu fixture sync");
+    exec("mise", ["exec", "--", "pnpm", "--filter", "miomock-api", "sonamu", "fixture", "sync"]);
     console.log("✓ Fixture sync completed\n");
 
-    exec("mise exec -- pnpm --filter miomock-api test");
+    exec("mise", ["exec", "--", "pnpm", "--filter", "miomock-api", "test"]);
     console.log("✓ Test completed\n");
 
     writeLastVerified(currentState);
@@ -164,19 +180,19 @@ async function verifyFast() {
     .map((pkg) => `{${pkg}}`)
     .join("");
 
-  exec(`mise exec -- pnpm --filter "${filterStr}..." build`);
+  exec("mise", ["exec", "--", "pnpm", "--filter", `${filterStr}...`, "build"]);
   console.log("✓ Build completed\n");
 
-  exec("mise exec -- pnpm --filter miomock-api sonamu migrate run");
+  exec("mise", ["exec", "--", "pnpm", "--filter", "miomock-api", "sonamu", "migrate", "run"]);
   console.log("✓ Migration completed\n");
 
-  exec("mise exec -- pnpm --filter miomock-api sonamu fixture sync");
+  exec("mise", ["exec", "--", "pnpm", "--filter", "miomock-api", "sonamu", "fixture", "sync"]);
   console.log("✓ Fixture sync completed\n");
 
-  exec("mise exec -- pnpm --filter miomock-api test");
+  exec("mise", ["exec", "--", "pnpm", "--filter", "miomock-api", "test"]);
   console.log("✓ Test completed\n");
 
-  exec("mise run check");
+  exec("mise", ["run", "check"]);
   console.log("✓ Lint/format check completed\n");
 
   writeLastVerified(currentState);
@@ -196,11 +212,17 @@ const mode = process.argv[2];
       console.error("Usage: ts-node verify.ts [clean|fast]");
       process.exit(1);
     }
-    exec(
-      `say -v Yuna "소나무 ${mode === "clean" ? "클린" : "빠른"}검증 성공했습니다![[slnc 1000]]"`,
-    );
+    exec("say", [
+      "-v",
+      "Yuna",
+      `소나무 ${mode === "clean" ? "클린" : "빠른"}검증 성공했습니다![[slnc 1000]]`,
+    ]);
   } catch (e) {
-    exec(`say -v Yuna "소나무 ${mode === "clean" ? "클린" : "빠른"}검증 실패![[slnc 1000]]"`);
+    exec("say", [
+      "-v",
+      "Yuna",
+      `소나무 ${mode === "clean" ? "클린" : "빠른"}검증 실패![[slnc 1000]]`,
+    ]);
     if (e instanceof Error) {
       console.error("\n❌ Verification failed:", e.message);
     }

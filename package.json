@@ -7,6 +7,7 @@
   },
   "devDependencies": {
     "@aws-sdk/client-ecr-public": "catalog:",
+    "@oxlint/plugins": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "corepack": "catalog:",
