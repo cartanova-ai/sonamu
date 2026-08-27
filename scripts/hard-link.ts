@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 /**
  * 여러 파일을 하드링크하는 공통 스크립트
  *
@@ -47,7 +49,8 @@ for (const config of hardlinkConfigs) {
       linkSync(config.source, target);
       console.log(`  ✓ ${target}`);
     } catch (error) {
-      console.error(`  ✗ Failed to link to ${target}:`, (error as Error).message);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`  ✗ Failed to link to ${target}:`, message);
       process.exit(1);
     }
   }
