@@ -40,6 +40,41 @@ interface FileNode {
   isWronglyImported?: boolean;
 }
 
+interface ReloadabilityResult {
+  reloadable: boolean;
+  shouldBeReloadable: boolean;
+}
+
+function checkPathToRoot(
+  currentNode: FileNode,
+  visited: Set<string> = new Set(),
+): ReloadabilityResult {
+  if (currentNode.isWronglyImported) {
+    return { reloadable: false, shouldBeReloadable: true };
+  }
+
+  if (currentNode.reloadable || visited.has(currentNode.path)) {
+    return { reloadable: true, shouldBeReloadable: true };
+  }
+
+  visited.add(currentNode.path);
+
+  if (!currentNode.parents || currentNode.parents.size === 0) {
+    return { reloadable: false, shouldBeReloadable: false };
+  }
+
+  for (const parent of currentNode.parents) {
+    const result = checkPathToRoot(parent, new Set(visited));
+    if (!result.reloadable) return result;
+  }
+
+  return { reloadable: true, shouldBeReloadable: true };
+}
+
+function isNodeModule(path: string) {
+  return path.includes("node_modules") || path.includes("/.yarn/__virtual__/");
+}
+
 export default class DependencyTree {
   #tree!: FileNode;
   #pathMap: Map<string, FileNode> = new Map();
@@ -182,45 +217,11 @@ export default class DependencyTree {
     const node = this.#pathMap.get(path);
     if (!node) throw new Error(`Node ${path} does not exist`);
 
-    const checkPathToRoot = (
-      currentNode: FileNode,
-      visited: Set<string> = new Set(),
-    ): { reloadable: boolean; shouldBeReloadable: boolean } => {
-      if (currentNode.isWronglyImported) {
-        return { reloadable: false, shouldBeReloadable: true };
-      }
-
-      if (currentNode.reloadable) {
-        return { reloadable: true, shouldBeReloadable: true };
-      }
-
-      if (visited.has(currentNode.path)) {
-        return { reloadable: true, shouldBeReloadable: true };
-      }
-
-      visited.add(currentNode.path);
-
-      if (!currentNode.parents || currentNode.parents.size === 0) {
-        return { reloadable: false, shouldBeReloadable: false };
-      }
-
-      for (const parent of currentNode.parents) {
-        const { reloadable, shouldBeReloadable } = checkPathToRoot(parent, new Set(visited));
-        if (!reloadable) return { reloadable: false, shouldBeReloadable };
-      }
-
-      return { reloadable: true, shouldBeReloadable: true };
-    };
-
-    const result = checkPathToRoot(node);
-    return result;
+    return checkPathToRoot(node);
   }
 
   dump() {
     const rootDirname = dirname(this.#tree.path);
-    const isNodeModule = (path: string) =>
-      path.includes("node_modules") || path.includes("/.yarn/__virtual__/");
-
     return Array.from(this.#pathMap.values()).map((node) => ({
       version: node.version,
       boundary: node.reloadable,

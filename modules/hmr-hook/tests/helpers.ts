@@ -10,16 +10,22 @@ import pTimeout from "p-timeout";
 
 export const projectRoot = join(import.meta.url, "../");
 
+interface PackageMetadata {
+  name: string;
+  bin?: string | Record<string, string>;
+}
+
 export async function fakeInstall(destination: string) {
-  const { name: packageName, bin = {} } = await fs.readJson(
+  const packageMetadata: PackageMetadata = await fs.readJson(
     path.resolve(projectRoot, "package.json"),
   );
+  const { name: packageName, bin = {} } = packageMetadata;
 
   await fs.ensureSymlink(projectRoot, path.resolve(destination, "node_modules", packageName));
   await fs.ensureSymlink(projectRoot, path.resolve(destination, "node_modules", "hot-hook"));
 
-  if (typeof bin === "string") {
-    const binPath = bin;
+  if (Object.prototype.toString.call(bin) === "[object String]") {
+    const binPath = String(bin);
     const binName = packageName;
     await fs.ensureSymlink(
       path.resolve(projectRoot, binPath),
@@ -32,8 +38,7 @@ export async function fakeInstall(destination: string) {
   } else {
     for (const [binName, binPath] of Object.entries(bin)) {
       await fs.ensureSymlink(
-        // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- package.json bin 필드는 런타임에 string으로 보장됨
-        path.resolve(projectRoot, binPath as any),
+        path.resolve(projectRoot, binPath),
         path.resolve(destination, "node_modules", ".bin", binName),
       );
     }
