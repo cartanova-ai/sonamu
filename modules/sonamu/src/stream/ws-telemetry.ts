@@ -1,5 +1,22 @@
+import { runtimeTypeOf } from "../runtime-type";
+import { isFunctionValue, isObjectValue } from "../utils/runtime-value";
 import { InMemoryEventStore, InMemoryMetricStore, InMemorySpanStore } from "./ws-telemetry-memory";
 import { generateSpanId, generateTraceId, parseTraceParent } from "./ws-telemetry-trace";
+
+export type WebSocketTelemetryValue =
+  | null
+  | undefined
+  | bigint
+  | boolean
+  | number
+  | string
+  | Date
+  | WebSocketTelemetryValue[]
+  | WebSocketTelemetryAttributes;
+
+export interface WebSocketTelemetryAttributes {
+  [key: string]: WebSocketTelemetryValue;
+}
 
 // -- Record types (unchanged) --
 
@@ -24,7 +41,7 @@ export type WebSocketTelemetryEventRecord = WebSocketTelemetryRecordBase & {
   name: string;
   level: "debug" | "info" | "warn" | "error";
   attributes?: Record<string, string | number | boolean>;
-  detail?: Record<string, unknown>;
+  detail?: WebSocketTelemetryAttributes;
   payloadPreview?: string;
 };
 
@@ -49,12 +66,12 @@ export type WebSocketTelemetrySpanRecord = WebSocketTelemetryRecordBase & {
   events?: Array<{
     name: string;
     timestamp: number;
-    attributes?: Record<string, unknown>;
+    attributes?: WebSocketTelemetryAttributes;
   }>;
   links?: Array<{
     traceId: string;
     spanId: string;
-    attributes?: Record<string, unknown>;
+    attributes?: WebSocketTelemetryAttributes;
   }>;
 };
 
@@ -72,8 +89,8 @@ export type WebSocketTelemetryEventInput = {
   connectionId?: string;
   userId?: string;
   attributes?: Record<string, string | number | boolean>;
-  detail?: Record<string, unknown>;
-  payload?: unknown;
+  detail?: WebSocketTelemetryAttributes;
+  payload?: WebSocketTelemetryValue;
   traceId?: string;
   spanId?: string;
   parentSpanId?: string;
@@ -113,12 +130,12 @@ export type WebSocketSpanInput = {
   events?: Array<{
     name: string;
     timestamp: number;
-    attributes?: Record<string, unknown>;
+    attributes?: WebSocketTelemetryAttributes;
   }>;
   links?: Array<{
     traceId: string;
     spanId: string;
-    attributes?: Record<string, unknown>;
+    attributes?: WebSocketTelemetryAttributes;
   }>;
 };
 
@@ -434,7 +451,7 @@ function isSensitiveKey(key: string): boolean {
   return SENSITIVE_KEY_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
-function redactValue(value: unknown, key?: string): unknown {
+function redactValue(value: WebSocketTelemetryValue, key?: string): WebSocketTelemetryValue {
   if (key !== undefined && isSensitiveKey(key)) {
     return REDACTED_VALUE;
   }
@@ -447,8 +464,8 @@ function redactValue(value: unknown, key?: string): unknown {
     return value;
   }
 
-  if (value && typeof value === "object") {
-    const redacted: Record<string, unknown> = {};
+  if (value && isObjectValue(value)) {
+    const redacted: WebSocketTelemetryAttributes = {};
     for (const [childKey, childValue] of Object.entries(value)) {
       redacted[childKey] = redactValue(childValue, childKey);
     }
@@ -464,6 +481,7 @@ function redactValue(value: unknown, key?: string): unknown {
  */
 function defaultSensitiveKeyRedact(record: WebSocketTelemetryRecord): WebSocketTelemetryRecord {
   if (record.type === "event") {
+    // SAFETY: redactor는 이벤트 레코드의 키 구조를 유지하고 값만 마스킹한다.
     return {
       ...record,
       attributes: record.attributes
@@ -477,6 +495,7 @@ function defaultSensitiveKeyRedact(record: WebSocketTelemetryRecord): WebSocketT
   }
 
   if (record.type === "metric") {
+    // SAFETY: redactor는 메트릭 레코드의 키 구조를 유지하고 값만 마스킹한다.
     return {
       ...record,
       tags: record.tags
@@ -486,6 +505,7 @@ function defaultSensitiveKeyRedact(record: WebSocketTelemetryRecord): WebSocketT
     };
   }
 
+  // SAFETY: redactor는 span과 하위 이벤트·링크의 키 구조를 유지하고 값만 마스킹한다.
   return {
     ...record,
     attributes: record.attributes
@@ -494,19 +514,19 @@ function defaultSensitiveKeyRedact(record: WebSocketTelemetryRecord): WebSocketT
     events: record.events?.map((event) => ({
       ...event,
       attributes: event.attributes
-        ? (redactValue(event.attributes) as Record<string, unknown>)
+        ? (redactValue(event.attributes) as WebSocketTelemetryAttributes)
         : undefined,
     })),
     links: record.links?.map((link) => ({
       ...link,
       attributes: link.attributes
-        ? (redactValue(link.attributes) as Record<string, unknown>)
+        ? (redactValue(link.attributes) as WebSocketTelemetryAttributes)
         : undefined,
     })),
   };
 }
 
-function truncatePayloadPreview(payload: unknown, maxBytes: number): string {
+function truncatePayloadPreview(payload: WebSocketTelemetryValue, maxBytes: number): string {
   try {
     const serialized = JSON.stringify(redactValue(payload));
     if (Buffer.byteLength(serialized, "utf-8") <= maxBytes) {
@@ -536,8 +556,8 @@ function truncateUtf8String(value: string, maxBytes: number): string {
   return result + suffix;
 }
 
-export function isPromiseLike(value: unknown): value is Promise<void> {
-  return typeof value === "object" && value !== null && "then" in value && "catch" in value;
+export function isPromiseLike<Value>(value: Value): value is Value & Promise<void> {
+  return isObjectValue(value) && value !== null && "then" in value && "catch" in value;
 }
 
 // -- TokenBucket (unchanged) --
@@ -679,7 +699,7 @@ type ResolvedSpanPipelineOptions = {
 type InternalEventReporter = (
   name: string,
   level: WebSocketTelemetryEventRecord["level"],
-  detail?: Record<string, unknown>,
+  detail?: WebSocketTelemetryAttributes,
 ) => void;
 
 // -- TelemetryPipeline (abstract) --
@@ -695,7 +715,7 @@ abstract class TelemetryPipeline<
 > {
   abstract readonly signal: "event" | "metric" | "span";
   protected readonly sinks: TSink[];
-  protected readonly _store: TStore;
+  protected readonly telemetryStore: TStore;
   protected readonly tokenBucket: TokenBucket;
   protected readonly maxInFlightEmits: number;
   protected readonly runtimeMetadata: RuntimeMetadata;
@@ -717,7 +737,7 @@ abstract class TelemetryPipeline<
     runtimeMetadata: RuntimeMetadata,
   ) {
     this.sinks = sinks;
-    this._store = store;
+    this.telemetryStore = store;
     this.tokenBucket = new TokenBucket(maxRecordsPerSecond, maxRecordsPerSecond);
     this.maxInFlightEmits = maxInFlightEmits;
     this.sharedRedactor = sharedRedactor;
@@ -726,7 +746,7 @@ abstract class TelemetryPipeline<
   }
 
   get store(): TStore {
-    return this._store;
+    return this.telemetryStore;
   }
 
   setInternalEventReporter(reporter: InternalEventReporter): void {
@@ -772,7 +792,8 @@ abstract class TelemetryPipeline<
         this.droppedCount += 1;
         return;
       }
-      prepared = afterDefault as TRecord;
+      prepared =
+        /* SAFETY: 등록된 WebSocket 이벤트 스키마가 이 값의 타입을 보장한다. */ afterDefault as TRecord;
     } catch {
       this.droppedCount += 1;
       return;
@@ -860,7 +881,7 @@ abstract class TelemetryPipeline<
     }
 
     // result.type === record.type === TRecord["type"]이므로 narrowed TRecord로 안전하게 좁힐 수 있다.
-    return result as TRecord;
+    return /* SAFETY: 등록된 WebSocket 이벤트 스키마가 이 값의 타입을 보장한다. */ result as TRecord;
   }
 
   protected dispatchToSinks(record: TRecord, selfObserveFailures = true): void {
@@ -885,9 +906,9 @@ abstract class TelemetryPipeline<
             () => {
               this.decrementInFlightEmit(sink);
             },
-            (error: unknown) => {
+            (cause: unknown) => {
               this.decrementInFlightEmit(sink);
-              this.observeSinkFailure("emit", error, selfObserveFailures);
+              this.observeSinkFailure("emit", cause, selfObserveFailures);
             },
           );
         }
@@ -906,9 +927,9 @@ abstract class TelemetryPipeline<
     this.inFlightEmits.set(sink, current - 1);
   }
 
-  private observeSinkFailure(
+  private observeSinkFailure<Value>(
     phase: "emit" | "shutdown",
-    error: unknown,
+    error: Value,
     selfObserveFailure: boolean,
   ): void {
     this.sinkFailureCount += 1;
@@ -916,14 +937,14 @@ abstract class TelemetryPipeline<
     this.dispatchInternalEvent("ws.telemetry.sink.failed", "warn", {
       phase,
       signal: this.signal,
-      errorType: error instanceof Error ? error.name : typeof error,
+      errorType: error instanceof Error ? error.name : runtimeTypeOf(error),
     });
   }
 
   protected dispatchInternalEvent(
     name: string,
     level: WebSocketTelemetryEventRecord["level"],
-    detail?: Record<string, unknown>,
+    detail?: WebSocketTelemetryAttributes,
   ): void {
     if (this.internalEventReporter === undefined) return;
     try {
@@ -953,8 +974,8 @@ abstract class TelemetryPipeline<
       let timeout: ReturnType<typeof setTimeout> | null = null;
       const shutdownPromise = result.then(
         () => "completed" as const,
-        (error: unknown) => {
-          throw error;
+        (cause: unknown) => {
+          throw cause;
         },
       );
       const timeoutPromise = new Promise<"timeout">((resolve) => {
@@ -1056,7 +1077,7 @@ class EventPipeline extends TelemetryPipeline<
   dispatchInternalDiagnosticEvent(
     name: string,
     level: WebSocketTelemetryEventRecord["level"],
-    detail?: Record<string, unknown>,
+    detail?: WebSocketTelemetryAttributes,
   ): void {
     const record: WebSocketTelemetryEventRecord = {
       type: "event",
@@ -1172,7 +1193,7 @@ class MetricPipeline extends TelemetryPipeline<
 
       if (
         this.collectionInterval &&
-        typeof this.collectionInterval === "object" &&
+        isObjectValue(this.collectionInterval) &&
         "unref" in this.collectionInterval
       ) {
         this.collectionInterval.unref();
@@ -1595,28 +1616,30 @@ function buildController(
   // 신호별 redactor / beforeRecord 해석.
   // null이면 sharedRedactor를 undefined로 덮어써 step 2 자체를 skip한다.
   const eventsSharedRedactor = eventsOpt.redactor === null ? undefined : defaults.redactor;
-  const eventsSignalRedactor =
-    typeof eventsOpt.redactor === "function" ? eventsOpt.redactor : undefined;
+  const eventsSignalRedactor = isFunctionValue(eventsOpt.redactor) ? eventsOpt.redactor : undefined;
   const eventsSharedBeforeRecord =
     eventsOpt.beforeRecord === null ? undefined : defaults.beforeRecord;
-  const eventsSignalBeforeRecord =
-    typeof eventsOpt.beforeRecord === "function" ? eventsOpt.beforeRecord : undefined;
+  const eventsSignalBeforeRecord = isFunctionValue(eventsOpt.beforeRecord)
+    ? eventsOpt.beforeRecord
+    : undefined;
 
   const metricsSharedRedactor = metricsOpt.redactor === null ? undefined : defaults.redactor;
-  const metricsSignalRedactor =
-    typeof metricsOpt.redactor === "function" ? metricsOpt.redactor : undefined;
+  const metricsSignalRedactor = isFunctionValue(metricsOpt.redactor)
+    ? metricsOpt.redactor
+    : undefined;
   const metricsSharedBeforeRecord =
     metricsOpt.beforeRecord === null ? undefined : defaults.beforeRecord;
-  const metricsSignalBeforeRecord =
-    typeof metricsOpt.beforeRecord === "function" ? metricsOpt.beforeRecord : undefined;
+  const metricsSignalBeforeRecord = isFunctionValue(metricsOpt.beforeRecord)
+    ? metricsOpt.beforeRecord
+    : undefined;
 
   const spansSharedRedactor = spansOpt.redactor === null ? undefined : defaults.redactor;
-  const spansSignalRedactor =
-    typeof spansOpt.redactor === "function" ? spansOpt.redactor : undefined;
+  const spansSignalRedactor = isFunctionValue(spansOpt.redactor) ? spansOpt.redactor : undefined;
   const spansSharedBeforeRecord =
     spansOpt.beforeRecord === null ? undefined : defaults.beforeRecord;
-  const spansSignalBeforeRecord =
-    typeof spansOpt.beforeRecord === "function" ? spansOpt.beforeRecord : undefined;
+  const spansSignalBeforeRecord = isFunctionValue(spansOpt.beforeRecord)
+    ? spansOpt.beforeRecord
+    : undefined;
 
   // events
   const eventSinks: WebSocketTelemetryEventSink[] = eventsOpt.sinks ? [...eventsOpt.sinks] : [];

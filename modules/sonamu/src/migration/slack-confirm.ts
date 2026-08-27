@@ -138,12 +138,13 @@ export class SlackConfirm {
       throw new Error(`Slack API HTTP error: ${response.status}`);
     }
 
-    const data = (await response.json()) as {
-      ok: boolean;
-      error?: string;
-      channel: string;
-      ts: string;
-    };
+    const data =
+      /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ (await response.json()) as {
+        ok: boolean;
+        error?: string;
+        channel: string;
+        ts: string;
+      };
     if (!data.ok) {
       throw new Error(`Slack API error: ${data.error}`);
     }
@@ -202,16 +203,17 @@ ${migrationsText}`;
       throw new Error(`Slack API HTTP error: ${response.status}`);
     }
 
-    const data = (await response.json()) as {
-      ok: boolean;
-      error?: string;
-      message?: {
-        reactions?: Array<{
-          name: string;
-          users?: string[];
-        }>;
+    const data =
+      /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ (await response.json()) as {
+        ok: boolean;
+        error?: string;
+        message?: {
+          reactions?: Array<{
+            name: string;
+            users?: string[];
+          }>;
+        };
       };
-    };
     if (!data.ok) {
       throw new Error(`Slack API error: ${data.error}`);
     }

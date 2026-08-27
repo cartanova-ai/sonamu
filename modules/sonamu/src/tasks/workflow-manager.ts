@@ -25,6 +25,7 @@ import { convertDomainToCategory } from "../logger/category";
 import { Naite } from "../naite/naite";
 import { createMockSSEFactory } from "../stream/sse";
 import { type Executable } from "../types/types";
+import { isFunctionValue } from "../utils/runtime-value";
 import { type WorkflowMetadata } from "./decorator";
 import { StepWrapper } from "./step-wrapper";
 
@@ -126,7 +127,7 @@ export class WorkflowManager {
     await Promise.allSettled(
       Array.from(this.#workflowsMap.entries())
         .filter(([key]) => !workflowMap.has(key))
-        .flatMap(([_, workflows]) =>
+        .flatMap(([, workflows]) =>
           workflows.map((workflow) => {
             return Promise.allSettled([
               ...workflow.schedules.map((schedule) => this.unscheduleTask(schedule.name)),
@@ -140,7 +141,7 @@ export class WorkflowManager {
     await Promise.allSettled(
       Array.from(workflowMap.entries())
         .filter(([key]) => !this.#workflowsMap.has(key))
-        .flatMap(([_, workflows]) =>
+        .flatMap(([, workflows]) =>
           workflows.map((workflow) => {
             this.registerWorkflow({
               id: workflow.id,
@@ -167,7 +168,7 @@ export class WorkflowManager {
           assert(previousWorkflows, "previous workflows not found");
           return [key, [previousWorkflows, newWorkflows]];
         })
-        .map(async ([_, [previousWorkflows, newWorkflows]]) => {
+        .map(async ([, [previousWorkflows, newWorkflows]]) => {
           // 기존 것들을 삭제부터 해야함.
           await Promise.allSettled(
             previousWorkflows
@@ -237,7 +238,7 @@ export class WorkflowManager {
         { name, version }: Pick<WorkflowMetadata, "name" | "version">,
         { input }: WorkflowMetadata["schedules"][number],
       ) => {
-        const inputData = await (typeof input === "function"
+        const inputData = await (isFunctionValue(input)
           ? Promise.resolve(input())
           : Promise.resolve(input));
 
@@ -287,17 +288,22 @@ export class WorkflowManager {
         version: string | null;
       }>,
     ) => {
-      const baseContext = {
+      const baseContext: Context = {
         transport: "http" as const,
-        request: null,
-        reply: null,
+        // 워크플로우에는 HTTP 요청이 없으므로 잘못된 접근을 즉시 드러냅니다.
+        get request(): Context["request"] {
+          throw new Error("HTTP request is unavailable in workflow context");
+        },
+        get reply(): Context["reply"] {
+          throw new Error("HTTP reply is unavailable in workflow context");
+        },
         headers: {},
-        createSSE: (schema: ZodObject) => createMockSSEFactory(schema),
+        createSSE: <T extends ZodObject>(schema: T) => createMockSSEFactory(schema),
         naiteStore: Naite.createStore(),
         locale: "",
         user: null,
         session: null,
-      } as unknown as Context;
+      };
 
       const contextProvider = Sonamu.config.tasks?.contextProvider;
       const context: Context = contextProvider

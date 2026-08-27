@@ -7,6 +7,10 @@ import { betterAuthV1 } from "./better-auth-entities";
 import { ENTITY_DEFINITIONS, isValidPluginId } from "./plugins/entity-definitions";
 import { type BetterAuthPluginId } from "./plugins/entity-definitions";
 
+interface SubsetFields {
+  [subsetKey: string]: string[];
+}
+
 /**
  * 누락된 props 찾기
  */
@@ -55,10 +59,10 @@ function findMissingIndexes(
  * 누락된 subsets 찾기
  */
 function findMissingSubsets(
-  existingSubsets: { [key: string]: string[] },
-  requiredSubsets: { [key: string]: string[] },
-): { [key: string]: string[] } {
-  const missing: { [key: string]: string[] } = {};
+  existingSubsets: SubsetFields,
+  requiredSubsets: SubsetFields,
+): SubsetFields {
+  const missing: SubsetFields = {};
   for (const [key, fields] of Object.entries(requiredSubsets)) {
     if (!existingSubsets[key]) {
       missing[key] = fields;
@@ -125,7 +129,8 @@ async function createOrUpdateEntity(entityJson: EntityJson): Promise<void> {
   // 누락된 subsets 추가
   const missingSubsets = findMissingSubsets(
     entity.subsets,
-    (entityJson.subsets ?? {}) as { [key: string]: string[] },
+    /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ (entityJson.subsets ??
+      {}) as { [key: string]: string[] },
   );
   for (const [key, fields] of Object.entries(missingSubsets)) {
     entity.subsets[key] = fields;

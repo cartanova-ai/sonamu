@@ -16,7 +16,10 @@ type MergedDictionary = {
     ? (...args: P) => string
     : string;
 };
-const dictionaries: Record<string, MergedDictionary> = {
+interface DictionariesByLocale {
+  [locale: string]: MergedDictionary;
+}
+const dictionaries: DictionariesByLocale = {
   ko,
   en,
 };
@@ -44,25 +47,32 @@ function getDictValue<K extends DictKey>(key: K, locale: string): SDReturnType<K
   // 1. 지정된 locale에서 조회
   const dict = dictionaries[locale];
   if (dict?.[key] !== undefined) {
-    return dict[key] as unknown as SDReturnType<K>;
+    return /* SAFETY: 동기화된 사전 계약에서 문자열 브랜드만 추가한다. */ dict[
+      key
+    ] as SDReturnType<K>;
   }
 
   // 2. default locale에서 조회
   if (locale !== defaultLocale && dictionaries[defaultLocale]?.[key] !== undefined) {
-    return dictionaries[defaultLocale][key] as unknown as SDReturnType<K>;
+    return /* SAFETY: 동기화된 사전 계약에서 문자열 브랜드만 추가한다. */ dictionaries[
+      defaultLocale
+    ][key] as SDReturnType<K>;
   }
 
   // 3. supported locales 순회
   for (const supportedLocale of supportedLocales) {
     if (supportedLocale !== locale && supportedLocale !== defaultLocale) {
       if (dictionaries[supportedLocale]?.[key] !== undefined) {
-        return dictionaries[supportedLocale][key] as unknown as SDReturnType<K>;
+        return /* SAFETY: 동기화된 사전 계약에서 문자열 브랜드만 추가한다. */ dictionaries[
+          supportedLocale
+        ][key] as SDReturnType<K>;
       }
     }
   }
 
   // 4. 모두 실패 시 key 반환
-  return key as unknown as SDReturnType<K>;
+  const missingValue: MergedDictionary[DictKey] = key;
+  return /* SAFETY: 누락 키 문자열에 LocalizedString 브랜드만 추가한다. */ missingValue as SDReturnType<K>;
 }
 
 /**

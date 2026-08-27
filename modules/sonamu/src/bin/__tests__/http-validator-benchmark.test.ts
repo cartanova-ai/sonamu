@@ -1,285 +1,94 @@
+import { execFileSync } from "node:child_process";
+import path from "node:path";
 import process from "node:process";
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 
-const benchmarkMocks = vi.hoisted(() => ({
-  compile: vi.fn(),
-  execFileSync: vi.fn(),
-  jit: vi.fn(),
-  statSync: vi.fn(),
-}));
+const isolatedModeNames = ["cachedPlain", "eagerJit", "aot"] as const;
+type IsolatedModeName = (typeof isolatedModeNames)[number];
 
-vi.mock("node:child_process", () => ({
-  execFileSync: benchmarkMocks.execFileSync,
-}));
-
-vi.mock("node:fs", () => ({
-  statSync: benchmarkMocks.statSync,
-}));
-
-vi.mock("zod-compiler", () => ({
-  compile: benchmarkMocks.compile,
-}));
-
-vi.mock("zod-compiler/jit", () => ({
-  jit: benchmarkMocks.jit,
-}));
-
-vi.mock("zod", () => {
-  const schema = new Proxy(
-    {},
-    {
-      get() {
-        return () => schema;
-      },
-    },
-  );
-  return {
-    z: {
-      array: () => schema,
-      boolean: () => schema,
-      date: () => schema,
-      literal: () => schema,
-      number: () => schema,
-      object: () => schema,
-      string: () => schema,
-      union: () => schema,
-    },
-  };
+const ProcessMetricSchema = z.object({
+  startupMs: z.number(),
+  rssAtStartBytes: z.number(),
+  rssReadyBytes: z.number(),
 });
 
-vi.mock("../../api/caster", () => ({
-  fastifyCaster: () => {
-    const safeParse = (input: unknown) => {
-      const invalid =
-        isRecord(input) &&
-        isRecord(input.filter) &&
-        typeof input.filter.score === "string" &&
-        input.filter.score === "invalid";
-      return invalid
-        ? { success: false, error: { issues: [{ code: "custom", path: ["filter", "score"] }] } }
-        : { success: true, data: input };
-    };
-    return {
-      parse(input: unknown) {
-        const result = safeParse(input);
-        if (!result.success) {
-          throw new Error("invalid benchmark fixture");
-        }
-        return result.data;
-      },
-      safeParse,
-    };
-  },
-}));
+const ModeRunResultSchema = z.object({
+  mode: z.enum(isolatedModeNames),
+  parity: z.literal(true),
+  fixtureAssertions: z.object({
+    validAccepted: z.literal(true),
+    invalidRejected: z.literal(true),
+  }),
+  process: ProcessMetricSchema,
+  resultChecksum: z.number(),
+});
 
-vi.mock("fastify", () => ({
-  default: () => {
-    let routeHandler:
-      | ((request: { body: unknown }, reply: Record<string, unknown>) => unknown)
-      | undefined;
-    return {
-      async close() {},
-      async inject(options: { payload: unknown }) {
-        if (routeHandler === undefined) {
-          throw new Error("benchmark route가 등록되지 않았습니다");
-        }
-        let statusCode = 200;
-        const response = { statusCode };
-        const reply = {
-          code(nextStatusCode: number) {
-            statusCode = nextStatusCode;
-            response.statusCode = nextStatusCode;
-            return reply;
-          },
-          send() {
-            return response;
-          },
-        };
-        return await routeHandler({ body: options.payload }, reply);
-      },
-      post(
-        _path: string,
-        handler: (request: { body: unknown }, reply: Record<string, unknown>) => unknown,
-      ) {
-        routeHandler = handler;
-      },
-      async ready() {},
-    };
-  },
-}));
+type ModeRunResult = z.infer<typeof ModeRunResultSchema>;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+const packageRoot = path.resolve(import.meta.dirname, "../../..");
+const benchmarkArtifactPath = path.join(packageRoot, "benchmarks/dist/http-validator.bench.mjs");
+
+function parseModeOutput(output: string): ModeRunResult {
+  const outputLine = output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .at(-1);
+  if (outputLine === undefined) {
+    throw new Error("benchmark child process가 결과를 출력하지 않았습니다");
+  }
+  return ModeRunResultSchema.parse(JSON.parse(outputLine));
 }
 
-function createLayerResults() {
-  const modes = {
-    uncachedPlain: { p50Ns: 40, p95Ns: 50 },
-    cachedPlain: { p50Ns: 30, p95Ns: 40 },
-    eagerJit: { p50Ns: 20, p95Ns: 25 },
-    aot: { p50Ns: 18, p95Ns: 22 },
-  };
-  return {
-    validator: modes,
-    handler: modes,
-    fastifyInject: modes,
-  };
+function runBenchmarkMode(mode: IsolatedModeName): ModeRunResult {
+  const output = execFileSync(process.execPath, [benchmarkArtifactPath], {
+    cwd: packageRoot,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      BENCHMARK_MODE: mode,
+      BENCHMARK_RUN_INDEX: "0",
+      ZOD_COMPILER: undefined,
+    },
+  });
+  return parseModeOutput(output);
 }
 
 describe("HTTP validator benchmark RSS 계약", () => {
-  const originalBenchmarkMode = process.env.BENCHMARK_MODE;
-  const originalZodCompiler = process.env.ZOD_COMPILER;
+  const results = new Map<IsolatedModeName, ModeRunResult>();
 
-  beforeEach(() => {
-    vi.resetModules();
-    benchmarkMocks.compile.mockReset();
-    benchmarkMocks.execFileSync.mockReset();
-    benchmarkMocks.jit.mockReset();
-    benchmarkMocks.statSync.mockReset();
-    benchmarkMocks.statSync.mockReturnValue({ size: 1024 });
-    benchmarkMocks.execFileSync.mockImplementation(
-      (
-        file: string,
-        _args: readonly string[],
-        options?: { env?: Record<string, string | undefined> },
-      ) => {
-        if (file === "pnpm") {
-          return "";
-        }
-        const mode = options?.env?.BENCHMARK_MODE;
-        const runIndex = Number(options?.env?.BENCHMARK_RUN_INDEX ?? "0");
-        const rssSample = {
-          startupMs: 10,
-          rssAtStartBytes: 100,
-          rssReadyBytes: 200,
-        };
-        return `${JSON.stringify({
-          runIndex,
-          mode,
-          environment: { node: process.version },
-          parity: true,
-          fixtureAssertions: { validAccepted: true, invalidRejected: true },
-          results: createLayerResults(),
-          startup: {
-            uncachedPlain: { validatorMs: 0, fastifyMs: 1, totalMs: 1 },
-            cachedPlain: { validatorMs: 1, fastifyMs: 1, totalMs: 2 },
-            eagerJit: { validatorMs: 2, fastifyMs: 1, totalMs: 3 },
-            aot: { validatorMs: 1, fastifyMs: 1, totalMs: 2 },
-          },
-          process: {
-            ...rssSample,
-            cachedPlain: rssSample,
-            eagerJit: rssSample,
-            aot: rssSample,
-          },
-          resultChecksum: 1,
-        })}\n`;
-      },
-    );
-  });
-
-  afterEach(() => {
-    if (originalBenchmarkMode === undefined) {
-      delete process.env.BENCHMARK_MODE;
-    } else {
-      process.env.BENCHMARK_MODE = originalBenchmarkMode;
-    }
-    if (originalZodCompiler === undefined) {
-      delete process.env.ZOD_COMPILER;
-    } else {
-      process.env.ZOD_COMPILER = originalZodCompiler;
-    }
-    vi.restoreAllMocks();
-  });
-
-  it("cached plain, JIT, AOT를 별도 child process로 수집하고 mode별 RSS를 보고한다", async () => {
-    const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
-
-    await import("../../../benchmarks/run-http-validator-benchmark");
-
-    const collectedModes = benchmarkMocks.execFileSync.mock.calls
-      .filter(([file]) => file === process.execPath)
-      .map(([, , options]) => {
-        if (!isRecord(options) || !isRecord(options.env)) {
-          return undefined;
-        }
-        return options.env.BENCHMARK_MODE;
-      });
-    expect(new Set(collectedModes)).toEqual(new Set(["cachedPlain", "eagerJit", "aot"]));
-
-    const printed = consoleLog.mock.calls.at(-1)?.[0];
-    if (typeof printed !== "string") {
-      throw new Error("benchmark report가 JSON 문자열을 출력하지 않았습니다");
-    }
-    const report: unknown = JSON.parse(printed);
-    if (!isRecord(report) || !isRecord(report.median) || !isRecord(report.median.process)) {
-      throw new Error("benchmark report에 median process 결과가 없습니다");
-    }
-    expect(report.median.process).toMatchObject({
-      cachedPlain: {
-        rssAtStartBytes: expect.any(Number),
-        rssReadyBytes: expect.any(Number),
-      },
-      eagerJit: {
-        rssAtStartBytes: expect.any(Number),
-        rssReadyBytes: expect.any(Number),
-      },
-      aot: {
-        rssAtStartBytes: expect.any(Number),
-        rssReadyBytes: expect.any(Number),
-      },
+  beforeAll(() => {
+    execFileSync("pnpm", ["exec", "tsdown", "--config", "benchmarks/tsdown.config.ts"], {
+      cwd: packageRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
     });
+
+    for (const mode of isolatedModeNames) {
+      results.set(mode, runBenchmarkMode(mode));
+    }
+  }, 120_000);
+
+  it("각 validator mode를 실제 child process로 실행한다", () => {
+    expect([...results.keys()]).toEqual(isolatedModeNames);
+    for (const mode of isolatedModeNames) {
+      expect(results.get(mode)).toMatchObject({
+        mode,
+        parity: true,
+        fixtureAssertions: { validAccepted: true, invalidRejected: true },
+      });
+    }
   });
 
-  it.each([
-    { compileCalls: 0, jitCalls: 0, mode: "cachedPlain" },
-    { compileCalls: 0, jitCalls: 1, mode: "eagerJit" },
-    { compileCalls: 1, jitCalls: 0, mode: "aot" },
-  ] as const)(
-    "$mode child는 선택한 validator mode만 준비한다",
-    async ({ compileCalls, jitCalls, mode }) => {
-      process.env.BENCHMARK_MODE = mode;
-      delete process.env.ZOD_COMPILER;
-      benchmarkMocks.compile.mockImplementation((schema) => {
-        const record = isRecord(schema) ? schema : {};
-        const originalParse =
-          typeof record.parse === "function" ? record.parse.bind(record) : undefined;
-        const originalSafeParse =
-          typeof record.safeParse === "function" ? record.safeParse.bind(record) : undefined;
-        return {
-          ...record,
-          parse(input: unknown) {
-            return originalParse?.(input);
-          },
-          safeParse(input: unknown) {
-            return originalSafeParse?.(input);
-          },
-        };
+  it("각 mode의 시작 및 준비 시점 RSS를 보고한다", () => {
+    for (const mode of isolatedModeNames) {
+      expect(results.get(mode)?.process).toMatchObject({
+        startupMs: expect.any(Number),
+        rssAtStartBytes: expect.any(Number),
+        rssReadyBytes: expect.any(Number),
       });
-      benchmarkMocks.jit.mockImplementation((schema) => {
-        if (!isRecord(schema)) {
-          return schema;
-        }
-        const originalParse =
-          typeof schema.parse === "function" ? schema.parse.bind(schema) : undefined;
-        const originalSafeParse =
-          typeof schema.safeParse === "function" ? schema.safeParse.bind(schema) : undefined;
-        schema.parse = (input: unknown) => originalParse?.(input);
-        schema.safeParse = (input: unknown) => originalSafeParse?.(input);
-        return schema;
-      });
-      vi.spyOn(console, "log").mockImplementation(() => {});
-
-      const importSelectedBenchmark = {
-        cachedPlain: () => import("../../../benchmarks/http-validator.bench?mode=cachedPlain"),
-        eagerJit: () => import("../../../benchmarks/http-validator.bench?mode=eagerJit"),
-        aot: () => import("../../../benchmarks/http-validator.bench?mode=aot"),
-      }[mode];
-      await importSelectedBenchmark();
-
-      expect(benchmarkMocks.jit).toHaveBeenCalledTimes(jitCalls);
-      expect(benchmarkMocks.compile).toHaveBeenCalledTimes(compileCalls);
-    },
-  );
+    }
+  });
 });

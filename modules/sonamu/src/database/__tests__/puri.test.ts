@@ -37,6 +37,20 @@ function usersQuery(): Puri<TestSchema, { users: TestSchema["users"] }, TestSche
   return new Puri(db, "users");
 }
 
+function withJsonTableSpec<T>(jsonColumns: string[], callback: () => T): T {
+  const tableSpecSpy = vi.spyOn(EntityManager, "getTableSpec").mockReturnValue({
+    name: "users",
+    uniqueIndexes: [],
+    jsonColumns,
+  });
+
+  try {
+    return callback();
+  } finally {
+    tableSpecSpy.mockRestore();
+  }
+}
+
 afterAll(async () => {
   await db.destroy();
 });
@@ -104,7 +118,8 @@ describe("Puri JSONB containment", () => {
     ]);
 
     const query = usersQuery();
-    expect(() => Reflect.apply(query.whereJsonSupersetOf, query, ["payload", undefined])).toThrow(
+    // SAFETY: 직렬화 실패 경로를 검증하기 위해 타입 계약 밖의 값을 의도적으로 전달합니다.
+    expect(() => query.whereJsonSupersetOf("payload", undefined as never)).toThrow(
       "Puri JSONB containment value must be JSON-serializable; JSON.stringify returned undefined.",
     );
     expect(query.rawQuery().toSQL().sql).toBe('select * from "users"');
@@ -112,20 +127,6 @@ describe("Puri JSONB containment", () => {
 });
 
 describe("Puri onConflict JSON 직렬화", () => {
-  function withJsonTableSpec<T>(jsonColumns: string[], callback: () => T): T {
-    const tableSpecSpy = vi.spyOn(EntityManager, "getTableSpec").mockReturnValue({
-      name: "users",
-      uniqueIndexes: [],
-      jsonColumns,
-    });
-
-    try {
-      return callback();
-    } finally {
-      tableSpecSpy.mockRestore();
-    }
-  }
-
   it("객체 update의 배열을 JSON 문자열 binding으로 변환한다", () => {
     const binding = withJsonTableSpec(["tags"], () =>
       usersQuery()

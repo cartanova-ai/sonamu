@@ -1,6 +1,31 @@
 import SqlParser from "node-sql-parser";
 
+import { isBooleanValue } from "../runtime-type";
+import { isNumberValue, isObjectValue, isStringValue } from "../utils/runtime-value";
+
 const INDEX_WHERE_SQL_PARSER = new SqlParser.Parser();
+
+type SqlAstValue = null | undefined | boolean | number | string | SqlAstValue[] | SqlAstRecord;
+interface SqlAstRecord {
+  [key: string]: SqlAstValue;
+}
+
+function parseSqlAstValue<Value>(value: Value): SqlAstValue {
+  if (value === null) return null;
+  if (value === undefined) return undefined;
+  if (isBooleanValue(value)) return value;
+  if (isNumberValue(value)) return value;
+  if (isStringValue(value)) return value;
+  if (Array.isArray(value)) {
+    return value.map(parseSqlAstValue);
+  }
+  if (isObjectValue(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [key, parseSqlAstValue(child)]),
+    );
+  }
+  throw new Error("지원하지 않는 SQL AST 값입니다");
+}
 
 /**
  * Migration DDL 출력에 사용할 index predicate를 정리한다.
@@ -56,9 +81,11 @@ function removeOuterSqlParentheses(source: string): string {
 function normalizeIndexWherePredicateByAst(where: string): string | undefined {
   try {
     // node-sql-parser는 raw predicate를 직접 파싱하지 않으므로 임시 SELECT WHERE로 감싼다.
-    const parsed = INDEX_WHERE_SQL_PARSER.astify(
-      `SELECT * FROM __sonamu_index_predicate_source WHERE ${where}`,
-      { database: "postgresql" },
+    const parsed = parseSqlAstValue(
+      INDEX_WHERE_SQL_PARSER.astify(
+        `SELECT * FROM __sonamu_index_predicate_source WHERE ${where}`,
+        { database: "postgresql" },
+      ),
     );
     const statement = Array.isArray(parsed) ? parsed[0] : parsed;
     if (!isSqlAstRecord(statement)) {
@@ -71,7 +98,7 @@ function normalizeIndexWherePredicateByAst(where: string): string | undefined {
   }
 }
 
-function serializeIndexWhereAst(node: unknown): string {
+function serializeIndexWhereAst(node: SqlAstValue): string {
   // PostgreSQL이 IN을 ANY(ARRAY[...])로 재작성하므로 membership은 먼저 특수 처리한다.
   const membership = serializeSqlMembershipPredicate(node);
   if (membership) {
@@ -139,7 +166,7 @@ function serializeIndexWhereAst(node: unknown): string {
   }
 }
 
-function serializeSqlMembershipPredicate(node: unknown): string | undefined {
+function serializeSqlMembershipPredicate(node: SqlAstValue): string | undefined {
   if (!isSqlAstRecord(node) || getSqlAstString(node, "type") !== "binary_expr") {
     return undefined;
   }
@@ -166,7 +193,7 @@ function serializeSqlMembershipPredicate(node: unknown): string | undefined {
   return `membership:${left}:in:[${values.join(",")}]`;
 }
 
-function serializeSqlMembershipValues(values: unknown[] | undefined): string[] | undefined {
+function serializeSqlMembershipValues(values: SqlAstValue[] | undefined): string[] | undefined {
   if (!values) {
     return undefined;
   }
@@ -176,7 +203,7 @@ function serializeSqlMembershipValues(values: unknown[] | undefined): string[] |
   return [...new Set(serialized)].toSorted();
 }
 
-function getSqlAnyArrayElements(node: unknown): unknown[] | undefined {
+function getSqlAnyArrayElements(node: SqlAstValue): SqlAstValue[] | undefined {
   if (!isSqlAstRecord(node) || getSqlAstString(node, "type") !== "function") {
     return undefined;
   }
@@ -193,7 +220,7 @@ function getSqlAnyArrayElements(node: unknown): unknown[] | undefined {
   return serializeSqlArrayElements(stripTextLikeSqlCast(arg));
 }
 
-function serializeSqlArrayElements(node: unknown): unknown[] {
+function serializeSqlArrayElements(node: SqlAstValue): SqlAstValue[] {
   if (!isSqlAstRecord(node)) {
     return [];
   }
@@ -206,7 +233,7 @@ function serializeSqlArrayElements(node: unknown): unknown[] {
   return serializeSqlExprList(node);
 }
 
-function serializeSqlExprList(node: unknown): unknown[] {
+function serializeSqlExprList(node: SqlAstValue): SqlAstValue[] {
   if (!isSqlAstRecord(node)) {
     return [];
   }
@@ -219,7 +246,7 @@ function serializeSqlExprList(node: unknown): unknown[] {
   return [node];
 }
 
-function stripTextLikeSqlCast(node: unknown): unknown {
+function stripTextLikeSqlCast(node: SqlAstValue): SqlAstValue {
   if (!isSqlAstRecord(node) || getSqlAstString(node, "type") !== "cast") {
     return node;
   }
@@ -233,13 +260,13 @@ function stripTextLikeSqlCast(node: unknown): unknown {
   return stripTextLikeSqlCast(node.expr);
 }
 
-function isSqlStringLiteralLike(node: unknown): boolean {
+function isSqlStringLiteralLike(node: SqlAstValue): boolean {
   // 문자열 literal에 붙은 text 계열 cast는 membership 비교에서 의미가 같다.
   const stripped = stripTextLikeSqlCast(node);
   return isSqlAstRecord(stripped) && getSqlAstString(stripped, "type") === "single_quote_string";
 }
 
-function getSqlCastTargetType(node: Record<string, unknown>): string | undefined {
+function getSqlCastTargetType(node: SqlAstRecord): string | undefined {
   if (!Array.isArray(node.target)) {
     return undefined;
   }
@@ -270,24 +297,24 @@ function normalizeSqlDataType(type: string): string {
     .replace(/^character varying$/, "varchar");
 }
 
-function serializeSqlColumnRef(node: Record<string, unknown>): string {
+function serializeSqlColumnRef(node: SqlAstRecord): string {
   const table = serializeSqlIdentifierNode(node.table);
   const column = serializeSqlIdentifierNode(node.column);
   return `column:${table ? `${table}.` : ""}${column}`;
 }
 
-function serializeSqlIdentifierNode(node: unknown): string {
-  if (typeof node === "string") {
+function serializeSqlIdentifierNode(node: SqlAstValue): string {
+  if (isStringValue(node)) {
     return normalizeSqlIdentifier(node);
   }
 
   // quoted identifier와 function name의 AST shape 차이를 같은 identifier 문자열로 흡수한다.
   if (isSqlAstRecord(node)) {
-    if (typeof node.value === "string") {
+    if (isStringValue(node.value)) {
       return normalizeSqlIdentifier(node.value);
     }
 
-    if (isSqlAstRecord(node.expr) && typeof node.expr.value === "string") {
+    if (isSqlAstRecord(node.expr) && isStringValue(node.expr.value)) {
       return normalizeSqlIdentifier(node.expr.value);
     }
   }
@@ -295,9 +322,9 @@ function serializeSqlIdentifierNode(node: unknown): string {
   return "";
 }
 
-function getSqlFunctionName(node: Record<string, unknown>): string {
+function getSqlFunctionName(node: SqlAstRecord): string {
   const name = node.name;
-  if (typeof name === "string") {
+  if (isStringValue(name)) {
     return normalizeSqlIdentifier(name);
   }
 
@@ -324,7 +351,7 @@ function normalizeSqlOperator(operator: string | undefined): string {
   return (operator ?? "").trim().toUpperCase().replace(/\s+/g, " ");
 }
 
-function serializeUnknownSqlAstRecord(node: Record<string, unknown>): string {
+function serializeUnknownSqlAstRecord(node: SqlAstRecord): string {
   // 아직 명시적으로 다루지 않는 AST 노드는 key 정렬로 최소한 안정적인 비교값을 만든다.
   const entries = Object.entries(node)
     .filter(([key]) => key !== "parentheses")
@@ -334,13 +361,13 @@ function serializeUnknownSqlAstRecord(node: Record<string, unknown>): string {
   return `record:{${entries.join(",")}}`;
 }
 
-function isSqlAstRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function isSqlAstRecord(value: SqlAstValue): value is SqlAstRecord {
+  return isObjectValue(value) && value !== null && !Array.isArray(value);
 }
 
-function getSqlAstString(node: Record<string, unknown>, key: string): string | undefined {
+function getSqlAstString(node: SqlAstRecord, key: string): string | undefined {
   const value = node[key];
-  return typeof value === "string" ? value : undefined;
+  return isStringValue(value) ? value : undefined;
 }
 
 function findMatchingParenthesisInSql(source: string, openIndex: number): number {

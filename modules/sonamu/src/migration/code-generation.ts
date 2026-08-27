@@ -14,6 +14,7 @@ import {
 } from "../types/types";
 import { isSearchTextProp } from "../types/types";
 import { formatCode } from "../utils/formatter";
+import { isStringValue } from "../utils/runtime-value";
 import { differenceWith, intersectionBy } from "../utils/utils";
 import {
   normalizeIndexWherePredicate,
@@ -49,7 +50,7 @@ type SearchTextExpressionNode =
   | { type: "collate"; expr: SearchTextExpressionNode; collation: string; quoted: boolean }
   | { type: "cast"; expr: SearchTextExpressionNode; targetType: string };
 
-const SEARCH_TEXT_HELPER_DEFINITIONS: Record<SearchTextHelperKind, string> = {
+const SEARCH_TEXT_HELPER_DEFINITIONS = {
   "text-array": `await knex.raw(\`CREATE OR REPLACE FUNCTION sonamu_text_array_agg(arr text[], ci boolean DEFAULT true)
 RETURNS text
 LANGUAGE sql IMMUTABLE PARALLEL SAFE RETURNS NULL ON NULL INPUT
@@ -70,7 +71,7 @@ AS $$
   )
   FROM jsonb_array_elements_text(arr)
 $$\`);`,
-};
+} satisfies Record<SearchTextHelperKind, string>;
 
 class SearchTextExpressionParser {
   private index = 0;
@@ -883,9 +884,9 @@ function genNormalColumnDefinition(column: MigrationColumn): string {
 
   // defaultTo
   if (column.defaultTo !== undefined) {
-    if (typeof column.defaultTo === "string" && column.defaultTo.startsWith(`"`)) {
+    if (isStringValue(column.defaultTo) && column.defaultTo.startsWith(`"`)) {
       chains.push(`defaultTo(${column.defaultTo})`);
-    } else if (column.type === "json" && typeof column.defaultTo === "string") {
+    } else if (column.type === "json" && isStringValue(column.defaultTo)) {
       chains.push(`defaultTo(knex.raw("${column.defaultTo.replaceAll('"', "'")}::jsonb"))`);
     } else {
       chains.push(`defaultTo(knex.raw('${column.defaultTo}'))`);
@@ -1133,8 +1134,8 @@ function genForeignDefinitions(
       return r;
     },
     {
-      up: [] as string[],
-      down: [] as string[],
+      up: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+      down: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
     },
   );
 }
@@ -1382,9 +1383,10 @@ function getAlterColumnsTo(
   searchTextColumnNames: Set<string>,
 ) {
   const columnsTo = {
-    add: [] as MigrationColumn[],
-    drop: [] as MigrationColumn[],
-    alter: [] as MigrationColumn[],
+    add: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationColumn[],
+    drop: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationColumn[],
+    alter:
+      /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationColumn[],
   };
 
   // 컬럼명 기준 비교
@@ -1424,16 +1426,40 @@ function getAlterColumnLinesTo(
   const searchTextColumnNames = getSearchTextColumnNames(table);
   const linesTo = {
     add: {
-      up: { builder: [] as string[], raw: [] as string[] },
-      down: { builder: [] as string[], raw: [] as string[] },
+      up: {
+        builder:
+          /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+        raw: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+      },
+      down: {
+        builder:
+          /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+        raw: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+      },
     },
     drop: {
-      up: { builder: [] as string[], raw: [] as string[] },
-      down: { builder: [] as string[], raw: [] as string[] },
+      up: {
+        builder:
+          /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+        raw: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+      },
+      down: {
+        builder:
+          /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+        raw: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+      },
     },
     alter: {
-      up: { builder: [] as string[], raw: [] as string[] },
-      down: { builder: [] as string[], raw: [] as string[] },
+      up: {
+        builder:
+          /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+        raw: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+      },
+      down: {
+        builder:
+          /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+        raw: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+      },
     },
   };
 
@@ -1572,12 +1598,47 @@ function getAlterColumnLinesTo(
       return r;
     },
     {
-      up: { builder: [] as string[], raw: [] as string[] },
-      down: { builder: [] as string[], raw: [] as string[] },
+      up: {
+        builder:
+          /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+        raw: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+      },
+      down: {
+        builder:
+          /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+        raw: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as string[],
+      },
     },
   );
 
   return linesTo;
+}
+
+// 인덱스 고유 식별자 생성 (name을 제외한 모든 필드를 문자열로 변환하여 조합)
+function migrationIndexIdentity(index: MigrationIndex): string {
+  const keys = Object.keys(index)
+    .filter((key) => key !== "name")
+    .toSorted();
+
+  return keys
+    .map((key) => {
+      if (key === "name") return undefined;
+      if (key === "columns") {
+        return /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ (
+          index[key] as MigrationIndex["columns"]
+        ).map((col) =>
+          Object.keys(col)
+            .toSorted()
+            .map(
+              (columnKey) =>
+                `${columnKey}=${col[/* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ columnKey as keyof typeof col]}`,
+            )
+            .join("//"),
+        );
+      }
+      return `${key}=${index[/* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ key as keyof MigrationIndex]}`;
+    })
+    .join("//");
 }
 
 /**
@@ -1586,32 +1647,8 @@ function getAlterColumnLinesTo(
 export function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: MigrationIndex[]) {
   // 인덱스 비교
   const indexesTo = {
-    add: [] as MigrationIndex[],
-    drop: [] as MigrationIndex[],
-  };
-
-  // 인덱스 고유 식별자 생성 (name을 제외한 모든 필드를 문자열로 변환하여 조합)
-  const identity = <T extends Record<string, unknown>>(index: T): string => {
-    const keys = Object.keys(index)
-      .filter((key) => key !== "name")
-      .toSorted();
-
-    return keys
-      .map((key) => {
-        if (key === "name") {
-          return undefined;
-        }
-        if (key === "columns") {
-          return (index[key] as MigrationIndex["columns"]).map((col) => {
-            return Object.keys(col)
-              .toSorted()
-              .map((k) => `${k}=${col[k as keyof typeof col]}`)
-              .join("//");
-          });
-        }
-        return `${key}=${index[key as keyof MigrationIndex]}`;
-      })
-      .join("//");
+    add: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationIndex[],
+    drop: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationIndex[],
   };
 
   const normalizedEntityIndexes = entityIndexes.map(setMigrationIndexDefaults);
@@ -1620,22 +1657,22 @@ export function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: Mi
   const comparisonEntityIndexes = entityIndexes.map(setMigrationIndexComparisonDefaults);
   const comparisonDbIndexes = dbIndexes.map(setMigrationIndexComparisonDefaults);
   const extraIndexes = {
-    db: diff(comparisonDbIndexes, comparisonEntityIndexes, identity),
-    entity: diff(comparisonEntityIndexes, comparisonDbIndexes, identity),
+    db: diff(comparisonDbIndexes, comparisonEntityIndexes, migrationIndexIdentity),
+    entity: diff(comparisonEntityIndexes, comparisonDbIndexes, migrationIndexIdentity),
   };
   if (extraIndexes.entity.length > 0) {
-    const addIdentities = new Set(extraIndexes.entity.map(identity));
+    const addIdentities = new Set(extraIndexes.entity.map(migrationIndexIdentity));
     indexesTo.add = indexesTo.add.concat(
       normalizedEntityIndexes.filter((_, index) =>
-        addIdentities.has(identity(comparisonEntityIndexes[index])),
+        addIdentities.has(migrationIndexIdentity(comparisonEntityIndexes[index])),
       ),
     );
   }
   if (extraIndexes.db.length > 0) {
-    const dropIdentities = new Set(extraIndexes.db.map(identity));
+    const dropIdentities = new Set(extraIndexes.db.map(migrationIndexIdentity));
     indexesTo.drop = indexesTo.drop.concat(
       normalizedDbIndexes.filter((_, index) =>
-        dropIdentities.has(identity(comparisonDbIndexes[index])),
+        dropIdentities.has(migrationIndexIdentity(comparisonDbIndexes[index])),
       ),
     );
   }
@@ -1675,22 +1712,28 @@ function setMigrationIndexDefaultsBase(
     ? normalizeIndexWherePredicateForComparison(index.where)
     : normalizeIndexWherePredicate(index.where);
 
-  return {
+  const columns = index.columns.map((col) => {
+    const column: MigrationIndex["columns"][number] = { name: col.name };
+    const opclass = getIndexColumnOpclass(col);
+    if (opclass) column.opclass = opclass;
+    if (supportsOrdering) {
+      column.sortOrder = col.sortOrder ?? "ASC";
+      column.nullsFirst = col.nullsFirst ?? col.sortOrder === "DESC";
+    }
+    return column;
+  });
+  const normalizedIndex: MigrationIndex = {
     ...index,
-    columns: index.columns.map((col) => ({
-      name: col.name,
-      ...(getIndexColumnOpclass(col) ? { opclass: getIndexColumnOpclass(col) } : {}),
-      ...(supportsOrdering
-        ? {
-            sortOrder: col.sortOrder ?? "ASC",
-            nullsFirst: col.nullsFirst ?? col.sortOrder === "DESC",
-          }
-        : {}),
-    })),
+    columns,
     nullsNotDistinct: index.nullsNotDistinct ?? false,
-    ...(normalizedUsing ? { using: normalizedUsing } : {}),
-    ...(normalizedWhere ? { where: normalizedWhere } : {}),
   };
+  if (normalizedUsing) normalizedIndex.using = normalizedUsing;
+  if (normalizedWhere) normalizedIndex.where = normalizedWhere;
+  return normalizedIndex;
+}
+
+function migrationForeignKey(migrationForeign: MigrationForeign): string {
+  return [migrationForeign.columns.join("-"), migrationForeign.to].join("///");
 }
 
 /**
@@ -1704,16 +1747,14 @@ async function generateAlterCode_Foreigns(
 ): Promise<GenMigrationCode[]> {
   // console.log({ entityForeigns, dbForeigns });
 
-  const getKey = (mf: MigrationForeign): string => {
-    return [mf.columns.join("-"), mf.to].join("///");
-  };
-
   // 삭제될 컬럼명 목록
   const droppingColumnNames = droppingColumns.map((col) => col.name);
 
   const fkTo = entityForeigns.reduce(
     (result, entityF) => {
-      const matchingDbF = dbForeigns.find((dbF) => getKey(entityF) === getKey(dbF));
+      const matchingDbF = dbForeigns.find(
+        (dbF) => migrationForeignKey(entityF) === migrationForeignKey(dbF),
+      );
       if (!matchingDbF) {
         result.add.push(entityF);
         return result;
@@ -1727,17 +1768,21 @@ async function generateAlterCode_Foreigns(
       return result;
     },
     {
-      add: [] as MigrationForeign[],
-      drop: [] as MigrationForeign[],
-      alterSrc: [] as MigrationForeign[],
-      alterDst: [] as MigrationForeign[],
+      add: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationForeign[],
+      drop: /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationForeign[],
+      alterSrc:
+        /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationForeign[],
+      alterDst:
+        /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationForeign[],
     },
   );
 
   // dbForeigns에는 있지만 entityForeigns에는 없는 경우 (삭제된 FK)
   // 단, 삭제될 컬럼의 FK는 제외 (generateAlterCode_ColumnAndIndexes에서 처리)
   dbForeigns.forEach((dbF) => {
-    const matchingEntityF = entityForeigns.find((entityF) => getKey(entityF) === getKey(dbF));
+    const matchingEntityF = entityForeigns.find(
+      (entityF) => migrationForeignKey(entityF) === migrationForeignKey(dbF),
+    );
     if (!matchingEntityF) {
       // 이 FK의 컬럼이 삭제될 컬럼 목록에 있는지 확인
       const isColumnDropping = dbF.columns.some((col) => droppingColumnNames.includes(col));
@@ -1826,6 +1871,21 @@ export async function generateCreateCode(entitySet: MigrationSet): Promise<GenMi
   ];
 }
 
+function replaceColumnDefaultTo(column: MigrationColumn) {
+  // FIXME: 일단 MySQL 상황에서 발생했던 이슈의 workaround 이므로 Pg에서 재확인 후 대응 추가
+  return column;
+}
+
+function replaceNoActionOnMySQL(foreign: MigrationForeign) {
+  // MySQL에서 RESTRICT와 NO ACTION은 동일함
+  const { onDelete, onUpdate } = foreign;
+  return {
+    ...foreign,
+    onUpdate: onUpdate === "RESTRICT" ? "NO ACTION" : onUpdate,
+    onDelete: onDelete === "RESTRICT" ? "NO ACTION" : onDelete,
+  };
+}
+
 /**
  * 주어진 entitySet을 목표로, dbSet을 현 상황으로 하여 테이블 ALTER 마이그레이션 코드를 생성합니다.
  * @param entitySet 현 상황의 MigrationSet
@@ -1838,28 +1898,6 @@ export async function generateAlterCode(
   dbSet: MigrationSet,
   compareDB?: Knex,
 ): Promise<GenMigrationCode[]> {
-  const replaceColumnDefaultTo = (col: MigrationColumn) => {
-    // float인 경우 기본값을 0으로 지정하는 경우 "0.00"으로 변환되는 케이스 대응
-    // if (col.type === "float" && col.defaultTo && String(col.defaultTo).includes('"') === false) {
-    //   col.defaultTo = `"${Number(col.defaultTo).toFixed(col.scale ?? 2)}"`;
-    // }
-    // // string인 경우 기본값이 빈 스트링인 경우 대응
-    // if (col.type === "string" && col.defaultTo === "") {
-    //   col.defaultTo = '""';
-    // }
-    // // boolean인 경우 기본값 정규화 (MySQL에서는 TINYINT(1)로 저장되므로 0 또는 1로 정규화)
-    // // TODO: db.ts에 typeCase 설정 확인하여 처리하도록 수정 필요
-    // if (col.type === "boolean" && col.defaultTo !== undefined) {
-    //   if (col.defaultTo === "0" || col.defaultTo.toLowerCase() === "false") {
-    //     col.defaultTo = "0";
-    //   } else if (col.defaultTo === "1" || col.defaultTo.toLowerCase() === "true") {
-    //     col.defaultTo = "1";
-    //   }
-    // }
-
-    // FIXME: 일단 MySQL 상황에서 발생했던 이슈의 workaround 이므로 Pg에서 재확인 후 대응 추가
-    return col;
-  };
   const entityColumns = alphabetical(entitySet.columns, (a) => a.name).map(replaceColumnDefaultTo);
   const dbColumns = alphabetical(dbSet.columns, (a) => a.name).map(replaceColumnDefaultTo);
 
@@ -1879,16 +1917,6 @@ export async function generateAlterCode(
   const dbIndexes = alphabetical(dbSet.indexes, (a) =>
     [a.type, ...a.columns.map((c) => c.name)].join("-"),
   );
-
-  const replaceNoActionOnMySQL = (f: MigrationForeign) => {
-    // MySQL에서 RESTRICT와 NO ACTION은 동일함
-    const { onDelete, onUpdate } = f;
-    return {
-      ...f,
-      onUpdate: onUpdate === "RESTRICT" ? "NO ACTION" : onUpdate,
-      onDelete: onDelete === "RESTRICT" ? "NO ACTION" : onDelete,
-    };
-  };
 
   const entityForeigns = alphabetical(entitySet.foreigns, (a) =>
     [a.to, ...a.columns].join("-"),

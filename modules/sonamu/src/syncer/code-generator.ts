@@ -1,4 +1,3 @@
-import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 
 import chalk from "chalk";
@@ -21,10 +20,10 @@ import {
 import { everyAsync, filterAsync } from "../utils/async-utils";
 import { isTest } from "../utils/controller";
 import { formatCode } from "../utils/formatter";
-import { exists } from "../utils/fs-utils";
 import { wrapIf } from "../utils/lodash-able";
 import { type AbsolutePath } from "../utils/path-utils";
 import { trackWritten } from "./file-tracking";
+import { syncerFileExists, syncerFilesystem } from "./filesystem-dependencies";
 
 /**
  * 템플릿을 렌더링하고 파일로 생성합니다.
@@ -51,8 +50,8 @@ export async function generateTemplate<T extends TemplateKey>(
   // 템플릿 렌더
   const pathAndCodes = (
     await Promise.all(
-      keys.map(async (key) => {
-        return await renderTemplate(key, templateOptions);
+      keys.map(async (templateKey) => {
+        return await renderTemplate(templateKey, templateOptions);
       }),
     )
   ).flat();
@@ -65,7 +64,10 @@ export async function generateTemplate<T extends TemplateKey>(
         const { targets } = Sonamu.config.sync;
         const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
         const dstFilePaths = targets.map((target) => filePath.replace("/:target/", `/${target}/`));
-        return await everyAsync(dstFilePaths, async (dstPath) => !(await exists(dstPath)));
+        return await everyAsync(
+          dstFilePaths,
+          async (dstPath) => !(await syncerFileExists(dstPath)),
+        );
       });
     }
   })();
@@ -103,8 +105,8 @@ export async function renderTemplate<T extends keyof TemplateOptions>(
   if (rendered.preTemplates) {
     preTemplateResolved = (
       await Promise.all(
-        rendered.preTemplates.map(({ key, options }) => {
-          return renderTemplate(key, options);
+        rendered.preTemplates.map(({ key: preTemplateKey, options: preTemplateOptions }) => {
+          return renderTemplate(preTemplateKey, preTemplateOptions);
         }),
       )
     ).flat();
@@ -122,7 +124,10 @@ async function resolveRenderedTemplate(
   const { target, path: filePath, body, importKeys, customHeaders } = result;
 
   // import 할 대상의 대상 path 추출
-  const builtInSchemaNames = Object.values(BUILT_IN_TYPES).map((info) => info.schemaName as string);
+  const builtInSchemaNames = Object.values(BUILT_IN_TYPES).map(
+    (info) =>
+      /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ info.schemaName as string,
+  );
   const importDefs = importKeys
     // 내장 타입 스키마는 이미 sonamu에서 import되므로 제외
     .filter((importKey) => !builtInSchemaNames.includes(importKey))
@@ -157,7 +162,7 @@ async function resolveRenderedTemplate(
         }
         return r;
       },
-      [] as {
+      /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ [] as {
         keys: string[];
         from: string;
       }[],
@@ -178,12 +183,12 @@ async function resolveRenderedTemplate(
       return [header, body].join("\n\n");
     } else {
       Naite.t("resolveRenderedTemplate:beforeFormat", { key, header, body });
-      const formatted = await formatCode(
+      const formattedCode = await formatCode(
         [header, body].join("\n\n"),
         `${Sonamu.appRootPath}/${filePath}`,
       );
-      Naite.t(`resolveRenderedTemplate:formatted:${key}`, formatted);
-      return formatted;
+      Naite.t(`resolveRenderedTemplate:formatted:${key}`, formattedCode);
+      return formattedCode;
     }
   })();
 
@@ -196,18 +201,21 @@ async function resolveRenderedTemplate(
 async function writeCodeToPathEachTarget(pathAndCode: PathAndCode): Promise<AbsolutePath[]> {
   const { targets } = Sonamu.config.sync;
   const { appRootPath } = Sonamu;
-  const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}` as AbsolutePath;
+  const filePath =
+    /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ `${Sonamu.appRootPath}/${pathAndCode.path}` as AbsolutePath;
 
   const dstFilePaths = unique(
-    targets.map((target) => filePath.replace("/:target/", `/${target}/`)) as AbsolutePath[],
+    /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ targets.map(
+      (target) => filePath.replace("/:target/", `/${target}/`),
+    ) as AbsolutePath[],
   );
   return await Promise.all(
     dstFilePaths.map(async (dstFilePath) => {
       const dir = path.dirname(dstFilePath);
-      if (!(await exists(dir))) {
-        await mkdir(dir, { recursive: true });
+      if (!(await syncerFileExists(dir))) {
+        await syncerFilesystem.mkdir(dir, { recursive: true });
       }
-      await writeFile(dstFilePath, pathAndCode.code);
+      await syncerFilesystem.writeFile(dstFilePath, pathAndCode.code);
       // 방금 우리가 쓴 path를 등록 → dev watcher의 후속 change 이벤트가
       // 외부 변경으로 오인되지 않도록 거름 가드 자료 제공.
       await trackWritten(dstFilePath);

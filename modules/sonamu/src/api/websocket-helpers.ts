@@ -6,6 +6,12 @@ import { type FastifyReply } from "fastify";
 import { isSoException } from "../exceptions/so-exceptions";
 import { isPlainObject } from "../utils/utils";
 
+interface WebSocketCloseDescriptor {
+  code: number;
+  reason: string;
+  logLevel: "warn" | "error";
+}
+
 // Fastify websocket route와 Vite HMR websocket이 같은 server socket을 두고 충돌하는 것을 방지하기 위해,
 // WS route가 존재하면 HMR을 별도 포트로 분리해 띄움
 export function resolveIntegratedViteHmrOptions({
@@ -32,9 +38,11 @@ export function resolveWebSocketPluginOptions({
   rawPluginOption: boolean | WebsocketPluginOptions | undefined;
 }): WebsocketPluginOptions | undefined {
   const pluginOptions = rawPluginOption && rawPluginOption !== true ? { ...rawPluginOption } : {};
-  const serverOptions = isPlainObject(pluginOptions.options)
+  const serverOptions: NonNullable<WebsocketPluginOptions["options"]> = isPlainObject(
+    pluginOptions.options,
+  )
     ? { ...pluginOptions.options }
-    : ({} as NonNullable<WebsocketPluginOptions["options"]>);
+    : {};
 
   if (Object.keys(serverOptions).length > 0) {
     pluginOptions.options = serverOptions;
@@ -45,13 +53,9 @@ export function resolveWebSocketPluginOptions({
 
 // handshake/auth/validation 실패를 generic 1011로 뭉개지 않고 1008(policy violation)로 매핑해,
 // close code policy를 한 곳에서 정의함
-export function resolveWebSocketCloseDescriptor(error: unknown): {
-  code: number;
-  reason: string;
-  logLevel: "warn" | "error";
-} {
-  if (isSoException(error)) {
-    if (error.statusCode === 400) {
+export function resolveWebSocketCloseDescriptor(cause: unknown): WebSocketCloseDescriptor {
+  if (isSoException(cause)) {
+    if (cause.statusCode === 400) {
       return {
         code: 1008,
         reason: "Invalid websocket handshake",
@@ -59,7 +63,7 @@ export function resolveWebSocketCloseDescriptor(error: unknown): {
       };
     }
 
-    if (error.statusCode === 401 || error.statusCode === 403) {
+    if (cause.statusCode === 401 || cause.statusCode === 403) {
       return {
         code: 1008,
         reason: "Unauthorized websocket connection",
@@ -67,7 +71,7 @@ export function resolveWebSocketCloseDescriptor(error: unknown): {
       };
     }
 
-    if (error.statusCode >= 400 && error.statusCode < 500) {
+    if (cause.statusCode >= 400 && cause.statusCode < 500) {
       return {
         code: 1008,
         reason: "Rejected websocket connection",
@@ -86,11 +90,14 @@ export function resolveWebSocketCloseDescriptor(error: unknown): {
 // WS 경로에서는 reply가 존재하지 않으므로 접근 시도를 즉시 에러로 surface해 transport misuse를 빨리 드러냄
 // SSE/reply에 의존하는 contextProvider가 있으면 websocketContextProvider를 따로 정의하라는 가이드 역할도 함
 export function createWebSocketReplyStub(): FastifyReply {
-  return new Proxy({} as FastifyReply, {
-    get() {
-      throw new Error(
-        "FastifyReply is not available in websocket context. Define websocketContextProvider if your context setup depends on reply mutation.",
-      );
+  return new Proxy(
+    /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {} as FastifyReply,
+    {
+      get() {
+        throw new Error(
+          "FastifyReply is not available in websocket context. Define websocketContextProvider if your context setup depends on reply mutation.",
+        );
+      },
     },
-  });
+  );
 }

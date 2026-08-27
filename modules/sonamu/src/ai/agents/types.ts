@@ -27,7 +27,7 @@ export type RegisteredToolDefinition = {
   needsApproval?: Tool["needsApproval"];
   toModelOutput?: Tool["toModelOutput"];
   providerOptions?: ProviderOptions;
-  method: (...args: unknown[]) => unknown;
+  method: NonNullable<Tool["execute"]>;
   from: string;
 };
 

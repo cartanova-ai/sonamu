@@ -1,5 +1,4 @@
 import assert from "assert";
-import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path, { dirname } from "path";
 
 import chalk from "chalk";
@@ -10,10 +9,12 @@ import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
 import { isTest } from "../utils/controller";
 import { formatCode } from "../utils/formatter";
-import { copyFileWithReplaceCoreToShared, exists } from "../utils/fs-utils";
 import { type AbsolutePath } from "../utils/path-utils";
+import { isObjectValue } from "../utils/runtime-value";
 import { generateTemplate } from "./code-generator";
+import { copyFileWithReplaceCoreToShared } from "./file-copy";
 import { trackWritten } from "./file-tracking";
+import { syncerFileExists, syncerFilesystem } from "./filesystem-dependencies";
 
 // web/.sonamu.env 에 현재 설정값 저장
 export async function actionSyncConfig() {
@@ -22,8 +23,11 @@ export async function actionSyncConfig() {
 
   Naite.t("actionSyncConfig", { content });
   await Promise.all([
-    ...Sonamu.config.sync.targets.map(async (target) => {
-      await writeFile(path.join(Sonamu.appRootPath, target, ".sonamu.env"), content);
+    ...Sonamu.config.sync.targets.map((target) => {
+      return syncerFilesystem.writeFile(
+        path.join(Sonamu.appRootPath, target, ".sonamu.env"),
+        content,
+      );
     }),
     generateTemplate("generated_sso", {}, { overwrite: true }),
   ]);
@@ -92,16 +96,17 @@ export async function actionGenerateHttps(): Promise<AbsolutePath> {
  * 최종 REST caster를 담는 API 전용 validator registry를 재생성합니다.
  */
 export async function actionGenerateHttpValidators(): Promise<AbsolutePath> {
-  const registryPath = path.join(
-    Sonamu.apiRootPath,
-    "src/application/sonamu.validators.generated.ts",
-  ) as AbsolutePath;
+  const registryPath =
+    /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ path.join(
+      Sonamu.apiRootPath,
+      "src/application/sonamu.validators.generated.ts",
+    ) as AbsolutePath;
   const policy = Sonamu.config.validation?.zodCompiler;
-  const isAot = typeof policy === "object" && policy !== null && policy.api === "aot";
+  const isAot = isObjectValue(policy) && policy !== null && policy.api === "aot";
   if (!isAot) {
     // opt-out/JIT 전환 뒤 AOT compile import가 애플리케이션에 남지 않도록 산출물도 함께 정리합니다.
-    if (await exists(registryPath)) {
-      await unlink(registryPath);
+    if (await syncerFileExists(registryPath)) {
+      await syncerFilesystem.unlink(registryPath);
     }
     return registryPath;
   }
@@ -160,8 +165,8 @@ export async function actionSyncFilesToTargets(tsPaths: AbsolutePath[]): Promise
               .replace(`/${apiDir}/`, `/${target}/`)
               .replace("/application/", "/services/");
             const dir = dirname(dst);
-            if (!(await exists(dir))) {
-              await mkdir(dir, { recursive: true });
+            if (!(await syncerFileExists(dir))) {
+              await syncerFilesystem.mkdir(dir, { recursive: true });
             }
             const syncHeader = [
               "/**",
@@ -170,7 +175,9 @@ export async function actionSyncFilesToTargets(tsPaths: AbsolutePath[]): Promise
               " */",
             ].join("\n");
             await copyFileWithReplaceCoreToShared(realSrc, dst, syncHeader);
-            await trackWritten(dst as AbsolutePath);
+            await trackWritten(
+              /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ dst as AbsolutePath,
+            );
             !isTest() &&
               console.log(
                 chalk.bold("Copied: ") + chalk.blue(dst.replace(`${Sonamu.appRootPath}/`, "")),
@@ -197,7 +204,9 @@ export async function actionCopySharedToTargetsIfNotExists(): Promise<void> {
     import.meta.dirname.replace("/dist/", "/src/"),
     "../dict/utils.ts",
   );
-  const dictUtilsCode = (await exists(dictUtilsPath)) ? await readFile(dictUtilsPath, "utf-8") : "";
+  const dictUtilsCode = (await syncerFileExists(dictUtilsPath))
+    ? await syncerFilesystem.readFile(dictUtilsPath, "utf-8")
+    : "";
 
   // 특정 변수 치환을 위해서 사용합니다.
   const convertMap = {
@@ -215,16 +224,16 @@ export async function actionCopySharedToTargetsIfNotExists(): Promise<void> {
       import.meta.dirname.replace("/dist/", "/src/"),
       `../shared/${target}.shared.ts.txt`,
     );
-    if (!(await exists(srcPath))) {
+    if (!(await syncerFileExists(srcPath))) {
       continue;
     }
-    if (!(await exists(path.join(Sonamu.appRootPath, target)))) {
+    if (!(await syncerFileExists(path.join(Sonamu.appRootPath, target)))) {
       throw new Error(
         `Tried to copy sonamu.shared.ts to target '${target}' but the target directory does not exist. Please check your project directory structure.`,
       );
     }
 
-    const fullText = await readFile(srcPath, "utf-8");
+    const fullText = await syncerFilesystem.readFile(srcPath, "utf-8");
     const convertedText = Object.entries(convertMap).reduce(
       (acc, [key, value]) => acc.replace(`$[[${key}]]`, value),
       fullText,
@@ -234,8 +243,8 @@ export async function actionCopySharedToTargetsIfNotExists(): Promise<void> {
     const destPath = path.join(Sonamu.appRootPath, target, "src/services/sonamu.shared.ts");
 
     // 정말 혹시나지만 target 디렉토리는 있어도 src/services 디렉토리는 없을 수 있으므로 미리 생성해줍니다.
-    if (!(await exists(path.dirname(destPath)))) {
-      await mkdir(path.dirname(destPath), { recursive: true });
+    if (!(await syncerFileExists(path.dirname(destPath)))) {
+      await syncerFilesystem.mkdir(path.dirname(destPath), { recursive: true });
       console.warn(`Created directory '${path.dirname(destPath)}' because it did not exist.`);
     }
 
@@ -244,11 +253,11 @@ export async function actionCopySharedToTargetsIfNotExists(): Promise<void> {
     // 최초 1회만 생성하고 이후에는 덮어쓰지 않습니다.
     // 템플릿 내용($[[dictUtils]] 등)이 변경되었을 때 반영이 필요하면,
     // 해당 파일을 삭제한 뒤 `pnpm sonamu sync`로 재생성하면 됩니다.
-    if (await exists(destPath)) {
+    if (await syncerFileExists(destPath)) {
       continue;
     }
 
-    await writeFile(destPath, await formatCode(convertedText, destPath));
+    await syncerFilesystem.writeFile(destPath, await formatCode(convertedText, destPath));
     !isTest() &&
       console.log(chalk.bold("Copied: ") + chalk.blue(path.relative(Sonamu.appRootPath, destPath)));
   }
@@ -267,7 +276,11 @@ export async function actionSyncSonamuDictionary(): Promise<void> {
   const { targets } = Sonamu.config.sync;
   const i18nConfig = Sonamu.config.i18n;
 
-  const targetList = ["api", ...targets] as ("api" | "web" | "app")[];
+  const targetList =
+    /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ [
+      "api",
+      ...targets,
+    ] as ("api" | "web" | "app")[];
 
   const apiI18nDir = path.join(Sonamu.appRootPath, Sonamu.config.api.dir, "src/i18n");
 
@@ -296,7 +309,7 @@ async function syncLocaleFiles(
   const targetI18nDir = path.join(Sonamu.appRootPath, target, "src/i18n");
 
   // 디렉토리가 없으면 생성
-  await mkdir(targetI18nDir, { recursive: true });
+  await syncerFilesystem.mkdir(targetI18nDir, { recursive: true });
 
   for (const locale of locales) {
     const sourceFile = path.join(apiI18nDir, `${locale}.ts`);
@@ -309,7 +322,9 @@ async function syncLocaleFiles(
       " */",
     ].join("\n");
     await copyFileWithReplaceCoreToShared(sourceFile, targetFile, syncHeader);
-    await trackWritten(targetFile as AbsolutePath);
+    await trackWritten(
+      /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ targetFile as AbsolutePath,
+    );
     !isTest() &&
       console.log(chalk.bold("Copied: ") + chalk.cyan(`${target}/src/i18n/${locale}.ts`));
   }

@@ -36,6 +36,13 @@ function mapBetterAuthFieldType(type: string): string {
   }
 }
 
+function addLoaderIdTypeSafetyComments(query: string): string {
+  return query.replaceAll(
+    /fromIds as (?:number|string)\[\]/g,
+    "/* SAFETY: 로더가 전달하는 ID는 소스 엔티티의 기본 키 타입과 일치한다. */ $&",
+  );
+}
+
 export class Template__generated_sso extends Template {
   constructor() {
     super("generated_sso");
@@ -88,7 +95,8 @@ export class Template__generated_sso extends Template {
         lines: [
           `export const ${entityCamelName}LoaderQueries = {`,
           ...subsetKeys.map((subsetKey) => {
-            return `${subsetKey}: ${entity.getPuriLoaderQuery(subsetKey)},`;
+            const query = entity.getPuriLoaderQuery(subsetKey);
+            return `${subsetKey}: ${addLoaderIdTypeSafetyComments(query)},`;
           }),
           `} as const satisfies PuriLoaderQueries<${subsetKeyTypeName}>;`,
           "",
@@ -128,7 +136,7 @@ export class Template__generated_sso extends Template {
           importKeys: unique([...result.importKeys, ...ts.importKeys]),
         };
       },
-      {
+      /* SAFETY: reduce 누산기는 label을 제외한 SourceCode의 두 배열로 초기화된다. */ {
         lines: [],
         importKeys: [],
       } as Omit<SourceCode, "label">,
@@ -295,7 +303,9 @@ export class Template__generated_sso extends Template {
     }
 
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- additionalFields 타입이 동적임
-    const additionalFields = (authConfig as any)?.user?.additionalFields;
+    const additionalFields =
+      /* SAFETY: better-auth 설정의 user.additionalFields는 동적 필드 맵이다. */ (authConfig as any)
+        ?.user?.additionalFields;
     if (!additionalFields || Object.keys(additionalFields).length === 0) {
       // additionalFields가 없으면 기본 User 타입만 사용
       return {
@@ -310,7 +320,8 @@ export class Template__generated_sso extends Template {
     // additionalFields를 TypeScript 타입으로 변환
     const fieldLines = Object.entries(additionalFields).map(([key, value]) => {
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- better-auth additionalFields 구조
-      const fieldConfig = value as any;
+      const fieldConfig =
+        /* SAFETY: additionalFields의 각 값은 better-auth 필드 설정 객체이다. */ value as any;
       const isRequired = fieldConfig.required !== false;
 
       let fieldType: string;

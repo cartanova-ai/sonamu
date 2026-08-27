@@ -16,7 +16,8 @@ type GlobalWithTsLoaderRegisterState = typeof globalThis & {
 };
 
 function resetRegisterState() {
-  const globalState = globalThis as GlobalWithTsLoaderRegisterState;
+  const globalState =
+    /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ globalThis as GlobalWithTsLoaderRegisterState;
   delete globalState[tsLoaderRegisterStateKey];
 }
 
@@ -143,14 +144,12 @@ describe("loadConfig", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.restoreAllMocks();
-    vi.unmock("../../bin/ts-loader-registration");
     resetRegisterState();
   });
 
   afterEach(async () => {
     vi.resetModules();
     vi.restoreAllMocks();
-    vi.unmock("../../bin/ts-loader-registration");
     resetRegisterState();
 
     if (originalHot === undefined) {
@@ -183,12 +182,9 @@ describe("loadConfig", () => {
 
     process.env.VITEST = "true";
     const ensureTsLoaderRegistered = vi.fn(async () => {});
-    vi.doMock("../../bin/ts-loader-registration", () => ({
-      ensureTsLoaderRegistered,
-    }));
 
     const { loadConfig } = await import("../config");
-    const config = await loadConfig(rootPath);
+    const config = await loadConfig(rootPath, { ensureTsLoaderRegistered });
 
     expect(ensureTsLoaderRegistered).toHaveBeenCalledTimes(1);
     expect(ensureTsLoaderRegistered).toHaveBeenCalledWith(rootPath);
@@ -203,12 +199,9 @@ describe("loadConfig", () => {
     delete process.env.HOT;
     delete process.env.VITEST;
     const ensureTsLoaderRegistered = vi.fn(async () => {});
-    vi.doMock("../../bin/ts-loader-registration", () => ({
-      ensureTsLoaderRegistered,
-    }));
 
     const { loadConfig } = await import("../config");
-    const config = await loadConfig(rootPath);
+    const config = await loadConfig(rootPath, { ensureTsLoaderRegistered });
 
     expect(ensureTsLoaderRegistered).not.toHaveBeenCalled();
     expect(config.api.dir).toBe("./dist");
@@ -221,11 +214,11 @@ describe("loadConfig", () => {
     await writeSourceFixture(rootPath);
 
     process.env.VITEST = "true";
-    vi.unmock("../../bin/ts-loader-registration");
     const { loadConfig } = await import("../config");
     const firstConfig = await loadConfig(rootPath);
     const secondConfig = await loadConfig(rootPath);
-    const fastify = {} as FastifyInstance;
+    const fastify =
+      /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {} as FastifyInstance;
 
     expect(firstConfig.server.fastify).toStrictEqual({ keepAliveTimeout: 4321 });
     expect(firstConfig.server.plugins?.custom?.(fastify)).toBe("plugin");

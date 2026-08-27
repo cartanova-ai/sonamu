@@ -1,28 +1,35 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// vitest/node 모킹 - createVitest가 mock Vitest 인스턴스를 반환하도록 설정
+import { type ManagedVitest } from "../dev-vitest-manager";
+import { DevVitestManager } from "../dev-vitest-manager";
+
+// 매니저가 사용하는 Vitest 기능만 충실히 구현한 테스트 대역입니다.
 const mockVitest = {
   standalone: vi.fn().mockResolvedValue(undefined),
   onFilterWatchedSpecification: vi.fn(),
+  invalidateFile: vi.fn(),
   setGlobalTestNamePattern: vi.fn(),
   resetGlobalTestNamePattern: vi.fn(),
   globTestSpecifications: vi.fn(),
   runTestSpecifications: vi.fn(),
   close: vi.fn(),
-};
+} satisfies ManagedVitest;
 
-vi.mock("vitest/node", () => ({
-  createVitest: vi.fn().mockResolvedValue(mockVitest),
-}));
-
-import { DevVitestManager } from "../dev-vitest-manager";
+function createModule(duration: number) {
+  return {
+    moduleId: "dup.test.ts",
+    children: [],
+    state: () => "passed" as const,
+    diagnostic: () => ({ duration }),
+  };
+}
 
 describe("DevVitestManager", () => {
   let manager: DevVitestManager;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    manager = new DevVitestManager();
+    manager = new DevVitestManager(async () => mockVitest);
 
     // 기본 mock: 빈 테스트 결과
     const mockTestModule = {
@@ -113,13 +120,6 @@ describe("DevVitestManager", () => {
   it("동일 moduleId 결과가 중복되어도 최종 results는 파일당 1건만 유지한다", async () => {
     await manager.start();
     mockVitest.globTestSpecifications.mockResolvedValue([{ moduleId: "dup.test.ts" }]);
-
-    const createModule = (duration: number) => ({
-      moduleId: "dup.test.ts",
-      children: [],
-      state: () => "passed" as const,
-      diagnostic: () => ({ duration }),
-    });
 
     mockVitest.runTestSpecifications.mockResolvedValue({
       testModules: [createModule(10), createModule(25)],

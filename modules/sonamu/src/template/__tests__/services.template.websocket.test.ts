@@ -1,33 +1,29 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import { Sonamu } from "../../api";
+import { type SonamuConfig } from "../../api/config";
 import { type ExtendedApi } from "../../api/decorators";
 import { EntityManager } from "../../entity/entity-manager";
+import { Syncer } from "../../syncer/syncer";
 import { Template__services } from "../implementations/services.template";
 
+const testConfig = {
+  api: { dir: ".", route: { prefix: "/api" } },
+  i18n: { defaultLocale: "ko", supportedLocales: ["ko"] },
+  sync: { targets: [] },
+  database: {},
+  server: {
+    apiConfig: {
+      contextProvider: (defaultContext) => defaultContext,
+      guardHandler: () => undefined,
+    },
+  },
+} satisfies SonamuConfig;
+
 describe("Template__services websocket event refs", () => {
-  let originalConfig: unknown;
-  let originalSyncer: unknown;
-
-  beforeEach(() => {
-    originalConfig = Reflect.get(Sonamu, "_config");
-    originalSyncer = Reflect.get(Sonamu, "_syncer");
-  });
-
-  afterEach(() => {
-    Reflect.set(Sonamu, "_config", originalConfig);
-    Reflect.set(Sonamu, "_syncer", originalSyncer);
-  });
-
-  it("reuses websocket event type names when they are importable", () => {
-    Reflect.set(Sonamu, "_config", {
-      api: {
-        route: {
-          prefix: "/api",
-        },
-      },
-    });
+  it("가져올 수 있는 websocket 이벤트 타입 이름을 재사용한다", () => {
+    Sonamu.config = testConfig;
 
     const apis: ExtendedApi[] = [
       {
@@ -62,9 +58,9 @@ describe("Template__services websocket event refs", () => {
         returnType: "void",
       },
     ];
-    Reflect.set(Sonamu, "_syncer", {
-      apis,
-    });
+    const syncer = new Syncer();
+    syncer.apis = apis;
+    Sonamu.syncer = syncer;
 
     EntityManager.setModulePath("ChatOutEvents", "chat/chat.types");
     EntityManager.setModulePath("ChatInEvents", "chat/chat.types");

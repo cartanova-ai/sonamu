@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import z from "zod";
+import { z } from "zod";
 
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
@@ -26,7 +26,10 @@ export async function getColumnsNode(entityId: string, subsetKey: string): Promi
   };
 
   // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- zod 스키마를 로드할 때 사용하는 타입
-  const columnsZodType = (await propNodeToZodType(rootPropNode)) as z.ZodObject<any>;
+  const columnsZodType =
+    /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (await propNodeToZodType(
+      rootPropNode,
+    )) as z.ZodObject<any>;
 
   const columnsNode = zodTypeToRenderingNode(columnsZodType);
   assert(columnsNode.children !== undefined, "columnsNode.children is undefined");

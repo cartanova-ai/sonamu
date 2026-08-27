@@ -10,8 +10,8 @@ import { type DriverKey } from "./drivers";
  * 메모리에 로드된 상태로, md5 계산이나 이미지 처리 등 유연한 작업이 가능합니다.
  */
 export class BufferedFile extends BaseFile {
-  private _file: MultipartFile;
-  private _buffer: Buffer;
+  private fileValue: MultipartFile;
+  private bufferValue: Buffer;
 
   constructor(file: MultipartFile, buffer: Buffer) {
     super({
@@ -19,18 +19,18 @@ export class BufferedFile extends BaseFile {
       mimetype: file.mimetype,
       size: buffer.length,
     });
-    this._file = file;
-    this._buffer = buffer;
+    this.fileValue = file;
+    this.bufferValue = buffer;
   }
 
   /** 파일 Buffer */
   get buffer(): Buffer {
-    return this._buffer;
+    return this.bufferValue;
   }
 
   /** MD5 해시 계산 */
   async md5(): Promise<string> {
-    return createHash("md5").update(this._buffer).digest("hex");
+    return createHash("md5").update(this.bufferValue).digest("hex");
   }
 
   /**
@@ -44,19 +44,19 @@ export class BufferedFile extends BaseFile {
     const { Sonamu } = await import("../api/sonamu");
     const disk = Sonamu.storage.use(diskName);
 
-    await disk.put(key, new Uint8Array(this._buffer), {
+    await disk.put(key, new Uint8Array(this.bufferValue), {
       contentType: this.mimetype,
     });
 
-    this._url = await disk.getUrl(key);
-    this._signedUrl = await disk.getSignedUrl(key);
+    this["_url"] = await disk.getUrl(key);
+    this["_signedUrl"] = await disk.getSignedUrl(key);
 
     // signed url은 만료 시간이 있기 때문에, unsigned url을 반환합니다.
-    return this._url;
+    return this["_url"];
   }
 
   /** 원본 MultipartFile 접근 */
   get raw(): MultipartFile {
-    return this._file;
+    return this.fileValue;
   }
 }

@@ -4,6 +4,7 @@ import { type EntityNamesRecord } from "../entity/entity-manager";
 import { type TemplateKey, type TemplateOptions } from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
+import { isFunctionValue } from "../utils/runtime-value";
 
 export type RenderedTemplate = {
   target: string;
@@ -42,7 +43,7 @@ export abstract class Template {
       const templates = await importMembers<any>(templateFile);
       if (
         templates.length === 1 &&
-        typeof templates[0].value === "function" &&
+        isFunctionValue(templates[0].value) &&
         templates[0].value.prototype instanceof Template
       ) {
         // 클래스의 인스턴스를 생성하여 등록
@@ -80,14 +81,14 @@ export abstract class Template {
   /**
    * 내부용: TemplateManager에서 사용
    */
-  public static _getTemplatesMap(): Map<TemplateKey, Template> {
+  public static getTemplatesMap(): Map<TemplateKey, Template> {
     return Template.templates;
   }
 
   /**
    * 내부용: TemplateManager에서 사용
    */
-  public static _clearTemplates(): void {
+  public static clearTemplates(): void {
     Template.templates.clear();
   }
 

@@ -23,7 +23,14 @@ import { type StorageConfig } from "../storage/types";
 import { type WebSocketRuntimeOptions } from "../stream/ws";
 import { type WorkflowOptions } from "../tasks/workflow-manager";
 import { type Executable, type SonamuFastifyConfig } from "../types/types";
+import { isFunctionValue, isObjectValue } from "../utils/runtime-value";
 import { type Context, type WebSocketContext } from "./context";
+
+function isExecutableConfig(
+  value: Executable<SonamuConfig>,
+): value is (() => SonamuConfig) | (() => Promise<SonamuConfig>) {
+  return isFunctionValue(value);
+}
 
 export type DatabaseConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.PgConnectionConfig;
@@ -75,24 +82,23 @@ export type NormalizedZodCompilerPolicy = {
   targets: Record<string, never>;
 };
 
-export function normalizeZodCompilerPolicy(
-  value: unknown,
+export function normalizeZodCompilerPolicy<Value>(
+  value: Value,
   _syncTargets: readonly string[] = [],
 ): NormalizedZodCompilerPolicy {
   if (value === undefined || value === false) {
     return { api: false, targets: {} };
   }
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+  if (!isObjectValue(value) || Array.isArray(value)) {
     throw new Error("validation.zodCompiler must be false or an object");
   }
 
-  const policy = value as Record<string, unknown>;
-  const api = policy.api ?? false;
+  const api = "api" in value ? (value.api ?? false) : false;
   if (api !== false && api !== "jit" && api !== "aot") {
     throw new Error("validation.zodCompiler.api must be false, 'jit', or 'aot'");
   }
 
-  if ("targets" in policy) {
+  if ("targets" in value) {
     throw new Error("validation.zodCompiler.targets is not supported in the API-only phase");
   }
 
@@ -327,7 +333,7 @@ export type SonamuSSROptions = {
 
 // NOTE(Haze, 251209): config에는 T, Promise<T>, () => T, () => Promise<T>가 모두 올 수 있어야 함.
 export function defineConfig(config: Executable<SonamuConfig>): Promise<SonamuConfig> {
-  if (typeof config === "function") {
+  if (isExecutableConfig(config)) {
     return Promise.resolve(config());
   }
 
@@ -347,7 +353,21 @@ export function defineConfig(config: Executable<SonamuConfig>): Promise<SonamuCo
  * @param rootPath
  * @returns
  */
-export async function loadConfig(rootPath: string): Promise<SonamuConfig> {
+export interface ConfigLoaderDependencies {
+  ensureTsLoaderRegistered(rootPath: string): Promise<void>;
+}
+
+const defaultConfigLoaderDependencies: ConfigLoaderDependencies = {
+  async ensureTsLoaderRegistered(rootPath) {
+    const registration = await import("../bin/ts-loader-registration");
+    await registration.ensureTsLoaderRegistered(rootPath);
+  },
+};
+
+export async function loadConfig(
+  rootPath: string,
+  dependencies: ConfigLoaderDependencies = defaultConfigLoaderDependencies,
+): Promise<SonamuConfig> {
   applyCurrentSnapshotToProcessEnv(rootPath);
 
   const shouldLoadSourceConfig = process.env.HOT === "yes" || process.env.VITEST === "true";
@@ -356,8 +376,7 @@ export async function loadConfig(rootPath: string): Promise<SonamuConfig> {
     : `${rootPath}/dist/sonamu.config.js`;
 
   if (shouldLoadSourceConfig) {
-    const { ensureTsLoaderRegistered } = await import("../bin/ts-loader-registration");
-    await ensureTsLoaderRegistered(rootPath);
+    await dependencies.ensureTsLoaderRegistered(rootPath);
   }
 
   const { default: config } = await import(`file://${configPath}`);

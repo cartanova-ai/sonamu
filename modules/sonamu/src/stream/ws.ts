@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { type EventEmitter } from "node:events";
 import { hostname } from "node:os";
 
-import { type WebSocket } from "ws";
+import { type RawData, type WebSocket } from "ws";
 import { z } from "zod";
 
+import { runtimeTypeOf } from "../runtime-type";
+import { isStringValue } from "../utils/runtime-value";
 import { type WebSocketAudience } from "./ws-audience";
 import { type WebSocketClusterBus } from "./ws-cluster-bus";
 import { type WebSocketPresenceStore } from "./ws-presence-store";
@@ -46,7 +49,7 @@ const OUTBOUND_RETRY_DELAY_MS = 5;
 // meta는 optional이므로 기존 `{event, data}` 메시지도 그대로 파싱됨 (backward-compatible)
 const WebSocketEnvelopeSchema = z.object({
   event: z.string(),
-  data: z.unknown(),
+  data: z.json(),
   meta: z
     .object({
       traceparent: z.string().optional(),
@@ -61,17 +64,25 @@ type MessageHandler<T> = (
 ) => void | Promise<void>;
 type CloseHandler = () => void | Promise<void>;
 
-export type WebSocketEventMap = Record<string, unknown>;
+export type WebSocketEventMap<EventPayload = never> = Record<string, EventPayload>;
+export type WebSocketTransport = Pick<
+  WebSocket,
+  "bufferedAmount" | "close" | "ping" | "readyState" | "send" | "terminate"
+> & {
+  off: (...args: Parameters<EventEmitter["off"]>) => void;
+  on: (...args: Parameters<EventEmitter["on"]>) => void;
+};
 
-type InferWebSocketEventMap<TSchema extends z.ZodRawShape> = z.infer<z.ZodObject<TSchema>>;
+type WebSocketEventFields = Record<string, z.ZodType>;
+type InferWebSocketEventMap<TSchema extends WebSocketEventFields> = z.infer<z.ZodObject<TSchema>>;
 
-export type WebSocketOutEvents<TOut extends WebSocketEventMap = WebSocketEventMap> = TOut;
+export type WebSocketOutEvents<TOut extends object = WebSocketEventMap> = TOut;
 
-export type WebSocketInEvents<TIn extends WebSocketEventMap = WebSocketEventMap> = TIn;
+export type WebSocketInEvents<TIn extends object = WebSocketEventMap> = TIn;
 
 export interface WebSocketConnection<
-  TOut extends WebSocketEventMap = WebSocketEventMap,
-  TIn extends WebSocketEventMap = WebSocketEventMap,
+  TOut extends object = WebSocketEventMap,
+  TIn extends object = WebSocketEventMap,
 > extends ManagedWebSocketConnection {
   transport: "ws";
   onClose(callback: CloseHandler): void;
@@ -90,11 +101,14 @@ export interface WebSocketConnection<
   clearUserId(): void;
 }
 
-export type AnyWebSocketConnection = WebSocketConnection<WebSocketEventMap, WebSocketEventMap>;
+export type AnyWebSocketConnection = WebSocketConnection<object, object>;
 
 type ParsedEnvelope = z.infer<typeof WebSocketEnvelopeSchema>;
 
-type WebSocketConnectionOptions<TOut extends z.ZodRawShape, TIn extends z.ZodRawShape> = {
+type WebSocketConnectionOptions<
+  TOut extends WebSocketEventFields,
+  TIn extends WebSocketEventFields,
+> = {
   namespace?: string;
   heartbeat?: number;
   active?: boolean;
@@ -137,8 +151,11 @@ export class WebSocketRuntime {
     this.registry = new WebSocketRegistry(registryOptions);
   }
 
-  registerConnection<TOutSchema extends z.ZodRawShape, TInSchema extends z.ZodRawShape>(
-    socket: WebSocket,
+  registerConnection<
+    TOutSchema extends WebSocketEventFields,
+    TInSchema extends WebSocketEventFields,
+  >(
+    socket: WebSocketTransport,
     options: Omit<
       WebSocketConnectionOptions<TOutSchema, TInSchema>,
       "registry" | "telemetryController"
@@ -155,19 +172,29 @@ export class WebSocketRuntime {
     this.registry.activate(connectionId);
   }
 
-  broadcast(event: string, data: unknown, namespace?: string): void {
+  broadcast<Data>(event: string, data: Data, namespace?: string): void {
     this.registry.broadcast(event, data, namespace);
   }
 
-  publishToRoom(roomId: WebSocketRoomId, event: string, data: unknown, namespace?: string): void {
+  publishToRoom<Data>(
+    roomId: WebSocketRoomId,
+    event: string,
+    data: Data,
+    namespace?: string,
+  ): void {
     this.registry.publishToRoom(roomId, event, data, namespace);
   }
 
-  publishToUser(userId: WebSocketUserId, event: string, data: unknown, namespace?: string): void {
+  publishToUser<Data>(
+    userId: WebSocketUserId,
+    event: string,
+    data: Data,
+    namespace?: string,
+  ): void {
     this.registry.publishToUser(userId, event, data, namespace);
   }
 
-  publishToAudience(audience: WebSocketAudience, event: string, data: unknown): void {
+  publishToAudience<Data>(audience: WebSocketAudience, event: string, data: Data): void {
     this.registry.publishToAudience(audience, event, data);
   }
 
@@ -185,7 +212,10 @@ export function createWebSocketRuntime(options: WebSocketRuntimeOptions = {}): W
   return new WebSocketRuntime(options);
 }
 
-class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extends z.ZodRawShape>
+class WebSocketConnectionImpl<
+  TOutSchema extends WebSocketEventFields,
+  TInSchema extends WebSocketEventFields,
+>
   implements
     WebSocketConnection<InferWebSocketEventMap<TOutSchema>, InferWebSocketEventMap<TInSchema>>,
     TelemetryInspectableConnection,
@@ -212,10 +242,10 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   private readonly connectionStartedAt = performance.now();
 
   // connection 수명 동안 유지되는 식별자. setUserId/clearUserId로 업데이트되며 emit hot path에서 매번 registry lookup하지 않도록 캐시함
-  private _userId?: string;
+  private currentUserId?: string;
 
   get userId(): string | undefined {
-    return this._userId;
+    return this.currentUserId;
   }
 
   private closedInternal = false;
@@ -226,7 +256,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   private outboundFlushScheduled = false;
 
   constructor(
-    private readonly socket: WebSocket,
+    private readonly socket: WebSocketTransport,
     private readonly options: WebSocketConnectionOptions<TOutSchema, TInSchema>,
   ) {
     this.namespace = options.namespace ?? "default";
@@ -235,8 +265,8 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
     this.connectionSpanId = options.spanId;
     this.connectionParentSpanId = options.parentSpanId;
     this.connectionSampled = options.sampled;
-    this.eventSchemasIn = options.inEvents.shape as unknown as Record<string, z.ZodTypeAny>;
-    this.eventSchemasOut = options.outEvents.shape as unknown as Record<string, z.ZodTypeAny>;
+    this.eventSchemasIn = options.inEvents["shape"];
+    this.eventSchemasOut = options.outEvents["shape"];
 
     let resolveClosePromise!: () => void;
     this.closePromise = new Promise<void>((resolve) => {
@@ -266,7 +296,9 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   ): void {
     const eventKey = String(event);
     const handlers = this.messageHandlers.get(eventKey) ?? [];
-    handlers.push(handler as MessageHandler<unknown>);
+    handlers.push(
+      /* SAFETY: 등록된 WebSocket 이벤트 스키마가 이 값의 타입을 보장한다. */ handler as MessageHandler<unknown>,
+    );
     this.messageHandlers.set(eventKey, handlers);
     this.flushPendingMessages(eventKey);
   }
@@ -278,7 +310,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
     this.publishValidated(String(event), data);
   }
 
-  publishUntyped(event: string, data: unknown): void {
+  publishUntyped<Data>(event: string, data: Data): void {
     this.publishValidated(event, data);
   }
 
@@ -295,12 +327,12 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   }
 
   setUserId(userId: WebSocketUserId): void {
-    this._userId = String(userId);
+    this.currentUserId = String(userId);
     this.options.registry.setUserId(this.id, userId);
   }
 
   clearUserId(): void {
-    this._userId = undefined;
+    this.currentUserId = undefined;
     this.options.registry.clearUserId(this.id);
   }
 
@@ -327,7 +359,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
     return {
       connectionId: this.id,
       namespace: this.namespace,
-      userId: this._userId,
+      userId: this.currentUserId,
       traceId: this.connectionTraceId,
       spanId: this.connectionSpanId,
       parentSpanId: this.connectionParentSpanId,
@@ -368,7 +400,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   }
 
   // 인바운드 메시지를 순차 처리 큐에 올림. Sonamu envelope 검증 수행
-  private readonly handleMessage = (raw: unknown) => {
+  private readonly handleMessage = (raw: RawData) => {
     this.enqueueMessageTask(async () => {
       const text = normalizeMessage(raw);
       const parsedEnvelope = safeParseEnvelope(text);
@@ -391,7 +423,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   };
 
   private readonly handleClose = (code?: number, reason?: Buffer | string) => {
-    const reasonText = typeof reason === "string" ? reason : reason?.toString();
+    const reasonText = isStringValue(reason) ? reason : reason?.toString();
     this.markClosed(code, reasonText);
   };
 
@@ -487,7 +519,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
     const messageTraceFields = {
       connectionId: this.id,
       namespace: this.namespace,
-      userId: this._userId,
+      userId: this.currentUserId,
       traceId: traceCtx.traceId,
       spanId: traceCtx.spanId,
       parentSpanId: traceCtx.parentSpanId,
@@ -545,7 +577,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
     }
   }
 
-  private publishValidated(event: string, data: unknown): void {
+  private publishValidated<Data>(event: string, data: Data): void {
     const schema = this.eventSchemasOut[event];
     if (!schema) {
       this.options.telemetryController.emit({
@@ -584,7 +616,6 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
         data: parsed.data,
       }),
       event,
-      parsed.data,
     );
   }
 
@@ -705,8 +736,8 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   }
 
   // queue가 한계에 도달하면 1013으로 닫아 느린 소비자가 메모리를 끝없이 잡아먹지 못하게 함
-  // data 인자는 telemetry payload preview 용도로만 사용하며 pendingOutboundMessages에는 저장하지 않음 (큐 메모리 보호)
-  private enqueueOutboundMessage(payload: string, event: string, data: unknown): void {
+  // telemetry preview는 직렬화된 payload에서 복원해 전송 데이터와 같은 JSON 계약을 유지함
+  private enqueueOutboundMessage(payload: string, event: string): void {
     if (this.pendingOutboundMessages.length >= MAX_PENDING_OUTBOUND_MESSAGES) {
       this.options.telemetryController.emit({
         name: "ws.backpressure.overflow",
@@ -723,7 +754,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
       level: "debug",
       ...this.telemetryFields(),
       detail: { event },
-      payload: data,
+      payload: safeParseEnvelope(payload)?.data,
     });
     this.scheduleOutboundFlush();
   }
@@ -818,7 +849,7 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
           status: "error",
           ...fields,
           attributes: { event },
-          errorType: error instanceof Error ? error.name : typeof error,
+          errorType: error instanceof Error ? error.name : runtimeTypeOf(error),
         });
         this.close(WS_CLOSE_CODE_INTERNAL_ERROR, "Outbound publish failed");
         return;
@@ -838,8 +869,8 @@ class WebSocketConnectionImpl<TOutSchema extends z.ZodRawShape, TInSchema extend
   }
 }
 
-function normalizeMessage(raw: unknown): string {
-  if (typeof raw === "string") {
+function normalizeMessage(raw: RawData): string {
+  if (isStringValue(raw)) {
     return raw;
   }
 
@@ -862,7 +893,10 @@ function normalizeMessage(raw: unknown): string {
 
 function safeParseEnvelope(raw: string): ParsedEnvelope | null {
   try {
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed =
+      /* SAFETY: 등록된 WebSocket 이벤트 스키마가 이 값의 타입을 보장한다. */ JSON.parse(
+        raw,
+      ) as unknown;
     const validated = WebSocketEnvelopeSchema.safeParse(parsed);
     return validated.success ? validated.data : null;
   } catch {

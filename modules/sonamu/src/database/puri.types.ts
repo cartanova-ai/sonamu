@@ -38,7 +38,7 @@ type VectorColumnKeys<T> = T extends { [K in VectorKey]: readonly (infer V)[] }
   ? V & string
   : never;
 
-export type VectorColumns<TTables extends Record<string, any>> =
+export type VectorColumns<TTables extends object> =
   | {
       [TAlias in keyof TTables]: `${TAlias & string}.${VectorColumnKeys<TTables[TAlias]>}`;
     }[keyof TTables]
@@ -47,7 +47,7 @@ export type VectorColumns<TTables extends Record<string, any>> =
 // __json__ 메타데이터에서 JSON 컬럼 추출
 type JsonColumnKeys<T> = T extends { [K in JsonKey]: readonly (infer J)[] } ? J & string : never;
 
-export type JsonColumns<TTables extends Record<string, any>> =
+export type JsonColumns<TTables extends object> =
   | {
       [TAlias in keyof TTables]: `${TAlias & string}.${JsonColumnKeys<TTables[TAlias]>}`;
     }[keyof TTables]
@@ -93,13 +93,15 @@ export type PuriTable<T> = Omit<StripVirtual<T>, VirtualKey>;
 export type OmitInternalTypeKeys<T> = Omit<T, InternalTypeKeys>;
 
 // TTables의 모든 테이블에서 사용 가능한 컬럼 경로
-export type AvailableColumns<TTables extends Record<string, any>> =
+export type AvailableColumns<TTables extends object> = (
   | {
       [TAlias in keyof TTables]: `${TAlias & string}.${ColumnKeys<TTables[TAlias]>}`;
     }[keyof TTables]
   | (IsSingleKey<TTables> extends true
       ? ColumnKeys<TTables[keyof TTables]> // 단일 테이블이면 컬럼명만도 허용
-      : never);
+      : never)
+) &
+  string;
 
 // 숫자 타입 컬럼만 추출하는 유틸리티 타입
 type NumericColumnKeys<T> = {
@@ -108,7 +110,7 @@ type NumericColumnKeys<T> = {
   string;
 
 // TTables의 모든 테이블에서 숫자 타입 컬럼만 추출
-export type NumericColumns<TTables extends Record<string, any>> =
+export type NumericColumns<TTables extends object> =
   | {
       [TAlias in keyof TTables]: `${TAlias & string}.${NumericColumnKeys<TTables[TAlias]>}`;
     }[keyof TTables]
@@ -117,30 +119,30 @@ export type NumericColumns<TTables extends Record<string, any>> =
       : never);
 
 // Group By, Order By, Having 등에서 선택 가능한 컬럼
-export type ResultAvailableColumns<TTables extends Record<string, any>, TResult = any> =
+export type ResultAvailableColumns<TTables extends object, TResult = any> =
   | AvailableColumns<TTables>
   | `${keyof TResult & string}`;
 
 // Select 값 타입 확장 (단일 컬럼 또는 SQL 표현식)
-export type SelectValue<TTables extends Record<string, any>> =
+export type SelectValue<TTables extends object> =
   | AvailableColumns<TTables>
   | SqlExpression<"string" | "number" | "boolean" | "date" | "string[]">;
 
 // 중첩 Select 객체 타입 (재귀적)
 // 예: { parent: { id: "parent.id", name: "parent.name" } }
-export type NestedSelectObject<TTables extends Record<string, any>> = {
+export type NestedSelectObject<TTables extends object> = {
   [key: string]: SelectValue<TTables> | NestedSelectObject<TTables>;
 };
 
 // Select 객체 타입 (flat 또는 중첩 허용)
-export type SelectObject<TTables extends Record<string, any>> = NestedSelectObject<TTables>;
+export type SelectObject<TTables extends object> = NestedSelectObject<TTables>;
 
 // 값이 중첩 객체인지 판별하는 헬퍼 타입
 type IsNestedObject<T> = T extends string
   ? false
   : T extends SqlExpression<any>
     ? false
-    : T extends Record<string, any>
+    : T extends object
       ? true
       : false;
 
@@ -201,13 +203,13 @@ type JoinPath<Prefix extends string, Key extends string> = Prefix extends ""
 //   }
 // })
 export type ParseSelectObject<
-  TTables extends Record<string, any>,
+  TTables extends object,
   TSelect extends SelectObject<TTables>,
 > = ParseSelectObjectWithPath<TTables, TSelect, "">;
 
 // 경로를 추적하면서 Select 결과 타입을 추론합니다.
 type ParseSelectObjectWithPath<
-  TTables extends Record<string, any>,
+  TTables extends object,
   TSelect extends SelectObject<TTables>,
   Prefix extends string,
 > = Expand<{
@@ -236,7 +238,7 @@ type ParseSelectObjectWithPath<
 // ParseSelectObjectWithPath와 거의 동일하나, 마지막에 ExtractColumnType 대신 ExtractColumnTypeRaw를 사용하여
 // 필드 레벨에서 중복으로 | null이 추가되는 것을 방지합니다.
 type ParseSelectObjectInner<
-  TTables extends Record<string, any>,
+  TTables extends object,
   TSelect extends SelectObject<TTables>,
   Prefix extends string,
 > = Expand<{
@@ -264,7 +266,7 @@ type ParseSelectObjectInner<
 // 컬럼 경로에서 타입을 추출합니다. LeftJoinedMarker가 있으면 | null을 추가합니다.
 // 최상위 select 필드에서 사용됩니다.
 export type ExtractColumnType<
-  TTables extends Record<string, any>,
+  TTables extends object,
   Path extends string,
 > = Path extends `${infer TAlias}.${infer TColumn}`
   ? TAlias extends keyof TTables
@@ -283,7 +285,7 @@ export type ExtractColumnType<
 // 컬럼 경로에서 타입을 추출합니다. leftJoin 여부와 관계없이 원본 타입을 반환합니다.
 // 중첩 객체 내부 필드에서 사용됩니다. (객체 레벨에서 이미 | null 처리가 완료되었으므로)
 type ExtractColumnTypeRaw<
-  TTables extends Record<string, any>,
+  TTables extends object,
   Path extends string,
 > = Path extends `${infer TAlias}.${infer TColumn}`
   ? TAlias extends keyof TTables
@@ -299,12 +301,12 @@ type ExtractColumnTypeRaw<
 
 // Where 조건 객체 타입
 // 예: { "u.id": 1, "u.status": "active" }
-export type WhereCondition<TTables extends Record<string, any>> = {
+export type WhereCondition<TTables extends object> = {
   [key in AvailableColumns<TTables>]?: ExtractColumnType<TTables, key & string>;
 };
 
 // Fulltext index 컬럼 추출 타입
-export type FulltextColumns<TTables extends Record<string, any>> = {
+export type FulltextColumns<TTables extends object> = {
   [TAlias in keyof TTables]: TTables[TAlias] extends {
     [K in FulltextKey]: readonly (infer Col)[];
   }
@@ -338,7 +340,7 @@ export type Expand<T> = T extends any[]
     ? { [K in keyof T]: T[K] }
     : T;
 
-type IsSingleKey<TTables extends Record<string, any>> = keyof TTables extends infer K
+type IsSingleKey<TTables extends object> = keyof TTables extends infer K
   ? K extends keyof TTables
     ? keyof TTables extends K // 역방향 체크로 단일 키 확인
       ? true
@@ -346,7 +348,7 @@ type IsSingleKey<TTables extends Record<string, any>> = keyof TTables extends in
     : false
   : false;
 
-export type SingleTableValue<TTables extends Record<string, any>> =
+export type SingleTableValue<TTables extends object> =
   IsSingleKey<TTables> extends true ? TTables[keyof TTables] : never;
 
 // __hasDefault__에 포함된 키들을 PuriTable<T>의 키로 제한
@@ -393,7 +395,7 @@ export type OnConflictTarget = string | string[];
 // ON CONFLICT 액션 타입
 // - "nothing": DO NOTHING
 // - { update: [...] }: DO UPDATE
-export type OnConflictAction<TTables extends Record<string, unknown>> =
+export type OnConflictAction<TTables extends object> =
   | "nothing"
   | {
       update:
@@ -411,7 +413,7 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   : never;
 
 // SelectAll 시 모든 조인된 테이블의 컬럼 포함
-export type SelectAllResult<TTables extends Record<string, any>> = UnionToIntersection<
+export type SelectAllResult<TTables extends object> = UnionToIntersection<
   {
     [K in keyof TTables]: TTables[K] extends infer T
       ? T extends LeftJoinedMarker

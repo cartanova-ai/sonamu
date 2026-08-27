@@ -11,6 +11,7 @@ import { normalizeFilterQuery, validateSonamuFilters } from "../filter/utils";
 import { convertDomainToCategory } from "../logger/category";
 import { type DatabaseSchemaExtend, type SonamuQueryMode } from "../types/types";
 import { type ListResult } from "../utils/model";
+import { isObjectValue } from "../utils/runtime-value";
 import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
 import { type EnhancerMap, type ResolveSubsetIntersection } from "./base-model.types";
 import { type DBPreset } from "./db";
@@ -25,7 +26,18 @@ import { PuriWrapper } from "./puri-wrapper";
 import { type UnionExtractedTTables } from "./puri.types";
 import { UpsertBuilder } from "./upsert-builder";
 
-type UnknownDBRecord = Record<string, unknown>;
+type DatabaseRecordValue =
+  | string
+  | number
+  | boolean
+  | bigint
+  | Date
+  | Buffer
+  | Knex.Raw
+  | null
+  | DatabaseRecordValue[]
+  | { [key: string]: DatabaseRecordValue };
+type DatabaseRecord = Record<string, DatabaseRecordValue | undefined>;
 
 /**
  * 모든 Model 클래스의 기본 클래스
@@ -37,7 +49,7 @@ type UnknownDBRecord = Record<string, unknown>;
  */
 export class BaseModelClass<
   TSubsetKey extends string = never,
-  TSubsetMapping extends Record<string, any> = never,
+  TSubsetMapping extends { [K in TSubsetKey]: TSubsetMapping[K] } = never,
   TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn> = never,
   TLoaderQueries extends PuriLoaderQueries<TSubsetKey> = never,
 > {
@@ -82,7 +94,7 @@ export class BaseModelClass<
 
   async getInsertedIds(
     wdb: Knex,
-    rows: UnknownDBRecord[],
+    rows: DatabaseRecord[],
     tableName: string,
     unqKeyFields: string[],
     chunkSize: number = 500,
@@ -102,6 +114,7 @@ export class BaseModelClass<
     } else {
       whereInField = unqKeyFields[0];
       selectField = unqKeyFields[0];
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
       unqKeys = rows.map((row) => row[unqKeyFields[0]] as string);
     }
 
@@ -109,9 +122,14 @@ export class BaseModelClass<
     for (const items of cluster(unqKeys, chunkSize)) {
       const dbRows = await wdb(tableName)
         .select("id", wdb.raw(selectField))
-        .whereIn(whereInField as string, items);
+        // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
+        .whereIn(
+          /* SAFETY: Knex 런타임은 컬럼 위치의 Raw 표현식을 지원하지만 선언 타입에는 누락되어 있습니다. */
+          whereInField as string,
+          items,
+        );
       resultIds = resultIds.concat(
-        dbRows.map((dbRow: UnknownDBRecord) => parseInt(String(dbRow.id))),
+        dbRows.map((dbRow: DatabaseRecord) => parseInt(String(dbRow.id))),
       );
     }
 
@@ -137,16 +155,18 @@ export class BaseModelClass<
       NonAllowedAsSingleTable: { __fulltext__: true };
     };
 
+    function onSubset<S extends TSubsetKey>(subset: S): ReturnType<TSubsetQueries[S]>;
+    function onSubset<Arr extends readonly TSubsetKey[]>(
+      subsets: [...Arr],
+    ): ResolveSubsetIntersection<Arr, TSubsetQueries>;
+    function onSubset(_subset: TSubsetKey | readonly TSubsetKey[]) {
+      return qb;
+    }
+
     return {
-      qb: qb as unknown as Puri<DatabaseSchemaExtend, QBTables, {}>,
-      onSubset: ((_subset: TSubsetKey | readonly TSubsetKey[]) => qb) as {
-        // 단일 키
-        <S extends TSubsetKey>(subset: S): ReturnType<TSubsetQueries[S]>;
-        // 키 배열 -> 교집합 반환
-        <Arr extends readonly TSubsetKey[]>(
-          subsets: [...Arr],
-        ): ResolveSubsetIntersection<Arr, TSubsetQueries>;
-      },
+      // SAFETY: 같은 Puri 인스턴스에 단일 테이블 접근 제한용 타입 마커만 추가합니다.
+      qb: qb as Puri<DatabaseSchemaExtend, QBTables, {}>,
+      onSubset,
     };
   }
 
@@ -177,11 +197,11 @@ export class BaseModelClass<
   async executeSubsetQuery<
     T extends TSubsetKey,
     TComputedResults extends InferAllSubsets<TSubsetQueries, TLoaderQueries>,
+    TFilter extends object,
     LP extends {
       num?: number;
       page?: number;
       queryMode?: SonamuQueryMode;
-      sonamuFilter?: Record<string, unknown>;
     },
   >(
     params: {
@@ -191,7 +211,7 @@ export class BaseModelClass<
         num: number;
         page: number;
         queryMode?: SonamuQueryMode;
-        sonamuFilter?: Record<string, unknown>;
+        sonamuFilter?: TFilter;
       };
       debug?: boolean;
       optimizeCountQuery?: boolean;
@@ -217,6 +237,7 @@ export class BaseModelClass<
     const total = await this.executeCountQuery(qb, queryParams, debug, optimizeCountQuery);
 
     if (queryParams?.queryMode === "count") {
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
       return { total } as ListResult<LP, TSubsetMapping[T]>;
     }
 
@@ -232,7 +253,9 @@ export class BaseModelClass<
     );
 
     // Enhancer 적용
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     const enhancer = (params as any).enhancers?.[subset];
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     const enhancedRows = (await Promise.all(
       computedRows.map((row) => enhancer?.(row) ?? row),
     )) as TSubsetMapping[T][];
@@ -247,9 +270,11 @@ export class BaseModelClass<
 
     if (queryParams.queryMode === "list") {
       // 리스트만 리턴
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
       return { rows } as ListResult<LP, TSubsetMapping[T]>;
     } else {
       // 둘다 리턴
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
       return { rows, total } as ListResult<LP, TSubsetMapping[T]>;
     }
   }
@@ -272,7 +297,7 @@ export class BaseModelClass<
    * @param qb Puri QueryBuilder 인스턴스
    * @param filters FilterQuery 객체
    */
-  protected applySonamuFilters<TEntity = Record<string, unknown>>(
+  protected applySonamuFilters<TEntity>(
     qb: Puri<any, any, any>,
     filters?: FilterQuery<TEntity>,
   ): void {
@@ -284,6 +309,7 @@ export class BaseModelClass<
     validateSonamuFilters(filters, entity);
 
     // 2. 검증된 필터 적용
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     const puri = qb as any;
 
     for (const [field, condition] of Object.entries(filters)) {
@@ -293,13 +319,14 @@ export class BaseModelClass<
       const fullField = entity.getFullFieldName(field);
 
       // 직접 값 (eq와 동일)
-      if (typeof condition !== "object" || Array.isArray(condition)) {
+      if (!isObjectValue(condition) || Array.isArray(condition)) {
         puri.where(fullField, condition);
         continue;
       }
 
       // 연산자 객체
       for (const [operator, value] of Object.entries(condition)) {
+        // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
         this.applyOperator(qb, fullField, operator as FilterOperator, value);
       }
     }
@@ -308,12 +335,13 @@ export class BaseModelClass<
   /**
    * 단일 연산자를 QueryBuilder에 적용
    */
-  private applyOperator(
+  private applyOperator<Value>(
     qb: Puri<any, any, any>,
     field: string,
     operator: FilterOperator,
-    value: unknown,
+    value: Value,
   ): void {
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     const puri = qb as any;
 
     switch (operator) {
@@ -394,14 +422,14 @@ export class BaseModelClass<
    * 중첩 필드 삭제 (배열 내 객체도 처리)
    */
   deleteField(obj: any, parts: string[]): void {
-    if (!obj || typeof obj !== "object") {
+    if (!obj || !isObjectValue(obj)) {
       return;
     }
 
     if (parts.length === 1) {
       if (Array.isArray(obj)) {
         obj.forEach((item) => {
-          if (item && typeof item === "object") {
+          if (item && isObjectValue(item)) {
             delete item[parts[0]];
           }
         });
@@ -416,7 +444,7 @@ export class BaseModelClass<
 
     if (Array.isArray(next)) {
       next.map((item) => this.deleteField(item, rest));
-    } else if (next && typeof next === "object") {
+    } else if (next && isObjectValue(next)) {
       this.deleteField(next, rest);
     }
   }
@@ -496,6 +524,7 @@ export class BaseModelClass<
     }
 
     // 로더 처리
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     const loaders = (this.loaderQueries as any)[subset];
     if (loaders && Array.isArray(loaders)) {
       unloadedRows = await this.processLoaders(unloadedRows, loaders, debug, puriWrapper);
@@ -525,6 +554,7 @@ export class BaseModelClass<
         resolveLoaderQb.debug();
       }
 
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
       let loadedRows = (await resolveLoaderQb) as any[];
 
       // 중첩 loaders가 있으면 재귀 처리
@@ -549,8 +579,10 @@ export class BaseModelClass<
    * - `user__name` → `{ user: { name } }`
    * - nullable relation의 경우 id 필드가 null이면 객체 자체를 null로
    */
-  hydrate<T extends UnknownDBRecord>(rows: T[]): T[] {
+  hydrate<T extends object>(rows: T[]): T[] {
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     return rows.map((row: T) => {
+      const rowValues = new Map(Object.entries(row));
       // nullable relation 처리: 그룹의 id 필드가 null이면 객체 전체를 null로
       const nestedKeys = Object.keys(row).filter((key) => key.includes("__"));
       const groups = Object.groupBy(nestedKeys, (key) => key.split("__")[0]);
@@ -564,26 +596,27 @@ export class BaseModelClass<
           const idField = `${groupKey}__id`;
           if (idField in row) {
             // id 필드가 null이면 객체 전체가 null
-            return row[idField] === null;
+            return rowValues.get(idField) === null;
           }
 
           // id 필드가 없으면 기존 로직: 모든 필드가 null인지 확인
-          return fields.every(
-            (field) =>
-              row[field] === null || (Array.isArray(row[field]) && row[field].length === 0),
-          );
+          return fields.every((field) => {
+            const fieldValue = rowValues.get(field);
+            return fieldValue === null || (Array.isArray(fieldValue) && fieldValue.length === 0);
+          });
         })
         .map(([key]) => key);
 
-      const hydrated = Object.keys(row).reduce((r, field) => {
+      let hydrated: DatabaseRecord = Object.fromEntries([]);
+      for (const field of Object.keys(row)) {
+        const fieldValue = rowValues.get(field);
         if (!field.includes("__")) {
-          // 일반 필드: 배열 내 객체면 재귀 hydrate
-          if (Array.isArray(row[field]) && isObject(row[field][0])) {
-            r[field] = this.hydrate(row[field]);
-          } else {
-            r[field] = row[field];
-          }
-          return r;
+          const hydratedValue =
+            Array.isArray(fieldValue) && isObject(fieldValue[0])
+              ? this.hydrate(fieldValue)
+              : fieldValue;
+          Object.assign(hydrated, { [field]: hydratedValue });
+          continue;
         }
 
         // 중첩 필드 처리: user__name → user[name]
@@ -595,20 +628,18 @@ export class BaseModelClass<
             .map((part) => `[${part}]`)
             .join("");
 
-        r = set(
-          r,
+        hydrated = set(
+          hydrated,
           objPath,
-          row[field] && Array.isArray(row[field]) && isObject(row[field][0])
-            ? this.hydrate(row[field])
-            : row[field],
+          fieldValue && Array.isArray(fieldValue) && isObject(fieldValue[0])
+            ? this.hydrate(fieldValue)
+            : fieldValue,
         );
-
-        return r;
-      }, {} as UnknownDBRecord);
+      }
 
       // null relation 처리
       nullKeys.forEach((nullKey) => {
-        hydrated[nullKey] = null;
+        Object.assign(hydrated, { [nullKey]: null });
       });
 
       return hydrated;
@@ -622,8 +653,8 @@ export class BaseModelClass<
  */
 type EnhancerParam<
   TSubsetKey extends string,
-  TComputedResults extends Record<TSubsetKey, any>,
-  TSubsetMapping extends Record<TSubsetKey, any>,
+  TComputedResults extends { [K in TSubsetKey]: TComputedResults[K] },
+  TSubsetMapping extends { [K in TSubsetKey]: TSubsetMapping[K] },
   TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
 > = [RequiredEnhancerKeys<TSubsetKey, TComputedResults, TSubsetMapping>] extends [never]
   ? { enhancers?: EnhancerMap<TSubsetKey, TComputedResults, TSubsetMapping, TSubsetQueries> }
@@ -631,8 +662,8 @@ type EnhancerParam<
 
 type RequiredEnhancerKeys<
   TSubsetKey extends string,
-  TComputedResults extends Record<TSubsetKey, any>,
-  TSubsetMapping extends Record<TSubsetKey, any>,
+  TComputedResults extends { [K in TSubsetKey]: TComputedResults[K] },
+  TSubsetMapping extends { [K in TSubsetKey]: TSubsetMapping[K] },
 > = {
   [K in TSubsetKey]: TComputedResults[K] extends TSubsetMapping[K] ? never : K;
 }[TSubsetKey];

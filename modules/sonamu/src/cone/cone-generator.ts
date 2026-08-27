@@ -1,7 +1,10 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import { type LanguageModel } from "ai";
+
 import { type Cone, type EntityJson } from "../types/types";
+import { isObjectValue } from "../utils/runtime-value";
 
 /**
  * Cone 생성 컨텍스트
@@ -29,16 +32,32 @@ export type ConeGenerationResult = {
   tokensUsed: number;
 };
 
+export type ConeTextGenerator = (request: {
+  model: LanguageModel;
+  prompt: string;
+}) => Promise<{ text: string; usage?: { totalTokens?: number } }>;
+
+export type ConeGeneratorDependencies = {
+  generateText?: ConeTextGenerator;
+};
+
 /**
  * LLM을 사용하여 Entity의 cone 메타데이터를 생성합니다.
  *
  * @param context - Entity 정보와 생성 옵션
  * @returns 생성된 cone 메타데이터
  */
-export async function generateCones(context: ConeGenerationContext): Promise<ConeGenerationResult> {
+export async function generateCones(
+  context: ConeGenerationContext,
+  dependencies: ConeGeneratorDependencies = {},
+): Promise<ConeGenerationResult> {
   const apiKey = getApiKey();
   const prompt = buildPrompt(context);
-  const { text: responseText, tokensUsed } = await callAnthropicAPI(prompt, apiKey);
+  const { text: responseText, tokensUsed } = await callAnthropicAPI(
+    prompt,
+    apiKey,
+    dependencies.generateText,
+  );
   const result = parseConeResponse(responseText);
   result.tokensUsed = tokensUsed;
 
@@ -269,11 +288,17 @@ IMPORTANT: Return pure JSON only. Do NOT wrap in markdown code blocks.`;
 async function callAnthropicAPI(
   prompt: string,
   apiKey: string,
+  injectedGenerateText?: ConeTextGenerator,
 ): Promise<{ text: string; tokensUsed: number }> {
   try {
     // @ai-sdk/anthropic과 ai 패키지는 optional dependency이므로 동적 import
     const { createAnthropic } = await import("@ai-sdk/anthropic");
-    const { generateText } = await import("ai");
+    const generateText: ConeTextGenerator =
+      injectedGenerateText ??
+      (async (request) => {
+        const ai = await import("ai");
+        return ai.generateText(request);
+      });
 
     const anthropic = createAnthropic({
       apiKey,
@@ -291,8 +316,11 @@ async function callAnthropicAPI(
 
     return { text, tokensUsed };
   } catch (error: unknown) {
-    if (error && typeof error === "object" && "statusCode" in error) {
-      const statusCode = (error as { statusCode: number }).statusCode;
+    if (error && isObjectValue(error) && "statusCode" in error) {
+      const statusCode =
+        /* SAFETY: 호출 경계의 선행 검증과 소유 타입 계약이 이 값의 타입을 보장한다. */ (
+          error as { statusCode: number }
+        ).statusCode;
       if (statusCode === 429) {
         throw new Error("Rate limit exceeded. Please try again later.", { cause: error });
       }
@@ -317,7 +345,7 @@ function parseConeResponse(text: string): ConeGenerationResult {
   try {
     const parsed = JSON.parse(jsonText);
 
-    if (!parsed.propCones || typeof parsed.propCones !== "object") {
+    if (!parsed.propCones || !isObjectValue(parsed.propCones)) {
       throw new Error("Invalid response: propCones is required and must be an object");
     }
 

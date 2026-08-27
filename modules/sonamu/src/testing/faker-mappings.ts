@@ -18,7 +18,7 @@ export type FakerMappings = {
   };
 };
 
-export const fakerMappings: FakerMappings = {
+export const fakerMappings = {
   ko: {
     field_patterns: {
       email: {
@@ -431,4 +431,4 @@ export const fakerMappings: FakerMappings = {
       },
     },
   },
-};
+} satisfies FakerMappings;

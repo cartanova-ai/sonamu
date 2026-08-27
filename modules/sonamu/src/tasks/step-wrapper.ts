@@ -6,6 +6,10 @@ export type RunnableStep<TArgs extends unknown[], TResult> = {
   run: StepFunction<TArgs, Promise<TResult>>;
 };
 
+interface StepConfig {
+  name: string;
+}
+
 export type MethodNames<T, TKey extends keyof T> = T[TKey] extends (
   ...args: infer _TArgs
 ) => infer _TResult
@@ -14,7 +18,7 @@ export type MethodNames<T, TKey extends keyof T> = T[TKey] extends (
 
 export type MethodArguments<T, TKey extends keyof T> = T[TKey] extends (
   ...args: infer TArgs
-) => unknown
+) => infer _TResult
   ? TArgs
   : never;
 
@@ -37,7 +41,7 @@ export class StepWrapper {
     TKey extends keyof T,
     TArgs extends MethodArguments<T, TKey>,
     TResult extends MethodReturnType<T, TKey>,
-  >(config: { name: string }, object: T, name: MethodNames<T, TKey>): RunnableStep<TArgs, TResult>;
+  >(config: StepConfig, object: T, name: MethodNames<T, TKey>): RunnableStep<TArgs, TResult>;
   get<
     T,
     TKey extends keyof T,
@@ -50,20 +54,26 @@ export class StepWrapper {
     TArgs extends MethodArguments<T, TKey>,
     TResult extends MethodReturnType<T, TKey>,
   >(
-    ...args: [{ name: string }, T, MethodNames<T, TKey>] | [T, MethodNames<T, TKey>]
+    ...definitionArgs: [StepConfig, T, MethodNames<T, TKey>] | [T, MethodNames<T, TKey>]
   ): RunnableStep<TArgs, TResult> {
-    let config: { name: string };
+    let config: StepConfig;
     let fn: StepFunction<TArgs, Exclude<TResult, never>>;
 
-    if (args.length === 2) {
-      const [rawObject, methodName] = args;
-      const method = rawObject[methodName] as CallableFunction;
+    if (definitionArgs.length === 2) {
+      const [rawObject, methodName] = definitionArgs;
+      const method =
+        /* SAFETY: 작업 데코레이터와 워크플로 정의가 이 값의 타입을 보장한다. */ rawObject[
+          methodName
+        ] as CallableFunction;
       config = { name: inflection.underscore(methodName.toString()) };
 
       fn = (...args: TArgs) => method.bind(rawObject)(...args);
     } else {
-      const [rawConfig, rawObject, name] = args;
-      const method = rawObject[name] as CallableFunction;
+      const [rawConfig, rawObject, name] = definitionArgs;
+      const method =
+        /* SAFETY: 작업 데코레이터와 워크플로 정의가 이 값의 타입을 보장한다. */ rawObject[
+          name
+        ] as CallableFunction;
 
       config = { name: rawConfig.name ?? inflection.underscore(name.toString()) };
       fn = (...args: TArgs) => method.bind(rawObject)(...args);

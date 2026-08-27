@@ -1,5 +1,7 @@
 import { type z } from "zod";
 
+import { isNumberValue, isSymbolValue } from "./runtime-value";
+
 type ValidationError = {
   path: string[];
   message: string;
@@ -8,11 +10,11 @@ type ValidationError = {
 export function humanizeZodError(error: z.ZodError): ValidationError[] {
   return error.issues.map(({ path: originPath, message }) => {
     const path = originPath.map((item) => {
-      if (typeof item === "symbol") {
+      if (isSymbolValue(item)) {
         return item.description ?? item.toString();
       }
 
-      if (typeof item === "number") {
+      if (isNumberValue(item)) {
         return `[${item}]`;
       }
 

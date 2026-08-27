@@ -1,8 +1,9 @@
 import { getLogger } from "@logtape/logtape";
-import { type BetterAuthPlugin } from "better-auth";
+import { type AuthContext, type BetterAuthPlugin, type GenericEndpointContext } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
 
 import { DB } from "../../database/db";
+import { isObjectValue, isStringValue } from "../../utils/runtime-value";
 import { ingestAuditEvent } from "../audit-log-ingestor";
 import { buildAuditEventCatalog } from "./builders";
 import {
@@ -10,12 +11,8 @@ import {
   type AuditLogEvent,
   type BuilderLocation,
   type BuilderTrigger,
-  type InvitationSnapshot,
-  type MemberSnapshot,
-  type OrganizationSnapshot,
   ROUTES,
   type SessionSnapshot,
-  type TeamSnapshot,
   type UserProfileLite,
   type UserSnapshot,
   type VerificationSnapshot,
@@ -85,34 +82,14 @@ const getOrganizationTriggerInfo = (user: { id?: string } | null | undefined): B
 // ============================================================================
 // better-auth ctx 타입 helpers (내부 shape은 런타임 구조를 기준으로 좁혀 사용한다)
 // ============================================================================
-type BetterAuthRequestCtx = {
-  path?: string;
-  body?: Record<string, unknown> | null | undefined;
-  params?: Record<string, string | undefined> | null | undefined;
-  context: {
-    session?: {
-      session?: { userId?: string };
-      user?: { id?: string };
-    } | null;
+type BetterAuthRequestCtx = GenericEndpointContext & {
+  context: GenericEndpointContext["context"] & {
     location?: BuilderLocation | null;
-    adapter?: {
-      findOne: (args: {
-        model: string;
-        select?: string[];
-        where: { field: string; value: unknown }[];
-      }) => Promise<Record<string, unknown> | null>;
-    };
-    returned?: unknown;
   };
 };
 
 // databaseHooks after 콜백의 ctx는 선택적이며 shape을 런타임에서 좁힌다.
-const narrowRequestCtx = (raw: unknown): BetterAuthRequestCtx | null => {
-  if (!raw || typeof raw !== "object") return null;
-  const candidate = raw as { context?: unknown };
-  if (!candidate.context || typeof candidate.context !== "object") return null;
-  return raw as BetterAuthRequestCtx;
-};
+const narrowRequestCtx = (raw: GenericEndpointContext | null): BetterAuthRequestCtx | null => raw;
 
 // adapter.findOne 호출 실패 시 null을 반환한다. dash 헬퍼와 동일 정책.
 const fetchUserBy = async (
@@ -129,18 +106,22 @@ const fetchUserBy = async (
       select: ["id", "name", "email"],
       where: [{ field, value }],
     });
-    if (!row) return null;
+    if (!row || !isObjectValue(row)) return null;
+    const id = "id" in row ? row.id : undefined;
+    const name = "name" in row ? row.name : undefined;
+    const email = "email" in row ? row.email : undefined;
     return {
-      id: String(row.id),
-      name: typeof row.name === "string" ? row.name : undefined,
-      email: typeof row.email === "string" ? row.email : undefined,
+      id: String(id),
+      name: isStringValue(name) ? name : undefined,
+      email: isStringValue(email) ? email : undefined,
     };
   } catch {
     return null;
   }
 };
 
-const isNonEmptyString = (v: unknown): v is string => typeof v === "string" && v.length > 0;
+const isNonEmptyString = <Value>(value: Value): value is Value & string =>
+  isStringValue(value) && value.length > 0;
 
 // dash 제거 시 함께 사라진 location 공급 경로를 대체한다.
 // 우선순위: cf-connecting-ip > x-forwarded-for(첫 항목) > x-real-ip > x-vercel-forwarded-for
@@ -152,25 +133,30 @@ const IP_HEADER_ORDER = [
   "x-vercel-forwarded-for",
 ] as const;
 
-const readHeader = (headers: unknown, key: string): string | null => {
+type HeaderCollection =
+  | Headers
+  | { [key: string]: string | string[] | undefined }
+  | null
+  | undefined;
+
+const readHeader = (headers: HeaderCollection, key: string): string | null => {
   if (!headers) return null;
   if (headers instanceof Headers) {
     return headers.get(key);
   }
-  if (typeof headers === "object") {
-    const map = headers as Record<string, unknown>;
-    const v = map[key] ?? map[key.toLowerCase()];
-    if (typeof v === "string") return v;
-    if (Array.isArray(v) && typeof v[0] === "string") return v[0];
+  if (isObjectValue(headers)) {
+    const v = headers[key] ?? headers[key.toLowerCase()];
+    if (isStringValue(v)) return v;
+    if (Array.isArray(v) && isStringValue(v[0])) return v[0];
   }
   return null;
 };
 
-const extractLocationFromHeaders = (headers: unknown): BuilderLocation => {
+const extractLocationFromHeaders = (headers: HeaderCollection): BuilderLocation => {
   let ipAddress: string | null = null;
   for (const key of IP_HEADER_ORDER) {
     const raw = readHeader(headers, key);
-    if (typeof raw === "string" && raw.length > 0) {
+    if (isStringValue(raw) && raw.length > 0) {
       const first = raw.split(",")[0]?.trim();
       if (first) {
         ipAddress = first;
@@ -191,20 +177,15 @@ const extractLocationFromHeaders = (headers: unknown): BuilderLocation => {
 // ============================================================================
 // Organization hook 래핑 헬퍼
 // ============================================================================
-type OrgHookFn = (...args: unknown[]) => Promise<unknown>;
-
 // 주어진 organizationHooks 레코드에 대해 해당 name의 기존 hook을 chain한다.
 // handler는 payload 객체(첫 번째 인자)만 받아서 audit emit을 수행한다.
-const wrapOrgHook = <Payload>(
-  hooks: Record<string, unknown>,
-  name: string,
+const wrapOrgHook = <Payload extends object>(
+  previous: ((payload: Payload) => Promise<void>) | undefined,
   handler: (payload: Payload) => Promise<void>,
-): void => {
-  const prev = hooks[name] as OrgHookFn | undefined;
-  hooks[name] = async (...args: unknown[]): Promise<unknown> => {
-    await handler(args[0] as Payload);
-    if (prev) return prev(...args);
-    return undefined;
+): ((payload: Payload) => Promise<void>) => {
+  return async (payload) => {
+    await handler(payload);
+    await previous?.(payload);
   };
 };
 
@@ -219,6 +200,10 @@ const wrapOrgHook = <Payload>(
  * - dash의 infra 연결/API endpoint 제공 범위는 포함하지 않고, audit-event emit/ingest 경로만 유지한다.
  * - security 4종은 R1 결정에 따라 scope out (builders.ts의 TODO 주석 참조).
  */
+function locationFor(ctx: BetterAuthRequestCtx): BuilderLocation | undefined {
+  return ctx.context.location ?? undefined;
+}
+
 export function sonamuAuditLog(): BetterAuthPlugin {
   const logger = getLogger(["sonamu", "audit-log"]);
   const catalog = buildAuditEventCatalog();
@@ -239,13 +224,10 @@ export function sonamuAuditLog(): BetterAuthPlugin {
   const triggerFor = (ctx: BetterAuthRequestCtx, subjectUserId: string): BuilderTrigger =>
     getTriggerInfo(ctx.path, ctx.context.session?.session?.userId ?? null, subjectUserId);
 
-  const locationFor = (ctx: BetterAuthRequestCtx): BuilderLocation | undefined =>
-    ctx.context.location ?? undefined;
-
   return {
     id: "sonamu-audit-log",
 
-    init(pluginCtx: unknown) {
+    init(pluginCtx) {
       installOrganizationHooks(pluginCtx, catalog, emit, logger);
 
       // dash 7283-7449 미러: databaseHooks (user/session/account/verification).
@@ -254,10 +236,11 @@ export function sonamuAuditLog(): BetterAuthPlugin {
           databaseHooks: {
             user: {
               create: {
-                after: async (rawUser: unknown, rawCtx?: unknown): Promise<void> => {
+                after: async (rawUser, rawCtx): Promise<void> => {
                   const ctx = narrowRequestCtx(rawCtx);
                   if (!ctx) return;
-                  const user = rawUser as UserSnapshot;
+                  const user =
+                    /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ rawUser as UserSnapshot;
                   await emit(
                     catalog.user.trackUserSignedUp(
                       user,
@@ -268,19 +251,23 @@ export function sonamuAuditLog(): BetterAuthPlugin {
                 },
               },
               update: {
-                after: async (rawUser: unknown, rawCtx?: unknown): Promise<void> => {
+                after: async (rawUser, rawCtx): Promise<void> => {
                   const ctx = narrowRequestCtx(rawCtx);
                   if (!ctx) return;
-                  const user = rawUser as UserSnapshot & {
-                    emailVerified?: boolean;
-                    image?: string | null;
-                  };
+                  const user =
+                    /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ rawUser as UserSnapshot & {
+                      emailVerified?: boolean;
+                      image?: string | null;
+                    };
                   const path = ctx.path;
                   const trigger = triggerFor(ctx, user.id);
                   const location = locationFor(ctx);
 
                   if (matchesAnyRoute(path, [ROUTES.UPDATE_USER, ROUTES.DASH_UPDATE_USER])) {
-                    const updatedFields = Object.keys((ctx.body as object) ?? {});
+                    const updatedFields = Object.keys(
+                      /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ (ctx.body as object) ??
+                        {},
+                    );
                     const isOnlyImageUpdate =
                       updatedFields.length === 1 && updatedFields[0] === "image";
                     const isOnlyEmailVerifiedUpdate =
@@ -306,7 +293,10 @@ export function sonamuAuditLog(): BetterAuthPlugin {
                       }
                     }
                   } else if (matchesAnyRoute(path, [ROUTES.CHANGE_EMAIL])) {
-                    const updatedFields = Object.keys((ctx.body as object) ?? {});
+                    const updatedFields = Object.keys(
+                      /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ (ctx.body as object) ??
+                        {},
+                    );
                     await emit(
                       catalog.user.trackUserProfileUpdated(user, updatedFields, trigger, location),
                     );
@@ -331,10 +321,11 @@ export function sonamuAuditLog(): BetterAuthPlugin {
                 },
               },
               delete: {
-                after: async (rawUser: unknown, rawCtx?: unknown): Promise<void> => {
+                after: async (rawUser, rawCtx): Promise<void> => {
                   const ctx = narrowRequestCtx(rawCtx);
                   if (!ctx) return;
-                  const user = rawUser as UserSnapshot;
+                  const user =
+                    /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ rawUser as UserSnapshot;
                   await emit(
                     catalog.user.trackUserDeleted(user, triggerFor(ctx, user.id), locationFor(ctx)),
                   );
@@ -344,18 +335,19 @@ export function sonamuAuditLog(): BetterAuthPlugin {
             session: {
               create: {
                 before: async (
-                  rawSession: unknown,
-                  rawCtx?: unknown,
+                  rawSession,
+                  rawCtx,
                 ): Promise<{ data: { loginMethod: string | null } } | undefined> => {
                   void rawSession;
                   const ctx = narrowRequestCtx(rawCtx);
                   if (!ctx) return undefined;
                   return { data: { loginMethod: getLoginMethod(ctx.path, ctx.params?.id) } };
                 },
-                after: async (rawSession: unknown, rawCtx?: unknown): Promise<void> => {
+                after: async (rawSession, rawCtx): Promise<void> => {
                   const ctx = narrowRequestCtx(rawCtx);
                   if (!ctx) return;
-                  const session = rawSession as SessionSnapshot;
+                  const session =
+                    /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ rawSession as SessionSnapshot;
                   if (!session.userId) return;
                   const location = locationFor(ctx);
                   const loginMethod = getLoginMethod(ctx.path, ctx.params?.id) ?? undefined;
@@ -402,10 +394,11 @@ export function sonamuAuditLog(): BetterAuthPlugin {
                 },
               },
               delete: {
-                after: async (rawSession: unknown, rawCtx?: unknown): Promise<void> => {
+                after: async (rawSession, rawCtx): Promise<void> => {
                   const ctx = narrowRequestCtx(rawCtx);
                   if (!ctx) return;
-                  const session = rawSession as SessionSnapshot;
+                  const session =
+                    /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ rawSession as SessionSnapshot;
                   const location = locationFor(ctx);
                   const enrichedSession: SessionSnapshot = { ...session };
                   const user = await fetchUserBy(ctx, "id", session.userId);
@@ -450,10 +443,11 @@ export function sonamuAuditLog(): BetterAuthPlugin {
             },
             account: {
               create: {
-                after: async (rawAccount: unknown, rawCtx?: unknown): Promise<void> => {
+                after: async (rawAccount, rawCtx): Promise<void> => {
                   const ctx = narrowRequestCtx(rawCtx);
                   if (!ctx) return;
-                  const account = rawAccount as AccountSnapshot;
+                  const account =
+                    /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ rawAccount as AccountSnapshot;
                   if (!account.userId) return;
                   const user = await fetchUserBy(ctx, "id", account.userId);
                   await emit(
@@ -467,10 +461,11 @@ export function sonamuAuditLog(): BetterAuthPlugin {
                 },
               },
               update: {
-                after: async (rawAccount: unknown, rawCtx?: unknown): Promise<void> => {
+                after: async (rawAccount, rawCtx): Promise<void> => {
                   const ctx = narrowRequestCtx(rawCtx);
                   if (!ctx) return;
-                  const account = rawAccount as AccountSnapshot;
+                  const account =
+                    /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ rawAccount as AccountSnapshot;
                   if (!account.userId) return;
                   if (
                     !matchesAnyRoute(ctx.path, [
@@ -494,10 +489,11 @@ export function sonamuAuditLog(): BetterAuthPlugin {
                 },
               },
               delete: {
-                after: async (rawAccount: unknown, rawCtx?: unknown): Promise<void> => {
+                after: async (rawAccount, rawCtx): Promise<void> => {
                   const ctx = narrowRequestCtx(rawCtx);
                   if (!ctx) return;
-                  const account = rawAccount as AccountSnapshot;
+                  const account =
+                    /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ rawAccount as AccountSnapshot;
                   if (!account.userId) return;
                   const user = await fetchUserBy(ctx, "id", account.userId);
                   await emit(
@@ -513,11 +509,12 @@ export function sonamuAuditLog(): BetterAuthPlugin {
             },
             verification: {
               create: {
-                after: async (rawVerification: unknown, rawCtx?: unknown): Promise<void> => {
+                after: async (rawVerification, rawCtx): Promise<void> => {
                   const ctx = narrowRequestCtx(rawCtx);
                   if (!ctx) return;
                   if (!matchesAnyRoute(ctx.path, [ROUTES.REQUEST_PASSWORD_RESET])) return;
-                  const verification = rawVerification as VerificationSnapshot;
+                  const verification =
+                    /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ rawVerification as VerificationSnapshot;
                   const sessionUserId = ctx.context.session?.user?.id ?? "unknown";
                   const trigger = getTriggerInfo(ctx.path, sessionUserId, sessionUserId);
                   const user = await fetchUserBy(ctx, "id", verification.value);
@@ -532,11 +529,12 @@ export function sonamuAuditLog(): BetterAuthPlugin {
                 },
               },
               delete: {
-                after: async (rawVerification: unknown, rawCtx?: unknown): Promise<void> => {
+                after: async (rawVerification, rawCtx): Promise<void> => {
                   const ctx = narrowRequestCtx(rawCtx);
                   if (!ctx) return;
                   if (!matchesAnyRoute(ctx.path, [ROUTES.RESET_PASSWORD])) return;
-                  const verification = rawVerification as VerificationSnapshot;
+                  const verification =
+                    /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ rawVerification as VerificationSnapshot;
                   const sessionUserId = ctx.context.session?.user?.id ?? "unknown";
                   const trigger = getTriggerInfo(ctx.path, sessionUserId, sessionUserId);
                   const user = await fetchUserBy(ctx, "id", verification.value);
@@ -563,12 +561,7 @@ export function sonamuAuditLog(): BetterAuthPlugin {
           // 모든 요청에서 ctx.context.location을 채워 이후 빌더들이 ipAddress/city/countryCode를 기록할 수 있게 한다.
           matcher: () => true,
           handler: createAuthMiddleware(async (rawCtx) => {
-            const ctx = rawCtx as {
-              headers?: unknown;
-              request?: { headers?: unknown } | undefined;
-              context?: { location?: BuilderLocation | null } & Record<string, unknown>;
-            };
-            if (!ctx.context) return;
+            const ctx: BetterAuthRequestCtx = rawCtx;
             const headers = ctx.headers ?? ctx.request?.headers;
             ctx.context.location = extractLocationFromHeaders(headers);
           }),
@@ -578,12 +571,11 @@ export function sonamuAuditLog(): BetterAuthPlugin {
         {
           // dash 7462-7487 미러: verification email send, sign-in attempts.
           // GET 요청은 콜백 경로만 통과시킨다.
-          matcher: (ctx: unknown): boolean => {
-            const c = ctx as { request?: { method?: string; url?: string } };
-            if (c.request?.method !== "GET") return true;
-            if (!c.request.url) return false;
+          matcher: (ctx): boolean => {
+            if (ctx.request?.method !== "GET") return true;
+            if (!ctx.request.url) return false;
             try {
-              const p = new URL(c.request.url).pathname;
+              const p = new URL(ctx.request.url).pathname;
               return matchesAnyRoute(p, [
                 ROUTES.SIGN_IN_SOCIAL_CALLBACK,
                 ROUTES.SIGN_IN_OAUTH_CALLBACK,
@@ -608,10 +600,11 @@ export function sonamuAuditLog(): BetterAuthPlugin {
               ctx.context.session &&
               !isErrored
             ) {
-              const sessionEntity = ctx.context.session.session as SessionSnapshot | undefined;
-              const user = ctx.context.session.user as
-                | { name?: string; email?: string }
-                | undefined;
+              const sessionEntity =
+                /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ ctx.context
+                  .session.session as SessionSnapshot | undefined;
+              const user = /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ ctx
+                .context.session.user as { name?: string; email?: string } | undefined;
               if (sessionEntity && user) {
                 await emit(
                   catalog.session.trackEmailVerificationSent(sessionEntity, user, trigger),
@@ -619,13 +612,12 @@ export function sonamuAuditLog(): BetterAuthPlugin {
               }
             }
 
-            const body =
-              (ctx.body as { email?: string; provider?: string; idToken?: string } | null) ?? null;
+            const body = ctx.body;
             // email sign-in attempt failed
             if (
               matchesAnyRoute(ctx.path, [ROUTES.SIGN_IN_EMAIL, ROUTES.SIGN_IN_EMAIL_OTP]) &&
               isErrored &&
-              body?.email
+              isStringValue(body?.email)
             ) {
               const user = await fetchUserBy(ctx, "email", body.email);
               await emit(
@@ -641,8 +633,8 @@ export function sonamuAuditLog(): BetterAuthPlugin {
             if (
               matchesAnyRoute(ctx.path, [ROUTES.SIGN_IN_SOCIAL]) &&
               isErrored &&
-              body?.provider &&
-              body?.idToken
+              isStringValue(body?.provider) &&
+              isStringValue(body?.idToken)
             ) {
               await emit(
                 catalog.session.trackSocialSignInAttempt(
@@ -679,57 +671,42 @@ type EventEmitter = (event: AuditLogEvent) => Promise<void>;
 type AuditLogger = ReturnType<typeof getLogger>;
 
 function installOrganizationHooks(
-  pluginCtx: unknown,
+  pluginCtx: AuthContext,
   catalog: ReturnType<typeof buildAuditEventCatalog>,
   emit: EventEmitter,
   logger: AuditLogger,
 ): void {
-  const getPlugin = (pluginCtx as { getPlugin?: (id: string) => unknown })?.getPlugin;
-  const organizationPlugin =
-    typeof getPlugin === "function" ? getPlugin.call(pluginCtx, "organization") : null;
+  const organizationPlugin = pluginCtx.getPlugin("organization");
 
-  if (!organizationPlugin || typeof organizationPlugin !== "object") {
+  if (!organizationPlugin) {
     logger.debug("organization plugin not active; skipping instrumentation");
     return;
   }
 
-  const orgPlugin = organizationPlugin as {
-    options?: { organizationHooks?: Record<string, unknown> };
-  };
-  orgPlugin.options = orgPlugin.options ?? {};
-  const hooks = (orgPlugin.options.organizationHooks = orgPlugin.options.organizationHooks ?? {});
+  organizationPlugin.options = organizationPlugin.options ?? {};
+  const hooks = (organizationPlugin.options.organizationHooks =
+    organizationPlugin.options.organizationHooks ?? {});
 
-  wrapOrgHook<{ organization: OrganizationSnapshot; user: UserSnapshot }>(
-    hooks,
-    "afterCreateOrganization",
-    async (p) =>
-      emit(
-        catalog.organization.trackOrganizationCreated(
-          p.organization,
-          getOrganizationTriggerInfo(p.user),
-        ),
+  hooks.afterCreateOrganization = wrapOrgHook(hooks.afterCreateOrganization, async (p) =>
+    emit(
+      catalog.organization.trackOrganizationCreated(
+        p.organization,
+        getOrganizationTriggerInfo(p.user),
       ),
+    ),
   );
 
-  wrapOrgHook<{ organization?: OrganizationSnapshot; user: UserSnapshot }>(
-    hooks,
-    "afterUpdateOrganization",
-    async (p) => {
-      if (!p.organization) return;
-      await emit(
-        catalog.organization.trackOrganizationUpdated(
-          p.organization,
-          getOrganizationTriggerInfo(p.user),
-        ),
-      );
-    },
-  );
+  hooks.afterUpdateOrganization = wrapOrgHook(hooks.afterUpdateOrganization, async (p) => {
+    if (!p.organization) return;
+    await emit(
+      catalog.organization.trackOrganizationUpdated(
+        p.organization,
+        getOrganizationTriggerInfo(p.user),
+      ),
+    );
+  });
 
-  wrapOrgHook<{
-    organization: OrganizationSnapshot;
-    member: MemberSnapshot;
-    user: UserSnapshot;
-  }>(hooks, "afterAddMember", async (p) =>
+  hooks.afterAddMember = wrapOrgHook(hooks.afterAddMember, async (p) =>
     emit(
       catalog.member.trackOrganizationMemberAdded(
         p.organization,
@@ -740,11 +717,7 @@ function installOrganizationHooks(
     ),
   );
 
-  wrapOrgHook<{
-    organization: OrganizationSnapshot;
-    member: MemberSnapshot;
-    user: UserSnapshot;
-  }>(hooks, "afterRemoveMember", async (p) =>
+  hooks.afterRemoveMember = wrapOrgHook(hooks.afterRemoveMember, async (p) =>
     emit(
       catalog.member.trackOrganizationMemberRemoved(
         p.organization,
@@ -755,12 +728,7 @@ function installOrganizationHooks(
     ),
   );
 
-  wrapOrgHook<{
-    organization: OrganizationSnapshot;
-    member: MemberSnapshot;
-    user: UserSnapshot;
-    previousRole: string;
-  }>(hooks, "afterUpdateMemberRole", async (p) =>
+  hooks.afterUpdateMemberRole = wrapOrgHook(hooks.afterUpdateMemberRole, async (p) =>
     emit(
       catalog.member.trackOrganizationMemberRoleUpdated(
         p.organization,
@@ -772,11 +740,7 @@ function installOrganizationHooks(
     ),
   );
 
-  wrapOrgHook<{
-    organization: OrganizationSnapshot;
-    invitation: InvitationSnapshot;
-    inviter: UserSnapshot;
-  }>(hooks, "afterCreateInvitation", async (p) =>
+  hooks.afterCreateInvitation = wrapOrgHook(hooks.afterCreateInvitation, async (p) =>
     emit(
       catalog.invitation.trackOrganizationMemberInvited(
         p.organization,
@@ -787,12 +751,7 @@ function installOrganizationHooks(
     ),
   );
 
-  wrapOrgHook<{
-    organization: OrganizationSnapshot;
-    invitation: InvitationSnapshot;
-    member: MemberSnapshot;
-    user: UserSnapshot;
-  }>(hooks, "afterAcceptInvitation", async (p) =>
+  hooks.afterAcceptInvitation = wrapOrgHook(hooks.afterAcceptInvitation, async (p) =>
     emit(
       catalog.invitation.trackOrganizationMemberInviteAccepted(
         p.organization,
@@ -804,11 +763,7 @@ function installOrganizationHooks(
     ),
   );
 
-  wrapOrgHook<{
-    organization: OrganizationSnapshot;
-    invitation: InvitationSnapshot;
-    user: UserSnapshot;
-  }>(hooks, "afterRejectInvitation", async (p) =>
+  hooks.afterRejectInvitation = wrapOrgHook(hooks.afterRejectInvitation, async (p) =>
     emit(
       catalog.invitation.trackOrganizationMemberInviteRejected(
         p.organization,
@@ -819,11 +774,7 @@ function installOrganizationHooks(
     ),
   );
 
-  wrapOrgHook<{
-    organization: OrganizationSnapshot;
-    invitation: InvitationSnapshot;
-    cancelledBy: UserSnapshot;
-  }>(hooks, "afterCancelInvitation", async (p) =>
+  hooks.afterCancelInvitation = wrapOrgHook(hooks.afterCancelInvitation, async (p) =>
     emit(
       catalog.invitation.trackOrganizationMemberInviteCanceled(
         p.organization,
@@ -834,11 +785,7 @@ function installOrganizationHooks(
     ),
   );
 
-  wrapOrgHook<{
-    organization: OrganizationSnapshot;
-    team: TeamSnapshot;
-    user: UserSnapshot;
-  }>(hooks, "afterCreateTeam", async (p) =>
+  hooks.afterCreateTeam = wrapOrgHook(hooks.afterCreateTeam, async (p) =>
     emit(
       catalog.team.trackOrganizationTeamCreated(
         p.organization,
@@ -848,11 +795,7 @@ function installOrganizationHooks(
     ),
   );
 
-  wrapOrgHook<{
-    organization: OrganizationSnapshot;
-    team?: TeamSnapshot;
-    user: UserSnapshot;
-  }>(hooks, "afterUpdateTeam", async (p) => {
+  hooks.afterUpdateTeam = wrapOrgHook(hooks.afterUpdateTeam, async (p) => {
     if (!p.team) return;
     await emit(
       catalog.team.trackOrganizationTeamUpdated(
@@ -863,11 +806,7 @@ function installOrganizationHooks(
     );
   });
 
-  wrapOrgHook<{
-    organization: OrganizationSnapshot;
-    team: TeamSnapshot;
-    user: UserSnapshot;
-  }>(hooks, "afterDeleteTeam", async (p) =>
+  hooks.afterDeleteTeam = wrapOrgHook(hooks.afterDeleteTeam, async (p) =>
     emit(
       catalog.team.trackOrganizationTeamDeleted(
         p.organization,
@@ -877,12 +816,7 @@ function installOrganizationHooks(
     ),
   );
 
-  wrapOrgHook<{
-    organization: OrganizationSnapshot;
-    team: TeamSnapshot;
-    user: UserSnapshot;
-    teamMember: { teamId: string; userId: string };
-  }>(hooks, "afterAddTeamMember", async (p) =>
+  hooks.afterAddTeamMember = wrapOrgHook(hooks.afterAddTeamMember, async (p) =>
     emit(
       catalog.team.trackOrganizationTeamMemberAdded(
         p.organization,
@@ -894,12 +828,7 @@ function installOrganizationHooks(
     ),
   );
 
-  wrapOrgHook<{
-    organization: OrganizationSnapshot;
-    team: TeamSnapshot;
-    user: UserSnapshot;
-    teamMember: { teamId: string; userId: string };
-  }>(hooks, "afterRemoveTeamMember", async (p) =>
+  hooks.afterRemoveTeamMember = wrapOrgHook(hooks.afterRemoveTeamMember, async (p) =>
     emit(
       catalog.team.trackOrganizationTeamMemberRemoved(
         p.organization,

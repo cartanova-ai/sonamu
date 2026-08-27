@@ -1,34 +1,35 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { Sonamu } from "../../api";
+import { type SonamuConfig } from "../../api/config";
 import { type ExtendedApi } from "../../api/decorators";
+import { Syncer } from "../../syncer/syncer";
 import { Template__services } from "../implementations/services.template";
 
+const testConfig = {
+  api: { dir: ".", route: { prefix: "/api" } },
+  i18n: { defaultLocale: "ko", supportedLocales: ["ko"] },
+  sync: { targets: [] },
+  database: {},
+  server: {
+    apiConfig: {
+      contextProvider: (defaultContext) => defaultContext,
+      guardHandler: () => undefined,
+    },
+  },
+} satisfies SonamuConfig;
+
+function renderServices(apis: ExtendedApi[]) {
+  const syncer = new Syncer();
+  syncer.apis = apis;
+  Sonamu.syncer = syncer;
+  return new Template__services().render({}).body;
+}
+
 describe("Template__services mutation hooks", () => {
-  let originalConfig: unknown;
-  let originalSyncer: unknown;
-
   beforeEach(() => {
-    originalConfig = Reflect.get(Sonamu, "_config");
-    originalSyncer = Reflect.get(Sonamu, "_syncer");
-    Reflect.set(Sonamu, "_config", {
-      api: {
-        route: {
-          prefix: "/api",
-        },
-      },
-    });
+    Sonamu.config = testConfig;
   });
-
-  afterEach(() => {
-    Reflect.set(Sonamu, "_config", originalConfig);
-    Reflect.set(Sonamu, "_syncer", originalSyncer);
-  });
-
-  const renderServices = (apis: ExtendedApi[]) => {
-    Reflect.set(Sonamu, "_syncer", { apis });
-    return new Template__services().render({}).body;
-  };
 
   it("파라미터가 있는 일반 mutation에서 namespace와 인자 순서를 유지한다", () => {
     const body = renderServices([

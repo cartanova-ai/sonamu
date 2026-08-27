@@ -77,8 +77,8 @@ type OmitVirtualQueryFromMapping<TMapping, TVirtualQueryKeys> = Omit<
  */
 type IsEnhancerOptional<
   TSubsetKey extends string,
-  TComputedResults extends Record<TSubsetKey, any>,
-  TSubsetMapping extends Record<TSubsetKey, any>,
+  TComputedResults extends { [K in TSubsetKey]: TComputedResults[K] },
+  TSubsetMapping extends { [K in TSubsetKey]: TSubsetMapping[K] },
   TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
   K extends TSubsetKey,
 > =
@@ -106,8 +106,8 @@ type EnhancerFnWithVirtualQuery<TComputed, TMapping, TVirtualQueryKeys> = (
  */
 export type RequiredEnhancerKeys<
   TSubsetKey extends string,
-  TComputedResults extends Record<TSubsetKey, any>,
-  TSubsetMapping extends Record<TSubsetKey, any>,
+  TComputedResults extends { [K in TSubsetKey]: TComputedResults[K] },
+  TSubsetMapping extends { [K in TSubsetKey]: TSubsetMapping[K] },
   TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
 > = {
   [K in TSubsetKey]: IsEnhancerOptional<
@@ -136,8 +136,8 @@ export type RequiredEnhancerKeys<
  */
 export type EnhancerMap<
   TSubsetKey extends string,
-  TComputedResults extends Record<TSubsetKey, any>,
-  TSubsetMapping extends Record<TSubsetKey, any>,
+  TComputedResults extends { [K in TSubsetKey]: TComputedResults[K] },
+  TSubsetMapping extends { [K in TSubsetKey]: TSubsetMapping[K] },
   TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
   TRequiredKeys extends TSubsetKey = RequiredEnhancerKeys<
     TSubsetKey,

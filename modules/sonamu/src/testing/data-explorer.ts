@@ -1,22 +1,67 @@
 import { type Knex } from "knex";
+import { z } from "zod";
 
 import { type CacheManager } from "../cache/types";
 import { type Entity } from "../entity/entity";
 import { type EntityManager } from "../entity/entity-manager";
 import { isBelongsToOneRelationProp, isOneToOneRelationProp, isRelationProp } from "../types/types";
-import { nonNullable } from "../utils/utils";
+import { isFunctionValue } from "../utils/runtime-value";
 
 export type DataExplorerStrategy = "sample" | "ids" | "query" | "file" | "recent" | "random";
 
+export type DataExplorerValue =
+  | string
+  | number
+  | boolean
+  | bigint
+  | Date
+  | Uint8Array
+  | null
+  | undefined
+  | DataExplorerValue[]
+  | DataExplorerRecord;
+
+export type DataExplorerRecord = {
+  [columnName: string]: DataExplorerValue;
+};
+
+export const dataExplorerValueSchema: z.ZodType<DataExplorerValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.bigint(),
+    z.date(),
+    z.instanceof(Uint8Array),
+    z.null(),
+    z.undefined(),
+    z.array(dataExplorerValueSchema),
+    z.record(z.string(), dataExplorerValueSchema),
+  ]),
+);
+export const dataExplorerRecordSchema = z.record(z.string(), dataExplorerValueSchema);
+export const dataExplorerRecordsSchema = z.array(dataExplorerRecordSchema);
+const dataExplorerDirectionSchema = z.enum(["asc", "desc"]);
+export const dataSourceConfigSchema = z.object({
+  strategy: z.enum(["sample", "ids", "query", "file", "recent", "random"]).optional(),
+  limit: z.number().optional(),
+  where: z.record(z.string(), dataExplorerValueSchema).optional(),
+  orderBy: z.string().optional(),
+  ids: z.array(z.union([z.number(), z.string()])).optional(),
+  filePath: z.string().optional(),
+  useCache: z.boolean().optional(),
+  cacheTtl: z.number().optional(),
+});
+
 /** WHERE 조건 타입 (객체 또는 Knex QueryBuilder 함수) */
-export type WhereCondition = Record<string, unknown> | ((queryBuilder: Knex.QueryBuilder) => void);
+export type WhereCondition = object | ((queryBuilder: Knex.QueryBuilder) => void);
 
 export type DataExplorerOptions = {
   strategy: DataExplorerStrategy;
   limit?: number;
   where?: WhereCondition;
   orderBy?: string;
-  ids?: number[];
+  ids?: (number | string)[];
   filePath?: string;
   /** 캐싱 사용 여부 (기본값: false) */
   useCache?: boolean;
@@ -35,10 +80,10 @@ export type ExploreWithRelationsResult = {
   /** 메인 entity 데이터 */
   main: {
     entityId: string;
-    records: Record<string, unknown>[];
+    records: DataExplorerRecord[];
   };
   /** 관련 entity 데이터 (entityId -> records) */
-  related: Map<string, Record<string, unknown>[]>;
+  related: Map<string, DataExplorerRecord[]>;
 };
 
 // 기존 DB 데이터를 탐색하여 fixture 생성 시 참조할 수 있는 시스템
@@ -53,10 +98,7 @@ export class DataExplorer {
     this.cache = cacheManager;
   }
 
-  async explore(
-    entityName: string,
-    options: DataExplorerOptions,
-  ): Promise<Record<string, unknown>[]> {
+  async explore(entityName: string, options: DataExplorerOptions): Promise<DataExplorerRecord[]> {
     const entity = this.entityManager.get(entityName);
     if (!entity) {
       throw new Error(`Entity not found: ${entityName}`);
@@ -78,7 +120,7 @@ export class DataExplorer {
   private async exploreInternal(
     entity: Entity,
     options: DataExplorerOptions,
-  ): Promise<Record<string, unknown>[]> {
+  ): Promise<DataExplorerRecord[]> {
     const query = this.db(entity.table);
 
     switch (options.strategy) {
@@ -90,7 +132,7 @@ export class DataExplorer {
         if (createdAtCol) {
           query.orderBy(createdAtCol, "desc");
         }
-        return await query.limit(options.limit || 10);
+        return dataExplorerRecordsSchema.parse(await query.limit(options.limit || 10));
       }
 
       case "random":
@@ -100,22 +142,30 @@ export class DataExplorer {
         if (options.ids && options.ids.length > 0) {
           query.whereIn("id", options.ids);
         }
-        return await query;
+        return dataExplorerRecordsSchema.parse(await query);
 
       case "query":
         if (options.where) {
-          query.where(options.where);
+          const whereCallback = z
+            .custom<(queryBuilder: Knex.QueryBuilder) => void>(isFunctionValue)
+            .safeParse(options.where);
+          if (whereCallback.success) {
+            query.where(whereCallback.data);
+          } else {
+            query.where(dataExplorerRecordSchema.parse(options.where));
+          }
         }
         if (options.orderBy) {
           const [col, dir = "asc"] = options.orderBy.split(":");
+          const direction = dataExplorerDirectionSchema.parse(dir);
           // id 컬럼은 숫자로 캐스팅하여 정렬합니다 (문자열 정렬 방지)
           if (col === "id") {
-            query.orderByRaw(`CAST(?? AS INTEGER) ${dir}`, [col]);
+            query.orderByRaw(`CAST(?? AS INTEGER) ${direction}`, [col]);
           } else {
-            query.orderBy(col, dir as "asc" | "desc");
+            query.orderBy(col, direction);
           }
         }
-        return await query.limit(options.limit || 10);
+        return dataExplorerRecordsSchema.parse(await query.limit(options.limit || 10));
 
       case "file":
         if (!options.filePath) {
@@ -129,15 +179,12 @@ export class DataExplorer {
   }
 
   // 균등 샘플링 (PostgreSQL ROW_NUMBER 사용)
-  private async sampleData(
-    query: Knex.QueryBuilder,
-    limit: number,
-  ): Promise<Record<string, unknown>[]> {
+  private async sampleData(query: Knex.QueryBuilder, limit: number): Promise<DataExplorerRecord[]> {
     const [{ count }] = await query.clone().count("* as count");
     const total = Number(count);
 
     if (total <= limit) {
-      return await query.limit(limit);
+      return dataExplorerRecordsSchema.parse(await query.limit(limit));
     }
 
     // 균등 간격 계산
@@ -163,14 +210,14 @@ export class DataExplorer {
       [tableName, interval, limit],
     );
 
-    return result.rows;
+    return dataExplorerRecordsSchema.parse(result.rows);
   }
 
   private async randomSample(
     query: Knex.QueryBuilder,
     limit: number,
-  ): Promise<Record<string, unknown>[]> {
-    return await query.orderByRaw("RANDOM()").limit(limit);
+  ): Promise<DataExplorerRecord[]> {
+    return dataExplorerRecordsSchema.parse(await query.orderByRaw("RANDOM()").limit(limit));
   }
 
   private findTimestampColumn(entity: Entity, columnName: string): string | null {
@@ -178,29 +225,29 @@ export class DataExplorer {
     return prop?.name || null;
   }
 
-  private async loadFromFile(filePath: string): Promise<Record<string, unknown>[]> {
+  private async loadFromFile(filePath: string): Promise<DataExplorerRecord[]> {
     const fs = await import("fs/promises");
     const content = await fs.readFile(filePath, "utf-8");
 
     if (filePath.endsWith(".json")) {
-      const parsed = JSON.parse(content);
-      if (!Array.isArray(parsed)) {
-        throw new Error("JSON file must contain an array");
+      try {
+        const parsed = dataExplorerRecordsSchema.safeParse(JSON.parse(content));
+        if (!parsed.success) {
+          throw new Error("JSON file must contain an array of records");
+        }
+        return parsed.data;
+      } catch (error) {
+        throw new Error("JSON file must contain a valid array of records", { cause: error });
       }
-      return parsed as Record<string, unknown>[];
     } else if (filePath.endsWith(".csv")) {
       const lines = content.split("\n").filter((line) => line.trim());
       if (lines.length === 0) return [];
 
       const headers = lines[0].split(",").map((h) => h.trim());
-      return lines.slice(1).map((line) => {
+      return lines.slice(1).map((line): DataExplorerRecord => {
         const values = line.split(",");
-        return headers.reduce(
-          (obj: Record<string, unknown>, header: string, i: number) => {
-            obj[header] = values[i]?.trim();
-            return obj;
-          },
-          {} as Record<string, unknown>,
+        return Object.fromEntries(
+          headers.map((header, index) => [header, values[index]?.trim()] as const),
         );
       });
     }
@@ -212,7 +259,7 @@ export class DataExplorer {
     entityName: string,
     relationProp: string,
     options?: Partial<DataExplorerOptions>,
-  ): Promise<Record<string, unknown>[]> {
+  ): Promise<DataExplorerRecord[]> {
     const entity = this.entityManager.get(entityName);
     const prop = entity.props.find((p) => p.name === relationProp);
 
@@ -222,17 +269,15 @@ export class DataExplorer {
 
     const dataSource = prop.cone?.dataSource;
     const strategy = dataSource?.strategy || options?.strategy || "sample";
-    const config =
-      dataSource?.config && typeof dataSource.config === "object"
-        ? (dataSource.config as Record<string, unknown>)
-        : {};
-
-    return this.explore(prop.with, {
+    const config = dataSourceConfigSchema.parse(dataSource?.config ?? {});
+    const exploreOptions: DataExplorerOptions = {
       strategy,
-      limit: options?.limit || (typeof config.limit === "number" ? config.limit : 10),
-      ...(typeof config === "object" ? config : {}),
+      limit: options?.limit ?? config.limit ?? 10,
+      ...config,
       ...options,
-    });
+    };
+
+    return this.explore(prop.with, exploreOptions);
   }
 
   /**
@@ -242,7 +287,7 @@ export class DataExplorer {
     entityName: string,
     relationProps: string[],
     options?: Partial<DataExplorerOptions>,
-  ): Promise<Record<string, Record<string, unknown>[]>> {
+  ): Promise<Record<string, DataExplorerRecord[]>> {
     const results = await Promise.all(
       relationProps.map(async (prop) => {
         const data = await this.exploreRelation(entityName, prop, options);
@@ -314,8 +359,8 @@ export class DataExplorer {
    */
   private async collectRelatedData(
     entityName: string,
-    records: Record<string, unknown>[],
-    relatedMap: Map<string, Record<string, unknown>[]>,
+    records: DataExplorerRecord[],
+    relatedMap: Map<string, DataExplorerRecord[]>,
     visited: Set<string>,
     remainingDepth: number,
   ): Promise<void> {
@@ -324,7 +369,10 @@ export class DataExplorer {
     }
 
     const entity = this.entityManager.get(entityName);
-    const recordIds = records.map((r) => r.id).filter(nonNullable);
+    const recordIds = records.flatMap((record) => {
+      const parsedId = z.union([z.number(), z.string()]).safeParse(record.id);
+      return parsedId.success ? [parsedId.data] : [];
+    });
 
     // 1. Forward references: 이 entity가 참조하는 다른 entity
     const forwardRelationProps = entity.props.filter(
@@ -345,9 +393,10 @@ export class DataExplorer {
 
       // 참조하는 ID들 수집
       const foreignKeyName = `${prop.name}_id`;
-      const referencedIds = records
-        .map((record) => record[foreignKeyName])
-        .filter(Boolean) as number[];
+      const referencedIds = records.flatMap((record) => {
+        const parsedId = z.union([z.number(), z.string()]).safeParse(record[foreignKeyName]);
+        return parsedId.success ? [parsedId.data] : [];
+      });
 
       if (referencedIds.length === 0) {
         continue;

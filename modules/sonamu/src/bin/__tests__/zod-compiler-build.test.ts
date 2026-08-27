@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { isFunctionValue, isObjectValue } from "../../utils/runtime-value";
 import {
   assertApiZodCompilerBuildOutput,
   assertApiZodCompilerSourceRegistry,
@@ -11,17 +12,18 @@ import {
   createApiZodCompilerBuildWrapper,
 } from "../build-config";
 
-const compilerPluginMock = vi.hoisted(() => vi.fn());
-
-vi.mock("zod-compiler/rolldown", () => ({
-  default: compilerPluginMock,
-}));
+const compilerPluginFake = vi.fn();
+const compilerDependencies = {
+  async loadCompilerPlugin() {
+    return compilerPluginFake;
+  },
+};
 
 describe("API zod-compiler 빌드 정책", () => {
   const tempRoots: string[] = [];
 
   beforeEach(() => {
-    compilerPluginMock.mockReset();
+    compilerPluginFake.mockReset();
   });
 
   afterEach(async () => {
@@ -43,7 +45,7 @@ describe("API zod-compiler 빌드 정책", () => {
           policy: { api, targets: {} },
         }),
       ).toEqual(baseConfig);
-      expect(compilerPluginMock).not.toHaveBeenCalled();
+      expect(compilerPluginFake).not.toHaveBeenCalled();
     },
   );
 
@@ -51,7 +53,7 @@ describe("API zod-compiler 빌드 정책", () => {
     const registryPath = "/project/api/src/application/sonamu.validators.generated.ts";
     const compilerPlugin = { name: "zod-compiler" };
     const customPlugin = { name: "custom" };
-    compilerPluginMock.mockReturnValue(compilerPlugin);
+    compilerPluginFake.mockReturnValue(compilerPlugin);
 
     const defaultConfig = await composeApiZodCompilerBuildConfig(
       { entry: ["src/index.ts"] },
@@ -59,6 +61,7 @@ describe("API zod-compiler 빌드 정책", () => {
         policy: { api: "aot", targets: {} },
         registryPath,
       },
+      compilerDependencies,
     );
     const customConfig = await composeApiZodCompilerBuildConfig(
       { entry: ["src/index.ts"], plugins: [customPlugin] },
@@ -66,15 +69,16 @@ describe("API zod-compiler 빌드 정책", () => {
         policy: { api: "aot", targets: {} },
         registryPath,
       },
+      compilerDependencies,
     );
 
-    expect(compilerPluginMock).toHaveBeenNthCalledWith(1, {
+    expect(compilerPluginFake).toHaveBeenNthCalledWith(1, {
       codegenMode: "inline",
       include: [registryPath],
       output: "compact",
       schemas: "explicit",
     });
-    expect(compilerPluginMock).toHaveBeenNthCalledWith(2, {
+    expect(compilerPluginFake).toHaveBeenNthCalledWith(2, {
       codegenMode: "inline",
       include: [registryPath],
       output: "compact",
@@ -98,8 +102,6 @@ describe("API zod-compiler 빌드 정책", () => {
       baseConfigPath,
       `export default { entry: { index: "src/index.ts" }, plugins: [{ name: "custom" }] };\n`,
     );
-    compilerPluginMock.mockReturnValue({ name: "zod-compiler" });
-
     const wrapperPath = await createApiZodCompilerBuildWrapper({
       apiRootPath,
       baseConfigPath,
@@ -108,22 +110,22 @@ describe("API zod-compiler 빌드 정책", () => {
     });
     const wrapperModule: unknown = await import(`${pathToFileURL(wrapperPath).href}?test=entry`);
     if (
-      typeof wrapperModule !== "object" ||
+      !isObjectValue(wrapperModule) ||
       wrapperModule === null ||
       !("default" in wrapperModule) ||
-      typeof wrapperModule.default !== "function"
+      !isFunctionValue(wrapperModule.default)
     ) {
       throw new Error("build wrapper가 default config factory를 내보내지 않았습니다");
     }
     const resolvedConfig: unknown = await wrapperModule.default();
-    if (typeof resolvedConfig !== "object" || resolvedConfig === null) {
+    if (!isObjectValue(resolvedConfig) || resolvedConfig === null) {
       throw new Error("build wrapper가 tsdown config object를 반환하지 않았습니다");
     }
     const entry = "entry" in resolvedConfig ? resolvedConfig.entry : undefined;
     const plugins = "plugins" in resolvedConfig ? resolvedConfig.plugins : undefined;
 
     expect(entry).toMatchObject({ index: "src/index.ts" });
-    expect(typeof entry === "object" && entry !== null ? Object.values(entry) : []).toContain(
+    expect(isObjectValue(entry) && entry !== null ? Object.values(entry) : []).toContain(
       registryPath,
     );
     expect(plugins).toEqual([
@@ -146,8 +148,6 @@ describe("API zod-compiler 빌드 정책", () => {
       baseConfigPath,
       `export default { entry: undefined, plugins: [{ name: "custom" }] };\n`,
     );
-    compilerPluginMock.mockReturnValue({ name: "zod-compiler" });
-
     const wrapperPath = await createApiZodCompilerBuildWrapper({
       apiRootPath,
       baseConfigPath,
@@ -156,19 +156,19 @@ describe("API zod-compiler 빌드 정책", () => {
     });
     const wrapperModule: unknown = await import(`${pathToFileURL(wrapperPath).href}?test=default`);
     if (
-      typeof wrapperModule !== "object" ||
+      !isObjectValue(wrapperModule) ||
       wrapperModule === null ||
       !("default" in wrapperModule) ||
-      typeof wrapperModule.default !== "function"
+      !isFunctionValue(wrapperModule.default)
     ) {
       throw new Error("build wrapper가 default config factory를 내보내지 않았습니다");
     }
     const resolvedConfig: unknown = await wrapperModule.default();
     if (
-      typeof resolvedConfig !== "object" ||
+      !isObjectValue(resolvedConfig) ||
       resolvedConfig === null ||
       !("entry" in resolvedConfig) ||
-      typeof resolvedConfig.entry !== "object" ||
+      !isObjectValue(resolvedConfig.entry) ||
       resolvedConfig.entry === null
     ) {
       throw new Error("build wrapper가 기본 entry를 포함한 object entry를 반환하지 않았습니다");
@@ -205,8 +205,6 @@ describe("API zod-compiler 빌드 정책", () => {
         "",
       ].join("\n"),
     );
-    compilerPluginMock.mockReturnValue({ name: "zod-compiler" });
-
     const wrapperPath = await createApiZodCompilerBuildWrapper({
       apiRootPath,
       baseConfigPath,
@@ -215,19 +213,19 @@ describe("API zod-compiler 빌드 정책", () => {
     });
     const wrapperModule: unknown = await import(`${pathToFileURL(wrapperPath).href}?test=relative`);
     if (
-      typeof wrapperModule !== "object" ||
+      !isObjectValue(wrapperModule) ||
       wrapperModule === null ||
       !("default" in wrapperModule) ||
-      typeof wrapperModule.default !== "function"
+      !isFunctionValue(wrapperModule.default)
     ) {
       throw new Error("build wrapper가 default config factory를 내보내지 않았습니다");
     }
     const resolvedConfig: unknown = await wrapperModule.default();
     if (
-      typeof resolvedConfig !== "object" ||
+      !isObjectValue(resolvedConfig) ||
       resolvedConfig === null ||
       !("entry" in resolvedConfig) ||
-      typeof resolvedConfig.entry !== "object" ||
+      !isObjectValue(resolvedConfig.entry) ||
       resolvedConfig.entry === null
     ) {
       throw new Error("build wrapper가 object entry를 반환하지 않았습니다");

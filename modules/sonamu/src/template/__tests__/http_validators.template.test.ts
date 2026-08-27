@@ -5,8 +5,10 @@ import { pathToFileURL } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { type SonamuConfig } from "../../api/config";
 import { type ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
+import { Syncer } from "../../syncer/syncer";
 import { Template__http_validators } from "../implementations/http_validators.template";
 
 function createApi(overrides: {
@@ -51,24 +53,35 @@ function readFingerprint(body: string): string {
   return match[1];
 }
 
+const testConfig = {
+  api: { dir: ".", route: { prefix: "/api" } },
+  i18n: { defaultLocale: "ko", supportedLocales: ["ko"] },
+  sync: { targets: [] },
+  validation: { zodCompiler: { api: "aot" } },
+  database: {},
+  server: {
+    apiConfig: {
+      contextProvider: (defaultContext) => defaultContext,
+      guardHandler: () => undefined,
+    },
+  },
+} satisfies SonamuConfig;
+
+function setSyncerState(apis: ExtendedApi[]) {
+  const syncer = new Syncer();
+  syncer.apis = apis;
+  syncer.types = {};
+  Sonamu.syncer = syncer;
+}
+
 describe("Template__http_validators 생성 계약", () => {
-  let originalConfig: unknown;
-  let originalSyncer: unknown;
   const tempRoots: string[] = [];
 
   beforeEach(() => {
-    originalConfig = Reflect.get(Sonamu, "_config");
-    originalSyncer = Reflect.get(Sonamu, "_syncer");
-    Reflect.set(Sonamu, "_config", {
-      api: { route: { prefix: "/api" } },
-      sync: { targets: [] },
-      validation: { zodCompiler: { api: "aot" } },
-    });
+    Sonamu.config = testConfig;
   });
 
   afterEach(async () => {
-    Reflect.set(Sonamu, "_config", originalConfig);
-    Reflect.set(Sonamu, "_syncer", originalSyncer);
     await Promise.all(
       tempRoots.splice(0).map((rootPath) => rm(rootPath, { recursive: true, force: true })),
     );
@@ -83,10 +96,10 @@ describe("Template__http_validators 생성 계약", () => {
     ];
     const template = new Template__http_validators();
 
-    Reflect.set(Sonamu, "_syncer", { apis, types: {} });
-    const first = template.render({});
-    Reflect.set(Sonamu, "_syncer", { apis: [...apis].reverse(), types: {} });
-    const reordered = template.render({});
+    setSyncerState(apis);
+    const first = template.render();
+    setSyncerState(apis.toReversed());
+    const reordered = template.render();
 
     expect(first.body).toBe(reordered.body);
     expect(first.body.match(/\bcompile\(/g)).toHaveLength(4);
@@ -102,8 +115,8 @@ describe("Template__http_validators 생성 계약", () => {
         path: "/report/find-alternate",
       }),
     ];
-    Reflect.set(Sonamu, "_syncer", { apis: changedApis, types: {} });
-    const changed = template.render({});
+    setSyncerState(changedApis);
+    const changed = template.render();
 
     expect(readFingerprint(changed.body)).not.toBe(readFingerprint(first.body));
   });
@@ -114,20 +127,17 @@ describe("Template__http_validators 생성 계약", () => {
       modelName: "ReportModel",
       path: "/report/find",
     });
-    Reflect.set(Sonamu, "_syncer", {
-      apis: [duplicatedApi, { ...duplicatedApi }],
-      types: {},
-    });
+    setSyncerState([duplicatedApi, { ...duplicatedApi }]);
 
     const template = new Template__http_validators();
 
-    expect(() => template.render({})).toThrow();
+    expect(() => template.render()).toThrow();
   });
 
   it("REST API가 0개인 AOT registry는 compiler import 없이 내보내며 독립적으로 로드된다", async () => {
-    Reflect.set(Sonamu, "_syncer", { apis: [], types: {} });
+    setSyncerState([]);
 
-    const rendered = new Template__http_validators().render({});
+    const rendered = new Template__http_validators().render();
     const source = [...(rendered.customHeaders ?? []), rendered.body].join("\n");
 
     expect(rendered.body).toMatch(/export const validators = new Map\(\[\s*\]\);/);

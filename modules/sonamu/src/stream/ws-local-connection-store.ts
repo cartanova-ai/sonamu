@@ -1,3 +1,4 @@
+import { isFunctionValue } from "../utils/runtime-value";
 import { type ManagedWebSocketConnection } from "./ws-core";
 import {
   type WebSocketTelemetryConnectionSnapshot,
@@ -71,7 +72,5 @@ export class WebSocketLocalConnectionStore {
 function isTelemetryInspectableConnection(
   connection: ManagedWebSocketConnection,
 ): connection is ManagedWebSocketConnection & TelemetryInspectableConnection {
-  return (
-    "getTelemetrySnapshot" in connection && typeof connection.getTelemetrySnapshot === "function"
-  );
+  return "getTelemetrySnapshot" in connection && isFunctionValue(connection.getTelemetrySnapshot);
 }

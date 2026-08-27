@@ -13,6 +13,7 @@ describe("Hydrate", () => {
     type Input = { id: number; name: string };
     type Result = Hydrate<Input>;
 
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const result = {} as Result;
     expectTypeOf(result).toEqualTypeOf<Hydrate<Input>>();
   });
@@ -21,6 +22,7 @@ describe("Hydrate", () => {
     type Input = { id: number; user__name: string; user__email: string };
     type Result = Hydrate<Input>;
 
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const result = {} as Result;
     expectTypeOf(result).toEqualTypeOf<{
       id: number;
@@ -37,6 +39,7 @@ describe("Hydrate", () => {
     };
     type Result = Hydrate<Input>;
 
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const result = {} as Result;
     expectTypeOf(result).toEqualTypeOf<{
       id: number;
@@ -57,6 +60,7 @@ describe("Hydrate", () => {
     };
     type Result = Hydrate<Input>;
 
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const result = {} as Result;
     expectTypeOf(result).toEqualTypeOf<{
       id: number;
@@ -69,6 +73,7 @@ describe("Hydrate", () => {
     type Input = {};
     type Result = Hydrate<Input>;
 
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const result = {} as Result;
     expectTypeOf(result).toEqualTypeOf<{}>();
   });
@@ -81,6 +86,7 @@ describe("Hydrate", () => {
     };
     type Result = Hydrate<Input>;
 
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const result = {} as Result;
     expectTypeOf(result).toEqualTypeOf<{
       id: number;
@@ -97,6 +103,7 @@ describe("Hydrate", () => {
     };
     type Result = Hydrate<Input>;
 
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const result = {} as Result;
     expectTypeOf(result).toEqualTypeOf<{
       id: number;
@@ -122,6 +129,7 @@ describe("LoadersResult", () => {
     ];
     type Result = LoadersResult<Loaders>;
 
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const result = {} as Result;
     expectTypeOf(result).toHaveProperty("posts");
     expectTypeOf(result).toEqualTypeOf<{ posts: { id: number; title: string }[] }>();
@@ -154,6 +162,7 @@ describe("LoadersResult", () => {
     ];
     type Result = LoadersResult<Loaders>;
 
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const result = {} as Result;
     expectTypeOf(result).toHaveProperty("posts");
     expectTypeOf(result).toEqualTypeOf<{
@@ -193,6 +202,7 @@ describe("LoadersResult", () => {
     ];
     type Result = LoadersResult<Loaders>;
 
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const result = {} as Result;
     expectTypeOf(result).toEqualTypeOf<{
       items: {
@@ -245,6 +255,7 @@ describe("LoadersResult", () => {
     type Loaders = [ProjectLoader, DepartmentLoader, EmployeeLoader];
     type Result = LoadersResult<Loaders>;
 
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const result = {} as Result;
     expectTypeOf(result).toHaveProperty("projects");
     expectTypeOf(result).toHaveProperty("employees");
@@ -284,6 +295,7 @@ describe("InferAllSubsets", () => {
       // Result
       type Result = InferAllSubsets<SubsetQueries, LoaderQueries>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toHaveProperty("A");
       expectTypeOf(result.A).toEqualTypeOf<{
@@ -331,6 +343,7 @@ describe("InferAllSubsets", () => {
       // Result
       type Result = InferAllSubsets<SubsetQueries, LoaderQueries>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toHaveProperty("A");
       expectTypeOf(result).toEqualTypeOf<{
@@ -382,6 +395,7 @@ describe("InferAllSubsets", () => {
       // Result
       type Result = InferAllSubsets<SubsetQueries, LoaderQueries>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         A: {
@@ -436,6 +450,7 @@ describe("InferAllSubsets", () => {
 
       type Result = InferAllSubsets<SubsetQueries, LoaderQueries>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         A: {
@@ -492,6 +507,7 @@ describe("InferAllSubsets", () => {
       // Result
       type Result = InferAllSubsets<SubsetQueries, LoaderQueries>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         A: { id: number; name: string; email: string; department: { name: string } };
@@ -553,6 +569,7 @@ describe("InferAllSubsets", () => {
       // Result
       type Result = InferAllSubsets<SubsetQueries, LoaderQueries>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         A: {

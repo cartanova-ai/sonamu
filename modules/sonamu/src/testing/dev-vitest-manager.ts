@@ -9,6 +9,7 @@ import {
   type TestSuite,
   type Vitest,
 } from "vitest/node";
+import { z } from "zod";
 
 import { type SerializedTrace } from "../naite/naite";
 
@@ -24,10 +25,17 @@ export type TestCaseResult = {
   file: string;
   state: TestState;
   durationMs: number | null;
-  counts: { total: number; passed: number; failed: number; skipped: number };
+  counts: TestCounts;
   error: { message: string; stack?: string } | null;
   traces: SerializedTrace[];
   children: TestCaseResult[];
+};
+
+export type TestCounts = {
+  total: number;
+  passed: number;
+  failed: number;
+  skipped: number;
 };
 
 export type RunResult = {
@@ -48,17 +56,65 @@ export type ManagerStatus = {
   lastRunAt: string | null;
 };
 
-export type TestEventListener = (event: string, data: unknown) => void;
+export type TestEventPayload =
+  | { schemaVersion: number; runId: string; queuedAt: string; request: RunRequest }
+  | { schemaVersion: number; runId: string; startedAt: string }
+  | {
+      schemaVersion: number;
+      runId: string;
+      startedAt: string;
+      finishedAt: string;
+      result: RunResult;
+    }
+  | {
+      schemaVersion: number;
+      runId: string;
+      finishedAt: string;
+      error: { message: string; stack?: string };
+    }
+  | {
+      schemaVersion: 1;
+      runId: string;
+      startedAt: string;
+      at: string;
+      kind: TestNodeKind;
+      phase: "ready" | "result";
+      fileId: string;
+      nodeId: string;
+      parentId: string | null;
+      node: TestCaseResult;
+    };
+
+export type RunRequest = { files?: string[]; pattern?: string };
+export type TestEventListener = (event: string, data: TestEventPayload) => void;
 
 type QueueEntry = {
   runId: string;
   task: () => Promise<RunResult>;
   resolve: (result: RunResult) => void;
-  reject: (error: unknown) => void;
+  reject: (error: Error) => void;
 };
 
+export type ManagedVitest = Pick<
+  Vitest,
+  | "standalone"
+  | "close"
+  | "onFilterWatchedSpecification"
+  | "invalidateFile"
+  | "globTestSpecifications"
+  | "runTestSpecifications"
+  | "setGlobalTestNamePattern"
+  | "resetGlobalTestNamePattern"
+>;
+
+export type DevVitestFactory = (
+  mode: "test",
+  options: CliOptions,
+  viteOverrides: ViteUserConfig,
+) => Promise<ManagedVitest>;
+
 export class DevVitestManager {
-  private vitest: Vitest | null = null;
+  private vitest: ManagedVitest | null = null;
   private running = false;
   private lastRunAt: string | null = null;
   private queue: QueueEntry[] = [];
@@ -71,6 +127,8 @@ export class DevVitestManager {
     specModuleIds: Set<string>;
   } | null = null;
 
+  constructor(private readonly vitestFactory?: DevVitestFactory) {}
+
   addEventListener(listener: TestEventListener): void {
     this.eventListeners.add(listener);
   }
@@ -79,7 +137,7 @@ export class DevVitestManager {
     this.eventListeners.delete(listener);
   }
 
-  emitEvent(event: string, data: unknown): void {
+  emitEvent(event: string, data: TestEventPayload): void {
     for (const listener of this.eventListeners) {
       listener(event, data);
     }
@@ -91,7 +149,12 @@ export class DevVitestManager {
       return;
     }
 
-    const { createVitest } = await import("vitest/node");
+    const createVitest =
+      this.vitestFactory ??
+      (async (...args: Parameters<DevVitestFactory>) => {
+        const vitestModule = await import("vitest/node");
+        return vitestModule.createVitest(...args);
+      });
 
     const viteOverrides: ViteUserConfig = {
       server: { watch: null },
@@ -211,7 +274,7 @@ export class DevVitestManager {
           const result = await entry.task();
           entry.resolve(result);
         } catch (err) {
-          entry.reject(err);
+          entry.reject(err instanceof Error ? err : new Error(String(err)));
         }
       }
     } finally {
@@ -543,7 +606,7 @@ export class DevVitestManager {
     const raw = testCase.meta().traces;
     let traces: SerializedTrace[] = [];
     if (Array.isArray(raw) && raw.length > 0) {
-      traces = raw.filter(isSerializedTrace);
+      traces = parseSerializedTraces(raw);
     }
 
     return {
@@ -611,12 +674,7 @@ function mapTestResult(
   }
 }
 
-function countFromState(state: TestState): {
-  total: number;
-  passed: number;
-  failed: number;
-  skipped: number;
-} {
+function countFromState(state: TestState): TestCounts {
   switch (state) {
     case "passed":
       return { total: 1, passed: 1, failed: 0, skipped: 0 };
@@ -631,12 +689,7 @@ function countFromState(state: TestState): {
   }
 }
 
-function aggregateCounts(children: TestCaseResult[]): {
-  total: number;
-  passed: number;
-  failed: number;
-  skipped: number;
-} {
+function aggregateCounts(children: TestCaseResult[]): TestCounts {
   let total = 0;
   let passed = 0;
   let failed = 0;
@@ -682,16 +735,19 @@ function getResultCompletenessScore(node: TestCaseResult): number {
   return score;
 }
 
-function isSerializedTrace(value: unknown): value is SerializedTrace {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.key === "string" &&
-    typeof v.filePath === "string" &&
-    typeof v.lineNumber === "number" &&
-    typeof v.at === "string" &&
-    "value" in v
-  );
+const serializedTraceSchema = z.object({
+  key: z.string(),
+  value: z.unknown(),
+  filePath: z.string(),
+  lineNumber: z.number(),
+  at: z.string(),
+});
+
+type SerializedTraceCandidate = object | string | number | boolean | bigint | symbol | null;
+
+function parseSerializedTraces(values: readonly SerializedTraceCandidate[]): SerializedTrace[] {
+  return values.flatMap((value) => {
+    const parsed = serializedTraceSchema.safeParse(value);
+    return parsed.success ? [parsed.data] : [];
+  });
 }

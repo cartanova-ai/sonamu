@@ -1,39 +1,29 @@
 import Fastify from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { type DevTestRouteManager } from "../dev-test-routes";
+import { registerDevTestRoutes } from "../dev-test-routes";
 import { type ManagerStatus, type RunResult } from "../dev-vitest-manager";
 
-// vi.hoisted를 사용하여 mock 객체를 vi.mock 호이스팅 이전에 초기화
-const mockManager = vi.hoisted(() => ({
+// 라우트가 의존하는 매니저 기능을 모두 제공하는 테스트 대역입니다.
+const mockManager = {
   start: vi.fn(),
   run: vi.fn(),
   getStatus: vi.fn(),
   emitEvent: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
   shutdown: vi.fn(),
-}));
-
-// DevVitestManager를 모킹하여 new DevVitestManager()가 mockManager 인스턴스를 반환하도록 설정
-vi.mock("../dev-vitest-manager", () => {
-  // oxlint-disable-next-line prefer-arrow-callback -- vi.fn 생성자 모킹에는 function 키워드가 필요
-  const MockDevVitestManager = vi.fn(function () {
-    return mockManager;
-  });
-  return { DevVitestManager: MockDevVitestManager };
-});
-
-vi.mock("../../api/sonamu", () => ({
-  Sonamu: {
-    apiRootPath: "/tmp/fixture-api",
-    config: { server: { plugins: {} } },
-    devVitestManager: null,
-  },
-}));
-
-import { registerDevTestRoutes } from "../dev-test-routes";
+} satisfies DevTestRouteManager;
 
 const defaultConfig = {
   enabled: true as const,
   routePrefix: "/__test__",
+};
+const dependencies = {
+  manager: mockManager,
+  apiRootPath: "/tmp/fixture-api",
+  sseAvailable: false,
 };
 
 const okRunResult: RunResult = {
@@ -58,7 +48,7 @@ describe("registerDevTestRoutes", () => {
     mockManager.run.mockResolvedValue(okRunResult);
     mockManager.getStatus.mockReturnValue(okStatus);
     mockManager.shutdown.mockResolvedValue(undefined);
-    await registerDevTestRoutes(app, defaultConfig);
+    await registerDevTestRoutes(app, defaultConfig, dependencies);
   });
 
   afterEach(async () => {
@@ -147,10 +137,14 @@ describe("registerDevTestRoutes", () => {
       mockManager.getStatus.mockReturnValue(okStatus);
       mockManager.shutdown.mockResolvedValue(undefined);
 
-      await registerDevTestRoutes(customApp, {
-        enabled: true,
-        routePrefix: "/api/test",
-      });
+      await registerDevTestRoutes(
+        customApp,
+        {
+          enabled: true,
+          routePrefix: "/api/test",
+        },
+        dependencies,
+      );
 
       const res = await customApp.inject({ method: "GET", url: "/api/test/status" });
       expect(res.statusCode).toBe(200);

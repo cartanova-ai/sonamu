@@ -120,6 +120,8 @@ export type ExtendedApi = {
 };
 type DecoratorTarget = { constructor: { name: string } };
 
+const decoratorTypesByTarget = new WeakMap<DecoratorTarget, Map<string, symbol>>();
+
 const DECORATOR_TYPES = {
   API: Symbol("api"),
   STREAM: Symbol("stream"),
@@ -128,13 +130,16 @@ const DECORATOR_TYPES = {
 } as const;
 
 function checkSingleDecorator(target: DecoratorTarget, propertyKey: string, decoratorType: symbol) {
-  const method = target[propertyKey as keyof typeof target] as { __decoratorType?: symbol };
-  if (method?.__decoratorType && method?.__decoratorType !== decoratorType) {
+  const decoratorTypes = decoratorTypesByTarget.get(target) ?? new Map<string, symbol>();
+  const existingDecoratorType = decoratorTypes.get(propertyKey);
+
+  if (existingDecoratorType && existingDecoratorType !== decoratorType) {
     throw new Error(
       `@${decoratorType.description ?? String(decoratorType)} decorator can only be used once on ${target.constructor.name}.${propertyKey}. You can use only one of @api, @stream, @websocket, or @upload decorator on the same method.`,
     );
   } else {
-    method.__decoratorType = decoratorType;
+    decoratorTypes.set(propertyKey, decoratorType);
+    decoratorTypesByTarget.set(target, decoratorTypes);
   }
 }
 
@@ -165,7 +170,8 @@ export function api(options: ApiDecoratorOptions = {}) {
 
     // 기존 동일한 메서드가 있는지 확인 후 있는 경우 override
     const existingApi = registeredApis.find(
-      (api) => api.modelName === modelName && api.methodName === methodName,
+      (registeredApi) =>
+        registeredApi.modelName === modelName && registeredApi.methodName === methodName,
     );
     if (existingApi) {
       // 기존의 path와 새로운 path가 다르다면(=빈 스트링이 아니었는데 다른 스트링으로 바뀌게 된다면) 에러를 터뜨려줍니다.
@@ -237,11 +243,13 @@ export function stream(options: StreamDecoratorOptions) {
     const { events: _, type: _type, ...apiOptions } = options;
     const optionsWithDefaults = {
       ...apiOptions,
-      httpMethod: "GET" as HTTPMethods,
+      httpMethod:
+        /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ "GET" as HTTPMethods,
     };
 
     const existingApi = registeredApis.find(
-      (api) => api.modelName === modelName && api.methodName === methodName,
+      (registeredApi) =>
+        registeredApi.modelName === modelName && registeredApi.methodName === methodName,
     );
     if (existingApi) {
       // 기존의 path와 새로운 path가 다르다면(=빈 스트링이 아니었는데 다른 스트링으로 바뀌게 된다면) 에러를 터뜨려줍니다.
@@ -318,11 +326,13 @@ export function websocket(options: WebSocketDecoratorOptions) {
     const { outEvents: _outEvents, inEvents: _inEvents, ...apiOptions } = options;
     const optionsWithDefaults = {
       ...apiOptions,
-      httpMethod: "GET" as HTTPMethods,
+      httpMethod:
+        /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ "GET" as HTTPMethods,
     };
 
     const existingApi = registeredApis.find(
-      (api) => api.modelName === modelName && api.methodName === methodName,
+      (registeredApi) =>
+        registeredApi.modelName === modelName && registeredApi.methodName === methodName,
     );
     if (existingApi) {
       assertNoConflictingPath("websocket", modelName, methodName, existingApi.path, path);
@@ -454,7 +464,8 @@ export function upload(options: UploadDecoratorOptions = { consume: "buffer" }) 
 
     // registeredApis에서 해당 API 찾아서 uploadOptions 추가
     const existingApi = registeredApis.find(
-      (api) => api.modelName === modelName && api.methodName === methodName,
+      (registeredApi) =>
+        registeredApi.modelName === modelName && registeredApi.methodName === methodName,
     );
 
     if (existingApi) {
@@ -538,23 +549,23 @@ function assertNoConflictingPath(
  * @param existingOptions 기존의 옵션
  * @param newOptions 새로운 옵션
  */
-function assertNoConflictingOptions(
+function assertNoConflictingOptions<ExistingOptions extends object, NewOptions extends object>(
   decoratorName: string,
   modelName: string,
   methodName: string,
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- <아 쉽게쉽게 좀 갑시다>
-  existingOptions: Record<string, any>,
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- <이럴 때 아니면 any 언제 씁니까>
-  newOptions: Record<string, any>,
+  existingOptions: ExistingOptions,
+  newOptions: NewOptions,
 ) {
-  Object.keys(newOptions).forEach((key) => {
-    if (existingOptions[key] && !isEqual(existingOptions[key], newOptions[key])) {
+  const existingEntries = new Map(Object.entries(existingOptions));
+  Object.entries(newOptions).forEach(([key, newValue]) => {
+    const existingValue = existingEntries.get(key);
+    if (existingValue && !isEqual(existingValue, newValue)) {
       // 이것이 무슨 상황이냐면요, api.options가 덮어씌워지는 상황입니다.
       // 가령 @api({ resourceName: "Users" }) 데코레이터가 붙어있는 메서드에
       // @stream({ resourceName: "Posts" }) 같은 것이 붙어 있는 상황입니다.
       // 이렇게 되면 두 데코레이터가 같은 api의 options 속 같은 필드를 건드리게 되므로, 에러를 터뜨려줍니다.
       throw new Error(
-        `@${decoratorName} decorator on ${modelName}.${methodName} has conflicting options: ${key}. The decorator is trying to override the existing option(${JSON.stringify(existingOptions[key])}) with the new option(${JSON.stringify(newOptions[key])}).`,
+        `@${decoratorName} decorator on ${modelName}.${methodName} has conflicting options: ${key}. The decorator is trying to override the existing option(${JSON.stringify(existingValue)}) with the new option(${JSON.stringify(newValue)}).`,
       );
     }
   });

@@ -1,9 +1,7 @@
-import { type SonamuQueryMode } from "../types/types";
+import { type SonamuQueryMode, type SonamuSemanticParams } from "../types/types";
 
 // semanticQuery가 있으면 similarity를 추가하는 조건부 타입
-type WithSimilarity<LP, T> = LP extends { semanticQuery: Record<string, unknown> }
-  ? T & { similarity: number }
-  : T;
+type WithSimilarity<LP, T> = "semanticQuery" extends keyof LP ? T & { similarity: number } : T;
 
 export type ListResult<
   LP extends { queryMode?: SonamuQueryMode },
@@ -20,6 +18,7 @@ export function asArray<T>(param: T | T[]): T[] {
   if (Array.isArray(param)) {
     return param;
   } else {
+    // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
     return [param] as T[];
   }
 }
@@ -39,5 +38,5 @@ export interface BaseListParams {
   page?: number;
   keyword?: string;
   queryMode?: "list" | "count" | "both";
-  semanticQuery?: Record<string, unknown>;
+  semanticQuery?: SonamuSemanticParams["semanticQuery"];
 }

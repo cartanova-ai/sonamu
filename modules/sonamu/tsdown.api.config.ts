@@ -6,9 +6,12 @@ import { defineConfig } from "tsdown";
 const srcRoot = path.resolve(process.cwd(), "src");
 const ignoredSuffixes = [".test.ts", ".test-hold.ts", ".ignore.ts", ".d.ts"];
 const ignoredDirectories = new Set(["__mocks__", "_templates", "wasted_src"]);
+interface BuildEntries {
+  [entryName: string]: string;
+}
 
-function collectEntries(directory: string): Record<string, string> {
-  const entries: Record<string, string> = {};
+function collectEntries(directory: string): BuildEntries {
+  const entries: BuildEntries = {};
 
   for (const entry of readdirSync(directory)) {
     if (ignoredDirectories.has(entry)) {

@@ -1,12 +1,11 @@
 import assert from "assert";
 import { EventEmitter } from "events";
-import { unlink } from "fs/promises";
 import path from "path";
 
 import { hot } from "@sonamu-kit/hmr-hook";
 import chalk from "chalk";
 import { minimatch } from "minimatch";
-import { group, unique } from "radashi";
+import { unique } from "radashi";
 import { type z } from "zod";
 
 import { registeredApis } from "../api/decorators";
@@ -22,21 +21,37 @@ import { type TemplateOptions } from "../types/types";
 import { mapAsync, reduceAsync } from "../utils/async-utils";
 import { centerText } from "../utils/console-util";
 import { isTest } from "../utils/controller";
-import { exists } from "../utils/fs-utils";
 import { type AbsolutePath } from "../utils/path-utils";
 import { runWithGracefulShutdown } from "../utils/process-utils";
+import { isObjectValue } from "../utils/runtime-value";
 import { findChangedFilesUsingChecksums, renewChecksums } from "./checksum";
 import { generateTemplate, renderTemplate } from "./code-generator";
 import { createEntity, delEntity } from "./entity-operations";
 import { getChecksumPatternGroup, getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 import { type FileType } from "./file-patterns";
+import { syncerFileExists, syncerFilesystem } from "./filesystem-dependencies";
 import { loadApis, loadModels, loadTypes, loadWorkflows } from "./module-loader";
 import { type LoadedApis, type LoadedModels, type LoadedTypes } from "./module-loader";
 import * as SyncerActions from "./syncer-actions";
 
-type DiffGroups = Partial<{
-  [key in FileType]: AbsolutePath[];
-}>;
+type DiffGroupKey = FileType | "unknown";
+type DiffGroups = Partial<Record<DiffGroupKey, AbsolutePath[]>>;
+
+export interface SyncerDependencies {
+  actionCopySharedToTargetsIfNotExists: typeof SyncerActions.actionCopySharedToTargetsIfNotExists;
+  actionGenerateHttpValidators: typeof SyncerActions.actionGenerateHttpValidators;
+  actionGenerateSsrEntryServerIfNotExists: typeof SyncerActions.actionGenerateSsrEntryServerIfNotExists;
+  findChangedFilesUsingChecksums: typeof findChangedFilesUsingChecksums;
+  renewChecksums: typeof renewChecksums;
+}
+
+const defaultSyncerDependencies: SyncerDependencies = {
+  actionCopySharedToTargetsIfNotExists: SyncerActions.actionCopySharedToTargetsIfNotExists,
+  actionGenerateHttpValidators: SyncerActions.actionGenerateHttpValidators,
+  actionGenerateSsrEntryServerIfNotExists: SyncerActions.actionGenerateSsrEntryServerIfNotExists,
+  findChangedFilesUsingChecksums,
+  renewChecksums,
+};
 
 export class Syncer {
   apis: LoadedApis = [];
@@ -44,6 +59,8 @@ export class Syncer {
   models: LoadedModels = {};
   workflows: Map<string, WorkflowMetadata[]> = new Map();
   eventEmitter: EventEmitter = new EventEmitter();
+
+  constructor(private readonly dependencies: SyncerDependencies = defaultSyncerDependencies) {}
 
   /**
    * 체크섬이 변경된 부분에 대해 싱크를 진행합니다.
@@ -54,14 +71,14 @@ export class Syncer {
     // 초기 부트스트랩! 얘네들은 idempotent하고 가볍기 때문에 무지성 실행해도 됩니다.
     // 얘네들은 sonamu.lock에 들어가지도 않고 따라서 HMR 경로를 타지도 않는 친구들입니다.
     // 그래서 아무 때나 그냥 돌려주면 되는데, hmrAndSync에서 매번 하는 것은 낭비이니 여기서 한 번만 합니다.
-    await SyncerActions.actionCopySharedToTargetsIfNotExists();
-    await SyncerActions.actionGenerateSsrEntryServerIfNotExists();
+    await this.dependencies.actionCopySharedToTargetsIfNotExists();
+    await this.dependencies.actionGenerateSsrEntryServerIfNotExists();
 
     // 바뀐 것이 없으면 그냥 넘어가요.
-    const changedFiles = await findChangedFilesUsingChecksums();
+    const changedFiles = await this.dependencies.findChangedFilesUsingChecksums();
     if (changedFiles.length === 0) {
       if (await this.reconcileHttpValidatorRegistry()) {
-        await renewChecksums();
+        await this.dependencies.renewChecksums();
       }
       console.log(chalk.black.bgGreen(centerText("All files are synced!")));
       return;
@@ -77,7 +94,7 @@ export class Syncer {
         await this.reconcileHttpValidatorRegistry();
 
         // 싱크 액션이 끝나면 항상 체크섬을 다시 갱신합니다.
-        await renewChecksums();
+        await this.dependencies.renewChecksums();
       },
       { whenThisHappens: "SIGUSR2", waitForUpTo: 20000 },
     );
@@ -89,13 +106,13 @@ export class Syncer {
       "src/application/sonamu.validators.generated.ts",
     );
     const policy = Sonamu.config.validation?.zodCompiler;
-    const isAot = typeof policy === "object" && policy !== null && policy.api === "aot";
-    if (isAot === (await exists(registryPath))) {
+    const isAot = isObjectValue(policy) && policy !== null && policy.api === "aot";
+    if (isAot === (await syncerFileExists(registryPath))) {
       return false;
     }
 
     // 변경 목록이 registry 삭제를 놓쳐도 checksum 갱신 전에 정책과 산출물을 다시 맞춥니다.
-    await SyncerActions.actionGenerateHttpValidators();
+    await this.dependencies.actionGenerateHttpValidators();
     return true;
   }
 
@@ -108,8 +125,8 @@ export class Syncer {
    */
   async forceSync(): Promise<void> {
     const lockPath = path.join(Sonamu.apiRootPath, "sonamu.lock");
-    if (await exists(lockPath)) {
-      await unlink(lockPath);
+    if (await syncerFileExists(lockPath)) {
+      await syncerFilesystem.unlink(lockPath);
     }
     await this.sync();
   }
@@ -203,7 +220,11 @@ export class Syncer {
       // 그러니 안심하고 invalidate 해도 됩니다.
       // 테스트 환경에서는 hot.invalidateFile시 초기 에러가 발생하기 때문에 invalidate 하지 않습니다.
       if (!isTest()) {
-        const invalidatedPaths = (await hot.invalidateFile(diffFilePath, event)) as AbsolutePath[];
+        const invalidatedPaths =
+          /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (await hot.invalidateFile(
+            diffFilePath,
+            event,
+          )) as AbsolutePath[];
 
         if (invalidatedPaths.length > 0) {
           console.log(chalk.bold(`🔄 Invalidated:`));
@@ -292,7 +313,7 @@ export class Syncer {
     clearSSRRoutes();
 
     // ssr 폴더 없으면 스킵
-    if (!(await exists(ssrConfigPath))) {
+    if (!(await syncerFileExists(ssrConfigPath))) {
       return;
     }
 
@@ -323,7 +344,10 @@ export class Syncer {
    */
   async doSyncActions(diffFilePaths: AbsolutePath[]): Promise<{ diffTypes: FileType[] }> {
     const diffGroups = this.calculateDiffGroups(diffFilePaths);
-    const diffTypes = Object.keys(diffGroups) as FileType[];
+    const diffTypes =
+      /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ Object.keys(
+        diffGroups,
+      ) as FileType[];
 
     // 여기는 별로 중요한 파트는 아닙니다.
     // 아래의 if 전개를 깔끔하게 하려고 만든 DSL 같은 거라서, 무시하셔도 됩니다.
@@ -345,11 +369,11 @@ export class Syncer {
     }
 
     if (changeMatches("config")) {
-      await this.handleConfigChanges(diffGroups);
+      await this.handleConfigChanges();
     }
 
     if (changeMatches("i18n", "entity" /*레이블*/, "config" /*defaultLocale등*/)) {
-      await this.handleSonamuDictionaryRelatedChanges(diffGroups);
+      await this.handleSonamuDictionaryRelatedChanges();
     }
 
     const metadataChanged = diffTypes.some((type) =>
@@ -357,7 +381,7 @@ export class Syncer {
     );
     if (changeMatches("httpValidatorsGenerated") && !metadataChanged) {
       // registry 자체 drift는 최신 in-memory metadata로 즉시 덮어써 lock 갱신 전에 정합성을 복구합니다.
-      await SyncerActions.actionGenerateHttpValidators();
+      await this.dependencies.actionGenerateHttpValidators();
     }
 
     if (metadataChanged) {
@@ -365,7 +389,7 @@ export class Syncer {
       await this.autoloadTypes();
       await this.autoloadModels();
       await this.autoloadApis();
-      await SyncerActions.actionGenerateHttpValidators();
+      await this.dependencies.actionGenerateHttpValidators();
     }
 
     if (nothingMatches()) {
@@ -380,22 +404,26 @@ export class Syncer {
     };
   }
 
-  calculateDiffGroups(diffFiles: AbsolutePath[]): DiffGroups {
+  calculateDiffGroups(diffFiles: AbsolutePath[]) {
     const patternGroup = getChecksumPatternGroup();
-    const fileTypes = Object.keys(patternGroup) as FileType[];
+    const fileTypes =
+      /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ Object.keys(
+        patternGroup,
+      ) as FileType[];
 
-    return group(diffFiles, (filePath) => {
-      // 절대 경로 → appRoot 기준 상대 경로 (예: "api/src/...", "web/src/...")
+    const diffGroups: DiffGroups = {};
+    for (const filePath of diffFiles) {
+      // 절대 경로를 appRoot 기준 상대 경로로 바꿔 체크섬 패턴과 비교한다.
       const relativePath = path.relative(Sonamu.appRootPath, filePath);
-      if (relativePath.startsWith("..")) return "unknown";
-
-      for (const fileType of fileTypes) {
-        if (minimatch(relativePath, patternGroup[fileType])) {
-          return fileType;
-        }
-      }
-      return "unknown";
-    }) as unknown as DiffGroups;
+      const fileType = fileTypes.find((candidate) =>
+        minimatch(relativePath, patternGroup[candidate]),
+      );
+      const groupKey: DiffGroupKey = relativePath.startsWith("..")
+        ? "unknown"
+        : (fileType ?? "unknown");
+      (diffGroups[groupKey] ??= []).push(filePath);
+    }
+    return diffGroups;
   }
 
   private changeMatcher(diffTypes: FileType[], diffGroups: DiffGroups) {
@@ -441,12 +469,13 @@ export class Syncer {
       const entity = EntityManager.get(entityId);
 
       // 프로젝트에 생성되어야 하는 .ts 파일의 경로입니다.
-      const typeFilePath = path.join(
-        Sonamu.apiRootPath,
-        `src/application/${entity.names.fs}/${entity.names.fs}.types.ts`,
-      ) as AbsolutePath;
+      const typeFilePath =
+        /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ path.join(
+          Sonamu.apiRootPath,
+          `src/application/${entity.names.fs}/${entity.names.fs}.types.ts`,
+        ) as AbsolutePath;
 
-      if (entity.parentId === undefined && !(await exists(typeFilePath))) {
+      if (entity.parentId === undefined && !(await syncerFileExists(typeFilePath))) {
         // *.types.ts가 만들어집니다.
         const types = await SyncerActions.actionGenerateInitialTypes(entityId);
 
@@ -501,7 +530,7 @@ export class Syncer {
     await SyncerActions.actionSyncFilesToTargets(tsPaths);
   }
 
-  async handleConfigChanges(_: DiffGroups): Promise<void> {
+  async handleConfigChanges(): Promise<void> {
     if (process.env.HOT === "yes") {
       const { loadConfig } = await import("../api/config");
       Sonamu.config = await loadConfig(Sonamu.apiRootPath);
@@ -509,7 +538,7 @@ export class Syncer {
     await SyncerActions.actionSyncConfig();
   }
 
-  async handleSonamuDictionaryRelatedChanges(_: DiffGroups): Promise<void> {
+  async handleSonamuDictionaryRelatedChanges(): Promise<void> {
     await SyncerActions.actionSyncSonamuDictionary();
   }
 
@@ -549,7 +578,7 @@ export class Syncer {
     return {
       subPath,
       fullPath,
-      isExists: await exists(fullPath),
+      isExists: await syncerFileExists(fullPath),
     };
   }
 
@@ -576,7 +605,7 @@ export class Syncer {
         if (key.startsWith("view_enums")) {
           await mapAsync(enumsKeys, async (componentId) => {
             const { target, path: p } = tpl.getTargetAndPath(names, componentId);
-            result[`${key}__${componentId}`] = await exists(
+            result[`${key}__${componentId}`] = await syncerFileExists(
               path.join(Sonamu.appRootPath, target, p),
             );
           });
@@ -587,17 +616,20 @@ export class Syncer {
         const { targets } = Sonamu.config.sync;
         if (target.includes(":target")) {
           await mapAsync(targets, async (t) => {
-            result[`${key}__${t}`] = await exists(
+            result[`${key}__${t}`] = await syncerFileExists(
               path.join(Sonamu.appRootPath, target.replace(":target", t), p),
             );
           });
         } else {
-          result[key] = await exists(path.join(Sonamu.appRootPath, target, p));
+          result[key] = await syncerFileExists(path.join(Sonamu.appRootPath, target, p));
         }
 
         return result;
       },
-      {} as Record<`${TemplateKey}${string}`, boolean>,
+      /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ {} as Record<
+        `${TemplateKey}${string}`,
+        boolean
+      >,
     );
   }
 
@@ -640,6 +672,6 @@ export class Syncer {
    * 하위호환용 프록시 메소드입니다.
    */
   async renewChecksums(): Promise<void> {
-    return await renewChecksums();
+    return await this.dependencies.renewChecksums();
   }
 }

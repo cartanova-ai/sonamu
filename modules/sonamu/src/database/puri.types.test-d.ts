@@ -71,6 +71,7 @@ describe("ExtractColumnType", () => {
       type Tables = { users: MockSchema["users"] };
       type Result = ExtractColumnType<Tables, "users.id">;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<number>();
     });
@@ -79,6 +80,7 @@ describe("ExtractColumnType", () => {
       type Tables = { users: MockSchema["users"] };
       type Result = ExtractColumnType<Tables, "users.department_id">;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<number | null>();
     });
@@ -87,6 +89,7 @@ describe("ExtractColumnType", () => {
       type Tables = { users: MockSchema["users"] };
       type Result = ExtractColumnType<Tables, "id">;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<number>();
     });
@@ -100,6 +103,7 @@ describe("ExtractColumnType", () => {
       };
       type Result = ExtractColumnType<Tables, "department.id">;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<number>();
     });
@@ -113,6 +117,7 @@ describe("ExtractColumnType", () => {
       };
       type Result = ExtractColumnType<Tables, "department.id">;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<number | null>();
     });
@@ -124,6 +129,7 @@ describe("ExtractColumnType", () => {
       };
       type Result = ExtractColumnType<Tables, "employee.salary">;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<string | null>();
     });
@@ -138,6 +144,7 @@ describe("ExtractColumnType", () => {
       };
       type Result = ExtractColumnType<Tables, "company.id">;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<number>();
     });
@@ -158,6 +165,7 @@ describe("ParseSelectObject", () => {
       };
       type Result = ParseSelectObject<Tables, Select>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         id: number;
@@ -173,6 +181,7 @@ describe("ParseSelectObject", () => {
       };
       type Result = ParseSelectObject<Tables, Select>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         id: number;
@@ -194,6 +203,7 @@ describe("ParseSelectObject", () => {
       };
       type Result = ParseSelectObject<Tables, Select>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         id: number;
@@ -216,6 +226,7 @@ describe("ParseSelectObject", () => {
       };
       type Result = ParseSelectObject<Tables, Select>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         id: number;
@@ -244,6 +255,7 @@ describe("ParseSelectObject", () => {
       };
       type Result = ParseSelectObject<Tables, Select>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         id: number;
@@ -270,6 +282,7 @@ describe("ParseSelectObject", () => {
       };
       type Result = ParseSelectObject<Tables, Select>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         id: number;
@@ -294,6 +307,7 @@ describe("ParseSelectObject", () => {
       };
       type Result = ParseSelectObject<Tables, Select>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       // employee 객체가 null이 아닐 때만 접근하므로, salary의 원래 nullability 유지
       expectTypeOf(result).toEqualTypeOf<{
@@ -325,6 +339,7 @@ describe("ParseSelectObject", () => {
       };
       type Result = ParseSelectObject<Tables, Select>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         id: number;
@@ -359,6 +374,7 @@ describe("ParseSelectObject", () => {
       };
       type Result = ParseSelectObject<Tables, Select>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         id: number;
@@ -404,6 +420,7 @@ describe("ParseSelectObject", () => {
       };
       type Result = ParseSelectObject<Tables, Select>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         id: number;
@@ -440,6 +457,7 @@ describe("ParseSelectObject", () => {
       };
       type Result = ParseSelectObject<Tables, Select>;
 
+      // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
       const result = {} as Result;
       expectTypeOf(result).toEqualTypeOf<{
         id: number;
@@ -524,7 +542,7 @@ describe("JsonColumns and JsonSupersetValue", () => {
     // @ts-expect-error undefined cannot be serialized as a JSONB containment value.
     const undefinedRoot: PreferencesValue = undefined;
 
-    const unknownValue: unknown = { notifications: { email: true } };
+    const unknownValue: unknown = structuredClone({ notifications: { email: true } });
     // @ts-expect-error unknown must be narrowed before it can be used as a containment value.
     const unknownRoot: PreferencesValue = unknownValue;
 
@@ -536,6 +554,7 @@ describe("JsonColumns and JsonSupersetValue", () => {
     expectTypeOf(unknownRoot).toExtend<PreferencesValue>();
 
     type Query = Puri<MockSchema, Tables, MockSchema["users"]>;
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const query = {} as Query;
 
     expectTypeOf(
@@ -575,6 +594,7 @@ describe("JsonColumns and JsonSupersetValue", () => {
 describe("Puri locking methods", () => {
   it("forUpdate 체이닝 후 first 결과 타입을 유지한다", () => {
     type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const query = {} as Query;
 
     const result = query.where("id", 1).forUpdate().first();
@@ -584,6 +604,7 @@ describe("Puri locking methods", () => {
 
   it("forShare 체이닝 후 first 결과 타입을 유지한다", () => {
     type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const query = {} as Query;
 
     const result = query.where("id", 1).forShare().first();
@@ -595,6 +616,7 @@ describe("Puri locking methods", () => {
 describe("Puri orderBy methods", () => {
   it("단일 컬럼 null ordering과 체이닝 타입을 지원한다", () => {
     type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const query = {} as Query;
 
     expectTypeOf(query.orderBy("id")).toEqualTypeOf<Query>();
@@ -605,6 +627,7 @@ describe("Puri orderBy methods", () => {
 
   it("여러 컬럼 orderBy item 배열을 지원한다", () => {
     type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const query = {} as Query;
 
     expectTypeOf(query.orderBy(["name", "email"])).toEqualTypeOf<Query>();
@@ -620,6 +643,7 @@ describe("Puri orderBy methods", () => {
   it("select 결과 컬럼을 orderBy에 사용할 수 있다", () => {
     type Result = { post_count: number };
     type Query = Puri<MockSchema, { users: MockSchema["users"] }, Result>;
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const query = {} as Query;
 
     expectTypeOf(query.orderBy("post_count", "desc", "last")).toEqualTypeOf<Query>();
@@ -631,6 +655,7 @@ describe("Puri orderBy methods", () => {
 
   it("SqlExpression orderBy를 지원한다", () => {
     type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const query = {} as Query;
     const expression = Puri.rawNumber("COUNT(*)");
 
@@ -643,6 +668,7 @@ describe("Puri orderBy methods", () => {
 
   it("잘못된 direction, nulls, column은 거부한다", () => {
     type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const query = {} as Query;
 
     // @ts-expect-error direction은 asc/desc만 허용한다.
@@ -665,6 +691,7 @@ describe("Puri orderBy methods", () => {
 describe("Puri ensureJoin methods", () => {
   it("ensureJoin 이후 alias 컬럼을 타입 안전하게 사용할 수 있다", () => {
     type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const query = {} as Query;
 
     const joined = query.ensureJoin(
@@ -681,6 +708,7 @@ describe("Puri ensureJoin methods", () => {
 
   it("ensureLeftJoin은 nullable FK의 객체 타입을 유지한다", () => {
     type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const query = {} as Query;
 
     const result = query
@@ -695,6 +723,7 @@ describe("Puri ensureJoin methods", () => {
 
   it("ensureLeftJoin은 non-null FK의 객체를 non-null로 추론한다", () => {
     type Query = Puri<MockSchema, { employees: MockSchema["employees"] }, MockSchema["employees"]>;
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const query = {} as Query;
 
     const result = query
@@ -709,6 +738,7 @@ describe("Puri ensureJoin methods", () => {
 
   it("ensureJoin은 callback 형식을 허용하지 않는다", () => {
     type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const query = {} as Query;
 
     // @ts-expect-error callback JOIN은 동일성을 판정할 수 없으므로 지원하지 않는다.

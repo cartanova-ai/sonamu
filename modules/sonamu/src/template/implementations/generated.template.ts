@@ -70,7 +70,7 @@ export class Template__generated extends Template {
           importKeys: unique([...result.importKeys, ...ts.importKeys].toSorted()),
         };
       },
-      {
+      /* SAFETY: reduce 누산기는 label을 제외한 SourceCode의 두 배열로 초기화된다. */ {
         lines: [],
         importKeys: [],
       } as Omit<SourceCode, "label">,
@@ -83,7 +83,7 @@ export class Template__generated extends Template {
     );
     if (cdImportKeys.length > 0) {
       const customScalarLines = cdImportKeys.flatMap((importKey) => {
-        const entity = entities.find((entity) => entity.types[importKey]);
+        const entity = entities.find((candidateEntity) => candidateEntity.types[importKey]);
         if (!entity) {
           throw new Error(`ZodType not found ${importKey}`);
         }
@@ -109,7 +109,8 @@ export class Template__generated extends Template {
     // import
     // sourceCode.importKeys에 내장 타입의 스키마가 있으면 sonamu import에 추가
     const builtInSchemaNames = Object.values(BUILT_IN_TYPES).map(
-      (info) => info.schemaName as string,
+      (info) =>
+        /* SAFETY: BUILT_IN_TYPES의 모든 항목은 생성 코드에 쓸 schemaName을 가진다. */ info.schemaName as string,
     );
     const builtInSchemas = sourceCode.importKeys.filter((key) => builtInSchemaNames.includes(key));
     const sonamuImports = [
@@ -146,7 +147,7 @@ export class Template__generated extends Template {
     return {
       label: `Enums: ${entity.id}`,
       lines: Object.entries(entity.enumLabels)
-        .filter(([_, enumLabel]) => Object.keys(enumLabel).length > 0)
+        .filter(([, enumLabel]) => Object.keys(enumLabel).length > 0)
         .flatMap(([enumId, enumLabel]) => [
           `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
             (el) => `"${el}"`,

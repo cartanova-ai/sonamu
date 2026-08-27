@@ -12,9 +12,10 @@ export function createBetterAuthRequest(
 
   replaceClientIpHeaders(headers, request.ip, ipAddressHeaders);
 
-  return new Request(url.toString(), {
+  const init: RequestInit = {
     method: request.method,
     headers,
-    ...(request.body ? { body: JSON.stringify(request.body) } : {}),
-  });
+  };
+  if (request.body) init.body = JSON.stringify(request.body);
+  return new Request(url.toString(), init);
 }

@@ -11,6 +11,18 @@ import {
 } from "../helpers";
 import { Template } from "../template";
 
+type FormDefaultValue =
+  | null
+  | undefined
+  | boolean
+  | number
+  | string
+  | never[]
+  | Record<string, never>;
+interface FormDefaults {
+  [columnName: string]: FormDefaultValue;
+}
+
 export class Template__view_form extends Template {
   constructor() {
     super("view_form");
@@ -149,41 +161,38 @@ export class Template__view_form extends Template {
     }
   }
 
-  resolveDefaultValue(columns: RenderingNode[]): object {
-    return columns.reduce(
-      (result, col) => {
-        if (col.optional) {
-          return result;
-        }
-
-        let value: unknown;
-        if (col.nullable === true) {
-          value = null;
-        } else if (col.zodType instanceof z.ZodNumber) {
-          value = 0;
-        } else if (col.zodType instanceof z.ZodEnum) {
-          value = Object.keys(col.zodType.enum)[0];
-        } else if (col.zodType instanceof z.ZodBoolean) {
-          value = false;
-        } else if (col.zodType instanceof z.core.$ZodString) {
-          // NOTE: z.ZodString으로 비교하면 z.url(), z.email() 등의 타입에서 문제가 생기므로 z.core.$ZodString으로 비교함
-          // FIXME: email이나 url 타입 등에 대한 처리가 필요함
-          if (col.renderType === "string-datetime") {
-            value = "now()";
-          } else {
-            value = "";
-          }
-        } else if (col.zodType instanceof z.ZodArray) {
-          value = [];
-        } else if (col.zodType instanceof z.ZodObject) {
-          value = {};
-        }
-
-        result[col.name] = value;
+  resolveDefaultValue(columns: RenderingNode[]): FormDefaults {
+    return columns.reduce<FormDefaults>((result, col) => {
+      if (col.optional) {
         return result;
-      },
-      {} as { [key: string]: unknown },
-    );
+      }
+
+      let value: FormDefaultValue;
+      if (col.nullable === true) {
+        value = null;
+      } else if (col.zodType instanceof z.ZodNumber) {
+        value = 0;
+      } else if (col.zodType instanceof z.ZodEnum) {
+        value = Object.keys(col.zodType.enum)[0];
+      } else if (col.zodType instanceof z.ZodBoolean) {
+        value = false;
+      } else if (col.zodType instanceof z.core.$ZodString) {
+        // NOTE: z.ZodString으로 비교하면 z.url(), z.email() 등의 타입에서 문제가 생기므로 z.core.$ZodString으로 비교함
+        // FIXME: email이나 url 타입 등에 대한 처리가 필요함
+        if (col.renderType === "string-datetime") {
+          value = "now()";
+        } else {
+          value = "";
+        }
+      } else if (col.zodType instanceof z.ZodArray) {
+        value = [];
+      } else if (col.zodType instanceof z.ZodObject) {
+        value = {};
+      }
+
+      result[col.name] = value;
+      return result;
+    }, {});
   }
 
   async render({ entityId }: TemplateOptions["view_form"]) {
@@ -228,12 +237,16 @@ export class Template__view_form extends Template {
         try {
           const { id } = getEnumInfoFromColName(entityId, col.name);
           enumImports.add(id);
-        } catch {}
+        } catch {
+          return;
+        }
       } else if (col.renderType === "number-fk_id" || col.renderType === "string-fk_id") {
         try {
           const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
           fkConfigImports.add(relProp.with);
-        } catch {}
+        } catch {
+          return;
+        }
       } else if (
         col.renderType === "string-plain" &&
         col.name.endsWith("_id") &&
@@ -243,14 +256,18 @@ export class Template__view_form extends Template {
         try {
           const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
           fkConfigImports.add(relProp.with);
-        } catch {}
+        } catch {
+          return;
+        }
       } else if (col.renderType === "array" && col.name.endsWith("_ids")) {
         // ManyToMany relation의 FK 배열
         try {
           const baseName = col.name.replace(/_ids$/, "");
           const relProp = getRelationPropFromColName(entityId, baseName);
           fkConfigImports.add(relProp.with);
-        } catch {}
+        } catch {
+          return;
+        }
       }
     });
 
@@ -295,7 +312,7 @@ import { defaultCatch } from "@/services/sonamu.shared";
 import { ${names.capital}SaveParams } from "@/services/${names.fs}/${names.fs}.types";${
         fkConfigImports.size > 0
           ? `\nimport { ${Array.from(fkConfigImports)
-              .map((entity) => `${entity}AsyncIdConfig`)
+              .map((relatedEntityId) => `${relatedEntityId}AsyncIdConfig`)
               .join(", ")} } from "@/services/services.generated";`
           : ""
       }
@@ -487,8 +504,8 @@ ${columns
     const label = (() => {
       if (col.label.endsWith("Id")) {
         try {
-          const entity = EntityManager.get(col.label.replace("Id", ""));
-          return entity.title ?? col.label;
+          const relatedEntity = EntityManager.get(col.label.replace("Id", ""));
+          return relatedEntity.title ?? col.label;
         } catch {
           return col.label;
         }

@@ -36,7 +36,10 @@ import { importMembers } from "../utils/esm-utils";
 import { formatCode } from "../utils/formatter";
 import { exists } from "../utils/fs-utils";
 import { runtimePath } from "../utils/path-utils";
+import { isStringValue } from "../utils/runtime-value";
 import { assertDefined, nonNullable } from "../utils/utils";
+
+type NestedSelect = { [key: string]: string | NestedSelect };
 import { EntityManager } from "./entity-manager";
 
 export class Entity {
@@ -138,6 +141,7 @@ export class Entity {
       Object.entries(enums ?? {}).map(([key, enumDef]) => {
         // cone 추출
         if ("values" in enumDef && "cone" in enumDef && enumDef.cone) {
+          // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
           this.enumCones[key] = enumDef.cone as Cone;
         }
         return [key, getEnumDefValues(enumDef)];
@@ -145,7 +149,8 @@ export class Entity {
     );
     this.enums = Object.fromEntries(
       Object.entries(this.enumLabels).map(([key, enumLabel]) => {
-        return [key, z.enum(Object.keys(enumLabel) as unknown as readonly [string, ...string[]])];
+        // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
+        return [key, z.enum(Object.keys(enumLabel))];
       }),
     );
 
@@ -211,11 +216,8 @@ export class Entity {
    * 이렇게 중첩 객체로 변환하여 select에 넘겨주면 ParseSelectObject 타입이 join된 객체의 타입을 잘 잡아줄 수 있습니다.
    * 즉, enhancer에서 row를 받았을 때 hydrate된 객체 자체의 nullity와 그 안쪽 필드의 nullity가 fk nullable 여부에 따라 잘 추론됩니다.
    */
-  private buildNestedSelectObject(
-    selectItems: string[],
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 반환 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
-  ): Record<string, any> {
-    const result: ReturnType<typeof this.buildNestedSelectObject> = {};
+  private buildNestedSelectObject(selectItems: string[]): NestedSelect {
+    const result: NestedSelect = {};
 
     for (const selectItem of selectItems) {
       // "users.id" 또는 "users.id as user__id" 형태 파싱
@@ -238,7 +240,7 @@ export class Entity {
         for (let i = 0; i < parts.length - 1; i++) {
           const part = parts[i];
           if (part in current) {
-            if (typeof current[part] === "string") {
+            if (isStringValue(current[part])) {
               // 입력이 ["user", "user__id"] 같은 경우!
               // 애초에 말도 안 되지만 안전하게 예외를 던집니다.
               throw new Error(
@@ -257,7 +259,7 @@ export class Entity {
       }
     }
 
-    return result;
+    return Object.fromEntries(Object.entries(result));
   }
 
   /**
@@ -279,8 +281,7 @@ export class Entity {
    * @param withBraces true면 중괄호 포함, false면 내용만 반환
    */
   private stringifyNestedSelectObject(
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 중첩 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
-    obj: Record<string, any>,
+    obj: NestedSelect,
     indent: number = 0,
     withBraces: boolean = true,
   ): string {
@@ -291,7 +292,7 @@ export class Entity {
     if (entries.length === 0) return withBraces ? "{}" : "";
 
     const lines = entries.map(([key, value]) => {
-      if (typeof value === "string") {
+      if (isStringValue(value)) {
         // 컬럼 경로 (이미 따옴표 포함)
         return `${innerSpaces}${key}: ${value},`;
       } else {
@@ -315,10 +316,10 @@ export class Entity {
     const lines: string[] = [`[`];
 
     // 재귀적으로 loader 생성하는 헬퍼 함수
-    const generateLoaderCode = (loaders: SubsetQuery["loaders"]): string[] => {
+    const generateLoaderCode = (nestedLoaders: SubsetQuery["loaders"]): string[] => {
       const loaderLines: string[] = [];
 
-      for (const loader of loaders) {
+      for (const loader of nestedLoaders) {
         const { toTable, toCol, through, fromTable } = loader.manyJoin;
 
         // fromTable의 Entity를 가져와서 PK 타입 확인
@@ -449,15 +450,15 @@ export class Entity {
 
     const result = Object.keys(subsetGroup).reduce(
       (r, groupKey) => {
-        const fields = subsetGroup[groupKey];
-        assert(fields !== undefined, "fields is undefined");
+        const groupedFields = subsetGroup[groupKey];
+        assert(groupedFields !== undefined, "fields is undefined");
 
         // 현재 테이블 필드셋은 select, virtual에 추가하고 리턴
         if (groupKey === "") {
-          const realFields = fields.filter((field) => !isVirtualProp(this.propsDict[field]));
+          const realFields = groupedFields.filter((field) => !isVirtualProp(this.propsDict[field]));
           // virtualType: "code" (또는 undefined)인 virtual prop만 r.virtual에 추가
           // virtualType: "query"인 경우 사용자가 appendSelect로 직접 추가하므로 제외
-          const virtualCodeFields = fields.filter((field) =>
+          const virtualCodeFields = groupedFields.filter((field) =>
             isVirtualCodeProp(this.propsDict[field]),
           );
 
@@ -483,7 +484,7 @@ export class Entity {
 
         if (isOneToOneRelationProp(relation) || isBelongsToOneRelationProp(relation)) {
           // -One Relation: JOIN 으로 처리
-          const relFields = fields.map((field) => field.split(".").slice(1).join("."));
+          const relFields = groupedFields.map((field) => field.split(".").slice(1).join("."));
 
           // -One Relation에서 id 필드만 참조하는 경우 릴레이션 넘기지 않고 리턴
           if (relFields.length === 1 && relFields[0] === "id") {
@@ -585,7 +586,7 @@ export class Entity {
           r.joins = r.joins.concat(relSubsetQuery.joins);
         } else if (isHasManyRelationProp(relation) || isManyToManyRelationProp(relation)) {
           // -Many Relation: Loader 로 처리
-          const relFields = fields.map((field) => field.split(".").slice(1).join("."));
+          const relFields = groupedFields.map((field) => field.split(".").slice(1).join("."));
           const relSubsetQuery = relEntity.resolveSubsetQuery("", relFields);
 
           let manyJoin: SubsetQuery["loaders"][number]["manyJoin"];
@@ -627,6 +628,7 @@ export class Entity {
 
         return r;
       },
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       {
         select: [],
         virtual: [],
@@ -655,17 +657,18 @@ export class Entity {
 
         return result;
       },
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       {} as {
         [k: string]: string[];
       },
     );
 
     return Object.keys(groups).flatMap<EntityPropNode, EntityPropNode[]>((key) => {
-      const group = groups[key];
+      const groupedFieldExprs = groups[key];
 
       // 일반 prop 처리
       if (key === "") {
-        return group.map((propName) => {
+        return groupedFieldExprs.map((propName) => {
           const prop = entity.props.find((p) => p.name === propName);
           if (prop === undefined) {
             throw new Error(
@@ -682,13 +685,16 @@ export class Entity {
       // relation prop 처리
       const prop = entity.propsDict[key];
       if (!isRelationProp(prop)) {
-        throw new Error(`잘못된 FieldExpr ${key}.${group[0]}`);
+        throw new Error(`잘못된 FieldExpr ${key}.${groupedFieldExprs[0]}`);
       }
       const relEntity = EntityManager.get(prop.with);
 
       // relation -One 에 id 필드 하나인 경우
       if (isBelongsToOneRelationProp(prop) || isOneToOneRelationProp(prop)) {
-        if (group.length === 1 && (group[0] === "id" || group[0] === "id?")) {
+        if (
+          groupedFieldExprs.length === 1 &&
+          (groupedFieldExprs[0] === "id" || groupedFieldExprs[0] === "id?")
+        ) {
           // id 하나만 있는지 체크해서, 하나만 있으면 상위 prop으로 id를 리턴
           const idProp = relEntity.propsDict.id;
           return {
@@ -705,7 +711,7 @@ export class Entity {
       // -One 그외의 경우 object로 리턴
       // -Many의 경우 array로 리턴
       // Recursive 로 뎁스 처리
-      const children = this.fieldExprsToPropNodes(group, relEntity);
+      const children = this.fieldExprsToPropNodes(groupedFieldExprs, relEntity);
       const nodeType =
         isBelongsToOneRelationProp(prop) || isOneToOneRelationProp(prop)
           ? ("object" as const)
@@ -806,6 +812,7 @@ export class Entity {
       if (isRelationProp(prop)) {
         // FK를 생성하는 relation만 포함
         if (this.hasForeignKey(prop)) {
+          // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
           return {
             name: `${prop.name}_id`,
             type: "integer",
@@ -852,6 +859,7 @@ export class Entity {
 
     if (await exists(typesFilePath)) {
       const importedMembers = await importMembers<z.ZodTypeAny>(typesFilePath);
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       this.types = Object.fromEntries(
         importedMembers.map(({ name, value }) => {
           EntityManager.setModulePath(name, typesModulePath);
@@ -975,6 +983,7 @@ export class Entity {
     for (const [propName, cone] of Object.entries(result.propCones)) {
       const prop = this.props.find((p) => p.name === propName);
       if (prop) {
+        // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
         (prop as { cone?: Cone }).cone = cone;
       }
     }
@@ -996,6 +1005,10 @@ export class Entity {
     preserveExisting?: boolean;
     onlyEmpty?: boolean;
     locale?: "ko" | "en" | "ja";
+    /** 테스트나 대체 LLM 공급자를 위한 텍스트 생성 구현 */
+    generateText?: import("../cone/cone-generator").ConeTextGenerator;
+    /** false이면 생성 결과를 메모리에만 적용하고 entity 파일은 저장하지 않습니다. */
+    persist?: boolean;
   }): Promise<import("../cone/cone-generator").ConeGenerationResult> {
     const { generateCones } = await import("../cone/cone-generator");
     const context: import("../cone/cone-generator").ConeGenerationContext = {
@@ -1005,9 +1018,11 @@ export class Entity {
       onlyEmpty: options?.onlyEmpty ?? false,
     };
 
-    const result = await generateCones(context);
+    const result = await generateCones(context, { generateText: options?.generateText });
     this.applyCones(result);
-    await this.save();
+    if (options?.persist !== false) {
+      await this.save();
+    }
     return result;
   }
 
@@ -1016,28 +1031,28 @@ export class Entity {
    *
    * @returns 키가 "entity:id", "prop:name", "enum:enumId", "subset:key" 형식인 cone 맵
    */
-  private collectExistingCones(): Record<string, Cone> {
-    const cones: Record<string, Cone> = {};
+  collectExistingCones(): Record<string, Cone> {
+    const coneEntries: [string, Cone][] = [];
 
     if (this.cone) {
-      cones[`entity:${this.id}`] = this.cone;
+      coneEntries.push([`entity:${this.id}`, this.cone]);
     }
 
     for (const prop of this.props) {
       if (prop.cone) {
-        cones[`prop:${prop.name}`] = prop.cone;
+        coneEntries.push([`prop:${prop.name}`, prop.cone]);
       }
     }
 
     for (const [enumId, cone] of Object.entries(this.enumCones)) {
-      cones[`enum:${enumId}`] = cone;
+      coneEntries.push([`enum:${enumId}`, cone]);
     }
 
     for (const [subsetKey, cone] of Object.entries(this.subsetCones)) {
-      cones[`subset:${subsetKey}`] = cone;
+      coneEntries.push([`subset:${subsetKey}`, cone]);
     }
 
-    return cones;
+    return Object.fromEntries(coneEntries);
   }
 
   /**
@@ -1045,7 +1060,7 @@ export class Entity {
    *
    * @param result - LLM으로 생성된 cone 결과
    */
-  private applyCones(result: import("../cone/cone-generator").ConeGenerationResult): void {
+  applyCones(result: import("../cone/cone-generator").ConeGenerationResult): void {
     if (result.entityCone) {
       this.cone = result.entityCone;
     }
@@ -1053,6 +1068,7 @@ export class Entity {
     for (const [propName, cone] of Object.entries(result.propCones)) {
       const prop = this.props.find((p) => p.name === propName);
       if (prop) {
+        // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
         (prop as { cone?: Cone }).cone = cone;
       }
     }

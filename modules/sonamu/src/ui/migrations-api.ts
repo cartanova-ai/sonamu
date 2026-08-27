@@ -20,6 +20,7 @@ import {
   type MigrationStreamEvent,
   type MigrationTarget,
 } from "../migration/types";
+import { forwardAsyncErrors } from "./async-route";
 
 type ApprovalReady = { type: "ready" };
 type ApprovalResult = ApprovalReady | SlackConfirmPendingResult;
@@ -39,7 +40,8 @@ function assertTargets(migrator: Migrator, targets: MigrationTarget[]): void {
 }
 
 function targetRequiresApproval(slack: SlackConfirm, target: MigrationTarget): boolean {
-  const connection = Sonamu.dbConfig[target]?.connection as { host?: string } | undefined;
+  const connection = /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ Sonamu
+    .dbConfig[target]?.connection as { host?: string } | undefined;
   const remote = !LOCAL_HOSTS.has((connection?.host ?? "localhost").toLowerCase());
   return remote && slack.isTargetRequiresApproval(target);
 }
@@ -251,58 +253,65 @@ export async function registerMigrationsApi(server: FastifyInstance) {
     connections: migrator.getConnections(),
   }));
   server.get("/api/migrations/codes", async () => ({ codes: await migrator.getMigrationCodes() }));
-  server.get<{ Querystring: { codeName: string } }>("/api/migrations/code", async (request) => {
-    const migrationCode = (await migrator.getMigrationCodes()).find(
-      ({ name }) => name === request.query.codeName,
-    );
-    if (migrationCode === undefined) {
-      throw new BadRequestException(SD("error.badRequest"));
-    }
-    return { code: await readFile(migrationCode.path, "utf8") };
-  });
-  server.get<{ Querystring: { connKey?: MigrationTarget } }>(
-    "/api/migrations/status",
-    async (request) => {
+  server.get<{ Querystring: { codeName: string } }>("/api/migrations/code", (request) =>
+    forwardAsyncErrors(async () => {
+      const migrationCode = (await migrator.getMigrationCodes()).find(
+        ({ name }) => name === request.query.codeName,
+      );
+      if (migrationCode === undefined) {
+        throw new BadRequestException(SD("error.badRequest"));
+      }
+      return { code: await readFile(migrationCode.path, "utf8") };
+    }),
+  );
+  server.get<{ Querystring: { connKey?: MigrationTarget } }>("/api/migrations/status", (request) =>
+    forwardAsyncErrors(async () => {
       if (request.query.connKey === undefined) {
         return { status: await migrator.getStatus() };
       }
       return { status: await migrator.getConnectionStatus(request.query.connKey) };
-    },
+    }),
   );
   server.get<{ Querystring: { compareConnKey: MigrationTarget } }>(
     "/api/migrations/prepared-codes",
-    async (request) => ({
-      preparedCodes: await migrator.getPreparedCodes(request.query.compareConnKey),
-    }),
+    (request) =>
+      forwardAsyncErrors(async () => ({
+        preparedCodes: await migrator.getPreparedCodes(request.query.compareConnKey),
+      })),
   );
 
-  server.post<{ Body: ApplyBody }>("/api/migrations/request-approval", async (request) => {
-    return requestApproval(migrator, request.body.targets, request.body.requestor);
-  });
+  server.post<{ Body: ApplyBody }>("/api/migrations/request-approval", (request) =>
+    forwardAsyncErrors(async () => {
+      return requestApproval(migrator, request.body.targets, request.body.requestor);
+    }),
+  );
   server.post<{ Body: { channel: string; ts: string } }>(
     "/api/migrations/checkApproval",
-    async (request) => {
-      const slack = new SlackConfirm();
-      return slack.isConfigured()
-        ? slack.checkApproval(request.body.channel, request.body.ts)
-        : { approved: true, rejected: false };
-    },
+    (request) =>
+      forwardAsyncErrors(async () => {
+        const slack = new SlackConfirm();
+        return slack.isConfigured()
+          ? slack.checkApproval(request.body.channel, request.body.ts)
+          : { approved: true, rejected: false };
+      }),
   );
   server.post<{
     Body: { channel: string; ts: string; reason: string; requestor?: string };
-  }>("/api/migrations/forceApproval", async (request) => {
-    const slack = new SlackConfirm();
-    if (!slack.isConfigured()) {
-      throw new BadRequestException(SD("sonamu.error.slackConfirmNotConfigured"));
-    }
-    await slack.forceApproval(
-      request.body.channel,
-      request.body.ts,
-      request.body.reason,
-      request.body.requestor,
-    );
-    return { success: true };
-  });
+  }>("/api/migrations/forceApproval", (request) =>
+    forwardAsyncErrors(async () => {
+      const slack = new SlackConfirm();
+      if (!slack.isConfigured()) {
+        throw new BadRequestException(SD("sonamu.error.slackConfirmNotConfigured"));
+      }
+      await slack.forceApproval(
+        request.body.channel,
+        request.body.ts,
+        request.body.reason,
+        request.body.requestor,
+      );
+      return { success: true };
+    }),
+  );
 
   server.post("/api/migrations/shadow", async (_request, reply) => {
     return sendMigrationStream(reply, "shadow", [], (onProgress) => {
@@ -343,7 +352,8 @@ export async function registerMigrationsApi(server: FastifyInstance) {
 
   server.post<{ Body: { compareConnKey?: MigrationTarget } }>(
     "/api/migrations/generatePreparedCodes",
-    async (request) => migrator.generatePreparedCodes(request.body.compareConnKey),
+    (request) =>
+      forwardAsyncErrors(async () => migrator.generatePreparedCodes(request.body.compareConnKey)),
   );
 
   // 이전 UI 번들과 외부 스크립트가 새 서버에서도 한 릴리스 동안 동작하도록 유지합니다.
@@ -355,15 +365,17 @@ export async function registerMigrationsApi(server: FastifyInstance) {
       forceReason?: string;
       requestor?: string;
     };
-  }>("/api/migrations/runAction", async (request) => {
-    if (request.body.action === "shadow") {
-      return migrator.runShadowTest();
-    }
-    if (request.body.action === "apply") {
-      return runLegacyApply(migrator, request.body);
-    }
-    assertTargets(migrator, request.body.targets);
-    await getAvailableTargetStatuses(migrator, request.body.targets);
-    return migrator.rollback(request.body.targets);
-  });
+  }>("/api/migrations/runAction", (request) =>
+    forwardAsyncErrors(async () => {
+      if (request.body.action === "shadow") {
+        return migrator.runShadowTest();
+      }
+      if (request.body.action === "apply") {
+        return runLegacyApply(migrator, request.body);
+      }
+      assertTargets(migrator, request.body.targets);
+      await getAvailableTargetStatuses(migrator, request.body.targets);
+      return migrator.rollback(request.body.targets);
+    }),
+  );
 }

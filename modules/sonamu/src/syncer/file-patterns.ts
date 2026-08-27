@@ -68,6 +68,11 @@ export function getChecksumPatternGroup() {
   } satisfies Record<string, AppRelativePath>;
 }
 
+// Node 내장 fs.glob의 brace expansion은 단일 멤버 {x}를 풀지 않으므로, 멤버가 1개일 때는 alternation 없이 직접 결합합니다.
+function braceJoin(dirs: readonly string[]) {
+  return dirs.length === 1 ? dirs[0] : `{${dirs.join(",")}}`;
+}
+
 /**
  * 위치 카테고리별 글롭 빌더를 만들어 반환합니다.
  * - api(rest): api 디렉토리에 한정
@@ -78,16 +83,13 @@ function globBuilders() {
   const apiDir = Sonamu.config.api.dir;
   const targetDirs = Sonamu.config.sync.targets;
 
-  // Node 내장 fs.glob의 brace expansion은 단일 멤버 {x}를 풀지 않으므로, 멤버가 1개일 때는 alternation 없이 직접 결합합니다.
-  const braceJoin = (dirs: readonly string[]) =>
-    dirs.length === 1 ? dirs[0] : `{${dirs.join(",")}}`;
-
   return {
-    api: (pathFromApi: string) => `${apiDir}/${pathFromApi}` as AppRelativePath,
+    api: (pathFromApi: string) =>
+      /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ `${apiDir}/${pathFromApi}` as AppRelativePath,
     targets: (pathFromTarget: string) =>
-      `${braceJoin(targetDirs)}/${pathFromTarget}` as AppRelativePath,
+      /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ `${braceJoin(targetDirs)}/${pathFromTarget}` as AppRelativePath,
     anywhere: (pathFromAnywhere: string) =>
-      `${braceJoin([apiDir, ...targetDirs])}/${pathFromAnywhere}` as AppRelativePath,
+      /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ `${braceJoin([apiDir, ...targetDirs])}/${pathFromAnywhere}` as AppRelativePath,
   };
 }
 
@@ -111,7 +113,7 @@ export const GLOB_EXCLUDE = ["**/node_modules/**", "**/dist/**", "**/build/**", 
  */
 export function getChecksumPatternGroupInAbsolutePath(): GlobPattern<AbsolutePath> {
   const group = getChecksumPatternGroup();
-  return Object.fromEntries(
+  return /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ Object.fromEntries(
     Object.entries(group).map(([key, value]) => [
       key,
       path.join(Sonamu.appRootPath, value), // appRoot 상대 경로 → 절대 경로

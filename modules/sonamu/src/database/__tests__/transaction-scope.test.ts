@@ -14,6 +14,7 @@ type TransactionScopeDB = DBClass & {
 };
 
 function createTransactionWrapper(): PuriTransactionWrapper {
+  // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
   return new PuriTransactionWrapper({} as Knex.Transaction, new UpsertBuilder());
 }
 
@@ -32,6 +33,7 @@ function expectScopeRunner(db: TransactionScopeDB) {
 
 describe("DB.runWithTransactionScope", () => {
   it("저장소가 없어도 루트 scope를 설치하고 콜백 결과를 반환한 뒤 정리한다", async () => {
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const db = new DBClass() as TransactionScopeDB;
     const transaction = createTransactionWrapper();
     const runScope = expectScopeRunner(db);
@@ -53,6 +55,7 @@ describe("DB.runWithTransactionScope", () => {
   });
 
   it("scope 안에서 생성된 detached descendant가 완료된 자식 트랜잭션을 다시 사용하지 않는다", async () => {
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const db = new DBClass() as TransactionScopeDB;
     const parentTransaction = createTransactionWrapper();
     const childTransaction = createTransactionWrapper();
@@ -119,6 +122,7 @@ describe("DB.runWithTransactionScope", () => {
   });
 
   it("같거나 다른 preset의 중첩 범위를 복원하고 같은 오류를 다시 던진다", async () => {
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const db = new DBClass() as TransactionScopeDB;
     const outer = createTransactionWrapper();
     const samePresetInner = createTransactionWrapper();
@@ -157,6 +161,7 @@ describe("DB.runWithTransactionScope", () => {
   });
 
   it("겹치는 sibling 범위가 완료 순서와 무관하게 서로의 활성 트랜잭션을 보지 않는다", async () => {
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const db = new DBClass() as TransactionScopeDB;
     const parentTransaction = createTransactionWrapper();
     const firstTransaction = createTransactionWrapper();

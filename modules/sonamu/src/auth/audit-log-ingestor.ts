@@ -2,8 +2,9 @@ import { createHash } from "node:crypto";
 
 import { type Knex } from "knex";
 
+import { isStringValue } from "../utils/runtime-value";
 import { getValidClientIp } from "./audit-log/client-ip";
-import { type AuditLogEvent } from "./audit-log/events";
+import { type AuditEventData, type AuditLogEvent } from "./audit-log/events";
 
 const AUDIT_EVENT_SOURCE = "better_auth";
 const AUDIT_EVENT_SOURCE_VERSION = "better-auth|@better-auth/infra";
@@ -54,12 +55,12 @@ const USER_EVENT_TYPES = new Set<string>([
   "user_deleted",
 ]);
 
-function pickString(source: Record<string, unknown>, key: string): string | null {
+function pickString(source: AuditEventData, key: string): string | null {
   const value = source[key];
-  return typeof value === "string" ? value : null;
+  return isStringValue(value) ? value : null;
 }
 
-function pickFirstString(source: Record<string, unknown>, keys: readonly string[]): string | null {
+function pickFirstString(source: AuditEventData, keys: readonly string[]): string | null {
   for (const key of keys) {
     const value = pickString(source, key);
     if (value !== null) {
@@ -69,11 +70,11 @@ function pickFirstString(source: Record<string, unknown>, keys: readonly string[
   return null;
 }
 
-function parseOccurredAt(raw: unknown): Date {
+function parseOccurredAt<Value>(raw: Value): Date {
   if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
     return raw;
   }
-  if (typeof raw === "string") {
+  if (isStringValue(raw)) {
     const parsed = new Date(raw);
     if (!Number.isNaN(parsed.getTime())) {
       return parsed;
@@ -120,22 +121,25 @@ function computeDedupeKey(parts: {
   action: string | null;
   occurred_at: Date;
 }): string {
-  const norm = (v: string | null): string => v ?? "";
   const raw = [
     parts.source,
     parts.event_type,
     parts.event_key,
-    norm(parts.actor_user_id),
-    norm(parts.subject_user_id),
-    norm(parts.organization_id),
-    norm(parts.team_id),
-    norm(parts.session_id),
-    norm(parts.identifier),
-    norm(parts.reason),
-    norm(parts.action),
+    normalizeNullableKeyPart(parts.actor_user_id),
+    normalizeNullableKeyPart(parts.subject_user_id),
+    normalizeNullableKeyPart(parts.organization_id),
+    normalizeNullableKeyPart(parts.team_id),
+    normalizeNullableKeyPart(parts.session_id),
+    normalizeNullableKeyPart(parts.identifier),
+    normalizeNullableKeyPart(parts.reason),
+    normalizeNullableKeyPart(parts.action),
     parts.occurred_at.toISOString(),
   ].join("|");
   return createHash("sha256").update(raw).digest("hex");
+}
+
+function normalizeNullableKeyPart(value: string | null): string {
+  return value ?? "";
 }
 
 function computeEventIdDedupeKey(source: string, eventId: string): string {

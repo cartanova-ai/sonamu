@@ -5,6 +5,13 @@ import { type EntityNamesRecord } from "../entity/entity-manager";
 import { isEnumProp, isRelationProp } from "../types/types";
 import { type RelationProp } from "../types/types";
 
+interface EnumColumnInfo {
+  id: string;
+  targetEntityNames: EntityNamesRecord;
+  targetEntityId: string;
+  title: string;
+}
+
 /**
  * Enum의 표시용 라벨을 가져옵니다.
  * OrderBy, SearchField 등 특수한 경우와 일반 Enum을 구분하여 처리합니다.
@@ -29,15 +36,7 @@ export function getLabel(entityId: string, enumId: string): string {
  * 컬럼 이름으로부터 Enum 정보를 추출합니다.
  * Entity의 prop 중 enum 타입인 것을 찾아 관련 정보를 반환합니다.
  */
-export function getEnumInfoFromColName(
-  entityId: string,
-  colName: string,
-): {
-  id: string;
-  targetEntityNames: EntityNamesRecord;
-  targetEntityId: string;
-  title: string;
-} {
+export function getEnumInfoFromColName(entityId: string, colName: string): EnumColumnInfo {
   const baseEntity = EntityManager.get(entityId);
   const prop = baseEntity.props.find((p) => p.name === colName);
   if (prop && isEnumProp(prop)) {

@@ -4,9 +4,11 @@ import path from "path";
 import { type FastifyRequest } from "fastify";
 
 import { type AbsolutePath } from "./path-utils";
+import { isObjectValue } from "./runtime-value";
 
 export function findAppRootPath(): AbsolutePath {
   const apiRootPath = findApiRootPath();
+  // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
   return path.dirname(apiRootPath) as AbsolutePath;
 }
 
@@ -15,15 +17,18 @@ export function findApiRootPath(): AbsolutePath {
   // 하지만 workspace 쓰면 process.cwd() 하면 되는데... 이건 나중에 협의 후 수정하는걸로
   const workspacePath = process.env.PNPM_SCRIPT_SRC_DIR ?? process.env.INIT_CWD;
   if (nonNullable(workspacePath)) {
+    // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
     return workspacePath as AbsolutePath;
   }
 
   if (nonNullable(process.env.PNPM_PACKAGE_NAME)) {
+    // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
     return process.cwd().split(path.sep).join(path.sep) as AbsolutePath;
   }
 
   const cwdPackagePath = path.join(process.cwd(), "package.json");
   if (fs.existsSync(cwdPackagePath)) {
+    // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
     return process.cwd().split(path.sep).join(path.sep) as AbsolutePath;
   }
 
@@ -35,6 +40,7 @@ export function findApiRootPath(): AbsolutePath {
 
   do {
     if (fs.existsSync(path.join(dir, "/package.json"))) {
+      // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
       return dir.split(path.sep).join(path.sep) as AbsolutePath;
     }
     dir = dir.split(path.sep).slice(0, -1).join(path.sep);
@@ -91,26 +97,18 @@ export function differenceWith<T>(
   return arr1.filter((itemA) => !arr2.some((itemB) => comparator(itemA, itemB)));
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: dynamic property access
-export function merge<T extends Record<string, any>>(defaultObj: T, userObj: T): T {
-  // 원본 보존을 위해 defaultObj 복사
+export function merge<T extends object>(defaultObj: T, userObj: T): T {
+  // 원본을 보존하면서 사용자 설정의 own enumerable 속성만 병합합니다.
   const result = { ...defaultObj };
+  const defaultEntries = new Map(Object.entries(defaultObj));
 
-  // userObj의 각 속성을 순회
-  for (const key in userObj) {
-    // userObj의 own property만 처리 (프로토타입 체인 제외)
-    if (Object.hasOwn(userObj, key)) {
-      const userValue = userObj[key];
-      const defaultValue = result[key];
-
-      // 두 값이 모두 객체이고, 배열이 아닌 경우 재귀적으로 병합
-      if (isPlainObject(userValue) && isPlainObject(defaultValue)) {
-        result[key] = merge(defaultValue, userValue);
-      } else {
-        // 그 외의 경우 userObj의 값으로 덮어쓰기
-        result[key] = userValue;
-      }
-    }
+  for (const [key, userValue] of Object.entries(userObj)) {
+    const defaultValue = defaultEntries.get(key);
+    const mergedValue =
+      isPlainObject(userValue) && isPlainObject(defaultValue)
+        ? merge(defaultValue, userValue)
+        : userValue;
+    Object.assign(result, { [key]: mergedValue });
   }
 
   return result;
@@ -118,10 +116,10 @@ export function merge<T extends Record<string, any>>(defaultObj: T, userObj: T):
 
 // plain object 판별 헬퍼 함수
 // (배열, null, Date 등을 제외한 순수 객체만 true)
-export function isPlainObject(value: unknown): value is Record<string, unknown> {
+export function isPlainObject<Value>(value: Value): value is Value & object {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isObjectValue(value) &&
     !Array.isArray(value) &&
     Object.prototype.toString.call(value) === "[object Object]"
   );

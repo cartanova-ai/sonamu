@@ -3,7 +3,10 @@ import path from "path";
 import { type TemplateKey } from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
+import { isFunctionValue } from "../utils/runtime-value";
 import { Template } from "./template";
+
+type TemplateConstructor = new () => Template;
 
 class TemplateManagerClass {
   private templates: Map<TemplateKey | string, Template> = new Map();
@@ -26,12 +29,8 @@ class TemplateManagerClass {
 
     for (const templateFile of templateFiles) {
       const templates = await importMembers<unknown>(templateFile);
-      if (
-        templates.length === 1 &&
-        typeof templates[0].value === "function" &&
-        templates[0].value.prototype instanceof Template
-      ) {
-        const instance = new (templates[0].value as new () => Template)();
+      if (templates.length === 1 && this.isTemplateClass(templates[0].value)) {
+        const instance = new templates[0].value();
         this.templates.set(instance.key, instance);
       } else {
         throw new Error(
@@ -41,7 +40,10 @@ class TemplateManagerClass {
     }
 
     for (const [key, template] of this.templates) {
-      Template._getTemplatesMap().set(key as TemplateKey, template);
+      Template.getTemplatesMap().set(
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ key as TemplateKey,
+        template,
+      );
     }
 
     this.isAutoloaded = true;
@@ -52,7 +54,7 @@ class TemplateManagerClass {
    */
   async reload(): Promise<void> {
     this.templates.clear();
-    Template._clearTemplates();
+    Template.clearTemplates();
     this.isAutoloaded = false;
     await this.autoload();
   }
@@ -68,7 +70,7 @@ class TemplateManagerClass {
       const templates = await importMembers<unknown>(file);
       for (const { value } of templates) {
         if (this.isTemplateClass(value)) {
-          const instance = new (value as new () => Template)();
+          const instance = new value();
           this.register(instance);
           count++;
         }
@@ -78,8 +80,8 @@ class TemplateManagerClass {
     return count;
   }
 
-  private isTemplateClass(value: unknown): boolean {
-    return typeof value === "function" && value.prototype instanceof Template;
+  private isTemplateClass<Value>(value: Value): value is Value & TemplateConstructor {
+    return isFunctionValue(value) && value.prototype instanceof Template;
   }
 
   // ================================
@@ -92,7 +94,7 @@ class TemplateManagerClass {
   register(template: Template): void {
     this.templates.set(template.key, template);
     // 하위 호환
-    Template._getTemplatesMap().set(template.key, template);
+    Template.getTemplatesMap().set(template.key, template);
   }
 
   /**
@@ -152,7 +154,7 @@ class TemplateManagerClass {
   reset(): void {
     this.templates.clear();
     this.isAutoloaded = false;
-    Template._clearTemplates();
+    Template.clearTemplates();
   }
 
   /**

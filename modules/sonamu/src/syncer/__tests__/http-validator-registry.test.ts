@@ -2,40 +2,53 @@ import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { type SonamuConfig } from "../../api/config";
 import { Sonamu } from "../../api/sonamu";
 import { type AbsolutePath } from "../../utils/path-utils";
-import { Syncer } from "../syncer";
-import * as SyncerActions from "../syncer-actions";
+import { Syncer, type SyncerDependencies } from "../syncer";
+import { actionGenerateHttpValidators } from "../syncer-actions";
 
-const generateTemplateMock = vi.hoisted(() => vi.fn());
-const checksumMocks = vi.hoisted(() => ({
-  findChangedFilesUsingChecksums: vi.fn(),
-  renewChecksums: vi.fn(),
-}));
+function toAbsolutePath(filePath: string): AbsolutePath {
+  if (!path.isAbsolute(filePath)) {
+    throw new Error(`절대 경로가 필요합니다: ${filePath}`);
+  }
+  // SAFETY: path.isAbsolute 검사로 AbsolutePath 계약을 확인했다.
+  return filePath as AbsolutePath;
+}
 
-vi.mock("../code-generator", () => ({
-  generateTemplate: generateTemplateMock,
-}));
+function createDependencies() {
+  return {
+    actionCopySharedToTargetsIfNotExists: vi
+      .fn<SyncerDependencies["actionCopySharedToTargetsIfNotExists"]>()
+      .mockResolvedValue(undefined),
+    actionGenerateHttpValidators: vi.fn<SyncerDependencies["actionGenerateHttpValidators"]>(),
+    actionGenerateSsrEntryServerIfNotExists: vi
+      .fn<SyncerDependencies["actionGenerateSsrEntryServerIfNotExists"]>()
+      .mockResolvedValue([]),
+    findChangedFilesUsingChecksums: vi.fn<SyncerDependencies["findChangedFilesUsingChecksums"]>(),
+    renewChecksums: vi.fn<SyncerDependencies["renewChecksums"]>().mockResolvedValue(undefined),
+  } satisfies SyncerDependencies;
+}
 
-vi.mock("../checksum", () => checksumMocks);
+const testConfig = {
+  api: { dir: "api", route: { prefix: "/api" } },
+  i18n: { defaultLocale: "ko", supportedLocales: ["ko"] },
+  sync: { targets: [] },
+  database: {},
+  server: {
+    apiConfig: {
+      contextProvider: (defaultContext) => defaultContext,
+      guardHandler: () => undefined,
+    },
+  },
+} satisfies SonamuConfig;
 
 describe("HTTP validator registry sync 정리", () => {
-  const originalApiRootPath = Reflect.get(Sonamu, "_apiRootPath");
-  const originalConfig = Reflect.get(Sonamu, "_config");
   const tempRoots: string[] = [];
 
-  beforeEach(() => {
-    generateTemplateMock.mockReset();
-    checksumMocks.findChangedFilesUsingChecksums.mockReset();
-    checksumMocks.renewChecksums.mockReset();
-    checksumMocks.renewChecksums.mockResolvedValue(undefined);
-  });
-
   afterEach(async () => {
-    Reflect.set(Sonamu, "_apiRootPath", originalApiRootPath);
-    Reflect.set(Sonamu, "_config", originalConfig);
     vi.restoreAllMocks();
     await Promise.all(
       tempRoots.splice(0).map((rootPath) => rm(rootPath, { recursive: true, force: true })),
@@ -51,84 +64,73 @@ describe("HTTP validator registry sync 정리", () => {
     const registryPath = path.join(apiRootPath, "src/application/sonamu.validators.generated.ts");
     await mkdir(path.dirname(registryPath), { recursive: true });
     await writeFile(registryPath, "export const validators = new Map();\n");
-    generateTemplateMock.mockResolvedValue([registryPath]);
-    Reflect.set(Sonamu, "_apiRootPath", apiRootPath);
-    Reflect.set(Sonamu, "_config", {
-      api: { dir: "." },
-      sync: { targets: [] },
+    Sonamu.apiRootPath = toAbsolutePath(apiRootPath);
+    Sonamu.config = {
+      ...testConfig,
+      api: { ...testConfig.api, dir: "." },
       validation: { zodCompiler: value },
-    });
+    };
 
-    await SyncerActions.actionGenerateHttpValidators();
+    await actionGenerateHttpValidators();
 
     await expect(access(registryPath)).rejects.toMatchObject({ code: "ENOENT" });
-    expect(generateTemplateMock).not.toHaveBeenCalled();
   });
 
   it("registry-only drift를 경고로 넘기지 않고 즉시 재생성한다", async () => {
     const appRootPath = await mkdtemp(path.join(os.tmpdir(), "sonamu-registry-drift-test-"));
     tempRoots.push(appRootPath);
     const apiRootPath = path.join(appRootPath, "api");
-    const registryPath = path.join(
-      apiRootPath,
-      "src/application/sonamu.validators.generated.ts",
-    ) as AbsolutePath;
+    const registryPath = toAbsolutePath(
+      path.join(apiRootPath, "src/application/sonamu.validators.generated.ts"),
+    );
     await mkdir(path.dirname(registryPath), { recursive: true });
     await writeFile(registryPath, "// drifted registry\n");
-    Reflect.set(Sonamu, "_apiRootPath", apiRootPath);
-    Reflect.set(Sonamu, "_config", {
-      api: { dir: "api" },
-      sync: { targets: [] },
+    Sonamu.apiRootPath = toAbsolutePath(apiRootPath);
+    Sonamu.config = {
+      ...testConfig,
       validation: { zodCompiler: { api: "aot" } },
-    });
-    const regenerate = vi
-      .spyOn(SyncerActions, "actionGenerateHttpValidators")
-      .mockResolvedValue(registryPath);
-    vi.spyOn(SyncerActions, "actionCopySharedToTargetsIfNotExists").mockResolvedValue(undefined);
-    vi.spyOn(SyncerActions, "actionGenerateSsrEntryServerIfNotExists").mockResolvedValue([]);
+    };
+    const dependencies = createDependencies();
+    dependencies.actionGenerateHttpValidators.mockResolvedValue(registryPath);
+    dependencies.findChangedFilesUsingChecksums.mockResolvedValue([registryPath]);
     vi.spyOn(console, "warn").mockImplementation(() => {});
-    checksumMocks.findChangedFilesUsingChecksums.mockResolvedValue([registryPath]);
 
-    await new Syncer().sync();
+    await new Syncer(dependencies).sync();
 
-    expect(regenerate).toHaveBeenCalledTimes(1);
-    expect(checksumMocks.renewChecksums).toHaveBeenCalledTimes(1);
+    expect(dependencies.actionGenerateHttpValidators).toHaveBeenCalledTimes(1);
+    expect(dependencies.renewChecksums).toHaveBeenCalledTimes(1);
   });
 
   it("삭제된 registry가 checksum 변경 목록에서 빠져도 다른 tracked 변경 처리 중 복구한다", async () => {
     const appRootPath = await mkdtemp(path.join(os.tmpdir(), "sonamu-missing-registry-test-"));
     tempRoots.push(appRootPath);
     const apiRootPath = path.join(appRootPath, "api");
-    const registryPath = path.join(
-      apiRootPath,
-      "src/application/sonamu.validators.generated.ts",
-    ) as AbsolutePath;
-    const unrelatedPath = path.join(
-      apiRootPath,
-      "src/application/queries.generated.ts",
-    ) as AbsolutePath;
+    const registryPath = toAbsolutePath(
+      path.join(apiRootPath, "src/application/sonamu.validators.generated.ts"),
+    );
+    const unrelatedPath = toAbsolutePath(
+      path.join(apiRootPath, "src/application/queries.generated.ts"),
+    );
     await mkdir(path.dirname(unrelatedPath), { recursive: true });
     await writeFile(unrelatedPath, "// unrelated tracked change\n");
-    Reflect.set(Sonamu, "_apiRootPath", apiRootPath);
-    Reflect.set(Sonamu, "_config", {
-      api: { dir: "api" },
-      sync: { targets: [] },
+    Sonamu.apiRootPath = toAbsolutePath(apiRootPath);
+    Sonamu.config = {
+      ...testConfig,
       validation: { zodCompiler: { api: "aot" } },
-    });
+    };
     const order: string[] = [];
-    vi.spyOn(SyncerActions, "actionGenerateHttpValidators").mockImplementation(async () => {
+    const dependencies = createDependencies();
+    dependencies.actionGenerateHttpValidators.mockImplementation(async () => {
       order.push("registry");
       return registryPath;
     });
-    vi.spyOn(SyncerActions, "actionCopySharedToTargetsIfNotExists").mockResolvedValue(undefined);
-    vi.spyOn(SyncerActions, "actionGenerateSsrEntryServerIfNotExists").mockResolvedValue([]);
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    checksumMocks.findChangedFilesUsingChecksums.mockResolvedValue([unrelatedPath]);
-    checksumMocks.renewChecksums.mockImplementation(async () => {
+    dependencies.findChangedFilesUsingChecksums.mockResolvedValue([unrelatedPath]);
+    dependencies.renewChecksums.mockImplementation(async () => {
       order.push("checksum");
     });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    await new Syncer().sync();
+    await new Syncer(dependencies).sync();
 
     expect(order).toEqual(["registry", "checksum"]);
   });

@@ -562,7 +562,7 @@ describe("metric source", () => {
     };
 
     const unsubscribe = controller.registerMetricSource(source);
-    expect(typeof unsubscribe).toBe("function");
+    expect(unsubscribe).toBeInstanceOf(Function);
 
     const snapshotBefore = controller.getMetricsSnapshot();
     expect(snapshotBefore.activeConnections).toBe(7);

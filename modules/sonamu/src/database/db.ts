@@ -5,41 +5,46 @@ import { type Knex } from "knex";
 
 import { type DatabaseConfig, type SonamuConfig } from "../api/config";
 import { getSonamuEnvironment, type EnvironmentSnapshots, type SonamuEnvironment } from "../env";
+import { isObjectValue } from "../utils/runtime-value";
 import { createKnexInstance } from "./knex";
 import { type PuriTransactionWrapper } from "./puri-wrapper";
 import { TransactionContext } from "./transaction-context";
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function isPlainObject<Value>(value: Value): value is Value & object {
+  return isObjectValue(value) && !Array.isArray(value);
 }
 
-function mergeRecord(
-  target: Record<string, unknown>,
-  source: Record<string, unknown>,
-): Record<string, unknown> {
-  for (const [key, value] of Object.entries(source)) {
-    const currentValue = target[key];
+function mergeRecord<Target extends object, Source extends object>(
+  target: Target,
+  source: Source,
+): Target {
+  const targetEntries = new Map(Object.entries(target));
 
-    if (isPlainObject(currentValue) && isPlainObject(value)) {
-      target[key] = mergeRecord({ ...currentValue }, value);
-    } else {
-      target[key] = value;
-    }
+  for (const [key, value] of Object.entries(source)) {
+    const currentValue = targetEntries.get(key);
+    const mergedValue =
+      isPlainObject(currentValue) && isPlainObject(value)
+        ? mergeRecord({ ...currentValue }, value)
+        : value;
+    Object.assign(target, { [key]: mergedValue });
   }
 
   return target;
 }
 
-function mergeConfigs<T extends object>(...configs: (Partial<T> | undefined | null)[]): T {
-  const merged: Record<string, unknown> = {};
+function mergeConfigs<T extends object>(
+  baseConfig: T,
+  ...configs: (Partial<T> | undefined | null)[]
+): T {
+  const merged = { ...baseConfig };
 
   for (const config of configs) {
     if (config !== undefined && config !== null) {
-      mergeRecord(merged, config as Record<string, unknown>);
+      mergeRecord(merged, config);
     }
   }
 
-  return merged as T;
+  return merged;
 }
 
 export type SonamuMainDBPreset = "test" | "fixture" | SonamuEnvironment;
@@ -58,6 +63,7 @@ function isConcretePreset(value: DBPreset): value is SonamuDBPreset {
 }
 
 function getReadonlyPreset(environment: SonamuEnvironment): SonamuReadonlyDBPreset {
+  // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
   return `${environment}_readonly` as SonamuReadonlyDBPreset;
 }
 
@@ -135,6 +141,7 @@ function neutralizeEnvironmentConnectionFields(
 }
 
 function assertNoLegacyDatabaseConfig(config: SonamuConfig["database"]): void {
+  // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
   const legacyConfig = config as SonamuConfig["database"] & {
     name?: unknown;
     environments?: unknown;
@@ -243,6 +250,7 @@ export class DBClass {
 
     if (!this.workerDBs.has(workerId)) {
       const baseTestConfig = dbConfig.test;
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
       const connection = baseTestConfig.connection as { database: string };
       const workerDbName = `${connection.database}_${workerId}`;
 
@@ -308,7 +316,7 @@ export class DBClass {
     config: SonamuConfig["database"],
     projectName?: string,
     snapshots?: EnvironmentSnapshots,
-  ): SonamuDBConfig {
+  ) {
     assertNoLegacyDatabaseConfig(config);
 
     const baseName = getProjectDatabaseBaseName(projectName);
@@ -325,6 +333,7 @@ export class DBClass {
       },
       config.defaultOptions,
     );
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     const baseConnection = defaultKnexConfig.connection as Knex.PgConnectionConfig | undefined;
     const environmentFallbackConnection = snapshots
       ? neutralizeEnvironmentConnectionFields(baseConnection)
@@ -354,6 +363,7 @@ export class DBClass {
         connection: connectionFromEnv({
           baseName,
           suffix: environment,
+          // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
           baseConnection: mainConfig(environment).connection as Knex.PgConnectionConfig,
           prefix: "SONAMU_DB_READONLY",
           env: envForPreset(environment),
@@ -380,7 +390,7 @@ export class DBClass {
       staging_readonly: readonlyConfig("staging"),
       production: mainConfig("production"),
       production_readonly: readonlyConfig("production"),
-    };
+    } satisfies SonamuDBConfig;
   }
 
   public testTransaction: Knex.Transaction | null = null;

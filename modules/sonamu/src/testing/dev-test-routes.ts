@@ -8,11 +8,33 @@ import { Sonamu } from "../api/sonamu";
 import { type SerializedTrace } from "../naite/naite";
 import { createSSEFactory } from "../stream/sse";
 import { type SSEConnection } from "../stream/sse";
-import { type ManagerStatus, type RunResult, type TestCaseResult } from "./dev-vitest-manager";
+import {
+  type ManagerStatus,
+  type RunResult,
+  type TestCaseResult,
+  type TestEventPayload,
+} from "./dev-vitest-manager";
 import { DevVitestManager } from "./dev-vitest-manager";
 
 const SCHEMA_VERSION = 1;
 const HEARTBEAT_INTERVAL_MS = 30_000;
+
+export type DevTestRouteManager = Pick<
+  DevVitestManager,
+  | "start"
+  | "run"
+  | "getStatus"
+  | "emitEvent"
+  | "addEventListener"
+  | "removeEventListener"
+  | "shutdown"
+>;
+
+export type DevTestRouteDependencies = {
+  manager?: DevTestRouteManager;
+  apiRootPath?: string;
+  sseAvailable?: boolean;
+};
 
 const SerializedTraceSchema = z.object({
   key: z.string(),
@@ -48,6 +70,22 @@ const TestCaseResultSchema: z.ZodType<TestCaseResult> = z.lazy(() =>
   }),
 );
 
+const RunResultSchema: z.ZodType<RunResult> = z.object({
+  ok: z.boolean(),
+  summary: z.object({
+    total: z.number(),
+    passed: z.number(),
+    failed: z.number(),
+    skipped: z.number(),
+    durationMs: z.number(),
+  }),
+  results: z.array(TestCaseResultSchema),
+});
+const RunRequestSchema = z.object({
+  files: z.array(z.string()).optional(),
+  pattern: z.string().optional(),
+});
+
 const TestEventSchema = z.object({
   snapshot: z.object({
     schemaVersion: z.number(),
@@ -77,7 +115,7 @@ const TestEventSchema = z.object({
     runId: z.string(),
     startedAt: z.string(),
     finishedAt: z.string(),
-    result: z.record(z.string(), z.unknown()),
+    result: RunResultSchema,
   }),
   runErrored: z.object({
     schemaVersion: z.number(),
@@ -107,6 +145,15 @@ const TestEventSchema = z.object({
 });
 
 type TestEvents = z.infer<typeof TestEventSchema>;
+const TestEventNameSchema = z.enum([
+  "snapshot",
+  "runQueued",
+  "runStarted",
+  "runCompleted",
+  "runErrored",
+  "runNodeProgress",
+  "heartbeat",
+]);
 
 function toPathPrefix(basePath: string): string {
   return basePath.endsWith("/") ? basePath : `${basePath}/`;
@@ -127,24 +174,6 @@ function relativizeNode(node: TestCaseResult, basePath: string): TestCaseResult 
   };
 }
 
-function isRunNodeProgressData(data: unknown): data is TestEvents["runNodeProgress"] {
-  if (typeof data !== "object" || data === null) return false;
-  const d = data as Record<string, unknown>;
-  return (
-    d.schemaVersion === 1 &&
-    typeof d.runId === "string" &&
-    typeof d.startedAt === "string" &&
-    typeof d.at === "string" &&
-    (d.kind === "file" || d.kind === "suite" || d.kind === "test") &&
-    (d.phase === "ready" || d.phase === "result") &&
-    typeof d.fileId === "string" &&
-    typeof d.nodeId === "string" &&
-    (d.parentId === null || typeof d.parentId === "string") &&
-    typeof d.node === "object" &&
-    d.node !== null
-  );
-}
-
 function relativizeResult(result: RunResult, basePath: string): RunResult {
   const prefix = toPathPrefix(basePath);
   return {
@@ -156,14 +185,21 @@ function relativizeResult(result: RunResult, basePath: string): RunResult {
 export async function registerDevTestRoutes(
   server: FastifyInstance,
   config: SonamuDevRunnerConfig,
+  dependencies?: DevTestRouteDependencies,
 ): Promise<void> {
   const prefix = config.routePrefix ?? "/__test__";
 
-  const manager = new DevVitestManager();
+  const defaultManager = dependencies?.manager === undefined ? new DevVitestManager() : null;
+  const manager = dependencies?.manager ?? defaultManager;
+  if (manager === null) {
+    throw new Error("DevVitestManager dependency is unavailable");
+  }
   await manager.start(config.vitestConfigPath);
-  Sonamu.devVitestManager = manager;
+  if (defaultManager !== null) {
+    Sonamu.devVitestManager = defaultManager;
+  }
 
-  const sseAvailable = !!Sonamu.config.server.plugins?.sse;
+  const sseAvailable = dependencies?.sseAvailable ?? !!Sonamu.config.server.plugins?.sse;
 
   if (sseAvailable) {
     server.get(`${prefix}/events`, (request, reply): void => {
@@ -187,19 +223,29 @@ export async function registerDevTestRoutes(
         });
       }, HEARTBEAT_INTERVAL_MS);
 
-      const basePath = Sonamu.apiRootPath;
-      const listener = (event: string, data: unknown) => {
-        const key = event as keyof TestEvents;
+      const basePath = dependencies?.apiRootPath ?? Sonamu.apiRootPath;
+      const listener = (event: string, data: TestEventPayload) => {
+        const parsedKey = TestEventNameSchema.safeParse(event);
+        if (!parsedKey.success) return;
+        const key = parsedKey.data;
         if (key === "runNodeProgress") {
-          if (!isRunNodeProgressData(data)) return;
+          const progressEnvelope = TestEventSchema.partial().safeParse({ runNodeProgress: data });
+          if (!progressEnvelope.success || progressEnvelope.data.runNodeProgress === undefined) {
+            return;
+          }
+          const progress = progressEnvelope.data.runNodeProgress;
           const relativized = {
-            ...data,
-            node: relativizeNode(data.node, basePath),
+            ...progress,
+            node: relativizeNode(progress.node, basePath),
           };
           sse.publish(key, relativized);
           return;
         }
-        sse.publish(key, data as TestEvents[typeof key]);
+        const parsedEnvelope = TestEventSchema.partial().safeParse({ [key]: data });
+        if (!parsedEnvelope.success || parsedEnvelope.data[key] === undefined) return;
+        const parsedData = parsedEnvelope.data[key];
+        // SAFETY: key와 payload는 같은 TestEventSchema 항목으로 함께 검증되었습니다.
+        sse.publish(key, parsedData as TestEvents[typeof key]);
       };
       manager.addEventListener(listener);
 
@@ -216,17 +262,8 @@ export async function registerDevTestRoutes(
   }
 
   server.post(`${prefix}/run`, async (request, reply) => {
-    if (!Sonamu.devVitestManager) {
-      reply.status(503);
-      return { ok: false, error: "DevVitestManager is not initialized" };
-    }
-
     const runId = randomUUID();
-    const body = request.body as { files?: string[]; pattern?: string } | null;
-    const runRequest = {
-      files: body?.files,
-      pattern: body?.pattern,
-    };
+    const runRequest = RunRequestSchema.parse(request.body ?? {});
 
     manager.emitEvent("runQueued", {
       schemaVersion: SCHEMA_VERSION,
@@ -243,8 +280,8 @@ export async function registerDevTestRoutes(
         startedAt,
       });
 
-      const rawResult: RunResult = await Sonamu.devVitestManager.run(runRequest, runId);
-      const result = relativizeResult(rawResult, Sonamu.apiRootPath);
+      const rawResult: RunResult = await manager.run(runRequest, runId);
+      const result = relativizeResult(rawResult, dependencies?.apiRootPath ?? Sonamu.apiRootPath);
 
       const finishedAt = new Date().toISOString();
       manager.emitEvent("runCompleted", {
@@ -274,16 +311,14 @@ export async function registerDevTestRoutes(
   });
 
   server.get(`${prefix}/status`, async () => {
-    const status: ManagerStatus = Sonamu.devVitestManager?.getStatus() ?? {
-      ready: false,
-      running: false,
-      lastRunAt: null,
-    };
+    const status: ManagerStatus = manager.getStatus();
     return { ...status, sseAvailable };
   });
 
   server.addHook("onClose", async () => {
-    await Sonamu.devVitestManager?.shutdown();
-    Sonamu.devVitestManager = null;
+    await manager.shutdown();
+    if (defaultManager !== null) {
+      Sonamu.devVitestManager = null;
+    }
   });
 }

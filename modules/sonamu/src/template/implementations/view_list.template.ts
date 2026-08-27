@@ -13,6 +13,15 @@ import {
 import { type RenderedTemplate } from "../template";
 import { Template } from "../template";
 
+function getConfigEnumId(config: RenderingNode["config"]): string | undefined {
+  if (!config || !("enumId" in config)) {
+    return undefined;
+  }
+  return Object.prototype.toString.call(config.enumId) === "[object String]"
+    ? String(config.enumId)
+    : undefined;
+}
+
 export class Template__view_list extends Template {
   constructor() {
     super("view_list");
@@ -225,12 +234,7 @@ export class Template__view_list extends Template {
     }
   }
 
-  getDefault(columns: RenderingNode[]): {
-    orderBy: string;
-    search: string;
-    hasSearch: boolean;
-    hasOrderBy: boolean;
-  } {
+  getDefault(columns: RenderingNode[]) {
     const def = {
       orderBy: "",
       search: "",
@@ -266,7 +270,9 @@ export class Template__view_list extends Template {
     const idTsType = pkType === "string" || pkType === "uuid" ? "string" : "number";
 
     // 실제 리스트 컬럼
-    const columns = (columnsNode.children as RenderingNode[])
+    const columns = /* SAFETY: Columns 렌더링 노드의 자식은 모두 컬럼 노드다. */ (
+      columnsNode.children as RenderingNode[]
+    )
 
       .toSorted((a, b) => (a.name === "id" ? -1 : b.name === "id" ? 1 : 0))
       .map((col) => {
@@ -299,17 +305,20 @@ export class Template__view_list extends Template {
       });
 
     // 필터 컬럼
-    const filterColumns = (listParamsNode.children as RenderingNode[])
-      .filter(
-        (col) =>
-          col.name !== "id" &&
-          col.name !== "queryMode" &&
-          ["enums", "number-id", "number-fk_id", "string-fk_id"].includes(col.renderType),
+    const filterColumns =
+      /* SAFETY: ListParams 렌더링 노드의 자식은 모두 필터 컬럼 노드다. */ (
+        listParamsNode.children as RenderingNode[]
       )
-      // orderBy가 가장 뒤로 오게 순서 조정
-      .toSorted((a) => {
-        return a.name === "orderBy" ? 1 : -1;
-      });
+        .filter(
+          (col) =>
+            col.name !== "id" &&
+            col.name !== "queryMode" &&
+            ["enums", "number-id", "number-fk_id", "string-fk_id"].includes(col.renderType),
+        )
+        // orderBy가 가장 뒤로 오게 순서 조정
+        .toSorted((a) => {
+          return a.name === "orderBy" ? 1 : -1;
+        });
 
     // 필터 컬럼을 프리 템플릿으로 설정
     const preTemplates: RenderedTemplate["preTemplates"] = [];
@@ -359,13 +368,15 @@ import { ${(() => {
         }
 
         // 필터 enum 수집 (config.enumId 우선, 없으면 getEnumInfoFromColName)
+        // SAFETY: 마지막 Boolean 필터가 null을 제거해 enum 식별자 문자열만 남긴다.
         const filterEnumIds = filterColumns
           .filter(
             (col) => col.renderType === "enums" && col.name !== "search" && col.name !== "orderBy",
           )
           .map((col) => {
-            if (col.config && "enumId" in col.config) {
-              return (col.config as { enumId: string }).enumId;
+            const configEnumId = getConfigEnumId(col.config);
+            if (configEnumId) {
+              return configEnumId;
             }
             try {
               const { id: enumId } = getEnumInfoFromColName(entityId, col.name);
@@ -613,10 +624,7 @@ ${filterColumns
     if (col.renderType === "enums") {
       try {
         // config.enumId가 있으면 우선 사용, 없으면 getEnumInfoFromColName 시도
-        const enumId =
-          col.config && "enumId" in col.config
-            ? (col.config as { enumId: string }).enumId
-            : getEnumInfoFromColName(entityId, col.name).id;
+        const enumId = getConfigEnumId(col.config) ?? getEnumInfoFromColName(entityId, col.name).id;
         return `                  <EnumSelect
                     key={\`${col.name}-\${listParams.${col.name}}\`}
                     enum={${enumId}}

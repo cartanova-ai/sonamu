@@ -33,7 +33,9 @@ export class Template__model extends Template {
     const listParamsNode = zodTypeToRenderingNode(listParamsZodType);
 
     const subsetKeyZodType = await getZodTypeById(`${entityId}SubsetKey`);
-    const subsetKeys = (subsetKeyZodType as z.ZodEnum).enum;
+    const subsetKeys =
+      /* SAFETY: 생성된 *SubsetKey 타입은 enum 스키마로 등록된다. */ (subsetKeyZodType as z.ZodEnum)
+        .enum;
 
     const names = EntityManager.getNamesFromId(entityId);
     const entity = EntityManager.get(entityId);

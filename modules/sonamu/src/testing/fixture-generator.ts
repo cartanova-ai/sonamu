@@ -1,5 +1,7 @@
+import { type LanguageModel } from "ai";
 import chalk from "chalk";
 import { type Knex } from "knex";
+import { z } from "zod";
 
 import { type SonamuDBPreset } from "../database/db";
 import { type Entity } from "../entity/entity";
@@ -7,27 +9,75 @@ import { type EntityManager } from "../entity/entity-manager";
 import { type EntityProp, type FixtureImportResult, type FixtureRecord } from "../types/types";
 import { isBelongsToOneRelationProp, isOneToOneRelationProp, isRelationProp } from "../types/types";
 import { isTest } from "../utils/controller";
-import { DataExplorer } from "./data-explorer";
+import { isFunctionValue } from "../utils/runtime-value";
+import { DataExplorer, dataExplorerRecordSchema, dataExplorerValueSchema } from "./data-explorer";
+import { dataSourceConfigSchema } from "./data-explorer";
+import { type DataExplorerRecord, type DataExplorerValue } from "./data-explorer";
 import { type ExploreWithRelationsOptions, type ExploreWithRelationsResult } from "./data-explorer";
 import { fakerMappings } from "./faker-mappings";
 import { type FakerMappings } from "./faker-mappings";
 import { FixtureManager } from "./fixture-manager";
+import { type FixtureSourceRecord } from "./fixture-manager";
 
 export type Locale = "ko" | "en" | "ja";
+export type FixtureOverrides = object;
+
+type FakerFunction = (...args: DataExplorerValue[]) => DataExplorerValue;
+type FakerNamespaceMember = FakerFunction | FakerNamespace;
+type FakerNamespace = { [name: string]: FakerNamespaceMember };
+
+const fakerFunctionSchema = z.custom<FakerFunction>(
+  isFunctionValue,
+  "Faker 경로의 마지막 값은 함수여야 합니다.",
+);
+const fakerNamespaceObjectSchema = z.object({});
+const dynamicNamespaceSchema = z.custom<FakerNamespace>(
+  (candidate) => fakerNamespaceObjectSchema.safeParse(candidate).success,
+  "Faker 경로는 객체 namespace여야 합니다.",
+);
+const generatorArgumentsSchema = z.array(dataExplorerValueSchema);
+const fixtureRecordIdSchema = z.union([z.number(), z.string()]);
+const fixtureWhereValueSchema = z.union([z.string(), z.number(), z.boolean(), z.date(), z.null()]);
+
+export type FixtureGenerationSpec = {
+  entity: string;
+  count: number;
+  overrides?: FixtureOverrides;
+};
+
+type GeneratedFixture = {
+  entity: string;
+  data: DataExplorerRecord;
+  explicitId?: boolean;
+};
+
+function parseFixtureSourceRecord(record: DataExplorerRecord): FixtureSourceRecord {
+  return {
+    ...record,
+    id: fixtureRecordIdSchema.parse(record.id),
+  };
+}
 
 export type FixtureGeneratorOptions = {
   locale?: Locale;
   useLLM?: boolean;
   enableLLMCache?: boolean;
   llmModel?: string;
+  /** 테스트나 대체 LLM 공급자를 위한 텍스트 생성 구현 */
+  generateText?: FixtureTextGenerator;
 };
+
+export type FixtureTextGenerator = (request: {
+  model: LanguageModel;
+  prompt: string;
+}) => Promise<{ text: string; usage?: { totalTokens?: number } }>;
 
 export type GeneratorContext = {
   /** 생성 중인 fixture들 (메모리 상) */
-  fixtures: Map<string, Record<string, unknown>>;
+  fixtures: Map<string, DataExplorerRecord>;
 
   /** 참조 데이터 캐시 (DataExplorer 결과) */
-  referenceCache: Map<string, Record<string, unknown>[]>;
+  referenceCache: Map<string, DataExplorerRecord[]>;
 
   /** 이미 import된 레코드를 추적하여 중복 import를 방지합니다 */
   importedRecords: Set<string>; // "User#123"
@@ -37,7 +87,7 @@ export class FixtureGenerator {
   private dataExplorer: DataExplorer;
   private locale: Locale;
   private mappings: FakerMappings;
-  private llmCache: Map<string, unknown> = new Map();
+  private llmCache: Map<string, DataExplorerValue> = new Map();
   private entityCache: Map<string, Entity> = new Map();
   private options: FixtureGeneratorOptions;
 
@@ -58,6 +108,7 @@ export class FixtureGenerator {
       useLLM: options?.useLLM || false,
       enableLLMCache: options?.enableLLMCache !== false,
       llmModel: options?.llmModel || "claude-sonnet-4-6",
+      generateText: options?.generateText,
     };
   }
 
@@ -65,11 +116,12 @@ export class FixtureGenerator {
    * Fixture 생성 (단일)
    * @returns 생성된 fixture 데이터 (메모리 상)
    */
-  async generate(
+  async generate<Overrides = undefined>(
     entityName: string,
-    overrides: Record<string, unknown> = {},
+    overrides?: Overrides,
     context: GeneratorContext = this.createContext(),
-  ): Promise<Record<string, unknown>> {
+  ): Promise<DataExplorerRecord> {
+    const parsedOverrides = dataExplorerRecordSchema.parse(overrides ?? {});
     // Entity 캐싱: 테스트에서 entity cone 수정이 반영되도록 보장
     let entity = this.entityCache.get(entityName);
     if (!entity) {
@@ -83,7 +135,7 @@ export class FixtureGenerator {
     const rowKey = this.options.useLLM ? `${entityName}#row#${Date.now()}` : undefined;
 
     // 각 prop별 값 생성
-    const fixture: Record<string, unknown> = {};
+    const fixture: DataExplorerRecord = {};
 
     for (const prop of entity.props) {
       // Virtual prop은 스킵
@@ -99,8 +151,7 @@ export class FixtureGenerator {
           prop.type === "bigInteger" ||
           (prop.type === "string" &&
             "dbDefault" in prop &&
-            typeof prop.dbDefault === "string" &&
-            prop.dbDefault.includes("nextval"));
+            z.string().safeParse(prop.dbDefault).data?.includes("nextval") === true);
         if (hasDbSequence) {
           // generateBatch에서 처리하므로 여기선 스킵
           continue;
@@ -120,8 +171,8 @@ export class FixtureGenerator {
       }
 
       // override가 있으면 사용
-      if (prop.name in overrides) {
-        fixture[prop.name] = overrides[prop.name];
+      if (prop.name in parsedOverrides) {
+        fixture[prop.name] = parsedOverrides[prop.name];
         continue;
       }
 
@@ -133,10 +184,10 @@ export class FixtureGenerator {
         // BelongsToOne / OneToOne(hasJoinColumn)은 FK 컬럼명({prop.name}_id)으로도 override를 받는다
         const fkColName = `${prop.name}_id`;
         if (
-          fkColName in overrides &&
+          fkColName in parsedOverrides &&
           (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.hasJoinColumn))
         ) {
-          fixture[fkColName] = overrides[fkColName];
+          fixture[fkColName] = parsedOverrides[fkColName];
           continue;
         }
 
@@ -158,13 +209,10 @@ export class FixtureGenerator {
         try {
           const llmValue = await this.generateWithLLM(cone.note, prop, entity, rowKey);
           // string 타입이고 length 제약이 있으면 초과 시 truncation
-          if (
-            typeof llmValue === "string" &&
-            "length" in prop &&
-            typeof prop.length === "number" &&
-            llmValue.length > prop.length
-          ) {
-            fixture[prop.name] = llmValue.slice(0, prop.length);
+          const llmText = z.string().safeParse(llmValue);
+          const maxLength = "length" in prop ? z.number().safeParse(prop.length) : undefined;
+          if (llmText.success && maxLength?.success && llmText.data.length > maxLength.data) {
+            fixture[prop.name] = llmText.data.slice(0, maxLength.data);
           } else {
             fixture[prop.name] = llmValue;
           }
@@ -186,7 +234,7 @@ export class FixtureGenerator {
 
       // 4. fixtureDefault 사용
       if (cone?.fixtureDefault !== undefined) {
-        fixture[prop.name] = cone.fixtureDefault;
+        fixture[prop.name] = dataExplorerValueSchema.parse(cone.fixtureDefault);
         continue;
       }
 
@@ -195,19 +243,22 @@ export class FixtureGenerator {
     }
 
     // 6. email 필드가 있고 name 필드가 있으면, email의 로컬 파트를 name 기반으로 보정
-    if ("email" in fixture && typeof fixture.email === "string" && !("email" in overrides)) {
+    const email = z.string().safeParse(fixture.email);
+    if (email.success && !("email" in parsedOverrides)) {
       const nameValue = fixture.name || fixture.username || fixture.full_name || fixture.name_en;
-      if (nameValue && typeof nameValue === "string") {
-        const domain = fixture.email.split("@")[1] || "example.com";
-        const romanized = await this.romanizeName(nameValue);
+      const parsedName = z.string().safeParse(nameValue);
+      if (parsedName.success) {
+        const domain = email.data.split("@")[1] || "example.com";
+        const romanized = await this.romanizeName(parsedName.data);
         fixture.email = `${romanized}@${domain}`;
       }
     }
 
     // 7. password 필드 암호화
-    if ("password" in fixture && fixture.password && typeof fixture.password === "string") {
+    const password = z.string().safeParse(fixture.password);
+    if (password.success && password.data.length > 0) {
       const bcrypt = await import("bcrypt");
-      fixture.password = await bcrypt.hash(fixture.password, 10);
+      fixture.password = await bcrypt.hash(password.data, 10);
     }
 
     context.fixtures.set(tempId, fixture);
@@ -221,7 +272,7 @@ export class FixtureGenerator {
     entity: Entity,
     prop: EntityProp,
     context: GeneratorContext,
-  ): Promise<number | null> {
+  ): Promise<number | string | null> {
     if (!isRelationProp(prop)) {
       throw new Error(`FixtureGenerator: ${entity.id}.${prop.name} is not a relation prop`);
     }
@@ -243,15 +294,13 @@ export class FixtureGenerator {
       const cacheKey = `${prop.with}:${JSON.stringify(dataSource)}`;
 
       if (!context.referenceCache.has(cacheKey)) {
+        const dataSourceConfig = dataSourceConfigSchema.parse(dataSource.config ?? {});
         const exploreResult = await this.dataExplorer.exploreWithRelations(prop.with, {
           strategy: dataSource.strategy,
-          limit:
-            ((dataSource.config as Record<string, unknown> | undefined)?.limit as
-              | number
-              | undefined) || 10,
+          limit: dataSourceConfig.limit ?? 10,
           includeRelations: true,
           maxDepth: 3,
-          ...(dataSource.config as Record<string, unknown> | undefined),
+          ...dataSourceConfig,
         });
         context.referenceCache.set(cacheKey, exploreResult.main.records);
 
@@ -263,7 +312,7 @@ export class FixtureGenerator {
       if (candidates && candidates.length > 0) {
         // 랜덤하게 하나 선택
         const selected = candidates[Math.floor(Math.random() * candidates.length)];
-        return selected.id as number;
+        return z.union([z.number(), z.string()]).parse(selected.id);
       }
     }
 
@@ -290,7 +339,7 @@ export class FixtureGenerator {
     if (autoCandidates && autoCandidates.length > 0) {
       // 랜덤하게 하나 선택
       const selected = autoCandidates[Math.floor(Math.random() * autoCandidates.length)];
-      return selected.id as number;
+      return z.union([z.number(), z.string()]).parse(selected.id);
     }
 
     // 참조 데이터가 없으면 null 반환 (nullable인 경우)
@@ -320,7 +369,7 @@ export class FixtureGenerator {
     // 1. Related entities import (Company, Department 등)
     for (const [entityId, records] of exploreResult.related.entries()) {
       const entity = this.entityManager.get(entityId);
-      const recordsToImport: Record<string, unknown>[] = [];
+      const recordsToImport: DataExplorerRecord[] = [];
 
       !isTest() &&
         console.log(
@@ -346,8 +395,8 @@ export class FixtureGenerator {
             );
           const fixtureRecords = await FixtureManager.createFixtureRecord(
             entity,
-            record as { id: number | string; [key: string]: string | number | boolean | null },
-            { _db: this.sourceDb, singleRecord: true },
+            parseFixtureSourceRecord(record),
+            { db: this.sourceDb, singleRecord: true },
           );
           allFixtureRecords.push(...fixtureRecords);
         }
@@ -356,7 +405,7 @@ export class FixtureGenerator {
 
     // 2. Main entity import (Employee 등)
     const mainEntity = this.entityManager.get(exploreResult.main.entityId);
-    const mainRecordsToImport: Record<string, unknown>[] = [];
+    const mainRecordsToImport: DataExplorerRecord[] = [];
 
     !isTest() &&
       console.log(
@@ -384,8 +433,8 @@ export class FixtureGenerator {
           );
         const fixtureRecords = await FixtureManager.createFixtureRecord(
           mainEntity,
-          record as { id: number | string; [key: string]: string | number | boolean | null },
-          { _db: this.sourceDb, singleRecord: true },
+          parseFixtureSourceRecord(record),
+          { db: this.sourceDb, singleRecord: true },
         );
         allFixtureRecords.push(...fixtureRecords);
       }
@@ -416,7 +465,7 @@ export class FixtureGenerator {
     generator: string,
     prop: EntityProp,
     entity: Entity,
-  ): Promise<unknown> {
+  ): Promise<DataExplorerValue> {
     // Faker.js 표현식만 지원
     if (generator.startsWith("faker.")) {
       // username이나 name 필드는 한국어 faker 사용
@@ -438,26 +487,25 @@ export class FixtureGenerator {
         const parts = path.split(".");
 
         // faker 객체에서 함수 찾기
-        let fn: unknown = faker;
+        let member = dynamicNamespaceSchema.parse(faker);
         for (const part of parts) {
-          if (typeof fn === "object" && fn !== null && part in fn) {
-            fn = (fn as Record<string, unknown>)[part];
-          } else {
+          if (!(part in member)) {
             throw new Error(`FixtureGenerator: Invalid faker path for ${prop.name}: faker.${path}`);
+          }
+          const nextMember = member[part];
+          if (part !== parts.at(-1)) {
+            member = dynamicNamespaceSchema.parse(nextMember);
           }
         }
 
-        // 함수가 아니면 에러
-        if (typeof fn !== "function") {
-          throw new Error(`FixtureGenerator: faker.${path} is not a function (for ${prop.name})`);
-        }
+        const fn = fakerFunctionSchema.parse(member[parts.at(-1) ?? ""]);
 
-        let args: unknown[] = [];
+        let args: DataExplorerValue[] = [];
         if (argsStr?.trim()) {
           args = this.parseGeneratorArgs(argsStr, prop.name);
         }
 
-        return fn(...args);
+        return dataExplorerValueSchema.parse(fn(...args));
       } catch (error) {
         !isTest() &&
           console.log(
@@ -490,7 +538,10 @@ export class FixtureGenerator {
    * 4. Enum 타입
    * 5. 타입별 기본값
    */
-  private async generateDefaultValue(prop: EntityProp, entity?: Entity): Promise<unknown> {
+  private async generateDefaultValue(
+    prop: EntityProp,
+    entity?: Entity,
+  ): Promise<DataExplorerValue> {
     const fakerModule = await import("@faker-js/faker");
     const faker = fakerModule.faker;
     const fakerKO = fakerModule.fakerKO;
@@ -680,7 +731,7 @@ export class FixtureGenerator {
     _entity: Entity | undefined,
     faker: typeof import("@faker-js/faker").faker,
     _localeFaker: typeof import("@faker-js/faker").faker,
-  ): unknown[] {
+  ): DataExplorerValue[] {
     const count = faker.number.int({ min: 1, max: 3 });
 
     /** SonamuFile[]은 Sonamu 내장 타입으로 구조가 정해져 있습니다 */
@@ -726,7 +777,10 @@ export class FixtureGenerator {
    *
    * fakerKO, fakerJA도 지원하여 다국어 데이터를 생성합니다.
    */
-  private async executeFakerExpression(expression: string, prop: EntityProp): Promise<unknown> {
+  private async executeFakerExpression(
+    expression: string,
+    prop: EntityProp,
+  ): Promise<DataExplorerValue> {
     const fakerModule = await import("@faker-js/faker");
     const faker = fakerModule.faker;
     const fakerKO = fakerModule.fakerKO;
@@ -735,7 +789,7 @@ export class FixtureGenerator {
     /** Faker 표현식이 아닌 리터럴 값은 JSON으로 파싱합니다 */
     if (!expression.startsWith("faker")) {
       try {
-        return JSON.parse(expression);
+        return dataExplorerValueSchema.parse(JSON.parse(expression));
       } catch {
         return expression;
       }
@@ -760,25 +814,25 @@ export class FixtureGenerator {
     const parts = path.split(".");
 
     /** 점 표기법(dot notation)으로 Faker 함수를 찾아갑니다 */
-    let fn: unknown = selectedFaker;
+    let member = dynamicNamespaceSchema.parse(selectedFaker);
     for (const part of parts) {
-      if (typeof fn === "object" && fn !== null && part in fn) {
-        fn = (fn as Record<string, unknown>)[part];
-      } else {
+      if (!(part in member)) {
         throw new Error(`Invalid faker path for ${prop.name}: ${fakerName}.${path}`);
+      }
+      const nextMember = member[part];
+      if (part !== parts.at(-1)) {
+        member = dynamicNamespaceSchema.parse(nextMember);
       }
     }
 
-    if (typeof fn !== "function") {
-      throw new Error(`${fakerName}.${path} is not a function (for ${prop.name})`);
-    }
+    const fn = fakerFunctionSchema.parse(member[parts.at(-1) ?? ""]);
 
-    let args: unknown[] = [];
+    let args: DataExplorerValue[] = [];
     if (argsStr?.trim()) {
       args = this.parseGeneratorArgs(argsStr, prop.name);
     }
 
-    return fn(...args);
+    return dataExplorerValueSchema.parse(fn(...args));
   }
 
   /**
@@ -796,7 +850,7 @@ export class FixtureGenerator {
     prop: EntityProp,
     entity: Entity,
     rowKey?: string,
-  ): Promise<unknown> {
+  ): Promise<DataExplorerValue> {
     // rowKey가 있으면 row 단위 생성 전략 사용
     if (rowKey) {
       const rowCacheKey = `${rowKey}:${prop.name}`;
@@ -825,18 +879,19 @@ export class FixtureGenerator {
 
       const apiKey = this.getApiKey();
       const { createAnthropic } = await import("@ai-sdk/anthropic");
-      const { generateText } = await import("ai");
+      const generateText = await this.getTextGenerator();
 
       const rowResponse = await generateText({
         model: createAnthropic({ apiKey })(this.options.llmModel || "claude-sonnet-4-6"),
         prompt: this.buildRowLLMPrompt(llmProps, entity),
       });
-      if (!rowResponse || typeof rowResponse.text !== "string") {
+      const rowResponseText = z.string().safeParse(rowResponse?.text);
+      if (!rowResponseText.success) {
         throw new Error("Invalid LLM response");
       }
 
       // 응답을 파싱하여 각 필드에 대한 결과를 캐시에 저장
-      const rowResult = this.parseRowLLMResponse(rowResponse.text, llmProps);
+      const rowResult = this.parseRowLLMResponse(rowResponseText.data, llmProps);
       for (const [fieldName, value] of Object.entries(rowResult)) {
         this.llmCache.set(`${rowKey}:${fieldName}`, value);
       }
@@ -861,7 +916,7 @@ export class FixtureGenerator {
     fixtureHint: string,
     prop: EntityProp,
     entity: Entity,
-  ): Promise<unknown> {
+  ): Promise<DataExplorerValue> {
     const cacheKey = `${entity.id}:${prop.name}:${fixtureHint}`;
     if (this.options.enableLLMCache && this.llmCache.has(cacheKey)) {
       return this.llmCache.get(cacheKey);
@@ -869,22 +924,31 @@ export class FixtureGenerator {
 
     const apiKey = this.getApiKey();
     const { createAnthropic } = await import("@ai-sdk/anthropic");
-    const { generateText } = await import("ai");
+    const generateText = await this.getTextGenerator();
 
     const singleResponse = await generateText({
       model: createAnthropic({ apiKey })(this.options.llmModel || "claude-sonnet-4-6"),
       prompt: this.buildLLMPrompt(fixtureHint, prop, entity),
     });
-    if (!singleResponse || typeof singleResponse.text !== "string") {
+    const singleResponseText = z.string().safeParse(singleResponse?.text);
+    if (!singleResponseText.success) {
       throw new Error("Invalid LLM response");
     }
 
-    const value = this.parseLLMResponse(singleResponse.text, prop.type);
+    const value = this.parseLLMResponse(singleResponseText.data, prop.type);
     if (this.options.enableLLMCache) {
       this.llmCache.set(cacheKey, value);
     }
 
     return value;
+  }
+
+  private async getTextGenerator(): Promise<FixtureTextGenerator> {
+    if (this.options.generateText) {
+      return this.options.generateText;
+    }
+    const ai = await import("ai");
+    return async (request) => ai.generateText(request);
   }
 
   /**
@@ -938,7 +1002,7 @@ export class FixtureGenerator {
       ? `\n\nOther fields in this entity (for context, do NOT generate these):\n${otherProps}`
       : "";
 
-    const outputShape = props.map((p) => `  "${p.name}": <${p.type}>`).join(",\n");
+    const resultTemplate = props.map((p) => `  "${p.name}": <${p.type}>`).join(",\n");
 
     const entityContext = entity.cone?.note ? `\nEntity description: ${entity.cone.note}` : "";
 
@@ -958,35 +1022,35 @@ Rules:
 
 Return exactly this JSON shape:
 {
-${outputShape}
+${resultTemplate}
 }`;
   }
 
   /**
    * row LLM 응답을 파싱하여 필드별 값으로 변환합니다.
    */
-  private parseRowLLMResponse(text: string, props: EntityProp[]): Record<string, unknown> {
+  private parseRowLLMResponse(text: string, props: EntityProp[]): DataExplorerRecord {
     const jsonText = text
       .trim()
       .replace(/^```json\s*/i, "")
       .replace(/```\s*$/, "")
       .trim();
 
-    let parsed: Record<string, unknown>;
+    let parsed: DataExplorerRecord;
     try {
-      const raw = JSON.parse(jsonText);
-      if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+      const parsedRecord = dataExplorerRecordSchema.safeParse(JSON.parse(jsonText));
+      if (!parsedRecord.success) {
         !isTest() &&
           console.warn("[FixtureGenerator] Row LLM response is not a plain object:", text);
         return {};
       }
-      parsed = raw as Record<string, unknown>;
+      parsed = parsedRecord.data;
     } catch {
       !isTest() && console.warn("[FixtureGenerator] Failed to parse row LLM response:", text);
       return {};
     }
 
-    const result: Record<string, unknown> = {};
+    const result: DataExplorerRecord = {};
     for (const prop of props) {
       if (prop.name in parsed) {
         result[prop.name] = this.parseLLMResponse(String(parsed[prop.name] ?? ""), prop.type);
@@ -1038,13 +1102,13 @@ Rules:
     return prompt;
   }
 
-  private parseLLMResponse(text: string, propType: string): unknown {
+  private parseLLMResponse(text: string, propType: string): DataExplorerValue {
     const cleaned = text.trim();
 
     // 배열 타입 처리
     if (propType.endsWith("[]")) {
       try {
-        const parsed = JSON.parse(cleaned);
+        const parsed = dataExplorerValueSchema.parse(JSON.parse(cleaned));
         const baseType = propType.slice(0, -2); // "integer[]" -> "integer"
 
         if (Array.isArray(parsed)) {
@@ -1054,7 +1118,7 @@ Rules:
               return this.getDefaultValueForType(baseType);
             }
             // 객체는 JSON.stringify 후 파싱 (json 타입인 경우)
-            if (typeof item === "object") {
+            if (dataExplorerRecordSchema.safeParse(item).success || Array.isArray(item)) {
               return baseType === "json"
                 ? item
                 : this.parseScalarValue(JSON.stringify(item), baseType);
@@ -1077,7 +1141,7 @@ Rules:
     return this.parseScalarValue(cleaned, propType);
   }
 
-  private getDefaultValueForType(propType: string): unknown {
+  private getDefaultValueForType(propType: string): DataExplorerValue {
     switch (propType) {
       case "integer":
         return 0;
@@ -1100,7 +1164,7 @@ Rules:
     }
   }
 
-  private parseScalarValue(text: string, propType: string): unknown {
+  private parseScalarValue(text: string, propType: string): DataExplorerValue {
     const cleaned = text.trim();
 
     switch (propType) {
@@ -1129,7 +1193,7 @@ Rules:
       }
       case "json":
         try {
-          return JSON.parse(cleaned);
+          return dataExplorerValueSchema.parse(JSON.parse(cleaned));
         } catch {
           return cleaned;
         }
@@ -1149,22 +1213,27 @@ Rules:
    * 2. JS 객체 리터럴 → JSON 변환 후 재시도 (single quote, unquoted key 처리)
    * 3. 단순 단일 인자 폴백 (숫자, 문자열)
    */
-  private parseGeneratorArgs(argsStr: string, propName: string): unknown[] {
+  private parseGeneratorArgs(argsStr: string, propName: string): DataExplorerValue[] {
     // 1. JSON 직접 파싱
+    let parsedArguments: DataExplorerValue[] | null;
     try {
-      const parsed = JSON.parse(`[${argsStr}]`) as unknown;
-      return Array.isArray(parsed) ? parsed : [parsed];
+      parsedArguments = generatorArgumentsSchema.parse(JSON.parse(`[${argsStr}]`));
     } catch {
-      // 계속
+      parsedArguments = null;
+    }
+    if (parsedArguments) {
+      return parsedArguments;
     }
 
     // 2. JS 객체 리터럴 → JSON 변환 후 재시도
     try {
       const jsonStr = this.convertJsLiteralToJson(argsStr);
-      const parsed = JSON.parse(`[${jsonStr}]`) as unknown;
-      return Array.isArray(parsed) ? parsed : [parsed];
+      parsedArguments = generatorArgumentsSchema.parse(JSON.parse(`[${jsonStr}]`));
     } catch {
-      // 계속
+      parsedArguments = null;
+    }
+    if (parsedArguments) {
+      return parsedArguments;
     }
 
     // 3. 단순 단일 인자 폴백
@@ -1227,6 +1296,14 @@ Rules:
     }
 
     return apiKey;
+  }
+
+  private hasSequenceDefault(prop: EntityProp): boolean {
+    if (!("dbDefault" in prop)) {
+      return false;
+    }
+    const dbDefault = z.string().safeParse(prop.dbDefault);
+    return dbDefault.success && dbDefault.data.includes("nextval");
   }
 
   private getExpectedFormat(propType: string): string {
@@ -1460,15 +1537,9 @@ Rules:
    *
    * @returns 저장된 fixture 데이터 (실제 DB ID 포함)
    */
-  async generateBatch(
-    specs: Array<{ entity: string; count: number; overrides?: Record<string, unknown> }>,
-  ): Promise<FixtureImportResult[]> {
+  async generateBatch(specs: FixtureGenerationSpec[]): Promise<FixtureImportResult[]> {
     const context = this.createContext();
-    const generatedFixtures: Array<{
-      entity: string;
-      data: Record<string, unknown>;
-      explicitId?: boolean;
-    }> = [];
+    const generatedFixtures: GeneratedFixture[] = [];
 
     // 1. 각 spec별로 fixture 생성
     for (const spec of specs) {
@@ -1484,10 +1555,7 @@ Rules:
         // 부모 테이블에서 서브타입 테이블에 없는 id를 조회
         let query = this.sourceDb(parentEntity.table).select(`${parentEntity.table}.id`);
         for (const [col, val] of Object.entries(parentOverrides)) {
-          query = query.where(
-            `${parentEntity.table}.${col}`,
-            val as string | number | boolean | null,
-          );
+          query = query.where(`${parentEntity.table}.${col}`, fixtureWhereValueSchema.parse(val));
         }
         query = query
           .leftJoin(specEntity.table, `${specEntity.table}.id`, `${parentEntity.table}.id`)
@@ -1536,10 +1604,7 @@ Rules:
         !explicitId &&
         (idProp?.type === "integer" ||
           idProp?.type === "bigInteger" ||
-          (idProp?.type === "string" &&
-            "dbDefault" in (idProp ?? {}) &&
-            typeof (idProp as { dbDefault?: unknown })?.dbDefault === "string" &&
-            ((idProp as { dbDefault?: string })?.dbDefault ?? "").includes("nextval")));
+          (idProp?.type === "string" && this.hasSequenceDefault(idProp)));
 
       const dataForRecord = usesSequence
         ? { ...data, id: Math.floor(Math.random() * 1000000) }
@@ -1547,7 +1612,7 @@ Rules:
 
       const records = await FixtureManager.createFixtureRecord(
         entity,
-        dataForRecord as { id: number | string; [key: string]: string | number | boolean | null },
+        parseFixtureSourceRecord(dataForRecord),
         { singleRecord: true },
       );
       fixtureRecords.push(...records);
@@ -1572,7 +1637,7 @@ Rules:
    * generateBatch()를 다시 호출하지 않고 직접 삽입합니다.
    */
   private async generateCompanions(
-    specs: Array<{ entity: string; count: number; overrides?: Record<string, unknown> }>,
+    specs: FixtureGenerationSpec[],
     parentResults: FixtureImportResult[],
   ): Promise<FixtureImportResult[]> {
     const allResults: FixtureImportResult[] = [];
@@ -1612,10 +1677,7 @@ Rules:
         const usesSequence =
           companionIdProp?.type === "integer" ||
           companionIdProp?.type === "bigInteger" ||
-          (companionIdProp?.type === "string" &&
-            "dbDefault" in (companionIdProp ?? {}) &&
-            typeof (companionIdProp as { dbDefault?: unknown })?.dbDefault === "string" &&
-            ((companionIdProp as { dbDefault?: string })?.dbDefault ?? "").includes("nextval"));
+          (companionIdProp?.type === "string" && this.hasSequenceDefault(companionIdProp));
         const companionCount = companion.count ?? 1;
 
         // 각 parent result에 대해 companion fixture 생성
@@ -1624,7 +1686,7 @@ Rules:
 
         for (const parentResult of entityResults) {
           const resolvedOverrides = this.resolveTemplateOverrides(
-            companion.overrides ?? {},
+            dataExplorerRecordSchema.parse(companion.overrides ?? {}),
             parentResult.data,
           );
           resolvedOverrides[fkColName] = parentResult.data.id;
@@ -1638,10 +1700,7 @@ Rules:
 
             const records = await FixtureManager.createFixtureRecord(
               companionEntity,
-              dataForRecord as {
-                id: number | string;
-                [key: string]: string | number | boolean | null;
-              },
+              parseFixtureSourceRecord(dataForRecord),
               { singleRecord: true },
             );
             companionFixtureRecords.push(...records);
@@ -1672,13 +1731,14 @@ Rules:
    * 예: { "account_id": "{{email}}" } → { "account_id": "user@example.com" }
    */
   private resolveTemplateOverrides(
-    overrides: Record<string, unknown>,
+    overrides: DataExplorerRecord,
     parentData: { [key: string]: string | number | boolean | Date | null },
-  ): Record<string, unknown> {
-    const resolved: Record<string, unknown> = {};
+  ): DataExplorerRecord {
+    const resolved: DataExplorerRecord = {};
     for (const [key, value] of Object.entries(overrides)) {
-      if (typeof value === "string" && value.startsWith("{{") && value.endsWith("}}")) {
-        const fieldName = value.slice(2, -2).trim();
+      const template = z.string().safeParse(value);
+      if (template.success && template.data.startsWith("{{") && template.data.endsWith("}}")) {
+        const fieldName = template.data.slice(2, -2).trim();
         if (!(fieldName in parentData)) {
           throw new Error(
             `템플릿 필드 "${fieldName}"이(가) 부모 fixture 데이터에 존재하지 않습니다 (override key: "${key}")`,
@@ -1741,8 +1801,8 @@ Rules:
     for (const record of exploreResult.main.records) {
       const records = await FixtureManager.createFixtureRecord(
         mainEntity,
-        record as { id: number | string; [key: string]: string | number | boolean | null },
-        { _db: this.sourceDb, singleRecord: true },
+        parseFixtureSourceRecord(record),
+        { db: this.sourceDb, singleRecord: true },
       );
       fixtureRecords.push(...records);
     }
@@ -1753,8 +1813,8 @@ Rules:
       for (const record of relatedRecords) {
         const records = await FixtureManager.createFixtureRecord(
           relatedEntity,
-          record as { id: number | string; [key: string]: string | number | boolean | null },
-          { _db: this.sourceDb, singleRecord: true },
+          parseFixtureSourceRecord(record),
+          { db: this.sourceDb, singleRecord: true },
         );
         fixtureRecords.push(...records);
       }

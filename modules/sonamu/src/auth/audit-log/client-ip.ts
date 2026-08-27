@@ -1,5 +1,7 @@
 import { isIP } from "node:net";
 
+import { isStringValue } from "../../utils/runtime-value";
+
 const CLIENT_IP_HEADERS = [
   "cf-connecting-ip",
   "x-forwarded-for",
@@ -29,8 +31,8 @@ export function replaceClientIpHeaders(
   }
 }
 
-export function getValidClientIp(value: unknown): string | null {
-  if (typeof value !== "string" || value.length > 45 || isIP(value) === 0) {
+export function getValidClientIp<Value>(value: Value): string | null {
+  if (!isStringValue(value) || value.length > 45 || isIP(value) === 0) {
     return null;
   }
 

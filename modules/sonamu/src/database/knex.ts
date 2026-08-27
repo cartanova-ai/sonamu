@@ -1,13 +1,29 @@
 import { type Knex } from "knex";
 import knex from "knex";
 
-export function createKnexInstance(config: Knex.Config): Knex {
-  if (config.connection && typeof config.connection === "object") {
-    const conn = config.connection as Record<string, unknown>;
+import { isObjectValue } from "../utils/runtime-value";
 
-    if (conn.keepAlive === undefined) {
-      conn.keepAlive = true;
-      conn.keepAliveInitialDelayMillis = conn.keepAliveInitialDelayMillis ?? 10000;
+type KnexClientWithConnection = Knex.Client & {
+  connection?: {
+    stream?: {
+      setKeepAlive?: (enable: boolean, initialDelay: number) => void;
+    };
+  };
+};
+
+export function createKnexInstance(config: Knex.Config): Knex {
+  if (config.connection && isObjectValue(config.connection)) {
+    const keepAlive = "keepAlive" in config.connection ? config.connection.keepAlive : undefined;
+    const initialDelay =
+      "keepAliveInitialDelayMillis" in config.connection
+        ? config.connection.keepAliveInitialDelayMillis
+        : undefined;
+
+    if (keepAlive === undefined) {
+      Object.assign(config.connection, {
+        keepAlive: true,
+        keepAliveInitialDelayMillis: initialDelay ?? 10000,
+      });
     }
   }
 
@@ -23,22 +39,19 @@ export function createKnexInstance(config: Knex.Config): Knex {
     createTimeoutMillis: 30000,
     ...config.pool,
     // validate/afterCreate는 항상 프레임워크 기본값을 사용한다.
-    validate: (connection: unknown) => {
-      if (typeof connection !== "object" || connection === null) return false;
-      const conn = connection as Record<string, unknown>;
-      if (conn._ending === true || conn._closed === true) return false;
-      return true;
+    validate: <Connection>(connection: Connection) => {
+      if (!isObjectValue(connection)) return false;
+      const isEnding = "_ending" in connection && connection["_ending"] === true;
+      const isClosed = "_closed" in connection && connection["_closed"] === true;
+      return !isEnding && !isClosed;
     },
     afterCreate: ((
-      conn: Knex.Client & Record<string, unknown>,
+      conn: KnexClientWithConnection,
       done: (err: Error | null, conn: Knex.Client) => void,
     ) => {
-      // pg driver: 소켓 레벨 keepAlive 설정
-      const stream = (conn as Record<string, unknown>).connection as
-        | { stream?: { setKeepAlive?: (enable: boolean, initialDelay: number) => void } }
-        | undefined;
-      if (stream?.stream?.setKeepAlive) {
-        stream.stream.setKeepAlive(true, 10000);
+      // pg driver 소켓에 keepAlive를 적용해 유휴 연결 단절을 줄입니다.
+      if (conn.connection?.stream?.setKeepAlive) {
+        conn.connection.stream.setKeepAlive(true, 10000);
       }
 
       done(null, conn);
