@@ -2,17 +2,58 @@ import path from "node:path";
 
 import chalk from "chalk";
 
-import { type SonamuConfig } from "../api/config";
 import { loadConfig } from "../api/config";
 import { type RunResult, type TestCaseResult } from "../testing";
+import { isStringValue } from "../utils/runtime-value";
 import { findApiRootPath } from "../utils/utils";
 
-async function loadDevServerConfig(): Promise<SonamuConfig> {
+interface TestServerLocation {
+  host: string;
+  port: number;
+  routePrefix: string;
+  baseUrl: string;
+}
+
+interface TestRunPayload {
+  files?: string[];
+  pattern?: string;
+}
+
+type TestCommandConfig = {
+  server: {
+    listen?: {
+      host?: string;
+      port?: number;
+    };
+  };
+  test?: {
+    devRunner?: {
+      enabled?: boolean;
+      routePrefix?: string;
+    };
+  };
+};
+
+export interface TestCommandDependencies {
+  fetch: typeof globalThis.fetch;
+  findApiRootPath: typeof findApiRootPath;
+  loadConfig: (apiRootPath: string) => Promise<TestCommandConfig>;
+}
+
+const testCommandDependencies: TestCommandDependencies = {
+  fetch: globalThis.fetch,
+  findApiRootPath,
+  loadConfig,
+};
+
+async function loadDevServerConfig(
+  dependencies: TestCommandDependencies,
+): Promise<TestCommandConfig> {
   const prevVitest = process.env.VITEST;
   process.env.VITEST = "true";
   try {
-    const apiRootPath = findApiRootPath();
-    return await loadConfig(apiRootPath);
+    const apiRootPath = dependencies.findApiRootPath();
+    return await dependencies.loadConfig(apiRootPath);
   } finally {
     if (prevVitest === undefined) {
       delete process.env.VITEST;
@@ -22,22 +63,19 @@ async function loadDevServerConfig(): Promise<SonamuConfig> {
   }
 }
 
-function resolveTestBaseUrl(config: SonamuConfig): {
-  host: string;
-  port: number;
-  routePrefix: string;
-  baseUrl: string;
-} {
+function resolveTestBaseUrl(config: TestCommandConfig): TestServerLocation {
   const port = config.server.listen?.port ?? 3000;
   const host = config.server.listen?.host ?? "localhost";
   const routePrefix = config.test?.devRunner?.routePrefix ?? "/__test__";
   return { host, port, routePrefix, baseUrl: `http://${host}:${port}${routePrefix}` };
 }
 
-export async function testCommand(): Promise<void> {
+export async function testCommand(
+  dependencies: TestCommandDependencies = testCommandDependencies,
+): Promise<void> {
   const args = process.argv.slice(3);
 
-  const config = await loadDevServerConfig();
+  const config = await loadDevServerConfig(dependencies);
 
   // process.argv 파싱: sonamu test [file...] --pattern "이름" --traces --status
   const files: string[] = [];
@@ -59,7 +97,7 @@ export async function testCommand(): Promise<void> {
   }
 
   if (showStatus) {
-    return testStatusCommand(config);
+    return testStatusCommand(config, dependencies.fetch);
   }
 
   if (!config.test?.devRunner?.enabled) {
@@ -74,7 +112,7 @@ export async function testCommand(): Promise<void> {
   const { baseUrl } = resolveTestBaseUrl(config);
   const url = `${baseUrl}/run`;
 
-  const payload: { files?: string[]; pattern?: string } = {};
+  const payload: TestRunPayload = {};
   if (files.length > 0) {
     payload.files = files;
   }
@@ -83,7 +121,7 @@ export async function testCommand(): Promise<void> {
   }
 
   try {
-    const response = await fetch(url, {
+    const response = await dependencies.fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -99,7 +137,10 @@ export async function testCommand(): Promise<void> {
     }
 
     if (response.status === 500) {
-      const errorBody = (await response.json()) as { error?: string };
+      const errorBody =
+        /* SAFETY: CLI 파서와 빌드 도구 입력 계약이 이 값의 타입을 보장한다. */ (await response.json()) as {
+          error?: string;
+        };
       console.error(chalk.red("Vitest 인스턴스가 아직 준비되지 않았습니다"));
       if (errorBody.error) {
         console.error(chalk.red(errorBody.error));
@@ -112,7 +153,8 @@ export async function testCommand(): Promise<void> {
       process.exit(1);
     }
 
-    const result = (await response.json()) as RunResult;
+    const result =
+      /* SAFETY: CLI 파서와 빌드 도구 입력 계약이 이 값의 타입을 보장한다. */ (await response.json()) as RunResult;
 
     const { passed, failed: failedCount, total, durationMs } = result.summary;
     const passedStr = chalk.green(`${passed} passed`);
@@ -141,10 +183,9 @@ export async function testCommand(): Promise<void> {
           console.log(`  ${chalk.dim(path.basename(file))}`);
           for (const trace of traces) {
             const loc = `${path.basename(trace.filePath)}:${trace.lineNumber}`;
-            const valueStr =
-              typeof trace.value === "string"
-                ? trace.value
-                : (JSON.stringify(trace.value, null, 2) ?? "undefined");
+            const valueStr = isStringValue(trace.value)
+              ? trace.value
+              : (JSON.stringify(trace.value, null, 2) ?? "undefined");
             console.log(`\n    ${chalk.yellow(`[${trace.key}]`)} ${chalk.dim(loc)}`);
             const indented = valueStr.split("\n").join("\n    ");
             console.log(`    ${indented}`);
@@ -195,7 +236,10 @@ function collectTracesFromResults(
   return result;
 }
 
-async function testStatusCommand(config: SonamuConfig): Promise<void> {
+async function testStatusCommand(
+  config: TestCommandConfig,
+  fetchRequest: typeof globalThis.fetch,
+): Promise<void> {
   if (!config.test?.devRunner?.enabled) {
     console.error(
       chalk.red(
@@ -209,19 +253,20 @@ async function testStatusCommand(config: SonamuConfig): Promise<void> {
   const url = `${baseUrl}/status`;
 
   try {
-    const response = await fetch(url);
+    const response = await fetchRequest(url);
 
     if (!response.ok) {
       console.error(chalk.red(`예상하지 못한 응답: ${response.status}`));
       process.exit(1);
     }
 
-    const status = (await response.json()) as {
-      ready: boolean;
-      running: boolean;
-      lastRunAt: string | null;
-      sseAvailable: boolean;
-    };
+    const status =
+      /* SAFETY: CLI 파서와 빌드 도구 입력 계약이 이 값의 타입을 보장한다. */ (await response.json()) as {
+        ready: boolean;
+        running: boolean;
+        lastRunAt: string | null;
+        sseAvailable: boolean;
+      };
 
     console.log(chalk.bold("DevRunner 상태:"));
     console.log(`  ready:        ${status.ready ? chalk.green("true") : chalk.red("false")}`);

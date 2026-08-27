@@ -3,23 +3,17 @@ import { BaseModel, EntityManager } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterAll, beforeEach, describe, expect, vi } from "vitest";
 
-// ai 패키지의 generateText 모킹
-vi.mock("ai", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("ai")>();
-  return {
-    ...actual,
-    generateText: vi.fn(),
-  };
-});
-
 bootstrap(vi);
 
-// 모킹된 generateText 함수
-let mockGenerateText: ReturnType<typeof vi.fn>;
+type ConeTextGenerator = NonNullable<
+  NonNullable<Parameters<ReturnType<typeof EntityManager.get>["generateCones"]>[0]>["generateText"]
+>;
 
-beforeEach(async () => {
-  const ai = await import("ai");
-  mockGenerateText = ai.generateText as ReturnType<typeof vi.fn>;
+// 테스트용 generateText 함수
+const mockGenerateText = vi.fn<ConeTextGenerator>();
+
+beforeEach(() => {
+  mockGenerateText.mockReset();
 
   // 테스트에서 더미 API 키 설정 (실제 호출은 모킹되므로 유효하지 않아도 됨)
   process.env.ANTHROPIC_API_KEY = "test-api-key-for-mocking";
@@ -53,23 +47,6 @@ afterAll(async () => {
   }
 });
 
-// Entity private 메서드 접근을 위한 타입
-type EntityWithPrivateMethods = {
-  collectExistingCones(): Record<string, Cone>;
-  applyCones(result: {
-    entityCone?: Cone;
-    propCones: Record<string, Cone>;
-    subsetCones: Record<string, Cone>;
-    enumCones: Record<string, Cone>;
-    tokensUsed: number;
-  }): void;
-};
-
-// Prop cone 접근을 위한 타입
-type PropWithCone = {
-  cone?: Cone;
-};
-
 describe("Cone Generator", () => {
   test("API 키 없을 때 에러 발생", async () => {
     // API 키 환경변수 제거
@@ -82,6 +59,8 @@ describe("Cone Generator", () => {
       userEntity.generateCones({
         preserveExisting: false,
         locale: "ko",
+        generateText: mockGenerateText,
+        persist: false,
       }),
     ).rejects.toThrow("ANTHROPIC_API_KEY not found");
 
@@ -138,12 +117,13 @@ describe("Cone Generator", () => {
       const result = await userEntity.generateCones({
         preserveExisting: false,
         locale: "ko",
+        generateText: mockGenerateText,
+        persist: false,
       });
 
       // 결과 검증
       expect(result).toBeDefined();
       expect(result.propCones).toBeDefined();
-      expect(typeof result.propCones).toBe("object");
 
       // email 필드 cone 확인
       const emailCone = result.propCones.email;
@@ -161,9 +141,9 @@ describe("Cone Generator", () => {
       userEntity.cone = originalCone;
       for (const prop of userEntity.props) {
         if (originalPropCones[prop.name]) {
-          (prop as unknown as PropWithCone).cone = originalPropCones[prop.name];
+          prop.cone = originalPropCones[prop.name];
         } else {
-          delete (prop as unknown as PropWithCone).cone;
+          delete prop.cone;
         }
       }
     }
@@ -173,13 +153,10 @@ describe("Cone Generator", () => {
     const userEntity = EntityManager.get("User");
 
     // collectExistingCones 메서드 테스트
-    const existingCones = (
-      userEntity as unknown as EntityWithPrivateMethods
-    ).collectExistingCones();
+    const existingCones = userEntity.collectExistingCones();
 
     // User entity는 이미 cone이 있으므로 수집되어야 함
     expect(existingCones).toBeDefined();
-    expect(typeof existingCones).toBe("object");
 
     // entity cone이 있으면 수집되어야 함
     if (userEntity.cone) {
@@ -222,7 +199,7 @@ describe("Cone Generator", () => {
 
     try {
       // applyCones 테스트
-      (userEntity as unknown as EntityWithPrivateMethods).applyCones(testResult);
+      userEntity.applyCones(testResult);
 
       // 검증
       expect(userEntity.cone).toEqual(testResult.entityCone);
@@ -234,7 +211,7 @@ describe("Cone Generator", () => {
       userEntity.cone = originalEntityCone;
       const emailProp = userEntity.props.find((p) => p.name === "email");
       if (emailProp) {
-        (emailProp as unknown as PropWithCone).cone = originalEmailCone;
+        emailProp.cone = originalEmailCone;
       }
     }
   });
@@ -283,6 +260,8 @@ describe("Cone Generator", () => {
       const result = await employeeEntity.generateCones({
         preserveExisting: false,
         locale: "ko",
+        generateText: mockGenerateText,
+        persist: false,
       });
 
       // department 필드 (BelongsToOne)에 dataSource가 자동 설정되었는지 확인
@@ -298,9 +277,9 @@ describe("Cone Generator", () => {
       employeeEntity.cone = originalCone;
       for (const prop of employeeEntity.props) {
         if (originalPropCones[prop.name]) {
-          (prop as unknown as PropWithCone).cone = originalPropCones[prop.name];
+          prop.cone = originalPropCones[prop.name];
         } else {
-          delete (prop as unknown as PropWithCone).cone;
+          delete prop.cone;
         }
       }
     }
@@ -346,6 +325,8 @@ describe("Cone Generator", () => {
       const result = await employeeEntity.generateCones({
         preserveExisting: false,
         locale: "ko",
+        generateText: mockGenerateText,
+        persist: false,
       });
 
       // "사번" 필드 - 한국어 desc 확인
@@ -365,9 +346,9 @@ describe("Cone Generator", () => {
       employeeEntity.cone = originalCone;
       for (const prop of employeeEntity.props) {
         if (originalPropCones[prop.name]) {
-          (prop as unknown as PropWithCone).cone = originalPropCones[prop.name];
+          prop.cone = originalPropCones[prop.name];
         } else {
-          delete (prop as unknown as PropWithCone).cone;
+          delete prop.cone;
         }
       }
     }
@@ -443,18 +424,24 @@ describe("Cone Generator", () => {
       const resultKo = await employeeEntity.generateCones({
         preserveExisting: false,
         locale: "ko",
+        generateText: mockGenerateText,
+        persist: false,
       });
 
       // 영어
       const resultEn = await employeeEntity.generateCones({
         preserveExisting: false,
         locale: "en",
+        generateText: mockGenerateText,
+        persist: false,
       });
 
       // 일본어
       const resultJa = await employeeEntity.generateCones({
         preserveExisting: false,
         locale: "ja",
+        generateText: mockGenerateText,
+        persist: false,
       });
 
       // employee_number 필드의 desc가 각 언어별로 다른지 확인
@@ -479,9 +466,9 @@ describe("Cone Generator", () => {
       employeeEntity.cone = originalCone;
       for (const prop of employeeEntity.props) {
         if (originalPropCones[prop.name]) {
-          (prop as unknown as PropWithCone).cone = originalPropCones[prop.name];
+          prop.cone = originalPropCones[prop.name];
         } else {
-          delete (prop as unknown as PropWithCone).cone;
+          delete prop.cone;
         }
       }
     }

@@ -114,8 +114,47 @@ export function addToStepAttemptCache(
  * @param result - The result from a step function
  * @returns A JSON-serializable value
  */
-export function normalizeStepOutput(result: unknown): JsonValue {
-  return (result ?? null) as JsonValue;
+export function normalizeStepOutput<Output>(result: Output): JsonValue {
+  const normalized = result ?? null;
+  if (isJsonValue(normalized, new WeakSet())) return normalized;
+  // 기존 저장 경로의 JSON 직렬화 규칙으로 비호환 값을 정규화합니다.
+  const text = JSON.stringify(normalized);
+  if (text === undefined) return null;
+  const parsed: JsonValue = JSON.parse(text);
+  return parsed;
+}
+
+function isJsonValue<Value>(value: Value, ancestors: WeakSet<object>): value is Value & JsonValue {
+  if (value === null) return true;
+  const tag = Object.prototype.toString.call(value);
+  if (tag === "[object String]" || tag === "[object Boolean]") return !isObjectValue(value);
+  if (tag === "[object Number]") {
+    return !isObjectValue(value) && Number.isFinite(Number(value));
+  }
+  if (!isObjectValue(value) || value instanceof Date || ancestors.has(value)) return false;
+  if ("toJSON" in value && isFunctionValue(value.toJSON)) return false;
+
+  const prototype = Object.getPrototypeOf(value);
+  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) return false;
+
+  ancestors.add(value);
+  const valid = Object.values(value).every((item) => isJsonValue(item, ancestors));
+  ancestors.delete(value);
+  return valid;
+}
+
+function isObjectValue<Value>(value: Value): value is Value & object {
+  return value !== null && Object(value) === value;
+}
+
+function isFunctionValue<Value>(value: Value): boolean {
+  const tag = Object.prototype.toString.call(value);
+  return (
+    tag === "[object Function]" ||
+    tag === "[object AsyncFunction]" ||
+    tag === "[object GeneratorFunction]" ||
+    tag === "[object AsyncGeneratorFunction]"
+  );
 }
 
 /**
@@ -142,10 +181,12 @@ export function calculateSleepResumeAt(
  * @param resumeAt - The time when the sleep should resume
  * @returns The context object for the sleep step
  */
-export function createSleepContext(resumeAt: Readonly<Date>): {
+export interface SleepContext {
   kind: "sleep";
   resumeAt: string;
-} {
+}
+
+export function createSleepContext(resumeAt: Readonly<Date>): SleepContext {
   return {
     kind: "sleep" as const,
     resumeAt: resumeAt.toISOString(),

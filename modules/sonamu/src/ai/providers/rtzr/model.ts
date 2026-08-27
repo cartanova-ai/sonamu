@@ -31,7 +31,7 @@ import {
 import { rtzrTranscriptionProviderOptions } from "./options";
 import { type RtzrTranscriptionModelId, type RtzrTranscriptionProviderOptions } from "./options";
 
-function isNullish(value: unknown): value is null | undefined {
+function isNullish<Value>(value: Value): value is Value & (null | undefined) {
   return value === null || value === undefined;
 }
 
@@ -138,7 +138,8 @@ export class RtzrTranscriptionModel implements TranscriptionModelV3 {
   }
 
   async doGenerate(options: RtzrTranscriptionCallOptions) {
-    const currentDate = this.config._internal?.currentDate?.() ?? new Date();
+    const { _internal: internalConfig } = this.config;
+    const currentDate = internalConfig?.currentDate?.() ?? new Date();
 
     const accessToken = await this.authorize();
     const headers = {

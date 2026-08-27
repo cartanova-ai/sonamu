@@ -1,6 +1,7 @@
 import assert from "assert";
 
 import { Puri, Sonamu } from "sonamu";
+import { z } from "zod";
 
 import { UserModel } from "../application/user/user.model";
 
@@ -24,9 +25,9 @@ async function examples() {
   console.log(`Found ${users.length} users`);
   const firstUser = users[0];
   if (firstUser) {
-    assert(typeof firstUser.userId === "number");
-    assert(typeof firstUser.userName === "string");
-    assert(typeof firstUser.userEmail === "string");
+    z.number().parse(firstUser.userId);
+    z.string().parse(firstUser.userName);
+    z.string().parse(firstUser.userEmail);
     console.log("First user:", firstUser);
   }
 
@@ -48,9 +49,9 @@ async function examples() {
   console.log(`Found ${usersWithEmployees.length} users with employee info`);
   if (usersWithEmployees[0]) {
     const emp = usersWithEmployees[0];
-    assert(typeof emp.user_id === "number");
-    assert(typeof emp.username === "string");
-    assert(typeof emp.employee_number === "string");
+    z.number().parse(emp.user_id);
+    z.string().parse(emp.username);
+    z.string().parse(emp.employee_number);
     console.log("First employee:", emp);
   }
 
@@ -76,8 +77,8 @@ async function examples() {
   console.log(`Found ${adminEmployees.length} admin employees`);
   if (adminEmployees[0]) {
     const admin = adminEmployees[0];
-    assert(typeof admin.user_id === "number");
-    assert(typeof admin.username === "string");
+    z.number().parse(admin.user_id);
+    z.string().parse(admin.username);
     assert(admin.role === "admin");
     console.log("First admin employee:", admin);
   }
@@ -102,9 +103,9 @@ async function examples() {
   console.log(`Found ${departmentStats.length} departments with stats`);
   if (departmentStats[0]) {
     const dept = departmentStats[0];
-    assert(typeof dept.department_id === "number");
-    assert(typeof dept.department_name === "string");
-    assert(typeof dept.employee_count === "number");
+    z.number().parse(dept.department_id);
+    z.string().parse(dept.department_name);
+    z.number().parse(dept.employee_count);
     console.log("Department with most employees:", dept);
   }
 
@@ -154,10 +155,10 @@ async function examples() {
   console.log(`Found ${projectsQuery.length} project-employee relations`);
   if (projectsQuery[0]) {
     const project = projectsQuery[0];
-    assert(typeof project.project_id === "number");
-    assert(typeof project.project_name === "string");
+    z.number().parse(project.project_id);
+    z.string().parse(project.project_name);
     assert(project.project_status === "in_progress");
-    assert(typeof project.employee_name === "string");
+    z.string().parse(project.employee_name);
     console.log("First project-employee:", project);
   }
 
@@ -182,7 +183,7 @@ async function examples() {
   console.log(`Found ${userIds.length} admin user IDs:`, userIds);
   assert(Array.isArray(userIds));
   if (userIds.length > 0) {
-    assert(typeof userIds[0] === "number");
+    z.number().parse(userIds[0]);
     console.log("First user ID:", userIds[0]);
   }
 
@@ -197,7 +198,7 @@ async function examples() {
   console.log(`Found ${departmentNames.length} department names:`, departmentNames);
   assert(Array.isArray(departmentNames));
   if (departmentNames.length > 0 && departmentNames[0] !== null) {
-    assert(typeof departmentNames[0] === "string");
+    z.string().parse(departmentNames[0]);
   }
 
   // select로 선택된 컬럼 pluck
@@ -216,7 +217,7 @@ async function examples() {
   console.log(`Found ${usernames.length} usernames:`, usernames);
   assert(Array.isArray(usernames));
   if (usernames.length > 0) {
-    assert(typeof usernames[0] === "string");
+    z.string().parse(usernames[0]);
   }
 
   console.log("\n=== Example 8: Transaction Example ===");

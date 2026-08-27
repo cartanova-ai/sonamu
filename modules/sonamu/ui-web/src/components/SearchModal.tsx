@@ -134,6 +134,29 @@ type SearchModalProps = {
   open: boolean;
   onClose: () => void;
 };
+
+function scrollToElement(id: string): void {
+  let attempts = 0;
+  const maxAttempts = 50;
+  const interval = setInterval(() => {
+    attempts++;
+    const element = document.getElementById(id);
+    if (element) {
+      clearInterval(interval);
+      element.scrollIntoView({ behavior: "instant", block: "center" });
+      element.style.backgroundColor = "#fef3c7";
+      element.style.boxShadow = "0 0 0 2px #fbbf24";
+      setTimeout(() => {
+        element.style.backgroundColor = "";
+        element.style.boxShadow = "";
+        element.style.transition = "background-color 1s, box-shadow 1s";
+      }, 1000);
+    } else if (attempts >= maxAttempts) {
+      clearInterval(interval);
+    }
+  }, 100);
+}
+
 export default function SearchModal({ open, onClose }: SearchModalProps) {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
@@ -206,28 +229,6 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     if (elementId) {
       scrollToElement(elementId);
     }
-  };
-
-  const scrollToElement = (id: string) => {
-    let attempts = 0;
-    const maxAttempts = 50;
-    const interval = setInterval(() => {
-      attempts++;
-      const element = document.getElementById(id);
-      if (element) {
-        clearInterval(interval);
-        element.scrollIntoView({ behavior: "instant", block: "center" });
-        element.style.backgroundColor = "#fef3c7";
-        element.style.boxShadow = "0 0 0 2px #fbbf24";
-        setTimeout(() => {
-          element.style.backgroundColor = "";
-          element.style.boxShadow = "";
-          element.style.transition = "background-color 1s, box-shadow 1s";
-        }, 1000);
-      } else if (attempts >= maxAttempts) {
-        clearInterval(interval);
-      }
-    }, 100);
   };
 
   return (

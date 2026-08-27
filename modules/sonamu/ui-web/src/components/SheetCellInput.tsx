@@ -25,7 +25,7 @@ export function SheetCellInput({ editable, initialValue, onChange }: SheetCellIn
   useEffect(() => {
     if (editable) {
       setTimeout(() => {
-        const input = document.querySelector(`.sheet-cell-input input`) as HTMLInputElement;
+        const input = document.querySelector<HTMLInputElement>(`.sheet-cell-input input`);
         input?.focus();
       });
     }

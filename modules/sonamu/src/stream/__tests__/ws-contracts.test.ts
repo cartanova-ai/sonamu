@@ -13,6 +13,8 @@ import { WebSocketDeliveryEngine } from "../ws-delivery";
 import { WebSocketLocalConnectionStore } from "../ws-local-connection-store";
 import { InMemoryWebSocketPresenceStore } from "../ws-presence-store";
 
+type PublishedData = Parameters<ManagedWebSocketConnection["publishUntyped"]>[1];
+
 async function waitForAsyncQueue(rounds: number = 3): Promise<void> {
   for (let index = 0; index < rounds; index += 1) {
     await new Promise<void>((resolve) => {
@@ -48,7 +50,7 @@ class ContractClusterBus implements WebSocketClusterBus {
 }
 
 class ContractConnection implements ManagedWebSocketConnection {
-  readonly sent: Array<{ event: string; data: unknown }> = [];
+  readonly sent: Array<{ event: string; data: PublishedData }> = [];
   closed = false;
 
   constructor(
@@ -56,7 +58,7 @@ class ContractConnection implements ManagedWebSocketConnection {
     readonly namespace: string,
   ) {}
 
-  publishUntyped(event: string, data: unknown): void {
+  publishUntyped<Data>(event: string, data: Data): void {
     this.sent.push({ event, data });
   }
 

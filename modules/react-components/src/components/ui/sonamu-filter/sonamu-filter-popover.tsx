@@ -1,9 +1,22 @@
+import { z } from "zod";
+
 import { useSonamuBaseContext } from "../../../contexts/sonamu-context";
 import { datetimeF, numF } from "../../../lib/base-helpers";
 import { type FilterOperator } from "../../../lib/types";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import { operatorLabels } from "./constants";
 import { type Rule, type SonamuFilterPopoverProps } from "./types";
+
+const dateValueSchema = z.union([z.string(), z.date()]);
+const numberValueSchema = z.union([
+  z.number().finite(),
+  z.string().trim().min(1).transform(Number).pipe(z.number().finite()),
+]);
+
+function getOperatorLabel(operator: FilterOperator | null): string {
+  if (!operator) return "";
+  return operatorLabels[operator];
+}
 
 /**
  * SonamuFilterPopover
@@ -19,12 +32,6 @@ export function SonamuFilterPopover({
   align = "start",
 }: SonamuFilterPopoverProps) {
   const { SD } = useSonamuBaseContext();
-
-  // Operator 라벨 가져오기
-  const getOperatorLabel = (operator: FilterOperator | null): string => {
-    if (!operator) return "";
-    return operatorLabels[operator];
-  };
 
   // Value 포맷팅
   const formatValue = (rule: Rule): string => {
@@ -45,25 +52,31 @@ export function SonamuFilterPopover({
     // Enum인 경우 라벨 표시
     if (meta.propType === "enum" && meta.enumData) {
       if (Array.isArray(value)) {
-        return value.map((v) => meta.enumData?.labels[v] || v).join(", ");
+        return value.map((item) => String(meta.enumData?.labels[String(item)] ?? item)).join(", ");
       }
-      return meta.enumData.labels[value as string] || String(value);
+      return meta.enumData.labels[String(value)] || String(value);
     }
 
     // 날짜/시간인 경우
     if (meta.propType === "date" || meta.propType === "datetime") {
       if (Array.isArray(value)) {
-        return value.map((v) => datetimeF(v as string | Date) ?? "").join(" ~ ");
+        return value
+          .map((item) => dateValueSchema.safeParse(item).data)
+          .map(datetimeF)
+          .join(" ~ ");
       }
-      return datetimeF(value as string | Date) ?? "";
+      return datetimeF(dateValueSchema.safeParse(value).data) ?? "";
     }
 
     // 숫자인 경우
     if (meta.propType === "integer" || meta.propType === "numeric") {
       if (Array.isArray(value)) {
-        return value.map((v) => String(numF(v as number) ?? "")).join(" ~ ");
+        return value
+          .map((item) => numberValueSchema.safeParse(item).data)
+          .map(numF)
+          .join(" ~ ");
       }
-      return String(numF(value as number) ?? "");
+      return String(numF(numberValueSchema.safeParse(value).data) ?? "");
     }
 
     // 배열인 경우

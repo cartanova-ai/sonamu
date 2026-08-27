@@ -28,7 +28,7 @@ import { usernameEntityDef } from "./username";
  * 엔티티 정의 레지스트리
  * 플러그인 ID로 엔티티 정의에 접근할 수 있습니다.
  */
-export const ENTITY_DEFINITIONS: Record<BetterAuthPluginId, BetterAuthEntityDef> = {
+export const ENTITY_DEFINITIONS = {
   admin: adminEntityDef,
   username: usernameEntityDef,
   "phone-number": phoneNumberEntityDef,
@@ -40,14 +40,15 @@ export const ENTITY_DEFINITIONS: Record<BetterAuthPluginId, BetterAuthEntityDef>
   jwt: jwtEntityDef,
   anonymous: anonymousEntityDef,
   "audit-log": auditLogEntityDef,
-};
+} satisfies Record<BetterAuthPluginId, BetterAuthEntityDef>;
 
 /**
  * 지원하는 플러그인 ID 목록
  */
-export const SUPPORTED_PLUGIN_IDS: BetterAuthPluginId[] = Object.keys(
-  ENTITY_DEFINITIONS,
-) as BetterAuthPluginId[];
+export const SUPPORTED_PLUGIN_IDS: BetterAuthPluginId[] =
+  /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ Object.keys(
+    ENTITY_DEFINITIONS,
+  ) as BetterAuthPluginId[];
 
 /**
  * 플러그인 ID가 유효한지 확인합니다.

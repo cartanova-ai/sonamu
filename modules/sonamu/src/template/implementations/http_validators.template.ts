@@ -5,11 +5,12 @@ import {
   getHttpValidatorRouteKey,
 } from "../../api/http-validator";
 import { Sonamu } from "../../api/sonamu";
-import { type ApiParamType, type TemplateOptions } from "../../types/types";
+import { type ApiParamType } from "../../types/types";
+import { isObjectValue, isStringValue } from "../../utils/runtime-value";
 import { Template } from "../template";
 
 function collectReferencedTypes(type: ApiParamType, result: Set<string>): void {
-  if (typeof type === "string") {
+  if (isStringValue(type)) {
     return;
   }
   switch (type.t) {
@@ -71,7 +72,7 @@ export class Template__http_validators extends Template {
     };
   }
 
-  render(_: TemplateOptions["http_validators"]) {
+  render() {
     const apis = [...Sonamu.syncer.apis]
       .filter((api) => api.websocketOptions === undefined)
       .toSorted((left, right) =>
@@ -85,7 +86,7 @@ export class Template__http_validators extends Template {
 
     const fingerprint = getHttpValidatorFingerprint(apis);
     const policy = Sonamu.config.validation?.zodCompiler;
-    const isAot = typeof policy === "object" && policy !== null && policy.api === "aot";
+    const isAot = isObjectValue(policy) && policy !== null && policy.api === "aot";
     const hasAotValidators = isAot && apis.length > 0;
     const referencedTypes = new Set<string>();
     for (const api of apis) {

@@ -1,8 +1,15 @@
 import { type BaseFrameClass } from "../api/base-frame";
 import { BaseModelClass } from "../database/base-model";
+import { isBooleanValue } from "../runtime-type";
+import { isFunctionValue, isNumberValue, isStringValue } from "../utils/runtime-value";
 import { type CacheDecoratorOptions, type CacheManager } from "./types";
 
 type DecoratorTarget = { constructor: { name: string } };
+type CacheKeyFactory = (...args: unknown[]) => string;
+
+function isCacheKeyFactory(keyOption: CacheDecoratorOptions["key"]): keyOption is CacheKeyFactory {
+  return isFunctionValue(keyOption);
+}
 
 // 캐시 매니저 참조 (Sonamu.init에서 설정됨)
 let cacheManagerRef: CacheManager | null = null;
@@ -31,12 +38,12 @@ function generateCacheKey(
   keyOption?: CacheDecoratorOptions["key"],
 ): string {
   // 커스텀 키 함수 사용
-  if (typeof keyOption === "function") {
+  if (isCacheKeyFactory(keyOption)) {
     return keyOption(...args);
   }
 
   // 문자열 키 + args suffix
-  if (typeof keyOption === "string") {
+  if (isStringValue(keyOption)) {
     const argsSuffix = serializeArgs(args);
     return argsSuffix ? `${keyOption}:${argsSuffix}` : keyOption;
   }
@@ -57,7 +64,7 @@ function serializeArgs(args: unknown[]): string {
   if (args.length === 1) {
     const arg = args[0];
     if (arg === null || arg === undefined) return "";
-    if (typeof arg === "string" || typeof arg === "number" || typeof arg === "boolean") {
+    if (isStringValue(arg) || isNumberValue(arg) || isBooleanValue(arg)) {
       return String(arg);
     }
   }

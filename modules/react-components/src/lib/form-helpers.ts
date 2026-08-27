@@ -7,7 +7,11 @@ import { z } from "zod";
 import { type SonamuFile } from "@/contexts";
 import { useSonamuBaseContext } from "@/contexts";
 
+import { getZodObjectFields } from "./caster";
 import { type ErrorObj } from "./types";
+
+const plainObjectValue = z.record(z.string(), z.any());
+const stringValue = z.string();
 
 /**
  * FormRegisterReturn
@@ -52,14 +56,11 @@ async function traverseAndUploadFiles(
   }
 
   // 3. 일반 객체를 발견한 경우 (null, Date, RegExp 등 특수 객체 제외)
-  if (
-    value !== null &&
-    typeof value === "object" &&
-    Object.prototype.toString.call(value) === "[object Object]"
-  ) {
+  const parsedObject = plainObjectValue.safeParse(value);
+  if (parsedObject.success && Object.prototype.toString.call(value) === "[object Object]") {
     // 객체의 각 속성을 재귀적으로 순회하며 File 객체를 찾아서 업로드
     const result: any = {};
-    for (const [key, val] of Object.entries(value)) {
+    for (const [key, val] of Object.entries(parsedObject.data)) {
       result[key] = await traverseAndUploadFiles(val, uploader);
     }
     return result;
@@ -67,6 +68,32 @@ async function traverseAndUploadFiles(
 
   // 4. 원시값(string, number, boolean 등)은 변환 없이 그대로 반환
   return value;
+}
+
+function getEmptyStringTo<T extends z.ZodObject<any> | z.ZodArray<any>>(
+  zType: T,
+  objPath: string,
+): "normal" | "nullable" | "optional" {
+  const zTypeObjPath = objPath
+    .replace(/\./g, ".shape.")
+    .replace(/\[[^\]]+\]/g, ".element")
+    .replace(/^\.element/, "element");
+
+  let targetZType: unknown;
+  if (zType instanceof z.ZodObject) {
+    targetZType = get(getZodObjectFields(zType), zTypeObjPath);
+  } else if (zType instanceof z.ZodArray) {
+    targetZType = get(zType, zTypeObjPath);
+  }
+
+  if (targetZType === undefined) {
+    return "normal";
+  } else if (targetZType instanceof z.ZodOptional) {
+    return "optional";
+  } else if (targetZType instanceof z.ZodNullable) {
+    return "nullable";
+  }
+  return "normal";
 }
 
 export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U extends z.infer<T>>(
@@ -77,29 +104,6 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
   const [errorObjs, setErrorObjs] = useState(new Map());
   const { uploader } = useSonamuBaseContext();
 
-  function getEmptyStringTo(zType: T, objPath: string): "normal" | "nullable" | "optional" {
-    const zTypeObjPath = objPath
-      .replace(/\./g, ".shape.")
-      .replace(/\[[^\]]+\]/g, ".element")
-      .replace(/^\.element/, "element");
-
-    let targetZType: unknown;
-    if (zType instanceof z.ZodObject) {
-      targetZType = get(zType.shape, zTypeObjPath);
-    } else if (zType instanceof z.ZodArray) {
-      targetZType = get(zType, zTypeObjPath);
-    }
-
-    if (targetZType === undefined) {
-      return "normal";
-    } else if (targetZType instanceof z.ZodOptional) {
-      return "optional";
-    } else if (targetZType instanceof z.ZodNullable) {
-      return "nullable";
-    }
-    return "normal";
-  }
-
   return {
     form,
     setForm,
@@ -108,7 +112,7 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
       _emptyStringTo?: "normal" | "nullable" | "optional",
     ): FormRegisterReturn => {
       const emptyStringTo = _emptyStringTo ?? getEmptyStringTo(zType, objPath);
-      const srcValue = get(form, objPath) as unknown;
+      const srcValue = get(form, objPath);
 
       const error = errorObjs.get(objPath);
 
@@ -165,7 +169,9 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
         const newP = new Map(p);
         newP.set(
           objPath,
-          typeof errorMessage === "string" ? { content: errorMessage } : errorMessage,
+          stringValue.safeParse(errorMessage).success
+            ? { content: String(errorMessage) }
+            : errorMessage,
         );
         return newP;
       });

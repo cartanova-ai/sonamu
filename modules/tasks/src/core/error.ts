@@ -10,12 +10,12 @@ export type SerializedError = {
 
 /**
  * Serialize an error to a JSON-compatible format.
- * @param error - The error to serialize (can be Error instance or any value)
+ * @param cause - The caught value to serialize
  * @returns A JSON-serializable error object
  */
-export function serializeError(error: unknown): SerializedError {
-  if (error instanceof Error) {
-    const { name, message, stack } = error;
+export function serializeError(cause: unknown): SerializedError {
+  if (cause instanceof Error) {
+    const { name, message, stack } = cause;
 
     if (stack) {
       return { name, message, stack };
@@ -25,6 +25,6 @@ export function serializeError(error: unknown): SerializedError {
   }
 
   return {
-    message: String(error),
+    message: String(cause),
   };
 }

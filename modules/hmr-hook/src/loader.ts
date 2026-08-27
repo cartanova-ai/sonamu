@@ -4,8 +4,7 @@ import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type MessagePort } from "node:worker_threads";
 
-import chokidar from "chokidar";
-import { type FSWatcher } from "chokidar";
+import { type FSWatcher, watch } from "chokidar";
 
 import debug from "./debug.js";
 import DependencyTree from "./dependency_tree.js";
@@ -220,7 +219,7 @@ export class HotHookLoader {
    * Create the chokidar watcher instance.
    */
   #createWatcher() {
-    const watcher = chokidar.watch(".", {
+    const watcher = watch(".", {
       ignoreInitial: true,
       cwd: this.#projectRoot,
       ignored: (file, stats) => {
@@ -303,7 +302,7 @@ export class HotHookLoader {
    * - And adding files to the watcher
    */
   resolve: ResolveHook = async (specifier, context, nextResolve) => {
-    const parentUrl = (context.parentURL && new URL(context.parentURL)) as URL;
+    const parentUrl = context.parentURL ? new URL(context.parentURL) : undefined;
     if (parentUrl?.searchParams.has("hmr-hook")) {
       parentUrl.searchParams.delete("hmr-hook");
       context = { ...context, parentURL: parentUrl.href };

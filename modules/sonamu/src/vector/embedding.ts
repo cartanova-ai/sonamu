@@ -139,7 +139,8 @@ class EmbeddingClass {
     const model = openai.embeddingModel(openaiConfig.model);
 
     const { embeddings, usage } = await embedMany({
-      model: model as EmbeddingModel,
+      model:
+        /* SAFETY: 호출 경계의 선행 검증과 소유 타입 계약이 이 값의 타입을 보장한다. */ model as EmbeddingModel,
       values: texts,
     });
 

@@ -22,6 +22,11 @@ type ValidationError = {
   message: string;
 };
 
+const fixtureScalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+const fixtureColumnValueSchema = z.union([fixtureScalarSchema, z.array(fixtureScalarSchema)]);
+const fixtureColumnsSchema = z.record(z.string(), fixtureColumnValueSchema);
+type FixtureToolColumns = z.infer<typeof fixtureColumnsSchema>;
+
 class AIClient {
   private model: LanguageModel | null = null;
   private aiSdk:
@@ -51,6 +56,7 @@ class AIClient {
     if (!this.aiSdk || !this.model) {
       throw new Error("AI SDK not initialized. Call init() first.");
     }
+    const model = this.model;
 
     // 현재 fixtureRecords에서 사용된 엔티티들의 구조 정보 수집
     const usedEntityIds = [...new Set(fixtureRecords.map((r) => r.entityId))];
@@ -98,7 +104,7 @@ class AIClient {
     const { streamText, tool } = this.aiSdk;
 
     return streamText({
-      model: this.model,
+      model,
       system: systemMessage,
       messages,
       tools: {
@@ -109,16 +115,14 @@ class AIClient {
             updates: z.array(
               z.object({
                 fixtureId: z.string().describe("수정할 픽스쳐 ID (형식: EntityId#id)"),
-                updates: z
-                  .record(z.string(), z.unknown())
-                  .describe("컬럼명을 키로, 새 값을 값으로 하는 객체"),
+                updates: fixtureColumnsSchema.describe("컬럼명을 키로, 새 값을 값으로 하는 객체"),
               }),
             ),
           }),
           execute: async ({
             updates,
           }: {
-            updates: Array<{ fixtureId: string; updates: Record<string, unknown> }>;
+            updates: Array<{ fixtureId: string; updates: FixtureToolColumns }>;
           }): Promise<{ success: boolean; updatedRecords: FixtureRecord[] }> => {
             // fixtureRecords를 복사하고 업데이트 적용
             const updatedRecords: FixtureRecord[] = fixtureRecords.map((record) => {
@@ -128,8 +132,7 @@ class AIClient {
               if (update) {
                 // columns의 value를 업데이트
                 for (const [columnName, newValue] of Object.entries(update.updates)) {
-                  record.columns[columnName].value =
-                    newValue as FixtureRecord["columns"][string]["value"];
+                  record.columns[columnName].value = newValue;
                 }
                 return record;
               }
@@ -148,56 +151,52 @@ class AIClient {
               z.object({
                 entityId: z.string().describe("생성할 엔티티 ID"),
                 id: z.number().describe("새 레코드의 ID (음수 권장, 예: -1, -2)"),
-                columns: z
-                  .record(z.string(), z.unknown())
-                  .describe("컬럼명을 키로, 값을 값으로 하는 객체"),
+                columns: fixtureColumnsSchema.describe("컬럼명을 키로, 값을 값으로 하는 객체"),
               }),
             ),
           }),
           execute: async ({
             fixtures,
           }: {
-            fixtures: Array<{ entityId: string; id: number; columns: Record<string, unknown> }>;
+            fixtures: Array<{ entityId: string; id: number; columns: FixtureToolColumns }>;
           }): Promise<{ success: boolean; updatedRecords: FixtureRecord[] }> => {
-            const newRecords: FixtureRecord[] = fixtures.map(
-              (fixture: { entityId: string; id: number; columns: Record<string, unknown> }) => {
-                const entity = EntityManager.get(fixture.entityId);
+            const newRecords: FixtureRecord[] = fixtures.map((fixture) => {
+              const entity = EntityManager.get(fixture.entityId);
 
-                // 엔티티 props를 기반으로 columns 구성
-                const columns: FixtureRecord["columns"] = {};
-                for (const prop of entity.props) {
-                  if (prop.type === "virtual") continue;
+              // 엔티티 props를 기반으로 columns 구성
+              const columns: FixtureRecord["columns"] = {};
+              for (const prop of entity.props) {
+                if (prop.type === "virtual") continue;
 
-                  let value = fixture.columns[prop.name] ?? null;
+                let value = fixture.columns[prop.name] ?? null;
 
-                  if (prop.name === "created_at") {
-                    // 현재 시간으로 설정
-                    value = new Date().toISOString();
-                  } else if (
-                    prop.type === "relation" &&
-                    (prop.relationType === "HasMany" || prop.relationType === "ManyToMany")
-                  ) {
-                    // 배열로 변환
-                    value = Array.isArray(value) ? value : [value].filter(nonNullable);
-                  }
-
-                  columns[prop.name] = {
-                    prop,
-                    value: value as FixtureRecord["columns"][string]["value"],
-                  };
+                if (prop.name === "created_at") {
+                  // 현재 시간으로 설정
+                  value = new Date().toISOString();
+                } else if (
+                  prop.type === "relation" &&
+                  (prop.relationType === "HasMany" || prop.relationType === "ManyToMany")
+                ) {
+                  // 배열로 변환
+                  value = Array.isArray(value) ? value : [value].filter(nonNullable);
                 }
 
-                return {
-                  fixtureId: `${fixture.entityId}#${fixture.id}`,
-                  entityId: fixture.entityId,
-                  id: fixture.id,
-                  columns,
-                  fetchedRecords: [],
-                  belongsRecords: [],
-                  override: false,
+                columns[prop.name] = {
+                  prop,
+                  value,
                 };
-              },
-            );
+              }
+
+              return {
+                fixtureId: `${fixture.entityId}#${fixture.id}`,
+                entityId: fixture.entityId,
+                id: fixture.id,
+                columns,
+                fetchedRecords: [],
+                belongsRecords: [],
+                override: false,
+              };
+            });
 
             // 새 레코드들의 relation 컬럼을 확인하여 기존 레코드들의 역방향 relation 업데이트
             for (const newRecord of newRecords) {
@@ -258,6 +257,7 @@ class AIClient {
     if (!this.aiSdk || !this.model) {
       throw new Error("AI SDK not initialized. Call init() first.");
     }
+    const model = this.model;
 
     // entity.instructions.md 파일 읽기 (dist/ui 또는 src/ui에서 실행되므로 패키지 루트 기준으로 접근)
     const instructionsPath = path.join(
@@ -356,7 +356,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
     const { streamText, tool, stepCountIs } = this.aiSdk;
 
     return streamText({
-      model: this.model as unknown as LanguageModel,
+      model,
       system: systemMessage,
       messages,
       stopWhen: stepCountIs(2),
@@ -364,9 +364,9 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
         createEntity: tool({
           description:
             "새로운 Entity를 생성합니다. 사용자가 새로운 엔티티나 테이블 생성을 요청할 때 사용하세요.",
-          inputSchema: TemplateOptions.shape.entity,
+          inputSchema: TemplateOptions["shape"].entity,
           execute: async (
-            entity: z.infer<typeof TemplateOptions.shape.entity>,
+            entity: z.infer<(typeof TemplateOptions)["shape"]["entity"]>,
           ): Promise<{
             success: boolean;
             entityId: string;
@@ -407,7 +407,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
             "기존 Entity를 수정합니다. Enum 추가, props 추가/수정, indexes 수정, subsets 수정 등 모든 엔티티 수정 작업에 사용하세요.",
           inputSchema: z.object({
             entityId: z.string().describe("수정할 Entity ID"),
-            updates: TemplateOptions.shape.entity.partial().describe("수정할 필드들"),
+            updates: TemplateOptions["shape"].entity.partial().describe("수정할 필드들"),
             mode: z
               .enum(["merge", "replace"])
               .optional()
@@ -419,7 +419,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
             mode = "merge",
           }: {
             entityId: string;
-            updates: Partial<z.infer<typeof TemplateOptions.shape.entity>>;
+            updates: Partial<z.infer<(typeof TemplateOptions)["shape"]["entity"]>>;
             mode?: "merge" | "replace";
           }): Promise<{
             success: boolean;
@@ -440,14 +440,18 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
               // props: merge 시 이름 기준 병합, replace 시 교체
               if (updates.props !== undefined) {
                 if (mode === "replace") {
-                  entity.props = updates.props as EntityProp[];
+                  entity.props =
+                    /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ updates.props as EntityProp[];
                 } else {
                   for (const newProp of updates.props) {
                     const existingIndex = entity.props.findIndex((p) => p.name === newProp.name);
                     if (existingIndex >= 0) {
-                      entity.props[existingIndex] = newProp as EntityProp;
+                      entity.props[existingIndex] =
+                        /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ newProp as EntityProp;
                     } else {
-                      entity.props.push(newProp as EntityProp);
+                      entity.props.push(
+                        /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ newProp as EntityProp,
+                      );
                     }
                   }
                 }
@@ -466,7 +470,8 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
                 const normalizedSubsetsInternal: { [key: string]: string[] } = {};
 
                 for (const [key, fields] of Object.entries(updates.subsets)) {
-                  const fieldArray = fields as string[];
+                  const fieldArray =
+                    /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ fields as string[];
                   normalizedSubsets[key] = fieldArray
                     .filter((f: string) => !isInternalSubsetField(f))
                     .map(normalizeSubsetField);

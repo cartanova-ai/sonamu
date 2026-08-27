@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import MessageCircleIcon from "~icons/lucide/message-circle";
 import SendIcon from "~icons/lucide/send";
 
-import { useSonamuContext } from "@/contexts/sonamu-provider";
+import { authClient } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
 import { type ChatMessage, type ChatUser } from "@/services/chat/chat.types";
 import { ChatService } from "@/services/services.generated";
@@ -26,8 +26,7 @@ export const Route = createFileRoute("/admin/chat/")({
 const TYPING_IDLE_MS = 2000;
 
 function ChatPage() {
-  const { auth } = useSonamuContext();
-  const session = auth.useSession();
+  const session = authClient.useSession();
   const me = session.data?.user ?? null;
   const navigate = useNavigate();
 
@@ -56,7 +55,7 @@ function ChatPage() {
     const el = listRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages.length, typingUsers.length]);
+  });
 
   useEffect(() => {
     return () => {

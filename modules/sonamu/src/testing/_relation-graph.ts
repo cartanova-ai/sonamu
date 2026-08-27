@@ -44,7 +44,10 @@ export class RelationGraph {
             }
           } else if (isManyToManyRelationProp(prop)) {
             // ManyToMany 관계의 경우 양방향 의존성 추가
-            const relatedIds = column.value as unknown as (number | string)[];
+            if (!Array.isArray(column.value)) {
+              throw new Error(`${fixture.fixtureId}.${prop.name} 관계 값은 배열이어야 합니다.`);
+            }
+            const relatedIds = column.value;
             for (const relatedId of relatedIds) {
               const relatedFixtureId = `${prop.with}#${relatedId}`;
               if (this.graph.has(relatedFixtureId)) {

@@ -7,7 +7,7 @@ export interface ManagedWebSocketConnection {
   closed: boolean;
   // setUserId/clearUserId 호출로 갱신됨. telemetry emit 사이트에서 hot path lookup을 피하기 위해 connection에 캐싱한다
   readonly userId?: string;
-  publishUntyped(event: string, data: unknown): void;
+  publishUntyped<Data>(event: string, data: Data): void;
   close(code?: number, reason?: string): void;
 }
 

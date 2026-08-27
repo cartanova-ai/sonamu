@@ -1,6 +1,7 @@
 import { Sonamu } from "sonamu";
 import { bootstrap, runWithContext, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+import { z } from "zod";
 
 import { DashboardFrame } from "./dashboard.frame";
 
@@ -16,17 +17,17 @@ describe("DashboardFrame", () => {
 
       // 조직 현황
       expect(stats.organization).toBeDefined();
-      expect(typeof stats.organization.companyCount).toBe("number");
-      expect(typeof stats.organization.departmentCount).toBe("number");
-      expect(typeof stats.organization.employeeCount).toBe("number");
+      z.number().parse(stats.organization.companyCount);
+      z.number().parse(stats.organization.departmentCount);
+      z.number().parse(stats.organization.employeeCount);
 
       // 프로젝트 현황
       expect(stats.projects).toBeDefined();
       expect(stats.projects.statusCounts).toBeDefined();
-      expect(typeof stats.projects.statusCounts.planning).toBe("number");
-      expect(typeof stats.projects.statusCounts.in_progress).toBe("number");
-      expect(typeof stats.projects.statusCounts.completed).toBe("number");
-      expect(typeof stats.projects.statusCounts.cancelled).toBe("number");
+      z.number().parse(stats.projects.statusCounts.planning);
+      z.number().parse(stats.projects.statusCounts.in_progress);
+      z.number().parse(stats.projects.statusCounts.completed);
+      z.number().parse(stats.projects.statusCounts.cancelled);
 
       // 프로젝트 상태별 합 = 전체 프로젝트 수
       const totalProjects =
@@ -38,14 +39,14 @@ describe("DashboardFrame", () => {
 
       // 문서 현황
       expect(stats.documents).toBeDefined();
-      expect(typeof stats.documents.total).toBe("number");
-      expect(typeof stats.documents.draft).toBe("number");
-      expect(typeof stats.documents.published).toBe("number");
-      expect(typeof stats.documents.archived).toBe("number");
+      z.number().parse(stats.documents.total);
+      z.number().parse(stats.documents.draft);
+      z.number().parse(stats.documents.published);
+      z.number().parse(stats.documents.archived);
       expect(stats.documents.total).toBe(
         stats.documents.draft + stats.documents.published + stats.documents.archived,
       );
-      expect(typeof stats.documents.recentCount).toBe("number");
+      z.number().parse(stats.documents.recentCount);
     });
 
     test("진행중 프로젝트 TOP 5가 마감일 임박순으로 정렬된다", async () => {
@@ -56,10 +57,10 @@ describe("DashboardFrame", () => {
 
       // 각 항목이 필수 필드를 포함
       active.forEach((project) => {
-        expect(typeof project.id).toBe("number");
-        expect(typeof project.name).toBe("string");
-        expect(typeof project.milestoneTotal).toBe("number");
-        expect(typeof project.milestoneCompleted).toBe("number");
+        z.number().parse(project.id);
+        z.string().parse(project.name);
+        z.number().parse(project.milestoneTotal);
+        z.number().parse(project.milestoneCompleted);
         expect(project.milestoneCompleted).toBeLessThanOrEqual(project.milestoneTotal);
       });
     });
@@ -83,15 +84,15 @@ describe("DashboardFrame", () => {
 
       expect(Array.isArray(groups)).toBe(true);
       groups.forEach((group) => {
-        expect(typeof group.date).toBe("string");
-        expect(typeof group.label).toBe("string");
+        z.string().parse(group.date);
+        z.string().parse(group.label);
         expect(Array.isArray(group.items)).toBe(true);
 
         group.items.forEach((item) => {
-          expect(typeof item.id).toBe("number");
+          z.number().parse(item.id);
           expect(["create", "update", "delete"]).toContain(item.action);
-          expect(typeof item.entity_type).toBe("string");
-          expect(typeof item.entity_id).toBe("number");
+          z.string().parse(item.entity_type);
+          z.number().parse(item.entity_id);
         });
       });
     });

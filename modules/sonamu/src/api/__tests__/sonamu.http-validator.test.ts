@@ -7,50 +7,38 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z, ZodError } from "zod";
 
 import { type SonamuFastifyConfig } from "../../types/types";
-import { fastifyCaster } from "../caster";
-import { getZodObjectFromApi } from "../code-converters";
 import { type Context } from "../context";
 import { type ExtendedApi } from "../decorators";
 import {
   assertHttpValidatorRegistry,
   createHttpValidator,
+  defaultHttpValidatorDependencies,
   getHttpValidatorFingerprint,
   getHttpValidatorRouteKey,
+  type HttpValidatorDependencies,
 } from "../http-validator";
-import { Sonamu } from "../sonamu";
+import {
+  defaultSonamuHttpValidatorDependencies,
+  Sonamu,
+  type SonamuHttpValidatorDependencies,
+} from "../sonamu";
 
-const compilerMocks = vi.hoisted(() => ({
-  jit: vi.fn(),
-}));
-
-vi.mock("zod-compiler/jit", () => ({
-  jit: compilerMocks.jit,
-}));
-
-vi.mock("../code-converters", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../code-converters")>();
-  return {
-    ...actual,
-    getZodObjectFromApi: vi.fn(actual.getZodObjectFromApi),
-  };
-});
-
-vi.mock("../caster", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../caster")>();
-  return {
-    ...actual,
-    fastifyCaster: vi.fn(actual.fastifyCaster),
-  };
-});
-
-vi.mock("../http-validator", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../http-validator")>();
-  return {
-    ...actual,
-    assertHttpValidatorRegistry: vi.fn(actual.assertHttpValidatorRegistry),
-    createHttpValidator: vi.fn(actual.createHttpValidator),
-  };
-});
+const createSchema = vi.fn(defaultHttpValidatorDependencies.createSchema);
+const applyCaster = vi.fn(defaultHttpValidatorDependencies.applyCaster);
+const compileJit = vi.fn(defaultHttpValidatorDependencies.compileJit);
+const validatorDependencies: HttpValidatorDependencies = {
+  createSchema,
+  applyCaster,
+  compileJit,
+};
+const createValidator = vi.fn((options: Parameters<typeof createHttpValidator>[0]) =>
+  createHttpValidator(options, validatorDependencies),
+);
+const assertRegistry = vi.fn(assertHttpValidatorRegistry);
+const lifecycleDependencies: SonamuHttpValidatorDependencies = {
+  createValidator,
+  assertRegistry,
+};
 
 function createApi(parameterType: "number" | "string" = "number"): ExtendedApi {
   return {
@@ -72,8 +60,8 @@ function createApi(parameterType: "number" | "string" = "number"): ExtendedApi {
   };
 }
 
-function createRequest(query: Record<string, unknown>): FastifyRequest {
-  return {
+function createRequest<Query extends object>(query: Query): FastifyRequest {
+  return /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
     headers: {},
     method: "GET",
     query,
@@ -82,20 +70,20 @@ function createRequest(query: Record<string, unknown>): FastifyRequest {
 }
 
 describe("REST HTTP validator 생명주기", () => {
-  const originalConfig = Reflect.get(Sonamu, "_config");
-  const originalApiRootPath = Reflect.get(Sonamu, "_apiRootPath");
-  const originalSyncer = Reflect.get(Sonamu, "_syncer");
-  const originalHttpValidators = Reflect.get(Sonamu, "httpValidators");
-  const originalPendingHttpValidators = Reflect.get(Sonamu, "pendingHttpValidators");
-  const originalAotRegistry = Reflect.get(Sonamu, "aotHttpValidatorRegistry");
-  const originalPreparedApis = Reflect.get(Sonamu, "preparedApis");
+  const originalState = Sonamu.captureTestingSnapshot();
   const originalVitest = process.env.VITEST;
   const originalHot = process.env.HOT;
   const tempRoots: string[] = [];
 
   beforeEach(() => {
     vi.clearAllMocks();
-    compilerMocks.jit.mockReset();
+    createSchema.mockImplementation(defaultHttpValidatorDependencies.createSchema);
+    applyCaster.mockImplementation(defaultHttpValidatorDependencies.applyCaster);
+    compileJit.mockImplementation(defaultHttpValidatorDependencies.compileJit);
+    createValidator.mockImplementation((options) =>
+      createHttpValidator(options, validatorDependencies),
+    );
+    assertRegistry.mockImplementation(defaultSonamuHttpValidatorDependencies.assertRegistry);
     Reflect.set(Sonamu, "httpValidators", new WeakMap());
     Reflect.set(Sonamu, "pendingHttpValidators", new WeakMap());
     Reflect.set(Sonamu, "aotHttpValidatorRegistry", undefined);
@@ -103,13 +91,7 @@ describe("REST HTTP validator 생명주기", () => {
   });
 
   afterEach(async () => {
-    Reflect.set(Sonamu, "_apiRootPath", originalApiRootPath);
-    Reflect.set(Sonamu, "_config", originalConfig);
-    Reflect.set(Sonamu, "_syncer", originalSyncer);
-    Reflect.set(Sonamu, "httpValidators", originalHttpValidators);
-    Reflect.set(Sonamu, "pendingHttpValidators", originalPendingHttpValidators);
-    Reflect.set(Sonamu, "aotHttpValidatorRegistry", originalAotRegistry);
-    Reflect.set(Sonamu, "preparedApis", originalPreparedApis);
+    Sonamu.restoreTestingSnapshot(originalState);
     if (originalVitest === undefined) {
       delete process.env.VITEST;
     } else {
@@ -131,32 +113,36 @@ describe("REST HTTP validator 생명주기", () => {
     const types = {
       PageSchema: z.number(),
     };
-    const reply = {
+    const reply = /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
       type: vi.fn().mockReturnThis(),
     } as FastifyReply;
-    const config = {
+    const config = /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
       contextProvider(defaultContext: Context) {
         return defaultContext;
       },
       guardHandler() {},
     } as SonamuFastifyConfig;
 
-    Reflect.set(Sonamu, "_config", {
+    Reflect.set(Sonamu, "configValue", {
       sync: { targets: [] },
       validation: { zodCompiler: false },
     });
-    Reflect.set(Sonamu, "_syncer", { types });
-    vi.spyOn(Sonamu, "createContext").mockResolvedValue({ transport: "http" } as Context);
+    Reflect.set(Sonamu, "syncerValue", { types });
+    vi.spyOn(Sonamu, "createContext").mockResolvedValue(
+      /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
+        transport: "http",
+      } as Context,
+    );
     vi.spyOn(Sonamu, "invokeModelMethod").mockImplementation(async (_api, args) => args);
 
-    const handler = await Sonamu.createApiHandler(api, config);
+    const handler = await Sonamu.createApiHandler(api, config, undefined, lifecycleDependencies);
 
-    expect(getZodObjectFromApi).toHaveBeenCalledTimes(1);
-    const converterCall = vi.mocked(getZodObjectFromApi).mock.calls[0];
+    expect(createSchema).toHaveBeenCalledTimes(1);
+    const converterCall = createSchema.mock.calls[0];
     expect(converterCall?.[0]).toBe(api);
     expect(converterCall?.[1]).toEqual(types);
     expect(converterCall?.[1]).not.toBe(types);
-    expect(fastifyCaster).toHaveBeenCalledTimes(1);
+    expect(applyCaster).toHaveBeenCalledTimes(1);
 
     await expect(handler(createRequest({ page: "2" }), reply)).resolves.toEqual([2]);
     await expect(handler(createRequest({ page: "invalid" }), reply)).rejects.toMatchObject({
@@ -166,27 +152,27 @@ describe("REST HTTP validator 생명주기", () => {
       },
     });
 
-    expect(getZodObjectFromApi).toHaveBeenCalledTimes(1);
-    expect(fastifyCaster).toHaveBeenCalledTimes(1);
-    expect(compilerMocks.jit).not.toHaveBeenCalled();
+    expect(createSchema).toHaveBeenCalledTimes(1);
+    expect(applyCaster).toHaveBeenCalledTimes(1);
+    expect(compileJit).not.toHaveBeenCalled();
   });
 
   it("JIT를 첫 parse 전에 eager 설치하고 registry 없이 검증한다", async () => {
     const events: string[] = [];
-    compilerMocks.jit.mockImplementation((schema: z.ZodType) => {
+    compileJit.mockImplementation(async (schema) => {
       const parse = schema.parse.bind(schema);
       const safeParse = schema.safeParse.bind(schema);
       Object.defineProperties(schema, {
         parse: {
           configurable: true,
-          value(input: unknown) {
+          value<Input>(input: Input) {
             events.push("parse");
             return parse(input);
           },
         },
         safeParse: {
           configurable: true,
-          value(input: unknown) {
+          value<Input>(input: Input) {
             return safeParse(input);
           },
         },
@@ -195,28 +181,34 @@ describe("REST HTTP validator 생명주기", () => {
       return schema;
     });
 
-    const validator = await createHttpValidator({
-      api: createApi(),
-      policy: { api: "jit", targets: {} },
-      types: {},
-    });
+    const validator = await createHttpValidator(
+      {
+        api: createApi(),
+        policy: { api: "jit", targets: {} },
+        types: {},
+      },
+      validatorDependencies,
+    );
 
-    expect(compilerMocks.jit).toHaveBeenCalledWith(expect.any(z.ZodType), { eager: true });
+    expect(compileJit).toHaveBeenCalledWith(expect.any(z.ZodType), { eager: true });
     expect(validator.parse({ page: "3" })).toEqual({ page: 3 });
     expect(events).toEqual(["jit", "parse"]);
   });
 
   it("JIT가 public parse method를 교체하지 않으면 첫 parse 전에 setup을 실패시킨다", async () => {
-    compilerMocks.jit.mockImplementation((schema: z.ZodType) => schema);
+    compileJit.mockImplementation(async (schema) => schema);
 
     await expect(
-      createHttpValidator({
-        api: createApi(),
-        policy: { api: "jit", targets: {} },
-        types: {},
-      }),
+      createHttpValidator(
+        {
+          api: createApi(),
+          policy: { api: "jit", targets: {} },
+          types: {},
+        },
+        validatorDependencies,
+      ),
     ).rejects.toThrow();
-    expect(compilerMocks.jit).toHaveBeenCalledWith(expect.any(z.ZodType), { eager: true });
+    expect(compileJit).toHaveBeenCalledWith(expect.any(z.ZodType), { eager: true });
   });
 
   it("AOT registry의 fingerprint와 route coverage 불일치를 거부한다", () => {
@@ -276,72 +268,88 @@ describe("REST HTTP validator 생명주기", () => {
   it("metadata refresh가 실패하면 기존 cache를 유지하고 성공 후 새 validator를 재사용한다", async () => {
     const firstApi = createApi("number");
     const revisedApi = createApi("string");
-    const config = {
+    const config = /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
       contextProvider(defaultContext: Context) {
         return defaultContext;
       },
       guardHandler() {},
     } as SonamuFastifyConfig;
-    Reflect.set(Sonamu, "_config", {
+    Reflect.set(Sonamu, "configValue", {
       sync: { targets: [] },
       validation: { zodCompiler: false },
     });
-    Reflect.set(Sonamu, "_syncer", { apis: [firstApi], types: {} });
+    Reflect.set(Sonamu, "syncerValue", { apis: [firstApi], types: {} });
 
-    await Sonamu.refreshHttpValidators();
-    Sonamu.createApiHandler(firstApi, config);
-    expect(getZodObjectFromApi).toHaveBeenCalledTimes(1);
+    await Sonamu.refreshHttpValidators(lifecycleDependencies);
+    Sonamu.createApiHandler(firstApi, config, undefined, lifecycleDependencies);
+    expect(createSchema).toHaveBeenCalledTimes(1);
 
-    Reflect.set(Sonamu, "_syncer", { apis: [revisedApi], types: {} });
-    vi.mocked(getZodObjectFromApi).mockImplementationOnce(() => {
+    Reflect.set(Sonamu, "syncerValue", { apis: [revisedApi], types: {} });
+    createSchema.mockImplementationOnce(() => {
       throw new Error("metadata refresh failed");
     });
-    await expect(Sonamu.refreshHttpValidators()).rejects.toThrow("metadata refresh failed");
+    await expect(Sonamu.refreshHttpValidators(lifecycleDependencies)).rejects.toThrow(
+      "metadata refresh failed",
+    );
 
-    Sonamu.createApiHandler(firstApi, config);
-    expect(getZodObjectFromApi).toHaveBeenCalledTimes(2);
+    Sonamu.createApiHandler(firstApi, config, undefined, lifecycleDependencies);
+    expect(createSchema).toHaveBeenCalledTimes(2);
 
-    await Sonamu.refreshHttpValidators();
-    Sonamu.createApiHandler(revisedApi, config);
-    expect(getZodObjectFromApi).toHaveBeenCalledTimes(3);
+    await Sonamu.refreshHttpValidators(lifecycleDependencies);
+    Sonamu.createApiHandler(revisedApi, config, undefined, lifecycleDependencies);
+    expect(createSchema).toHaveBeenCalledTimes(3);
   });
 
   it("HMR source에서 opt-out에서 AOT로 전환하면 새 metadata를 fallback validator로 교체한다", async () => {
     process.env.VITEST = "true";
     const firstApi = createApi("number");
     const revisedApi = createApi("string");
-    const reply = {
+    const reply = /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
       type: vi.fn().mockReturnThis(),
     } as FastifyReply;
-    const config = {
+    const config = /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
       contextProvider(defaultContext: Context) {
         return defaultContext;
       },
       guardHandler() {},
     } as SonamuFastifyConfig;
-    vi.spyOn(Sonamu, "createContext").mockResolvedValue({ transport: "http" } as Context);
+    vi.spyOn(Sonamu, "createContext").mockResolvedValue(
+      /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
+        transport: "http",
+      } as Context,
+    );
     vi.spyOn(Sonamu, "invokeModelMethod").mockImplementation(async (_api, args) => args);
-    Reflect.set(Sonamu, "_config", {
+    Reflect.set(Sonamu, "configValue", {
       sync: { targets: [] },
       validation: { zodCompiler: false },
     });
-    Reflect.set(Sonamu, "_syncer", { apis: [firstApi], types: {} });
+    Reflect.set(Sonamu, "syncerValue", { apis: [firstApi], types: {} });
 
-    await Sonamu.refreshHttpValidators();
-    const firstHandler = Sonamu.createApiHandler(firstApi, config);
+    await Sonamu.refreshHttpValidators(lifecycleDependencies);
+    const firstHandler = Sonamu.createApiHandler(
+      firstApi,
+      config,
+      undefined,
+      lifecycleDependencies,
+    );
     await expect(firstHandler(createRequest({ page: "5" }), reply)).resolves.toEqual([5]);
 
-    Reflect.set(Sonamu, "_config", {
+    Reflect.set(Sonamu, "configValue", {
       sync: { targets: [] },
       validation: { zodCompiler: { api: "aot" } },
     });
-    Reflect.set(Sonamu, "_syncer", { apis: [revisedApi], types: {} });
-    await Sonamu.refreshHttpValidators();
-    const revisedHandler = Sonamu.createApiHandler(revisedApi, config);
+    Reflect.set(Sonamu, "syncerValue", { apis: [revisedApi], types: {} });
+    await Sonamu.refreshHttpValidators(lifecycleDependencies);
+    const revisedHandler = Sonamu.createApiHandler(
+      revisedApi,
+      config,
+      undefined,
+      lifecycleDependencies,
+    );
     await expect(revisedHandler(createRequest({ page: "5" }), reply)).resolves.toEqual(["5"]);
 
-    Sonamu.createApiHandler(revisedApi, config);
-    expect(getZodObjectFromApi).toHaveBeenCalledTimes(2);
+    Sonamu.createApiHandler(revisedApi, config, undefined, lifecycleDependencies);
+    expect(createSchema).toHaveBeenCalledTimes(2);
   });
 
   it("HMR refresh는 API, validator, model registry를 준비 완료 snapshot으로 함께 공개한다", async () => {
@@ -352,81 +360,80 @@ describe("REST HTTP validator 생명주기", () => {
       methodName: "findPageV2",
     };
     const previousModel = {
-      findPage(page: unknown) {
+      findPage<Page>(page: Page) {
         return { modelRevision: "previous", value: page };
       },
     };
     const revisedModel = {
-      findPageV2(page: unknown) {
+      findPageV2<Page>(page: Page) {
         return { modelRevision: "revised", value: page };
       },
     };
-    const request = {
+    const request = /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
       ...createRequest({ page: "5" }),
       url: "/api/report/findPage",
     } as FastifyRequest;
-    const reply = {
+    const reply = /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
       type: vi.fn().mockReturnThis(),
     } as FastifyReply;
-    const config = {
+    const config = /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
       contextProvider(defaultContext: Context) {
         return defaultContext;
       },
       guardHandler() {},
     } as SonamuFastifyConfig;
-    const handleDevApiRequest: (
-      request: FastifyRequest,
-      config: SonamuFastifyConfig,
-    ) => Promise<((request: FastifyRequest, reply: FastifyReply) => Promise<unknown>) | null> =
-      Reflect.get(Sonamu, "handleDevApiRequest");
-    const invokeDevRequest = async (): Promise<unknown> => {
-      const handler = await handleDevApiRequest.call(Sonamu, request, config);
+    const invokeDevRequest = async () => {
+      const handler = await Sonamu.handleDevApiRequestForTesting(request, config);
       if (handler === null) {
         throw new Error("개발 API handler를 찾지 못했습니다");
       }
       return await handler(request, reply);
     };
 
-    Reflect.set(Sonamu, "_config", {
+    Reflect.set(Sonamu, "configValue", {
       api: { route: { prefix: "/api" } },
       sync: { targets: [] },
       validation: { zodCompiler: false },
     });
-    Reflect.set(Sonamu, "_syncer", {
+    Reflect.set(Sonamu, "syncerValue", {
       apis: [previousApi],
       models: { ReportModel: previousModel },
       types: {},
     });
-    vi.spyOn(Sonamu, "createContext").mockResolvedValue({ transport: "http" } as Context);
+    vi.spyOn(Sonamu, "createContext").mockResolvedValue(
+      /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
+        transport: "http",
+      } as Context,
+    );
 
-    await Sonamu.refreshHttpValidators();
-    vi.mocked(createHttpValidator).mockClear();
+    await Sonamu.refreshHttpValidators(lifecycleDependencies);
+    createValidator.mockClear();
 
     type Validator = Awaited<ReturnType<typeof createHttpValidator>>;
     let rejectRefresh: ((error: Error) => void) | undefined;
     const blockedValidator = new Promise<Validator>((_resolve, reject) => {
       rejectRefresh = (error) => reject(error);
     });
-    vi.mocked(createHttpValidator).mockImplementationOnce(async () => await blockedValidator);
-    Reflect.set(Sonamu, "_syncer", {
+    createValidator.mockImplementationOnce(async () => await blockedValidator);
+    Reflect.set(Sonamu, "syncerValue", {
       apis: [revisedApi],
       models: { ReportModel: revisedModel },
       types: {},
     });
 
-    const failedRefresh = Sonamu.refreshHttpValidators();
-    const refreshSetupCalls = vi.mocked(createHttpValidator).mock.calls.length;
-    const duringRefresh = await invokeDevRequest().catch((error: unknown) => error);
-    const callsAfterRequest = vi.mocked(createHttpValidator).mock.calls.length;
+    const failedRefresh = Sonamu.refreshHttpValidators(lifecycleDependencies);
+    const refreshSetupCalls = createValidator.mock.calls.length;
+    const duringRefresh = await invokeDevRequest();
+    const callsAfterRequest = createValidator.mock.calls.length;
     if (rejectRefresh === undefined) {
       throw new Error("refresh 실패 제어가 준비되지 않았습니다");
     }
     rejectRefresh(new Error("metadata refresh failed"));
     await expect(failedRefresh).rejects.toThrow("metadata refresh failed");
-    const afterFailure = await invokeDevRequest().catch((error: unknown) => error);
-    const callsAfterFailedRequest = vi.mocked(createHttpValidator).mock.calls.length;
+    const afterFailure = await invokeDevRequest();
+    const callsAfterFailedRequest = createValidator.mock.calls.length;
 
-    await Sonamu.refreshHttpValidators();
+    await Sonamu.refreshHttpValidators(lifecycleDependencies);
     const afterSuccess = await invokeDevRequest();
 
     expect(refreshSetupCalls).toBe(1);
@@ -435,13 +442,13 @@ describe("REST HTTP validator 생명주기", () => {
     expect(duringRefresh).toEqual({ modelRevision: "previous", value: 5 });
     expect(afterFailure).toEqual({ modelRevision: "previous", value: 5 });
     expect(afterSuccess).toEqual({ modelRevision: "revised", value: "5" });
-    expect(createHttpValidator).toHaveBeenCalledTimes(2);
+    expect(createValidator).toHaveBeenCalledTimes(2);
   });
 
   it("built AOT refresh는 metadata revision마다 registry를 한 번만 검증하고 plain validator를 만들지 않는다", async () => {
     delete process.env.VITEST;
     delete process.env.HOT;
-    const config = {
+    const config = /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
       contextProvider(defaultContext: Context) {
         return defaultContext;
       },
@@ -477,29 +484,29 @@ describe("REST HTTP validator 생명주기", () => {
       createApi("string"),
       { ...createApi("string"), methodName: "findOther", path: "/report/findOther" },
     ];
-    Reflect.set(Sonamu, "_config", {
+    Reflect.set(Sonamu, "configValue", {
       sync: { targets: [] },
       validation: { zodCompiler: { api: "aot" } },
     });
 
-    Reflect.set(Sonamu, "_apiRootPath", await createRegistryRoot(firstApis));
-    Reflect.set(Sonamu, "_syncer", { apis: firstApis, types: {} });
-    await Sonamu.refreshHttpValidators();
+    Reflect.set(Sonamu, "apiRootPathValue", await createRegistryRoot(firstApis));
+    Reflect.set(Sonamu, "syncerValue", { apis: firstApis, types: {} });
+    await Sonamu.refreshHttpValidators(lifecycleDependencies);
     for (const api of firstApis) {
-      Sonamu.createApiHandler(api, config);
-      Sonamu.createApiHandler(api, config);
+      Sonamu.createApiHandler(api, config, undefined, lifecycleDependencies);
+      Sonamu.createApiHandler(api, config, undefined, lifecycleDependencies);
     }
 
-    Reflect.set(Sonamu, "_apiRootPath", await createRegistryRoot(revisedApis));
-    Reflect.set(Sonamu, "_syncer", { apis: revisedApis, types: {} });
-    await Sonamu.refreshHttpValidators();
+    Reflect.set(Sonamu, "apiRootPathValue", await createRegistryRoot(revisedApis));
+    Reflect.set(Sonamu, "syncerValue", { apis: revisedApis, types: {} });
+    await Sonamu.refreshHttpValidators(lifecycleDependencies);
     for (const api of revisedApis) {
-      Sonamu.createApiHandler(api, config);
-      Sonamu.createApiHandler(api, config);
+      Sonamu.createApiHandler(api, config, undefined, lifecycleDependencies);
+      Sonamu.createApiHandler(api, config, undefined, lifecycleDependencies);
     }
 
-    expect(assertHttpValidatorRegistry).toHaveBeenCalledTimes(2);
-    expect(getZodObjectFromApi).not.toHaveBeenCalled();
-    expect(fastifyCaster).not.toHaveBeenCalled();
+    expect(assertRegistry).toHaveBeenCalledTimes(2);
+    expect(createSchema).not.toHaveBeenCalled();
+    expect(applyCaster).not.toHaveBeenCalled();
   });
 });

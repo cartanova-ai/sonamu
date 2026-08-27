@@ -106,7 +106,9 @@ describe("zod-error", () => {
 
         expect(humanized.length).toBe(3);
         expect(
-          humanized.every((err) => Array.isArray(err.path) && typeof err.message === "string"),
+          humanized.every(
+            (err) => Array.isArray(err.path) && z.string().safeParse(err.message).success,
+          ),
         ).toBe(true);
 
         // 각 필드별 에러 확인
@@ -128,7 +130,9 @@ describe("zod-error", () => {
         const humanized = humanizeZodError(result.error);
 
         // 모든 경로 요소가 문자열로 변환되어야 함
-        expect(humanized.every((err) => err.path.every((p) => typeof p === "string"))).toBe(true);
+        expect(humanized.every((err) => z.array(z.string()).safeParse(err.path).success)).toBe(
+          true,
+        );
       }
     });
   });

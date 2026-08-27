@@ -1,17 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { testCommand } from "../test-command";
+
 const originalArgv = process.argv;
 const originalNodeEnv = process.env.NODE_ENV;
 const originalVitest = process.env.VITEST;
-const originalFetch = globalThis.fetch;
 
 // process.argv 파싱 로직을 검증하는 유닛 테스트
 // test-command.ts의 파싱 로직을 동일하게 구현하여 독립 검증
-function parseArgs(args: string[]): {
-  files: string[];
-  pattern: string | undefined;
-  showTraces: boolean;
-} {
+function parseArgs(args: string[]) {
   const files: string[] = [];
   let pattern: string | undefined;
   let showTraces = false;
@@ -91,7 +88,6 @@ describe("test-command argument parsing", () => {
 
 describe("test-command dev server endpoint resolution", () => {
   beforeEach(() => {
-    vi.resetModules();
     vi.restoreAllMocks();
     process.argv = [process.execPath, "sonamu", "test", "--status"];
     process.env.NODE_ENV = "development";
@@ -99,10 +95,8 @@ describe("test-command dev server endpoint resolution", () => {
   });
 
   afterEach(() => {
-    vi.resetModules();
     vi.restoreAllMocks();
     process.argv = originalArgv;
-    globalThis.fetch = originalFetch;
 
     if (originalNodeEnv === undefined) {
       delete process.env.NODE_ENV;
@@ -136,7 +130,7 @@ describe("test-command dev server endpoint resolution", () => {
         },
       };
     });
-    const fetch = vi.fn(async () => {
+    const fetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(
         JSON.stringify({
           ready: true,
@@ -151,13 +145,13 @@ describe("test-command dev server endpoint resolution", () => {
       );
     });
 
-    vi.doMock("../../api/config", () => ({ loadConfig }));
-    vi.doMock("../../utils/utils", () => ({ findApiRootPath: () => "/tmp/api" }));
     vi.spyOn(console, "log").mockImplementation(() => {});
-    globalThis.fetch = fetch as typeof globalThis.fetch;
 
-    const { testCommand } = await import("../test-command");
-    await testCommand();
+    await testCommand({
+      fetch,
+      findApiRootPath: () => "/tmp/api",
+      loadConfig,
+    });
 
     expect(loadConfig).toHaveBeenCalledWith("/tmp/api");
     expect(fetch).toHaveBeenCalledWith("http://127.0.0.1:4401/__dev_test__/status");

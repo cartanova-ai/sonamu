@@ -36,12 +36,14 @@ import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
+import { translateFilterEnumKey } from "@/admin-common/filter-utils";
 import { SD } from "@/i18n/sd.generated";
 import { CompanyListParams } from "@/services/company/company.types";
 import { CompanyService } from "@/services/services.generated";
 import {
   CompanyBaseSchema,
   CompanyOrderBy,
+  type CompanySubsetA,
   CompanyOrderByLabel,
   CompanySearchField,
   CompanySearchFieldLabel,
@@ -58,6 +60,40 @@ export const Route = createFileRoute("/admin/companies/")({
 });
 
 type CompanyListProps = {};
+
+function createCompanyColumns(
+  onEdit: (id: number) => void,
+  onDelete: (id: number) => void,
+): TableCol<CompanySubsetA>[] {
+  return [
+    {
+      label: "ID",
+      tc: (row) => <>{row.id}</>,
+      fit: true,
+      align: "center",
+    },
+    {
+      label: SD("common.createdAt"),
+      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
+      fit: true,
+    },
+    {
+      label: SD("entity.Company.name"),
+      tc: (row) => <>{row.name}</>,
+    },
+    {
+      label: SD("common.manage"),
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button variant="yellow" size="xs" icon={<EditIcon />} onClick={() => onEdit(row.id)} />
+          <Button variant="red" size="xs" icon={<TrashIcon />} onClick={() => onDelete(row.id)} />
+        </div>
+      ),
+    },
+  ];
+}
 
 function CompanyList({}: CompanyListProps) {
   const navigate = useNavigate();
@@ -90,45 +126,10 @@ function CompanyList({}: CompanyListProps) {
   };
 
   // 컬럼 정의
-  type CompanyRow = NonNullable<typeof rows>[number];
-  const columns: TableCol<CompanyRow>[] = [
-    {
-      label: "ID",
-      tc: (row) => <>{row.id}</>,
-      fit: true,
-      align: "center",
-    },
-    {
-      label: SD("common.createdAt"),
-      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
-      fit: true,
-    },
-    {
-      label: SD("entity.Company.name"),
-      tc: (row) => <>{row.name}</>,
-    },
-    {
-      label: SD("common.manage"),
-      fit: true,
-      align: "center",
-      tc: (row) => (
-        <div className="flex items-center justify-center gap-1">
-          <Button
-            variant="yellow"
-            size="xs"
-            icon={<EditIcon />}
-            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
-          />
-          <Button
-            variant="red"
-            size="xs"
-            icon={<TrashIcon />}
-            onClick={() => handleDeleteClick(row.id)}
-          />
-        </div>
-      ),
-    },
-  ];
+  const columns = createCompanyColumns(
+    (id) => navigate({ to: `${PAGE.route}/form`, search: { id } }),
+    (id) => handleDeleteClick(id),
+  );
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -217,7 +218,7 @@ function CompanyList({}: CompanyListProps) {
                       rules={appliedRules}
                       fieldMeta={extractFieldMetaFromSchema(
                         CompanyBaseSchema,
-                        SD as (key: string) => string,
+                        translateFilterEnumKey,
                       )}
                     >
                       <Button

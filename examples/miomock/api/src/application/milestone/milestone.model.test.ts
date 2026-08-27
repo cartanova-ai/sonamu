@@ -5,35 +5,34 @@ import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
 
 import { ProjectModel } from "../project/project.model";
-import { type ProjectStatus } from "../sonamu.generated";
+import { ProjectStatus } from "../sonamu.generated";
 import { MilestoneModel } from "./milestone.model";
 
 bootstrap(vi);
+
+// 마일스톤 테스트가 의존하는 최소 프로젝트를 생성한다.
+const createProject = async (overrides?: { status?: string; deadline?: Date | null }) => {
+  const deadline = overrides?.deadline === undefined ? new Date("2026-12-31") : overrides.deadline;
+  const [projectId] = await ProjectModel.save([
+    {
+      name: `테스트프로젝트-${Date.now()}`,
+      status: ProjectStatus.parse(overrides?.status ?? "planning"),
+      description: null,
+      budget: null,
+      deadline,
+      image_urls: null,
+      employee_ids: [],
+      tag_ids: [],
+    },
+  ]);
+  assert(projectId);
+  return projectId;
+};
 
 describe("MilestoneModel", () => {
   // ============================================================
   // CDD 검증: milestone.spec.json → 마일스톤 관리
   // ============================================================
-
-  // 헬퍼: 테스트용 프로젝트 생성
-  const createProject = async (overrides?: { status?: string; deadline?: Date | null }) => {
-    const deadline =
-      overrides && "deadline" in overrides ? overrides.deadline : new Date("2026-12-31");
-    const [projectId] = await ProjectModel.save([
-      {
-        name: `테스트프로젝트-${Date.now()}`,
-        status: (overrides?.status ?? "planning") as ProjectStatus,
-        description: null,
-        budget: null,
-        deadline: deadline as Date | null,
-        image_urls: null,
-        employee_ids: [],
-        tag_ids: [],
-      },
-    ]);
-    assert(projectId);
-    return projectId;
-  };
 
   // ============================================================
   // 마일스톤 생성/수정

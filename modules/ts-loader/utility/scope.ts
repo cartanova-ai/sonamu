@@ -21,6 +21,15 @@ export interface PackageJson {
   type?: string;
 }
 
+function parsePackageJson<Value>(value: Value): PackageJson {
+  if (!(value instanceof Object) || !("type" in value)) {
+    return {};
+  }
+  return Object.prototype.toString.call(value.type) === "[object String]"
+    ? { type: String(value.type) }
+    : {};
+}
+
 /** `tsconfig.json` shape */
 interface TypeScriptConfig {
   compilerOptions?: CompilerOptions;
@@ -127,7 +136,7 @@ export async function resolvePackage(fs: FileSystemAsync, fileOrDirectory: URL) 
   for (const directory of iterateDirectoryHierarchy(fileOrDirectory)) {
     try {
       const path = new URL("package.json", directory);
-      const content = (await fs.readFileJSON(path)) as PackageJson;
+      const content = parsePackageJson(await fs.readFileJSON(path));
       return {
         packageJson: content,
         packagePath: path,

@@ -9,15 +9,21 @@ import {
 } from "node-sql-parser";
 import { unique } from "radashi";
 
+import { isObjectValue, isStringValue } from "./runtime-value";
 import { nonNullable } from "./utils";
 
-export function getTableName(expr: ColumnRef) {
-  if ("table" in expr && expr.table !== null) {
-    return typeof expr.table === "string"
-      ? expr.table
-      : (expr.table as { type: string; value: string }).value;
+type ParserColumnRef = Omit<ColumnRef, "table"> & {
+  table?: string | { type: string; value: string } | null;
+};
+
+export function getTableName(expr: ParserColumnRef) {
+  const table = expr.table;
+  if (isStringValue(table)) {
+    return table;
   }
-  return null;
+  return isObjectValue(table) && "value" in table && isStringValue(table.value)
+    ? table.value
+    : null;
 }
 
 // where 조건에 사용된 테이블명을 추출
@@ -29,6 +35,7 @@ export function getTableNamesFromWhere(ast: AST | AST[]): string[] {
 
     const extractTableName = (expr: Expr | ExpressionValue): string[] => {
       if (expr.type === "column_ref") {
+        // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
         const table = getTableName(expr as ColumnRef);
         return table ? [table] : [];
       } else if (expr.type === "binary_expr" && "left" in expr) {

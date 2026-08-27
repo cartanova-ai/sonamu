@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { runtimeTypeOf } from "../runtime-type";
 import { type WebSocketAudience } from "./ws-audience";
 import { type WebSocketAudienceResolver } from "./ws-audience-resolver";
 import { type WebSocketClusterBus, type WebSocketClusterEnvelope } from "./ws-cluster-bus";
@@ -43,7 +44,7 @@ export class WebSocketDeliveryEngine {
     });
   }
 
-  publishToAudience(audience: WebSocketAudience, event: string, data: unknown): void {
+  publishToAudience<Data>(audience: WebSocketAudience, event: string, data: Data): void {
     const routingPlan = this.options.audienceResolver.resolve(audience);
     const localTargets = this.options.localConnections.getConnections(routingPlan.localSessionIds);
 
@@ -99,7 +100,7 @@ export class WebSocketDeliveryEngine {
           },
         });
       })
-      .catch((error: unknown) => {
+      .catch((cause: unknown) => {
         const durationMs = performance.now() - publishStartedAt;
         this.telemetry.emit({
           name: "ws.cluster.envelope.failed",
@@ -112,7 +113,7 @@ export class WebSocketDeliveryEngine {
           durationMs,
           status: "error",
           attributes: { event },
-          errorType: error instanceof Error ? error.name : typeof error,
+          errorType: cause instanceof Error ? cause.name : runtimeTypeOf(cause),
         });
       });
   }
@@ -123,7 +124,7 @@ export class WebSocketDeliveryEngine {
     await this.options.clusterBus.shutdown();
   }
 
-  getTelemetrySnapshot(): { pendingFanOutJobs: number; pendingFanOutTargets: number } {
+  getTelemetrySnapshot() {
     let pendingFanOutTargets = 0;
 
     for (const job of this.pendingFanOutJobs) {
@@ -183,7 +184,11 @@ export class WebSocketDeliveryEngine {
     });
   }
 
-  private enqueueFanOut(targets: ManagedWebSocketConnection[], event: string, data: unknown): void {
+  private enqueueFanOut<Data>(
+    targets: ManagedWebSocketConnection[],
+    event: string,
+    data: Data,
+  ): void {
     if (targets.length === 0) {
       return;
     }
@@ -236,7 +241,7 @@ export class WebSocketDeliveryEngine {
       }
     } catch (error) {
       status = "error";
-      errorType = error instanceof Error ? error.name : typeof error;
+      errorType = error instanceof Error ? error.name : runtimeTypeOf(error);
       throw error;
     } finally {
       const durationMs = performance.now() - startedAt;
@@ -260,7 +265,11 @@ export class WebSocketDeliveryEngine {
     }
   }
 
-  private safePublish(connection: ManagedWebSocketConnection, event: string, data: unknown): void {
+  private safePublish<Data>(
+    connection: ManagedWebSocketConnection,
+    event: string,
+    data: Data,
+  ): void {
     try {
       if (!connection.closed) {
         connection.publishUntyped(event, data);

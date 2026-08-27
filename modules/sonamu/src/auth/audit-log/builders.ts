@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   type AccountSnapshot,
+  type AuditEventData,
   type AuditLogEvent,
   type Builder,
   type BuilderLocation,
@@ -21,7 +22,7 @@ import {
 // 모든 빌더 공통 필드(triggeredBy/triggerContext, ipAddress/city/country/countryCode)를 합성한다.
 const createEvent = (
   base: { eventKey: string; eventType: string; eventDisplayName?: string },
-  data: Record<string, unknown>,
+  data: AuditEventData,
   trigger: BuilderTrigger,
   location?: BuilderLocation,
 ): AuditLogEvent => ({
@@ -359,7 +360,7 @@ const buildUserEvent = (
   user: UserSnapshot,
   trigger: BuilderTrigger,
   location: BuilderLocation | undefined,
-  extra?: Record<string, unknown>,
+  extra?: AuditEventData,
 ): AuditLogEvent =>
   createEvent(
     { eventKey: user.id, eventType, eventDisplayName },

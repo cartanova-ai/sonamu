@@ -27,7 +27,9 @@ import { SD } from "@/i18n/sd.generated";
 import { AuditLogListParams } from "@/services/audit-log/audit-log.types";
 import { AuditLogService } from "@/services/services.generated";
 import {
+  type AuditLogAction as AuditLogActionType,
   AuditLogAction,
+  type AuditLogSubsetA,
   AuditLogActionLabel,
   AuditLogOrderBy,
   AuditLogOrderByLabel,
@@ -44,45 +46,18 @@ export const Route = createFileRoute("/admin/audit-logs/")({
 
 const ENTITY_TYPES = ["Company", "Department", "Employee", "Project", "Tag", "Document"] as const;
 
-const actionBadgeVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+type AuditLogFilterParams = AuditLogListParams & {
+  action?: AuditLogActionType;
+};
+
+const actionBadgeVariant = {
   create: "default",
   update: "secondary",
   delete: "destructive",
-};
+} satisfies Record<AuditLogActionType, "default" | "secondary" | "destructive" | "outline">;
 
-function AuditLogList() {
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailId, setDetailId] = useState<number | null>(null);
-  const [entityTypeFilter, setEntityTypeFilter] = useState("");
-  const [actionFilter, setActionFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState<Date | null>(null);
-  const [dateTo, setDateTo] = useState<Date | null>(null);
-
-  const { listParams, register, setListParams } = useListParams(AuditLogListParams, {
-    num: 20,
-    page: 1,
-    keyword: "",
-    search: AuditLogSearchField.options[0],
-    orderBy: AuditLogOrderBy.options[0],
-  });
-
-  const params = {
-    ...listParams,
-    ...(entityTypeFilter ? { entity_type: entityTypeFilter } : {}),
-    ...(actionFilter ? { action: actionFilter } : {}),
-    ...(dateFrom ? { date_from: dateFrom } : {}),
-    ...(dateTo ? { date_to: dateTo } : {}),
-  };
-
-  const { data, isLoading } = AuditLogService.useAuditLogs("A", params);
-  const { rows, total } = data ?? {};
-
-  const PAGE = {
-    title: SD("entity.list")(SD("entity.AuditLog")),
-  };
-
-  type AuditLogRow = NonNullable<typeof rows>[number];
-  const columns: TableCol<AuditLogRow>[] = [
+function createAuditLogColumns(onOpenDetail: (id: number) => void): TableCol<AuditLogSubsetA>[] {
+  return [
     {
       label: "ID",
       tc: (row) => <>{row.id}</>,
@@ -129,14 +104,46 @@ function AuditLogList() {
           variant="outline"
           size="xs"
           icon={<EyeIcon />}
-          onClick={() => {
-            setDetailId(row.id);
-            setDetailOpen(true);
-          }}
+          onClick={() => onOpenDetail(row.id)}
         />
       ),
     },
   ];
+}
+
+function AuditLogList() {
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [entityTypeFilter, setEntityTypeFilter] = useState("");
+  const [actionFilter, setActionFilter] = useState<AuditLogActionType | "">("");
+  const [dateFrom, setDateFrom] = useState<Date | null>(null);
+  const [dateTo, setDateTo] = useState<Date | null>(null);
+
+  const { listParams, register, setListParams } = useListParams(AuditLogListParams, {
+    num: 20,
+    page: 1,
+    keyword: "",
+    search: AuditLogSearchField.options[0],
+    orderBy: AuditLogOrderBy.options[0],
+  });
+
+  const params: AuditLogFilterParams = { ...listParams };
+  if (entityTypeFilter) params.entity_type = entityTypeFilter;
+  if (actionFilter) params.action = actionFilter;
+  if (dateFrom) params.date_from = dateFrom;
+  if (dateTo) params.date_to = dateTo;
+
+  const { data, isLoading } = AuditLogService.useAuditLogs("A", params);
+  const { rows, total } = data ?? {};
+
+  const PAGE = {
+    title: SD("entity.list")(SD("entity.AuditLog")),
+  };
+
+  const columns = createAuditLogColumns((id) => {
+    setDetailId(id);
+    setDetailOpen(true);
+  });
 
   return (
     <div className="flex-1 overflow-auto">
@@ -198,7 +205,7 @@ function AuditLogList() {
                     labels={AuditLogActionLabel}
                     value={actionFilter}
                     onValueChange={(v) => {
-                      setActionFilter(typeof v === "string" ? v : "");
+                      setActionFilter(Array.isArray(v) ? "" : (v ?? ""));
                       setListParams({ ...listParams, page: 1 });
                     }}
                     placeholder={`${SD("entity.AuditLog.action")} (전체)`}

@@ -354,7 +354,8 @@ async function runExamples() {
       shouldFail: true,
     });
   } catch (error) {
-    console.log("✅ Transaction rolled back as expected:", (error as Error).message);
+    const message = error instanceof Error ? error.message : String(error);
+    console.log("✅ Transaction rolled back as expected:", message);
 
     // 롤백 확인
     const user = await TransactionalExampleModel.getPuri("r")

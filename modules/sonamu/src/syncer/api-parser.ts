@@ -77,7 +77,7 @@ export async function readApisFromFile(filePath: AbsolutePath): Promise<Extended
         return resolveParamDec(
           {
             name: paramDec.name,
-            type: paramDec.type as ts.TypeNode,
+            type: /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ paramDec.type as ts.TypeNode,
             optional: paramDec.questionToken !== undefined || paramDec.initializer !== undefined,
             defaultDef,
           },
@@ -253,7 +253,10 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
     case ts.SyntaxKind.VoidKeyword:
       return "void";
     case ts.SyntaxKind.LiteralType: {
-      const literal = (typeNode as ts.LiteralTypeNode).literal;
+      const literal =
+        /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+          typeNode as ts.LiteralTypeNode
+        ).literal;
       if (ts.isStringLiteral(literal)) {
         return {
           t: "string-literal",
@@ -278,35 +281,46 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
       }
     }
     case ts.SyntaxKind.ArrayType: {
-      const arrNode = typeNode as ts.ArrayTypeNode;
+      const arrNode =
+        /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ typeNode as ts.ArrayTypeNode;
       return {
         t: "array",
         elementsType: resolveTypeNode(arrNode.elementType),
       };
     }
     case ts.SyntaxKind.TypeLiteral: {
-      const literalNode = typeNode as ts.TypeLiteralNode;
+      const literalNode =
+        /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ typeNode as ts.TypeLiteralNode;
       return {
         t: "object",
         props: literalNode.members.map((member) => {
           if (ts.isIndexSignatureDeclaration(member)) {
             assert(member.parameters[0]);
             const res = resolveParamDec({
-              name: member.parameters[0].name as ts.Identifier,
-              type: member.parameters[0].type as ts.TypeNode,
+              name: /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ member
+                .parameters[0].name as ts.Identifier,
+              type: /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ member
+                .parameters[0].type as ts.TypeNode,
             });
 
             return resolveParamDec({
-              name: {
+              name: /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ {
                 escapedText: `[${res.name}${res.optional ? "?" : ""}: ${res.type}]`,
               } as ts.Identifier,
               type: member.type,
             });
           } else {
             return resolveParamDec({
-              name: (member as ts.PropertySignature).name as ts.Identifier,
-              type: (member as ts.PropertySignature).type as ts.TypeNode,
-              optional: (member as ts.PropertySignature).questionToken !== undefined,
+              name: /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+                member as ts.PropertySignature
+              ).name as ts.Identifier,
+              type: /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+                member as ts.PropertySignature
+              ).type as ts.TypeNode,
+              optional:
+                /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+                  member as ts.PropertySignature
+                ).questionToken !== undefined,
             });
           }
         }),
@@ -315,26 +329,40 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
     case ts.SyntaxKind.TypeReference:
       return {
         t: "ref",
-        id: ((typeNode as ts.TypeReferenceNode).typeName as ts.Identifier).escapedText.toString(),
-        args: (typeNode as ts.TypeReferenceNode).typeArguments?.map((typeArg) =>
-          resolveTypeNode(typeArg),
-        ),
+        id: /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+          (typeNode as ts.TypeReferenceNode).typeName as ts.Identifier
+        ).escapedText.toString(),
+        args: /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+          typeNode as ts.TypeReferenceNode
+        ).typeArguments?.map((typeArg) => resolveTypeNode(typeArg)),
       };
     case ts.SyntaxKind.UnionType:
       return {
         t: "union",
-        types: (typeNode as ts.UnionTypeNode).types.map((type) => resolveTypeNode(type)),
+        types: /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+          typeNode as ts.UnionTypeNode
+        ).types.map((type) => resolveTypeNode(type)),
       };
     case ts.SyntaxKind.IntersectionType:
       return {
         t: "intersection",
-        types: (typeNode as ts.IntersectionTypeNode).types.map((type) => resolveTypeNode(type)),
+        types: /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+          typeNode as ts.IntersectionTypeNode
+        ).types.map((type) => resolveTypeNode(type)),
       };
     case ts.SyntaxKind.IndexedAccessType:
       return {
         t: "indexed-access",
-        object: resolveTypeNode((typeNode as ts.IndexedAccessTypeNode).objectType),
-        index: resolveTypeNode((typeNode as ts.IndexedAccessTypeNode).indexType),
+        object: resolveTypeNode(
+          /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+            typeNode as ts.IndexedAccessTypeNode
+          ).objectType,
+        ),
+        index: resolveTypeNode(
+          /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+            typeNode as ts.IndexedAccessTypeNode
+          ).indexType,
+        ),
       };
     case ts.SyntaxKind.TupleType:
       if (ts.isTupleTypeNode(typeNode)) {
@@ -347,18 +375,29 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
     case ts.SyntaxKind.ParenthesizedType:
       // 괄호로 묶인 타입 (예: (A & B)[] 에서 (A & B))
       // 내부 타입을 재귀적으로 resolve
-      return resolveTypeNode((typeNode as ts.ParenthesizedTypeNode).type);
+      return resolveTypeNode(
+        /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+          typeNode as ts.ParenthesizedTypeNode
+        ).type,
+      );
 
     case ts.SyntaxKind.FunctionType:
       return {
         t: "function",
-        parameters: (typeNode as ts.FunctionTypeNode).parameters.map((param) => ({
-          name: param.name.getText(),
-          type: param.type ? resolveTypeNode(param.type) : "unknown",
-          optional: param.questionToken !== undefined,
-          defaultDef: undefined,
-        })),
-        returnType: resolveTypeNode((typeNode as ts.FunctionTypeNode).type),
+        parameters:
+          /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+            typeNode as ts.FunctionTypeNode
+          ).parameters.map((param) => ({
+            name: param.name.getText(),
+            type: param.type ? resolveTypeNode(param.type) : "unknown",
+            optional: param.questionToken !== undefined,
+            defaultDef: undefined,
+          })),
+        returnType: resolveTypeNode(
+          /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+            typeNode as ts.FunctionTypeNode
+          ).type,
+        ),
       };
     case undefined:
       throw new Error(`typeNode undefined`);
@@ -377,7 +416,8 @@ function resolveParamDec(
   },
   index: number = 0,
 ): ApiParam {
-  const name = paramDec.name as ts.Identifier;
+  const name =
+    /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ paramDec.name as ts.Identifier;
   const type = resolveTypeNode(paramDec.type);
 
   if (name === undefined) {

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { EnumSelect } from "./enum-select";
 
 const fruitEnum = { options: ["apple", "banana", "cherry", "grape"] as const };
-const fruitLabels: Record<string, string> = {
+const fruitLabels = {
   apple: "사과",
   banana: "바나나",
   cherry: "체리",
@@ -28,7 +28,13 @@ type MetaArgs = typeof meta.args;
 export const Single: StoryObj<MetaArgs> = {
   render: function Render(args) {
     const [value, setValue] = useState("");
-    return <EnumSelect {...args} value={value} onValueChange={(v) => setValue(v as string)} />;
+    return (
+      <EnumSelect
+        {...args}
+        value={value}
+        onValueChange={(nextValue) => setValue(Array.isArray(nextValue) ? "" : (nextValue ?? ""))}
+      />
+    );
   },
 };
 
@@ -40,7 +46,7 @@ export const Multiple: StoryObj<MetaArgs> = {
         {...args}
         multiple
         value={values}
-        onValueChange={(v) => setValues(v as string[])}
+        onValueChange={(nextValue) => setValues(Array.isArray(nextValue) ? nextValue : [])}
       />
     );
   },

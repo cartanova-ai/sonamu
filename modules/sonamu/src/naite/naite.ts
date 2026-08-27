@@ -1,5 +1,3 @@
-/* oxlint-disable @typescript-eslint/no-explicit-any */ // Naite는 expect와 호응하도록 any를 허용함
-
 import { getLogger } from "@logtape/logtape";
 import { get } from "radashi";
 
@@ -7,6 +5,7 @@ import { Sonamu } from "../api/sonamu";
 import { type ComparisonOperator } from "../database/puri.types";
 import { convertNaiteKeyToCategory } from "../logger/category";
 import { isSerializable } from "../utils/object-utils";
+import { isNumberValue, isStringValue } from "../utils/runtime-value";
 
 // StackFrame 타입
 interface StackFrame {
@@ -18,10 +17,77 @@ interface StackFrame {
 // NaiteTrace 타입
 interface NaiteTrace {
   key: string;
-  data: any;
+  data: NaiteData;
   stack: StackFrame[]; // 콜스택 정보
   at: Date;
 }
+
+// Naite는 직렬화 가능성 검사를 내보내기 시점에 수행하므로 모든 JavaScript 값을 기록할 수 있습니다.
+export type NaiteData = null | undefined | bigint | boolean | number | object | string | symbol;
+
+export interface NaiteEventRegistry {
+  actionGenerateServices: readonly object[];
+  "fs/promises:rm": {
+    path: string;
+    options?: object;
+  };
+  "fs/promises:writeFile": {
+    path: string;
+    data: string;
+  };
+  "puri:executed-query": string;
+  "puri:ub-batch-updated": {
+    tableName: string;
+    rowCount: number;
+    whereColumns: string[];
+  };
+  "puri:ub-clean-orphans": {
+    tableName: string;
+    cleanOrphans: string[];
+    deletedCount: number;
+  };
+  "puri:ub-inherit": {
+    tableName: string;
+    inheritColumns: string[];
+    excludedFromUpdate: string[];
+  };
+  "puri:ub-ref-resolved": {
+    tableName: string;
+    field: string;
+    from: UBReference;
+    to: NaiteData;
+  };
+  "puri:ub-register": {
+    tableName: string;
+    uuid: string;
+    isUuidReused: boolean;
+    row: object & { user_id: UBReference };
+  };
+  "puri:ub-upserted": {
+    tableName: string;
+    mode: "insert" | "upsert";
+    rowCount: number;
+    returnedIds: Array<number | string>;
+  };
+}
+
+interface UBReference {
+  uuid: string;
+  of: string;
+  use?: string;
+}
+
+export interface NaiteResult<Payload> extends Array<Payload> {
+  0: Payload;
+  1: Payload;
+  [index: number]: Payload;
+  find<Match extends Payload>(
+    predicate: (value: Payload, index: number, values: Payload[]) => value is Match,
+  ): Match;
+  find(predicate: (value: Payload, index: number, values: Payload[]) => boolean): Payload;
+}
+
+type NaiteValuesByKey = Record<string, NaiteTrace[] | Array<NaiteTrace["data"]>>;
 
 // Naite.t가 저장되는 타입 (항상 배열로 통일)
 export type NaiteStore = Map<string, NaiteTrace[]>;
@@ -30,7 +96,7 @@ export type NaiteStore = Map<string, NaiteTrace[]>;
 // bootstrap.ts의 TaskMeta augmentation, dev-vitest-manager.ts에서도 이 타입을 공유합니다.
 export type SerializedTrace = {
   key: string;
-  value: any;
+  value: unknown;
   filePath: string;
   lineNumber: number;
   at: string;
@@ -140,22 +206,22 @@ function matchesPattern(key: string, pattern: string): boolean {
  * NaiteQuery 클래스
  * 체이닝을 통한 trace 필터링 및 조회
  */
-export class NaiteQuery {
+export class NaiteQuery<Payload extends NaiteData = NaiteData> {
   constructor(private traces: NaiteTrace[]) {}
 
-  private isComparableValue(value: unknown): value is number | string {
-    return typeof value === "number" || typeof value === "string";
+  private isComparableValue<Value>(value: Value): value is Value & (number | string) {
+    return isNumberValue(value) || isStringValue(value);
   }
 
   /**
    * 파일명으로 필터링
    * @param fileName 파일명 (예: "syncer.test.ts")
    */
-  fromFile(fileName: string): NaiteQuery {
+  fromFile(fileName: string): NaiteQuery<Payload> {
     const filtered = this.traces.filter((t) =>
       t.stack.some((frame) => frame.filePath.endsWith(`/${fileName}`)),
     );
-    return new NaiteQuery(filtered);
+    return new NaiteQuery<Payload>(filtered);
   }
 
   /**
@@ -166,7 +232,7 @@ export class NaiteQuery {
   fromFunction(
     funcName: string,
     options: { from: "direct" | "indirect" | "both" } = { from: "both" },
-  ): NaiteQuery {
+  ): NaiteQuery<Payload> {
     const filtered = this.traces.filter((t) => {
       if (options.from === "direct") {
         // stack[0]만 확인 (직접 호출)
@@ -179,7 +245,7 @@ export class NaiteQuery {
       // 전체 스택에서 확인
       return t.stack.some((f) => f.functionName?.includes(funcName));
     });
-    return new NaiteQuery(filtered);
+    return new NaiteQuery<Payload>(filtered);
   }
 
   /**
@@ -188,7 +254,11 @@ export class NaiteQuery {
    * @param operator 비교 연산자
    * @param value 비교값
    */
-  where(path: string, operator: ComparisonOperator | "includes", value: any): NaiteQuery {
+  where<Value extends NaiteData>(
+    path: string,
+    operator: ComparisonOperator | "includes",
+    value: Value,
+  ): NaiteQuery<Payload> {
     const filtered = this.traces.filter((trace) => {
       const actual = get(trace, path);
 
@@ -206,39 +276,43 @@ export class NaiteQuery {
         case "!=":
           return actual !== value;
         case "includes":
-          return typeof actual === "string" && actual.includes(value);
+          return isStringValue(actual) && isStringValue(value) && actual.includes(value);
         default:
           return false;
       }
     });
-    return new NaiteQuery(filtered);
+    return new NaiteQuery<Payload>(filtered);
   }
 
   /**
    * 전체 데이터 배열 반환
    */
-  result(): any[] {
+  result(): NaiteResult<Payload>;
+  result(): NaiteData[] {
     return this.traces.map((t) => t.data);
   }
 
   /**
    * 첫 번째 데이터 반환
    */
-  first(): any | undefined {
+  first(): Payload;
+  first(): NaiteData {
     return this.traces[0]?.data;
   }
 
   /**
    * 마지막 데이터 반환
    */
-  last(): any | undefined {
+  last(): Payload;
+  last(): NaiteData {
     return this.traces[this.traces.length - 1]?.data;
   }
 
   /**
    * n번째 데이터 반환
    */
-  at(index: number): any | undefined {
+  at(index: number): Payload;
+  at(index: number): NaiteData {
     return this.traces[index]?.data;
   }
 
@@ -253,10 +327,7 @@ export class NaiteQuery {
 // Naite 싱글턴 객체 (추후 logger 연결 등의 상태 관리 필요성 고려)
 export class NaiteClass {
   // 테스트 로그 기록
-  t(
-    name: string,
-    value: any /*이렇게 받은 값이 NaiteTrace로 저장되어 있다가 추후에 vitest에게 meta를 통해 넘겨져 프로세스간 통신을 통해 직렬화되어야 하는 점을 고려하였을 때 여기에 Serializable을 써서 제한을 둘 수도 있지만, 사용상의 편의를 생각하여 any로 받습니다.*/,
-  ) {
+  t<Value extends NaiteData>(name: string, value: Value) {
     // 이 t 함수는 테스트 환경에서만 작동해야 합니다.
     // 그리고 테스트 환경 판단에 왜 isTest() 함수를 사용하지 않았냐면요,,
     // 이렇게 하는게 유틸 함수 불러와서 사용하는 것보다 조금이나마 빠를 것 같았기 때문입니다.
@@ -302,6 +373,8 @@ export class NaiteClass {
    * key 또는 wildcard 패턴으로 trace 조회
    * 항상 NaiteQuery 반환하여 체이닝 가능
    */
+  get<Key extends keyof NaiteEventRegistry>(keyPattern: Key): NaiteQuery<NaiteEventRegistry[Key]>;
+  get(keyPattern: string): NaiteQuery;
   get(keyPattern: string): NaiteQuery {
     const context = Sonamu.getContext();
     const store = context?.naiteStore;
@@ -328,13 +401,13 @@ export class NaiteClass {
   }
 
   // 전체 리스트 가져오기
-  getAll(): { [key: string]: any } {
+  getAll() {
     const context = Sonamu.getContext();
     if (!context?.naiteStore) {
       return {};
     }
     // NaiteTrace 배열을 data만 추출하여 반환
-    const result: { [key: string]: any } = {};
+    const result: NaiteValuesByKey = {};
     for (const [key, traces] of context.naiteStore.entries()) {
       if (key.startsWith("mock:")) {
         // Mock 설정은 그대로 반환

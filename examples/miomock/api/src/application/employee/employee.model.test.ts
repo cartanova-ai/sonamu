@@ -3,48 +3,46 @@ import assert from "assert";
 import { DB } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+import { z } from "zod";
 
 import { EmployeeModel } from "./employee.model";
 
 bootstrap(vi);
 
+const createUser = async (email: string, username: string) => {
+  const wdb = DB.getDB("w");
+  const [result] = await wdb("users")
+    .insert({
+      email,
+      username,
+      password: "password123",
+      role: "normal",
+      is_verified: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+    })
+    .returning("id");
+  return z.string().parse(result?.id);
+};
+
+const createCompany = async (name: string) => {
+  const wdb = DB.getDB("w");
+  const [result] = await wdb("companies").insert({ name, created_at: new Date() }).returning("id");
+  return z.number().parse(result?.id);
+};
+
+const createDepartment = async (name: string, companyId: number) => {
+  const wdb = DB.getDB("w");
+  const [result] = await wdb("departments")
+    .insert({ name, company_id: companyId, created_at: new Date() })
+    .returning("id");
+  return z.number().parse(result?.id);
+};
+
 describe("EmployeeModel", () => {
   // ============================================================
   // CDD 검증: employee.spec.json → 직원 관리
   // ============================================================
-
-  // 헬퍼: 테스트용 회사 + 부서 + 사용자 생성
-  const createUser = async (email: string, username: string) => {
-    const wdb = DB.getDB("w");
-    const [result] = await wdb("users")
-      .insert({
-        email,
-        username,
-        password: "password123",
-        role: "normal",
-        is_verified: true,
-        created_at: new Date(),
-        updated_at: new Date(),
-      })
-      .returning("id");
-    return result.id as string;
-  };
-
-  const createCompany = async (name: string) => {
-    const wdb = DB.getDB("w");
-    const [result] = await wdb("companies")
-      .insert({ name, created_at: new Date() })
-      .returning("id");
-    return result.id as number;
-  };
-
-  const createDepartment = async (name: string, companyId: number) => {
-    const wdb = DB.getDB("w");
-    const [result] = await wdb("departments")
-      .insert({ name, company_id: companyId, created_at: new Date() })
-      .returning("id");
-    return result.id as number;
-  };
 
   describe("직원 생성/수정", () => {
     test("save로 직원 생성 (사번 부여)", async () => {
@@ -63,7 +61,7 @@ describe("EmployeeModel", () => {
       assert(empId);
 
       // ID는 정수 타입
-      expect(typeof empId).toBe("number");
+      expect(Number.isInteger(empId)).toBe(true);
 
       const emp = await EmployeeModel.findById("A", empId);
       expect(emp.employee_number).toBe("30000001");

@@ -1,6 +1,3 @@
-/* oxlint-disable @typescript-eslint/no-explicit-any */ // 파싱 결과이므로 any 허용
-/* oxlint-disable react-hooks/exhaustive-deps */ // 훅이므로 필요 시 사용
-
 import { format } from "date-fns";
 import equal from "fast-deep-equal";
 import qs from "qs";
@@ -26,13 +23,13 @@ export function searchParamsToParams<T extends z.ZodType<any>>(
   return caster(paramsSchema, obj);
 }
 
-// oxlint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- 공개 헬퍼 호출부에서 입력 타입을 보존하도록 제네릭 시그니처 유지
-export function paramsToSearchParams<T>(params: T): {
-  [key in string]: string | string[];
+export function paramsToSearchParams<T extends object>(
+  params: T,
+): {
+  [key in Extract<keyof T, string>]: string | string[];
 } {
   return Object.fromEntries(
-    // oxlint-disable-next-line unicorn/prefer-array-flat-map -- 여기는 flatMap 사용하면 깨짐
-    Object.entries(params as any)
+    Object.entries(params)
       .filter(([, value]) => {
         return value !== undefined;
       })
@@ -40,8 +37,8 @@ export function paramsToSearchParams<T>(params: T): {
         if (Array.isArray(value)) {
           return [[`${key}[]`, value]];
         } else if (isObject(value)) {
-          return Object.keys(value).map((subKey) => {
-            return [`${key}[${subKey}]`, String(value[subKey as keyof typeof value])];
+          return Object.entries(value).map(([subKey, subValue]) => {
+            return [`${key}[${subKey}]`, String(subValue)];
           });
         } else {
           return [[key, String(value)]];
@@ -56,6 +53,12 @@ type ErrorObj = {
   pointing?: "above" | "below" | "left" | "right";
 };
 
+type RegisteredFieldProps = {
+  value: ReturnType<typeof formatValue>;
+  onChange: (_event: any, props: any) => void;
+  error?: ErrorObj;
+};
+
 function getEmptyStringTo(
   innerZType: z.ZodObject<any> | z.ZodArray<any>,
   objPath: string,
@@ -67,7 +70,7 @@ function getEmptyStringTo(
 
   let targetZType: unknown;
   if (innerZType instanceof z.ZodObject) {
-    targetZType = get(innerZType.shape, zTypeObjPath);
+    targetZType = get(innerZType.def["shape"], zTypeObjPath);
   } else if (innerZType instanceof z.ZodArray) {
     targetZType = get(innerZType, zTypeObjPath);
   }
@@ -82,20 +85,21 @@ function getEmptyStringTo(
   return "normal";
 }
 
-function formatValue(value: unknown): string {
+type FormFieldValue = string | number | boolean | Date | readonly string[] | null | undefined;
+
+function formatValue(value: FormFieldValue): Exclude<FormFieldValue, null | undefined> {
   if (value === undefined || value === null) {
     return "";
   }
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return format(value, "yyyy-MM-dd'T'HH:mm");
   }
-  return value as string;
+  return value;
 }
 
-// oxlint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- defaultValue의 구체 타입을 보존하기 위해 U를 유지
-export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U extends z.infer<T>>(
+export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>>(
   zType: T,
-  defaultValue: U,
+  defaultValue: z.infer<T>,
 ) {
   const [form, setForm] = useState<z.infer<T>>(defaultValue);
   const [errorObjs, setErrorObjs] = useState(new Map());
@@ -105,10 +109,10 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
     setForm,
     register: (objPath: string, _emptyStringTo?: "normal" | "nullable" | "optional"): any => {
       const emptyStringTo = _emptyStringTo ?? getEmptyStringTo(zType, objPath);
-      const srcValue = get(form, objPath) as unknown;
+      const srcValue: FormFieldValue = get(form, objPath);
 
       const error = errorObjs.get(objPath);
-      return {
+      const fieldProps: RegisteredFieldProps = {
         value: formatValue(srcValue),
         onChange: (_e: any, prop: any) => {
           if (error !== undefined) {
@@ -127,16 +131,17 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
 
           setForm(set(form, objPath, newValue));
         },
-        ...(error && { error }),
       };
+      if (error !== undefined) {
+        fieldProps.error = error;
+      }
+      return fieldProps;
     },
     addError: (objPath: string, errorMessage: string | ErrorObj): void => {
       setErrorObjs((p) => {
         const newP = new Map(p);
-        newP.set(
-          objPath,
-          typeof errorMessage === "string" ? { content: errorMessage } : errorMessage,
-        );
+        const message = z.string().safeParse(errorMessage);
+        newP.set(objPath, message.success ? { content: message.data } : errorMessage);
         return newP;
       });
     },
@@ -166,12 +171,29 @@ export function useListParams<U extends z.ZodType<any>, T extends z.infer<U>>(
   // 라우팅 searchParams
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParamsToParams(searchParams, zType);
+  const disableSearchParams = options?.disableSearchParams === true;
+  const searchParamsKey = searchParams.toString();
 
   // 리스트 필터 state
-  const [listParams, setListParams] = useState({
-    ...defaultValue,
-    ...(options?.disableSearchParams !== true ? query : {}),
+  const [listState, setListState] = useState(() => {
+    const initialParams = { ...defaultValue };
+    if (!disableSearchParams) {
+      Object.assign(initialParams, query);
+    }
+    return { params: initialParams, searchParamsKey };
   });
+
+  if (!disableSearchParams && listState.searchParamsKey !== searchParamsKey) {
+    setListState({
+      params: { ...defaultValue, ...query },
+      searchParamsKey,
+    });
+  }
+
+  const listParams = listState.params;
+  const setListParams = (params: T) => {
+    setListState((state) => ({ ...state, params }));
+  };
 
   // 리스트 필터 변경시에 searchParams 변경
   useEffect(() => {
@@ -181,26 +203,12 @@ export function useListParams<U extends z.ZodType<any>, T extends z.infer<U>>(
     });
     const newSP = paramsToSearchParams(listParams);
 
-    if (options?.disableSearchParams !== true) {
+    if (!disableSearchParams) {
       setSearchParams(newSP, {
         replace: equal(oldSP, newSP),
       });
     }
-  }, [listParams]);
-
-  // searchParams 변경시에 리스트 필터 변경
-  useEffect(() => {
-    if (options?.disableSearchParams !== true) {
-      const updatedQuery = searchParamsToParams(searchParams, zType);
-      const newListParams = {
-        ...defaultValue,
-        ...updatedQuery,
-      };
-      if (!equal(newListParams, listParams)) {
-        setListParams(newListParams);
-      }
-    }
-  }, [searchParams]);
+  }, [disableSearchParams, listParams, searchParams, setSearchParams, zType]);
 
   return {
     listParams,
@@ -238,7 +246,8 @@ export function useGoBack() {
   const navigate = useNavigate();
   return {
     goBack: (to: string) => {
-      if ((location?.state as { from?: string })?.from === to) {
+      const locationState = z.object({ from: z.string().optional() }).safeParse(location.state);
+      if (locationState.success && locationState.data.from === to) {
         navigate(-1);
       } else {
         navigate(to);
@@ -253,25 +262,17 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
   );
   const [lastIndex, setLastIndex] = useState(0);
 
-  // 전체 키가 바뀔 때마다 validation하여 갱신된 전체 키에 포함된 키만 유지
-  useEffect(() => {
-    const selectionKeys = Array.from(selection.keys());
-    if (
-      allKeys.concat(selectionKeys.filter((key) => !allKeys.includes(key))).length ===
-      allKeys.length
-    ) {
-      return;
-    }
-
-    setSelection(new Map(Array.from(selection).filter(([key, _value]) => allKeys.includes(key))));
-  }, [allKeys, selection]);
-
-  const selectedKeys = Array.from(selection)
+  // 현재 전체 키에서 사라진 항목은 렌더링 결과에서 제외한다.
+  const currentSelection = new Map(Array.from(selection).filter(([key]) => allKeys.includes(key)));
+  if (currentSelection.size !== selection.size) {
+    setSelection(currentSelection);
+  }
+  const selectedKeys = Array.from(currentSelection)
     .filter(([key, value]) => allKeys.includes(key) && value)
     .map(([key]) => key);
 
   return {
-    getSelected: (key: T) => selection.get(key) ?? false,
+    getSelected: (key: T) => currentSelection.get(key) ?? false,
     toggle: (key: T) => {
       setSelection((prev) => {
         return new Map([...prev, [key, !(prev.get(key) ?? false)]]);
@@ -357,7 +358,7 @@ export type ControlledModalProps = {
   close: () => void;
 };
 export function useModal<T extends object>(
-  ModalComponent: (props: T & ControlledModalProps) => JSX.Element,
+  ModalComponent: (props: T & ControlledModalProps) => ReactElement,
   defaultProps: T,
 ) {
   const [modalProps, setModalProps] = useState<T & { open: boolean }>({
@@ -390,17 +391,21 @@ export function useModal<T extends object>(
     ),
   };
 }
-export function caller<T extends Function>() {
+type CallerResult = object | string | number | boolean | bigint | symbol | null | undefined | void;
+
+export function caller<T extends (...args: never[]) => CallerResult>() {
   let savedFunc: T | null = null;
   return {
     set: (func: T) => {
       savedFunc = func;
     },
-    call: ((...args: unknown[]) => {
+    call: (...args: Parameters<T>): ReturnType<T> | undefined => {
       if (savedFunc) {
-        savedFunc.call(args);
+        // SAFETY: args와 반환값은 저장된 함수 T의 Parameters와 ReturnType을 그대로 사용합니다.
+        return savedFunc(...args) as ReturnType<T>;
       }
-    }) as unknown as T,
+      return undefined;
+    },
   };
 }
 

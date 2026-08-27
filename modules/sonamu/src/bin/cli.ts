@@ -1,6 +1,6 @@
 import assert from "assert";
-import { execSync, spawn } from "child_process";
-import { mkdir, readFile, readdir, rm, writeFile } from "fs/promises";
+import { spawn, spawnSync } from "child_process";
+import { mkdir, open, readFile, readdir, rm, writeFile } from "fs/promises";
 import { createRequire } from "module";
 import path from "path";
 import process from "process";
@@ -44,13 +44,75 @@ import { testCommand } from "./test-command";
 
 let migrator: Migrator;
 
+function runMysql(
+  args: string[],
+  stdio: [number | "ignore", number | "inherit", "inherit"] = ["ignore", "inherit", "inherit"],
+) {
+  const result = spawnSync("mysql", args, { stdio });
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(`mysql 명령이 종료 코드 ${result.status ?? "unknown"}로 실패했습니다.`);
+  }
+}
+
+async function writeMysqlDump(args: string[], outputPath: string) {
+  const output = await open(outputPath, "w");
+  try {
+    const result = spawnSync("mysqldump", args, { stdio: ["ignore", output.fd, "inherit"] });
+    if (result.error) {
+      throw result.error;
+    }
+    if (result.status !== 0) {
+      throw new Error(`mysqldump 명령이 종료 코드 ${result.status ?? "unknown"}로 실패했습니다.`);
+    }
+  } finally {
+    await output.close();
+  }
+}
+
+async function runMysqlWithInput(args: string[], inputPath: string) {
+  const input = await open(inputPath, "r");
+  try {
+    runMysql(args, [input.fd, "inherit", "inherit"]);
+  } finally {
+    await input.close();
+  }
+}
+
+function openInCode(pathToOpen: string) {
+  const result = spawnSync("code", [pathToOpen], { stdio: ["ignore", "inherit", "inherit"] });
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(`code 명령이 종료 코드 ${result.status ?? "unknown"}로 실패했습니다.`);
+  }
+}
+
+function mysqlConnectionArgs(connection: Knex.ConnectionConfig) {
+  return [
+    `-h${String(connection.host)}`,
+    `-u${String(connection.user)}`,
+    `-p${String(connection.password)}`,
+  ];
+}
+
+function copyToClipboard(value: string) {
+  const result = spawnSync("pbcopy", [], { input: value, stdio: ["pipe", "inherit", "inherit"] });
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(`pbcopy 명령이 종료 코드 ${result.status ?? "unknown"}로 실패했습니다.`);
+  }
+}
+
 /**
  * CLI 옵션을 파싱하는 헬퍼 함수
  */
-function parseCliOptions(argv: string[] = process.argv): {
-  flags: Set<string>; // --regenerate, --ai, --no-cones 등
-  options: Record<string, string>; // --locale ko 등
-} {
+function parseCliOptions(argv: string[] = process.argv) {
   const flags = new Set<string>();
   const options: Record<string, string> = {};
 
@@ -558,7 +620,6 @@ async function start() {
     return;
   }
 
-  const { spawn } = await import("child_process");
   const serverProcess = spawn(
     process.execPath,
     ["--enable-source-maps", "-r", "dotenv/config", entryPoint],
@@ -628,7 +689,7 @@ async function migrate_status() {
 
 async function fixture_init() {
   const srcConfig = Sonamu.dbConfig[getSonamuEnvironment()];
-  const targets = [
+  const targets = /* SAFETY: CLI 파서와 빌드 도구 입력 계약이 이 값의 타입을 보장한다. */ [
     {
       label: "(REMOTE) Fixture DB",
       config: Sonamu.dbConfig.fixture,
@@ -637,8 +698,12 @@ async function fixture_init() {
       label: "(LOCAL) Testing DB",
       config: Sonamu.dbConfig.test,
       toSkip: (() => {
-        const remoteConn = Sonamu.dbConfig.fixture.connection as Knex.ConnectionConfig;
-        const localConn = Sonamu.dbConfig.test.connection as Knex.ConnectionConfig;
+        const remoteConn =
+          /* SAFETY: CLI 파서와 빌드 도구 입력 계약이 이 값의 타입을 보장한다. */ Sonamu.dbConfig
+            .fixture.connection as Knex.ConnectionConfig;
+        const localConn =
+          /* SAFETY: CLI 파서와 빌드 도구 입력 계약이 이 값의 타입을 보장한다. */ Sonamu.dbConfig
+            .test.connection as Knex.ConnectionConfig;
         return remoteConn.host === localConn.host && remoteConn.database === localConn.database;
       })(),
     },
@@ -651,35 +716,56 @@ async function fixture_init() {
   // 1. 기준DB 스키마를 덤프
   console.log("DUMP...");
   const dumpFilename = `/tmp/sonamu-fixture-init-${Date.now()}.sql`;
-  const srcConn = srcConfig.connection as Knex.ConnectionConfig;
+  const srcConn =
+    /* SAFETY: CLI 파서와 빌드 도구 입력 계약이 이 값의 타입을 보장한다. */ srcConfig.connection as Knex.ConnectionConfig;
   const migrationsDump = `/tmp/sonamu-fixture-init-migrations-${Date.now()}.sql`;
-  execSync(
-    `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction -d --no-create-db --triggers ${srcConn.database} > ${dumpFilename}`,
+  await writeMysqlDump(
+    [
+      ...mysqlConnectionArgs(srcConn),
+      "--single-transaction",
+      "-d",
+      "--no-create-db",
+      "--triggers",
+      String(srcConn.database),
+    ],
+    dumpFilename,
   );
-  const _db = knex(srcConfig);
-  const [[migrations]] = await _db.raw(
+  const sourceDb = knex(srcConfig);
+  const [[migrations]] = await sourceDb.raw(
     "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = 'knex_migrations'",
     [srcConn.database],
   );
   if (migrations.count > 0) {
-    execSync(
-      `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction --no-create-db --triggers ${srcConn.database} knex_migrations knex_migrations_lock > ${migrationsDump}`,
+    await writeMysqlDump(
+      [
+        ...mysqlConnectionArgs(srcConn),
+        "--single-transaction",
+        "--no-create-db",
+        "--triggers",
+        String(srcConn.database),
+        "knex_migrations",
+        "knex_migrations_lock",
+      ],
+      migrationsDump,
     );
   }
 
   // 2. 대상DB 각각에 대하여 존재여부 확인 후 붓기
   for (const { label, config, toSkip } of targets) {
-    const conn = config.connection as Knex.ConnectionConfig;
+    const conn =
+      /* SAFETY: CLI 파서와 빌드 도구 입력 계약이 이 값의 타입을 보장한다. */ config.connection as Knex.ConnectionConfig;
 
     if (toSkip === true) {
       console.log(chalk.red(`${label}: Skipped!`));
       continue;
     }
 
+    // SAFETY: Sonamu DB 구성은 Knex 연결 구성으로 검증된 뒤 이 명령에 전달된다.
+    const databaseConnection = (config.connection ?? {}) as Knex.ConnectionConfig;
     const db = knex({
       ...config,
       connection: {
-        ...((config.connection ?? {}) as Knex.ConnectionConfig),
+        ...databaseConnection,
         database: undefined,
       },
     });
@@ -691,18 +777,20 @@ async function fixture_init() {
     }
 
     console.log(`SYNC to ${label}...`);
-    const mysqlCmd = `mysql -h${conn.host} -u${conn.user} -p${conn.password}`;
-    execSync(`${mysqlCmd} -e 'DROP DATABASE IF EXISTS \`${conn.database}\`'`);
-    execSync(`${mysqlCmd} -e 'CREATE DATABASE \`${conn.database}\`'`);
-    execSync(`${mysqlCmd} ${conn.database} < ${dumpFilename}`);
+    const connectionArgs = mysqlConnectionArgs(conn);
+    const database = String(conn.database);
+    const escapedDatabase = database.replaceAll("`", "``");
+    runMysql([...connectionArgs, "-e", `DROP DATABASE IF EXISTS \`${escapedDatabase}\``]);
+    runMysql([...connectionArgs, "-e", `CREATE DATABASE \`${escapedDatabase}\``]);
+    await runMysqlWithInput([...connectionArgs, database], dumpFilename);
     if (await exists(migrationsDump)) {
-      execSync(`${mysqlCmd} ${conn.database} < ${migrationsDump}`);
+      await runMysqlWithInput([...connectionArgs, database], migrationsDump);
     }
 
     await db.destroy();
   }
 
-  await _db.destroy();
+  await sourceDb.destroy();
 }
 
 async function fixture_import(entityId: string, recordIds: number[]) {
@@ -830,14 +918,14 @@ async function stub_practice(name: string) {
   ].join("\n");
   await writeFile(dstPath, code);
 
-  execSync(`code ${dstPath}`);
+  openInCode(dstPath);
 
   const runCode = `yarn node -r dotenv/config --enable-source-maps dist/practices/${fileName.replace(
     ".ts",
     ".js",
   )}`;
   console.log(`${chalk.blue(runCode)} copied to clipboard.`);
-  execSync(`echo "${runCode}" | pbcopy`);
+  copyToClipboard(runCode);
 }
 
 async function stub_entity(entityId: string) {
@@ -853,7 +941,6 @@ async function stub_entity(entityId: string) {
     return;
   }
 
-  const { EntityManager } = await import("../entity/entity-manager");
   const entity = EntityManager.get(entityId);
   if (!entity) {
     console.error(`Entity not found: ${entityId}`);
@@ -910,7 +997,6 @@ async function stub_entity(entityId: string) {
  * ANTHROPIC_API_KEY 필요 (sonamu.secret.ts 또는 환경변수)
  */
 async function cone_gen(entityId: string) {
-  const { EntityManager } = await import("../entity/entity-manager");
   const { flags, options } = parseCliOptions();
 
   // --all 옵션: 모든 entity cone 생성

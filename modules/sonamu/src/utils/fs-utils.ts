@@ -8,12 +8,12 @@ import { formatCode } from "./formatter";
 /**
  * fs/promises에는 exists가 없어요. 대신 access가 있습니다.
  * 근데 얘는 인터페이스가 쓰기 불편해요. 그래서 감싸주었습니다.
- * @param path
+ * @param targetPath
  * @returns
  */
-export async function exists(path: PathLike): Promise<boolean> {
+export async function exists(targetPath: PathLike): Promise<boolean> {
   try {
-    await access(path, constants.F_OK);
+    await access(targetPath, constants.F_OK);
     return true;
   } catch {
     return false;
@@ -21,9 +21,9 @@ export async function exists(path: PathLike): Promise<boolean> {
 }
 
 // 디렉토리가 아니라 파일만 존재하는지 확인합니다.
-export async function fileExists(path: PathLike): Promise<boolean> {
+export async function fileExists(targetPath: PathLike): Promise<boolean> {
   try {
-    const stats = await stat(path);
+    const stats = await stat(targetPath);
     return stats.isFile();
   } catch {
     return false;

@@ -8,7 +8,7 @@ import { rcKeysEn } from "./rc-keys";
 
 type DictKey = keyof typeof ko;
 
-const en: Record<DictKey, Dictionary[string]> = {
+const en = {
   // react-components i18n keys
   ...rcKeysEn,
 
@@ -322,6 +322,6 @@ const en: Record<DictKey, Dictionary[string]> = {
   "cdd.documentCount": "{count} documents",
   "cdd.selectDocument": "Select a document",
   "cdd.selectDocumentDesc": "Select a document from the tree on the left to view details.",
-};
+} satisfies Record<DictKey, Dictionary[string]>;
 
 export default en;

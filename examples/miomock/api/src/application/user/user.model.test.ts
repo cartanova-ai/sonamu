@@ -43,7 +43,7 @@ describe("UserModel", () => {
       assert(userId);
 
       // ID가 문자열 타입으로 반환되어야 함 (Spec: Technical Constraints)
-      expect(typeof userId).toBe("string");
+      expect(userId).toMatch(/\S+/);
 
       // 생성된 유저 조회
       const user = await UserModel.findById("A", userId);
@@ -464,10 +464,10 @@ describe("UserModel", () => {
 
 describe("User subset", () => {
   test("should expose banned/ban_reason/ban_expires in A subset", async () => {
-    const aShapeKeys = Object.keys(UserSubsetA.shape);
-    expect(aShapeKeys).toContain("banned");
-    expect(aShapeKeys).toContain("ban_reason");
-    expect(aShapeKeys).toContain("ban_expires");
+    const subsetKeys = UserSubsetA.keyof().options;
+    expect(subsetKeys).toContain("banned");
+    expect(subsetKeys).toContain("ban_reason");
+    expect(subsetKeys).toContain("ban_expires");
 
     const [userId] = await UserModel.save([
       {

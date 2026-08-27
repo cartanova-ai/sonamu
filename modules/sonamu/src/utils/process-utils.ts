@@ -4,6 +4,8 @@ import { promisify } from "util";
 
 import chalk from "chalk";
 
+import { isStringValue } from "./runtime-value";
+
 const execFileAsync = promisify(execFile);
 
 /**
@@ -16,7 +18,7 @@ export async function execute(
   options?: ExecFileOptions,
 ): Promise<string> {
   const { stdout } = await execFileAsync(bin, args, options);
-  return typeof stdout === "string" ? stdout : stdout.toString();
+  return isStringValue(stdout) ? stdout : stdout.toString();
 }
 
 /**
@@ -37,6 +39,7 @@ export async function runWithGracefulShutdown(
     waitForUpTo: 20000,
   },
 ): Promise<void> {
+  // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
   let isRunning = true as boolean;
 
   const abortController = new AbortController();

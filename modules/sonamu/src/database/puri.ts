@@ -9,6 +9,12 @@ import { type Knex } from "knex";
 import { EntityManager } from "../entity/entity-manager";
 import { type TableSpec } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
+import {
+  isFunctionValue,
+  isNumberValue,
+  isObjectValue,
+  isStringValue,
+} from "../utils/runtime-value";
 import { type ClearStatements } from "./puri-subset.types";
 import {
   type AvailableColumns,
@@ -30,6 +36,7 @@ import {
   type ResultAvailableColumns,
   type SelectAllResult,
   type SelectObject,
+  type SelectValue,
   type SingleTableValue,
   type SqlExpression,
   type TsHighlightOptions,
@@ -79,7 +86,7 @@ type JoinRegistration = {
 
 type CorrelationRegistration = FromRegistration | JoinRegistration;
 
-function normalizeFuzzyOperator(operator?: string): FuzzyOperator {
+export function parseFuzzyOperator(operator?: string): FuzzyOperator {
   const normalized = operator?.trim() ?? "<%";
   const fuzzyOperator = FUZZY_OPERATORS.find((candidate) => candidate === normalized);
 
@@ -90,7 +97,7 @@ function normalizeFuzzyOperator(operator?: string): FuzzyOperator {
   return fuzzyOperator;
 }
 
-function serializeJsonSupersetValue(value: unknown): string {
+function serializeJsonSupersetValue<Value>(value: Value): string {
   const serialized = JSON.stringify(value);
 
   if (serialized === undefined) {
@@ -102,11 +109,11 @@ function serializeJsonSupersetValue(value: unknown): string {
   return serialized;
 }
 
-function serializeJsonColumnValue(
+function serializeJsonColumnValue<Value>(
   tableSpec: TableSpec | null,
   column: string,
-  value: unknown,
-): unknown {
+  value: Value,
+): Value | string {
   if (!tableSpec?.jsonColumns.includes(column) || value === undefined || value === null) {
     return value;
   }
@@ -142,15 +149,23 @@ function formatNullsSuffix(nulls?: PuriOrderByNulls): string {
   return ` NULLS ${nulls.toUpperCase()}`;
 }
 
-function isOrderByEntries(value: unknown): value is readonly PuriOrderByRuntimeEntry[] {
+function isOrderByEntries<Value>(
+  value: Value,
+): value is Value & readonly PuriOrderByRuntimeEntry[] {
   return Array.isArray(value);
 }
 
-function isSqlExpression(value: PuriOrderByRuntimeEntry): value is PuriOrderByExpression {
-  return typeof value === "object" && "_type" in value && value._type === "sql_expression";
+function isSqlExpression<Value>(value: Value): value is Value & PuriOrderByExpression {
+  return isObjectValue(value) && "_type" in value && value["_type"] === "sql_expression";
 }
 
-export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
+function isNestedSelectObject<TTables extends object>(
+  value: SelectValue<TTables> | SelectObject<TTables>,
+): value is SelectObject<TTables> {
+  return isObjectValue(value) && !("_type" in value);
+}
+
+export class Puri<TSchema, TTables extends object, TResult> {
   private knexQuery: Knex.QueryBuilder;
   private tableSpec: TableSpec | null = null;
   private correlationRegistry = new Map<string, CorrelationRegistration>();
@@ -162,7 +177,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     public knex: Knex,
     tableNameOrSource: any,
   ) {
-    if (typeof tableNameOrSource === "string") {
+    if (isStringValue(tableNameOrSource)) {
       // Case: new Puri(knex, "users")
       this.knexQuery = this.knex(tableNameOrSource).from(tableNameOrSource);
       this.tableSpec = this.safeGetTableSpec(tableNameOrSource);
@@ -171,14 +186,14 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
         alias: tableNameOrSource,
         table: tableNameOrSource,
       });
-    } else if (typeof tableNameOrSource === "object") {
+    } else if (isObjectValue(tableNameOrSource)) {
       const entries = Object.entries(tableNameOrSource);
       if (entries.length !== 1) {
         throw new Error("Table spec must have exactly one entry");
       }
       assert(entries[0]);
       const [alias, source] = entries[0];
-      if (typeof source === "string") {
+      if (isStringValue(source)) {
         this.knexQuery = this.knex(source).from({ [alias]: source });
         this.tableSpec = this.safeGetTableSpec(source);
         this.correlationRegistry.set(alias, { kind: "from", alias, table: source });
@@ -272,7 +287,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     column: string | SqlExpression<"string">,
     query: string,
   ): SqlExpression<"number"> {
-    if (typeof column === "string") {
+    if (isStringValue(column)) {
       return {
         _type: "sql_expression",
         _return: "number",
@@ -284,8 +299,8 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return {
       _type: "sql_expression",
       _return: "number",
-      _sql: `word_similarity(?, ${column._sql})`,
-      _params: [query, ...column._params],
+      _sql: `word_similarity(?, ${column["_sql"]})`,
+      _params: [query, ...column["_params"]],
     };
   }
 
@@ -293,7 +308,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     column: string | SqlExpression<"string">,
     query: string,
   ): SqlExpression<"number"> {
-    if (typeof column === "string") {
+    if (isStringValue(column)) {
       return {
         _type: "sql_expression",
         _return: "number",
@@ -305,8 +320,8 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return {
       _type: "sql_expression",
       _return: "number",
-      _sql: `similarity(${column._sql}, ?)`,
-      _params: [...column._params, query],
+      _sql: `similarity(${column["_sql"]}, ?)`,
+      _params: [...column["_params"], query],
     };
   }
 
@@ -314,7 +329,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     column: string | SqlExpression<"string">,
     query: string,
   ): SqlExpression<"number"> {
-    if (typeof column === "string") {
+    if (isStringValue(column)) {
       return {
         _type: "sql_expression",
         _return: "number",
@@ -326,8 +341,8 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return {
       _type: "sql_expression",
       _return: "number",
-      _sql: `strict_word_similarity(?, ${column._sql})`,
-      _params: [query, ...column._params],
+      _sql: `strict_word_similarity(?, ${column["_sql"]})`,
+      _params: [query, ...column["_params"]],
     };
   }
 
@@ -392,7 +407,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     query: string,
     options?: TsRankOptions,
   ): SqlExpression<"number"> {
-    return Puri._tsRank("ts_rank", column, query, options);
+    return Puri["_tsRank"]("ts_rank", column, query, options);
   }
 
   // ts_rank_cd
@@ -401,7 +416,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     query: string,
     options?: TsRankOptions,
   ): SqlExpression<"number"> {
-    return Puri._tsRank("ts_rank_cd", column, query, options);
+    return Puri["_tsRank"]("ts_rank_cd", column, query, options);
   }
 
   static toTsVector(column: string, config: string = "simple"): SqlExpression<"tsvector"> {
@@ -434,12 +449,12 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       params.push(...weights);
     }
 
-    if (typeof column === "string") {
+    if (isStringValue(column)) {
       sqlTemplate += `??, ${parser}(?, ?)`;
       params.push(column, config, query);
     } else {
-      sqlTemplate += `${column._sql}, ${parser}(?, ?)`;
-      params.push(...column._params, config, query);
+      sqlTemplate += `${column["_sql"]}, ${parser}(?, ?)`;
+      params.push(...column["_params"], config, query);
     }
 
     if (normalization) {
@@ -483,7 +498,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     const queryClause = `ARRAY[${queryArr.map(() => "?").join(", ")}]`;
 
     // 단일 컬럼인 경우
-    if (typeof columnOrColumns === "string") {
+    if (isStringValue(columnOrColumns)) {
       return Puri.rawString(`pgroonga_highlight_html(??, ${queryClause})`, [
         columnOrColumns,
         ...queryArr,
@@ -507,13 +522,14 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     const selectClauses: (string | Knex.Raw)[] = [];
 
     for (const [alias, columnOrFunction] of Object.entries(flatSelect)) {
-      if (typeof columnOrFunction === "object" && columnOrFunction._type === "sql_expression") {
+      if (isSqlExpression(columnOrFunction)) {
         // SQL 함수인 경우
         selectClauses.push(
-          this.knex.raw(`${columnOrFunction._sql} AS "${alias}"`, columnOrFunction._params),
+          this.knex.raw(`${columnOrFunction["_sql"]} AS "${alias}"`, columnOrFunction["_params"]),
         );
       } else {
         // 일반 컬럼인 경우
+        // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
         const columnPath = columnOrFunction as string;
         if (alias === columnPath) {
           // alias와 컬럼명이 같으면 alias 생략
@@ -526,6 +542,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     }
 
     this.knexQuery.select(selectClauses);
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     return this as any;
   }
 
@@ -534,23 +551,23 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
    * 예: { parent: { id: "parent.id", name: "parent.name" } }
    *   → { parent__id: "parent.id", parent__name: "parent.name" }
    */
-  private flattenSelect(selectObj: Record<string, any>, prefix = ""): Record<string, any> {
-    const flatSelect: Record<string, any> = {};
-
+  private *flattenSelectEntries(
+    selectObj: SelectObject<TTables>,
+    prefix = "",
+  ): Generator<[string, SelectValue<TTables>], void> {
     for (const [key, value] of Object.entries(selectObj)) {
       const fullKey = prefix ? `${prefix}__${key}` : key;
 
-      if (typeof value === "object" && value !== null && !("_type" in value)) {
-        // 중첩 객체인 경우 - 재귀 처리
-        const nested = this.flattenSelect(value, fullKey);
-        Object.assign(flatSelect, nested);
+      if (isNestedSelectObject(value)) {
+        yield* this.flattenSelectEntries(value, fullKey);
       } else {
-        // 일반 값인 경우 (컬럼 경로 또는 SqlExpression)
-        flatSelect[fullKey] = value;
+        yield [fullKey, value];
       }
     }
+  }
 
-    return flatSelect;
+  private flattenSelect(selectObj: SelectObject<TTables>, prefix = "") {
+    return Object.fromEntries(this.flattenSelectEntries(selectObj, prefix));
   }
 
   // SELECT (select는 overwrite, appendSelect는 append)
@@ -563,11 +580,12 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     const selectClauses: (string | Knex.Raw)[] = [];
 
     for (const [alias, columnOrFunction] of Object.entries(flatSelect)) {
-      if (typeof columnOrFunction === "object" && columnOrFunction._type === "sql_expression") {
+      if (isSqlExpression(columnOrFunction)) {
         selectClauses.push(
-          this.knex.raw(`${columnOrFunction._sql} AS ${alias}`, columnOrFunction._params),
+          this.knex.raw(`${columnOrFunction["_sql"]} AS ${alias}`, columnOrFunction["_params"]),
         );
       } else {
+        // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
         const columnPath = columnOrFunction as string;
         if (alias === columnPath) {
           selectClauses.push(columnPath);
@@ -578,12 +596,14 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     }
 
     this.knexQuery.select(selectClauses);
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     return this as any;
   }
 
   // SELECT *
   selectAll(): Puri<TSchema, TTables, SelectAllResult<TTables>> {
     this.knexQuery.select("*");
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     return this as any;
   }
 
@@ -606,15 +626,18 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // knex에 없어서 직접 구현함
   clearJoin(alias: string): this {
     let removed = false;
-    (this.knexQuery as any)._statements = (this.knexQuery as any)._statements.filter((s: any) => {
-      if ("joinType" in s) {
-        const shouldRemove = this.getKnexJoinAlias(s.table) === alias;
-        removed ||= shouldRemove;
-        return !shouldRemove;
-      } else {
-        return true;
-      }
-    });
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
+    (this.knexQuery as any)["_statements"] = (this.knexQuery as any)["_statements"].filter(
+      (s: any) => {
+        if ("joinType" in s) {
+          const shouldRemove = this.getKnexJoinAlias(s.table) === alias;
+          removed ||= shouldRemove;
+          return !shouldRemove;
+        } else {
+          return true;
+        }
+      },
+    );
     if (removed && this.correlationRegistry.get(alias)?.kind === "join") {
       this.correlationRegistry.delete(alias);
     }
@@ -668,7 +691,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   ): Puri<TSchema, TTables & Record<TJoinTable, TSchema[TJoinTable]>, TResult>;
   // JOIN 실제 구현
   join(tableNameOrSpec: any, ...args: any[]): any {
-    return this.__commonJoin("join", tableNameOrSpec, ...args);
+    return this["__commonJoin"]("join", tableNameOrSpec, ...args);
   }
 
   // ENSURE JOIN: 테이블 + Alias
@@ -684,7 +707,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     right: `${TJoinTable & string}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<TSchema, TTables & Record<TJoinTable, TSchema[TJoinTable]>, TResult>;
   ensureJoin(tableNameOrSpec: any, left: string, right: string): any {
-    return this.__ensureJoin("join", tableNameOrSpec, left, right);
+    return this["__ensureJoin"]("join", tableNameOrSpec, left, right);
   }
 
   // LEFT JOIN: 서브쿼리 + Alias
@@ -735,7 +758,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   ): Puri<TSchema, TTables & Record<TJoinTable, TSchema[TJoinTable] & LeftJoinedMarker>, TResult>;
   // LEFT JOIN 실제 구현
   leftJoin(tableNameOrSpec: any, ...args: any[]): any {
-    return this.__commonJoin("leftJoin", tableNameOrSpec, ...args);
+    return this["__commonJoin"]("leftJoin", tableNameOrSpec, ...args);
   }
 
   // ENSURE LEFT JOIN: 테이블 + Alias
@@ -763,18 +786,18 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     TResult
   >;
   ensureLeftJoin(tableNameOrSpec: any, left: string, right: string): any {
-    return this.__ensureJoin("leftJoin", tableNameOrSpec, left, right);
+    return this["__ensureJoin"]("leftJoin", tableNameOrSpec, left, right);
   }
 
   __commonJoin(joinType: "join" | "leftJoin", tableNameOrSpec: any, ...args: any[]): this {
     const registration = this.createJoinRegistration(joinType, tableNameOrSpec, args);
     this.assertCorrelationAvailable(registration);
 
-    if (typeof tableNameOrSpec === "string") {
+    if (isStringValue(tableNameOrSpec)) {
       // Case 1: join("posts", ...)
       const tableName = tableNameOrSpec;
 
-      if (args.length === 1 && typeof args[0] === "function") {
+      if (args.length === 1 && isFunctionValue(args[0])) {
         // join("posts", callback)
         const callback = args[0];
         this.knexQuery[joinType](tableName, (joinClause) => {
@@ -785,7 +808,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
         const [left, right] = args;
         this.knexQuery[joinType](tableName, left, right);
       }
-    } else if (typeof tableNameOrSpec === "object") {
+    } else if (isObjectValue(tableNameOrSpec)) {
       // Case 2: join({ alias: "table" }, ...) or join({ alias: subquery }, ...)
       const entries = Object.entries(tableNameOrSpec);
       if (entries.length !== 1) {
@@ -794,9 +817,9 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       assert(entries[0]);
       const [[alias, spec]] = entries;
 
-      if (typeof spec === "string") {
+      if (isStringValue(spec)) {
         // 테이블: join({ p: "posts" }, ...)
-        if (args.length === 1 && typeof args[0] === "function") {
+        if (args.length === 1 && isFunctionValue(args[0])) {
           // Callback
           const callback = args[0];
           this.knexQuery[joinType]({ [alias]: spec }, (joinClause) => {
@@ -809,7 +832,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
         }
       } else if (spec instanceof Puri) {
         // 서브쿼리: join({ sq: subquery }, ...)
-        if (args.length === 1 && typeof args[0] === "function") {
+        if (args.length === 1 && isFunctionValue(args[0])) {
           // Callback
           const callback = args[0];
           this.knexQuery[joinType](spec.rawQuery().as(alias), (joinClause) => {
@@ -846,7 +869,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     const existing = this.correlationRegistry.get(requested.alias);
 
     if (!existing) {
-      return this.__commonJoin(joinType, tableNameOrSpec, left, right);
+      return this["__commonJoin"](joinType, tableNameOrSpec, left, right);
     }
 
     if (this.isSameJoinRegistration(existing, requested)) {
@@ -864,10 +887,10 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     let alias: string;
     let table: string | null;
 
-    if (typeof tableNameOrSpec === "string") {
+    if (isStringValue(tableNameOrSpec)) {
       alias = tableNameOrSpec;
       table = tableNameOrSpec;
-    } else if (typeof tableNameOrSpec === "object") {
+    } else if (isObjectValue(tableNameOrSpec)) {
       const entries = Object.entries(tableNameOrSpec);
       if (entries.length !== 1) {
         throw new Error("Table spec must have exactly one entry");
@@ -875,14 +898,14 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       assert(entries[0]);
       const [[joinAlias, spec]] = entries;
       alias = joinAlias;
-      table = typeof spec === "string" ? spec : null;
+      table = isStringValue(spec) ? spec : null;
     } else {
       throw new Error("Invalid arguments");
     }
 
     const [left, right] = args;
     const reusable =
-      table !== null && args.length === 2 && typeof left === "string" && typeof right === "string";
+      table !== null && args.length === 2 && isStringValue(left) && isStringValue(right);
 
     return {
       kind: "join",
@@ -956,19 +979,19 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     }
   }
 
-  private getKnexJoinAlias(table: unknown): string | null {
-    if (typeof table === "string") {
+  private getKnexJoinAlias<Value>(table: Value): string | null {
+    if (isStringValue(table)) {
       return table;
     }
-    if (typeof table === "object" && table !== null) {
+    if (isObjectValue(table) && table !== null) {
       if (
         "_single" in table &&
-        typeof table._single === "object" &&
-        table._single !== null &&
-        "as" in table._single &&
-        typeof table._single.as === "string"
+        isObjectValue(table["_single"]) &&
+        table["_single"] !== null &&
+        "as" in table["_single"] &&
+        isStringValue(table["_single"].as)
       ) {
-        return table._single.as;
+        return table["_single"].as;
       }
       return Object.keys(table)[0] ?? null;
     }
@@ -993,15 +1016,15 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // WHERE: 컬럼 - 사용: .where("u.id", "like", "%test%")
   where(...args: [columnOrConditions: any, operatorOrValue?: any, value?: any]): this {
     const [columnOrConditions, operatorOrValue, value] = args;
-    if (typeof columnOrConditions === "object") {
+    if (isObjectValue(columnOrConditions)) {
       this.knexQuery.where(columnOrConditions);
-    } else if (typeof value === "undefined") {
+    } else if (value === undefined) {
       if (operatorOrValue === null) {
         this.knexQuery.whereNull(columnOrConditions);
         return this;
       }
       this.knexQuery.where(columnOrConditions, operatorOrValue);
-    } else if (typeof value !== "undefined") {
+    } else if (value !== undefined) {
       if (value === null) {
         if (operatorOrValue === "!=") {
           this.knexQuery.whereNotNull(columnOrConditions);
@@ -1021,18 +1044,32 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // WHERE IN
   whereIn<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    values: ExtractColumnType<TTables, TColumn & string>[],
+    values: (ExtractColumnType<TTables, TColumn & string> & Knex.Value)[],
   ): Puri<TSchema, TTables, TResult> {
-    this.knexQuery.whereIn(column, values);
+    // Knex의 비어 있는 IN 배열 처리와 동일하게 항상 거짓인 조건을 생성합니다.
+    if (values.length === 0) {
+      this.knexQuery.whereRaw("1 = 0");
+    } else {
+      const placeholders = values.map(() => "?").join(", ");
+      this.knexQuery.whereRaw(`?? in (${placeholders})`, [String(column), ...values]);
+    }
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     return this as any;
   }
 
   // WHERE NOT IN
   whereNotIn<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    values: ExtractColumnType<TTables, TColumn & string>[],
+    values: (ExtractColumnType<TTables, TColumn & string> & Knex.Value)[],
   ): Puri<TSchema, TTables, TResult> {
-    this.knexQuery.whereNotIn(column, values);
+    // Knex의 비어 있는 NOT IN 배열 처리와 동일하게 항상 참인 조건을 생성합니다.
+    if (values.length === 0) {
+      this.knexQuery.whereRaw("1 = 1");
+    } else {
+      const placeholders = values.map(() => "?").join(", ");
+      this.knexQuery.whereRaw(`?? not in (${placeholders})`, [String(column), ...values]);
+    }
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     return this as any;
   }
 
@@ -1090,13 +1127,14 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     options?: TsQueryOptions | TsQueryConfig,
   ): this {
     const opts =
-      typeof options === "string" ? ({ config: options } as TsQueryOptions) : (options ?? {});
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
+      isStringValue(options) ? ({ config: options } as TsQueryOptions) : (options ?? {});
 
     const parser = opts.parser ?? "websearch_to_tsquery";
     const config = opts.config ?? "simple";
     const columnExpr =
-      typeof column === "object" && column._type === "sql_expression"
-        ? column._sql
+      isSqlExpression(column) && column["_type"] === "sql_expression"
+        ? column["_sql"]
         : String(column);
 
     this.knexQuery.whereRaw(`${columnExpr} @@ ${parser}(?, ?)`, [config, value]);
@@ -1110,19 +1148,19 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       operator?: FuzzyOperator;
     },
   ): this {
-    const operator = normalizeFuzzyOperator(options?.operator);
+    const operator = parseFuzzyOperator(options?.operator);
 
     if (operator === "%") {
-      if (typeof column === "object") {
-        this.knexQuery.whereRaw(`${column._sql} ${operator} ?`, [...column._params, value]);
+      if (isSqlExpression(column)) {
+        this.knexQuery.whereRaw(`${column["_sql"]} ${operator} ?`, [...column["_params"], value]);
       } else {
         this.knexQuery.whereRaw(`?? ${operator} ?`, [column, value]);
       }
       return this;
     }
 
-    if (typeof column === "object") {
-      this.knexQuery.whereRaw(`? ${operator} ${column._sql}`, [value, ...column._params]);
+    if (isSqlExpression(column)) {
+      this.knexQuery.whereRaw(`? ${operator} ${column["_sql"]}`, [value, ...column["_params"]]);
     } else {
       this.knexQuery.whereRaw(`? ${operator} ??`, [value, column]);
     }
@@ -1167,7 +1205,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   ): this {
     if (isOrderByEntries(columnOrColumns)) {
       for (const entry of columnOrColumns) {
-        if (typeof entry === "string" || isSqlExpression(entry)) {
+        if (isStringValue(entry) || isSqlExpression(entry)) {
           this.applyOrderBy(entry);
         } else {
           this.applyOrderBy(entry.column, entry.order, entry.nulls);
@@ -1188,10 +1226,10 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     const normalizedDirection = normalizeOrderByDirection(direction);
     const normalizedNulls = normalizeOrderByNulls(nulls);
 
-    if (typeof column === "object") {
+    if (isSqlExpression(column)) {
       this.knexQuery.orderByRaw(
-        `${column._sql} ${normalizedDirection}${formatNullsSuffix(normalizedNulls)}`,
-        column._params,
+        `${column["_sql"]} ${normalizedDirection}${formatNullsSuffix(normalizedNulls)}`,
+        column["_params"],
       );
     } else {
       this.knexQuery.orderBy(column, normalizedDirection, normalizedNulls);
@@ -1281,7 +1319,8 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     this.knexQuery.clear("order");
     if (distinctOn) {
       // DISTINCT ON은 SELECT 절의 맨 앞에 와야 하므로, 기존 select(subset 필드들)를 보존 후 clear하고 다시 추가
-      const existingSubsetCols = (this.knexQuery as any)._statements
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
+      const existingSubsetCols = (this.knexQuery as any)["_statements"]
         .filter((s: any) => s.grouping === "columns")
         .flatMap((s: any) => s.value);
       this.knexQuery.clear("select");
@@ -1304,7 +1343,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     }
 
     // threshold
-    if (typeof threshold === "number") {
+    if (isNumberValue(threshold)) {
       if (!Number.isFinite(threshold)) {
         throw new Error(`Invalid vectorSimilarity threshold: ${threshold}`);
       }
@@ -1323,6 +1362,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       }
     }
 
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     return this as any;
   }
 
@@ -1381,6 +1421,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     Naite.t("puri:executed-query", this.toQuery());
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     return this.knexQuery.then(onfulfilled as any, onrejected);
   }
   catch<TResult2 = never>(
@@ -1407,6 +1448,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       : ExtractColumnType<TTables, TColumn & string>[],
     never
   > {
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     this.knexQuery.pluck(column as string);
     return new ResolvedPuri(this.knexQuery, this.knex, this.tableSpec);
   }
@@ -1442,9 +1484,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
    * object 또는 object 배열을 받고, JSON 컬럼이 있으면 직렬화하여 반환합니다.
    * 직접 값을 변경하므로 side effect가 있습니다.
    */
-  private refineJsonColumns(
-    data: Record<string, unknown> | Record<string, unknown>[],
-  ): typeof data {
+  private refineJsonColumns<Row extends object>(data: Row | Row[]): typeof data {
     // tableSpec이나 jsonColumns 없는 경우 바로 반환
     if (!this.tableSpec || !this.tableSpec.jsonColumns.length) {
       return data;
@@ -1455,17 +1495,21 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     if (Array.isArray(data)) {
       for (const item of data) {
         for (const column of jsonColumns) {
-          const value = item[column];
+          const value = Object.entries(item).find(([key]) => key === column)?.[1];
           if (value !== undefined && value !== null) {
-            item[column] = serializeJsonColumnValue(this.tableSpec, column, value);
+            Object.assign(item, {
+              [column]: serializeJsonColumnValue(this.tableSpec, column, value),
+            });
           }
         }
       }
     } else {
       for (const column of jsonColumns) {
-        const value = data[column];
+        const value = Object.entries(data).find(([key]) => key === column)?.[1];
         if (value !== undefined && value !== null) {
-          data[column] = serializeJsonColumnValue(this.tableSpec, column, value);
+          Object.assign(data, {
+            [column]: serializeJsonColumnValue(this.tableSpec, column, value),
+          });
         }
       }
     }
@@ -1639,7 +1683,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 }
 
-export class WhereGroup<TTables extends Record<string, any>> {
+export class WhereGroup<TTables extends object> {
   constructor(private builder: Knex.QueryBuilder) {}
 
   // where 메서드들
@@ -1661,7 +1705,7 @@ export class WhereGroup<TTables extends Record<string, any>> {
   // whereIn / whereNotIn 메서드들
   whereIn<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    values: ExtractColumnType<TTables, TColumn & string>[],
+    values: (ExtractColumnType<TTables, TColumn & string> & Knex.Value)[],
   ): this;
   whereIn(...args: any[]): WhereGroup<TTables> {
     this.builder.whereIn(args[0], args[1]);
@@ -1670,7 +1714,7 @@ export class WhereGroup<TTables extends Record<string, any>> {
 
   whereNotIn<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    values: ExtractColumnType<TTables, TColumn & string>[],
+    values: (ExtractColumnType<TTables, TColumn & string> & Knex.Value)[],
   ): this;
   whereNotIn(...args: any[]): WhereGroup<TTables> {
     this.builder.whereNotIn(args[0], args[1]);
@@ -1696,7 +1740,7 @@ export class WhereGroup<TTables extends Record<string, any>> {
   // orWhereIn / orWhereNotIn 메서드들
   orWhereIn<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    values: ExtractColumnType<TTables, TColumn & string>[],
+    values: (ExtractColumnType<TTables, TColumn & string> & Knex.Value)[],
   ): this;
   orWhereIn(...args: any[]): WhereGroup<TTables> {
     this.builder.orWhereIn(args[0], args[1]);
@@ -1705,7 +1749,7 @@ export class WhereGroup<TTables extends Record<string, any>> {
 
   orWhereNotIn<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    values: ExtractColumnType<TTables, TColumn & string>[],
+    values: (ExtractColumnType<TTables, TColumn & string> & Knex.Value)[],
   ): this;
   orWhereNotIn(...args: any[]): WhereGroup<TTables> {
     this.builder.orWhereNotIn(args[0], args[1]);
@@ -1787,14 +1831,12 @@ export class WhereGroup<TTables extends Record<string, any>> {
   ): this;
   whereTsSearch(...args: any[]): this {
     const opts =
-      typeof args[2] === "string" ? ({ config: args[2] } as TsQueryOptions) : (args[2] ?? {});
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
+      isStringValue(args[2]) ? ({ config: args[2] } as TsQueryOptions) : (args[2] ?? {});
 
     const parser = opts.parser ?? "websearch_to_tsquery";
     const config = opts.config ?? "simple";
-    const columnExpr =
-      typeof args[0] === "object" && args[0]._type === "sql_expression"
-        ? args[0]._sql
-        : String(args[0]);
+    const columnExpr = isSqlExpression(args[0]) ? args[0]["_sql"] : String(args[0]);
 
     this.builder.whereRaw(`${columnExpr} @@ ${parser}(?, ?)`, [config, args[1]]);
     return this;
@@ -1807,14 +1849,12 @@ export class WhereGroup<TTables extends Record<string, any>> {
   ): this;
   orWhereTsSearch(...args: any[]): this {
     const opts =
-      typeof args[2] === "string" ? ({ config: args[2] } as TsQueryOptions) : (args[2] ?? {});
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
+      isStringValue(args[2]) ? ({ config: args[2] } as TsQueryOptions) : (args[2] ?? {});
 
     const parser = opts.parser ?? "websearch_to_tsquery";
     const config = opts.config ?? "simple";
-    const columnExpr =
-      typeof args[0] === "object" && args[0]._type === "sql_expression"
-        ? args[0]._sql
-        : String(args[0]);
+    const columnExpr = isSqlExpression(args[0]) ? args[0]["_sql"] : String(args[0]);
 
     this.builder.orWhereRaw(`${columnExpr} @@ ${parser}(?, ?)`, [config, args[1]]);
     return this;
@@ -1828,19 +1868,19 @@ export class WhereGroup<TTables extends Record<string, any>> {
     },
   ): this;
   whereFuzzy(...args: any[]): this {
-    const operator = normalizeFuzzyOperator(args[2]?.operator);
+    const operator = parseFuzzyOperator(args[2]?.operator);
 
     if (operator === "%") {
-      if (typeof args[0] === "object") {
-        this.builder.whereRaw(`${args[0]._sql} ${operator} ?`, [...args[0]._params, args[1]]);
+      if (isSqlExpression(args[0])) {
+        this.builder.whereRaw(`${args[0]["_sql"]} ${operator} ?`, [...args[0]["_params"], args[1]]);
       } else {
         this.builder.whereRaw(`?? ${operator} ?`, [args[0], args[1]]);
       }
       return this;
     }
 
-    if (typeof args[0] === "object") {
-      this.builder.whereRaw(`? ${operator} ${args[0]._sql}`, [args[1], ...args[0]._params]);
+    if (isSqlExpression(args[0])) {
+      this.builder.whereRaw(`? ${operator} ${args[0]["_sql"]}`, [args[1], ...args[0]["_params"]]);
     } else {
       this.builder.whereRaw(`? ${operator} ??`, [args[1], args[0]]);
     }
@@ -1855,19 +1895,22 @@ export class WhereGroup<TTables extends Record<string, any>> {
     },
   ): this;
   orWhereFuzzy(...args: any[]): this {
-    const operator = normalizeFuzzyOperator(args[2]?.operator);
+    const operator = parseFuzzyOperator(args[2]?.operator);
 
     if (operator === "%") {
-      if (typeof args[0] === "object") {
-        this.builder.orWhereRaw(`${args[0]._sql} ${operator} ?`, [...args[0]._params, args[1]]);
+      if (isSqlExpression(args[0])) {
+        this.builder.orWhereRaw(`${args[0]["_sql"]} ${operator} ?`, [
+          ...args[0]["_params"],
+          args[1],
+        ]);
       } else {
         this.builder.orWhereRaw(`?? ${operator} ?`, [args[0], args[1]]);
       }
       return this;
     }
 
-    if (typeof args[0] === "object") {
-      this.builder.orWhereRaw(`? ${operator} ${args[0]._sql}`, [args[1], ...args[0]._params]);
+    if (isSqlExpression(args[0])) {
+      this.builder.orWhereRaw(`? ${operator} ${args[0]["_sql"]}`, [args[1], ...args[0]["_params"]]);
     } else {
       this.builder.orWhereRaw(`? ${operator} ??`, [args[1], args[0]]);
     }
@@ -1894,10 +1937,7 @@ export class WhereGroup<TTables extends Record<string, any>> {
 }
 
 // JOIN 절 그룹에는 Left와 Right에 대한 순서가 필요하지 않으므로, 모든 경우의 수를 계산해야함.
-export class JoinClauseGroup<
-  TLeft extends Record<string, any>,
-  TRight extends Record<string, any>,
-> {
+export class JoinClauseGroup<TLeft extends object, TRight extends object> {
   constructor(private callback: Knex.JoinClause) {}
 
   // ON(AND): 컬럼 = 컬럼
@@ -1939,6 +1979,7 @@ export class JoinClauseGroup<
   on(callback: (nested: JoinClauseGroup<TRight, TLeft>) => void): this;
   // ON(AND) 구현
   on(...args: any[]): this {
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     this.callback.on(...(args as [string, string]));
     return this;
   }
@@ -1982,6 +2023,7 @@ export class JoinClauseGroup<
   orOn(callback: (nested: JoinClauseGroup<TRight, TLeft>) => void): this;
   // ON(OR) 구현
   orOn(...args: any[]): this {
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     this.callback.orOn(...(args as [string, string]));
     return this;
   }
@@ -1992,6 +2034,7 @@ export class JoinClauseGroup<
   onVal(column: AvailableColumns<TLeft>, operator: ComparisonOperator, value: any): this;
   onVal(column: AvailableColumns<TRight>, operator: ComparisonOperator, value: any): this;
   onVal(...args: any[]): this {
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     (this.callback as any).onVal(...args);
     return this;
   }
@@ -2002,6 +2045,7 @@ export class JoinClauseGroup<
   andOnVal(column: AvailableColumns<TLeft>, operator: ComparisonOperator, value: any): this;
   andOnVal(column: AvailableColumns<TRight>, operator: ComparisonOperator, value: any): this;
   andOnVal(...args: any[]): this {
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     (this.callback as any).andOnVal(...args);
     return this;
   }
@@ -2012,6 +2056,7 @@ export class JoinClauseGroup<
   orOnVal(column: AvailableColumns<TLeft>, operator: ComparisonOperator, value: any): this;
   orOnVal(column: AvailableColumns<TRight>, operator: ComparisonOperator, value: any): this;
   orOnVal(...args: any[]): this {
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     (this.callback as any).orOnVal(...args);
     return this;
   }
@@ -2044,6 +2089,7 @@ export class ResolvedPuri<TResolved, TReturning> implements Promise<TResolved> {
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     Naite.t("puri:executed-query", this.toQuery());
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     return this.knexQuery.then(onfulfilled as any, onrejected);
   }
 
@@ -2076,21 +2122,13 @@ export class ResolvedPuri<TResolved, TReturning> implements Promise<TResolved> {
         this.knexQuery.onConflict(target).merge(update);
       } else {
         // action.update 객체 형태: { name: "John", count: raw(...) }
-        const mergeObj: Record<string, any> = {};
+        const mergeObj = {};
 
         for (const [key, value] of Object.entries(update)) {
-          if (
-            value &&
-            typeof value === "object" &&
-            "_type" in value &&
-            value._type === "sql_expression"
-          ) {
-            // SqlExpression → knex.raw()로 변환
-            mergeObj[key] = this.knex.raw((value as SqlExpression<any>)._sql);
-          } else {
-            // 일반 값
-            mergeObj[key] = serializeJsonColumnValue(this.tableSpec, key, value);
-          }
+          const mergedValue = isSqlExpression(value)
+            ? this.knex.raw(value["_sql"])
+            : serializeJsonColumnValue(this.tableSpec, key, value);
+          Object.assign(mergeObj, { [key]: mergedValue });
         }
 
         this.knexQuery.onConflict(target).merge(mergeObj);

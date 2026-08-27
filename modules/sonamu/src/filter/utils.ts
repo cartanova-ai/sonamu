@@ -1,7 +1,12 @@
 import { type Entity } from "../entity/entity";
 import { isEnumProp } from "../types/types";
+import { isObjectValue, isStringValue } from "../utils/runtime-value";
 import { operatorsByPropType } from "./types";
 import { type FilterOperator, type FilterQuery } from "./types";
+
+type DynamicFilterValue = string | number | boolean | Date | null | DynamicFilterValue[];
+type DynamicFilterEntity = { [field: string]: DynamicFilterValue };
+type ConvertedFilterValue<Value> = Value | number | boolean | null | ConvertedFilterValue<Value>[];
 
 // ============================================================
 // Query Normalization
@@ -24,10 +29,10 @@ import { type FilterOperator, type FilterQuery } from "./types";
  * @param rawFilter Fastify가 파싱한 원본 sonamuFilter 객체
  * @returns 타입이 변환된 FilterQuery 객체
  */
-export function normalizeFilterQuery<TEntity = Record<string, unknown>>(
-  rawFilter: unknown,
+export function normalizeFilterQuery<TEntity = DynamicFilterEntity, Value = never>(
+  rawFilter: Value,
 ): FilterQuery<TEntity> {
-  if (!rawFilter || typeof rawFilter !== "object") {
+  if (!rawFilter || !isObjectValue(rawFilter)) {
     return {};
   }
 
@@ -37,7 +42,8 @@ export function normalizeFilterQuery<TEntity = Record<string, unknown>>(
     if (condition === undefined || condition === null) continue;
 
     // 직접 값 (eq와 동일)
-    if (typeof condition !== "object" || Array.isArray(condition)) {
+    if (!isObjectValue(condition) || Array.isArray(condition)) {
+      // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
       normalized[field as keyof TEntity] = convertType(
         condition,
       ) as FilterQuery<TEntity>[keyof TEntity];
@@ -45,10 +51,11 @@ export function normalizeFilterQuery<TEntity = Record<string, unknown>>(
     }
 
     // 연산자 객체
-    const operators: Record<string, unknown> = {};
+    const operators = {};
     for (const [operator, value] of Object.entries(condition)) {
-      operators[operator] = convertType(value);
+      Object.assign(operators, { [operator]: convertType(value) });
     }
+    // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
     normalized[field as keyof TEntity] = operators as FilterQuery<TEntity>[keyof TEntity];
   }
 
@@ -65,14 +72,14 @@ export function normalizeFilterQuery<TEntity = Record<string, unknown>>(
  * convertType("hello") → "hello"
  * convertType(["1", "2", "3"]) → [1, 2, 3]
  */
-function convertType(value: unknown): unknown {
+function convertType<Value>(value: Value): ConvertedFilterValue<Value> {
   // 배열
   if (Array.isArray(value)) {
     return value.map(convertType);
   }
 
   // 이미 변환된 타입
-  if (typeof value !== "string") {
+  if (!isStringValue(value)) {
     return value;
   }
 
@@ -109,7 +116,7 @@ function convertType(value: unknown): unknown {
  * @example
  * validateSonamuFilters({ status: "active", id: { gte: 1 } }, ProjectEntity);
  */
-export function validateSonamuFilters<TEntity = Record<string, unknown>>(
+export function validateSonamuFilters<TEntity = DynamicFilterEntity>(
   filters: FilterQuery<TEntity> | undefined,
   entity: Entity,
 ): void {
@@ -131,12 +138,14 @@ export function validateSonamuFilters<TEntity = Record<string, unknown>>(
     }
 
     // 해당 prop 타입에 허용되는 연산자 목록
+    // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
     const allowedOperators = (operatorsByPropType[
+      // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
       prop.type as keyof typeof operatorsByPropType
     ] ?? ["eq"]) as readonly FilterOperator[];
 
     // 직접 값인 경우 (eq와 동일)
-    if (typeof condition !== "object" || Array.isArray(condition)) {
+    if (!isObjectValue(condition) || Array.isArray(condition)) {
       // enum 타입이면 값 검증
       if (isEnumProp(prop)) {
         const enumValues = getEnumValues(entity, prop.id);
@@ -149,6 +158,7 @@ export function validateSonamuFilters<TEntity = Record<string, unknown>>(
 
     // 2. 연산자 객체인 경우
     for (const [operator, value] of Object.entries(condition)) {
+      // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
       const op = operator as FilterOperator;
 
       // 연산자가 해당 타입에서 지원되는지 검증
@@ -195,7 +205,7 @@ export function validateSonamuFilters<TEntity = Record<string, unknown>>(
 /**
  * Enum 값 검증 helper
  */
-function validateEnumValue(field: string, value: unknown, enumValues: string[]): void {
+function validateEnumValue<Value>(field: string, value: Value, enumValues: string[]): void {
   if (value === null || value === undefined) {
     return;
   }

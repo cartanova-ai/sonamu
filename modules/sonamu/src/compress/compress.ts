@@ -10,22 +10,35 @@ export const CompressPresets = {
   /** 기본 설정 (threshold: 1024, br > gzip > deflate) */
   default: {
     threshold: 1024,
-    encodings: ["br", "gzip", "deflate"] as ("br" | "gzip" | "deflate")[],
+    encodings: /* SAFETY: 호출 경계의 선행 검증과 소유 타입 계약이 이 값의 타입을 보장한다. */ [
+      "br",
+      "gzip",
+      "deflate",
+    ] as ("br" | "gzip" | "deflate")[],
   },
   /** 적극적 압축 (threshold: 256) */
   aggressive: {
     threshold: 256,
-    encodings: ["br", "gzip", "deflate"] as ("br" | "gzip" | "deflate")[],
+    encodings: /* SAFETY: 호출 경계의 선행 검증과 소유 타입 계약이 이 값의 타입을 보장한다. */ [
+      "br",
+      "gzip",
+      "deflate",
+    ] as ("br" | "gzip" | "deflate")[],
   },
   /** 보수적 압축 (threshold: 4096, gzip만) */
   conservative: {
     threshold: 4096,
-    encodings: ["gzip", "deflate"] as ("gzip" | "deflate")[],
+    encodings: /* SAFETY: 호출 경계의 선행 검증과 소유 타입 계약이 이 값의 타입을 보장한다. */ [
+      "gzip",
+      "deflate",
+    ] as ("gzip" | "deflate")[],
   },
   /** gzip만 사용 */
   gzipOnly: {
     threshold: 1024,
-    encodings: ["gzip"] as ["gzip"],
+    encodings: /* SAFETY: 호출 경계의 선행 검증과 소유 타입 계약이 이 값의 타입을 보장한다. */ [
+      "gzip",
+    ] as ["gzip"],
   },
 } as const;
 

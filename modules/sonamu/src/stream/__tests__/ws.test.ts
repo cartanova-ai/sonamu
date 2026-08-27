@@ -1,10 +1,9 @@
 import { EventEmitter } from "node:events";
 
 import { describe, expect, it, vi } from "vitest";
-import { type WebSocket } from "ws";
 import { z } from "zod";
 
-import { createWebSocketRuntime } from "../ws";
+import { createWebSocketRuntime, type WebSocketTransport } from "../ws";
 import { WebSocketAudience } from "../ws-audience";
 import {
   type WebSocketClusterBus,
@@ -48,8 +47,33 @@ class FakeWebSocket extends EventEmitter {
   }
 }
 
-function asWebSocket(socket: FakeWebSocket): WebSocket {
-  return socket as unknown as WebSocket;
+function asWebSocket(socket: FakeWebSocket): WebSocketTransport {
+  return {
+    get bufferedAmount() {
+      return socket.bufferedAmount;
+    },
+    get readyState() {
+      return socket.readyState;
+    },
+    close(code, reason) {
+      socket.close(code, reason?.toString());
+    },
+    off(...args) {
+      socket.off(...args);
+    },
+    on(...args) {
+      socket.on(...args);
+    },
+    ping() {
+      socket.ping();
+    },
+    send(data) {
+      socket.send(data.toString());
+    },
+    terminate() {
+      socket.terminate();
+    },
+  };
 }
 
 class FakeClusterBus implements WebSocketClusterBus {
@@ -665,8 +689,8 @@ describe("WebSocketRuntime", () => {
       namespace: "chat",
     });
 
-    let unhandled: unknown = null;
-    const handleUnhandledRejection = (reason: unknown) => {
+    let unhandled: Error | null = null;
+    const handleUnhandledRejection = (reason: Error) => {
       unhandled = reason;
     };
     process.once("unhandledRejection", handleUnhandledRejection);

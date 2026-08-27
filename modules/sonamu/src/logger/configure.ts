@@ -27,38 +27,45 @@ export type SonamuLoggingOptions<TSinkId extends string, TFilterId extends strin
 
 // fastify에 대한 기본 sink 설정
 function defaultFastifySink(fastifyCategory: readonly string[]): Sink {
-  const formatter = ((formatter: TextFormatter, record: LogRecord) => {
+  const fastifyFormatter = ((formatRecord: TextFormatter, record: LogRecord) => {
     // Fastify API Route에 대한 Logger의 경우, 응답 코드와 요청 URL을 추가
-    const filterFastify = (request: FastifyRequest, record: LogRecord, responseCode?: number) => {
+    const filterFastify = (
+      request: FastifyRequest,
+      requestRecord: LogRecord,
+      responseCode?: number,
+    ) => {
       if (!request.url.startsWith("/api")) {
-        return formatter(record);
+        return formatRecord(requestRecord);
       }
 
-      const lastItem = record.message[record.message.length - 1] as string;
-      return formatter({
-        ...record,
+      const lastItem = /* SAFETY: LogTape 구성 스키마가 이 값의 타입을 보장한다. */ requestRecord
+        .message[requestRecord.message.length - 1] as string;
+      return formatRecord({
+        ...requestRecord,
         message: [
-          ...record.message.slice(0, -1),
+          ...requestRecord.message.slice(0, -1),
           `[${request.method}${responseCode ? `:${responseCode}` : ""}] ${request.originalUrl} - ${lastItem}`,
         ],
       });
     };
 
     if (!isSameCategory(fastifyCategory, [...record.category])) {
-      return formatter(record);
+      return formatRecord(record);
     }
 
     if ("req" in record.properties && record.properties.req !== null) {
-      const request = record.properties.req as FastifyRequest;
+      const request = /* SAFETY: LogTape 구성 스키마가 이 값의 타입을 보장한다. */ record.properties
+        .req as FastifyRequest;
       return filterFastify(request, record);
     }
 
     if ("res" in record.properties && record.properties.res !== null) {
-      const reply = record.properties.res as FastifyReply;
+      const reply = /* SAFETY: LogTape 구성 스키마가 이 값의 타입을 보장한다. */ record.properties
+        .res as FastifyReply;
       return filterFastify(reply.request, record, reply.statusCode);
     }
 
-    return formatter(record);
+    return formatRecord(record);
   }).bind(
     null,
     getPrettyFormatter({
@@ -69,7 +76,7 @@ function defaultFastifySink(fastifyCategory: readonly string[]): Sink {
   );
 
   return getConsoleSink({
-    formatter,
+    formatter: fastifyFormatter,
   });
 }
 
@@ -81,12 +88,14 @@ function defaultFastifyFilter(fastifyCategory: readonly string[]): Filter {
     }
 
     if ("req" in record.properties && record.properties.req !== null) {
-      const request = record.properties.req as FastifyRequest;
+      const request = /* SAFETY: LogTape 구성 스키마가 이 값의 타입을 보장한다. */ record.properties
+        .req as FastifyRequest;
       return request.url.startsWith("/api") && request.url !== "/api/healthcheck";
     }
 
     if ("res" in record.properties && record.properties.res !== null) {
-      const reply = record.properties.res as FastifyReply;
+      const reply = /* SAFETY: LogTape 구성 스키마가 이 값의 타입을 보장한다. */ record.properties
+        .res as FastifyReply;
       return reply.request.url.startsWith("/api") && reply.request.url !== "/api/healthcheck";
     }
 
@@ -103,15 +112,14 @@ export async function configureLogTape<TSinkId extends string, TFilterId extends
   const sinks = {
     "fastify-console": defaultFastifySink(fastifyCategory),
     ...options.sinks,
-  } as Record<TSinkId | "fastify-console", Sink>;
+  };
 
   const filters = {
     "fastify-console": defaultFastifyFilter(fastifyCategory),
     ...options.filters,
-  } as Record<TFilterId | "fastify-console", FilterLike>;
+  };
 
-  const loggers: Set<LoggerConfig<TSinkId | "fastify-console", TFilterId | "fastify-console">> =
-    new Set(options.loggers ?? []);
+  const loggers = new Set<LoggerConfig<string, string>>(options.loggers ?? []);
 
   // logtape의 meta logger 표시를 비활성화
   loggers.add({

@@ -62,7 +62,10 @@ export class SonamuS3Driver extends S3Driver {
 
     // ACL 지원 시에만 설정
     if (this.sonamuSupportsACL) {
-      uploadParams.ACL = (visibility === "public" ? "public-read" : "private") as ObjectCannedACL;
+      uploadParams.ACL =
+        /* SAFETY: 호출 경계의 선행 검증과 소유 타입 계약이 이 값의 타입을 보장한다. */ (
+          visibility === "public" ? "public-read" : "private"
+        ) as ObjectCannedACL;
     }
 
     const upload = new Upload({

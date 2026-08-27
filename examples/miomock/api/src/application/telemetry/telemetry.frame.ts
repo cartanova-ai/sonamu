@@ -37,7 +37,7 @@ class TelemetryFrameClass extends BaseFrameClass {
         ? spanStore.query({ ...common, operationName: name })
         : [];
 
-    const merged = [...eventRecords, ...metricRecords, ...spanRecords].sort(
+    const merged = [...eventRecords, ...metricRecords, ...spanRecords].toSorted(
       (a, b) => b.timestamp - a.timestamp,
     );
     const records = (limit !== undefined ? merged.slice(0, limit) : merged).map((record) =>

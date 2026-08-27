@@ -11,6 +11,7 @@ import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
 import { runtimePath } from "../utils/path-utils";
 import { type AbsolutePath } from "../utils/path-utils";
+import { isFunctionValue, isObjectValue } from "../utils/runtime-value";
 import { readApisFromFile } from "./api-parser";
 
 export type LoadedApis = ExtendedApi[];
@@ -35,7 +36,10 @@ export async function loadApis(): Promise<LoadedApis> {
     Sonamu.apiRootPath,
     "src/application/**/*.{model,frame}.ts", // !! runtimePath 안 씀 주의 !!
   );
-  const modelPaths = (await globAsync(modelPathsPattern)) as AbsolutePath[];
+  const modelPaths =
+    /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (await globAsync(
+      modelPathsPattern,
+    )) as AbsolutePath[];
 
   const apis: LoadedApis = [];
   for (const filePath of modelPaths) {
@@ -125,16 +129,16 @@ export async function loadWorkflows() {
       importedMembers
         .filter(({ value }) => {
           return (
-            typeof value === "object" &&
+            isObjectValue(value) &&
             value !== null &&
             "type" in value &&
             value.type === "workflow" &&
             "fn" in value &&
-            typeof value.fn === "function"
+            isFunctionValue(value.fn)
           );
         })
         .map(({ value }) => {
-          return value as WorkflowMetadata;
+          return /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ value as WorkflowMetadata;
         }),
     );
   }

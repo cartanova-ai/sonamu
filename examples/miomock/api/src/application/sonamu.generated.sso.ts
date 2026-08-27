@@ -218,7 +218,10 @@ export const departmentLoaderQueries = {
         return qbWrapper
           .from("employees")
           .join({ user: "users" }, "employees.user_id", "user.id")
-          .whereIn("employees.department_id", fromIds as number[])
+          .whereIn(
+            "employees.department_id",
+            /* SAFETY: 로더가 전달하는 ID는 소스 엔티티의 기본 키 타입과 일치한다. */ fromIds as number[],
+          )
           .select({
             id: "employees.id",
             employee_number: "employees.employee_number",
@@ -328,7 +331,10 @@ export const employeeLoaderQueries = {
       qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("employees")
-          .whereIn("employees.department_id", fromIds as number[])
+          .whereIn(
+            "employees.department_id",
+            /* SAFETY: 로더가 전달하는 ID는 소스 엔티티의 기본 키 타입과 일치한다. */ fromIds as number[],
+          )
           .select({
             id: "employees.id",
             salary: "employees.salary",
@@ -343,7 +349,10 @@ export const employeeLoaderQueries = {
             return qbWrapper
               .from("projects__employees")
               .join("projects", "projects__employees.project_id", "projects.id")
-              .whereIn("projects__employees.employee_id", fromIds as number[])
+              .whereIn(
+                "projects__employees.employee_id",
+                /* SAFETY: 로더가 전달하는 ID는 소스 엔티티의 기본 키 타입과 일치한다. */ fromIds as number[],
+              )
               .select({
                 id: "projects.id",
                 name: "projects.name",
@@ -361,7 +370,10 @@ export const employeeLoaderQueries = {
         return qbWrapper
           .from("projects__employees")
           .join("projects", "projects__employees.project_id", "projects.id")
-          .whereIn("projects__employees.employee_id", fromIds as number[])
+          .whereIn(
+            "projects__employees.employee_id",
+            /* SAFETY: 로더가 전달하는 ID는 소스 엔티티의 기본 키 타입과 일치한다. */ fromIds as number[],
+          )
           .select({
             id: "projects.id",
             name: "projects.name",
@@ -484,7 +496,10 @@ export const projectLoaderQueries = {
           .join("employees", "projects__employees.employee_id", "employees.id")
           .join({ user: "users" }, "employees.user_id", "user.id")
           .leftJoin({ department: "departments" }, "employees.department_id", "department.id")
-          .whereIn("projects__employees.project_id", fromIds as number[])
+          .whereIn(
+            "projects__employees.project_id",
+            /* SAFETY: 로더가 전달하는 ID는 소스 엔티티의 기본 키 타입과 일치한다. */ fromIds as number[],
+          )
           .select({
             id: "employees.id",
             employee_number: "employees.employee_number",
@@ -507,7 +522,10 @@ export const projectLoaderQueries = {
         return qbWrapper
           .from("project_tags")
           .join("tags", "project_tags.tag_id", "tags.id")
-          .whereIn("project_tags.project_id", fromIds as number[])
+          .whereIn(
+            "project_tags.project_id",
+            /* SAFETY: 로더가 전달하는 ID는 소스 엔티티의 기본 키 타입과 일치한다. */ fromIds as number[],
+          )
           .select({
             id: "tags.id",
             name: "tags.name",
@@ -526,7 +544,10 @@ export const projectLoaderQueries = {
           .join("employees", "projects__employees.employee_id", "employees.id")
           .join({ user: "users" }, "employees.user_id", "user.id")
           .leftJoin({ department: "departments" }, "employees.department_id", "department.id")
-          .whereIn("projects__employees.project_id", fromIds as number[])
+          .whereIn(
+            "projects__employees.project_id",
+            /* SAFETY: 로더가 전달하는 ID는 소스 엔티티의 기본 키 타입과 일치한다. */ fromIds as number[],
+          )
           .select({
             id: "employees.id",
             employee_number: "employees.employee_number",
@@ -549,7 +570,10 @@ export const projectLoaderQueries = {
         return qbWrapper
           .from("project_tags")
           .join("tags", "project_tags.tag_id", "tags.id")
-          .whereIn("project_tags.project_id", fromIds as number[])
+          .whereIn(
+            "project_tags.project_id",
+            /* SAFETY: 로더가 전달하는 ID는 소스 엔티티의 기본 키 타입과 일치한다. */ fromIds as number[],
+          )
           .select({
             id: "tags.id",
             name: "tags.name",

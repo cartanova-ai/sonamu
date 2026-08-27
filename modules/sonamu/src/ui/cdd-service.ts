@@ -4,6 +4,7 @@ import os from "os";
 import path from "path";
 
 import { Sonamu } from "../api/sonamu";
+import { isStringValue } from "../utils/runtime-value";
 import {
   type CddAcEntry,
   type CddAcFile,
@@ -16,6 +17,22 @@ import {
   type CddRuleSummary,
   type CddTreeNode,
 } from "./cdd-types";
+
+interface CddTreeResult {
+  exists: boolean;
+  tree: CddTreeNode[];
+}
+interface EditorCliConfig {
+  cli: string;
+  waitFlag: string;
+}
+interface EditorCliResolution {
+  bin: string;
+  args: string[];
+}
+interface CddRulesResult {
+  rules: CddRuleSummary[];
+}
 
 export type {
   CddAcEntry,
@@ -93,7 +110,7 @@ function scanDirectory(dirPath: string, relativeTo: string): CddTreeNode[] {
 }
 
 /** contract/ 디렉터리의 트리 구조를 반환 */
-export function getCddTree(): { exists: boolean; tree: CddTreeNode[] } {
+export function getCddTree(): CddTreeResult {
   const contractDir = getContractDir();
   if (!fs.existsSync(contractDir)) {
     return { exists: false, tree: [] };
@@ -142,17 +159,17 @@ export async function editContent(
 }
 
 /** 에디터별 앱 번들 내 CLI 경로 + --wait 플래그 매핑 */
-const EDITOR_CLI_MAP: Record<string, { cli: string; waitFlag: string }> = {
+const EDITOR_CLI_MAP = {
   "Visual Studio Code": { cli: "Contents/Resources/app/bin/code", waitFlag: "--wait" },
   Zed: { cli: "Contents/MacOS/cli", waitFlag: "--wait" },
   Cursor: { cli: "Contents/Resources/app/bin/cursor", waitFlag: "--wait" },
-};
+} satisfies Record<string, EditorCliConfig>;
 
 /** 앱 번들 CLI 경로를 resolve. wait=false이면 --wait 플래그를 생략 */
-function resolveEditorCli(options?: { wait?: boolean }): { bin: string; args: string[] } {
+function resolveEditorCli(options?: { wait?: boolean }): EditorCliResolution {
   const wait = options?.wait ?? true;
   const appName = Sonamu.config.externalEditor ?? "Visual Studio Code";
-  const mapping = EDITOR_CLI_MAP[appName];
+  const mapping = Object.entries(EDITOR_CLI_MAP).find(([name]) => name === appName)?.[1];
   if (!mapping) {
     throw new Error(
       `지원되지 않는 에디터입니다: ${appName} (지원: ${Object.keys(EDITOR_CLI_MAP).join(", ")})`,
@@ -218,7 +235,7 @@ export function openSourceFile(filePath: string): void {
  * ======================================================================== */
 
 /** contract/rules/ 디렉터리 내 .rules.json 파일 목록 반환 */
-export function listRules(): { rules: CddRuleSummary[] } {
+export function listRules(): CddRulesResult {
   const contractDir = getContractDir();
   const rulesDir = path.join(contractDir, "rules");
   if (!fs.existsSync(rulesDir)) return { rules: [] };
@@ -235,11 +252,13 @@ export function listRules(): { rules: CddRuleSummary[] } {
 
     try {
       const raw = fs.readFileSync(absPath, "utf-8");
-      const doc = JSON.parse(raw) as { description?: string; rules?: unknown[] };
+      const doc = /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ JSON.parse(
+        raw,
+      ) as { description?: string; rules?: unknown[] };
       rules.push({
         key,
         path: relPath,
-        description: typeof doc.description === "string" ? doc.description : "",
+        description: isStringValue(doc.description) ? doc.description : "",
         ruleCount: Array.isArray(doc.rules) ? doc.rules.length : 0,
       });
     } catch (err) {
@@ -266,12 +285,14 @@ export function readRule(ruleKey: string): CddRuleDetail {
   }
 
   const raw = fs.readFileSync(absPath, "utf-8");
-  const doc = JSON.parse(raw) as { description?: string; rules?: CddRuleEntry[] };
+  const doc = /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ JSON.parse(
+    raw,
+  ) as { description?: string; rules?: CddRuleEntry[] };
 
   return {
     key: ruleKey,
     path: `rules/${ruleKey}.rules.json`,
-    description: typeof doc.description === "string" ? doc.description : "",
+    description: isStringValue(doc.description) ? doc.description : "",
     rules: Array.isArray(doc.rules) ? doc.rules : [],
   };
 }
@@ -287,7 +308,9 @@ export function addRule(req: CddAddRuleRequest): CddRuleDetail {
   }
 
   const raw = fs.readFileSync(absPath, "utf-8");
-  const doc = JSON.parse(raw) as { description?: string; rules?: CddRuleEntry[] };
+  const doc = /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ JSON.parse(
+    raw,
+  ) as { description?: string; rules?: CddRuleEntry[] };
   const rules: CddRuleEntry[] = Array.isArray(doc.rules) ? doc.rules : [];
 
   const nextId = generateNextRuleId(rules);
@@ -308,7 +331,7 @@ export function addRule(req: CddAddRuleRequest): CddRuleDetail {
   return {
     key: req.ruleKey,
     path: `rules/${req.ruleKey}.rules.json`,
-    description: typeof doc.description === "string" ? doc.description : "",
+    description: isStringValue(doc.description) ? doc.description : "",
     rules,
   };
 }

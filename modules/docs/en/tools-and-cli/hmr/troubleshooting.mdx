@@ -197,7 +197,7 @@ import.meta.hot?.dispose(() => {
 
 ```typescript
 // websocket-client.ts
-const ws = new WebSocket("ws://notification-server.com");
+const ws = new WebSocket("wss://notification-server.com");
 
 ws.on("message", (data) => {
   console.log("Notification:", data);

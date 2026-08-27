@@ -1,5 +1,6 @@
+import { isFunction } from "radashi";
 import type React from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { FileIcon as ReactFileIcon, defaultStyles } from "react-file-icon";
 import ImageIcon from "~icons/lucide/image";
 import Loader2Icon from "~icons/lucide/loader2";
@@ -8,11 +9,16 @@ import XIcon from "~icons/lucide/x";
 
 import { type SonamuFile, type UploadParams } from "@/contexts";
 import { useSonamuBaseContext } from "@/contexts";
+import { type RCKeys } from "@/i18n/rc-keys";
 import { cn, useObjectUrls } from "@/lib/utils";
 
 import { Button } from "./button";
 
 export type PreviewSize = "sm" | "md" | "lg" | "xl";
+
+function isFile(value: SonamuFile | File): value is File {
+  return Object.prototype.toString.call(value) === "[object File]";
+}
 
 function getFileExtension(filename: string): string {
   const parts = filename.split(".");
@@ -20,17 +26,20 @@ function getFileExtension(filename: string): string {
   return parts[parts.length - 1].toLowerCase();
 }
 
-const fileIconSizes: Record<PreviewSize, number> = {
+const fileIconSizes = {
   sm: 14,
   md: 18,
   lg: 22,
   xl: 26,
 };
 
+const fileIconStyles = new Map<string, Partial<React.ComponentProps<typeof ReactFileIcon>>>(
+  Object.entries(defaultStyles),
+);
+
 function FileTypeIcon({ filename, size = "md" }: { filename: string; size?: PreviewSize }) {
   const ext = getFileExtension(filename);
-  const styleProps =
-    ext && ext in defaultStyles ? defaultStyles[ext as keyof typeof defaultStyles] : {};
+  const styleProps = fileIconStyles.get(ext) ?? {};
 
   return (
     <div className="shrink-0 self-center" style={{ width: fileIconSizes[size], marginTop: -2 }}>
@@ -40,7 +49,7 @@ function FileTypeIcon({ filename, size = "md" }: { filename: string; size?: Prev
 }
 
 // 이미지용: 정사각형
-const imageSizeClasses: Record<PreviewSize, string> = {
+const imageSizeClasses = {
   sm: "w-20 h-20",
   md: "w-32 h-32",
   lg: "w-40 h-40",
@@ -48,7 +57,7 @@ const imageSizeClasses: Record<PreviewSize, string> = {
 };
 
 // 파일용: 가로로 긴 직사각형
-const fileSizeClasses: Record<PreviewSize, string> = {
+const fileSizeClasses = {
   sm: "w-48 h-12",
   md: "w-80 h-16",
   lg: "w-96 h-20",
@@ -94,7 +103,7 @@ export function FileInput(props: FileInputProps) {
     onBlur,
   } = props;
 
-  const { uploader, SD } = useSonamuBaseContext();
+  const { uploader, SD } = useSonamuBaseContext<RCKeys>();
 
   const isMultiple = props.multiple ?? false;
   const isImageView = viewMode === "image";
@@ -112,26 +121,23 @@ export function FileInput(props: FileInputProps) {
     `${isImageView ? SD("rc.fileInput.imagePlaceholder") : SD("rc.fileInput.filePlaceholder")} URL${isMultiple ? "S" : ""}`;
 
   // 입력 정규화: 내부적으로 배열로 통일
-  const values = (() => {
-    if (!isMultiple) {
-      const singleValue = (props as SingleModeProps).value;
+  const values: Array<SonamuFile | File> = useMemo(() => {
+    if (props.multiple !== true) {
+      const singleValue = props.value;
       return singleValue ? [singleValue] : [];
     }
-
-    const multiValue = (props as MultipleModeProps).value || [];
-
-    return multiValue;
-  })();
+    return props.value ?? [];
+  }, [props.multiple, props.value]);
 
   // File 객체만 추출
-  const fileObjects = values.filter((v): v is File => v instanceof File);
+  const fileObjects = useMemo(() => values.filter(isFile), [values]);
 
   // File 객체는 useObjectUrls로 안전하게 blob URL 생성 (자동 메모리 해제)
   const blobUrls = useObjectUrls(fileObjects);
 
   // 최종 display 데이터: 원래 순서를 유지하면서 File은 blob URL로, SonamuFile은 그대로
   const displayItems = values.map((v) => {
-    if (v instanceof File) {
+    if (isFile(v)) {
       const index = fileObjects.indexOf(v);
       return {
         url: blobUrls[index],
@@ -147,7 +153,7 @@ export function FileInput(props: FileInputProps) {
     };
   });
 
-  const maxFiles = isMultiple ? ((props as MultipleModeProps).maxFiles ?? 10) : 1;
+  const maxFiles = props.multiple === true ? (props.maxFiles ?? 10) : 1;
   const totalCount = values.length;
   const canAddMore = totalCount < maxFiles;
 
@@ -158,10 +164,9 @@ export function FileInput(props: FileInputProps) {
       // maxFiles 체크
       const remainingSlots = maxFiles - totalCount;
       if (remainingSlots <= 0) {
+        const maxFilesTranslation = SD("rc.fileInput.maxFilesExceeded");
         alert(
-          (SD("rc.fileInput.maxFilesExceeded") as unknown as (maxFiles: number) => string)(
-            maxFiles,
-          ),
+          isFunction(maxFilesTranslation) ? maxFilesTranslation(maxFiles) : maxFilesTranslation,
         );
         return;
       }
@@ -174,17 +179,13 @@ export function FileInput(props: FileInputProps) {
         try {
           const uploadedFiles = await uploader(filesToAdd, uploadParams);
 
-          if (isMultiple) {
+          if (props.multiple === true) {
             // Multiple 파일 업로드
             const finalValues = [...values, ...uploadedFiles];
-            (props.onValueChange as ((v: (SonamuFile | File)[]) => void) | undefined)?.(
-              finalValues,
-            );
+            props.onValueChange?.(finalValues);
           } else {
             // Single 파일 업로드
-            (props.onValueChange as ((v: SonamuFile | File) => void) | undefined)?.(
-              uploadedFiles[0],
-            );
+            props.onValueChange?.(uploadedFiles[0] ?? null);
           }
         } catch (error) {
           console.error("Upload failed:", error);
@@ -194,15 +195,15 @@ export function FileInput(props: FileInputProps) {
         }
       } else {
         // Lazy 모드: File 객체 그대로 전달
-        if (isMultiple) {
+        if (props.multiple === true) {
           const finalValues = [...values, ...filesToAdd];
-          (props.onValueChange as ((v: (SonamuFile | File)[]) => void) | undefined)?.(finalValues);
+          props.onValueChange?.(finalValues);
         } else {
-          (props.onValueChange as ((v: SonamuFile | File) => void) | undefined)?.(filesToAdd[0]);
+          props.onValueChange?.(filesToAdd[0] ?? null);
         }
       }
     },
-    [disabled, totalCount, maxFiles, isMultiple, uploadMode, uploadParams, values, props, uploader],
+    [disabled, totalCount, maxFiles, uploadMode, uploadParams, values, props, uploader, SD],
   );
 
   const handleInputChange = useCallback(
@@ -233,14 +234,14 @@ export function FileInput(props: FileInputProps) {
     (index: number) => (e: React.MouseEvent) => {
       e.stopPropagation();
 
-      if (!isMultiple) {
-        (props.onValueChange as ((v: SonamuFile | File | null) => void) | undefined)?.(null);
+      if (props.multiple !== true) {
+        props.onValueChange?.(null);
       } else {
         const newValue = values.filter((_, i) => i !== index);
-        (props.onValueChange as ((v: (SonamuFile | File)[]) => void) | undefined)?.(newValue);
+        props.onValueChange?.(newValue);
       }
     },
-    [values, isMultiple, props.onValueChange],
+    [values, props],
   );
 
   const handleClick = () => {

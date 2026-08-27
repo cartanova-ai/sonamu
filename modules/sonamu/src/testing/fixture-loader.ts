@@ -17,7 +17,11 @@
  * const { company01, user01 } = await loadFixtures(["company01", "user01"]);
  * ```
  */
-export function createFixtureLoader<T extends Record<string, () => Promise<unknown>>>(loaders: T) {
+type FixtureLoaderValue = object | string | number | boolean | bigint | symbol | null | undefined;
+
+export function createFixtureLoader<T extends Record<string, () => Promise<FixtureLoaderValue>>>(
+  loaders: T,
+) {
   return async function loadFixtures<K extends keyof T>(
     names: K[],
   ): Promise<{ [P in K]: Awaited<ReturnType<T[P]>> }> {

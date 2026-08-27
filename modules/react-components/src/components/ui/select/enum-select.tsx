@@ -38,13 +38,13 @@ export function EnumSelect<TValue extends string = string>({
 }: EnumSelectProps<TValue>) {
   // Zod enum에서 options 추출 (빈 문자열 필터링 - Radix UI 제약)
   const validOptions = React.useMemo(() => {
-    return zodEnum.options.filter((key: unknown) => (key as string) !== "");
+    return zodEnum.options.filter((key) => key !== "");
   }, [zodEnum]);
 
   // items 구성
   const items = React.useMemo(() => {
     return validOptions.map((key) => ({
-      value: key as string,
+      value: key,
       label: textPrefix + labels[key],
     }));
   }, [validOptions, labels, textPrefix]);
@@ -54,9 +54,10 @@ export function EnumSelect<TValue extends string = string>({
     return (
       <Select
         items={items}
-        value={(value as TValue | "" | undefined) ?? ""}
-        onValueChange={(newValue: string | undefined) => {
-          onValueChange?.(newValue as TValue | "" | null | undefined);
+        valueKey={(optionValue) => optionValue}
+        value={Array.isArray(value) || value === "" ? undefined : value}
+        onValueChange={(newValue: TValue | undefined) => {
+          onValueChange?.(newValue);
         }}
         placeholder={placeholder}
         clearable={clearable}
@@ -72,9 +73,10 @@ export function EnumSelect<TValue extends string = string>({
   return (
     <Select
       items={items}
-      value={(value as TValue[]) ?? []}
-      onValueChange={(newValue: string[]) => {
-        onValueChange?.(newValue as TValue[]);
+      valueKey={(optionValue) => optionValue}
+      value={Array.isArray(value) ? value : []}
+      onValueChange={(newValue: TValue[]) => {
+        onValueChange?.(newValue);
       }}
       placeholder={placeholder}
       clearable={clearable}

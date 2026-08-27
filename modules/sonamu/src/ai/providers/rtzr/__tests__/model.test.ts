@@ -156,7 +156,7 @@ describe("RtzrTranscriptionModel", () => {
       mediaType: "audio/wav",
       headers: {},
     });
-    const errorPromise = resultPromise.catch((error: unknown) => error);
+    const errorPromise = resultPromise.catch((cause: unknown) => cause);
     await vi.advanceTimersByTimeAsync(5000);
     const error = await errorPromise;
 
@@ -221,7 +221,7 @@ describe("RtzrTranscriptionModel", () => {
       mediaType: "audio/wav",
       headers: {},
     });
-    const error = await resultPromise.catch((caughtError: unknown) => caughtError);
+    const error = await resultPromise.catch((cause: unknown) => cause);
 
     expect(error).toBeInstanceOf(RtzrClientError);
     expect(error).toMatchObject({

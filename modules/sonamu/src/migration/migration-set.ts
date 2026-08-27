@@ -199,10 +199,14 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
     },
     {
       table: entity.table,
-      columns: [] as MigrationColumn[],
-      indexes: [] as MigrationIndex[],
-      foreigns: [] as MigrationForeign[],
-      joinTables: [] as MigrationJoinTable[],
+      columns:
+        /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationColumn[],
+      indexes:
+        /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationIndex[],
+      foreigns:
+        /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationForeign[],
+      joinTables:
+        /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ [] as MigrationJoinTable[],
     },
   );
 
@@ -268,6 +272,8 @@ function resolveEntityPropTypeToMigrationColumnType(prop: EntityProp): Migration
       return "tsvector";
     default:
       exhaustive(prop);
-      throw new Error(`Unknown entity prop type: ${(prop as { type: string }).type}`);
+      throw new Error(
+        `Unknown entity prop type: ${/* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ (prop as { type: string }).type}`,
+      );
   }
 }

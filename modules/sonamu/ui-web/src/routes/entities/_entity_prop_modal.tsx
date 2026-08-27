@@ -38,6 +38,10 @@ export function EntityPropModal({
   onOpenChange,
   onCompleted,
 }: EntityPropModalProps) {
+  const generatedTypeSchema = z.enum(["STORED", "VIRTUAL"]);
+  const numberTypeSchema = z.enum(["real", "double precision", "numeric"]);
+  const virtualTypeSchema = z.enum(["code", "query"]);
+  const relationTypeSchema = z.enum(["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"]);
   // 초기값
   const initialForm = useMemo(
     () => ({
@@ -138,7 +142,7 @@ export function EntityPropModal({
     }
   }, [form.type, form.relationType]);
 
-  const handleSubmit = () => {
+  function handleSubmit() {
     const result = EntityPropZodSchema.safeParse(form);
     if (!result.success) {
       console.error(result.error);
@@ -158,7 +162,7 @@ export function EntityPropModal({
       onCompleted(result.data);
     }
     onOpenChange(false);
-  };
+  }
 
   const openVscodePreset = (preset: "types") => {
     SonamuUIService.openVscode({
@@ -286,9 +290,10 @@ export function EntityPropModal({
                   <Select
                     value={form.generated?.type ?? "STORED"}
                     onValueChange={(value) => {
-                      if (!value) return;
+                      const parsed = generatedTypeSchema.safeParse(value);
+                      if (!parsed.success) return;
                       const newGenerated = {
-                        type: value as "STORED" | "VIRTUAL",
+                        type: parsed.data,
                         expression: form.generated?.expression ?? "",
                       };
                       setForm({ ...form, generated: newGenerated });
@@ -380,12 +385,10 @@ export function EntityPropModal({
                     <label className="block mb-1 font-bold">Number Type</label>
                     <Select
                       value={form.numberType}
-                      onValueChange={(value) =>
-                        setForm({
-                          ...form,
-                          numberType: value as "real" | "double precision" | "numeric" | undefined,
-                        })
-                      }
+                      onValueChange={(value) => {
+                        const parsed = numberTypeSchema.optional().safeParse(value);
+                        if (parsed.success) setForm({ ...form, numberType: parsed.data });
+                      }}
                       clearable
                       items={["real", "double precision", "numeric"] satisfies string[]}
                       placeholder="Select..."
@@ -446,12 +449,10 @@ export function EntityPropModal({
                   <label className="block mb-1 font-bold">Virtual Type</label>
                   <Select
                     value={form.virtualType}
-                    onValueChange={(value) =>
-                      setForm({
-                        ...form,
-                        virtualType: value as "code" | "query" | undefined,
-                      })
-                    }
+                    onValueChange={(value) => {
+                      const parsed = virtualTypeSchema.optional().safeParse(value);
+                      if (parsed.success) setForm({ ...form, virtualType: parsed.data });
+                    }}
                     clearable
                     items={["code", "query"] satisfies string[]}
                     placeholder="code (default)"
@@ -485,17 +486,10 @@ export function EntityPropModal({
                     </label>
                     <Select
                       value={form.relationType ?? ""}
-                      onValueChange={(value) =>
-                        setForm({
-                          ...form,
-                          relationType: value as
-                            | "OneToOne"
-                            | "BelongsToOne"
-                            | "HasMany"
-                            | "ManyToMany"
-                            | undefined,
-                        })
-                      }
+                      onValueChange={(value) => {
+                        const parsed = relationTypeSchema.optional().safeParse(value);
+                        if (parsed.success) setForm({ ...form, relationType: parsed.data });
+                      }}
                       items={
                         ["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"] satisfies string[]
                       }

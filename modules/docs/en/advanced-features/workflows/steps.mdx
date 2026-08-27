@@ -76,6 +76,8 @@ export const sendEmail = workflow({ name: "send_email" }, async ({ input, step }
 
 You can use the return value of a Step in subsequent steps. Each step is saved independently, but data is passed in memory.
 
+Persisted step and workflow outputs must be JSON-compatible. Top-level `undefined` becomes `null`, and `Date` values are stored as ISO strings, including when nested in arrays or objects. Unsupported values such as functions, symbols, bigints, and cyclic objects throw before persistence.
+
 ```typescript
 export const processData = workflow({ name: "process_data" }, async ({ input, step }) => {
   // Step 1: Fetch data

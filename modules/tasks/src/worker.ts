@@ -296,7 +296,7 @@ class WorkflowExecution {
           workerId: this.workerId,
           leaseDurationMs,
         })
-        .catch((_error: unknown) => {
+        .catch((_error) => {
           // lease 연장 실패에는 heartbeat를 중단하고 abort 신호를 보냅니다.
           this.abortController.abort();
           this.stopHeartbeat();

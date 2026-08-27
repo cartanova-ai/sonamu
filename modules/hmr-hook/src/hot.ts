@@ -142,6 +142,7 @@ class Hot {
         if (message.type === expectedType) {
           clearTimeout(timer);
           this.#messageChannel.port1.off("message", listener);
+          // SAFETY: 판별 필드가 요청한 메시지 타입과 일치해 Extract의 조건을 충족한다.
           resolve(message as Extract<MessageChannelMessage, { type: K }>);
         }
       };

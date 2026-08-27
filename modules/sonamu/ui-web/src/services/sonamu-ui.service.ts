@@ -20,6 +20,7 @@ import {
   type PathAndCode,
   type SonamuDBConfig,
 } from "sonamu";
+import { z } from "zod";
 
 import { fetch } from "./sonamu.shared";
 
@@ -38,10 +39,10 @@ export namespace SonamuUIService {
     return useQuery({
       queryKey: ["entities", "findMany"],
       queryFn: () =>
-        fetch({
+        fetch<{ entities: ExtendedEntity[] }>({
           method: "GET",
           url: `/sonamu-ui/api/entity/findMany`,
-        }) as Promise<{ entities: ExtendedEntity[] }>,
+        }),
     });
   }
 
@@ -49,11 +50,11 @@ export namespace SonamuUIService {
     return useQuery({
       queryKey: ["entity", "typeIds", filter],
       queryFn: () =>
-        fetch({
+        fetch<{ typeIds: string[] }>({
           method: "GET",
           url: `/sonamu-ui/api/entity/typeIds`,
           params: { filter, reload: "1" },
-        }) as Promise<{ typeIds: string[] }>,
+        }),
     });
   }
 
@@ -261,10 +262,10 @@ export namespace SonamuUIService {
     return useQuery({
       queryKey: ["migrations", "connections"],
       queryFn: () =>
-        fetch({
+        fetch<{ connections: MigrationConnectionMeta[] }>({
           method: "GET",
           url: "/sonamu-ui/api/migrations/connections",
-        }) as Promise<{ connections: MigrationConnectionMeta[] }>,
+        }),
       ...migrationQueryOptions,
     });
   }
@@ -273,10 +274,10 @@ export namespace SonamuUIService {
     return useQuery({
       queryKey: ["migrations", "codes"],
       queryFn: () =>
-        fetch({
+        fetch<{ codes: MigrationCode[] }>({
           method: "GET",
           url: "/sonamu-ui/api/migrations/codes",
-        }) as Promise<{ codes: MigrationCode[] }>,
+        }),
       ...migrationQueryOptions,
     });
   }
@@ -294,11 +295,11 @@ export namespace SonamuUIService {
       queries: connections.map(({ connKey }) => ({
         queryKey: ["migrations", "status", connKey],
         queryFn: () =>
-          fetch({
+          fetch<{ status: MigrationConnectionStatus }>({
             method: "GET",
             url: "/sonamu-ui/api/migrations/status",
             params: { connKey },
-          }) as Promise<{ status: MigrationConnectionStatus }>,
+          }),
         ...migrationQueryOptions,
       })),
     });
@@ -308,11 +309,11 @@ export namespace SonamuUIService {
     return useQuery({
       queryKey: ["migrations", "prepared-codes", compareConnKey],
       queryFn: () =>
-        fetch({
+        fetch<{ preparedCodes: GenMigrationCode[] }>({
           method: "GET",
           url: "/sonamu-ui/api/migrations/prepared-codes",
           params: { compareConnKey },
-        }) as Promise<{ preparedCodes: GenMigrationCode[] }>,
+        }),
       enabled: compareConnKey !== undefined,
       ...migrationQueryOptions,
       // 기준 DB를 바꾸면 이전 비교 결과를 즉시 폐기해 새 결과와 섞이지 않게 합니다.
@@ -346,10 +347,72 @@ export namespace SonamuUIService {
     });
   }
 
+  const migrationErrorBodySchema = z.object({
+    message: z.string().optional(),
+    error: z.string().optional(),
+  });
+
+  const migrationTargetSchema = z.enum([
+    "test",
+    "fixture",
+    "development",
+    "staging",
+    "production",
+    "test_readonly",
+    "development_readonly",
+    "staging_readonly",
+    "production_readonly",
+  ]);
+  const migrationStreamTargetSchema = z.union([migrationTargetSchema, z.literal("shadow")]);
+  const migrationActionSchema = z.enum(["shadow", "apply", "rollback"]);
+  const migrationResultSchema = z.array(
+    z.object({
+      connKey: z.string(),
+      batchNo: z.number(),
+      applied: z.array(z.string()),
+    }),
+  );
+  const migrationStreamEventSchema = z.discriminatedUnion("type", [
+    z.object({
+      type: z.literal("target-start"),
+      action: migrationActionSchema,
+      connKey: migrationStreamTargetSchema,
+      files: z.array(z.string()),
+    }),
+    z.object({
+      type: z.enum(["file-start", "file-executed"]),
+      action: migrationActionSchema,
+      connKey: migrationStreamTargetSchema,
+      file: z.string(),
+      index: z.number(),
+      total: z.number(),
+    }),
+    z.object({
+      type: z.literal("target-complete"),
+      action: migrationActionSchema,
+      connKey: migrationStreamTargetSchema,
+      batchNo: z.number(),
+      files: z.array(z.string()),
+    }),
+    z.object({
+      type: z.literal("complete"),
+      result: migrationResultSchema,
+    }),
+    z.object({
+      type: z.literal("error"),
+      action: migrationActionSchema,
+      message: z.string(),
+      connKey: migrationStreamTargetSchema.optional(),
+      file: z.string().optional(),
+      completedTargets: z.array(migrationTargetSchema),
+      pendingTargets: z.array(migrationTargetSchema),
+    }),
+  ]);
+
   async function readMigrationError(response: Response): Promise<MigrationResponseError> {
     const body = await response.text();
     try {
-      const parsed = JSON.parse(body) as { message?: string; error?: string };
+      const parsed = migrationErrorBodySchema.parse(JSON.parse(body));
       return new MigrationResponseError(
         parsed.message ?? parsed.error ?? `${response.status} ${response.statusText}`,
         response.status,
@@ -362,16 +425,16 @@ export namespace SonamuUIService {
     }
   }
 
-  function parseNdjsonLine<T>(line: string): T {
+  function parseNdjsonLine(line: string): MigrationStreamEvent {
     try {
-      return JSON.parse(line) as T;
+      return migrationStreamEventSchema.parse(JSON.parse(line));
     } catch (caught) {
       const reason = caught instanceof Error ? caught.message : String(caught);
       throw new MigrationResponseError(`Invalid migration stream response: ${reason}`);
     }
   }
 
-  export async function* readNdjson<T>(response: Response): AsyncGenerator<T> {
+  export async function* readNdjson(response: Response): AsyncGenerator<MigrationStreamEvent> {
     if (!response.ok) {
       throw await readMigrationError(response);
     }
@@ -390,7 +453,7 @@ export namespace SonamuUIService {
         buffer = lines.pop() ?? "";
         for (const line of lines) {
           if (line.trim() !== "") {
-            yield parseNdjsonLine<T>(line);
+            yield parseNdjsonLine(line);
           }
         }
         if (done) {
@@ -398,16 +461,21 @@ export namespace SonamuUIService {
         }
       }
       if (buffer.trim() !== "") {
-        yield parseNdjsonLine<T>(buffer);
+        yield parseNdjsonLine(buffer);
       }
     } finally {
       reader.releaseLock();
     }
   }
 
+  type MigrationRequestBody = {
+    targets?: MigrationTarget[];
+    requestor?: string;
+  };
+
   async function* migrationStream(
     path: "shadow" | "apply" | "rollback",
-    body: object,
+    body: MigrationRequestBody,
     signal?: AbortSignal,
   ): AsyncGenerator<MigrationStreamEvent> {
     const response = await globalThis.fetch(`/sonamu-ui/api/migrations/${path}`, {
@@ -416,7 +484,7 @@ export namespace SonamuUIService {
       body: JSON.stringify(body),
       signal,
     });
-    yield* readNdjson<MigrationStreamEvent>(response);
+    yield* readNdjson(response);
   }
 
   export function shadowMigrations(signal?: AbortSignal) {
@@ -439,10 +507,10 @@ export namespace SonamuUIService {
     return useQuery({
       queryKey: ["migrations", "status"],
       queryFn: () =>
-        fetch({
+        fetch<{ status: MigrationStatus }>({
           method: "GET",
           url: `/sonamu-ui/api/migrations/status`,
-        }) as Promise<{ status: MigrationStatus }>,
+        }),
     });
   }
 
@@ -551,11 +619,11 @@ export namespace SonamuUIService {
     return useQuery({
       queryKey: ["scaffolding", "getStatus", params],
       queryFn: () =>
-        fetch({
+        fetch<{ statuses: ScaffoldingStatus[] }>({
           method: "POST",
           url: `/sonamu-ui/api/scaffolding/getStatus`,
           data: params,
-        }) as Promise<{ statuses: ScaffoldingStatus[] }>,
+        }),
       enabled,
     });
   }
@@ -646,15 +714,15 @@ export namespace SonamuUIService {
     return useQuery({
       queryKey: ["i18n", "dictionary"],
       queryFn: () =>
-        fetch({
-          method: "GET",
-          url: `/sonamu-ui/api/i18n/dictionary`,
-        }) as Promise<{
+        fetch<{
           rows: I18nDictionaryRow[];
           locales: string[];
           defaultLocale: string;
           stats: Record<string, { total: number; filled: number; percent: number }>;
-        }>,
+        }>({
+          method: "GET",
+          url: `/sonamu-ui/api/i18n/dictionary`,
+        }),
     });
   }
 
@@ -724,15 +792,26 @@ export namespace SonamuUIService {
     return useQuery({
       queryKey: ["test", "status"],
       queryFn: () =>
-        fetch({
+        fetch<ManagerStatus>({
           method: "GET",
           url: `/__test__/status`,
-        }) as Promise<ManagerStatus>,
+        }),
     });
   }
 
   // Cone 업데이트 메서드들
   // ---- Tasks 훅/함수 ----
+  type WorkflowRunsQueryParams = {
+    limit?: string;
+    after?: string;
+    before?: string;
+    status?: string;
+    workflowName?: string;
+    createdAfter?: string;
+    createdBefore?: string;
+    order: "desc";
+  };
+
   export function useWorkflowRuns(params?: {
     limit?: number;
     after?: string;
@@ -744,21 +823,22 @@ export namespace SonamuUIService {
   }) {
     return useQuery({
       queryKey: ["tasks", "workflowRuns", params],
-      queryFn: () =>
-        fetch({
+      queryFn: () => {
+        const queryParams: WorkflowRunsQueryParams = { order: "desc" };
+        if (params?.limit) queryParams.limit = String(params.limit);
+        if (params?.after) queryParams.after = params.after;
+        if (params?.before) queryParams.before = params.before;
+        if (params?.status?.length) queryParams.status = params.status.join(",");
+        if (params?.workflowName) queryParams.workflowName = params.workflowName;
+        if (params?.createdAfter) queryParams.createdAfter = params.createdAfter;
+        if (params?.createdBefore) queryParams.createdBefore = params.createdBefore;
+
+        return fetch<TasksPaginatedResponse<WorkflowRun>>({
           method: "GET",
           url: `/sonamu-ui/api/tasks/workflowRuns`,
-          params: {
-            ...(params?.limit ? { limit: String(params.limit) } : {}),
-            ...(params?.after ? { after: params.after } : {}),
-            ...(params?.before ? { before: params.before } : {}),
-            ...(params?.status?.length ? { status: params.status.join(",") } : {}),
-            ...(params?.workflowName ? { workflowName: params.workflowName } : {}),
-            ...(params?.createdAfter ? { createdAfter: params.createdAfter } : {}),
-            ...(params?.createdBefore ? { createdBefore: params.createdBefore } : {}),
-            order: "desc",
-          },
-        }) as Promise<TasksPaginatedResponse<WorkflowRun>>,
+          params: queryParams,
+        });
+      },
       refetchInterval: 5000,
     });
   }
@@ -767,10 +847,10 @@ export namespace SonamuUIService {
     return useQuery({
       queryKey: ["tasks", "workflowRun", id],
       queryFn: () =>
-        fetch({
+        fetch<WorkflowRun>({
           method: "GET",
           url: `/sonamu-ui/api/tasks/workflowRuns/${id}`,
-        }) as Promise<WorkflowRun>,
+        }),
       refetchInterval: 5000,
     });
   }
@@ -779,10 +859,10 @@ export namespace SonamuUIService {
     return useQuery({
       queryKey: ["tasks", "stepAttempts", workflowRunId],
       queryFn: () =>
-        fetch({
+        fetch<TasksPaginatedResponse<StepAttempt>>({
           method: "GET",
           url: `/sonamu-ui/api/tasks/workflowRuns/${workflowRunId}/steps`,
-        }) as Promise<TasksPaginatedResponse<StepAttempt>>,
+        }),
       refetchInterval: 5000,
     });
   }
@@ -791,10 +871,10 @@ export namespace SonamuUIService {
     return useQuery({
       queryKey: ["tasks", "workflowDefinitions"],
       queryFn: () =>
-        fetch({
+        fetch<{ definitions: WorkflowDefinitionInfo[] }>({
           method: "GET",
           url: `/sonamu-ui/api/tasks/workflowDefinitions`,
-        }) as Promise<{ definitions: WorkflowDefinitionInfo[] }>,
+        }),
     });
   }
 
@@ -922,7 +1002,7 @@ export interface WorkflowRun {
   context: unknown | null;
   input: unknown | null;
   output: unknown | null;
-  error: { name?: string; message: string; stack?: string; [key: string]: unknown } | null;
+  error: { name?: string; message: string; stack?: string } | null;
   attempts: number;
   parentStepAttemptNamespaceId: string | null;
   parentStepAttemptId: string | null;

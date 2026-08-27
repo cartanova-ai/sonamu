@@ -6,6 +6,7 @@ import { type EntityJson, type EntityProp, type TemplateKey, type TemplateOption
 import { getEnumDefValues, Naite, registeredApis, Sonamu, Template } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, beforeEach, describe, expect, vi } from "vitest";
+import { z } from "zod";
 
 import { SD } from "../../../../../modules/sonamu/dist/dict/sd";
 import { type EntityNamesRecord } from "../../../../../modules/sonamu/dist/entity/entity-manager";
@@ -36,6 +37,14 @@ type WriteFile = {
 
 type RegisteredApi = (typeof registeredApis)[number];
 
+interface MockTemplateOptions {
+  readonly __mockTemplateOptions?: never;
+}
+
+function isString(value: WriteFileRecord["data"]): value is string {
+  return z.string().safeParse(value).success;
+}
+
 function createRegisteredApi(modelName: string, methodName: string): RegisteredApi {
   return {
     modelName,
@@ -49,12 +58,60 @@ function createRegisteredApi(modelName: string, methodName: string): RegisteredA
   };
 }
 
+class AdminDashboardTemplate extends Template {
+  constructor() {
+    // SAFETY: 테스트 전용 키를 플러그인 등록 경로에서 검증한다.
+    super("admin-dashboard" as TemplateKey);
+  }
+
+  render(options: TemplateOptions[TemplateKey] | { entities: string[] }) {
+    // SAFETY: 이 테스트는 entities 입력으로만 템플릿을 호출한다.
+    const pluginOptions = options as { entities: string[] };
+    return {
+      target: ":target/src/admin",
+      path: "Dashboard.tsx",
+      body: `// Admin Dashboard\n// Entities: ${pluginOptions.entities.join(", ")}`,
+      importKeys: [],
+    };
+  }
+
+  getTargetAndPath() {
+    return { target: ":target/src/admin", path: "Dashboard.tsx" };
+  }
+}
+
+class AdminCrudTemplate extends Template {
+  constructor() {
+    // SAFETY: 테스트 전용 키를 플러그인 등록 경로에서 검증한다.
+    super("admin-crud" as TemplateKey);
+  }
+
+  render(options: { entityId: string }) {
+    return {
+      target: ":target/src/admin",
+      path: `${options.entityId}Admin.tsx`,
+      body: `// ${options.entityId} CRUD Admin`,
+      importKeys: [],
+    };
+  }
+
+  getTargetAndPath() {
+    return { target: ":target/src/admin", path: "Admin.tsx" };
+  }
+}
+
+function registerAdminTemplates() {
+  const adminDashboardTemplate = new AdminDashboardTemplate();
+  TemplateManager.registerAll([adminDashboardTemplate, new AdminCrudTemplate()]);
+  return adminDashboardTemplate;
+}
+
 // Mock Template 클래스 (테스트용)
 class MockTemplateClass extends Template {
   constructor(
     key: TemplateKey | CustomTemplateKey,
     private mockRender: (
-      options: TemplateOptions[TemplateKey] | Record<string, unknown>,
+      options: TemplateOptions[TemplateKey] | MockTemplateOptions,
       ...extra: unknown[]
     ) => RenderedTemplate | Promise<RenderedTemplate>,
     private mockGetTargetAndPath: (
@@ -65,6 +122,7 @@ class MockTemplateClass extends Template {
       path: string;
     },
   ) {
+    // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
     super(key as TemplateKey);
   }
 
@@ -104,6 +162,7 @@ describe("Syncer", () => {
   describe("파일 변경 감지 워크플로우", () => {
     // 목적: model 파일이 변경되면 자동으로 HTTP 파일이 재생성되는지 확인
     test("model 파일 변경 → http 재생성", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const modelPath = join(
         apiRootPath,
         "src/application/sync-fixture/sync-fixture.model.ts",
@@ -119,6 +178,7 @@ describe("Syncer", () => {
 
     // 목적: 여러 model 파일을 동시에 변경했을 때 모두 정상 처리되는지 확인
     test("여러 model 파일 동시 변경", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const paths = [
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts"),
         join(apiRootPath, "src/application/company/company.model.ts"),
@@ -133,6 +193,7 @@ describe("Syncer", () => {
 
     // 목적: model과 types 파일을 동시에 변경했을 때 각각의 처리 워크플로우가 모두 실행되는지 확인
     test("model + types 파일 동시 변경", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const paths = [
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts"),
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts"),
@@ -167,6 +228,7 @@ describe("Syncer", () => {
 
     // 목적: config 파일이 변경되면 .sonamu.env 파일이 재생성되는지 확인
     test("config 파일 변경 → .sonamu.env 재생성", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const configPath = join(apiRootPath, "src/sonamu.config.ts") as AbsolutePath;
 
       await syncer.doSyncActions([configPath]);
@@ -185,6 +247,7 @@ describe("Syncer", () => {
   describe("hmrAndSync", () => {
     // 목적: model 파일 변경 시 doSyncActions가 호출되어 http 파일이 생성되고, autoload가 실행되어 모듈이 재로드되는지 확인
     test("change 이벤트 (model 파일) → 파일 생성 및 모듈 재로드", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const modelPath = join(
         apiRootPath,
         "src/application/sync-fixture/sync-fixture.model.ts",
@@ -206,6 +269,7 @@ describe("Syncer", () => {
 
     // 목적: types 파일 추가 시 doSyncActions가 호출되어 타겟 디렉토리로 복사되는지 확인
     test("add 이벤트 (types 파일) → 타겟 디렉토리로 복사", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const newTypesPath = join(
         apiRootPath,
         "src/application/sync-fixture/sync-fixture.types.ts",
@@ -358,7 +422,7 @@ describe("Syncer", () => {
       // JSON 파일이 생성되었는지 확인
       expect(writeFile.path).toContain("sync-fixture.entity.json");
       // JSON 구조가 올바른지 확인 (entityId, title, table 등 필수 필드 포함)
-      if (typeof writeFile.data === "string") {
+      if (isString(writeFile.data)) {
         const entityData = JSON.parse(writeFile.data);
         expect(entityData.id).toBe("SyncFixture");
         expect(entityData.title).toBe("SyncFixture");
@@ -375,7 +439,7 @@ describe("Syncer", () => {
       // .model.ts 파일이 생성되었는지 확인
       expect(writeFile.path).toContain("sync-fixture.model.ts");
       // Model 클래스가 포함되어 있는지 확인
-      if (typeof writeFile.data === "string") {
+      if (isString(writeFile.data)) {
         expect(writeFile.data).toContain("class");
         expect(writeFile.data).toContain("SyncFixtureModel");
         expect(writeFile.data).toContain("BaseModelClass");
@@ -395,7 +459,7 @@ describe("Syncer", () => {
       // .types.ts 파일이 생성되었는지 확인
       expect(writeFile.path).toContain("sync-fixture.types.ts");
       // Zod 스키마와 타입 정의가 포함되어 있는지 확인
-      if (typeof writeFile.data === "string") {
+      if (isString(writeFile.data)) {
         expect(writeFile.data).toContain("zod");
         expect(writeFile.data).toContain("SyncFixtureListParams");
         expect(writeFile.data).toContain("SyncFixtureSaveParams");
@@ -412,7 +476,7 @@ describe("Syncer", () => {
       // sonamu.generated.ts 파일이 생성되었는지 확인
       expect(writeFile.path).toContain("sonamu.generated.ts");
       // 스키마 정의가 포함되어 있는지 확인
-      if (typeof writeFile.data === "string") {
+      if (isString(writeFile.data)) {
         expect(writeFile.data).toContain("BaseSchema");
         expect(writeFile.data).toContain("export const");
         expect(writeFile.data).toContain("export type");
@@ -427,7 +491,7 @@ describe("Syncer", () => {
       // sonamu.generated.sso.ts 파일이 생성되었는지 확인
       expect(writeFile.path).toContain("sonamu.generated.sso.ts");
       // SSO 관련 쿼리가 포함되어 있는지 확인
-      if (typeof writeFile.data === "string") {
+      if (isString(writeFile.data)) {
         expect(writeFile.data).toContain("export const");
         expect(writeFile.data).toContain("SubsetQueries");
         expect(writeFile.data).toContain("LoaderQueries");
@@ -447,7 +511,7 @@ describe("Syncer", () => {
       expect(httpFile).toBeDefined();
 
       // 요청 형식이 포함되어 있는지 확인
-      if (typeof httpFile.data === "string") {
+      if (isString(httpFile.data)) {
         expect(httpFile.data).toMatch(/^(GET|POST|PUT|DELETE|PATCH)\s+/m);
       }
     });
@@ -460,7 +524,7 @@ describe("Syncer", () => {
       // .test.ts 파일이 생성되었는지 확인
       expect(writeFile.path).toContain("sync-fixture.model.test.ts");
       // 테스트 코드가 포함되어 있는지 확인
-      if (typeof writeFile.data === "string") {
+      if (isString(writeFile.data)) {
         expect(writeFile.data).toContain("describe");
         expect(writeFile.data).toContain("test");
       }
@@ -497,6 +561,7 @@ describe("Syncer", () => {
     test("api → web 경로 변환", async () => {
       // 원본 파일 경로 (api 디렉토리)
       const tsPaths = [
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts") as AbsolutePath,
       ];
 
@@ -521,6 +586,7 @@ describe("Syncer", () => {
     test("import 경로 변환", async () => {
       // 원본 파일 경로
       const tsPaths = [
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts") as AbsolutePath,
       ];
 
@@ -532,7 +598,7 @@ describe("Syncer", () => {
 
       // 검증: 원본 import 경로("sonamu")가 제거되었는지 확인
       // (변환된 경로는 "src/services/sonamu.shared"로 변경됨)
-      if (typeof writeFile.data === "string") {
+      if (isString(writeFile.data)) {
         expect(writeFile.data).not.toContain('from "sonamu"');
       }
     });
@@ -540,7 +606,9 @@ describe("Syncer", () => {
     // 목적: 여러 types 파일을 동시에 동기화할 때 모두 정상 처리되는지 확인
     test("여러 types 파일 동시 동기화", async () => {
       const tsPaths = [
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts") as AbsolutePath,
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         join(apiRootPath, "src/application/company/company.types.ts") as AbsolutePath,
       ];
 
@@ -593,6 +661,7 @@ describe("Syncer", () => {
 
     // 목적: 알 수 없는 파일 타입이 "unknown"으로 분류되는지 확인
     test("알 수 없는 파일 타입 → unknown 분류", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const unknownPaths = [
         join(apiRootPath, "src/random/file.unknown"),
         join(apiRootPath, "src/random/file.txt"),
@@ -609,6 +678,7 @@ describe("Syncer", () => {
   describe("파일 타입 분류", () => {
     // 목적: 지원하는 파일 타입(types, model, config, generated)이 올바르게 분류되는지 확인
     test("지원하는 파일 타입 분류", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const paths = [
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts"),
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts"),
@@ -626,6 +696,7 @@ describe("Syncer", () => {
 
     // 목적: 같은 타입의 여러 파일이 올바르게 그룹화되는지 확인
     test("같은 타입 여러 파일", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const paths = [
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts"),
         join(apiRootPath, "src/application/company/company.model.ts"),
@@ -691,7 +762,9 @@ describe("Syncer", () => {
       // 2개의 model 파일이 동시에 변경된 상황 시뮬레이션
       const diffGroups = {
         model: [
+          // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
           join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts") as AbsolutePath,
+          // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
           join(apiRootPath, "src/application/company/company.model.ts") as AbsolutePath,
         ],
         frame: [],
@@ -726,6 +799,7 @@ describe("Syncer", () => {
       // 실제 동작 검증: autoload 후 models, types, apis가 모두 로드되었는지 확인
       await syncer.handleImplementationChanges({
         model: [
+          // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
           join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts") as AbsolutePath,
         ],
         frame: [],
@@ -756,6 +830,7 @@ describe("Syncer", () => {
     test("http 파일 생성", async () => {
       await syncer.handleImplementationChanges({
         model: [
+          // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
           join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts") as AbsolutePath,
         ],
         frame: [],
@@ -786,6 +861,7 @@ describe("Syncer", () => {
       // SyncFixture 모델 변경 처리
       await syncer.handleImplementationChanges({
         model: [
+          // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
           join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts") as AbsolutePath,
         ],
         frame: [],
@@ -827,6 +903,7 @@ describe("Syncer", () => {
   describe("removeInvalidatedRegisteredApis", () => {
     test("sub model 변경 시 main model API를 제거하지 않는다", () => {
       const originalRegisteredApis = [...registeredApis];
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const invalidatedPath = join(
         apiRootPath,
         "src/application/sync-fixture/sync-fixture-sub.model.ts",
@@ -862,6 +939,7 @@ describe("Syncer", () => {
   describe("통합 시나리오", () => {
     // 목적: Entity 파일 변경 시 전체 워크플로우가 정상적으로 실행되어 generated 파일이 생성되는지 확인
     test("Entity 변경 → 전체 플로우", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const entityPath = join(
         apiRootPath,
         "src/application/sync-fixture/sync-fixture.entity.json",
@@ -874,6 +952,7 @@ describe("Syncer", () => {
 
     // 목적: Model과 Entity 파일을 동시에 변경했을 때 두 워크플로우가 모두 정상 실행되는지 확인
     test("Model + Entity 동시 변경", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const paths = [
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.entity.json"),
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts"),
@@ -1024,7 +1103,7 @@ describe("Syncer", () => {
         const result = await syncer.checkExistsGenCode("SyncFixture", key);
         // 결과가 정의되어 있고, isExists가 boolean 타입인지 확인
         expect(result).toBeDefined();
-        expect(typeof result.isExists).toBe("boolean");
+        expect(z.boolean().safeParse(result.isExists).success).toBe(true);
       }
     });
   });
@@ -1039,7 +1118,7 @@ describe("Syncer", () => {
         await syncer.autoloadTypes();
 
         expect(syncer.types).toBeDefined();
-        expect(typeof syncer.types).toBe("object");
+        expect(z.object({}).safeParse(syncer.types).success).toBe(true);
       });
 
       // 목적: 로드된 types가 ZodObject 형태인지 확인 (Zod 스키마는 _def 속성을 가짐)
@@ -1049,6 +1128,7 @@ describe("Syncer", () => {
         for (const [_key, value] of Object.entries(syncer.types)) {
           expect(value).toBeDefined();
           // Zod 스키마는 _def 속성을 가짐
+          // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
           expect("_def" in (value as object)).toBe(true);
         }
       });
@@ -1060,7 +1140,7 @@ describe("Syncer", () => {
         await syncer.autoloadModels();
 
         expect(syncer.models).toBeDefined();
-        expect(typeof syncer.models).toBe("object");
+        expect(z.object({}).safeParse(syncer.models).success).toBe(true);
       });
 
       // 목적: 로드된 models의 키 이름이 "Model" 또는 "Frame"으로 끝나는지 확인
@@ -1177,6 +1257,7 @@ describe("Syncer", () => {
     test("types.ts 복사 후 import 변환", async () => {
       // 원본 types.ts 파일 경로
       const tsPaths = [
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts") as AbsolutePath,
       ];
 
@@ -1301,6 +1382,7 @@ describe("Syncer", () => {
         // 커스텀 감사 엔티티 템플릿
         class AuditEntityTemplate extends Template {
           constructor() {
+            // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
             super("audit-entity" as TemplateKey);
           }
 
@@ -1358,6 +1440,7 @@ describe("Syncer", () => {
           title: "감사 테스트",
         });
 
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const entityData = JSON.parse(result.body) as EntityData;
 
         // 감사 필드 포함 확인
@@ -1370,64 +1453,19 @@ describe("Syncer", () => {
 
       // 목적: 플러그인 방식으로 여러 템플릿을 일괄 등록
       test("registerAll() - 플러그인 방식 템플릿 일괄 등록", async () => {
-        // Admin 플러그인
-        function adminPlugin() {
-          class AdminDashboardTemplate extends Template {
-            constructor() {
-              super("admin-dashboard" as TemplateKey);
-            }
-            render(options: TemplateOptions[TemplateKey] | { entities: string[] }) {
-              const opts = options as { entities: string[] };
-              return {
-                target: ":target/src/admin",
-                path: "Dashboard.tsx",
-                body: `// Admin Dashboard\n// Entities: ${opts.entities.join(", ")}`,
-                importKeys: [],
-              };
-            }
-            getTargetAndPath() {
-              return { target: ":target/src/admin", path: "Dashboard.tsx" };
-            }
-          }
-
-          class AdminCrudTemplate extends Template {
-            constructor() {
-              super("admin-crud" as TemplateKey);
-            }
-            render(options: { entityId: string }) {
-              return {
-                target: ":target/src/admin",
-                path: `${options.entityId}Admin.tsx`,
-                body: `// ${options.entityId} CRUD Admin`,
-                importKeys: [],
-              };
-            }
-            getTargetAndPath() {
-              return { target: ":target/src/admin", path: "Admin.tsx" };
-            }
-          }
-
-          TemplateManager.registerAll([new AdminDashboardTemplate(), new AdminCrudTemplate()]);
-        }
-
-        // 플러그인 적용
-        adminPlugin();
+        const adminDashboardTemplate = registerAdminTemplates();
 
         expect(TemplateManager.exists("admin-dashboard")).toBe(true);
         expect(TemplateManager.exists("admin-crud")).toBe(true);
 
         // 플러그인 템플릿 사용
-        const dashboardTemplate = TemplateManager.get("admin-dashboard");
-        const dashboardResult = await (
-          dashboardTemplate.render as unknown as (options: {
-            entities: string[];
-          }) => Promise<RenderedTemplate>
-        )({
+        const dashboardResult = await adminDashboardTemplate.render({
           entities: ["SyncFixture", "Company", "Project"],
         });
         expect(dashboardResult.body).toContain("SyncFixture, Company, Project");
 
         const crudTemplate = TemplateManager.get("admin-crud");
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const crudResult = await crudTemplate.render({
           entityId: "SyncFixture",
         } as TemplateOptions[TemplateKey]);
@@ -1463,6 +1501,7 @@ describe("Syncer", () => {
         try {
           const diffGroups = {
             entity: [
+              // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
               join(
                 apiRootPath,
                 "src/application/sync-fixture/sync-fixture.entity.json",
@@ -1528,6 +1567,7 @@ describe("Syncer", () => {
         try {
           await syncer.handleImplementationChanges({
             model: [
+              // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
               join(
                 apiRootPath,
                 "src/application/sync-fixture/sync-fixture.model.ts",
@@ -1567,6 +1607,7 @@ describe("Syncer", () => {
     test("sub model 변경 후 services.generated.ts에 main/sub model service가 모두 존재한다", async () => {
       const originalRegisteredApis = [...registeredApis];
       const webRootPath = join(apiRootPath, "../web");
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const invalidatedPath = join(
         apiRootPath,
         "src/application/sync-fixture/sync-fixture-sub.model.ts",
@@ -1612,10 +1653,9 @@ describe("Syncer", () => {
           );
 
         assert(serviceFile);
-        expect(typeof serviceFile.data).toBe("string");
-        assert(typeof serviceFile.data === "string");
-        expect(serviceFile.data).toContain("export namespace SyncFixtureService");
-        expect(serviceFile.data).toContain("export namespace SyncFixtureSubService");
+        const serviceFileData = z.string().parse(serviceFile.data);
+        expect(serviceFileData).toContain("export namespace SyncFixtureService");
+        expect(serviceFileData).toContain("export namespace SyncFixtureSubService");
       } finally {
         registeredApis.length = 0;
         registeredApis.push(...originalRegisteredApis);

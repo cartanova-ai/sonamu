@@ -39,6 +39,7 @@ import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
+import { translateFilterEnumKey } from "@/admin-common/filter-utils";
 import { useSonamuContext } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
 import { UserService } from "@/services/services.generated";
@@ -46,6 +47,7 @@ import {
   UserBaseSchema,
   UserOrderBy,
   UserOrderByLabel,
+  type UserSubsetA,
   UserRoleLabel,
   UserSearchField,
   UserSearchFieldLabel,
@@ -55,7 +57,7 @@ import { UserListParams } from "@/services/user/user.types";
 
 // 차단 만료 프리셋(초). null 은 영구 차단을 의미합니다.
 const BAN_EXPIRES_PRESETS = [
-  { value: "permanent", label: "없음(영구)", seconds: null as number | null },
+  { value: "permanent", label: "없음(영구)", seconds: null },
   { value: "1h", label: "1시간", seconds: 60 * 60 },
   { value: "1d", label: "1일", seconds: 60 * 60 * 24 },
   { value: "7d", label: "7일", seconds: 60 * 60 * 24 * 7 },
@@ -75,6 +77,107 @@ export const Route = createFileRoute("/admin/users/")({
 });
 
 type UserListProps = {};
+
+function createUserColumns(
+  onEdit: (id: string) => void,
+  onBan: (id: string, username: string) => void,
+  onUnban: (id: string, username: string) => void,
+  onDelete: (id: string) => void,
+): TableCol<UserSubsetA>[] {
+  return [
+    {
+      label: "ID",
+      tc: (row) => <>{row.id}</>,
+      fit: true,
+      align: "center",
+    },
+    {
+      label: SD("common.createdAt"),
+      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
+      fit: true,
+    },
+    {
+      label: SD("entity.User.email"),
+      tc: (row) => <>{row.email}</>,
+    },
+    {
+      label: SD("entity.User.username"),
+      tc: (row) => <>{row.username}</>,
+    },
+    {
+      label: SD("entity.User.birth_date"),
+      tc: (row) => <span>{row.birth_date ? datetimeF(row.birth_date) : "-"}</span>,
+      fit: true,
+    },
+    {
+      label: SD("entity.User.role"),
+      tc: (row) => <>{UserRoleLabel[row.role]}</>,
+    },
+    {
+      label: SD("entity.User.last_login_at"),
+      tc: (row) => <span>{row.last_login_at ? datetimeF(row.last_login_at) : "-"}</span>,
+      fit: true,
+    },
+    {
+      label: SD("entity.User.bio"),
+      tc: (row) => <>{row.bio}</>,
+    },
+    {
+      label: SD("entity.User.is_verified"),
+      tc: (row) =>
+        row.is_verified ? <Badge variant="default">O</Badge> : <Badge variant="secondary">X</Badge>,
+    },
+    {
+      label: SD("entity.User.deleted_at"),
+      tc: (row) => <span>{row.deleted_at ? datetimeF(row.deleted_at) : "-"}</span>,
+      fit: true,
+    },
+    {
+      label: SD("entity.User.banned"),
+      fit: true,
+      align: "center",
+      tc: (row) =>
+        row.banned === true ? (
+          <div className="flex flex-col items-center gap-0.5">
+            <Badge variant="destructive">차단</Badge>
+            {row.ban_expires && (
+              <span className="text-[10px] text-muted-foreground">
+                {datetimeF(row.ban_expires)}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span>-</span>
+        ),
+    },
+    {
+      label: SD("common.manage"),
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button variant="yellow" size="xs" icon={<EditIcon />} onClick={() => onEdit(row.id)} />
+          {row.banned === true ? (
+            <Button
+              variant="outline"
+              size="xs"
+              icon={<ShieldCheckIcon />}
+              onClick={() => onUnban(row.id, row.username)}
+            />
+          ) : (
+            <Button
+              variant="outline"
+              size="xs"
+              icon={<BanIcon />}
+              onClick={() => onBan(row.id, row.username)}
+            />
+          )}
+          <Button variant="red" size="xs" icon={<TrashIcon />} onClick={() => onDelete(row.id)} />
+        </div>
+      ),
+    },
+  ];
+}
 
 function UserList({}: UserListProps) {
   const navigate = useNavigate();
@@ -120,117 +223,12 @@ function UserList({}: UserListProps) {
   };
 
   // 컬럼 정의
-  type UserRow = NonNullable<typeof rows>[number];
-  const columns: TableCol<UserRow>[] = [
-    {
-      label: "ID",
-      tc: (row) => <>{row.id}</>,
-      fit: true,
-      align: "center",
-    },
-    {
-      label: SD("common.createdAt"),
-      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
-      fit: true,
-    },
-    {
-      label: SD("entity.User.email"),
-      tc: (row) => <>{row.email}</>,
-    },
-    {
-      label: SD("entity.User.username"),
-      tc: (row) => <>{row.username}</>,
-    },
-    {
-      label: SD("entity.User.birth_date"),
-      tc: (row) => <span>{row.birth_date ? datetimeF(row.birth_date) : "-"}</span>,
-      fit: true,
-    },
-    {
-      label: SD("entity.User.role"),
-      tc: (row) => <>{UserRoleLabel[row.role]}</>,
-    },
-    {
-      label: SD("entity.User.last_login_at"),
-      tc: (row) => <span>{row.last_login_at ? datetimeF(row.last_login_at) : "-"}</span>,
-      fit: true,
-    },
-    {
-      label: SD("entity.User.bio"),
-      tc: (row) => <>{row.bio}</>,
-    },
-    {
-      label: SD("entity.User.is_verified"),
-      tc: (row) => (
-        <>
-          {row.is_verified ? (
-            <Badge variant="default">O</Badge>
-          ) : (
-            <Badge variant="secondary">X</Badge>
-          )}
-        </>
-      ),
-    },
-    {
-      label: SD("entity.User.deleted_at"),
-      tc: (row) => <span>{row.deleted_at ? datetimeF(row.deleted_at) : "-"}</span>,
-      fit: true,
-    },
-    {
-      label: SD("entity.User.banned"),
-      fit: true,
-      align: "center",
-      tc: (row) =>
-        row.banned === true ? (
-          <div className="flex flex-col items-center gap-0.5">
-            <Badge variant="destructive">차단</Badge>
-            {row.ban_expires && (
-              <span className="text-[10px] text-muted-foreground">
-                {datetimeF(row.ban_expires)}
-              </span>
-            )}
-          </div>
-        ) : (
-          <span>-</span>
-        ),
-    },
-    {
-      label: SD("common.manage"),
-      fit: true,
-      align: "center",
-      tc: (row) => (
-        <div className="flex items-center justify-center gap-1">
-          <Button
-            variant="yellow"
-            size="xs"
-            icon={<EditIcon />}
-            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
-          />
-          {row.banned === true ? (
-            <Button
-              variant="outline"
-              size="xs"
-              icon={<ShieldCheckIcon />}
-              onClick={() => handleUnbanClick(row.id, row.username)}
-            />
-          ) : (
-            <Button
-              variant="outline"
-              size="xs"
-              icon={<BanIcon />}
-              onClick={() => handleBanClick(row.id, row.username)}
-            />
-          )}
-          <Button
-            variant="red"
-            size="xs"
-            icon={<TrashIcon />}
-            onClick={() => handleDeleteClick(row.id)}
-          />
-        </div>
-      ),
-    },
-  ];
+  const columns = createUserColumns(
+    (id) => navigate({ to: `${PAGE.route}/form`, search: { id } }),
+    (id, username) => handleBanClick(id, username),
+    (id, username) => handleUnbanClick(id, username),
+    (id) => handleDeleteClick(id),
+  );
 
   // 선택 핸들러
   const handleToggleItem = (id: string) => {
@@ -384,10 +382,7 @@ function UserList({}: UserListProps) {
                     </Button>
                     <SonamuFilterPopover
                       rules={appliedRules}
-                      fieldMeta={extractFieldMetaFromSchema(
-                        UserBaseSchema,
-                        SD as (key: string) => string,
-                      )}
+                      fieldMeta={extractFieldMetaFromSchema(UserBaseSchema, translateFilterEnumKey)}
                     >
                       <Button
                         variant="outline"
@@ -526,7 +521,10 @@ function UserList({}: UserListProps) {
               <select
                 className="h-8 w-full text-xs bg-white border border-gray-300 rounded px-2"
                 value={banExpiresPreset}
-                onChange={(e) => setBanExpiresPreset(e.target.value as BanExpiresPreset)}
+                onChange={(e) => {
+                  const preset = BAN_EXPIRES_PRESETS.find(({ value }) => value === e.target.value);
+                  if (preset) setBanExpiresPreset(preset.value);
+                }}
               >
                 {BAN_EXPIRES_PRESETS.map((preset) => (
                   <option key={preset.value} value={preset.value}>

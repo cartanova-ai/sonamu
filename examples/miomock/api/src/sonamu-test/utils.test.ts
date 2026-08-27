@@ -12,6 +12,18 @@ import {
   nonNullable,
 } from "../../../../../modules/sonamu/dist/utils/utils";
 
+const handleStatus = (status: "pending" | "approved"): string => {
+  switch (status) {
+    case "pending":
+      return "대기중";
+    case "approved":
+      return "승인됨";
+    default:
+      exhaustive(status);
+      return "";
+  }
+};
+
 describe("utils", () => {
   describe("nonNullable (타입 가드)", () => {
     test.each([
@@ -37,7 +49,7 @@ describe("utils", () => {
 
       if (nonNullable(envVar)) {
         // 타입이 string으로 좁혀짐
-        expect(typeof envVar).toBe("string");
+        expect(envVar).toEqual(expect.any(String));
       }
     });
   });
@@ -95,7 +107,7 @@ describe("utils", () => {
       const result = findApiRootPath();
 
       expect(result).toBeTruthy();
-      expect(typeof result).toBe("string");
+      expect(result).toEqual(expect.any(String));
     });
   });
 
@@ -111,7 +123,7 @@ describe("utils", () => {
       const result = findAppRootPath();
 
       expect(result).toBeTruthy();
-      expect(typeof result).toBe("string");
+      expect(result).toEqual(expect.any(String));
 
       // API 루트보다 짧아야 함 (상위 디렉토리)
       const apiRoot = findApiRootPath();
@@ -138,27 +150,12 @@ describe("utils", () => {
     test("호출하면 에러 발생", () => {
       expect(() => {
         // never 타입이 아닌 값을 강제로 전달하여 런타임 에러 테스트
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
         exhaustive("not-never" as never);
       }).toThrow("exhaustive");
     });
 
     test("switch 문에서 사용하는 패턴", () => {
-      type Status = "pending" | "approved";
-
-      const handleStatus = (status: Status): string => {
-        switch (status) {
-          case "pending":
-            return "대기중";
-          case "approved":
-            return "승인됨";
-          default:
-            // exhaustive는 never를 반환하므로 타입 단언 필요
-            // 실제로는 모든 케이스를 처리했으므로 여기에 도달하지 않음
-            exhaustive(status);
-            return ""; // unreachable code
-        }
-      };
-
       // 모든 케이스가 정상 동작하는지 확인
       expect(handleStatus("pending")).toBe("대기중");
       expect(handleStatus("approved")).toBe("승인됨");
@@ -191,7 +188,7 @@ describe("utils", () => {
       const result = assertExists(value);
 
       // assertExists 통과 후 result는 string 타입으로 좁혀짐
-      expect(typeof result).toBe("string");
+      expect(result).toEqual(expect.any(String));
       expect(result.toUpperCase()).toBe("TEST");
     });
   });

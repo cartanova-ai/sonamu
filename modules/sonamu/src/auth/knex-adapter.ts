@@ -190,12 +190,18 @@ function applyCondition(
     case "in":
       return query[method === "orWhere" ? "orWhereIn" : "whereIn"](
         field,
-        value as (string | number)[],
+        /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ value as (
+          | string
+          | number
+        )[],
       );
     case "not_in":
       return query[method === "orWhere" ? "orWhereNotIn" : "whereNotIn"](
         field,
-        value as (string | number)[],
+        /* SAFETY: better-auth 훅과 어댑터 계약이 이 값의 타입을 보장한다. */ value as (
+          | string
+          | number
+        )[],
       );
     case "contains":
       return query[method](field, "like", `%${value}%`);

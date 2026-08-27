@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import SearchModal from "./components/SearchModal";
 import { useSonamuContext } from "./contexts/sonamu-provider";
 import { SUPPORTED_LOCALES, useLocale, useSetLocale } from "./i18n";
-import { type Locale } from "./i18n";
 import { SonamuUIService } from "./services/sonamu-ui.service";
 
 interface AppProps {
@@ -34,15 +33,13 @@ function App({ children }: AppProps) {
   const [showSearch, setShowSearch] = useState(false);
   const [projectName, setProjectName] = useState<string | null>(null);
 
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 키보드 이벤트 호환되지 않아 any 처리
-  const handleKeyDown = (event: any) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === "k") {
-      event.preventDefault();
-      setShowSearch(true);
-    }
-  };
-
   useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+        event.preventDefault();
+        setShowSearch(true);
+      }
+    };
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
@@ -92,7 +89,12 @@ function App({ children }: AppProps) {
           <div className="flex items-center gap-2">
             <select
               value={locale}
-              onChange={(e) => setLocale(e.target.value as Locale)}
+              onChange={(event) => {
+                const selectedLocale = event.target.value;
+                if (selectedLocale === "ko" || selectedLocale === "en") {
+                  setLocale(selectedLocale);
+                }
+              }}
               className="px-2 py-[0.4em] rounded-md border border-white/10 bg-black/20 cursor-pointer text-text-muted text-[0.85em] transition-all duration-200 hover:border-accent hover:text-white"
             >
               {SUPPORTED_LOCALES.map((loc) => (

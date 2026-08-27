@@ -1,5 +1,5 @@
 import assert from "assert";
-import { execSync } from "child_process";
+import { execSync, type ExecSyncOptions } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import { inspect } from "util";
 
@@ -7,6 +7,7 @@ import chalk from "chalk";
 import inflection from "inflection";
 import { type Knex } from "knex";
 import { unique } from "radashi";
+import { z } from "zod";
 
 import { Sonamu } from "../api/sonamu";
 import { BaseModel } from "../database/base-model";
@@ -35,6 +36,38 @@ import {
 } from "../types/types";
 import { isTest } from "../utils/controller";
 import { RelationGraph } from "./_relation-graph";
+import { dataExplorerRecordSchema } from "./data-explorer";
+import { type DataExplorerRecord, type DataExplorerValue } from "./data-explorer";
+
+const pgConnectionSchema = z
+  .object({
+    host: z.string().optional(),
+    port: z.number().optional(),
+    user: z.string().optional(),
+    password: z.string().optional(),
+    database: z.string(),
+  })
+  .passthrough();
+const databaseConnectionSchema = z.object({ database: z.string() }).passthrough();
+const fixtureRecordIdsSchema = z.array(z.union([z.number(), z.string()]));
+const relationIdSchema = z.union([z.number(), z.string(), z.null()]);
+
+export type FixtureSourceRecord = DataExplorerRecord & {
+  id: number | string;
+};
+
+type UpsertRowValue = DataExplorerValue | UBRef;
+type UpsertRow = {
+  [columnName: string]: UpsertRowValue;
+};
+
+function executeFixtureSyncCommand(command: string, options: ExecSyncOptions): void {
+  try {
+    execSync(command, options);
+  } catch (error) {
+    throw new Error("Fixture database synchronization command failed", { cause: error });
+  }
+}
 
 /** 사용자 지정 중복 확인 컬럼 (entityId별로 지정) */
 export interface DuplicateCheckOptions {
@@ -44,26 +77,26 @@ export interface DuplicateCheckOptions {
 }
 
 export class FixtureManagerClass {
-  private _tdb: Knex | null = null;
+  private testingDb: Knex | null = null;
   set tdb(tdb: Knex) {
-    this._tdb = tdb;
+    this.testingDb = tdb;
   }
   get tdb(): Knex {
-    if (this._tdb === null) {
+    if (this.testingDb === null) {
       throw new Error("FixtureManager has not been initialized");
     }
-    return this._tdb;
+    return this.testingDb;
   }
 
-  private _fdb: Knex | null = null;
+  private fixtureDb: Knex | null = null;
   set fdb(fdb: Knex) {
-    this._fdb = fdb;
+    this.fixtureDb = fdb;
   }
   get fdb(): Knex {
-    if (this._fdb === null) {
+    if (this.fixtureDb === null) {
       throw new Error("FixtureManager has not been initialized");
     }
-    return this._fdb;
+    return this.fixtureDb;
   }
   cachedTableNames: string[] | null = null;
 
@@ -76,16 +109,12 @@ export class FixtureManagerClass {
     new Map();
 
   init() {
-    if (this._tdb !== null) {
+    if (this.testingDb !== null) {
       return;
     }
     if (Sonamu.dbConfig.test && Sonamu.dbConfig.production) {
-      const tConn = Sonamu.dbConfig.test.connection as Knex.ConnectionConfig & {
-        port?: number;
-      };
-      const pConn = Sonamu.dbConfig.production.connection as Knex.ConnectionConfig & {
-        port?: number;
-      };
+      const tConn = pgConnectionSchema.parse(Sonamu.dbConfig.test.connection);
+      const pConn = pgConnectionSchema.parse(Sonamu.dbConfig.production.connection);
       if (
         `${tConn.host ?? "localhost"}:${tConn.port ?? 5432}/${tConn.database}` ===
         `${pConn.host ?? "localhost"}:${pConn.port ?? 5432}/${pConn.database}`
@@ -103,29 +132,29 @@ export class FixtureManagerClass {
     pg_dump로 원격 DB를 덤프하고, pg_restore로 로컬에 복원합니다.
   */
   async sync() {
-    const fixtureConn = Sonamu.dbConfig.fixture.connection as Knex.PgConnectionConfig;
-    const testConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
+    const fixtureConn = pgConnectionSchema.parse(Sonamu.dbConfig.fixture.connection);
+    const testConn = pgConnectionSchema.parse(Sonamu.dbConfig.test.connection);
 
     // 1. 로컬 test DB 연결 종료 및 재생성
     const testPgEnv = { PGPASSWORD: testConn.password || "" };
-    execSync(
+    executeFixtureSyncCommand(
       `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "
         SELECT pg_terminate_backend(pg_stat_activity.pid)
         FROM pg_stat_activity
         WHERE datname = '${testConn.database}'
           AND pid <> pg_backend_pid();
       "`,
-      { stdio: "inherit", env: { ...process.env, ...testPgEnv } as NodeJS.ProcessEnv },
+      { stdio: "inherit", env: { ...process.env, ...testPgEnv } },
     );
 
-    execSync(
+    executeFixtureSyncCommand(
       `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "DROP DATABASE IF EXISTS \\"${testConn.database}\\""`,
-      { stdio: "inherit", env: { ...process.env, ...testPgEnv } as NodeJS.ProcessEnv },
+      { stdio: "inherit", env: { ...process.env, ...testPgEnv } },
     );
 
-    execSync(
+    executeFixtureSyncCommand(
       `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "CREATE DATABASE \\"${testConn.database}\\""`,
-      { stdio: "inherit", env: { ...process.env, ...testPgEnv } as NodeJS.ProcessEnv },
+      { stdio: "inherit", env: { ...process.env, ...testPgEnv } },
     );
 
     // 2. 원격 fixture DB → 로컬 test DB로 복사 (pg_dump | pg_restore)
@@ -133,11 +162,14 @@ export class FixtureManagerClass {
     const dumpCmd = `pg_dump -h ${fixtureConn.host} -p ${fixtureConn.port ?? 5432} -U ${fixtureConn.user} -d ${fixtureConn.database} -Fc`;
     const restoreCmd = `pg_restore -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d ${testConn.database} --no-owner --no-acl`;
 
-    execSync(`${dumpCmd} | PGPASSWORD="${testConn.password || ""}" ${restoreCmd}`, {
-      stdio: "inherit",
-      env: { ...process.env, ...fixturePgEnv } as NodeJS.ProcessEnv,
-      shell: "/bin/bash",
-    });
+    executeFixtureSyncCommand(
+      `${dumpCmd} | PGPASSWORD="${testConn.password || ""}" ${restoreCmd}`,
+      {
+        stdio: "inherit",
+        env: { ...process.env, ...fixturePgEnv },
+        shell: "/bin/bash",
+      },
+    );
 
     // 3. 시퀀스 리셋 (데이터 복사 후 시퀀스를 MAX(id)로 정렬)
     await this.resetSequences(Sonamu.dbConfig.test);
@@ -228,8 +260,12 @@ export class FixtureManagerClass {
     }
 
     // 픽스쳐DB, 실DB
-    const fixtureDatabase = (Sonamu.dbConfig.fixture.connection as Knex.ConnectionConfig).database;
-    const realDatabase = (Sonamu.dbConfig.production.connection as Knex.ConnectionConfig).database;
+    const fixtureDatabase = databaseConnectionSchema.parse(
+      Sonamu.dbConfig.fixture.connection,
+    ).database;
+    const realDatabase = databaseConnectionSchema.parse(
+      Sonamu.dbConfig.production.connection,
+    ).database;
 
     const selfQuery = `INSERT IGNORE INTO \`${fixtureDatabase}\`.\`${entity.table}\` (SELECT * FROM \`${realDatabase}\`.\`${entity.table}\` WHERE \`id\` = ${id})`;
 
@@ -248,8 +284,8 @@ export class FixtureManagerClass {
         OneToOne에 joinColumn === false 인 경우
           Profile / 'profile_id' / row['id'] 호출
         */
-        let field: string;
-        let id: number;
+        let relationField: string;
+        let relationId: number;
         if (isOneToOneRelationProp(relation) && !relation.hasJoinColumn) {
           const relatedEntity = EntityManager.get(relation.with);
           const relatedIdColumnName = relatedEntity.props.find(
@@ -258,23 +294,23 @@ export class FixtureManagerClass {
           if (!relatedIdColumnName) {
             throw new Error(`${relatedEntity.id}의 ${entity.id} 관계 프롭을 찾을 수 없습니다.`);
           }
-          field = `${relatedIdColumnName}_id`;
-          id = row.id;
+          relationField = `${relatedIdColumnName}_id`;
+          relationId = row.id;
         } else {
-          field = "id";
-          id = row[`${relation.name}_id`];
+          relationField = "id";
+          relationId = row[`${relation.name}_id`];
         }
         return {
           entityId: relation.with,
-          field,
-          id,
+          field: relationField,
+          id: relationId,
         };
       })
       .filter((arg) => arg.id !== null);
 
     const relQueries = await Promise.all(
-      args.map(async (args) => {
-        return this.getImportQueries(args.entityId, args.field, args.id);
+      args.map(async (relationArgs) => {
+        return this.getImportQueries(relationArgs.entityId, relationArgs.field, relationArgs.id);
       }),
     );
 
@@ -282,13 +318,13 @@ export class FixtureManagerClass {
   }
 
   async destroy() {
-    if (this._tdb) {
-      await this._tdb.destroy();
-      this._tdb = null;
+    if (this.testingDb) {
+      await this.testingDb.destroy();
+      this.testingDb = null;
     }
-    if (this._fdb) {
-      await this._fdb.destroy();
-      this._fdb = null;
+    if (this.fixtureDb) {
+      await this.fixtureDb.destroy();
+      this.fixtureDb = null;
     }
     await BaseModel.destroy();
   }
@@ -327,7 +363,7 @@ export class FixtureManagerClass {
       for (const row of rows) {
         const initialRecordsLength = fixtures.length;
         const newRecords = await this.createFixtureRecord(entity, row, {
-          _db: sourceDB,
+          db: sourceDB,
         });
         fixtures.push(...newRecords);
         const currentFixtureRecord = fixtures.find((r) => r.fixtureId === `${entityId}#${row.id}`);
@@ -342,32 +378,32 @@ export class FixtureManagerClass {
       }
 
       for (const fixture of fixtures) {
-        const entity = EntityManager.get(fixture.entityId);
+        const fixtureEntity = EntityManager.get(fixture.entityId);
 
         // 사용자 지정 컬럼 기준 중복 확인 → target
         const customColumns = duplicateCheck?.columns?.[fixture.entityId];
         if (customColumns && customColumns.length > 0) {
           const customDuplicateRow = await this.checkDuplicateByColumns(
             targetDB,
-            entity,
+            fixtureEntity,
             fixture,
             customColumns,
           );
           if (customDuplicateRow) {
-            const [record] = await this.createFixtureRecord(entity, customDuplicateRow, {
+            const [record] = await this.createFixtureRecord(fixtureEntity, customDuplicateRow, {
               singleRecord: true,
-              _db: targetDB,
+              db: targetDB,
             });
             fixture.target = record;
           }
         }
 
         // Unique index 기준 중복 확인 → fixture.unique
-        const uniqueRow = await this.checkUniqueViolation(targetDB, entity, fixture);
+        const uniqueRow = await this.checkUniqueViolation(targetDB, fixtureEntity, fixture);
         if (uniqueRow) {
-          const [record] = await this.createFixtureRecord(entity, uniqueRow, {
+          const [record] = await this.createFixtureRecord(fixtureEntity, uniqueRow, {
             singleRecord: true,
-            _db: targetDB,
+            db: targetDB,
           });
           fixture.unique = record;
         }
@@ -380,26 +416,17 @@ export class FixtureManagerClass {
   }
 
   async createFixtureRecord(
-    entity: Entity,
-    row: {
-      id: number | string;
-      [key: string]: string | number | boolean | null;
-    },
+    rootEntity: Entity,
+    rootRow: FixtureSourceRecord,
     options?: {
       singleRecord?: boolean;
-      _db?: Knex;
+      db?: Knex;
     },
   ): Promise<FixtureRecord[]> {
     const records: FixtureRecord[] = [];
     const visitedEntities = new Set<string>();
 
-    const create = async (
-      entity: Entity,
-      row: {
-        id: number | string;
-        [key: string]: string | number | boolean | null;
-      },
-    ) => {
+    const create = async (entity: Entity, row: FixtureSourceRecord) => {
       const fixtureId = `${entity.id}#${row.id}`;
       if (visitedEntities.has(fixtureId)) {
         return;
@@ -420,12 +447,14 @@ export class FixtureManagerClass {
           continue;
         }
 
+        // SAFETY: FixtureRecord의 레거시 값 타입보다 실제 DB/JSON fixture 값 계약이 넓습니다.
+        const columnValue = row[prop.name] as FixtureRecord["columns"][string]["value"];
         record.columns[prop.name] = {
           prop: prop,
-          value: row[prop.name],
+          value: columnValue,
         };
 
-        const db = options?._db ?? BaseModel.getDB("w");
+        const db = options?.db ?? BaseModel.getDB("w");
         if (isManyToManyRelationProp(prop)) {
           const relatedEntity = EntityManager.get(prop.with);
           const throughTable = prop.joinTable;
@@ -454,7 +483,7 @@ export class FixtureManagerClass {
             record.columns[prop.name].value = relatedRow?.id;
           }
         } else if (isRelationProp(prop)) {
-          const relatedId = row[`${prop.name}_id`];
+          const relatedId = relationIdSchema.parse(row[`${prop.name}_id`]);
           record.columns[prop.name].value = relatedId;
           if (relatedId) {
             record.belongsRecords.push(`${prop.with}#${relatedId}`);
@@ -463,7 +492,10 @@ export class FixtureManagerClass {
             const relatedEntity = EntityManager.get(prop.with);
             const relatedRow = await db(relatedEntity.table).where("id", relatedId).first();
             if (relatedRow) {
-              await create(relatedEntity, relatedRow);
+              await create(relatedEntity, {
+                ...dataExplorerRecordSchema.parse(relatedRow),
+                id: z.union([z.number(), z.string()]).parse(relatedRow.id),
+              });
             }
           }
         }
@@ -472,7 +504,7 @@ export class FixtureManagerClass {
       records.push(record);
     };
 
-    await create(entity, row);
+    await create(rootEntity, rootRow);
 
     return records;
   }
@@ -504,7 +536,7 @@ export class FixtureManagerClass {
         ? (() => {
             const workerId = parseInt(process.env.VITEST_POOL_ID ?? "1", 10);
             const baseConfig = Sonamu.dbConfig[dbName];
-            const connection = baseConfig.connection as { database: string };
+            const connection = databaseConnectionSchema.parse(baseConfig.connection);
             return {
               ...baseConfig,
               connection: { ...connection, database: `${connection.database}_${workerId}` },
@@ -591,7 +623,7 @@ export class FixtureManagerClass {
 
             // upsert 실행 전 uuid 목록 저장
             const table = this.builder.getTable(tableName);
-            const uuids = table.rows.map((row) => row.uuid as string);
+            const uuids = table.rows.map((row) => z.string().parse(row.uuid));
 
             !isTest() &&
               console.log(
@@ -599,10 +631,11 @@ export class FixtureManagerClass {
                   `Upserting ${tableName} with ${uuids.length} rows (level ${levels.indexOf(levelFixtures) + 1}/${levels.length})`,
                 ),
               );
-            const ids = (await this.builder.upsert(
-              trx,
-              tableName as keyof DatabaseSchemaExtend,
-            )) as (number | string)[];
+            // SAFETY: tableName은 등록된 Entity의 실제 테이블명에서만 생성됩니다.
+            const schemaTableName = tableName as keyof DatabaseSchemaExtend;
+            const ids = fixtureRecordIdsSchema.parse(
+              await this.builder.upsert(trx, schemaTableName),
+            );
 
             // 순서 기반 uuid -> id 매핑
             // self-reference가 없으므로 등록 순서 = 반환 순서 보장
@@ -734,7 +767,7 @@ export class FixtureManagerClass {
     insertedIdsByTable?: Map<string, Map<string, number | string>>,
   ): UBRef {
     const entity = EntityManager.get(fixture.entityId);
-    const row: Record<string, unknown> = {};
+    const row: UpsertRow = {};
 
     // Override 모드 판단: target 또는 unique가 있고 override=true인 경우
     const existingRecord = fixture.target ?? fixture.unique;
@@ -778,7 +811,7 @@ export class FixtureManagerClass {
           isBelongsToOneRelationProp(prop) ||
           (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
         ) {
-          const relatedId = column.value as number | null;
+          const relatedId = relationIdSchema.parse(column.value);
           if (relatedId !== null && relatedId !== undefined) {
             const relatedFixtureId = `${prop.with}#${relatedId}`;
 
@@ -814,7 +847,7 @@ export class FixtureManagerClass {
         // HasMany, ManyToMany는 별도 처리
       } else {
         // 일반 컬럼
-        row[propName] = this.convertColumnValue(prop as EntityProp, column.value);
+        row[propName] = this.convertColumnValue(prop, column.value);
       }
     }
 
@@ -829,7 +862,10 @@ export class FixtureManagerClass {
   /**
    * 컬럼 값 변환
    */
-  private convertColumnValue(prop: EntityProp, value: unknown): unknown {
+  private convertColumnValue(
+    prop: EntityProp,
+    value: FixtureRecord["columns"][string]["value"],
+  ): DataExplorerValue {
     if (value === null || value === undefined) {
       return null;
     }
@@ -840,8 +876,11 @@ export class FixtureManagerClass {
         return value;
 
       case "date":
-        if (typeof value === "string" || typeof value === "number") {
-          return new Date(value);
+        {
+          const dateSource = z.union([z.string(), z.number()]).safeParse(value);
+          if (dateSource.success) {
+            return new Date(dateSource.data);
+          }
         }
         return value;
 
@@ -874,7 +913,7 @@ export class FixtureManagerClass {
           const targetTable = EntityManager.get(prop.with);
           if (!this.builder.hasTable(targetTable.table)) continue;
 
-          const relatedIds = column.value as number[];
+          const relatedIds = fixtureRecordIdsSchema.parse(column.value);
           if (relatedIds.length === 0) continue;
 
           const joinTable = prop.joinTable;
@@ -974,7 +1013,7 @@ export class FixtureManagerClass {
 
         // self-reference가 모두 이미 처리됐거나 null인 경우
         const canProcess = selfRefProps.every((prop) => {
-          const refId = fixture.columns[prop.name]?.value as number | null;
+          const refId = relationIdSchema.parse(fixture.columns[prop.name]?.value);
           if (refId === null || refId === undefined) return true;
           const refFixtureId = `${prop.with}#${refId}`;
           // 이미 처리됐거나, 현재 fixtures에 포함되지 않은 경우 (외부 참조)
@@ -1005,9 +1044,9 @@ export class FixtureManagerClass {
   }
 
   private async checkUniqueViolation(db: Knex, entity: Entity, fixture: FixtureRecord) {
-    const _uniqueIndexes = entity.indexes?.filter((i) => i.type === "unique") ?? [];
+    const entityUniqueIndexes = entity.indexes?.filter((i) => i.type === "unique") ?? [];
 
-    const uniqueIndexes = _uniqueIndexes.filter((index) =>
+    const uniqueIndexes = entityUniqueIndexes.filter((index) =>
       index.columns.every((column) => !column.name.startsWith(`${entity.table}__`)),
     );
     if (uniqueIndexes.length === 0) {
@@ -1059,7 +1098,7 @@ export class FixtureManagerClass {
       return null;
     }
 
-    const whereClause: Record<string, unknown> = {};
+    const whereClause: DataExplorerRecord = {};
 
     for (const column of columns) {
       // relation 필드인 경우 _id 붙이기

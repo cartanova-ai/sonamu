@@ -17,14 +17,25 @@
  * 따라서 실행 환경의 ~/.npmrc 파일에 npmAuthToken이 설정되어 있어야 합니다.
  */
 
-import { exec } from "child_process";
 import { readFile } from "fs/promises";
+import { spawn } from "node:child_process";
 import { resolve as pathResolve } from "path";
 
 type LocalPackageInfo = {
   name: string;
   version: string;
 };
+
+type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
+type JsonObject = { [key: string]: JsonValue | undefined };
+
+function isJsonObject(value: JsonValue): value is JsonObject {
+  return value !== null && !Array.isArray(value) && Object(value) === value;
+}
+
+function isString(value: JsonValue | undefined): value is string {
+  return Object.prototype.toString.call(value) === "[object String]";
+}
 
 function getPublishTag(): string | undefined {
   const tag = process.env.NPM_DIST_TAG?.trim();
@@ -54,14 +65,20 @@ async function publish(...packagePaths: string[]) {
 }
 
 async function resolveAllPackages(...packagePaths: string[]): Promise<LocalPackageInfo[]> {
-  return (await Promise.all(packagePaths.map(async (path) => await getPackageInfo(path)))).filter(
-    (info): info is LocalPackageInfo => info !== undefined,
-  );
+  return await Promise.all(packagePaths.map(async (path) => await getPackageInfo(path)));
 }
 
-async function getPackageInfo(packagePath: string): Promise<LocalPackageInfo | undefined> {
-  const packageJson = await readFile(pathResolve(packagePath, "package.json"), "utf-8");
-  const packageJsonObject = JSON.parse(packageJson);
+async function getPackageInfo(packagePath: string): Promise<LocalPackageInfo> {
+  const packageJsonPath = pathResolve(packagePath, "package.json");
+  const packageJson = await readFile(packageJsonPath, "utf-8");
+  const packageJsonObject: JsonValue = JSON.parse(packageJson);
+  if (
+    !isJsonObject(packageJsonObject) ||
+    !isString(packageJsonObject.name) ||
+    !isString(packageJsonObject.version)
+  ) {
+    throw new TypeError(`Invalid package metadata: ${packageJsonPath}`);
+  }
   return {
     name: packageJsonObject.name,
     version: packageJsonObject.version,
@@ -84,12 +101,21 @@ async function publishPackage(localPackage: LocalPackageInfo, publishTag?: strin
   return new Promise((resolve, reject) => {
     console.log(`${localPackage.name}@${localPackage.version}: 퍼블리시 중입니다...`);
 
-    const command = publishTag
-      ? `mise exec -- pnpm --filter ${localPackage.name} publish --no-git-checks --tag ${publishTag}`
-      : `mise exec -- pnpm --filter ${localPackage.name} publish --no-git-checks`;
-    console.log(command);
+    const args = [
+      "exec",
+      "--",
+      "pnpm",
+      "--filter",
+      localPackage.name,
+      "publish",
+      "--no-git-checks",
+    ];
+    if (publishTag !== undefined) {
+      args.push("--tag", publishTag);
+    }
+    console.log(["mise", ...args].join(" "));
 
-    const child = exec(command);
+    const child = spawn("mise", args);
 
     child.stdout?.pipe(process.stdout);
     child.stderr?.pipe(process.stderr);

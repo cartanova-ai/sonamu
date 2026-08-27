@@ -1,5 +1,9 @@
 import { type CddTreeNode } from "../types";
 
+function fileTypeOrder(fileType?: string): number {
+  return fileType === "contract" ? 0 : fileType === "rules" ? 1 : 2;
+}
+
 export function countFiles(nodes: CddTreeNode[]): number {
   let count = 0;
   for (const node of nodes) {
@@ -34,7 +38,6 @@ export function filterTree(nodes: CddTreeNode[], query: string): CddTreeNode[] {
 }
 
 export function sortTree(nodes: CddTreeNode[], isRoot = false): CddTreeNode[] {
-  const fileTypeOrder = (ft?: string) => (ft === "contract" ? 0 : ft === "rules" ? 1 : 2);
   const sorted = [...nodes].toSorted((a, b) => {
     if (isRoot) {
       const aIsMain = a.name === "main.contract.md";

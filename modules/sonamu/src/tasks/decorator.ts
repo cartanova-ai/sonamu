@@ -13,18 +13,18 @@ import { type Executable } from "../types/types";
 import { type WorkflowFunction } from "./workflow-manager";
 
 // 워크플로우의 메타데이터 객체
-export interface WorkflowMetadata {
+export interface WorkflowMetadata<RawInput = unknown, Input = unknown, Output = unknown> {
   type: "workflow";
   id: string;
   name: string;
   version: string | null;
-  schema: StandardSchemaV1<unknown, unknown> | undefined;
+  schema: StandardSchemaV1<RawInput, Input> | undefined;
   schedules: {
     name: string;
     expression: string;
-    input: Executable<SchemaInput<unknown, unknown> | undefined>;
+    input: Executable<RawInput | undefined>;
   }[];
-  fn: WorkflowFunction<unknown, unknown>;
+  fn: WorkflowFunction<Input, Output>;
   retryPolicy?: RetryPolicy;
 }
 
@@ -50,22 +50,30 @@ export type DefineWorkflowOptions<
 // 이것들은 syncer에서 한번에 load한 다음, WorkflowManager에서 synchronize를 통해 등록됨.
 export function workflow<Input, Output, TSchema extends StandardSchemaV1 | undefined = undefined>(
   options: DefineWorkflowOptions<Input, Output, TSchema>,
-): (fn: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>) => WorkflowMetadata;
+): (
+  fn: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>,
+) => WorkflowMetadata<SchemaInput<TSchema, Input>, SchemaOutput<TSchema, Input>, Output>;
 export function workflow<Input, Output, TSchema extends StandardSchemaV1 | undefined = undefined>(
   options: DefineWorkflowOptions<Input, Output, TSchema>,
   fn: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>,
-): WorkflowMetadata;
+): WorkflowMetadata<SchemaInput<TSchema, Input>, SchemaOutput<TSchema, Input>, Output>;
 export function workflow<Input, Output, TSchema extends StandardSchemaV1 | undefined = undefined>(
   options: DefineWorkflowOptions<Input, Output, TSchema>,
   fn?: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>,
 ):
-  | WorkflowMetadata
-  | ((fn: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>) => WorkflowMetadata) {
-  const decorated = (fn: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>) => {
+  | WorkflowMetadata<SchemaInput<TSchema, Input>, SchemaOutput<TSchema, Input>, Output>
+  | ((
+      fn: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>,
+    ) => WorkflowMetadata<SchemaInput<TSchema, Input>, SchemaOutput<TSchema, Input>, Output>) {
+  const decorated = (workflowFunction: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>) => {
     const id = randomUUID();
-    const workflowName = options.name ?? inflection.underscore(fn.name);
+    const workflowName = options.name ?? inflection.underscore(workflowFunction.name);
 
-    const metadata: WorkflowMetadata = {
+    const metadata: WorkflowMetadata<
+      SchemaInput<TSchema, Input>,
+      SchemaOutput<TSchema, Input>,
+      Output
+    > = {
       type: "workflow" as const,
       id,
       name: workflowName,
@@ -78,7 +86,7 @@ export function workflow<Input, Output, TSchema extends StandardSchemaV1 | undef
           input: schedule.input,
         };
       }),
-      fn: fn as WorkflowFunction<unknown, unknown>,
+      fn: workflowFunction,
       retryPolicy: options.retryPolicy,
     };
 

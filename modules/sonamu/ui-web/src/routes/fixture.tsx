@@ -9,7 +9,7 @@ import {
   useTypeForm,
 } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { type FixtureImportResult, type FixtureRecord } from "sonamu";
 import { z } from "zod";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
@@ -81,6 +81,10 @@ function FixtureIndex() {
   );
 
   const [searchEntity, setSearchEntity] = useState<ExtendedEntity | null>(null);
+  const nextSearchEntity = entitiesData?.entities?.find((entity) => entity.id === form.entityId);
+  if (nextSearchEntity && nextSearchEntity !== searchEntity) {
+    setSearchEntity(nextSearchEntity);
+  }
 
   // 중복 확인 설정용 선택된 엔티티
   const dupCheckEntity = entitiesData?.entities?.find((e) => e.id === dupCheckEntityId) ?? null;
@@ -197,12 +201,12 @@ function FixtureIndex() {
         // 해당 레코드를 불러올 때 포함된 레코드가 없다면(즉, 다른 레코드를 불러올 때 포함된 레코드인 경우)
         // 해당 레코드를 필요로 하는 다른 레코드 확인하여 삭제
         const visited = new Set<string>();
-        const collectDeletableRecords = (fixtureId: string) => {
-          if (visited.has(fixtureId)) return;
-          visited.add(fixtureId);
+        const collectDeletableRecords = (candidateFixtureId: string) => {
+          if (visited.has(candidateFixtureId)) return;
+          visited.add(candidateFixtureId);
 
           fixtureRecords.forEach((r) => {
-            if (r.belongsRecords.includes(fixtureId)) {
+            if (r.belongsRecords.includes(candidateFixtureId)) {
               collectDeletableRecords(r.fixtureId);
             }
           });
@@ -213,14 +217,14 @@ function FixtureIndex() {
 
       setSelectedIds((prev) => {
         const newSet = new Set(prev);
-        toDelete.forEach((fixtureId) => {
-          newSet.delete(fixtureId);
+        toDelete.forEach((deletedFixtureId) => {
+          newSet.delete(deletedFixtureId);
         });
         return newSet;
       });
 
       setFixtureRecords((prevRecords) =>
-        prevRecords.filter((record) => !toDelete.has(record.fixtureId)),
+        prevRecords.filter((candidateRecord) => !toDelete.has(candidateRecord.fixtureId)),
       );
     }
   };
@@ -250,20 +254,6 @@ function FixtureIndex() {
       return rest;
     });
   };
-
-  useEffect(() => {
-    if (form.entityId && entitiesData?.entities) {
-      const e = entitiesData.entities.find((e) => e.id === form.entityId);
-      if (e) {
-        setSearchEntity(e);
-      }
-    }
-  }, [form.entityId, entitiesData]);
-
-  // 엔티티 변경 시 컬럼 선택 초기화
-  useEffect(() => {
-    setDupCheckSelectedColumns([]);
-  }, []);
 
   // Tabs는 activeTab state를 "0", "1" 문자열로 관리
   const tabValue = String(activeTab);
@@ -410,16 +400,11 @@ function FixtureIndex() {
                   return false;
                 });
 
-                const groupedByEntity = saveTargets.reduce(
-                  (acc, f) => {
-                    if (!acc[f.entityId]) {
-                      acc[f.entityId] = [];
-                    }
-                    acc[f.entityId].push(f);
-                    return acc;
-                  },
-                  {} as Record<string, FixtureRecord[]>,
-                );
+                const groupedByEntity: Record<string, FixtureRecord[]> = {};
+                for (const fixture of saveTargets) {
+                  groupedByEntity[fixture.entityId] ??= [];
+                  groupedByEntity[fixture.entityId].push(fixture);
+                }
 
                 return (
                   <div style={{ marginTop: "10px", marginBottom: "10px" }}>

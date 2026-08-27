@@ -85,6 +85,8 @@ export function migrationExecutionReducer(
           currentFile: undefined,
           done: true,
         };
+      default:
+        return target;
     }
   })();
 

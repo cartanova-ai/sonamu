@@ -4,16 +4,30 @@ import path from "node:path";
 import { performance } from "node:perf_hooks";
 import process from "node:process";
 
+import { isNumberValue, isObjectValue, isStringValue } from "../src/utils/runtime-value";
+
 type ModeName = "uncachedPlain" | "cachedPlain" | "eagerJit" | "aot";
 type IsolatedModeName = Exclude<ModeName, "uncachedPlain">;
 type LayerName = "validator" | "handler" | "fastifyInject";
 type Percentiles = { p50Ns: number; p95Ns: number };
 type StartupResult = { validatorMs: number; fastifyMs: number; totalMs: number };
 type ProcessResult = { startupMs: number; rssAtStartBytes: number; rssReadyBytes: number };
+type BenchmarkEnvironment = {
+  node: string;
+  zod: string;
+  zodCompiler: string;
+  schemaCount: number;
+  validPercent: number;
+  syncWarmupIterations: number;
+  syncSamples: number;
+  operationsPerSyncSample: number;
+  injectWarmupIterations: number;
+  injectSamples: number;
+};
 type ModeRunResult = {
   runIndex: number;
   mode: IsolatedModeName;
-  environment: Record<string, unknown>;
+  environment: BenchmarkEnvironment;
   parity: boolean;
   fixtureAssertions: { validAccepted: boolean; invalidRejected: boolean };
   results: Record<LayerName, Partial<Record<ModeName, Percentiles>>>;
@@ -23,12 +37,15 @@ type ModeRunResult = {
 };
 type CombinedRunResult = {
   runIndex: number;
-  environment: Record<string, unknown>;
+  environment: BenchmarkEnvironment;
   parity: boolean;
   fixtureAssertions: { validAccepted: boolean; invalidRejected: boolean };
   results: Record<LayerName, Partial<Record<ModeName, Percentiles>>>;
   startup: Partial<Record<ModeName, StartupResult>>;
   process: Partial<Record<IsolatedModeName, ProcessResult>>;
+};
+type CombinedRunAccumulator = Omit<CombinedRunResult, "environment"> & {
+  environment?: BenchmarkEnvironment;
 };
 
 const RUN_COUNT = 5;
@@ -43,30 +60,77 @@ const artifactPaths = [
   path.join(packageRoot, "benchmarks/dist/http-validator-schema.mjs"),
 ];
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+function isNonNullObject<Value>(value: Value): value is Value & object {
+  return isObjectValue(value) && value !== null;
 }
 
-function isIsolatedModeName(value: unknown): value is IsolatedModeName {
-  return value === "cachedPlain" || value === "eagerJit" || value === "aot";
-}
-
-function isModeRunResult(value: unknown): value is ModeRunResult {
-  if (!isRecord(value) || !isRecord(value.results) || !isRecord(value.startup)) {
+function isBenchmarkEnvironment<Value>(value: Value): value is Value & BenchmarkEnvironment {
+  if (!isNonNullObject(value)) {
     return false;
   }
   return (
-    typeof value.runIndex === "number" &&
+    "node" in value &&
+    isStringValue(value.node) &&
+    "zod" in value &&
+    isStringValue(value.zod) &&
+    "zodCompiler" in value &&
+    isStringValue(value.zodCompiler) &&
+    "schemaCount" in value &&
+    isNumberValue(value.schemaCount) &&
+    "validPercent" in value &&
+    isNumberValue(value.validPercent) &&
+    "syncWarmupIterations" in value &&
+    isNumberValue(value.syncWarmupIterations) &&
+    "syncSamples" in value &&
+    isNumberValue(value.syncSamples) &&
+    "operationsPerSyncSample" in value &&
+    isNumberValue(value.operationsPerSyncSample) &&
+    "injectWarmupIterations" in value &&
+    isNumberValue(value.injectWarmupIterations) &&
+    "injectSamples" in value &&
+    isNumberValue(value.injectSamples)
+  );
+}
+
+function isIsolatedModeName<Value>(value: Value): value is Value & IsolatedModeName {
+  return value === "cachedPlain" || value === "eagerJit" || value === "aot";
+}
+
+function isModeRunResult<Value>(value: Value): value is Value & ModeRunResult {
+  if (
+    !isNonNullObject(value) ||
+    !("results" in value) ||
+    !isNonNullObject(value.results) ||
+    !("startup" in value) ||
+    !isNonNullObject(value.startup)
+  ) {
+    return false;
+  }
+  return (
+    "runIndex" in value &&
+    isNumberValue(value.runIndex) &&
+    "mode" in value &&
     isIsolatedModeName(value.mode) &&
+    "environment" in value &&
+    isBenchmarkEnvironment(value.environment) &&
+    "parity" in value &&
     value.parity === true &&
-    isRecord(value.fixtureAssertions) &&
+    "fixtureAssertions" in value &&
+    isNonNullObject(value.fixtureAssertions) &&
+    "validAccepted" in value.fixtureAssertions &&
     value.fixtureAssertions.validAccepted === true &&
+    "invalidRejected" in value.fixtureAssertions &&
     value.fixtureAssertions.invalidRejected === true &&
-    isRecord(value.process) &&
-    typeof value.process.startupMs === "number" &&
-    typeof value.process.rssAtStartBytes === "number" &&
-    typeof value.process.rssReadyBytes === "number" &&
-    typeof value.resultChecksum === "number"
+    "process" in value &&
+    isNonNullObject(value.process) &&
+    "startupMs" in value.process &&
+    isNumberValue(value.process.startupMs) &&
+    "rssAtStartBytes" in value.process &&
+    isNumberValue(value.process.rssAtStartBytes) &&
+    "rssReadyBytes" in value.process &&
+    isNumberValue(value.process.rssReadyBytes) &&
+    "resultChecksum" in value &&
+    isNumberValue(value.resultChecksum)
   );
 }
 
@@ -138,9 +202,8 @@ const artifactBytes = artifactPaths.reduce((total, filePath) => total + statSync
 
 const runs: CombinedRunResult[] = [];
 for (let runIndex = 0; runIndex < RUN_COUNT; runIndex++) {
-  const combined: CombinedRunResult = {
+  const combined: CombinedRunAccumulator = {
     runIndex,
-    environment: {},
     parity: true,
     fixtureAssertions: { validAccepted: true, invalidRejected: true },
     results: { validator: {}, handler: {}, fastifyInject: {} },
@@ -168,7 +231,10 @@ for (let runIndex = 0; runIndex < RUN_COUNT; runIndex++) {
     Object.assign(combined.startup, modeRun.startup);
     combined.process[modeName] = modeRun.process;
   }
-  runs.push(combined);
+  if (combined.environment === undefined) {
+    throw new Error(`${runIndex}번 run에 benchmark 환경 정보가 없습니다`);
+  }
+  runs.push({ ...combined, environment: combined.environment });
 }
 
 const medianResults = Object.fromEntries(

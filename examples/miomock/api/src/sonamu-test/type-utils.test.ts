@@ -114,6 +114,7 @@ describe("type-utils", () => {
 
     test("빈 배열 처리", () => {
       // 빈 배열은 그대로 유지되며, 타입만 업데이트됨
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       const obj = { users: [] as { name: string }[] };
       const result = withProp(obj, "users.age", 30);
 

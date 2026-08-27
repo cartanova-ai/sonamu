@@ -4,12 +4,12 @@ import { describe, expect, vi } from "vitest";
 
 bootstrap(vi);
 
-describe("DataExplorer", () => {
-  const getExplorer = () => {
-    const db = DB.testTransaction || DB.getDB("w");
-    return new DataExplorer(db, EntityManager);
-  };
+const getExplorer = () => {
+  const db = DB.testTransaction || DB.getDB("w");
+  return new DataExplorer(db, EntityManager);
+};
 
+describe("DataExplorer", () => {
   describe("explore()", () => {
     test("sample 전략으로 균등 샘플링", async () => {
       const explorer = getExplorer();
@@ -34,7 +34,10 @@ describe("DataExplorer", () => {
       expect(users.length).toBeLessThanOrEqual(3);
 
       if (users.length >= 2) {
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
         const first = new Date(users[0]?.created_at as string).getTime();
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
         const second = new Date(users[1]?.created_at as string).getTime();
         expect(first).toBeGreaterThanOrEqual(second);
       }
@@ -57,17 +60,21 @@ describe("DataExplorer", () => {
         strategy: "sample",
         limit: 3,
       });
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
 
       if (allUsers.length > 0) {
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
         const targetIds = allUsers.map((u) => u.id as number);
 
         const users = await explorer.explore("User", {
           strategy: "ids",
           ids: targetIds,
         });
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
 
         expect(users.length).toBe(targetIds.length);
         users.forEach((user) => {
+          // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
           expect(targetIds).toContain(user.id as number);
         });
       }

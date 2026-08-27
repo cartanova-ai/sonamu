@@ -3,6 +3,8 @@ import assert from "assert";
 import { z } from "zod";
 import { type $ZodType } from "zod/v4/core";
 
+import { isObjectValue, isStringValue } from "../utils/runtime-value";
+
 function isNumberType(zodType: $ZodType): zodType is z.ZodNumber {
   return zodType instanceof z.ZodNumber;
 }
@@ -28,7 +30,7 @@ function isZodNumberAnyway(zodType: $ZodType) {
 // ZodType을 이용해 raw를 Type Coercing
 // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 캐스팅에는 any가 필요함.
 export function caster(zodType: $ZodType, raw: any): any {
-  if (isZodNumberAnyway(zodType) && typeof raw === "string") {
+  if (isZodNumberAnyway(zodType) && isStringValue(raw)) {
     // number
     return Number(raw);
   } else if (
@@ -51,14 +53,10 @@ export function caster(zodType: $ZodType, raw: any): any {
     // array
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 캐스팅에는 any가 필요함.
     return raw.map((elem: any) => caster(zodType.element, elem));
-  } else if (zodType instanceof z.ZodObject && typeof raw === "object" && raw !== null) {
+  } else if (zodType instanceof z.ZodObject && isObjectValue(raw) && raw !== null) {
     // object
-    return Object.keys(raw).reduce(
-      (r, rawKey) => {
-        r[rawKey] = caster(zodType.shape[rawKey], raw[rawKey]);
-        return r;
-      },
-      {} as Record<string, unknown>,
+    return Object.fromEntries(
+      Object.keys(raw).map((rawKey) => [rawKey, caster(zodType["shape"][rawKey], raw[rawKey])]),
     );
   } else if (zodType instanceof z.ZodOptional) {
     // optional

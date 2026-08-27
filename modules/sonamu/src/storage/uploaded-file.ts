@@ -6,8 +6,8 @@ import { type DriverKey } from "./drivers";
  * 이미 저장소에 스트리밍 완료된 상태로, url/key 등 메타데이터만 접근 가능합니다.
  */
 export class UploadedFile extends BaseFile {
-  private _key: string;
-  private _diskName: DriverKey;
+  private keyValue: string;
+  private diskNameValue: DriverKey;
 
   constructor(params: {
     filename: string;
@@ -25,18 +25,18 @@ export class UploadedFile extends BaseFile {
       url: params.url,
       signedUrl: params.signedUrl,
     });
-    this._key = params.key;
-    this._diskName = params.diskName;
+    this.keyValue = params.key;
+    this.diskNameValue = params.diskName;
   }
 
   /** 저장소 내 키 */
   get key(): string {
-    return this._key;
+    return this.keyValue;
   }
 
   /** 저장된 디스크 이름 */
   get diskName(): DriverKey {
-    return this._diskName;
+    return this.diskNameValue;
   }
 
   /**
@@ -45,9 +45,9 @@ export class UploadedFile extends BaseFile {
    */
   async download(): Promise<Buffer> {
     const { Sonamu } = await import("../api/sonamu");
-    const disk = Sonamu.storage.use(this._diskName);
+    const disk = Sonamu.storage.use(this.diskNameValue);
 
-    const uint8Array = await disk.get(this._key);
+    const uint8Array = await disk.get(this.keyValue);
     return Buffer.from(uint8Array);
   }
 }

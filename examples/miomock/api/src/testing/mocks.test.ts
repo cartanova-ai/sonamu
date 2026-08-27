@@ -1,9 +1,7 @@
-import { constants } from "fs";
-import { access } from "fs/promises";
 import { join } from "path";
 
 import { Naite, Sonamu } from "sonamu";
-import { bootstrap, test } from "sonamu/test";
+import { bootstrap, exists, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
 
 bootstrap(vi);
@@ -33,15 +31,3 @@ describe("Mocks Testing", () => {
     });
   });
 });
-
-// ============================================
-// 유틸 함수
-// ============================================
-async function exists(filePath: string) {
-  try {
-    await access(filePath, constants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}

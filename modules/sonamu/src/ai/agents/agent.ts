@@ -22,14 +22,14 @@ const toolDefinitions: RegisteredToolDefinition[] = [];
 export class BaseAgentClass<TStore> {
   protected readonly logger: Logger;
 
-  private _als = new AsyncLocalStorage<TStore>();
+  private asyncLocalStorage = new AsyncLocalStorage<TStore>();
 
   constructor(public readonly agentName: string = this.constructor.name) {
     this.logger = getLogger(convertDomainToCategory(this.agentName, "agent"));
   }
 
   public get store() {
-    return this._als.getStore();
+    return this.asyncLocalStorage.getStore();
   }
 
   protected get toolSet() {
@@ -43,9 +43,9 @@ export class BaseAgentClass<TStore> {
           needsApproval: def.needsApproval ?? false,
           toModelOutput: def.toModelOutput,
           providerOptions: def.providerOptions,
-          execute: (input: unknown, options: ToolExecutionOptions) => {
+          execute: <Input>(input: Input, options: ToolExecutionOptions) => {
             const bound = def.method.bind(this);
-            return bound.length >= 2 ? bound(input, options) : bound(input);
+            return bound(input, options);
           },
         });
         return acc;
@@ -66,7 +66,7 @@ export class BaseAgentClass<TStore> {
       tools: this.tools,
     });
 
-    return this._als.run(initialStatus, () => callback(agent));
+    return this.asyncLocalStorage.run(initialStatus, () => callback(agent));
   }
 }
 

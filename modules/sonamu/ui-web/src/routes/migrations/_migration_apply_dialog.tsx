@@ -11,7 +11,7 @@ import {
 } from "@sonamu-kit/react-components";
 import { useQuery } from "@tanstack/react-query";
 import classNames from "classnames";
-import { Fragment, useEffect, useReducer, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { type MigrationConnectionMeta, type MigrationStreamEvent } from "sonamu";
 import PlayIcon from "~icons/lucide/play";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
@@ -116,7 +116,7 @@ export function MigrationApplyDialog({
   onSettled,
 }: MigrationApplyDialogProps) {
   const { SD } = useSonamuContext();
-  const [phase, setPhase] = useState<ApplyPhase>("review");
+  const [phaseState, setPhase] = useState<ApplyPhase>("review");
   const [shadowEnabled, setShadowEnabled] = useState(true);
   const [approval, setApproval] = useState<{ channel: string; ts: string }>();
   const [forceOpen, setForceOpen] = useState(false);
@@ -132,12 +132,11 @@ export function MigrationApplyDialog({
   );
   const abortRef = useRef<AbortController | undefined>(undefined);
   const approvalRequestRef = useRef(false);
-  const targets = connections.map(({ connKey }) => connKey);
+  const targets = useMemo(() => connections.map(({ connKey }) => connKey), [connections]);
   const needsApproval = connections.some(
     ({ connKey, remote, requiresApproval }) =>
       remote && requiresApproval && (pendingByConnection[connKey]?.length ?? 0) > 0,
   );
-  const closeLocked = requestingApproval || phase === "approval" || phase === "running";
   const combinedForceReason = [...forceChips, forceReason.trim()].filter(Boolean).join(" ");
   const shadowProgress = execution.targets.shadow;
   const shadowFiles = [...new Set(Object.values(pendingByConnection).flat())].toSorted();
@@ -159,13 +158,20 @@ export function MigrationApplyDialog({
     queryKey: ["migrations", "approval", approval?.channel, approval?.ts],
     queryFn: () =>
       SonamuUIService.migrationsCheckApproval(approval?.channel ?? "", approval?.ts ?? ""),
-    enabled: phase === "approval" && approval !== undefined,
-    refetchInterval: 2000,
+    enabled: phaseState === "approval" && approval !== undefined,
+    refetchInterval: (query) => (query.state.data?.approved === true ? false : 2000),
     retry: 2,
   });
+  const phase: ApplyPhase =
+    phaseState === "approval" && approvalQuery.data?.approved === true
+      ? "ready"
+      : phaseState === "approval" &&
+          (approvalQuery.data?.rejected === true || approvalQuery.error !== null)
+        ? "failed"
+        : phaseState;
+  const closeLocked = requestingApproval || phase === "approval" || phase === "running";
 
   useEffect(() => {
-    if (approvalQuery.data?.approved === true) setPhase("ready");
     if (approvalQuery.data?.rejected === true) {
       dispatch({
         type: "error",
@@ -174,9 +180,8 @@ export function MigrationApplyDialog({
         completedTargets: [],
         pendingTargets: connections.map(({ connKey }) => connKey),
       });
-      setPhase("failed");
     }
-  }, [approvalQuery.data?.approved, approvalQuery.data?.rejected, connections]);
+  }, [approvalQuery.data?.rejected, connections, SD]);
   useEffect(() => {
     if (phase !== "approval" || approvalQuery.error === null) return;
     dispatch({
@@ -189,8 +194,7 @@ export function MigrationApplyDialog({
       completedTargets: [],
       pendingTargets: targets,
     });
-    setPhase("failed");
-  }, [approvalQuery.error, phase, targets]);
+  }, [approvalQuery.error, phase, SD, targets]);
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const consume = async (
@@ -220,11 +224,11 @@ export function MigrationApplyDialog({
     return "disconnected";
   };
 
-  const failBeforeExecution = (caught: unknown) => {
+  const failBeforeExecution = (message: string) => {
     dispatch({
       type: "error",
       action: "apply",
-      message: caught instanceof Error ? caught.message : String(caught),
+      message,
       completedTargets: [],
       pendingTargets: targets,
     });
@@ -254,7 +258,7 @@ export function MigrationApplyDialog({
       );
     } catch (caught) {
       if (caught instanceof SonamuUIService.MigrationResponseError) {
-        failBeforeExecution(caught);
+        failBeforeExecution(caught.message);
       } else {
         const message = caught instanceof Error ? caught.message : String(caught);
         dispatch({ type: "disconnected", action: "apply", message });
@@ -280,7 +284,7 @@ export function MigrationApplyDialog({
         setPhase("approval");
       }
     } catch (caught) {
-      failBeforeExecution(caught);
+      failBeforeExecution(caught instanceof Error ? caught.message : String(caught));
     } finally {
       approvalRequestRef.current = false;
       setRequestingApproval(false);
@@ -298,7 +302,7 @@ export function MigrationApplyDialog({
       setBypassed(true);
       setPhase("ready");
     } catch (caught) {
-      failBeforeExecution(caught);
+      failBeforeExecution(caught instanceof Error ? caught.message : String(caught));
     }
   };
 
@@ -378,7 +382,7 @@ export function MigrationApplyDialog({
                   className="data-[state=unchecked]:bg-gray-300"
                   checked={shadowEnabled}
                   disabled={phase !== "review"}
-                  onCheckedChange={(checked) => setShadowEnabled(checked === true)}
+                  onCheckedChange={(checked) => setShadowEnabled(checked)}
                 />
                 {SD("migration.apply.shadowToggle")}
               </label>

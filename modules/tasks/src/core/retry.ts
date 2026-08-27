@@ -42,7 +42,10 @@ export const DEFAULT_RETRY_POLICY: Required<StaticRetryPolicy> = {
 };
 
 export function isDynamicRetryPolicy(policy: RetryPolicy): policy is DynamicRetryPolicy {
-  return "shouldRetry" in policy && typeof policy.shouldRetry === "function";
+  return (
+    "shouldRetry" in policy &&
+    Object.prototype.toString.call(policy.shouldRetry).endsWith("Function]")
+  );
 }
 
 export function isStaticRetryPolicy(policy: RetryPolicy): policy is StaticRetryPolicy {

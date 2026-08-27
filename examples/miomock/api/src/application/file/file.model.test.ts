@@ -24,7 +24,7 @@ describe("FileModel", () => {
       ]);
       assert(fileId);
 
-      expect(typeof fileId).toBe("number");
+      expect(Number.isInteger(fileId)).toBe(true);
 
       const file = await FileModel.findById("A", fileId);
       expect(file.name).toBe("test-image.png");

@@ -1,5 +1,7 @@
 #!/usr/bin/env npx tsx
 
+/// <reference types="node" />
+
 /**
  * Modern CLI Tools Setup Script
  *
@@ -11,10 +13,10 @@
  *   chmod +x docs/modern-cli/setup.ts && ./docs/modern-cli/setup.ts
  */
 
-import { execSync, spawnSync } from "child_process";
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
+import { spawnSync } from "node:child_process";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 
 // ============================================
 // 타입 정의
@@ -32,6 +34,19 @@ interface ToolStatus {
   tool: Tool;
   installed: boolean;
   setupDone: boolean;
+}
+
+type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
+type JsonObject = {
+  [key: string]: JsonValue | undefined;
+};
+
+function isJsonObject(value: JsonValue): value is JsonObject {
+  return value !== null && !Array.isArray(value) && Object(value) === value;
+}
+
+function isString(value: JsonValue | undefined): value is string {
+  return Object.prototype.toString.call(value) === "[object String]";
 }
 
 // ============================================
@@ -111,17 +126,21 @@ function log(message: string, type: "info" | "success" | "warn" | "error" = "inf
   console.log(`${colors[type]}${icons[type]} ${message}${reset}`);
 }
 
-function exec(command: string): string {
-  try {
-    return execSync(command, { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }).trim();
-  } catch {
-    return "";
-  }
+function captureCommand(command: string, args: string[]): string {
+  const result = spawnSync(command, args, {
+    encoding: "utf-8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  return result.status === 0 ? result.stdout.trim() : "";
 }
 
 function commandExists(command: string): boolean {
   const result = spawnSync("which", [command], { encoding: "utf-8" });
   return result.status === 0;
+}
+
+function installWithBrew(args: string[]): boolean {
+  return spawnSync("brew", ["install", ...args], { stdio: "inherit" }).status === 0;
 }
 
 // ============================================
@@ -200,20 +219,18 @@ function installTools(tools: Tool[]): void {
 
   // 일반 도구 설치
   if (regularTools.length > 0) {
-    const brewNames = regularTools.map((t) => t.brewName).join(" ");
+    const brewNames = regularTools.map((t) => t.brewName);
     log(`설치 중: ${regularTools.map((t) => t.name).join(", ")}`, "info");
 
-    try {
-      execSync(`brew install ${brewNames}`, { stdio: "inherit" });
+    if (installWithBrew(brewNames)) {
       log("일반 도구 설치 완료", "success");
-    } catch {
+    } else {
       log("일부 도구 설치에 실패했습니다. 개별 설치를 시도합니다.", "warn");
 
       for (const tool of regularTools) {
-        try {
-          execSync(`brew install ${tool.brewName}`, { stdio: "inherit" });
+        if (installWithBrew([tool.brewName])) {
           log(`${tool.name} 설치 완료`, "success");
-        } catch {
+        } else {
           log(`${tool.name} 설치 실패`, "error");
         }
       }
@@ -223,10 +240,9 @@ function installTools(tools: Tool[]): void {
   // Cask 도구 설치
   for (const tool of caskTools) {
     log(`설치 중: ${tool.name} (cask)`, "info");
-    try {
-      execSync(`brew install --cask ${tool.brewName}`, { stdio: "inherit" });
+    if (installWithBrew(["--cask", tool.brewName])) {
       log(`${tool.name} 설치 완료`, "success");
-    } catch {
+    } else {
       log(`${tool.name} 설치 실패`, "error");
     }
   }
@@ -345,19 +361,23 @@ function setupClaudeCodeSettings(): void {
   }
 
   // 기존 settings.json 읽기 또는 새로 생성
-  let settings: { allowedTools?: string[]; [key: string]: unknown } = {};
+  let settings: JsonObject = {};
 
   if (fs.existsSync(CLAUDE_SETTINGS_PATH)) {
     try {
       const content = fs.readFileSync(CLAUDE_SETTINGS_PATH, "utf-8");
-      settings = JSON.parse(content);
+      const parsedSettings: JsonValue = JSON.parse(content);
+      if (!isJsonObject(parsedSettings)) {
+        throw new Error("settings.json must contain an object");
+      }
+      settings = parsedSettings;
     } catch {
       log("기존 settings.json 파싱 실패, 새로 생성합니다.", "warn");
     }
   }
 
   // allowedTools 배열이 없으면 생성
-  if (!Array.isArray(settings.allowedTools)) {
+  if (!Array.isArray(settings.allowedTools) || !settings.allowedTools.every(isString)) {
     settings.allowedTools = [];
   }
 
@@ -386,22 +406,24 @@ function setupClaudeCodeSettings(): void {
 
 function setupFzf(): void {
   // fzf 키 바인딩 설치 (brew로 설치한 경우)
-  const fzfInstallPath = exec("brew --prefix fzf");
+  const fzfInstallPath = captureCommand("brew", ["--prefix", "fzf"]);
 
   if (fzfInstallPath) {
     const fzfInstallScript = path.join(fzfInstallPath, "install");
 
     if (fs.existsSync(fzfInstallScript)) {
       log("fzf 키 바인딩 설정 중...", "info");
-      try {
-        // --key-bindings: Ctrl+T, Ctrl+R, Alt+C 바인딩
-        // --completion: ** 자동완성
-        // --no-update-rc: .zshrc를 직접 수정하지 않음 (우리가 modern-cli.zsh에서 관리)
-        execSync(`${fzfInstallScript} --key-bindings --completion --no-update-rc`, {
-          stdio: "inherit",
-        });
+      // --key-bindings: Ctrl+T, Ctrl+R, Alt+C 바인딩
+      // --completion: ** 자동완성
+      // --no-update-rc: .zshrc를 직접 수정하지 않음 (우리가 modern-cli.zsh에서 관리)
+      const result = spawnSync(
+        fzfInstallScript,
+        ["--key-bindings", "--completion", "--no-update-rc"],
+        { stdio: "inherit" },
+      );
+      if (result.status === 0) {
         log("fzf 키 바인딩 설정 완료", "success");
-      } catch {
+      } else {
         log("fzf 키 바인딩 설정 실패", "warn");
       }
     }

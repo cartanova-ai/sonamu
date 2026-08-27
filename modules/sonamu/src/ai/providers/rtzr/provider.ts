@@ -25,6 +25,15 @@ export interface RtzrProviderSettings {
   fetch?: FetchFunction;
 }
 
+function handleUnsupportedTypes(modelType: "languageModel" | "embeddingModel" | "imageModel") {
+  return (modelId: string) => {
+    throw new NoSuchModelError({
+      modelId,
+      modelType,
+    });
+  };
+}
+
 export function createRtzr(options: RtzrProviderSettings = {}): RtzrProvider {
   const baseURL =
     withoutTrailingSlash(
@@ -75,19 +84,10 @@ export function createRtzr(options: RtzrProviderSettings = {}): RtzrProvider {
   provider.transcription = createTranscriptionModel;
   provider.transcriptionModel = createTranscriptionModel;
 
-  const handleUnsupportedTypes = (modelType: "languageModel" | "embeddingModel" | "imageModel") => {
-    return (modelId: string) => {
-      throw new NoSuchModelError({
-        modelId,
-        modelType,
-      });
-    };
-  };
-
   provider.languageModel = handleUnsupportedTypes("languageModel");
   provider.embeddingModel = handleUnsupportedTypes("embeddingModel");
   provider.imageModel = handleUnsupportedTypes("imageModel");
-  return provider as RtzrProvider;
+  return /* SAFETY: AI SDK 제공자와 도구 스키마 계약이 이 값의 타입을 보장한다. */ provider as RtzrProvider;
 }
 
 export const rtzr = createRtzr();

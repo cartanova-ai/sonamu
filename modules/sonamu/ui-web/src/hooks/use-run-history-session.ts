@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { type StoredRunEntry, type StoredRunHistory } from "../services/sonamu-ui.service";
+import { storedRunHistorySchema } from "./test-event-schemas";
 
 const STORAGE_KEY = "sonamu.ui.test-result-viewer.v1";
 const MAX_RUNS = 100;
@@ -28,11 +29,11 @@ function readFromStorage(): StoredRunHistory {
     if (raw === null) {
       return { runs: [] };
     }
-    const parsed: unknown = JSON.parse(raw);
-    if (!isStoredRunHistory(parsed)) {
+    const parsed = storedRunHistorySchema.safeParse(JSON.parse(raw));
+    if (!parsed.success) {
       return { runs: [] };
     }
-    return parsed;
+    return parsed.data;
   } catch {
     return { runs: [] };
   }
@@ -49,7 +50,9 @@ function writeToStorage(history: StoredRunHistory): StorageWriteResult {
     sessionStorage.setItem(STORAGE_KEY, json);
     return { ok: true };
   } catch (err: unknown) {
-    if (isQuotaExceededError(err) && history.runs.length > 1) {
+    const isQuotaExceeded =
+      err instanceof DOMException && (err.name === "QuotaExceededError" || err.code === 22);
+    if (isQuotaExceeded && history.runs.length > 1) {
       // 오래된 항목을 절반 제거 후 재시도
       const trimmed: StoredRunHistory = {
         runs: history.runs.slice(0, Math.ceil(history.runs.length / 2)),
@@ -66,7 +69,7 @@ function writeToStorage(history: StoredRunHistory): StorageWriteResult {
         };
       }
     }
-    if (isQuotaExceededError(err)) {
+    if (isQuotaExceeded) {
       return {
         ok: false,
         reason: "quota-exceeded",
@@ -81,19 +84,6 @@ function writeToStorage(history: StoredRunHistory): StorageWriteResult {
   }
 }
 
-function isQuotaExceededError(err: unknown): boolean {
-  if (err instanceof DOMException) {
-    return err.name === "QuotaExceededError" || err.code === 22;
-  }
-  return false;
-}
-
-function isStoredRunHistory(v: unknown): v is StoredRunHistory {
-  if (typeof v !== "object" || v === null) return false;
-  const obj = v as Record<string, unknown>;
-  return Array.isArray(obj.runs);
-}
-
 function toDateKey(finishedAt: string): string {
   const d = new Date(finishedAt);
   const year = d.getFullYear();
@@ -102,12 +92,14 @@ function toDateKey(finishedAt: string): string {
   return `${year}-${month}-${day}`;
 }
 
-export function useRunHistorySession(): {
+type UseRunHistorySessionResult = {
   history: StoredRunHistory;
   storageWarning: RunHistoryStorageWarning | null;
   addRun: (entry: Omit<StoredRunEntry, "dateKey">) => void;
   clearHistory: () => void;
-} {
+};
+
+export function useRunHistorySession(): UseRunHistorySessionResult {
   const [history, setHistory] = useState<StoredRunHistory>(readFromStorage);
   const [storageWarning, setStorageWarning] = useState<RunHistoryStorageWarning | null>(null);
   // sessionStorage에 저장 불가능한 runId를 추적하여 후속 쓰기 시 제외합니다.

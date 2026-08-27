@@ -7,6 +7,27 @@ import { setSDConfig } from "../../dict/sd";
 import { Migrator } from "../migrator";
 import { SlackConfirm } from "../slack-confirm";
 
+function createConfig(targets: NonNullable<SonamuConfig["slackConfirm"]>["targets"]): SonamuConfig {
+  return {
+    projectName: "sonamu-test",
+    api: { dir: "src", route: { prefix: "/api" } },
+    i18n: { defaultLocale: "ko", supportedLocales: ["ko", "en"] },
+    sync: { targets: [] },
+    database: {},
+    server: {
+      apiConfig: {
+        contextProvider: (defaultContext) => defaultContext,
+        guardHandler: () => undefined,
+      },
+    },
+    slackConfirm: {
+      targets,
+      botToken: "xoxb-test",
+      channelId: "C123",
+    },
+  };
+}
+
 describe("Migrator environment target filtering", () => {
   const originalEnv = { ...process.env };
   const presets: SonamuDBPreset[] = [
@@ -21,18 +42,19 @@ describe("Migrator environment target filtering", () => {
     "production_readonly",
   ];
 
-  const dbConfig = Object.fromEntries(
-    presets.map((preset) => [
-      preset,
-      {
-        client: "postgresql",
-        connection: {
-          host: "localhost",
-          database: preset,
+  const dbConfig =
+    /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ Object.fromEntries(
+      presets.map((preset) => [
+        preset,
+        {
+          client: "postgresql",
+          connection: {
+            host: "localhost",
+            database: preset,
+          },
         },
-      },
-    ]),
-  ) as SonamuDBConfig;
+      ]),
+    ) as SonamuDBConfig;
 
   afterEach(() => {
     for (const key of Object.keys(process.env)) {
@@ -45,11 +67,7 @@ describe("Migrator environment target filtering", () => {
 
   const getMigrationTargetKeys = () => {
     Sonamu.dbConfig = dbConfig;
-    return (
-      new Migrator() as unknown as {
-        getMigrationTargetKeys(): (keyof SonamuDBConfig)[];
-      }
-    ).getMigrationTargetKeys();
+    return new Migrator().getMigrationTargetKeys();
   };
 
   it("limits migration targets to production on a production server runtime", () => {
@@ -84,51 +102,26 @@ describe("SlackConfirm target validation", () => {
     "production_readonly",
   ];
 
-  const dbConfig = Object.fromEntries(
-    presets.map((preset) => [
-      preset,
-      {
-        client: "postgresql",
-        connection: {
-          host: "localhost",
-          database: preset,
+  const dbConfig =
+    /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ Object.fromEntries(
+      presets.map((preset) => [
+        preset,
+        {
+          client: "postgresql",
+          connection: {
+            host: "localhost",
+            database: preset,
+          },
         },
-      },
-    ]),
-  ) as SonamuDBConfig;
-
-  const createConfig = (targets: string[]): SonamuConfig =>
-    ({
-      projectName: "sonamu-test",
-      api: {
-        dir: "src",
-        route: {
-          prefix: "/api",
-        },
-      },
-      i18n: {
-        defaultLocale: "ko",
-        supportedLocales: ["ko", "en"],
-      },
-      sync: {
-        targets: [],
-      },
-      database: {},
-      server: {},
-      apiConfig: {
-        contextProvider: (defaultContext) => defaultContext,
-        guardHandler: () => undefined,
-      },
-      slackConfirm: {
-        targets,
-        botToken: "xoxb-test",
-        channelId: "C123",
-      },
-    }) as SonamuConfig;
+      ]),
+    ) as SonamuDBConfig;
 
   it("fails fast when slackConfirm.targets contains an unknown DB key", () => {
     Sonamu.dbConfig = dbConfig;
-    Sonamu.config = createConfig(["production_old"]);
+    Sonamu.config = createConfig(["production"]);
+    Object.defineProperty(Sonamu.config.slackConfirm, "targets", {
+      value: ["production_old"],
+    });
     setSDConfig(Sonamu.config.i18n);
 
     expect(() => new SlackConfirm().isTargetRequiresApproval("production")).toThrow(

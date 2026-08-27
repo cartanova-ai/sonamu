@@ -1,5 +1,4 @@
-// oxlint-disable-next-line
-import * as Sonamu from "sonamu";
+import "sonamu";
 
 declare module "sonamu" {
   export interface ContextExtend {

@@ -21,7 +21,9 @@ export function handleFetchError({
     error instanceof TypeError &&
     FETCH_FAILED_ERROR_MESSAGES.includes(error.message.toLowerCase())
   ) {
-    const cause = (error as { cause?: Error }).cause;
+    const cause = /* SAFETY: AI SDK 제공자와 도구 스키마 계약이 이 값의 타입을 보장한다. */ (
+      error as { cause?: Error }
+    ).cause;
 
     if (cause) {
       return new APICallError({

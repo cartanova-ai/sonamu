@@ -20,7 +20,7 @@ import LockIcon from "~icons/lucide/lock";
 import ShieldIcon from "~icons/lucide/shield";
 import ShieldOffIcon from "~icons/lucide/shield-off";
 
-import { useSonamuContext } from "@/contexts/sonamu-provider";
+import { authClient, useSonamuContext } from "@/contexts/sonamu-provider";
 
 export const Route = createFileRoute("/admin/2fa-setup")({ component: TwoFactorSetupPage });
 
@@ -28,7 +28,7 @@ type SetupStep = "password" | "qr" | "verify" | "done";
 
 function TwoFactorSetupPage() {
   const { auth } = useSonamuContext();
-  const { data: session, refetch } = auth.useSession();
+  const { data: session, refetch } = authClient.useSession();
   const navigate = useNavigate();
 
   const [password, setPassword] = useState("");

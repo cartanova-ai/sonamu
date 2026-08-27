@@ -1,14 +1,14 @@
-/* oxlint-disable @typescript-eslint/no-explicit-any */ // Zod 타입 접근
-
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import PlusIcon from "~icons/lucide/plus";
 
 import { useSonamuBaseContext } from "../../../contexts/sonamu-context";
 import { Button } from "../button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import { RuleRowInput } from "./rule-row-input";
-import { type Rule, type SonamuFilterModalProps } from "./types";
+import { type FilterQuery, type Rule, type SonamuFilterModalProps } from "./types";
 import { extractFieldMetaFromSchema } from "./utils";
+
+const EMPTY_INITIAL_RULES: Rule[] = [];
 
 /**
  * SonamuFilterModal
@@ -19,7 +19,7 @@ export function SonamuFilterModal({
   baseSchema,
   open,
   onOpenChange,
-  initialRules = [],
+  initialRules = EMPTY_INITIAL_RULES,
   onApply,
 }: SonamuFilterModalProps) {
   const { SD } = useSonamuBaseContext();
@@ -28,18 +28,22 @@ export function SonamuFilterModal({
   const [appliedRules, setAppliedRules] = useState(initialRules);
   // 작업 중 상태
   const [rules, setRules] = useState<Rule[]>([]);
+  const [previousInitialRules, setPreviousInitialRules] = useState(initialRules);
+  const [wasOpen, setWasOpen] = useState(open);
 
-  // initialRules가 변경되면 appliedRules에 동기화
-  useEffect(() => {
+  // 외부 규칙 또는 열림 상태가 바뀐 렌더에서 임시 규칙을 즉시 맞춥니다.
+  if (previousInitialRules !== initialRules) {
+    setPreviousInitialRules(initialRules);
     setAppliedRules(initialRules);
-  }, [initialRules]);
-
-  // 모달이 열릴 때마다 appliedRules를 rules로 복사
-  useEffect(() => {
+    if (open) {
+      setRules(initialRules.map((rule) => ({ ...rule })));
+    }
+  } else if (wasOpen !== open) {
+    setWasOpen(open);
     if (open) {
       setRules(appliedRules.map((rule) => ({ ...rule })));
     }
-  }, [open, appliedRules]);
+  }
 
   // baseSchema에서 동적으로 FieldMeta 추출
   const fieldMeta = extractFieldMetaFromSchema(baseSchema, SD);
@@ -68,8 +72,8 @@ export function SonamuFilterModal({
   };
 
   // FilterQuery로 변환
-  const buildFilterQuery = (): Record<string, unknown> => {
-    const filters: Record<string, unknown> = {};
+  const buildFilterQuery = (): FilterQuery => {
+    const filters: FilterQuery = {};
 
     for (const rule of rules) {
       if (!rule.field || !rule.operator) continue;

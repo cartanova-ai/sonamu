@@ -17,7 +17,7 @@ import UploadIcon from "~icons/lucide/upload";
 import UsersIcon from "~icons/lucide/users";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 
-import { useSonamuContext } from "@/contexts/sonamu-provider";
+import { authClient, useSonamuContext } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
 
 interface SidebarProps {
@@ -66,7 +66,7 @@ const menuItems: MenuItemProps[] = [
 export default function Sidebar({ className }: SidebarProps) {
   const { auth } = useSonamuContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const session = auth.useSession();
+  const session = authClient.useSession();
   const user = session.data?.user ?? null;
 
   const isActive = (path: string) => {

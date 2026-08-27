@@ -4,6 +4,26 @@ import { bootstrap } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 bootstrap(vi);
+
+type CacheMethodResult = object | string | number | boolean | null | undefined;
+
+const createMockTarget = (modelName: string) => ({
+  constructor: { name: `${modelName}Class` },
+  frameName: modelName,
+});
+
+const applyCache = <T extends (...args: never[]) => CacheMethodResult>(
+  target: ReturnType<typeof createMockTarget>,
+  methodName: string,
+  originalFn: T,
+  options: Parameters<typeof cache>[0] = {},
+) => {
+  const descriptor = { value: originalFn };
+  cache(options)(target, methodName, descriptor);
+  // SAFETY: 데코레이터가 원본 함수 시그니처를 유지하며 테스트 대상에 바인딩한다.
+  return descriptor.value.bind(target) as T;
+};
+
 describe("cache", () => {
   beforeAll(async () => {
     Sonamu.isInitialized = false;
@@ -231,25 +251,6 @@ describe("cache", () => {
   });
 
   describe("@cache 데코레이터", () => {
-    // Mock target 생성 헬퍼
-    const createMockTarget = (modelName: string) => ({
-      constructor: { name: `${modelName}Class` },
-      frameName: modelName,
-    });
-
-    // 데코레이터 적용 후 바인딩된 메서드 반환 헬퍼
-    const applyCache = <T extends (...args: unknown[]) => unknown>(
-      target: ReturnType<typeof createMockTarget>,
-      methodName: string,
-      originalFn: T,
-      options: Parameters<typeof cache>[0] = {},
-    ) => {
-      const descriptor = { value: originalFn };
-      cache(options)(target, methodName, descriptor);
-      // this를 target에 바인딩
-      return descriptor.value.bind(target) as T;
-    };
-
     test("기본 동작 - 캐시 미스 후 히트", async () => {
       const target = createMockTarget("TestModel");
       const originalFn = vi.fn().mockResolvedValue({ id: 1, name: "test" });

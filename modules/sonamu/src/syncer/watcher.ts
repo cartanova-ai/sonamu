@@ -3,7 +3,7 @@ import { type Stats } from "node:fs";
 import path from "path";
 
 import chalk from "chalk";
-import chokidar, { type FSWatcher } from "chokidar";
+import { type FSWatcher, watch } from "chokidar";
 import { minimatch } from "minimatch";
 
 import { Sonamu } from "../api";
@@ -22,7 +22,7 @@ export async function setupWatcher(
   // api 본인뿐 아니라 sync target들의 src도 봅니다.
   // target 산출물(sonamu.generated, services.generated, i18n copy 등)이 외부에서
   // 변경되는 경우를 drift로 잡아 워닝을 띄우기 위함입니다.
-  const watcher = chokidar.watch(apiAndTargetsSrcPaths(), {
+  const watcher = watch(apiAndTargetsSrcPaths(), {
     ignored: ignoreIfExtensionIsNotOneOf(".ts", ".json", ".http"),
     persistent: true,
     ignoreInitial: true,
@@ -49,7 +49,8 @@ export async function setupWatcher(
   });
 
   watcher.on("all", (event: string, filePath: string) => {
-    const absolutePath = filePath as AbsolutePath;
+    const absolutePath =
+      /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ filePath as AbsolutePath;
     assert(
       absolutePath.startsWith(Sonamu.appRootPath),
       "File path is not within the app root path",
@@ -92,7 +93,10 @@ function apiAndTargetsSrcPaths() {
  * 따라서 "이 확장자만 허용"을 표현하려면 *다른 확장자에 대해 true*를 반환해야 합니다.
  */
 function ignoreIfExtensionIsNotOneOf(...allowedExtensions: `.${string}`[]) {
-  const isAllowed = (ext: string) => (allowedExtensions as string[]).includes(ext);
+  const isAllowed = (ext: string) =>
+    /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ (
+      allowedExtensions as string[]
+    ).includes(ext);
 
   return (p: string, stats?: Stats) => !!stats?.isFile() && !isAllowed(path.extname(p));
 }

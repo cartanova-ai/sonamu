@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Markdown from "react-markdown";
+import Markdown, { type Components } from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import PencilIcon from "~icons/lucide/pencil";
@@ -8,6 +8,38 @@ import { defaultCatch } from "../../../services/sonamu.shared";
 import { CddService } from "../service";
 import { type CddTreeNode } from "../types";
 import { CddFileIcon } from "./cdd_file_icon";
+
+const markdownComponents: Components = {
+  pre({ children }) {
+    return <>{children}</>;
+  },
+  code({ className, children }) {
+    const match = /language-(\w+)/.exec(className ?? "");
+    const code = String(children).replace(/\n$/, "");
+    const isBlock = code.includes("\n") || match;
+    if (isBlock) {
+      return (
+        <SyntaxHighlighter
+          style={oneLight}
+          language={match?.[1] ?? "text"}
+          customStyle={{
+            margin: 0,
+            borderRadius: "0.5rem",
+            fontSize: "0.8125rem",
+            border: "1px solid #e2e8f0",
+          }}
+        >
+          {code}
+        </SyntaxHighlighter>
+      );
+    }
+    return (
+      <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-900 text-[0.8125rem]">
+        {children}
+      </code>
+    );
+  },
+};
 
 export function CddContractDetail({
   node,
@@ -72,41 +104,7 @@ export function CddContractDetail({
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-6 py-8">
           <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-slate-900 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none prose-p:leading-relaxed prose-li:leading-relaxed">
-            <Markdown
-              components={{
-                pre({ children }) {
-                  return <>{children}</>;
-                },
-                code({ className, children }) {
-                  const match = /language-(\w+)/.exec(className ?? "");
-                  const code = String(children).replace(/\n$/, "");
-                  const isBlock = code.includes("\n") || match;
-                  if (isBlock) {
-                    return (
-                      <SyntaxHighlighter
-                        style={oneLight}
-                        language={match?.[1] ?? "text"}
-                        customStyle={{
-                          margin: 0,
-                          borderRadius: "0.5rem",
-                          fontSize: "0.8125rem",
-                          border: "1px solid #e2e8f0",
-                        }}
-                      >
-                        {code}
-                      </SyntaxHighlighter>
-                    );
-                  }
-                  return (
-                    <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-900 text-[0.8125rem]">
-                      {children}
-                    </code>
-                  );
-                },
-              }}
-            >
-              {content}
-            </Markdown>
+            <Markdown components={markdownComponents}>{content}</Markdown>
           </div>
         </div>
       </div>

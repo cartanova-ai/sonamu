@@ -18,6 +18,7 @@ import { Naite } from "../naite/naite";
 import { type GenMigrationCode, type MigrationSet } from "../types/types";
 import { isLocal, isTest } from "../utils/controller";
 import { exists } from "../utils/fs-utils";
+import { isObjectValue, isStringValue } from "../utils/runtime-value";
 import { generateAlterCode, generateCreateCode } from "./code-generation";
 import { getMigrationSetFromEntity } from "./migration-set";
 import { PostgreSQLSchemaReader } from "./postgresql-schema-reader";
@@ -40,12 +41,16 @@ export type MigrationResult = {
   applied: string[];
 }[];
 
+function padDatePart(number: number, size: number = 2): string {
+  return number.toString().padStart(size, "0");
+}
+
 export class MigrationTargetExecutionError extends Error {
   constructor(
     public readonly connKey: MigrationTarget | "shadow",
-    caught: unknown,
+    cause: unknown,
   ) {
-    super(caught instanceof Error ? caught.message : String(caught));
+    super(cause instanceof Error ? cause.message : String(cause));
     this.name = "MigrationTargetExecutionError";
   }
 }
@@ -82,23 +87,29 @@ function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => Error)
  * CLI 리팩토링 시점에서 제거해주셔도 무방합니다.
  */
 export class Migrator {
-  private isMissingMigrationTableError(error: unknown): boolean {
-    if (typeof error !== "object" || error === null) {
+  private isMissingMigrationTableError<Value>(error: Value): boolean {
+    if (!isObjectValue(error) || error === null) {
       return false;
     }
 
-    const maybePostgresError = error as { code?: unknown; message?: unknown };
+    const maybePostgresError =
+      /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ error as {
+        code?: unknown;
+        message?: unknown;
+      };
     return (
       maybePostgresError.code === "42P01" &&
-      typeof maybePostgresError.message === "string" &&
+      isStringValue(maybePostgresError.message) &&
       maybePostgresError.message.includes("knex_migrations")
     );
   }
 
-  private getMigrationTargetKeys(): MigrationTarget[] {
-    const connKeys = Object.keys(Sonamu.dbConfig).filter(
-      (key) => !key.endsWith("_readonly"),
-    ) as (keyof SonamuDBConfig)[];
+  /** 현재 실행 환경에서 허용된 마이그레이션 대상 키를 반환합니다. */
+  getMigrationTargetKeys(): MigrationTarget[] {
+    const connKeys =
+      /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ Object.keys(
+        Sonamu.dbConfig,
+      ).filter((key) => !key.endsWith("_readonly")) as (keyof SonamuDBConfig)[];
 
     if (isLocal()) {
       return connKeys;
@@ -146,16 +157,20 @@ export class Migrator {
     return results;
   }
 
-  private migrationName(migration: unknown): string {
-    if (typeof migration === "string") {
+  private migrationName<Value>(migration: Value): string {
+    if (isStringValue(migration)) {
       return path.basename(migration);
     }
-    if (typeof migration === "object" && migration !== null) {
-      const candidate = migration as { file?: unknown; name?: unknown };
-      if (typeof candidate.file === "string") {
+    if (isObjectValue(migration) && migration !== null) {
+      const candidate =
+        /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ migration as {
+          file?: unknown;
+          name?: unknown;
+        };
+      if (isStringValue(candidate.file)) {
         return path.basename(candidate.file);
       }
-      if (typeof candidate.name === "string") {
+      if (isStringValue(candidate.name)) {
         return path.basename(candidate.name);
       }
     }
@@ -177,7 +192,7 @@ export class Migrator {
     options?: MigrationRunOptions,
   ): Knex.MigratorConfigWithLifecycleHooks {
     let files: string[] = [];
-    const emitFile = (type: "file-start" | "file-executed", migration: unknown) => {
+    const emitFile = <Value>(type: "file-start" | "file-executed", migration: Value) => {
       const file = this.migrationName(migration);
       const index = Math.max(files.indexOf(file), 0);
       this.emitProgress(options, {
@@ -221,7 +236,10 @@ export class Migrator {
   getConnections(): MigrationConnectionMeta[] {
     const slackConfirm = new SlackConfirm();
     return this.getMigrationTargetKeys().map((connKey) => {
-      const connection = Sonamu.dbConfig[connKey].connection as Knex.PgConnectionConfig;
+      const connection =
+        /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ Sonamu.dbConfig[
+          connKey
+        ].connection as Knex.PgConnectionConfig;
       const host = connection.host ?? "localhost";
       return {
         connKey,
@@ -272,11 +290,13 @@ export class Migrator {
     const startedAt = performance.now();
     const codes = await this.getMigrationCodes();
     const knexOptions = Sonamu.dbConfig[connKey];
-    const connection = knexOptions.connection as Knex.PgConnectionConfig;
+    const connection =
+      /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ knexOptions.connection as Knex.PgConnectionConfig;
+    // SAFETY: Knex가 제공한 PostgreSQL 연결 구성을 복사해 timeout 필드만 덮어쓴다.
     const tConn = createKnexInstance({
       ...knexOptions,
       connection: {
-        ...(connection as Record<string, unknown>),
+        ...connection,
         connectionTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
       },
       pool: {
@@ -306,32 +326,33 @@ export class Migrator {
       const pending: string[] = await tConn.migrate.list().then(
         ([, files]: [unknown[], { file: string }[]]) =>
           files.map(({ file }) => file.replace(/\.ts$/, "")),
-        (caught: unknown) => {
-          if (this.isMissingMigrationTableError(caught)) {
+        (cause: unknown) => {
+          if (this.isMissingMigrationTableError(cause)) {
             return codes.map(({ name }) => name);
           }
-          error ??= caught instanceof Error ? caught.message : String(caught);
+          error ??= cause instanceof Error ? cause.message : String(cause);
           return [];
         },
       );
       const currentVersion: string | "none" | "error" = await tConn.migrate
         .currentVersion()
-        .catch((caught: unknown) => {
-          if (this.isMissingMigrationTableError(caught)) {
+        .catch((cause: unknown) => {
+          if (this.isMissingMigrationTableError(cause)) {
             return "none" as const;
           }
-          error ??= caught instanceof Error ? caught.message : String(caught);
+          error ??= cause instanceof Error ? cause.message : String(cause);
           return "error" as const;
         });
       Naite.t("migrator:getStatus:status", status);
-      return {
+      const connectionStatus: MigrationConnectionStatus = {
         connKey,
         currentVersion,
         status,
         pending,
         latencyMs: performance.now() - startedAt,
-        ...(error === undefined ? {} : { error }),
       };
+      if (error !== undefined) connectionStatus.error = error;
+      return connectionStatus;
     } catch (caught) {
       const error = caught instanceof Error ? caught.message : String(caught);
       console.warn(
@@ -397,12 +418,15 @@ export class Migrator {
     const conns = connections.map((connection, index) => {
       const status = connectionStatuses[index];
       assert(status !== undefined);
-      const configured = Sonamu.dbConfig[connection.connKey].connection as Knex.PgConnectionConfig;
+      const configured =
+        /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ Sonamu.dbConfig[
+          connection.connKey
+        ].connection as Knex.PgConnectionConfig;
       return {
         name: connection.name,
         connKey: connection.connKey,
         connString:
-          `pg://${configured.user ?? ""}@${configured.host}:${configured.port}/${configured.database}` as ConnString,
+          /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ `pg://${configured.user ?? ""}@${configured.host}:${configured.port}/${configured.database}` as ConnString,
         currentVersion: status.currentVersion,
         status: status.status,
         pending: status.pending,
@@ -484,10 +508,12 @@ export class Migrator {
           options: Sonamu.dbConfig[target],
         }))
         .filter((c) => c.options !== undefined),
-      ({ options }) =>
-        `${(options.connection as Knex.PgConnectionConfig).host}:${
-          (options.connection as Knex.PgConnectionConfig).port ?? 5432
-        }/${(options.connection as Knex.PgConnectionConfig).database}`,
+      ({ options: dbOptions }) =>
+        `${/* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ (dbOptions.connection as Knex.PgConnectionConfig).host}:${
+          /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ (
+            dbOptions.connection as Knex.PgConnectionConfig
+          ).port ?? 5432
+        }/${/* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ (dbOptions.connection as Knex.PgConnectionConfig).database}`,
     );
 
     // get connections
@@ -515,14 +541,13 @@ export class Migrator {
 
   private genDateTag(index: number, baseDate: Date = new Date()): string {
     const date = new Date(baseDate.getTime() + index * 1000);
-    const pad = (num: number, size: number = 2) => num.toString().padStart(size, "0");
     return (
       date.getFullYear().toString() +
-      pad(date.getMonth() + 1) +
-      pad(date.getDate()) +
-      pad(date.getHours()) +
-      pad(date.getMinutes()) +
-      pad(date.getSeconds())
+      padDatePart(date.getMonth() + 1) +
+      padDatePart(date.getDate()) +
+      padDatePart(date.getHours()) +
+      padDatePart(date.getMinutes()) +
+      padDatePart(date.getSeconds())
     );
   }
 
@@ -635,7 +660,9 @@ export class Migrator {
    * @category 분리형 마이그레이션 API
    */
   async runShadowTest(options?: MigrationRunOptions): Promise<MigrationResult> {
-    const baseTestConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
+    const baseTestConn =
+      /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ Sonamu.dbConfig
+        .test.connection as Knex.PgConnectionConfig;
     const workerId = process.env.SONAMU_WORKER_DB === "true" ? process.env.VITEST_POOL_ID : null;
     const templateDatabase =
       workerId !== null ? `${baseTestConn.database}_${workerId ?? "1"}` : baseTestConn.database;

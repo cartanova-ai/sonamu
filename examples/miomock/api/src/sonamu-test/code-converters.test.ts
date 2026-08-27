@@ -19,41 +19,41 @@ import {
 } from "../../../../../modules/sonamu/dist/api/decorators";
 import { type ApiParam, type ApiParamType } from "../../../../../modules/sonamu/dist/types/types";
 
-describe("code-converters", () => {
-  const options: ApiDecoratorOptions = {
-    httpMethod: "GET",
-    description: "testApi",
-    clients: [],
-    contentType: "application/json",
+const options: ApiDecoratorOptions = {
+  httpMethod: "GET",
+  description: "testApi",
+  clients: [],
+  contentType: "application/json",
+};
+
+function createTestApi(overrides: Partial<ExtendedApi> = {}): ExtendedApi {
+  return {
+    modelName: "PracticeModel",
+    methodName: "testApi",
+    path: "/practice/testApi",
+    options,
+    typeParameters: [],
+    parameters: [],
+    returnType: {
+      t: "ref",
+      id: "Promise",
+      args: [{ t: "ref", id: "void" }],
+    },
+    ...overrides,
   };
+}
 
-  function createTestApi(overrides: Partial<ExtendedApi> = {}): ExtendedApi {
-    return {
-      modelName: "PracticeModel",
-      methodName: "testApi",
-      path: "/practice/testApi",
-      options: options,
-      typeParameters: [],
-      parameters: [],
-      returnType: {
-        t: "ref",
-        id: "Promise",
-        args: [{ t: "ref", id: "void" }],
-      },
-      ...overrides,
-    };
-  }
+function expectToPass<T>(zodType: z.ZodType, validData: T) {
+  const result = zodType.safeParse(validData);
+  expect(result.success).toBe(true);
+}
 
-  function expectToPass(zodType: z.ZodType, validData: unknown) {
-    const result = zodType.safeParse(validData);
-    expect(result.success).toBe(true);
-  }
+function expectToFail<T>(zodType: z.ZodType, invalidData: T) {
+  const result = zodType.safeParse(invalidData);
+  expect(result.success).toBe(false);
+}
 
-  function expectToFail(zodType: z.ZodType, invalidData: unknown) {
-    const result = zodType.safeParse(invalidData);
-    expect(result.success).toBe(false);
-  }
-
+describe("code-converters", () => {
   describe("getZodTypeFromApiParamType", () => {
     describe("Primitive 타입", () => {
       const primitiveCases: [ApiParamType, unknown, unknown][] = [
@@ -63,7 +63,7 @@ describe("code-converters", () => {
       ];
 
       test.each(primitiveCases)("%s 타입", (type, validValue, invalidValue) => {
-        const zodType = getZodTypeFromApiParamType(type as ApiParamType, {});
+        const zodType = getZodTypeFromApiParamType(type, {});
 
         // 유효한 타입의 값
         expectToPass(zodType, validValue);
@@ -502,7 +502,7 @@ describe("code-converters", () => {
 
     test("처리되지 않는 타입 → z.unknown()", () => {
       const zodType = getZodTypeFromApiParamType(
-        { t: "indexed-access", object: "string", index: "number" } as ApiParamType,
+        { t: "indexed-access", object: "string", index: "number" },
         {},
       );
 
@@ -513,14 +513,14 @@ describe("code-converters", () => {
     });
 
     test("상호 참조 (A↔B) → unknown fallback", () => {
-      const references: Record<string, z.ZodObject> = {};
+      const references: Record<string, z.ZodType> = {};
 
       // A는 B를 참조, B는 A를 참조
       const zodTypeA = getZodTypeFromApiParamType({ t: "ref", id: "B" }, references);
-      references.A = zodTypeA as z.ZodObject;
+      references.A = zodTypeA;
 
       const zodTypeB = getZodTypeFromApiParamType({ t: "ref", id: "A" }, references);
-      references.B = zodTypeB as z.ZodObject;
+      references.B = zodTypeB;
 
       // A와 B 모두 unknown으로 fallback
       expectToPass(zodTypeA, "anything");
@@ -618,13 +618,13 @@ describe("code-converters", () => {
   });
 
   describe("getZodObjectFromApi", () => {
-    function expectApiToPass(api: ExtendedApi, validData: unknown, references = {}) {
+    function expectApiToPass<T>(api: ExtendedApi, validData: T, references = {}) {
       const zodObject = getZodObjectFromApi(api, references);
       expectToPass(zodObject, validData);
       return zodObject; // 추가 검증을 위해 반환
     }
 
-    function expectApiToFail(api: ExtendedApi, invalidData: unknown, references = {}) {
+    function expectApiToFail<T>(api: ExtendedApi, invalidData: T, references = {}) {
       const zodObject = getZodObjectFromApi(api, references);
       expectToFail(zodObject, invalidData);
       return zodObject;
@@ -663,7 +663,7 @@ describe("code-converters", () => {
           ],
         });
         const zodObject = expectApiToPass(testApi, { id: 1 }); // 실제 파싱
-        expect(Object.keys(zodObject.shape)).toEqual(["id"]); // ctx 제외 확인
+        expect(zodObject.keyof().options).toEqual(["id"]); // ctx 제외 확인
 
         // z.object()는 기본적으로 추가 키를 허용하므로 ctx 있어도 통과
         expectApiToPass(testApi, { ctx: {}, id: 1 });
@@ -681,7 +681,7 @@ describe("code-converters", () => {
           ],
         });
         const zodObject = expectApiToPass(testApi, { name: "test" });
-        expect(Object.keys(zodObject.shape)).toEqual(["name"]); // knex 제외됨
+        expect(zodObject.keyof().options).toEqual(["name"]); // knex 제외됨
 
         // z.object()는 기본적으로 추가 키를 허용하므로 knex 있어도 통과
         expectApiToPass(testApi, { knex: {}, name: "test" });
@@ -698,7 +698,7 @@ describe("code-converters", () => {
           ],
         });
         const zodObject = expectApiToPass(testApi, { id: 1 });
-        expect(Object.keys(zodObject.shape)).toEqual(["id"]); // _debug 제외됨
+        expect(zodObject.keyof().options).toEqual(["id"]); // _debug 제외됨
 
         // z.object()는 기본적으로 추가 키를 허용하므로 _debug 있어도 통과
         expectApiToPass(testApi, { id: 1, _debug: "test" });
@@ -716,7 +716,7 @@ describe("code-converters", () => {
           ],
         });
         const zodObject = expectApiToPass(testApi, { id: 1, _internal: "val" });
-        expect(Object.keys(zodObject.shape)).toEqual(["id", "_internal"]); // _internal 포함됨
+        expect(zodObject.keyof().options).toEqual(["id", "_internal"]); // _internal 포함됨
 
         // z.object()는 기본적으로 추가 키를 허용하므로 _internal 있어도 통과
         expectApiToPass(testApi, { id: 1, _internal: "val" });
@@ -730,7 +730,7 @@ describe("code-converters", () => {
 
   describe("apiParamTypeToTsType", () => {
     describe("Primitive 타입", () => {
-      test.each([
+      const primitiveCases: Array<[ApiParamType, string]> = [
         // [ 입력값, 기대값 ] 형식으로 테스트 케이스 정의
         ["string", "string"],
         ["number", "number"],
@@ -742,8 +742,9 @@ describe("code-converters", () => {
         ["void", "void"],
         ["any", "any"],
         ["unknown", "unknown"],
-      ])("%s → %s", (input, expected) => {
-        const result = apiParamTypeToTsType(input as unknown as ApiParamType, []);
+      ];
+      test.each(primitiveCases)("%s → %s", (input, expected) => {
+        const result = apiParamTypeToTsType(input, []);
         expect(result).toBe(expected);
       });
     });
@@ -756,7 +757,7 @@ describe("code-converters", () => {
       ];
 
       test.each(literalCases)("%s", (_name, input, expected) => {
-        const result = apiParamTypeToTsType(input as unknown as ApiParamType, []);
+        const result = apiParamTypeToTsType(input, []);
         expect(result).toBe(expected);
       });
     });
@@ -1247,13 +1248,13 @@ describe("code-converters", () => {
 
     describe("에러 케이스", () => {
       test("resolve 불가 타입", () => {
-        const fakeParamType = { t: "unknown_type" } as unknown as ApiParamType;
+        const fakeParamType = { t: "unknown_type" };
 
         let errorMessage = "";
         try {
           apiParamTypeToTsType(fakeParamType, []);
         } catch (error) {
-          errorMessage = (error as Error).message;
+          errorMessage = error instanceof Error ? error.message : String(error);
         }
 
         expect(errorMessage).toContain("resolve 불가 ApiParamType");

@@ -8,8 +8,8 @@ export function findWorkspaceRoot(): string {
     const pkgPath = path.join(dir, "package.json");
     if (fs.existsSync(pkgPath)) {
       try {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as { workspaces?: unknown };
-        if (pkg.workspaces) return dir;
+        const pkg: object = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+        if ("workspaces" in pkg && Boolean(pkg.workspaces)) return dir;
       } catch {
         // 무시
       }

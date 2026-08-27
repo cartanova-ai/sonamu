@@ -1,6 +1,5 @@
-import { stat } from "fs/promises";
-
 import { type AbsolutePath } from "../utils/path-utils";
+import { syncerFilesystem } from "./filesystem-dependencies";
 
 export const fileWrittenAt = new Map<AbsolutePath, number>();
 
@@ -9,7 +8,7 @@ export const fileWrittenAt = new Map<AbsolutePath, number>();
  * 디스크에서 mtime을 직접 읽어 정확한 값으로 등록합니다.
  */
 export async function trackWritten(filePath: AbsolutePath): Promise<void> {
-  const fileStat = await stat(filePath);
+  const fileStat = await syncerFilesystem.stat(filePath);
   fileWrittenAt.set(filePath, fileStat.mtimeMs);
 }
 
@@ -22,6 +21,6 @@ export async function isLastChangedByMe(filePath: AbsolutePath): Promise<boolean
   if (registered === undefined) {
     return false;
   }
-  const fileStat = await stat(filePath);
+  const fileStat = await syncerFilesystem.stat(filePath);
   return fileStat.mtimeMs <= registered;
 }

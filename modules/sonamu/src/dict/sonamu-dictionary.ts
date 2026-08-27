@@ -303,10 +303,7 @@ export class SonamuDictionary {
   /**
    * 함수 값들에서 사용되는 헬퍼 함수를 감지합니다.
    */
-  private detectUsedHelpers(entries: DictEntry[]): {
-    helpers: string[];
-    usesFormat: boolean;
-  } {
+  private detectUsedHelpers(entries: DictEntry[]) {
     const functionEntries = entries.filter((e) => e.isFunction);
     const helpers: string[] = [];
 
@@ -547,7 +544,7 @@ export class SonamuDictionary {
   /**
    * Project dict 파일([locale].ts)에서 딕셔너리 로드
    */
-  loadProjectDict(locale: string): { entries: DictEntry[] } {
+  loadProjectDict(locale: string) {
     const dictPath = path.join(Sonamu.apiRootPath, "src", "i18n", `${locale}.ts`);
     if (!fs.existsSync(dictPath)) {
       return { entries: [] };
@@ -795,7 +792,10 @@ export class SonamuDictionary {
       }
 
       const key = rowValues.key;
-      const source = rowValues.source as "entity" | "project";
+      const source =
+        /* SAFETY: 동기화된 사전 키와 값 계약이 이 값의 타입을 보장한다. */ rowValues.source as
+          | "entity"
+          | "project";
 
       if (!key || !source) continue;
 

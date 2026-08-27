@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@sonamu-kit/react-components/components";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { type TelemetryRecord } from "@/services/telemetry/telemetry.types";
 
@@ -40,13 +40,10 @@ export function MetricsView({ records }: MetricsViewProps) {
   const series = useMemo(() => buildSeries(records), [records]);
   const [activeKey, setActiveKey] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!activeKey || !series.find((s) => s.key === activeKey)) {
-      setActiveKey(series[0]?.key ?? null);
-    }
-  }, [series, activeKey]);
-
-  const active = series.find((s) => s.key === activeKey) ?? null;
+  const resolvedActiveKey = series.some((entry) => entry.key === activeKey)
+    ? activeKey
+    : (series[0]?.key ?? null);
+  const active = series.find((entry) => entry.key === resolvedActiveKey) ?? null;
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)] gap-5">
@@ -58,7 +55,7 @@ export function MetricsView({ records }: MetricsViewProps) {
         <CardContent className="p-0">
           <div className="divide-y divide-gray-100 max-h-[640px] overflow-auto">
             {series.map((s) => {
-              const isActive = s.key === activeKey;
+              const isActive = s.key === resolvedActiveKey;
               return (
                 <button
                   key={s.key}
@@ -144,7 +141,7 @@ function buildSeries(records: TelemetryRecord[]): SeriesEntry[] {
   for (const [key, group] of byMetricName.entries()) {
     const [kind, ...nameParts] = key.split("::");
     const name = nameParts.join("::");
-    const sorted = [...group].sort((a, b) => a.timestamp - b.timestamp);
+    const sorted = group.toSorted((a, b) => a.timestamp - b.timestamp);
     if (kind === "gauge") {
       const points = sorted.map((m) => ({ t: m.timestamp, v: m.value }));
       out.push({
@@ -185,8 +182,9 @@ function buildSeries(records: TelemetryRecord[]): SeriesEntry[] {
   if (spans.length > 0) {
     const byOp = groupBy(spans, (s) => s.operationName);
     for (const [name, group] of byOp.entries()) {
-      const points = group.map((s) => ({ t: s.timestamp, v: s.durationMs }));
-      points.sort((a, b) => a.t - b.t);
+      const points = group
+        .map((s) => ({ t: s.timestamp, v: s.durationMs }))
+        .toSorted((a, b) => a.t - b.t);
       out.push({
         key: `span::${name}`,
         label: `${name} (durationMs)`,
@@ -199,7 +197,7 @@ function buildSeries(records: TelemetryRecord[]): SeriesEntry[] {
     }
   }
 
-  return out.sort((a, b) => b.meta.count - a.meta.count);
+  return out.toSorted((a, b) => b.meta.count - a.meta.count);
 }
 
 function bucketCount(points: MetricRecord[], windowMs: number): SeriesPoint[] {

@@ -9,7 +9,7 @@ import {
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import z from "zod";
+import { z } from "zod";
 import UploadIcon from "~icons/mdi/upload";
 
 import { ApiLogViewer } from "@/admin-common/ApiLogViewer";
@@ -74,7 +74,7 @@ function FilesUploadTest() {
     try {
       const result = await FileService.testBufferUpload({ name }, filesToUpload);
       setBufferResult(result);
-      bufferForm.form.files = [];
+      bufferForm.setForm((form) => ({ ...form, files: [] }));
     } catch (e) {
       console.error("Buffer upload failed:", e);
       alert("업로드 실패");
@@ -97,7 +97,7 @@ function FilesUploadTest() {
     try {
       const result = await FileService.testStreamUpload({ name }, filesToUpload);
       setStreamResult(result);
-      streamForm.form.files = [];
+      streamForm.setForm((form) => ({ ...form, files: [] }));
     } catch (e) {
       console.error("Stream upload failed:", e);
       alert("업로드 실패");

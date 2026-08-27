@@ -10,7 +10,7 @@ const client = new ECRPUBLICClient({
   region: "us-east-1",
 });
 
-const { version } = await import("./package.json");
+const { version } = await import("../../package.json");
 async function checkDeployed() {
   const command = new DescribeImagesCommand({
     repositoryName: AWS_ECR_REGISTRY_NAME,
@@ -36,6 +36,7 @@ async function deploy() {
       async (tag) => {
         await $`docker tag target ${tag}`;
         await $`docker push ${tag}`;
+        return tag;
       },
     ),
   );

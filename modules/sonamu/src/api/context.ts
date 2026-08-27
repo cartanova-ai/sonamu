@@ -14,7 +14,7 @@ import { type NaiteStore } from "../naite/naite";
 import { type BufferedFile } from "../storage/buffered-file";
 import { type UploadedFile } from "../storage/uploaded-file";
 import { type createSSEFactory } from "../stream/sse";
-import { type WebSocketConnection, type WebSocketEventMap } from "../stream/ws";
+import { type WebSocketConnection } from "../stream/ws";
 
 // oxlint-disable-next-line @typescript-eslint/no-empty-interface -- Context 확장 타입
 export interface ContextExtend {}
@@ -41,8 +41,8 @@ export type Context = BaseContext & {
 } & ContextExtend;
 
 export type WebSocketContext<
-  TOut extends WebSocketEventMap = WebSocketEventMap,
-  TIn extends WebSocketEventMap = WebSocketEventMap,
+  TOut extends object = object,
+  TIn extends object = object,
 > = BaseContext & {
   transport: "ws";
   ws: WebSocketConnection<TOut, TIn>;

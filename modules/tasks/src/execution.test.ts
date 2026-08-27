@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { BackendPostgres } from ".";
 import { OpenWorkflow } from "./client";
+import { type SerializedError } from "./core/error";
 import { type WorkflowRun } from "./core/workflow";
 import { DEFAULT_SCHEMA } from "./database/base";
 import { KNEX_GLOBAL_CONFIG } from "./testing/connection";
@@ -639,7 +640,7 @@ describe("executeWorkflow with dynamic retryPolicy", () => {
   test("receives correct error and attempt number in shouldRetry function", async () => {
     const client = new OpenWorkflow({ backend });
 
-    let receivedError: unknown = null;
+    const receivedErrors: SerializedError[] = [];
     let receivedAttempt: number | null = null;
 
     const workflow = client.defineWorkflow(
@@ -648,7 +649,7 @@ describe("executeWorkflow with dynamic retryPolicy", () => {
         retryPolicy: {
           maxAttempts: 10,
           shouldRetry: (error, attempt) => {
-            receivedError = error;
+            receivedErrors.push(error);
             receivedAttempt = attempt;
             return { shouldRetry: false, delayMs: 0 };
           },
@@ -665,8 +666,9 @@ describe("executeWorkflow with dynamic retryPolicy", () => {
     await sleep(100);
 
     // shouldRetry 함수가 올바른 파라미터를 받았는지 확인
-    expect(receivedError).not.toBeNull();
-    expect((receivedError as { message?: string }).message).toBe("Test error message");
+    const [receivedError] = receivedErrors;
+    if (!receivedError) throw new Error("재시도 정책이 오류를 받지 못했습니다.");
+    expect(receivedError.message).toBe("Test error message");
     expect(receivedAttempt).toBe(1); // 첫 번째 시도 후이므로 1
 
     const workflowRun = await backend.getWorkflowRun({

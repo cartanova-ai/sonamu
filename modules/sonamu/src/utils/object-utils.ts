@@ -1,3 +1,12 @@
+import {
+  isBigIntValue,
+  isFunctionValue,
+  isNumberValue,
+  isObjectValue,
+  isStringValue,
+  isSymbolValue,
+} from "./runtime-value";
+
 type Primitive = string | number | boolean | null | undefined;
 
 type TypedArray =
@@ -84,8 +93,8 @@ export interface SerializableCheckResult {
  * isSerializable({ fn: () => {} }) // { valid: false, reason: "Function at fn" }
  * isSerializable({ deep: { nested: Promise.resolve() } }) // { valid: false, reason: "Promise at deep.nested" }
  */
-export function isSerializable(
-  value: unknown,
+export function isSerializable<Value>(
+  value: Value,
   path: string[] = [],
   seen: WeakSet<object> = new WeakSet(),
 ): SerializableCheckResult {
@@ -94,23 +103,26 @@ export function isSerializable(
     return { valid: true };
   }
 
-  const type = typeof value;
-  if (type === "string" || type === "number" || type === "boolean" || type === "undefined") {
-    return { valid: true };
-  }
-  if (type === "bigint") {
+  if (
+    isStringValue(value) ||
+    isNumberValue(value) ||
+    value === true ||
+    value === false ||
+    value === undefined ||
+    isBigIntValue(value)
+  ) {
     return { valid: true };
   }
 
-  if (type === "function") {
+  if (isFunctionValue(value)) {
     return { valid: false, reason: `Function at ${formatPath(path)}` };
   }
-  if (type === "symbol") {
+  if (isSymbolValue(value)) {
     return { valid: false, reason: `Symbol at ${formatPath(path)}` };
   }
 
-  if (type === "object") {
-    const obj = value as object;
+  if (isObjectValue(value)) {
+    const obj = value;
 
     if (obj instanceof Promise) {
       return { valid: false, reason: `Promise at ${formatPath(path)}` };
@@ -126,7 +138,7 @@ export function isSerializable(
     if (obj instanceof WeakSet) {
       return { valid: false, reason: `WeakSet at ${formatPath(path)}` };
     }
-    if (typeof WeakRef !== "undefined" && obj instanceof WeakRef) {
+    if ("WeakRef" in globalThis && obj instanceof WeakRef) {
       return { valid: false, reason: `WeakRef at ${formatPath(path)}` };
     }
 
@@ -179,13 +191,11 @@ export function isSerializable(
 
     // Vitest는 Error를 허용하지만 속성은 직렬화 필요
     if (obj instanceof Error) {
-      const errorProps = Object.keys(obj).filter((k) => !["name", "message", "stack"].includes(k));
-      for (const key of errorProps) {
-        const result = isSerializable(
-          (obj as unknown as Record<string, unknown>)[key],
-          [...path, key],
-          seen,
-        );
+      const errorEntries = Object.entries(obj).filter(
+        ([key]) => !["name", "message", "stack"].includes(key),
+      );
+      for (const [key, nestedValue] of errorEntries) {
+        const result = isSerializable(nestedValue, [...path, key], seen);
         if (!result.valid) return result;
       }
       return { valid: true };
@@ -201,14 +211,14 @@ export function isSerializable(
       };
     }
 
-    for (const key of Object.keys(obj)) {
-      const result = isSerializable((obj as Record<string, unknown>)[key], [...path, key], seen);
+    for (const [key, nestedValue] of Object.entries(obj)) {
+      const result = isSerializable(nestedValue, [...path, key], seen);
       if (!result.valid) return result;
     }
     return { valid: true };
   }
 
-  return { valid: false, reason: `Unknown type (${type}) at ${formatPath(path)}` };
+  return { valid: false, reason: `Unknown value at ${formatPath(path)}` };
 }
 
 function formatPath(path: string[]): string {

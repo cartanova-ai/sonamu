@@ -4,7 +4,9 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { DB } from "../../database/db";
 import { normalizeZodCompilerPolicy } from "../config";
+import { Sonamu } from "../sonamu";
 
 describe("zod-compiler 정책 정규화", () => {
   it.each([undefined, false] as const)(
@@ -50,9 +52,7 @@ describe("zod-compiler 빌드 전용 정책 로딩", () => {
   const tempRoots: string[] = [];
 
   afterEach(async () => {
-    vi.doUnmock("../sonamu");
-    vi.doUnmock("../../database/db");
-    vi.doUnmock("../../bin/ts-loader-registration");
+    vi.restoreAllMocks();
     vi.resetModules();
     await Promise.all(
       tempRoots.splice(0).map((rootPath) => rm(rootPath, { recursive: true, force: true })),
@@ -78,19 +78,9 @@ export default {
 `,
     );
 
-    const sonamuInit = vi.fn();
-    const generateDBConfig = vi.fn();
-    const setDBConfig = vi.fn();
-    vi.doMock("../sonamu", () => ({ Sonamu: { init: sonamuInit } }));
-    vi.doMock("../../database/db", () => ({
-      DB: {
-        generateDBConfig,
-        setConfig: setDBConfig,
-      },
-    }));
-    vi.doMock("../../bin/ts-loader-registration", () => ({
-      ensureTsLoaderRegistered: vi.fn(async () => {}),
-    }));
+    const sonamuInit = vi.spyOn(Sonamu, "init");
+    const generateDBConfig = vi.spyOn(DB, "generateDBConfig");
+    const setDBConfig = vi.spyOn(DB, "setConfig");
 
     const { loadBuildCompilerPolicy } = await import("../../bin/compiler-policy");
 

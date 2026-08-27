@@ -1,50 +1,49 @@
 import assert from "assert";
 
-import { DB, Naite } from "sonamu";
+import { DB, Naite, Sonamu } from "sonamu";
 import { type Context } from "sonamu";
 import { bootstrap, runWithContext, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+import { z } from "zod";
 
 import { ProjectModel } from "./project.model";
 import { type ProjectAskStreamEvents } from "./project.types";
 
 bootstrap(vi);
 
+const createEmployee = async (employeeNumber: string) => {
+  const wdb = DB.getDB("w");
+  const [userResult] = await wdb("users")
+    .insert({
+      email: `emp-${employeeNumber}@test.com`,
+      username: `empuser${employeeNumber}`,
+      password: "password123",
+      role: "normal",
+      is_verified: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+    })
+    .returning("id");
+  const [empResult] = await wdb("employees")
+    .insert({
+      user_id: userResult.id,
+      employee_number: employeeNumber,
+      created_at: new Date(),
+    })
+    .returning("id");
+  return z.number().parse(empResult?.id);
+};
+
+const createTag = async (name: string) => {
+  const wdb = DB.getDB("w");
+  const [result] = await wdb("tags").insert({ name, created_at: new Date() }).returning("id");
+  return z.number().parse(result?.id);
+};
+
 describe("ProjectModel", () => {
   // ============================================================
   // CDD 검증: project.spec.json → 프로젝트 관리
   // ============================================================
-
-  // 헬퍼: 테스트용 직원 생성
-  const createEmployee = async (employeeNumber: string) => {
-    const wdb = DB.getDB("w");
-    const [userResult] = await wdb("users")
-      .insert({
-        email: `emp-${employeeNumber}@test.com`,
-        username: `empuser${employeeNumber}`,
-        password: "password123",
-        role: "normal",
-        is_verified: true,
-        created_at: new Date(),
-        updated_at: new Date(),
-      })
-      .returning("id");
-    const [empResult] = await wdb("employees")
-      .insert({
-        user_id: userResult.id,
-        employee_number: employeeNumber,
-        created_at: new Date(),
-      })
-      .returning("id");
-    return empResult.id as number;
-  };
-
-  // 헬퍼: 테스트용 태그 생성
-  const createTag = async (name: string) => {
-    const wdb = DB.getDB("w");
-    const [result] = await wdb("tags").insert({ name, created_at: new Date() }).returning("id");
-    return result.id as number;
-  };
 
   describe("프로젝트 생성/수정", () => {
     test("save로 프로젝트 생성 (이름, 설명, 예산, 마감일, 상태)", async () => {
@@ -62,7 +61,7 @@ describe("ProjectModel", () => {
       ]);
       assert(projectId);
 
-      expect(typeof projectId).toBe("number");
+      expect(Number.isInteger(projectId)).toBe(true);
 
       const project = await ProjectModel.findById("A", projectId);
       expect(project.name).toBe("테스트프로젝트");
@@ -381,6 +380,7 @@ describe("ProjectModel", () => {
       const events: Set<keyof ProjectAskStreamEvents> = new Set();
       await runWithContext(
         {
+          ...Sonamu.getContext(),
           session: null,
           user: null,
           locale: "",
@@ -393,7 +393,7 @@ describe("ProjectModel", () => {
               end: vi.fn().mockImplementation(() => Promise.resolve()),
             };
           }),
-        } as unknown as Context,
+        } satisfies Context,
         async () => {
           await ProjectModel.ask("지금 어떤 프로젝트들이 등록되어 있나요?");
 
@@ -404,7 +404,7 @@ describe("ProjectModel", () => {
           assert(Array.isArray(toolCalls));
           assert(toolCalls.length === 1);
 
-          assert(typeof fullText === "string");
+          z.string().parse(fullText);
           assert(tokens.length > 0);
           assert(fullText === tokens.join(""));
         },

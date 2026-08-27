@@ -17,8 +17,9 @@ function App({ children }: AppProps) {
   useEffect(() => {
     // 브라우저 locale 감지
     const browserLocale = navigator.language.split("-")[0];
-    if (SUPPORTED_LOCALES.includes(browserLocale as (typeof SUPPORTED_LOCALES)[number])) {
-      setLocale(browserLocale as (typeof SUPPORTED_LOCALES)[number]);
+    const supportedLocale = SUPPORTED_LOCALES.find((locale) => locale === browserLocale);
+    if (supportedLocale) {
+      setLocale(supportedLocale);
     }
   }, []);
 

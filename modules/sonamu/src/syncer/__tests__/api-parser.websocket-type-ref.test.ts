@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import { registeredApis } from "../../api/decorators";
+import { type AbsolutePath } from "../../utils/path-utils";
 import { readApisFromFile } from "../api-parser";
 
 describe("readApisFromFile websocket type refs", () => {
@@ -47,7 +48,7 @@ describe("readApisFromFile websocket type refs", () => {
     });
 
     tempDir = await mkdtemp(path.join(tmpdir(), "sonamu-api-parser-"));
-    const filePath = path.join(tempDir, "chat.frame.ts");
+    const filePath: AbsolutePath = `/${path.relative("/", path.join(tempDir, "chat.frame.ts"))}`;
     await writeFile(
       filePath,
       `
@@ -64,7 +65,7 @@ class ChatFrameClass {
       `.trim(),
     );
 
-    const [api] = await readApisFromFile(filePath as `${string}.ts`);
+    const [api] = await readApisFromFile(filePath);
 
     expect(api?.websocketOptions?.outEventsTypeRef).toEqual({
       t: "ref",

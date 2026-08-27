@@ -1,6 +1,6 @@
 import { Button, Input } from "@sonamu-kit/react-components";
 import { type InputProps } from "@sonamu-kit/react-components";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import LanguagesIcon from "~icons/lucide/languages";
 
 import { SonamuUIService } from "../services/sonamu-ui.service";
@@ -11,20 +11,13 @@ type InputWithSuggestionProps = {
 } & InputProps;
 export function InputWithSuggestion({ origin, entityId, ...inputProps }: InputWithSuggestionProps) {
   const [loading, setLoading] = useState(false);
-  const [value, setValue] = useState(
-    inputProps.value === undefined || inputProps.value === null ? "" : String(inputProps.value),
-  );
-
-  useEffect(() => {
-    const originValue =
-      inputProps.value === undefined || inputProps.value === null ? "" : String(inputProps.value);
-    if (value !== originValue) {
-      setValue(originValue);
-    }
-  }, [inputProps.value]);
+  const originValue =
+    inputProps.value === undefined || inputProps.value === null ? "" : String(inputProps.value);
+  const [editedValue, setEditedValue] = useState<{ origin: string; value: string }>();
+  const value = editedValue?.origin === originValue ? editedValue.value : originValue;
 
   const triggerChange = (newValue: string) => {
-    setValue(newValue);
+    setEditedValue({ origin: originValue, value: newValue });
     if (inputProps.onValueChange) {
       inputProps.onValueChange(newValue);
     }

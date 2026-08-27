@@ -69,11 +69,11 @@ export class Serve extends BaseCommand {
   /**
    * unknown error에서 signal 문자열을 타입 안전하게 추출합니다
    */
-  #extractSignal(error: unknown): string | undefined {
-    if (typeof error === "object" && error !== null && "signal" in error) {
-      const candidate = (error as { signal: unknown }).signal;
-      if (typeof candidate === "string") {
-        return candidate;
+  #extractSignal<Failure>(error: Failure): string | undefined {
+    if (error instanceof Error && "signal" in error) {
+      const candidate = error.signal;
+      if (Object.prototype.toString.call(candidate) === "[object String]") {
+        return String(candidate);
       }
     }
     return undefined;
@@ -140,17 +140,29 @@ export class Serve extends BaseCommand {
     const server = this.#httpServer;
     this.#scheduleCrashCounterReset(server);
 
-    this.#httpServer.on("message", async (message: unknown) => {
-      if (typeof message !== "object" || message === null) return;
+    this.#httpServer.on("message", async (message) => {
+      if (!(message instanceof Object) || !("type" in message)) return;
 
-      if ("type" in message && message.type === "hmr-hook:full-reload") {
-        const msg = message as unknown as { path: string; shouldBeReloadable: boolean };
-        this.#onReloadAsked?.(msg.path, msg.shouldBeReloadable);
+      if (
+        message.type === "hmr-hook:full-reload" &&
+        "path" in message &&
+        Object.prototype.toString.call(message.path) === "[object String]" &&
+        "shouldBeReloadable" in message &&
+        (message.shouldBeReloadable === true || message.shouldBeReloadable === false)
+      ) {
+        this.#onReloadAsked?.(String(message.path), message.shouldBeReloadable);
       }
 
-      if ("type" in message && message.type === "hmr-hook:invalidated") {
-        const msg = message as unknown as { paths: string[] };
-        this.#onFileInvalidated?.(msg.paths);
+      if (
+        message.type === "hmr-hook:invalidated" &&
+        "paths" in message &&
+        Array.isArray(message.paths) &&
+        message.paths.every(
+          (invalidatedPath) =>
+            Object.prototype.toString.call(invalidatedPath) === "[object String]",
+        )
+      ) {
+        this.#onFileInvalidated?.(message.paths.map(String));
       }
     });
 
@@ -175,7 +187,7 @@ export class Serve extends BaseCommand {
 
         this.#scheduleCrashRestart();
       })
-      .catch((error: unknown) => {
+      .catch((error) => {
         if (this.#httpServer !== server) return;
         if (this.#intentionalExits.has(server) || this.#isClosing) return;
 

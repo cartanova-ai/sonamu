@@ -30,7 +30,12 @@ const router = createRouter({
   basepath: import.meta.env.BASE_URL,
 });
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+const rootElement = document.getElementById("root");
+if (rootElement === null) {
+  throw new Error("Sonamu UI 루트 엘리먼트를 찾을 수 없습니다.");
+}
+
+ReactDOM.createRoot(rootElement).render(
   <QueryClientProvider client={queryClient}>
     <SonamuProviderWrapper>
       <TooltipProvider>
@@ -46,4 +51,4 @@ declare global {
     __TANSTACK_QUERY_CLIENT__: typeof queryClient;
   }
 }
-window.__TANSTACK_QUERY_CLIENT__ = queryClient;
+Object.assign(window, { __TANSTACK_QUERY_CLIENT__: queryClient });

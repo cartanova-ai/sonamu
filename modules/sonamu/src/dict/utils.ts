@@ -1,12 +1,20 @@
+import { isFunctionValue } from "../utils/runtime-value";
+
 export type PluralForms = {
   zero?: string | ((n: number) => string);
   one?: string | ((n: number) => string);
   other?: string | ((n: number) => string);
 };
 
+type PluralResolver = (n: number) => string;
+
+function isPluralResolver(form: PluralForms[keyof PluralForms]): form is PluralResolver {
+  return isFunctionValue(form);
+}
+
 export function plural(n: number, forms: PluralForms): string {
   const form = (n === 0 && forms.zero) || (n === 1 && forms.one) || forms.other;
-  return typeof form === "function" ? form(n) : (form ?? n.toString());
+  return isPluralResolver(form) ? form(n) : (form ?? n.toString());
 }
 
 export function createFormat(locale: string) {

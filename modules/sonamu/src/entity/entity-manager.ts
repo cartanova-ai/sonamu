@@ -30,6 +30,19 @@ export type TableSpec = {
   uniqueIndexes: EntityIndex[];
   jsonColumns: string[];
 };
+
+function parseEntityJson(source: string) {
+  try {
+    return JSON.parse(source);
+  } catch (cause) {
+    // JSON 파서 계약 밖의 오류는 구문 오류로 정규화하고 원인을 보존합니다.
+    if (!(cause instanceof SyntaxError)) {
+      throw new SyntaxError("entity.json 파싱 중 예기치 않은 오류가 발생했습니다.", { cause });
+    }
+    throw cause;
+  }
+}
+
 class EntityManagerClass {
   private entities: Map<string, Entity> = new Map();
   public modulePaths: Map<string, string> = new Map();
@@ -37,23 +50,25 @@ class EntityManagerClass {
   public isAutoloaded: boolean = false;
 
   // 경로 전달받아 모든 entity.json 파일 로드
-  async autoload(_: boolean = false) {
+  async autoload(doSilent: boolean = false) {
     if (this.isAutoloaded) {
       return;
     }
     const pathPattern = path.join(Sonamu.apiRootPath, "/src/application/**/*.entity.json");
 
     for await (const file of glob(path.resolve(pathPattern))) {
-      const json = JSON.parse((await readFile(file)).toString());
+      const json = parseEntityJson((await readFile(file)).toString());
 
       // entity.json 스키마 검증
       const error = this.schemaValidate(json);
       if (error) {
         const relativePath = path.relative(Sonamu.apiRootPath, file);
         const errorMessage = prettifyError(error);
-        console.error(
-          chalk.red(`Invalid entity.json schema: ${relativePath}\n${chalk.yellow(errorMessage)}`),
-        );
+        if (!doSilent) {
+          console.error(
+            chalk.red(`Invalid entity.json schema: ${relativePath}\n${chalk.yellow(errorMessage)}`),
+          );
+        }
       }
 
       await this.register(json, { deferSearchTextJsonSourceValidation: true });
@@ -65,7 +80,7 @@ class EntityManagerClass {
     this.isAutoloaded = true;
   }
 
-  schemaValidate(json: unknown) {
+  schemaValidate<Value>(json: Value) {
     const result = EntityJsonSchema.safeParse(json);
     return result.success ? null : result.error;
   }
@@ -180,7 +195,9 @@ class EntityManagerClass {
   }
 
   getByTable(table: string): Entity {
-    const entity = Array.from(this.entities.values()).find((entity) => entity.table === table);
+    const entity = Array.from(this.entities.values()).find(
+      (candidate) => candidate.table === table,
+    );
     if (entity === undefined) {
       throw new Error(`존재하지 않는 Entity 요청 ${table}`);
     }
@@ -242,7 +259,7 @@ class EntityManagerClass {
     return tableSpec;
   }
 
-  getNamesFromId(entityId: string): EntityNamesRecord {
+  getNamesFromId(entityId: string) {
     // entityId가 단복수 동형 단어인 경우 List 붙여서 생성
     const pluralized =
       inflection.pluralize(entityId) === entityId
@@ -258,7 +275,7 @@ class EntityManagerClass {
       capitalPlural: pluralized,
       upper: entityId.toUpperCase(),
       constant: inflection.underscore(entityId).toUpperCase(),
-    };
+    } satisfies EntityNamesRecord;
   }
 
   /**

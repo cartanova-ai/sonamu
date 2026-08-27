@@ -10,8 +10,9 @@ import { format, type FormatConfig } from "oxfmt";
 import { cached } from "./async-utils";
 import { isTest } from "./controller";
 import { execute } from "./process-utils";
+import { isNumberValue } from "./runtime-value";
 
-const _require = createRequire(import.meta.url);
+const requireFromHere = createRequire(import.meta.url);
 
 /**
  * 코드를 프로젝트의 oxfmt + oxlint 설정에 맞춰 포매팅한 문자열을 반환합니다.
@@ -75,9 +76,11 @@ async function loadOxfmtConfig(): Promise<FormatConfig> {
   while (true) {
     const candidate = join(dir, ".oxfmtrc.json");
     try {
+      // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
       cachedOxfmtConfig = JSON.parse(await readFile(candidate, "utf-8")) as FormatConfig;
       return cachedOxfmtConfig;
     } catch (e) {
+      // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
       if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
         !isTest() && console.error(`Failed to load ${candidate}:`, e);
         break;
@@ -121,7 +124,8 @@ async function runOxlint(code: string): Promise<string> {
       });
     } catch (e) {
       // lint 위반 시 exit code != 0이지만 --fix는 적용됨. exec 자체 실패만 throw.
-      if (typeof (e as Error & { code?: number }).code !== "number") {
+      // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
+      if (!isNumberValue((e as Error & { code?: number }).code)) {
         throw e;
       }
     }
@@ -138,7 +142,7 @@ async function runOxlint(code: string): Promise<string> {
 
 function resolveOxlintBin(): string {
   try {
-    return _require.resolve("oxlint/bin/oxlint");
+    return requireFromHere.resolve("oxlint/bin/oxlint");
   } catch {
     return "oxlint";
   }

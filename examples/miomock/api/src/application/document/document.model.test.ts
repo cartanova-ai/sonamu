@@ -18,7 +18,7 @@ describe("DocumentModel", () => {
       ]);
       assert(docId);
 
-      expect(typeof docId).toBe("number");
+      expect(Number.isInteger(docId)).toBe(true);
 
       const doc = await DocumentModel.findById("A", docId);
       expect(doc.title).toBe("테스트문서");

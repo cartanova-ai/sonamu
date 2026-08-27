@@ -181,7 +181,7 @@ describe("esm-utils", () => {
       expect(entries).toContainEqual({ name: "foo", value: "bar" });
       expect(entries).toContainEqual({ name: "num", value: 42 });
       expect(entries[2]?.name).toBe("func");
-      expect(typeof entries[2]?.value).toBe("function");
+      expect(entries[2]?.value).toEqual(expect.any(Function));
     });
 
     test("다양한 export 타입의 변환 검증", () => {
@@ -216,11 +216,11 @@ describe("esm-utils", () => {
 
       // 함수 확인
       const calculateMember = members.find((m) => m.name === "calculate");
-      expect(typeof calculateMember?.value).toBe("function");
+      expect(calculateMember?.value).toEqual(expect.any(Function));
 
       // 클래스 확인 (JavaScript에서 class는 function 타입)
       const testModelMember = members.find((m) => m.name === "TestModel");
-      expect(typeof testModelMember?.value).toBe("function");
+      expect(testModelMember?.value).toEqual(expect.any(Function));
 
       // default export 확인
       const defaultMember = members.find((m) => m.name === "default");
@@ -230,10 +230,16 @@ describe("esm-utils", () => {
     test.each([
       {
         mockModule: {
-          UserModel: class UserModel {}, // oxlint-disable
-          PostModel: class PostModel {}, // oxlint-disable
-          UserFrame: class {}, // oxlint-disable
-          helper: () => {}, // oxlint-disable
+          UserModel: class UserModel {
+            readonly moduleKind = "model";
+          },
+          PostModel: class PostModel {
+            readonly moduleKind = "model";
+          },
+          UserFrame: class {
+            readonly moduleKind = "frame";
+          },
+          helper: () => {},
         },
         filter: (m: { name: string }) => m.name.endsWith("Model"),
         expected: ["UserModel", "PostModel"],
@@ -241,10 +247,16 @@ describe("esm-utils", () => {
       },
       {
         mockModule: {
-          UserModel: class {}, // oxlint-disable
-          PostFrame: class PostFrame {}, // oxlint-disable
-          CommentFrame: class CommentFrame {}, // oxlint-disable
-          helper: () => {}, // oxlint-disable
+          UserModel: class {
+            readonly moduleKind = "model";
+          },
+          PostFrame: class PostFrame {
+            readonly moduleKind = "frame";
+          },
+          CommentFrame: class CommentFrame {
+            readonly moduleKind = "frame";
+          },
+          helper: () => {},
         },
         filter: (m: { name: string }) => m.name.endsWith("Frame"),
         expected: ["PostFrame", "CommentFrame"],
@@ -289,7 +301,7 @@ describe("esm-utils", () => {
       for (const member of members) {
         expect(member).toHaveProperty("name");
         expect(member).toHaveProperty("value");
-        expect(typeof member.name).toBe("string");
+        expect(member.name).toEqual(expect.any(String));
       }
     });
 

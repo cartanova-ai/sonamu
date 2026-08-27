@@ -1,14 +1,29 @@
 import { type FastifyInstance } from "fastify";
 import type z from "zod";
 
+import { isObjectValue, isStringValue } from "../utils/runtime-value";
 import { isSoException } from "./so-exceptions";
+
+function isZodIssuePayload<Value>(payload: Value): payload is Value & z.core.$ZodIssue[] {
+  return (
+    Array.isArray(payload) &&
+    payload.every(
+      (issue) =>
+        isObjectValue(issue) &&
+        "message" in issue &&
+        isStringValue(issue.message) &&
+        "path" in issue &&
+        Array.isArray(issue.path),
+    )
+  );
+}
 
 export function setupErrorHandler(server: FastifyInstance) {
   server.setErrorHandler((error, request, reply) => {
     error.statusCode ??= 400;
 
-    if (isSoException(error) && error.payload && Array.isArray(error.payload)) {
-      const issues = error.payload as z.core.$ZodIssue[];
+    if (isSoException(error) && isZodIssuePayload(error.payload)) {
+      const issues = error.payload;
       const [issue] = issues;
       const message = `${issue.message} (${issue.path.join("/")})`;
 

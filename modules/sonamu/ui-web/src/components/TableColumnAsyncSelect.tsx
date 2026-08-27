@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { defaultCatch } from "../services/sonamu.shared";
+import { createFormEvent } from "./form-event";
 
 type TableColumnAsyncSelectProps = {
   entityId: string;
@@ -15,10 +16,12 @@ type TableColumnAsyncSelectProps = {
   className?: string;
 };
 
+const EMPTY_VALUES: string[] = [];
+
 export function TableColumnAsyncSelect({
   entityId,
   allowedTypes,
-  value = [],
+  value = EMPTY_VALUES,
   onChange,
   onValueChange,
   placeholder = "Columns",
@@ -26,7 +29,8 @@ export function TableColumnAsyncSelect({
   className,
 }: TableColumnAsyncSelectProps) {
   const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
-  const [selectedValues, setSelectedValues] = useState(value);
+  const [editedValues, setEditedValues] = useState<{ origin: string[]; value: string[] }>();
+  const selectedValues = editedValues?.origin === value ? editedValues.value : value;
 
   useEffect(() => {
     SonamuUIService.getTableColumns(entityId)
@@ -45,18 +49,13 @@ export function TableColumnAsyncSelect({
       .catch(defaultCatch);
   }, [entityId, allowedTypes]);
 
-  // value prop이 변경되면 내부 상태를 업데이트
-  useEffect(() => {
-    setSelectedValues(value);
-  }, [value]);
-
   const handleValueChange = (newValue: string[]) => {
-    setSelectedValues(newValue);
+    setEditedValues({ origin: value, value: newValue });
     if (onValueChange) {
       onValueChange(newValue);
     }
     if (onChange) {
-      onChange({} as React.FormEvent, { value: newValue });
+      onChange(createFormEvent(), { value: newValue });
     }
   };
 

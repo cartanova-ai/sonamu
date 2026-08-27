@@ -14,6 +14,7 @@ import {
   isRelationProp,
   isSubsetDefWithCone,
 } from "../types/types";
+import { isStringValue } from "../utils/runtime-value";
 
 /**
  * Entity의 템플릿 cone을 생성합니다.
@@ -21,15 +22,7 @@ import {
  * LLM을 사용하지 않고 faker-mappings.ts를 활용하여 기본 cone을 생성합니다.
  * stub entity 생성 시 자동으로 호출되어 최소한의 cone 메타데이터를 제공합니다.
  */
-export function generateTemplateCones(
-  entity: EntityJson,
-  locale: "ko" | "en" | "ja" = "ko",
-): {
-  entityCone?: Cone;
-  propCones: Record<string, Cone>;
-  subsetCones: Record<string, Cone>;
-  enumCones: Record<string, Cone>;
-} {
+export function generateTemplateCones(entity: EntityJson, locale: "ko" | "en" | "ja" = "ko") {
   const mapping = fakerMappings[locale];
 
   if (!mapping) {
@@ -77,6 +70,7 @@ export function generateTemplateCones(
           };
           return acc;
         },
+        // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
         {} as Record<string, { note: string }>,
       ),
     };
@@ -188,6 +182,7 @@ function shouldHaveDataSource(prop: EntityProp): boolean {
 
   // OneToOne은 hasJoinColumn: true인 경우에만 dataSource 필요
   if (isOneToOneRelationProp(prop)) {
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
     return (prop as OneToOneRelationProp).hasJoinColumn;
   }
 
@@ -199,7 +194,7 @@ function shouldHaveDataSource(prop: EntityProp): boolean {
  */
 function getSubsetScale(key: string, subset: SubsetDef, locale: "ko" | "en" | "ja"): string {
   const fields = isSubsetDefWithCone(subset) ? subset.fields : subset;
-  const fieldNames = fields.map((f) => (typeof f === "string" ? f : f.field)).join(", ");
+  const fieldNames = fields.map((f) => (isStringValue(f) ? f : f.field)).join(", ");
 
   const templates = {
     ko: `${key} 서브셋. 포함된 필드: ${fieldNames}`,

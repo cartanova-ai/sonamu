@@ -1,16 +1,13 @@
 import { type Meta, type StoryObj } from "@storybook/react-vite";
 import {
-  type InfiniteData,
   QueryClient,
   QueryClientProvider,
-  type UseInfiniteQueryResult,
-  type UseQueryResult,
   useInfiniteQuery,
   useQuery,
 } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { type AsyncIdConfig, IdAsyncSelect } from "./id-async-select";
+import { type AsyncIdConfig, IdAsyncSelect, type IdAsyncSelectProps } from "./id-async-select";
 
 // ----------------------------------------------------------------------------
 // Mock data source
@@ -44,7 +41,7 @@ function filterRows(params?: MockListParams): MockRow[] {
     const ids = Array.isArray(params.id) ? params.id : [params.id];
     rows = rows.filter((row) => ids.includes(row.id));
   }
-  if (typeof params?.keyword === "string" && params.keyword.length > 0) {
+  if (params?.keyword !== undefined && params.keyword.length > 0) {
     const kw = params.keyword.toLowerCase();
     rows = rows.filter((row) => row.name.toLowerCase().includes(kw));
   }
@@ -60,11 +57,8 @@ async function fetchMockList(params?: MockListParams): Promise<MockListData> {
 // ----------------------------------------------------------------------------
 // useList / useListInfinite mock
 //
-// 실제 useQuery / useInfiniteQuery 결과를 그대로 돌려주고, AsyncIdConfig 의 선언
-// 타입(`UseQueryResult<Record<string, unknown>>`)으로 좁히는 단 한 번의 cast 만
-// 각 훅 경계에 둡니다. 이 cast 는 AsyncIdConfig 자체가 `Record<string, unknown>`
-// 기반이라 생기는 공변성 제약에서 오는 것이므로, 스토리가 직접 Result 구조를
-// 흉내 낼 필요는 없습니다.
+// 실제 useQuery / useInfiniteQuery 결과를 그대로 반환해 생성 서비스와 같은
+// 캐시 및 로딩 전이를 재현합니다.
 // ----------------------------------------------------------------------------
 
 // queryKey 규약(IdAsyncSelect 내부 predicate와 맞춤):
@@ -74,25 +68,20 @@ async function fetchMockList(params?: MockListParams): Promise<MockListData> {
 // 시 fresh 로딩 전이가 실제 그대로 재현됩니다.
 const MOCK_QUERY_PREFIX = ["mock", "Company"] as const;
 
-function useMockList(
-  subset: "A",
-  params?: MockListParams,
-  options?: { enabled?: boolean },
-): UseQueryResult<Record<string, unknown>> {
-  const query = useQuery({
+function useMockList(subset: "A", params?: MockListParams, options?: { enabled?: boolean }) {
+  return useQuery({
     queryKey: [...MOCK_QUERY_PREFIX, "list", subset, params],
     queryFn: () => fetchMockList(params),
     enabled: options?.enabled ?? true,
   });
-  return query as unknown as UseQueryResult<Record<string, unknown>>;
 }
 
 function useMockListInfinite(
   subset: "A",
   params?: MockListParams,
   options?: { enabled?: boolean },
-): UseInfiniteQueryResult<InfiniteData<MockListData> & MockListData, Error> {
-  const query = useInfiniteQuery({
+) {
+  return useInfiniteQuery({
     queryKey: [...MOCK_QUERY_PREFIX, "infinite", subset, params],
     queryFn: () => fetchMockList(params),
     enabled: options?.enabled ?? true,
@@ -104,10 +93,6 @@ function useMockListInfinite(
       total: data.pages[0]?.total ?? 0,
     }),
   });
-  return query as unknown as UseInfiniteQueryResult<
-    InfiniteData<MockListData> & MockListData,
-    Error
-  >;
 }
 
 const MockCompanyAsyncIdConfig: AsyncIdConfig<"A", MockSubsetMapping, MockListParams> = {
@@ -130,8 +115,20 @@ function QueryClientDecorator({ children }: { children: React.ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
+type MockIdAsyncSelectProps = IdAsyncSelectProps<
+  "A",
+  MockSubsetMapping,
+  number,
+  MockListParams,
+  "A"
+>;
+
+function MockIdAsyncSelect(props: MockIdAsyncSelectProps) {
+  return <IdAsyncSelect<"A", MockSubsetMapping, number, MockListParams, "A"> {...props} />;
+}
+
 const meta = {
-  component: IdAsyncSelect,
+  component: MockIdAsyncSelect,
   tags: ["autodocs"],
   args: {
     config: MockCompanyAsyncIdConfig,
@@ -146,7 +143,7 @@ const meta = {
       </QueryClientDecorator>
     ),
   ],
-} satisfies Meta<typeof IdAsyncSelect>;
+} satisfies Meta<typeof MockIdAsyncSelect>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -165,8 +162,8 @@ export const Single: Story = {
           baseListParams={{}}
           preload
           value={value}
-          onValueChange={(v) => setValue(v as number | undefined)}
-          onRowChange={(r) => setRow(r as MockRow | undefined)}
+          onValueChange={(nextValue) => setValue(Array.isArray(nextValue) ? undefined : nextValue)}
+          onRowChange={(nextRow) => setRow(Array.isArray(nextRow) ? undefined : nextRow)}
           placeholder="회사를 검색하세요"
         />
         <div className="rounded border p-2 text-xs">
@@ -195,8 +192,8 @@ export const Multi: Story = {
           preload
           multiple
           value={values}
-          onValueChange={(v) => setValues((v as number[] | undefined) ?? [])}
-          onRowChange={(r) => setRows((r as MockRow[] | undefined) ?? [])}
+          onValueChange={(nextValue) => setValues(Array.isArray(nextValue) ? nextValue : [])}
+          onRowChange={(nextRows) => setRows(Array.isArray(nextRows) ? nextRows : [])}
           placeholder="회사를 검색하세요"
         />
         <div className="rounded border p-2 text-xs">

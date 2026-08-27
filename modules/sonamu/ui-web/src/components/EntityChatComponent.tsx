@@ -1,7 +1,7 @@
 import { useChat } from "@ai-sdk/react";
 import { Button, Textarea } from "@sonamu-kit/react-components";
 import { DefaultChatTransport } from "ai";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AlertCircleIcon from "~icons/lucide/alert-circle";
 import CheckCircleIcon from "~icons/lucide/check-circle";
 import CircleIcon from "~icons/lucide/circle";
@@ -22,10 +22,9 @@ export default function EntityChatComponent({
   onEntityUpdated,
 }: EntityChatComponentProps) {
   const [input, setInput] = useState("");
-  const [processedToolCallIds, setProcessedToolCallIds] = useState(new Set());
-  const [toolState, setToolState] = useState<ToolState>("idle");
-  const [toolName, setToolName] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [requestStartIndex, setRequestStartIndex] = useState(0);
+  const processedToolCallIdsRef = useRef(new Set<string>());
+  const [transportErrorMessage, setTransportErrorMessage] = useState<string | null>(null);
 
   const { messages, status, sendMessage, stop } = useChat({
     // @ts-expect-error TODO: fix this (ai-sdk stable/beta 이슈)
@@ -42,34 +41,27 @@ export default function EntityChatComponent({
       })();
 
       if ("statusCode" in err && err.statusCode === 404) {
-        setErrorMessage(
+        setTransportErrorMessage(
           "API Key 설정이 필요합니다. process.env.ANTHROPIC_API_KEY 설정 후 다시 시도하세요.",
         );
       } else {
-        setErrorMessage(err.message);
+        setTransportErrorMessage(err.message);
       }
     },
   });
 
-  // messages에서 tool result 감시
+  // 도구 결과 콜백은 메시지당 한 번만 외부 상태에 반영합니다.
   useEffect(() => {
-    let hasError = false;
-    let errorText: string | null = null;
-
     for (const msg of messages) {
       for (const part of msg.parts) {
-        if (part.type === "step-start") {
-          setToolState("running");
-        }
-
-        // "tool-"로 시작하는 모든 part 처리
         if (part.type.startsWith("tool-") && "state" in part && "toolCallId" in part) {
-          const name = part.type.slice(5); // "tool-" 제거
-          setToolName(name);
-
-          if (part.state === "output-available" && !processedToolCallIds.has(part.toolCallId)) {
+          if (
+            part.state === "output-available" &&
+            !processedToolCallIdsRef.current.has(part.toolCallId)
+          ) {
             // createEntity 도구 결과 처리
             if (part.type === "tool-createEntity" && "output" in part) {
+              // SAFETY: createEntity 도구의 서버 응답 스키마는 성공 여부와 Entity ID를 함께 반환합니다.
               const result = part.output as { success: boolean; entityId: string };
               if (result?.success && result?.entityId && onEntityCreated) {
                 onEntityCreated(result.entityId);
@@ -78,6 +70,7 @@ export default function EntityChatComponent({
 
             // updateEntity 도구 결과 처리
             if (part.type === "tool-updateEntity" && "output" in part) {
+              // SAFETY: updateEntity 도구의 서버 응답 스키마는 Entity ID와 변경 필드 배열을 반환합니다.
               const result = part.output as {
                 success: boolean;
                 entityId: string;
@@ -88,36 +81,41 @@ export default function EntityChatComponent({
               }
             }
 
-            setProcessedToolCallIds((prev) => new Set([...prev, part.toolCallId]));
-            setToolState("success");
-          } else if (part.state === "output-error") {
-            hasError = true;
-            errorText = ("errorText" in part ? part.errorText : null) ?? "알 수 없는 오류";
+            processedToolCallIdsRef.current.add(part.toolCallId);
           }
         }
       }
     }
+  }, [messages, onEntityCreated, onEntityUpdated]);
 
-    if (hasError) {
-      setToolState("error");
-      setErrorMessage(errorText);
+  let toolState: ToolState = "idle";
+  let toolName: string | null = null;
+  let toolErrorMessage: string | null = null;
+  // 현재 요청 이후의 메시지만 상태 표시에 사용해 이전 요청 결과가 섞이지 않게 합니다.
+  for (const msg of messages.slice(requestStartIndex)) {
+    for (const part of msg.parts) {
+      if (part.type === "step-start") toolState = "running";
+      if (part.type.startsWith("tool-") && "state" in part) {
+        toolName = part.type.slice(5);
+        if (part.state === "output-available") toolState = "success";
+        if (part.state === "output-error") {
+          toolState = "error";
+          toolErrorMessage = ("errorText" in part ? part.errorText : null) ?? "알 수 없는 오류";
+        }
+      }
     }
-  }, [messages, onEntityCreated, onEntityUpdated, processedToolCallIds]);
+  }
 
-  // status 변경 감시
-  useEffect(() => {
-    if (status === "ready" && toolState === "running") {
-      setToolState("success");
-    }
-  }, [status, toolState]);
+  if (status === "ready" && toolState === "running") toolState = "success";
+  const errorMessage = transportErrorMessage ?? toolErrorMessage;
 
   const isLoading = status === "streaming" || status === "submitted";
 
   const handleSubmit = () => {
     if (!input.trim() || isLoading) return;
 
-    setToolState("idle");
-    setErrorMessage(null);
+    setTransportErrorMessage(null);
+    setRequestStartIndex(messages.length);
 
     sendMessage({ text: input });
     setInput("");
@@ -183,7 +181,7 @@ export default function EntityChatComponent({
           style={{ height: "auto", minHeight: "38px" }}
           className="flex-1 bg-transparent border-none text-white resize-none py-[0.6em] text-[0.95em] max-h-[100px] min-h-0 leading-[1.4] focus:outline-none placeholder:text-white/30"
           onInput={(e) => {
-            const target = e.target as HTMLTextAreaElement;
+            const target = e.currentTarget;
             target.style.height = "auto";
             target.style.height = `${Math.min(target.scrollHeight, 100)}px`;
           }}

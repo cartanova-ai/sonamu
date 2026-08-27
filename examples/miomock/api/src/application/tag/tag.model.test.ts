@@ -19,7 +19,7 @@ describe("TagModel", () => {
       const [tagId] = await TagModel.save([{ name: "테스트태그" }]);
       assert(tagId);
 
-      expect(typeof tagId).toBe("number");
+      expect(Number.isInteger(tagId)).toBe(true);
 
       const tag = await TagModel.findById("A", tagId);
       expect(tag.name).toBe("테스트태그");

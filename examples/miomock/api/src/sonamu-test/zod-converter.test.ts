@@ -25,18 +25,17 @@ import {
   SonamuFileSchema,
 } from "../../../../../modules/sonamu/dist/types/types";
 
+function expectToPass<T extends z.ZodType>(zodType: T, validData: z.input<T>) {
+  const result = zodType.safeParse(validData);
+  expect(result.success).toBe(true);
+}
+
+function expectToFail<T extends z.ZodType>(zodType: T, invalidData: z.input<T>) {
+  const result = zodType.safeParse(invalidData);
+  expect(result.success).toBe(false);
+}
+
 describe("zod-converter", () => {
-  // Helper functions
-  function expectToPass(zodType: z.ZodType, validData: unknown) {
-    const result = zodType.safeParse(validData);
-    expect(result.success).toBe(true);
-  }
-
-  function expectToFail(zodType: z.ZodType, invalidData: unknown) {
-    const result = zodType.safeParse(invalidData);
-    expect(result.success).toBe(false);
-  }
-
   describe("zodTypeToTsTypeDef", () => {
     describe("Primitive 타입", () => {
       // 목적: Zod의 기본 타입들이 올바른 TypeScript 타입 문자열로 변환되는지 검증
@@ -210,9 +209,8 @@ describe("zod-converter", () => {
       // 목적: 지원하지 않는 Zod 타입에 대해 적절한 에러를 발생시키는지 검증
       test("처리되지 않은 타입 → 에러", () => {
         // 기대: 처리되지 않은 타입에 대해 명확한 에러 메시지 발생
-        const mockZodType = {
-          def: { type: "unsupported_type" },
-        } as unknown as z.ZodType;
+        const mockZodType = z.string();
+        Object.defineProperty(mockZodType.def, "type", { value: "unsupported_type" });
 
         expect(() => zodTypeToTsTypeDef(mockZodType)).toThrow(
           "처리되지 않은 ZodType unsupported_type",
@@ -384,9 +382,8 @@ describe("zod-converter", () => {
     describe("에러 케이스", () => {
       // 목적: 지원하지 않는 Zod 타입에 대해 적절한 에러를 발생시키는지 검증
       test("처리되지 않은 타입 → 에러", () => {
-        const mockZodType = {
-          def: { type: "unsupported_type" },
-        } as unknown as z.ZodType;
+        const mockZodType = z.string();
+        Object.defineProperty(mockZodType.def, "type", { value: "unsupported_type" });
 
         expect(() => zodTypeToZodCode(mockZodType)).toThrow(
           "처리되지 않은 ZodType unsupported_type",

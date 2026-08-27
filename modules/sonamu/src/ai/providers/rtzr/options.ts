@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export type RtzrTranscriptionModelId = "whisper" | "sommers" | (string & {});
 
-const rtzrOptionsShape = {
+const rtzrOptionFields = {
   domain: z.enum(["CALL", "GENERAL"]).default("GENERAL"),
   language: z.string(),
   languageCandidates: z.array(z.string()).optional(),
@@ -19,7 +19,7 @@ const rtzrOptionsShape = {
   wordTimestamp: z.boolean().optional(),
 };
 
-const rtzrOptionsMap: Record<keyof typeof rtzrOptionsShape, string> = {
+const rtzrOptionsMap = {
   domain: "domain",
   language: "language",
   languageCandidates: "language_candidates",
@@ -32,15 +32,20 @@ const rtzrOptionsMap: Record<keyof typeof rtzrOptionsShape, string> = {
   paragraphSplitter: "use_paragraph_splitter",
   profanityFilter: "use_profanity_filter",
   wordTimestamp: "use_word_timestamp",
-};
+} satisfies Record<keyof typeof rtzrOptionFields, string>;
 
 // https://developers.rtzr.ai/docs/stt-file/
 export const rtzrTranscriptionProviderOptions = lazySchema(() =>
   zodSchema(
-    z.object(rtzrOptionsShape).transform((item) => {
+    z.object(rtzrOptionFields).transform((item) => {
       return Object.fromEntries(
         Object.entries(item).map(([key, value]) => {
-          return [rtzrOptionsMap[key as keyof typeof rtzrOptionsShape], value];
+          return [
+            rtzrOptionsMap[
+              /* SAFETY: Object.entries의 키는 입력 객체의 키로 제한된다. */ key as keyof typeof rtzrOptionFields
+            ],
+            value,
+          ];
         }),
       );
     }),

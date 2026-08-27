@@ -3,7 +3,7 @@
  * API에서 동기화된 파일입니다. 직접 수정하지 마세요.
  */
 
-import z from "zod";
+import { z } from "zod";
 
 export const ChatUser = z.object({
   id: z.string(),

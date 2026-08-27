@@ -10,8 +10,7 @@ import { dateReviver } from "./services/sonamu.shared";
 // SSR 데이터 타입
 declare global {
   interface Window {
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- SSR 데이터를 any 타입으로 받아야 함
-    __SONAMU_SSR__?: any;
+    __SONAMU_SSR__?: unknown;
     __SONAMU_SSR_CONFIG__?: {
       disableHydrate?: boolean;
     };
@@ -29,16 +28,21 @@ const queryClient = new QueryClient({
   },
 });
 
+const SSR_STATE_PROPERTY = "__SONAMU_SSR__";
+const SSR_CONFIG_PROPERTY = "__SONAMU_SSR_CONFIG__";
+const QUERY_CLIENT_PROPERTY = "__TANSTACK_QUERY_CLIENT__";
+
 // SSR 데이터 복원
-const dehydratedState = window.__SONAMU_SSR__
-  ? JSON.parse(JSON.stringify(window.__SONAMU_SSR__), dateReviver)
+const serializedState = window[SSR_STATE_PROPERTY];
+const dehydratedState = serializedState
+  ? JSON.parse(JSON.stringify(serializedState), dateReviver)
   : undefined;
 if (dehydratedState) {
   hydrate(queryClient, dehydratedState);
 }
 
 // SSR Config 확인
-const ssrConfig = window.__SONAMU_SSR_CONFIG__;
+const ssrConfig = window[SSR_CONFIG_PROPERTY];
 
 // Router 생성
 const router = createRouter({
@@ -81,4 +85,4 @@ declare global {
     __TANSTACK_QUERY_CLIENT__: typeof queryClient;
   }
 }
-window.__TANSTACK_QUERY_CLIENT__ = queryClient;
+window[QUERY_CLIENT_PROPERTY] = queryClient;

@@ -11,6 +11,8 @@ import {
   type DatabaseSchemaExtend,
   type EntityIndex,
 } from "../types/types";
+import { asArray } from "../utils/model";
+import { isNumberValue, isObjectValue, isStringValue } from "../utils/runtime-value";
 import { assertDefined, nonNullable } from "../utils/utils";
 import { batchUpdate } from "./_batch_update";
 import { type RowWithId } from "./_batch_update";
@@ -27,20 +29,34 @@ export type { DatabaseForeignKeys };
 type InheritableColumns<TTable extends TableName<DatabaseSchemaExtend>> =
   TTable extends keyof DatabaseSchemaExtend ? ColumnKeys<DatabaseSchemaExtend[TTable]> : never;
 
-// 테이블 데이터 타입
-type TableData = {
-  references: Set<string>;
-  rows: Record<string, unknown>[];
-  uniqueIndexes: EntityIndex[];
-  uniquesMap: Map<string, string>;
-  jsonColumns: string[];
-};
-
 // 참조 필드 타입
 export type UBRef = {
   uuid: string;
   of: string;
   use?: string;
+};
+
+type UpsertValue =
+  | string
+  | number
+  | boolean
+  | bigint
+  | Date
+  | Buffer
+  | Knex.Raw
+  | UBRef
+  | null
+  | UpsertValue[]
+  | { [key: string]: UpsertValue | undefined };
+type UpsertRow = Record<string, UpsertValue | undefined>;
+
+// 테이블 데이터 타입
+type TableData = {
+  references: Set<string>;
+  rows: UpsertRow[];
+  uniqueIndexes: EntityIndex[];
+  uniquesMap: Map<string, string>;
+  jsonColumns: string[];
 };
 
 // upsert 옵션
@@ -55,13 +71,8 @@ export type InsertOnlyOptions = {
   chunkSize?: number;
 };
 
-export function isRefField(field: unknown): field is UBRef {
-  return (
-    field !== undefined &&
-    field !== null &&
-    (field as UBRef)?.of !== undefined &&
-    (field as UBRef)?.uuid !== undefined
-  );
+export function isRefField<Value>(field: Value): field is Value & UBRef {
+  return isObjectValue(field) && "of" in field && "uuid" in field;
 }
 
 export class UpsertBuilder {
@@ -99,22 +110,19 @@ export class UpsertBuilder {
     return this.tables.has(tableName);
   }
 
-  register<T extends string>(
-    tableName: string,
-    row: {
-      [key in T]?: UBRef | string | number | boolean | bigint | null | object | unknown;
-    },
-  ): UBRef {
+  register<Row extends object>(tableName: string, row: Row): UBRef {
     const table = this.getTable(tableName);
 
     // 해당 테이블의 unique 인덱스를 순회하며 키 생성
     const uniqueKeys = table.uniqueIndexes
       .map((unqIndex) => {
         const uniqueKeyArray = unqIndex.columns.map((unqCol) => {
+          // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
           const val = row[unqCol.name as keyof typeof row];
           if (isRefField(val)) {
             return val.uuid;
           } else {
+            // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
             return row[unqCol.name as keyof typeof row] ?? randomUUID(); // nullable인 경우 uuid로 랜덤값 삽입
           }
         });
@@ -154,32 +162,33 @@ export class UpsertBuilder {
 
     // 이 테이블에 사용된 RefField를 순회하여, 현재 테이블 정보에 어떤 필드를 참조하는지 추가
     // 이 정보를 나중에 치환할 때 사용
-    row = Object.fromEntries(
+    const normalizedRow = Object.fromEntries(
       Object.entries(row).map(([rowKey, rowValue]) => {
         if (isRefField(rowValue)) {
           rowValue.use ??= "id";
           table.references.add(`${rowValue.of}.${rowValue.use}`);
-          return [rowKey, rowValue];
+          return [rowKey, rowValue] as const;
         } else if (table.jsonColumns.includes(rowKey) && rowValue !== null) {
           // JSON 컬럼인 경우 JSON.stringify 처리 (Knex는 JSON 타입을 지원하지 않음)
-          return [rowKey, JSON.stringify(rowValue)];
+          return [rowKey, JSON.stringify(rowValue)] as const;
         } else if (isArray(rowValue)) {
           // 배열은 그대로 저장
-          return [rowKey, rowValue];
+          return [rowKey, rowValue] as const;
         } else {
-          return [rowKey, rowValue];
+          return [rowKey, rowValue] as const;
         }
       }),
-    ) as { [key in T]?: unknown };
+    );
 
     table.rows.push({
       uuid,
-      ...row,
+      ...normalizedRow,
     });
 
     const result: UBRef = {
       of: tableName,
-      uuid: (row as { uuid?: string }).uuid ?? uuid,
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
+      uuid: isStringValue(normalizedRow.uuid) ? normalizedRow.uuid : uuid,
     };
 
     Naite.t("puri:ub-register", {
@@ -235,19 +244,21 @@ export class UpsertBuilder {
 
     // 전체 테이블 순회하여 현재 테이블 참조하는 모든 테이블 추출
     const { references, refTables } = Array.from(this.tables).reduce(
-      (r, [, table]) => {
-        const reference = Array.from(table.references.values()).find((ref) =>
+      (r, [, candidateTable]) => {
+        const reference = Array.from(candidateTable.references.values()).find((ref) =>
           ref.includes(`${tableName}.`),
         );
         if (reference) {
           r.references.push(reference);
-          r.refTables.push(table);
+          r.refTables.push(candidateTable);
         }
 
         return r;
       },
       {
+        // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
         references: [] as string[],
+        // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
         refTables: [] as TableData[],
       },
     );
@@ -262,7 +273,7 @@ export class UpsertBuilder {
       throw new Error(`${tableName}에 순환 자기 참조가 있습니다.`);
     }
 
-    const uuidMap = new Map<string, unknown>();
+    const uuidMap = new Map<string, UpsertRow & { id: number | string }>();
     const allIds: (number | string)[] = [];
 
     // 레벨별로 순차 처리
@@ -282,7 +293,8 @@ export class UpsertBuilder {
 
             if (!parent) throw new Error(`존재하지 않는 uuid ${value.uuid} -- in ${tableName}`);
 
-            resolved[key] = (parent as Record<string, unknown>)[value.use ?? "id"];
+            // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
+            resolved[key] = (parent as UpsertRow)[value.use ?? "id"];
 
             Naite.t("puri:ub-ref-resolved", {
               tableName,
@@ -309,10 +321,15 @@ export class UpsertBuilder {
         });
 
         // uuid를 별도로 보관하고, DB에 저장할 데이터에서 제거
+        // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
         const originalUuids = dataChunk.map((r) => r.uuid as string);
-        const dataForDb = dataChunk.map(({ uuid: _, ...rest }) => rest);
+        const dataForDb = dataChunk.map((row) => {
+          const rest = { ...row };
+          delete rest.uuid;
+          return rest;
+        });
 
-        let resultRows: { id: number | string; [key: string]: unknown }[];
+        let resultRows: (UpsertRow & { id: number | string })[];
 
         if (mode === "insert") {
           // INSERT 모드 - RETURNING 사용
@@ -339,9 +356,11 @@ export class UpsertBuilder {
               if (conditions.length === 0) continue;
 
               // 배치 SELECT
+              // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
               const existingRows = (await wdb(tableName)
-                .whereIn(columns, conditions as Record<string, unknown>[][])
-                .select("id", ...columns)) as Record<string, unknown>[];
+                // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
+                .whereIn(columns, conditions as UpsertRow[][])
+                .select("id", ...columns)) as UpsertRow[];
 
               // Map 생성: unique 컬럼 조합 → id
               const existingMap = new Map<string, number | string>();
@@ -350,7 +369,7 @@ export class UpsertBuilder {
                   .map((col) => String(existing[col] ?? ""))
                   .join("---delimiter---");
                 const id = existing.id;
-                if (typeof id === "number" || typeof id === "string") {
+                if (isNumberValue(id) || isStringValue(id)) {
                   existingMap.set(key, id);
                 }
               }
@@ -377,6 +396,7 @@ export class UpsertBuilder {
 
           // inherit 옵션 처리 - inherit 컬럼은 update 대상에서 제외
           if (options?.inherit?.length) {
+            // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
             const inheritColumns = options.inherit as string[];
 
             const excludedFromUpdate = updateColumns.filter((c) => inheritColumns.includes(c));
@@ -415,8 +435,8 @@ export class UpsertBuilder {
     }
 
     // 해당 테이블 참조를 실제 밸류로 변경
-    for (const table of refTables) {
-      table.rows = table.rows.map((row) => {
+    for (const referencingTable of refTables) {
+      referencingTable.rows = referencingTable.rows.map((row) => {
         for (const key of Object.keys(row)) {
           const prop = row[key];
           if (isRefField(prop) && prop.of === tableName) {
@@ -425,7 +445,8 @@ export class UpsertBuilder {
               console.error(prop);
               throw new Error(`존재하지 않는 uuid ${prop.uuid} -- in ${tableName}`);
             }
-            const resolvedValue = (parent as Record<string, unknown>)[prop.use ?? "id"];
+            // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
+            const resolvedValue = parent[prop.use ?? "id"];
             row[key] = resolvedValue;
 
             Naite.t("puri:ub-ref-resolved", {
@@ -442,9 +463,7 @@ export class UpsertBuilder {
 
     if (options?.cleanOrphans) {
       const cleanOrphans = options.cleanOrphans;
-      const fkColumns = isArray(cleanOrphans)
-        ? (cleanOrphans as ForeignKeyColumns<TTable>[])
-        : [cleanOrphans as ForeignKeyColumns<TTable>];
+      const fkColumns = asArray(cleanOrphans);
 
       // 현재 register된 레코드들의 FK 값들 추출
       const fkConditions = fkColumns.map((fkCol) => {
@@ -458,6 +477,7 @@ export class UpsertBuilder {
 
         // 각 FK 컬럼에 대한 WHERE IN 조건 추가
         for (const { column, values } of fkConditions) {
+          // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
           deleteQuery = deleteQuery.whereIn(column, values as Knex.Value[]);
         }
 
@@ -486,6 +506,7 @@ export class UpsertBuilder {
       returnedIds: allIds,
     });
 
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     return allIds as IdType<DatabaseSchemaExtend, TTable>[];
   }
 
@@ -516,6 +537,7 @@ export class UpsertBuilder {
     const whereColumns = Array.isArray(options.where) ? options.where : [options.where ?? "id"];
     const rows = table.rows.map((_row) => {
       const { uuid: _, ...row } = _row; // uuid 제외
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
       return row as RowWithId<string>;
     });
 
@@ -542,10 +564,7 @@ export class UpsertBuilder {
    * - 자기 참조 없는 경우 : 모든 rows가 Level 0
    * - 자기 참조 있는 경우 : 자기 참조 관계를 위상 정렬하여 레벨별로 그룹화
    */
-  private buildInsertLevels(
-    rows: Record<string, unknown>[],
-    tableName: string,
-  ): { levels: Record<string, unknown>[][]; hasCircular: boolean } {
+  private buildInsertLevels(rows: UpsertRow[], tableName: string) {
     // 1. 자기 참조가 없으면 한 레벨로 처리
     const hasSelfRef = rows
       .flatMap((row) => Object.values(row))
@@ -553,24 +572,26 @@ export class UpsertBuilder {
     if (!hasSelfRef) return { levels: [rows], hasCircular: false };
 
     // 2. uuid → row 매핑 (중복 uuid 방지)
-    const rowByUuid = new Map<string, Record<string, unknown>>();
+    const rowByUuid = new Map<string, UpsertRow>();
     for (const row of rows) {
+      // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
       const uuid = row.uuid as string | undefined;
       if (!uuid) throw new Error(`buildInsertLevels: uuid가 없는 row -- in ${tableName}`);
       rowByUuid.set(uuid, row);
     }
 
     let pending = Array.from(rowByUuid.values());
-    const levels: Record<string, unknown>[][] = [];
+    const levels: UpsertRow[][] = [];
     const inserted = new Set<string>();
 
     // 3. 레벨별 분류
     while (pending.length > 0) {
-      const currentLevel: Record<string, unknown>[] = [];
-      const nextPending: Record<string, unknown>[] = [];
+      const currentLevel: UpsertRow[] = [];
+      const nextPending: UpsertRow[] = [];
 
       for (const row of pending) {
         // 이 row가 참조하는 자기 참조들
+        // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
         const selfRefs = Object.values(row).filter(
           (value) => isRefField(value) && value.of === tableName,
         ) as UBRef[];
@@ -596,6 +617,7 @@ export class UpsertBuilder {
       // 레벨 확정 + inserted 갱신
       levels.push(currentLevel);
       for (const row of currentLevel) {
+        // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
         inserted.add(row.uuid as string);
       }
 

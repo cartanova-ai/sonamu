@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { type ClassValue } from "clsx";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
@@ -37,27 +37,33 @@ export function normalizeToArray<T>(value: T | T[] | undefined): T[] | undefined
  * @param files - 미리보기할 File 객체 배열
  * @returns 생성된 Object URL 문자열 배열
  */
-export function useObjectUrls(files: File[]): string[] {
-  const [urls, setUrls] = useState<string[]>([]);
+const EMPTY_OBJECT_URLS: string[] = [];
 
-  // File 객체의 내용 기반 서명 생성 (참조 비교가 아닌 값 비교)
-  const signature = useMemo(
-    () => files.map((f) => `${f.name}:${f.size}:${f.lastModified}`).join("|"),
-    [files],
-  );
+class ObjectUrlStore {
+  private urls = EMPTY_OBJECT_URLS;
 
-  useEffect(() => {
-    // Object URL 생성
-    const created = files.map((f) => URL.createObjectURL(f));
-    setUrls(created);
+  constructor(private readonly files: File[]) {}
 
-    // Cleanup: 메모리 누수 방지를 위해 생성된 URL 해제
+  getSnapshot = () => this.urls;
+
+  subscribe = (onStoreChange: () => void) => {
+    const created = this.files.map((file) => URL.createObjectURL(file));
+    this.urls = created;
+    onStoreChange();
+
     return () => {
       for (const url of created) {
         URL.revokeObjectURL(url);
       }
+      if (this.urls === created) {
+        this.urls = EMPTY_OBJECT_URLS;
+      }
     };
-  }, [signature]);
+  };
+}
 
-  return urls;
+export function useObjectUrls(files: File[]): string[] {
+  const store = useMemo(() => new ObjectUrlStore(files), [files]);
+
+  return useSyncExternalStore(store.subscribe, store.getSnapshot, () => EMPTY_OBJECT_URLS);
 }

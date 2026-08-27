@@ -172,9 +172,12 @@ export default function FixtureGraph({
   onRelationToggle,
   setFixtureRecords,
 }: FixtureGraphProps) {
-  const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
+  const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo<{
+    nodes: TableNodeRFNode[];
+    edges: Edge[];
+  }>(() => {
     if (fixtures.length === 0) {
-      return { nodes: [] as TableNodeRFNode[], edges: [] as Edge[] };
+      return { nodes: [], edges: [] };
     }
 
     const nodes = makeNodes(fixtures, selectedIds, onRelationToggle, setFixtureRecords);

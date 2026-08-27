@@ -40,7 +40,7 @@ import TrashIcon from "~icons/lucide/trash-2";
 import { SD } from "@/i18n/sd.generated";
 import { MilestoneSaveParams } from "@/services/milestone/milestone.types";
 import { MilestoneService, ProjectService } from "@/services/services.generated";
-import { ProjectStatusLabel } from "@/services/sonamu.generated";
+import { type MilestoneSubsetA, ProjectStatusLabel } from "@/services/sonamu.generated";
 import { defaultCatch, isSonamuError } from "@/services/sonamu.shared";
 
 export const Route = createFileRoute("/admin/projects/$projectId")({
@@ -62,6 +62,66 @@ export const Route = createFileRoute("/admin/projects/$projectId")({
     projectId: z.coerce.number(),
   }),
 });
+
+function createMilestoneColumns(
+  onToggleComplete: (id: number, isCompleted: boolean) => void,
+  onEdit: (id: number) => void,
+  onDelete: (id: number) => void,
+): TableCol<MilestoneSubsetA>[] {
+  return [
+    {
+      label: SD("entity.Milestone.name"),
+      tc: (row) => (
+        <span className={row.completed_at ? "line-through text-muted-foreground" : ""}>
+          {row.name}
+        </span>
+      ),
+    },
+    {
+      label: SD("entity.Milestone.due_date"),
+      tc: (row) => <span>{dateF(row.due_date)}</span>,
+      fit: true,
+    },
+    {
+      label: SD("entity.Milestone.description"),
+      tc: (row) => <span className="text-muted-foreground">{row.description ?? "-"}</span>,
+    },
+    {
+      label: SD("entity.Milestone.completed_at"),
+      fit: true,
+      align: "center",
+      tc: (row) =>
+        row.completed_at ? (
+          <Badge variant="secondary" className="gap-1">
+            <CheckCircleIcon className="h-3 w-3" />
+            {datetimeF(row.completed_at)}
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="gap-1 text-muted-foreground">
+            <CircleIcon className="h-3 w-3" />
+            미완료
+          </Badge>
+        ),
+    },
+    {
+      label: SD("common.manage"),
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => onToggleComplete(row.id, !!row.completed_at)}
+            icon={row.completed_at ? <CircleIcon /> : <CheckCircleIcon />}
+          />
+          <Button variant="yellow" size="xs" icon={<EditIcon />} onClick={() => onEdit(row.id)} />
+          <Button variant="red" size="xs" icon={<TrashIcon />} onClick={() => onDelete(row.id)} />
+        </div>
+      ),
+    },
+  ];
+}
 
 function ProjectDetailPage() {
   const { projectId } = Route.useParams();
@@ -137,70 +197,7 @@ function ProjectDetailPage() {
     queryClient.invalidateQueries({ queryKey: ["Milestone"] });
   };
 
-  type MilestoneRow = NonNullable<typeof milestones>[number];
-  const columns: TableCol<MilestoneRow>[] = [
-    {
-      label: SD("entity.Milestone.name"),
-      tc: (row) => (
-        <span className={row.completed_at ? "line-through text-muted-foreground" : ""}>
-          {row.name}
-        </span>
-      ),
-    },
-    {
-      label: SD("entity.Milestone.due_date"),
-      tc: (row) => <span>{dateF(row.due_date)}</span>,
-      fit: true,
-    },
-    {
-      label: SD("entity.Milestone.description"),
-      tc: (row) => <span className="text-muted-foreground">{row.description ?? "-"}</span>,
-    },
-    {
-      label: SD("entity.Milestone.completed_at"),
-      fit: true,
-      align: "center",
-      tc: (row) =>
-        row.completed_at ? (
-          <Badge variant="secondary" className="gap-1">
-            <CheckCircleIcon className="h-3 w-3" />
-            {datetimeF(row.completed_at)}
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="gap-1 text-muted-foreground">
-            <CircleIcon className="h-3 w-3" />
-            미완료
-          </Badge>
-        ),
-    },
-    {
-      label: SD("common.manage"),
-      fit: true,
-      align: "center",
-      tc: (row) => (
-        <div className="flex items-center justify-center gap-1">
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={() => handleToggleComplete(row.id, !!row.completed_at)}
-            icon={row.completed_at ? <CircleIcon /> : <CheckCircleIcon />}
-          />
-          <Button
-            variant="yellow"
-            size="xs"
-            icon={<EditIcon />}
-            onClick={() => handleEditClick(row.id)}
-          />
-          <Button
-            variant="red"
-            size="xs"
-            icon={<TrashIcon />}
-            onClick={() => handleDeleteClick(row.id)}
-          />
-        </div>
-      ),
-    },
-  ];
+  const columns = createMilestoneColumns(handleToggleComplete, handleEditClick, handleDeleteClick);
 
   if (!project) return null;
 

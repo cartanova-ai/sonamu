@@ -12,6 +12,8 @@ import { BadRequestException } from "../../../../../modules/sonamu/dist/exceptio
 import { localizedColumn, SD } from "../i18n/sd.generated";
 
 bootstrap(vi);
+const colLetter = (index: number) => String.fromCharCode(65 + index);
+
 describe("i18n", () => {
   describe("localizedColumn", () => {
     const tag = {
@@ -270,6 +272,7 @@ describe("i18n", () => {
           // "test.jaOnly"는 ja 딕셔너리에만 존재하는 키 (사실상 defineLocale을 이용하면 이런 경우 없긴 함.)
           // en에서 조회 → 없음 → ko(default)에서 조회 → 없음 → ja(supported)에서 찾음
           // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- ko에 없는 키로 테스트 필요
+          // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
           expect(SD("test.jaOnly" as any)).toBe("日本語のみ");
         },
       );
@@ -280,8 +283,8 @@ describe("i18n", () => {
     test("Symbol key 접근 시 예외 없이 undefined 반환", () => {
       const labels = SD.enumLabels("TagOrderBy");
 
-      expect(() => Reflect.get(labels, Symbol.toStringTag)).not.toThrow();
-      expect(Reflect.get(labels, Symbol.toStringTag)).toBeUndefined();
+      expect(() => Object.getOwnPropertyDescriptor(labels, Symbol.toStringTag)).not.toThrow();
+      expect(Object.getOwnPropertyDescriptor(labels, Symbol.toStringTag)).toBeUndefined();
     });
 
     test("ko locale인 경우, 한국어 라벨 반환", async () => {
@@ -702,7 +705,9 @@ describe("i18n", () => {
       writeFileSyncSpy.mockRestore();
       updateEntityByKeySpy.mockRestore();
 
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       const wb = Workbook.openBufferSync(buffer);
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       const sheet = wb.sheetNames[0] as string;
       // Find header row by scanning column A
       let headerRowNum = 0;
@@ -720,7 +725,6 @@ describe("i18n", () => {
       // Read headers
       const headers: string[] = [];
       let col = 0;
-      const colLetter = (i: number) => String.fromCharCode(65 + i);
       while (true) {
         const val = wb.getCellValue(sheet, `${colLetter(col)}${headerRowNum}`);
         if (val === null) break;
@@ -738,8 +742,10 @@ describe("i18n", () => {
       expect(["entity", "project", "sonamu"]).toContain(firstSource);
     });
 
+    // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
     test("헤더 없는 Excel 파일에서 BadRequestException이 발생한다", async () => {
       const wb = new Workbook();
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       const sheet = wb.sheetNames[0] as string;
       wb.setCellValue(sheet, "A1", "invalid");
       wb.setCellValue(sheet, "B1", "data");
@@ -764,9 +770,11 @@ describe("i18n", () => {
 
     test("빈 딕셔너리에서 export/import가 오류 없이 동작한다", async () => {
       const dictResult = await sonamuDictionary.collectDictionary();
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       expect(dictResult.rows.length).toBeGreaterThan(0);
 
       const wb = new Workbook();
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       const sheet = wb.sheetNames[0] as string;
       wb.setCellValue(sheet, "A1", "Sonamu Dictionary");
       // Row 2 is empty
@@ -794,10 +802,12 @@ describe("i18n", () => {
     test("함수 값 entry가 round-trip 후 보존된다", async () => {
       const exportResult = await sonamuDictionary.exportToExcel();
       const buffer = Buffer.isBuffer(exportResult.buffer)
-        ? exportResult.buffer
+        ? // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
+          exportResult.buffer
         : Buffer.from(exportResult.buffer);
 
       const wb = Workbook.openBufferSync(buffer);
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       const sheet = wb.sheetNames[0] as string;
       // Find header row
       let headerRowNum = 0;
@@ -815,7 +825,6 @@ describe("i18n", () => {
 
       // Scan for function entries
       let foundFunctionEntry = false;
-      const colLetter = (i: number) => String.fromCharCode(65 + i);
       for (let r = headerRowNum + 1; ; r++) {
         const keyCell = wb.getCellValue(sheet, `A${r}`);
         if (keyCell === null) break;

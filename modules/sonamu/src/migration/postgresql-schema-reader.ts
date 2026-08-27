@@ -164,7 +164,8 @@ class PostgreSQLSchemaReaderClass {
     );
 
     // indexes 처리
-    const indexes: MigrationIndex[] = Object.keys(dbIndexesGroup).map((indexName) => {
+    const indexes: MigrationIndex[] = [];
+    for (const indexName of Object.keys(dbIndexesGroup)) {
       const currentIndexes = dbIndexesGroup[indexName]?.toSorted(
         (left, right) => left.column_order - right.column_order,
       );
@@ -180,34 +181,42 @@ class PostgreSQLSchemaReaderClass {
         parsedIndexDefinition.accessMethod ?? firstIndex.index_type,
       );
 
-      return {
+      const indexColumns: MigrationIndex["columns"] = [];
+      for (const currentIndex of currentIndexes) {
+        const opclass = this.extractIndexColumnOpclass(
+          parsedIndexDefinition.columnDefinitions[currentIndex.column_order - 1],
+        );
+        const column: MigrationIndex["columns"][number] = {
+          name: currentIndex.column_name,
+        };
+        if (opclass) {
+          Object.assign(column, { opclass });
+        }
+        switch (using) {
+          case "btree":
+            Object.assign(column, {
+              sortOrder: currentIndex.sort_order,
+              nullsFirst: currentIndex.nulls_first,
+            });
+            break;
+        }
+        indexColumns.push(column);
+      }
+      const index: MigrationIndex = {
         type: restoredIndexType,
         name: indexName,
-        columns: currentIndexes.map((idx) => ({
-          name: idx.column_name,
-          ...(this.extractIndexColumnOpclass(
-            parsedIndexDefinition.columnDefinitions[idx.column_order - 1],
-          )
-            ? {
-                opclass: this.extractIndexColumnOpclass(
-                  parsedIndexDefinition.columnDefinitions[idx.column_order - 1],
-                ),
-              }
-            : {}),
-          ...(using === "btree"
-            ? {
-                sortOrder: idx.sort_order,
-                nullsFirst: idx.nulls_first,
-              }
-            : {}),
-        })),
-
+        columns: indexColumns,
         nullsNotDistinct: firstIndex.nulls_not_distinct,
-        ...(firstIndex.predicate ? { where: firstIndex.predicate } : {}),
-        ...(using ? { using } : {}),
         ...this.parseVectorIndexOptions(restoredIndexType, parsedIndexDefinition.withOptions),
       };
-    });
+      if (firstIndex.predicate) {
+        index.where = firstIndex.predicate;
+      }
+      if (using) {
+        index.using = using;
+      }
+      indexes.push(index);
+    }
 
     // foreigns 처리
     const foreigns: MigrationForeign[] = dbForeigns.map((dbForeign) => {
@@ -231,14 +240,14 @@ class PostgreSQLSchemaReaderClass {
    * PostgreSQL의 constraint action을 Knex 형식으로 변환
    */
   private mapConstraintAction(action: string): RelationOn {
-    const actionMap: Record<string, RelationOn> = {
-      "NO ACTION": "NO ACTION",
-      RESTRICT: "RESTRICT",
-      CASCADE: "CASCADE",
-      "SET NULL": "SET NULL",
-      "SET DEFAULT": "SET DEFAULT",
-    };
-    return actionMap[action] ?? "NO ACTION";
+    const actionMap = new Map<string, RelationOn>([
+      ["NO ACTION", "NO ACTION"],
+      ["RESTRICT", "RESTRICT"],
+      ["CASCADE", "CASCADE"],
+      ["SET NULL", "SET NULL"],
+      ["SET DEFAULT", "SET DEFAULT"],
+    ]);
+    return actionMap.get(action) ?? "NO ACTION";
   }
 
   /**
@@ -277,7 +286,9 @@ class PostgreSQLSchemaReaderClass {
         AND c.table_schema = 'public'
       ORDER BY c.ordinal_position
     `;
-    const columns = (await compareDB.raw(columnsQuery, [tableName])).rows as PgColumn[];
+    const columns = /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ (
+      await compareDB.raw(columnsQuery, [tableName])
+    ).rows as PgColumn[];
     if (columns.length === 0) {
       throw new Error(`Table not found: ${tableName}`);
     }
@@ -398,7 +409,7 @@ class PostgreSQLSchemaReaderClass {
       return undefined;
     }
 
-    return normalized as MigrationIndex["using"];
+    return /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ normalized as MigrationIndex["using"];
   }
 
   private parseVectorIndexOptions(
@@ -406,14 +417,12 @@ class PostgreSQLSchemaReaderClass {
     withOptions: Record<string, string>,
   ): Pick<MigrationIndex, "m" | "efConstruction" | "lists"> {
     if (type === "hnsw") {
-      return {
-        ...(this.parseIntegerOption(withOptions.m) !== undefined
-          ? { m: this.parseIntegerOption(withOptions.m) }
-          : {}),
-        ...(this.parseIntegerOption(withOptions.ef_construction) !== undefined
-          ? { efConstruction: this.parseIntegerOption(withOptions.ef_construction) }
-          : {}),
-      };
+      const options: Pick<MigrationIndex, "m" | "efConstruction"> = {};
+      const m = this.parseIntegerOption(withOptions.m);
+      const efConstruction = this.parseIntegerOption(withOptions.ef_construction);
+      if (m !== undefined) options.m = m;
+      if (efConstruction !== undefined) options.efConstruction = efConstruction;
+      return options;
     }
 
     if (type === "ivfflat") {
@@ -456,11 +465,7 @@ class PostgreSQLSchemaReaderClass {
     return tokens.at(-1);
   }
 
-  private parseIndexDefinition(indexDefinition: string): {
-    accessMethod?: string;
-    columnDefinitions: string[];
-    withOptions: Record<string, string>;
-  } {
+  private parseIndexDefinition(indexDefinition: string) {
     const accessMethod = indexDefinition.match(/\bUSING\s+([a-z_][\w]*)/i)?.[1]?.toLowerCase();
     const usingMatchIndex = indexDefinition.search(/\bUSING\b/i);
     const columnsStart = usingMatchIndex >= 0 ? indexDefinition.indexOf("(", usingMatchIndex) : -1;

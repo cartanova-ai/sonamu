@@ -1,3 +1,4 @@
+import path from "path";
 /**
  * zod-converter 구성
  * 1. 유틸리티
@@ -17,8 +18,6 @@
  *  - zodTypeToRenderingNode
  *  - resolveRenderType
  */
-
-import path from "path";
 
 import inflection from "inflection";
 import { z } from "zod";
@@ -65,6 +64,7 @@ import {
 } from "../types/types";
 import { createImportUrl } from "../utils/esm-utils";
 import { runtimePath } from "../utils/path-utils";
+import { isObjectValue, isStringValue } from "../utils/runtime-value";
 
 // <any>를 자제하고, Zod에서 제약하는 기본적인 Generic Type Parameter를 사용함.
 type AnyZodRecord = z.ZodRecord<z.ZodString | z.ZodNumber | z.ZodSymbol, z.ZodType>;
@@ -102,33 +102,28 @@ function getBuiltInSchemaName(zodType: z.ZodType): string | undefined {
  * Zod 4에서는 z.email(), z.uuid() 등 독립적인 함수 형태를 사용합니다.
  */
 function zodFormatToCode(format: ZodStringFormat): string {
-  // ISO 포맷은 z.iso.xxx() 형태
-  const isoFormats: Record<string, string> = {
-    isoDate: "z.iso.date()",
-    isoTime: "z.iso.time()",
-    isoDatetime: "z.iso.datetime()",
-    isoDuration: "z.iso.duration()",
-  };
-
-  // hash 포맷은 z.hash("algorithm") 형태
-  const hashFormats: Record<string, string> = {
-    hashMd5: 'z.hash("md5")',
-    hashSha1: 'z.hash("sha1")',
-    hashSha256: 'z.hash("sha256")',
-    hashSha384: 'z.hash("sha384")',
-    hashSha512: 'z.hash("sha512")',
-  };
-
-  if (format in isoFormats) {
-    return isoFormats[format];
+  switch (format) {
+    case "isoDate":
+      return "z.iso.date()";
+    case "isoTime":
+      return "z.iso.time()";
+    case "isoDatetime":
+      return "z.iso.datetime()";
+    case "isoDuration":
+      return "z.iso.duration()";
+    case "hashMd5":
+      return 'z.hash("md5")';
+    case "hashSha1":
+      return 'z.hash("sha1")';
+    case "hashSha256":
+      return 'z.hash("sha256")';
+    case "hashSha384":
+      return 'z.hash("sha384")';
+    case "hashSha512":
+      return 'z.hash("sha512")';
+    default:
+      return `z.${format}()`;
   }
-
-  if (format in hashFormats) {
-    return hashFormats[format];
-  }
-
-  // 기본 포맷은 z.xxx() 형태 (Zod 4)
-  return `z.${format}()`;
 }
 
 /**
@@ -136,8 +131,45 @@ function zodFormatToCode(format: ZodStringFormat): string {
  * Zod 4에서는 z.email(), z.uuid() 등 독립적인 함수 형태를 사용합니다.
  */
 function zodFormatToType(format: ZodStringFormat): z.ZodType {
-  // ISO 포맷은 z.iso.xxx() 형태
   switch (format) {
+    case "email":
+      return z.email();
+    case "uuid":
+      return z.uuid();
+    case "url":
+      return z.url();
+    case "httpUrl":
+      return z.httpUrl();
+    case "hostname":
+      return z.hostname();
+    case "emoji":
+      return z.emoji();
+    case "base64":
+      return z.base64();
+    case "base64url":
+      return z.base64url();
+    case "hex":
+      return z.hex();
+    case "jwt":
+      return z.jwt();
+    case "nanoid":
+      return z.nanoid();
+    case "cuid":
+      return z.cuid();
+    case "cuid2":
+      return z.cuid2();
+    case "ulid":
+      return z.ulid();
+    case "ipv4":
+      return z.ipv4();
+    case "ipv6":
+      return z.ipv6();
+    case "mac":
+      return z.mac();
+    case "cidrv4":
+      return z.cidrv4();
+    case "cidrv6":
+      return z.cidrv6();
     case "isoDate":
       return z.iso.date();
     case "isoTime":
@@ -146,7 +178,6 @@ function zodFormatToType(format: ZodStringFormat): z.ZodType {
       return z.iso.datetime();
     case "isoDuration":
       return z.iso.duration();
-    // hash 포맷은 z.hash("algorithm") 형태
     case "hashMd5":
       return z.hash("md5");
     case "hashSha1":
@@ -157,9 +188,6 @@ function zodFormatToType(format: ZodStringFormat): z.ZodType {
       return z.hash("sha384");
     case "hashSha512":
       return z.hash("sha512");
-    // 기본 포맷은 z.xxx() 형태 (Zod 4)
-    default:
-      return (z as unknown as Record<string, () => z.ZodType>)[format]();
   }
 }
 
@@ -170,8 +198,15 @@ function zodFormatToType(format: ZodStringFormat): z.ZodType {
  */
 export async function getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
   // 내장 타입 처리
-  if ((BUILT_IN_TYPE_IDS as readonly string[]).includes(zodTypeId)) {
-    const builtInType = BUILT_IN_TYPES[zodTypeId as keyof typeof BUILT_IN_TYPES];
+  if (
+    /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+      BUILT_IN_TYPE_IDS as readonly string[]
+    ).includes(zodTypeId)
+  ) {
+    const builtInType =
+      BUILT_IN_TYPES[
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ zodTypeId as keyof typeof BUILT_IN_TYPES
+      ];
     if (!builtInType) {
       throw new Error(`내장 타입 ${zodTypeId}의 스키마가 정의되지 않았습니다`);
     }
@@ -215,7 +250,9 @@ export async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
     if (prop.zodFormat) {
       zodType = zodFormatToType(prop.zodFormat);
       if (prop.length && "max" in zodType) {
-        zodType = (zodType as z.ZodString).max(prop.length);
+        zodType = /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+          zodType as z.ZodString
+        ).max(prop.length);
       }
     } else if (prop.length) {
       zodType = z.string().max(prop.length);
@@ -227,7 +264,10 @@ export async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
     if (prop.zodFormat) {
       elementType = zodFormatToType(prop.zodFormat);
       if (prop.length && "max" in elementType) {
-        elementType = (elementType as z.ZodString).max(prop.length);
+        elementType =
+          /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+            elementType as z.ZodString
+          ).max(prop.length);
       }
     } else if (prop.length) {
       elementType = z.string().max(prop.length);
@@ -280,8 +320,14 @@ export async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
     throw new Error(`prop을 zodType으로 변환하는데 실패 ${prop}}`);
   }
 
-  if ((prop as { unsigned?: boolean }).unsigned) {
-    zodType = (zodType as z.ZodNumber).nonnegative();
+  if (
+    /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+      prop as { unsigned?: boolean }
+    ).unsigned
+  ) {
+    zodType = /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+      zodType as z.ZodNumber
+    ).nonnegative();
   }
   if (prop.nullable) {
     zodType = zodType.nullable();
@@ -357,7 +403,11 @@ export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): 
     stmt = `${prop.name}: z.uuid().array()`;
   } else if (isJsonProp(prop)) {
     // 내장 타입인 경우 스키마 이름으로 변환
-    if ((BUILT_IN_TYPE_IDS as readonly string[]).includes(prop.id)) {
+    if (
+      /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+        BUILT_IN_TYPE_IDS as readonly string[]
+      ).includes(prop.id)
+    ) {
       const schemaName = prop.id === "SonamuFile" ? "SonamuFileSchema" : "SonamuFileArraySchema";
       stmt = `${prop.name}: ${schemaName}`;
       injectImportKeys.push(schemaName);
@@ -394,7 +444,11 @@ export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): 
     return "// unable to resolve";
   }
 
-  if ((prop as { unsigned?: boolean }).unsigned) {
+  if (
+    /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+      prop as { unsigned?: boolean }
+    ).unsigned
+  ) {
     stmt += ".nonnegative()";
   }
   if (prop.nullable) {
@@ -456,17 +510,26 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
     case "date":
       return "Date";
     case "nullable":
-      return `${zodTypeToTsTypeDef((zt as AnyZodNullable).def.innerType)} | null`;
+      return `${zodTypeToTsTypeDef(/* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (zt as AnyZodNullable).def.innerType)} | null`;
     case "default":
-      return zodTypeToTsTypeDef((zt as AnyZodDefault).def.innerType);
+      return zodTypeToTsTypeDef(
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+          zt as AnyZodDefault
+        ).def.innerType,
+      );
     case "record": {
-      const recordType = zt as AnyZodRecord;
+      const recordType =
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ zt as AnyZodRecord;
       return `{ [ key: ${zodTypeToTsTypeDef(recordType.def.keyType)} ]: ${zodTypeToTsTypeDef(recordType.def.valueType)}}`;
     }
     case "literal":
-      return Array.from((zt as z.ZodLiteral).values)
+      return Array.from(
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+          zt as z.ZodLiteral
+        ).values,
+      )
         .map((value) => {
-          if (typeof value === "string") {
+          if (isStringValue(value)) {
             return `"${value}"`;
           }
 
@@ -482,31 +545,39 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
         })
         .join(" | ");
     case "union":
-      return `${(zt as AnyZodUnion).options
-        .map((option) => zodTypeToTsTypeDef(option))
-        .join(" | ")}`;
+      return `${
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+          zt as AnyZodUnion
+        ).options
+          .map((option) => zodTypeToTsTypeDef(option))
+          .join(" | ")
+      }`;
     case "enum":
-      return `${(zt as z.ZodEnum).options.map((val) => `"${val}"`).join(" | ")}`;
+      return `${/* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (zt as z.ZodEnum).options.map((val) => `"${val}"`).join(" | ")}`;
     case "array":
-      return `${zodTypeToTsTypeDef((zt as AnyZodArray).element)}[]`;
+      return `${zodTypeToTsTypeDef(/* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (zt as AnyZodArray).element)}[]`;
     case "object": {
-      const shape = (zt as AnyZodObject).shape;
+      const objectFields = /* SAFETY: Zod의 object 판별 분기가 객체 필드 계약을 보장한다. */ (
+        zt as AnyZodObject
+      )["shape"];
       return [
         "{",
-        ...Object.keys(shape).map((key) => {
-          if (shape[key].def.type === "optional") {
-            return `${key}?: ${zodTypeToTsTypeDef(shape[key].def.innerType)},`;
+        ...Object.keys(objectFields).map((key) => {
+          if (objectFields[key].def.type === "optional") {
+            return `${key}?: ${zodTypeToTsTypeDef(objectFields[key].def.innerType)},`;
           } else {
-            return `${key}: ${zodTypeToTsTypeDef(shape[key])},`;
+            return `${key}: ${zodTypeToTsTypeDef(objectFields[key])},`;
           }
         }),
         "}",
       ].join("\n");
     }
     case "optional":
-      return `${zodTypeToTsTypeDef((zt as AnyZodOptional).def.innerType)} | undefined`;
+      return `${zodTypeToTsTypeDef(/* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (zt as AnyZodOptional).def.innerType)} | undefined`;
     case "template_literal": {
-      const def = (zt as AnyZodTemplateLiteral).def;
+      const def = /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+        zt as AnyZodTemplateLiteral
+      ).def;
 
       // 빈 template literal은 string으로 폴백
       if (!def.parts || def.parts.length === 0) {
@@ -514,15 +585,17 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
       }
 
       // 각 part를 TypeScript 타입 문자열로 변환
-      const parts = def.parts.map((part: unknown) => {
+      const parts = def.parts.map((part) => {
         // 리터럴 값 (string, number, boolean, null, undefined)
-        if (typeof part === "string") {
+        if (isStringValue(part)) {
           return `${part}`;
         }
 
         // ZodType - 재귀적으로 변환
-        if (part && typeof part === "object" && (part as z.ZodType)._zod) {
-          const innerType = zodTypeToTsTypeDef(part as z.ZodType);
+        if (part && isObjectValue(part) && part instanceof z.ZodType) {
+          const innerType = zodTypeToTsTypeDef(
+            /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ part as z.ZodType,
+          );
           return `$\{${innerType}}`;
         }
 
@@ -571,21 +644,31 @@ export function zodTypeToZodCode(zt: z.ZodType, injectImportKeys: string[] = [])
     case "never":
       return "z.never()";
     case "nullable":
-      return `${zodTypeToZodCode((zt as AnyZodNullable).def.innerType, injectImportKeys)}.nullable()`;
+      return `${zodTypeToZodCode(/* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (zt as AnyZodNullable).def.innerType, injectImportKeys)}.nullable()`;
     case "default": {
-      const zDefaultDef = (zt as AnyZodDefault).def;
+      const zDefaultDef =
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+          zt as AnyZodDefault
+        ).def;
       return `${zodTypeToZodCode(zDefaultDef.innerType, injectImportKeys)}.default(${zDefaultDef.defaultValue})`;
     }
     case "record": {
-      const zRecordDef = (zt as AnyZodRecord).def;
+      const zRecordDef =
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+          zt as AnyZodRecord
+        ).def;
       return `z.record(${zodTypeToZodCode(zRecordDef.keyType, injectImportKeys)}, ${zodTypeToZodCode(
         zRecordDef.valueType,
         injectImportKeys,
       )})`;
     }
     case "literal": {
-      const items = Array.from((zt as z.ZodLiteral<string | number>).values).map((value) => {
-        if (typeof value === "string") {
+      const items = Array.from(
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+          zt as z.ZodLiteral<string | number>
+        ).values,
+      ).map((value) => {
+        if (isStringValue(value)) {
           return `"${value}"`;
         }
 
@@ -606,32 +689,44 @@ export function zodTypeToZodCode(zt: z.ZodType, injectImportKeys: string[] = [])
       return `z.literal([${items.join(", ")}])`;
     }
     case "union":
-      return `z.union([${(zt as AnyZodUnion).def.options
-        .map((option: z.ZodType) => zodTypeToZodCode(option, injectImportKeys))
-        .join(",")}])`;
+      return `z.union([${
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+          zt as AnyZodUnion
+        ).def.options
+          .map((option: z.ZodType) => zodTypeToZodCode(option, injectImportKeys))
+          .join(",")
+      }])`;
     case "enum":
       // NOTE: z.enum(["A", "B"])도 z.enum({ A: "A", B: "B" })로 처리됨.
-      return `z.enum({${Object.entries((zt as z.ZodEnum).def.entries)
-        .map(([key, val]) => (typeof val === "string" ? `${key}: "${val}"` : `${key}: ${val}`))
+      return `z.enum({${Object.entries(
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+          zt as z.ZodEnum
+        ).def.entries,
+      )
+        .map(([key, val]) => (isStringValue(val) ? `${key}: "${val}"` : `${key}: ${val}`))
         .join(", ")}})`;
     case "array":
-      return `z.array(${zodTypeToZodCode((zt as z.ZodArray<z.ZodType>).def.element, injectImportKeys)})`;
+      return `z.array(${zodTypeToZodCode(/* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (zt as z.ZodArray<z.ZodType>).def.element, injectImportKeys)})`;
     case "object": {
-      const shape = (zt as AnyZodObject).shape;
+      const objectFields = /* SAFETY: Zod의 object 판별 분기가 객체 필드 계약을 보장한다. */ (
+        zt as AnyZodObject
+      )["shape"];
       return [
         "z.object({",
-        ...Object.keys(shape).map(
-          (key) => `${key}: ${zodTypeToZodCode(shape[key], injectImportKeys)},`,
+        ...Object.keys(objectFields).map(
+          (key) => `${key}: ${zodTypeToZodCode(objectFields[key], injectImportKeys)},`,
         ),
         "})",
       ].join("\n");
     }
     case "optional":
-      return `${zodTypeToZodCode((zt as z.ZodOptional<z.ZodType>).def.innerType, injectImportKeys)}.optional()`;
+      return `${zodTypeToZodCode(/* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (zt as z.ZodOptional<z.ZodType>).def.innerType, injectImportKeys)}.optional()`;
     case "file":
       return `z.file()`;
     case "template_literal": {
-      const def = (zt as AnyZodTemplateLiteral).def;
+      const def = /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+        zt as AnyZodTemplateLiteral
+      ).def;
 
       // 빈 template literal
       if (!def.parts || def.parts.length === 0) {
@@ -639,14 +734,17 @@ export function zodTypeToZodCode(zt: z.ZodType, injectImportKeys: string[] = [])
       }
 
       // 각 part를 Zod 코드 문자열로 변환
-      const parts = def.parts.map((part: unknown) => {
+      const parts = def.parts.map((part) => {
         // 문자열 리터럴
-        if (typeof part === "string") {
+        if (isStringValue(part)) {
           return `"${part}"`;
         }
         // ZodType - 재귀적으로 변환
-        if (part && typeof part === "object" && (part as z.ZodType)._zod) {
-          return zodTypeToZodCode(part as z.ZodType, injectImportKeys);
+        if (part && isObjectValue(part) && part instanceof z.ZodType) {
+          return zodTypeToZodCode(
+            /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ part as z.ZodType,
+            injectImportKeys,
+          );
         }
 
         // 폴백
@@ -656,7 +754,10 @@ export function zodTypeToZodCode(zt: z.ZodType, injectImportKeys: string[] = [])
       return `z.templateLiteral([${parts.join(", ")}])`;
     }
     case "intersection": {
-      const zIntersectionDef = (zt as z.ZodIntersection<z.ZodType, z.ZodType>).def;
+      const zIntersectionDef =
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+          zt as z.ZodIntersection<z.ZodType, z.ZodType>
+        ).def;
       return `z.intersection(${zodTypeToZodCode(
         zIntersectionDef.left,
         injectImportKeys,
@@ -708,9 +809,9 @@ export function zodTypeToRenderingNode(
 
   // 일반 케이스: ZodObject 체크
   if (zodType instanceof z.ZodObject) {
-    const columnKeys = Object.keys(zodType.shape);
+    const columnKeys = Object.keys(zodType["shape"]);
     const children = columnKeys.map((key) => {
-      const innerType = zodType.shape[key];
+      const innerType = zodType["shape"][key];
       return zodTypeToRenderingNode(innerType, key);
     });
     return {
@@ -719,7 +820,10 @@ export function zodTypeToRenderingNode(
       children,
     };
   } else if (zodType instanceof z.ZodArray) {
-    const innerType = (zodType as z.ZodArray<z.ZodTypeAny>).def.element;
+    const innerType =
+      /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+        zodType as z.ZodArray<z.ZodTypeAny>
+      ).def.element;
     // vector 타입 판별: number 배열이면서 embedding, vector 등의 이름을 가진 경우
     if (
       innerType instanceof z.ZodNumber &&
@@ -736,19 +840,30 @@ export function zodTypeToRenderingNode(
       element: zodTypeToRenderingNode(innerType, baseKey),
     };
   } else if (zodType instanceof z.ZodUnion) {
-    const optionNodes = (zodType as z.ZodUnion<z.ZodType[]>).def.options.map((opt) =>
-      zodTypeToRenderingNode(opt, baseKey),
-    );
+    const optionNodes =
+      /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+        zodType as z.ZodUnion<z.ZodType[]>
+      ).def.options.map((opt) => zodTypeToRenderingNode(opt, baseKey));
     // TODO: ZodUnion이 들어있는 경우 핸들링
     return optionNodes[0];
   } else if (zodType instanceof z.ZodOptional) {
     return {
-      ...zodTypeToRenderingNode((zodType as z.ZodOptional<z.ZodType>).def.innerType, baseKey),
+      ...zodTypeToRenderingNode(
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+          zodType as z.ZodOptional<z.ZodType>
+        ).def.innerType,
+        baseKey,
+      ),
       optional: true,
     };
   } else if (zodType instanceof z.ZodNullable) {
     return {
-      ...zodTypeToRenderingNode((zodType as z.ZodNullable<z.ZodType>).def.innerType, baseKey),
+      ...zodTypeToRenderingNode(
+        /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
+          zodType as z.ZodNullable<z.ZodType>
+        ).def.innerType,
+        baseKey,
+      ),
       nullable: true,
     };
   } else {

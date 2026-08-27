@@ -3,24 +3,23 @@ import assert from "assert";
 import { DB } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+import { z } from "zod";
 
 import { DepartmentModel } from "./department.model";
 
 bootstrap(vi);
 
+// 테스트용 회사를 직접 구성해 부서 시나리오 간 준비 절차를 통일한다.
+const createCompany = async (name: string) => {
+  const wdb = DB.getDB("w");
+  const [result] = await wdb("companies").insert({ name, created_at: new Date() }).returning("id");
+  return z.number().parse(result?.id);
+};
+
 describe("DepartmentModel", () => {
   // ============================================================
   // CDD 검증: department.spec.json → 부서 관리
   // ============================================================
-
-  // 헬퍼: 테스트용 회사 생성
-  const createCompany = async (name: string) => {
-    const wdb = DB.getDB("w");
-    const [result] = await wdb("companies")
-      .insert({ name, created_at: new Date() })
-      .returning("id");
-    return result.id as number;
-  };
 
   describe("부서 생성/수정", () => {
     test("save로 부서 생성", async () => {
@@ -36,7 +35,7 @@ describe("DepartmentModel", () => {
       assert(deptId);
 
       // ID는 정수 타입
-      expect(typeof deptId).toBe("number");
+      expect(Number.isInteger(deptId)).toBe(true);
 
       const dept = await DepartmentModel.findById("A", deptId);
       expect(dept.name).toBe("개발팀");

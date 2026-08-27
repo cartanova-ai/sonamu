@@ -2,6 +2,8 @@
  * pgvector 통합을 위한 타입 정의
  */
 
+import { type JsonValue } from "../types/types";
+
 /** 임베딩 제공자 */
 export type EmbeddingProvider = "voyage" | "openai";
 
@@ -24,14 +26,14 @@ export interface Chunk {
 }
 
 /** 벡터 검색 결과 */
-export interface VectorSearchResult<T = Record<string, unknown>> {
+export interface VectorSearchResult<T = Record<string, JsonValue>> {
   id: number | string;
   similarity: number;
   data: T;
 }
 
 /** 하이브리드 검색 결과 (Vector + FTS) */
-export interface HybridSearchResult<T = Record<string, unknown>> extends VectorSearchResult<T> {
+export interface HybridSearchResult<T = Record<string, JsonValue>> extends VectorSearchResult<T> {
   vectorScore?: number;
   ftsScore?: number;
 }

@@ -1,6 +1,11 @@
 import { DEFAULT_VECTOR_CONFIG } from "./config";
 import { type Chunk, type ChunkingConfig } from "./types";
 
+interface ExtractedChunk {
+  chunk: string;
+  length: number;
+}
+
 /**
  * 텍스트 청킹
  * - 현재 가이드에서는 400토큰 이하만 저장하므로 기본적으로 사용하지 않음
@@ -69,7 +74,7 @@ export class Chunking {
     return Math.ceil(text.length / effectiveChunkSize);
   }
 
-  private extractChunk(text: string): { chunk: string; length: number } {
+  private extractChunk(text: string): ExtractedChunk {
     if (text.length <= this.config.chunkSize) {
       return { chunk: text, length: text.length };
     }

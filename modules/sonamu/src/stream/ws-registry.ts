@@ -1,3 +1,4 @@
+import { isFunctionValue } from "../utils/runtime-value";
 import { WebSocketAudience, type WebSocketAudience as WebSocketAudienceSpec } from "./ws-audience";
 import { WebSocketAudienceResolver } from "./ws-audience-resolver";
 import { NoopWebSocketClusterBus, type WebSocketClusterBus } from "./ws-cluster-bus";
@@ -253,19 +254,29 @@ export class WebSocketRegistry {
     });
   }
 
-  broadcast(event: string, data: unknown, namespace?: string): void {
+  broadcast<Data>(event: string, data: Data, namespace?: string): void {
     this.publishToAudience(WebSocketAudience.all(namespace), event, data);
   }
 
-  publishToRoom(roomId: WebSocketRoomId, event: string, data: unknown, namespace?: string): void {
+  publishToRoom<Data>(
+    roomId: WebSocketRoomId,
+    event: string,
+    data: Data,
+    namespace?: string,
+  ): void {
     this.publishToAudience(WebSocketAudience.room(roomId, namespace), event, data);
   }
 
-  publishToUser(userId: WebSocketUserId, event: string, data: unknown, namespace?: string): void {
+  publishToUser<Data>(
+    userId: WebSocketUserId,
+    event: string,
+    data: Data,
+    namespace?: string,
+  ): void {
     this.publishToAudience(WebSocketAudience.user(userId, namespace), event, data);
   }
 
-  publishToAudience(audience: WebSocketAudienceSpec, event: string, data: unknown): void {
+  publishToAudience<Data>(audience: WebSocketAudienceSpec, event: string, data: Data): void {
     this.deliveryEngine.publishToAudience(audience, event, data);
   }
 
@@ -313,7 +324,5 @@ function formatUserId(userId: WebSocketUserId | undefined): string | undefined {
 function isTelemetryContextProvider(
   connection: ManagedWebSocketConnection,
 ): connection is ManagedWebSocketConnection & TelemetryContextProvider {
-  return (
-    "getTelemetryContext" in connection && typeof connection.getTelemetryContext === "function"
-  );
+  return "getTelemetryContext" in connection && isFunctionValue(connection.getTelemetryContext);
 }

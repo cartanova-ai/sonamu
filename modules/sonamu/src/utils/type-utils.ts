@@ -1,3 +1,4 @@
+import { isObjectValue } from "./runtime-value";
 // 타입을 펼쳐서 보여주는 유틸리티 (객체에만 사용해야 함)
 type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
@@ -32,9 +33,9 @@ export function withProp<T extends object, P extends string, V>(
   const result = structuredClone(obj);
 
   // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 범용 배열 요소 타입
-  const setDeep = (current: any, keys: string[], value: V): void => {
-    if (keys.length === 0) return;
-    const [key, ...rest] = keys;
+  const setDeep = (current: any, pathKeys: string[]): void => {
+    if (pathKeys.length === 0) return;
+    const [key, ...rest] = pathKeys;
 
     if (rest.length === 0) {
       if (Array.isArray(current)) {
@@ -45,21 +46,22 @@ export function withProp<T extends object, P extends string, V>(
         current[key] = value;
       }
     } else {
-      if (!(key in current) || typeof current[key] !== "object") {
+      if (!(key in current) || !isObjectValue(current[key])) {
         current[key] = {};
       }
       if (Array.isArray(current[key])) {
         // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 범용 배열 요소 타입
         current[key].forEach((item: any) => {
-          setDeep(item, rest, value);
+          setDeep(item, rest);
         });
       } else {
-        setDeep(current[key], rest, value);
+        setDeep(current[key], rest);
       }
     }
   };
 
-  setDeep(result, keys, value);
+  setDeep(result, keys);
+  // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
   return result as SetPath<T, P, V>;
 }
 

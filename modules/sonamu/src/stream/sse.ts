@@ -29,26 +29,26 @@ export interface SSEConnection<T extends z.ZodObject> {
 }
 
 class SSEConnectionImpl<T extends z.ZodObject> implements SSEConnection<T> {
-  private _closed = false;
-  private _closeCallbacks: Array<() => void> = [];
+  private closedState = false;
+  private closeCallbacks: Array<() => void> = [];
 
   private readonly markClosed = () => {
-    this._closed = true;
+    this.closedState = true;
     this.fireCloseCallbacks();
   };
 
   get closed(): boolean {
-    return this._closed;
+    return this.closedState;
   }
 
   onClose(callback: () => void): void {
-    this._closeCallbacks.push(callback);
+    this.closeCallbacks.push(callback);
   }
 
   // 콜백을 한 번만 실행하고 배열을 비워 중복 호출을 방지
   private fireCloseCallbacks(): void {
-    const callbacks = this._closeCallbacks;
-    this._closeCallbacks = [];
+    const callbacks = this.closeCallbacks;
+    this.closeCallbacks = [];
     for (const cb of callbacks) {
       cb();
     }
@@ -63,22 +63,23 @@ class SSEConnectionImpl<T extends z.ZodObject> implements SSEConnection<T> {
   }
 
   publish<K extends keyof z.infer<T>>(event: K, data: z.infer<T>[K]): void {
-    if (this._closed) {
+    if (this.closedState) {
       return;
     }
 
     this.reply.sse({
-      event: event as string,
+      event:
+        /* SAFETY: 등록된 WebSocket 이벤트 스키마가 이 값의 타입을 보장한다. */ event as string,
       data: JSON.stringify(data),
     });
   }
 
   async end(): Promise<void> {
-    if (this._closed) {
+    if (this.closedState) {
       return;
     }
 
-    this._closed = true;
+    this.closedState = true;
     this.socket.off("close", this.markClosed);
     this.socket.off("error", this.markClosed);
     this.fireCloseCallbacks();

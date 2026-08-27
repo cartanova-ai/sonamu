@@ -183,6 +183,13 @@ will be requested, and the `packages/api/.env` file will be automatically genera
         <Tree.File name=".sonamu.env  (Environment variables)" />
       </Tree.Folder>
     </Tree.Folder>
+    <Tree.Folder name="tools">
+      <Tree.Folder name="oxlint">
+        <Tree.Folder name="anti-slop  (Generated Oxlint plugin)" />
+      </Tree.Folder>
+    </Tree.Folder>
+    <Tree.File name=".oxlintrc.json  (Lint configuration)" />
+    <Tree.File name="package.json" />
     <Tree.File name="pnpm-workspace.yaml  (Workspace configuration)" />
     <Tree.File name="README.md" />
   </Tree.Folder>
@@ -206,6 +213,36 @@ catalog:
   vite: 7.3.0
   vitest: 4.0.16
   # ... other common dependencies
+```
+
+### Oxlint anti-slop rules
+
+Generated projects include the generic plugin at `tools/oxlint/anti-slop`. The root `package.json`
+pins both `oxlint` and `@oxlint/plugins` to `1.80.0`; no Effect-specific plugin is included.
+
+The generated `.oxlintrc.json` loads the plugin as `generated-anti-slop` and makes all 15 rules
+default lint requirements by setting them to `error`:
+
+```json title=".oxlintrc.json"
+{
+  "rules": {
+    "generated-anti-slop/no-chained-type-assertions": "error",
+    "generated-anti-slop/no-conditional-empty-object-spread": "error",
+    "generated-anti-slop/no-known-value-widening": "error",
+    "generated-anti-slop/no-module-mocking": "error",
+    "generated-anti-slop/no-object-parameters": "error",
+    "generated-anti-slop/no-reflect-apply": "error",
+    "generated-anti-slop/no-reflect-get": "error",
+    "generated-anti-slop/no-runtime-typeof": "error",
+    "generated-anti-slop/no-shape-in-symbol-names": "error",
+    "generated-anti-slop/no-unknown-parameters": "error",
+    "generated-anti-slop/no-unknown-returns": "error",
+    "generated-anti-slop/no-unknown-type-aliases": "error",
+    "generated-anti-slop/no-unsafe-dictionary-type": "error",
+    "generated-anti-slop/no-widen-then-assert": "error",
+    "generated-anti-slop/require-safety-comment-for-type-assertion": "error"
+  }
+}
 ```
 
 ### API Server Entry Point

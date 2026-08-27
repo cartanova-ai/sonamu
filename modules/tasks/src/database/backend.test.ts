@@ -8,7 +8,7 @@ import { BackendPostgres } from "./backend";
 import { testBackend } from "./backend.testsuite";
 import { DEFAULT_SCHEMA } from "./base";
 
-testBackend({
+testBackend<BackendPostgres>({
   setup: async () => {
     const backend = new BackendPostgres(KNEX_GLOBAL_CONFIG, {
       namespaceId: randomUUID(),
@@ -18,7 +18,7 @@ testBackend({
     return backend;
   },
   teardown: async (backend) => {
-    await (backend as BackendPostgres).stop();
+    await backend.stop();
   },
 });
 

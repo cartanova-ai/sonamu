@@ -12,11 +12,75 @@ import prompts from "prompts";
 let createdTargetRoot: string | null = null;
 let isCleaningUp = false;
 
+type CliStringValue = string | string[] | undefined;
+
+interface CreateSonamuArgs extends minimist.ParsedArgs {
+  "container-name"?: CliStringValue;
+  "db-name"?: CliStringValue;
+  "db-password"?: CliStringValue;
+  "db-user"?: CliStringValue;
+  "docker-project"?: CliStringValue;
+}
+
+function parseJsonFile(contents: string, filePath: string) {
+  try {
+    return JSON.parse(contents);
+  } catch (error) {
+    throw new Error(`Failed to parse JSON file: ${filePath}`, { cause: error });
+  }
+}
+
 // Helper: catalog.json에서 catalog 파싱
 function loadCatalogJson(): Record<string, string> {
   const catalogPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "catalog.json");
   if (!fs.existsSync(catalogPath)) return {};
-  return JSON.parse(fs.readFileSync(catalogPath, "utf-8"));
+  return parseJsonFile(fs.readFileSync(catalogPath, "utf-8"), catalogPath);
+}
+
+// CLI의 yes/no 문자열을 불리언 옵션으로 정규화한다.
+function parseYesNo(value: string | undefined): boolean | undefined {
+  if (value === undefined) return undefined;
+  const lower = value.toLowerCase();
+  if (["y", "yes", "true", "1"].includes(lower)) return true;
+  if (["n", "no", "false", "0"].includes(lower)) return false;
+  return undefined;
+}
+
+// 템플릿 전용 제외 및 파일명 변환 규칙을 재귀 복사에 적용한다.
+function copy(src: string, dest: string) {
+  const stat = fs.statSync(src);
+  const basename = path.basename(src);
+
+  const excludeList = ["dist", ".git", ".gitkeep", "node_modules", "pnpm-lock.yaml"];
+  if (excludeList.includes(basename)) {
+    if (basename === ".gitkeep") {
+      console.log(`${chalk.green("CREATE")} ${dest.split(".gitkeep")[0]}`);
+    }
+    return;
+  }
+
+  if (stat.isDirectory()) {
+    if (!fs.existsSync(dest)) {
+      fs.mkdirSync(dest, { recursive: true });
+    }
+    for (const file of fs.readdirSync(src)) {
+      copy(path.resolve(src, file), path.resolve(dest, file));
+    }
+    return;
+  }
+
+  let destPath = dest;
+  if (basename === "gitignore") {
+    destPath = path.join(path.dirname(dest), ".gitignore");
+  }
+  if (basename === "env" || basename.startsWith("env.")) {
+    destPath = path.join(path.dirname(dest), `.${basename}`);
+  }
+  fs.copyFileSync(src, destPath);
+  if (basename.endsWith(".sh")) {
+    fs.chmodSync(destPath, 0o755);
+  }
+  console.log(`${chalk.green("CREATE")} ${destPath}`);
 }
 
 async function init() {
@@ -30,7 +94,7 @@ async function init() {
   process.on("SIGTERM", shutdownHandler);
 
   // CLI 인자 파싱
-  const argv = minimist(process.argv.slice(2), {
+  const argv = minimist<CreateSonamuArgs>(process.argv.slice(2), {
     boolean: ["yes", "y", "skip-pnpm", "skip-docker"],
     string: [
       "db-user",
@@ -50,15 +114,6 @@ async function init() {
   // 첫 번째 인자를 프로젝트명으로 사용
   const argProjectName = argv._[0];
   const useDefaults = argv.yes || argv.y;
-
-  // Helper: 'y', 'yes', 'true', '1' → true / 'n', 'no', 'false', '0' → false / undefined → undefined
-  const parseYesNo = (value: string | undefined): boolean | undefined => {
-    if (value === undefined) return undefined;
-    const lower = value.toLowerCase();
-    if (["y", "yes", "true", "1"].includes(lower)) return true;
-    if (["n", "no", "false", "0"].includes(lower)) return false;
-    return undefined;
-  };
 
   let result: prompts.Answers<"targetDir">;
 
@@ -111,7 +166,7 @@ async function init() {
     let overwrite = useDefaults; // --yes 옵션이면 자동으로 overwrite
 
     if (!useDefaults) {
-      const result = await prompts(
+      const overwriteAnswer = await prompts(
         {
           type: "confirm",
           name: "overwrite",
@@ -122,7 +177,7 @@ async function init() {
           onCancel: createCancelHandler(),
         },
       );
-      overwrite = result.overwrite;
+      overwrite = overwriteAnswer.overwrite;
     }
 
     if (!overwrite) {
@@ -145,48 +200,6 @@ async function init() {
     fs.mkdirSync(targetRoot, { recursive: true });
   }
 
-  // 템플릿 파일 복사 함수
-  const copy = (src: string, dest: string) => {
-    const stat = fs.statSync(src);
-    const basename = path.basename(src);
-
-    // 제외할 디렉토리/파일 목록
-    const excludeList = ["dist", ".git", ".gitkeep", "node_modules", "pnpm-lock.yaml"];
-    if (excludeList.includes(basename)) {
-      if (basename === ".gitkeep") {
-        console.log(`${chalk.green("CREATE")} ${dest.split(".gitkeep")[0]}`);
-      }
-      return;
-    }
-
-    if (stat.isDirectory()) {
-      // 디렉토리는 생성
-      if (!fs.existsSync(dest)) {
-        fs.mkdirSync(dest, { recursive: true });
-      }
-      for (const file of fs.readdirSync(src)) {
-        const srcFile = path.resolve(src, file);
-        const destFile = path.resolve(dest, file);
-        copy(srcFile, destFile);
-      }
-    } else {
-      // 파일은 복사 (gitignore → .gitignore rename)
-      let destPath = dest;
-      if (basename === "gitignore") {
-        destPath = path.join(path.dirname(dest), ".gitignore");
-      }
-      if (basename === "env" || basename.startsWith("env.")) {
-        destPath = path.join(path.dirname(dest), `.${basename}`);
-      }
-      fs.copyFileSync(src, destPath);
-      // 셸 스크립트는 실행권한 부여
-      if (basename.endsWith(".sh")) {
-        fs.chmodSync(destPath, 0o755);
-      }
-      console.log(`${chalk.green("CREATE")} ${destPath}`);
-    }
-  };
-
   const write = (file: string) => {
     const src = path.join(templateRoot, file);
     const dest = path.join(targetRoot, file);
@@ -203,7 +216,7 @@ async function init() {
   ["packages/api", "packages/web"].forEach((dir) => {
     const pkgPath = path.join(templateRoot, dir, "package.json");
     if (fs.existsSync(pkgPath)) {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+      const pkg = parseJsonFile(fs.readFileSync(pkgPath, "utf-8"), pkgPath);
       const pkgType = dir.split("/")[1];
       pkg.name = `${targetDir}-${pkgType}`;
       fs.writeFileSync(path.join(targetRoot, dir, "package.json"), JSON.stringify(pkg, null, 2));
@@ -213,7 +226,7 @@ async function init() {
   // 4. Copy root package.json and modify name
   const rootPkgPath = path.join(templateRoot, "package.json");
   if (fs.existsSync(rootPkgPath)) {
-    const pkg = JSON.parse(fs.readFileSync(rootPkgPath, "utf-8"));
+    const pkg = parseJsonFile(fs.readFileSync(rootPkgPath, "utf-8"), rootPkgPath);
     pkg.name = targetDir;
     fs.writeFileSync(path.join(targetRoot, "package.json"), JSON.stringify(pkg, null, 2));
     console.log(`${chalk.green("CREATE")} ${path.join(targetRoot, "package.json")}`);
@@ -270,7 +283,7 @@ overrides:
     isPnpm = true;
   } else {
     // 옵션이 없으면 프롬프트로 물어봄
-    const result = await prompts(
+    const pnpmAnswer = await prompts(
       {
         type: "confirm",
         name: "isPnpm",
@@ -281,7 +294,7 @@ overrides:
         onCancel: createCancelHandler(),
       },
     );
-    isPnpm = result.isPnpm;
+    isPnpm = pnpmAnswer.isPnpm;
   }
 
   if (isPnpm) {
@@ -312,7 +325,7 @@ overrides:
     isDatabase = true;
   } else {
     // 옵션이 없으면 프롬프트로 물어봄
-    const result = await prompts(
+    const databaseAnswer = await prompts(
       {
         type: "confirm",
         name: "isDatabase",
@@ -323,7 +336,7 @@ overrides:
         onCancel: createCancelHandler(),
       },
     );
-    isDatabase = result.isDatabase;
+    isDatabase = databaseAnswer.isDatabase;
   }
 
   if (isDatabase) {
@@ -465,17 +478,27 @@ interface PromptDatabaseAnswers {
   DB_PASSWORD: string;
 }
 
+function readOptionalCliString(value: CliStringValue, optionName: string): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    throw new TypeError(`${optionName} may only be provided once.`);
+  }
+  return value;
+}
+
 async function promptDatabase(
   projectName: string,
-  argv: minimist.ParsedArgs,
+  argv: CreateSonamuArgs,
   useDefaults: boolean,
 ): Promise<PromptDatabaseAnswers> {
   // CLI 옵션에서 값 가져오기
-  const dockerProject = argv["docker-project"] as string | undefined;
-  const dbUser = argv["db-user"] as string | undefined;
-  const containerName = argv["container-name"] as string | undefined;
-  const databaseName = argv["db-name"] as string | undefined;
-  const dbPassword = argv["db-password"] as string | undefined;
+  const dockerProject = readOptionalCliString(argv["docker-project"], "--docker-project");
+  const dbUser = readOptionalCliString(argv["db-user"], "--db-user");
+  const containerName = readOptionalCliString(argv["container-name"], "--container-name");
+  const databaseName = readOptionalCliString(argv["db-name"], "--db-name");
+  const dbPassword = readOptionalCliString(argv["db-password"], "--db-password");
 
   // 모든 값이 제공되었으면 프롬프트 스킵
   if (dockerProject && dbUser && containerName && databaseName && dbPassword) {

@@ -1,12 +1,10 @@
-/* oxlint-disable @typescript-eslint/no-explicit-any */ // 제네릭 기본값으로 any 사용
-
 import { type BetterAuthClientOptions } from "better-auth/client";
 import { createAuthClient } from "better-auth/react";
-import { createContext, useContext, useRef } from "react";
+import { createContext, useContext, useState } from "react";
 import { type ReactNode } from "react";
 
 import { rcKeysEn } from "../i18n/rc-keys";
-import { type RCKeyName, type RCKeys } from "../i18n/rc-keys";
+import { type RCKeys } from "../i18n/rc-keys";
 import { type Dictionary, type SDReturnType, type SonamuFile, type UploadParams } from "./types";
 
 /** createAuthClient의 반환 타입을 옵션으로부터 추론하는 유틸리티 타입 */
@@ -40,31 +38,64 @@ const createUploaderFallback = () => {
   };
 };
 
-const createSDFallback = <D extends Dictionary = RCKeys>() => {
-  return <K extends keyof D>(key: K): SDReturnType<D, K> => {
-    const value = rcKeysEn[key as unknown as RCKeyName];
-    return value as unknown as SDReturnType<D, K>;
-  };
+function createSDFallback<D extends Dictionary = RCKeys>(): <K extends keyof D>(
+  key: K,
+) => SDReturnType<D, K>;
+function createSDFallback() {
+  const translations = new Map(Object.entries(rcKeysEn));
+  return (key: string) => translations.get(key) ?? key;
+}
+
+type SonamuContextRuntimeValue = {
+  uploader?: SonamuContextValue["uploader"];
+  auth?: object;
+  SD?: (key: never) => string | ((...args: never[]) => string);
 };
 
-const SonamuContext = createContext({} as SonamuContextValue);
+const SonamuContext = createContext<SonamuContextValue>({
+  uploader: createUploaderFallback(),
+  SD: createSDFallback<Dictionary>(),
+});
+
+function SonamuContextProvider<D extends Dictionary, O extends BetterAuthClientOptions>({
+  children,
+  auth,
+  ...value
+}: SonamuContextValue<D, O> & { children: ReactNode }) {
+  const normalizedValue: SonamuContextValue<D, O> = {
+    uploader: value.uploader ?? createUploaderFallback(),
+    auth,
+    SD: value.SD ?? createSDFallback<D>(),
+  };
+
+  return <SonamuContext.Provider value={normalizedValue}>{children}</SonamuContext.Provider>;
+}
+
+function SonamuAuthProvider<D extends Dictionary, O extends BetterAuthClientOptions>({
+  children,
+  authOptions,
+  ...value
+}: SonamuProviderProps<D, O> & { authOptions: O }) {
+  const [auth] = useState(() => createAuthClient(authOptions));
+
+  return (
+    <SonamuContextProvider {...value} auth={value.auth ?? auth}>
+      {children}
+    </SonamuContextProvider>
+  );
+}
 
 export function SonamuProvider<
   D extends Dictionary = Dictionary,
   O extends BetterAuthClientOptions = BetterAuthClientOptions,
 >({ children, authOptions, ...value }: SonamuProviderProps<D, O>) {
-  const authRef = useRef<SonamuAuthClient<O> | undefined>(undefined);
-  if (authOptions && !authRef.current) {
-    authRef.current = createAuthClient(authOptions);
-  }
-
-  const normalizedValue: SonamuContextValue<D, O> = {
-    uploader: value.uploader ?? createUploaderFallback(),
-    auth: value.auth ?? authRef.current,
-    SD: value.SD ?? createSDFallback<D>(),
-  };
-
-  return <SonamuContext.Provider value={normalizedValue}>{children}</SonamuContext.Provider>;
+  return authOptions === undefined ? (
+    <SonamuContextProvider {...value}>{children}</SonamuContextProvider>
+  ) : (
+    <SonamuAuthProvider {...value} authOptions={authOptions}>
+      {children}
+    </SonamuAuthProvider>
+  );
 }
 
 /**
@@ -79,6 +110,7 @@ export function SonamuProvider<
 export function useSonamuBaseContext<
   D extends Dictionary = Dictionary,
   O extends BetterAuthClientOptions = BetterAuthClientOptions,
->(): Required<SonamuContextValue<D, O>> {
-  return useContext(SonamuContext) as unknown as Required<SonamuContextValue<D, O>>;
+>(): Required<SonamuContextValue<D, O>>;
+export function useSonamuBaseContext(): SonamuContextRuntimeValue {
+  return useContext(SonamuContext);
 }

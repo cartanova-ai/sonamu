@@ -1,11 +1,32 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "import", "unicorn"],
+  "jsPlugins": [
+    {
+      "name": "generated-anti-slop",
+      "specifier": "./tools/oxlint/anti-slop/index.ts"
+    }
+  ],
   "categories": {
     "correctness": "warn",
     "suspicious": "warn"
   },
   "rules": {
+    "generated-anti-slop/no-chained-type-assertions": "error",
+    "generated-anti-slop/no-conditional-empty-object-spread": "error",
+    "generated-anti-slop/no-known-value-widening": "error",
+    "generated-anti-slop/no-module-mocking": "error",
+    "generated-anti-slop/no-object-parameters": "error",
+    "generated-anti-slop/no-reflect-apply": "error",
+    "generated-anti-slop/no-reflect-get": "error",
+    "generated-anti-slop/no-runtime-typeof": "error",
+    "generated-anti-slop/no-shape-in-symbol-names": "error",
+    "generated-anti-slop/no-unknown-parameters": "error",
+    "generated-anti-slop/no-unknown-returns": "error",
+    "generated-anti-slop/no-unknown-type-aliases": "error",
+    "generated-anti-slop/no-unsafe-dictionary-type": "error",
+    "generated-anti-slop/no-widen-then-assert": "error",
+    "generated-anti-slop/require-safety-comment-for-type-assertion": "error",
     "no-empty-pattern": "off",
     "radix": "off",
     "@typescript-eslint/no-empty-interface": "off",
@@ -23,6 +44,18 @@
     "react/react-in-jsx-scope": "off"
   },
   "ignorePatterns": [
+    ".agent/**",
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".continue/**",
+    ".cursor/**",
+    ".gemini/**",
+    ".opencode/**",
+    ".pi/**",
+    ".roo/**",
+    ".windsurf/**",
+    "tools/oxlint/anti-slop/**",
     "dist/**",
     "build/**",
     "node_modules/**",

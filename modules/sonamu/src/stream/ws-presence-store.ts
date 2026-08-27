@@ -317,7 +317,12 @@ function getBindingKey(namespace: string, id: string): string {
   return `${namespace}::${id}`;
 }
 
-function parseBindingKey(key: string): { namespace: string; id: string } {
+interface PresenceBinding {
+  namespace: string;
+  id: string;
+}
+
+function parseBindingKey(key: string): PresenceBinding {
   const [namespace, ...rest] = key.split("::");
   return {
     namespace,

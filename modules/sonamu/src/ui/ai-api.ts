@@ -11,10 +11,11 @@ export async function setAiApi(server: FastifyInstance) {
   await aiClient.init();
 
   server.post("/api/ai/fixture/chat", async (request, reply) => {
-    const { messages, fixtureRecords } = request.body as {
-      messages: UIMessage[];
-      fixtureRecords?: FixtureRecord[];
-    };
+    const { messages, fixtureRecords } =
+      /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ request.body as {
+        messages: UIMessage[];
+        fixtureRecords?: FixtureRecord[];
+      };
 
     if (!fixtureRecords || fixtureRecords.length === 0) {
       throw new BadRequestException(SD("sonamu.error.fixtureRecordRequired"));
@@ -40,9 +41,10 @@ export async function setAiApi(server: FastifyInstance) {
 
   // Entity/Enum 생성용 AI Chat Stream
   server.post("/api/ai/entity/chat", async (request, reply) => {
-    const { messages } = request.body as {
-      messages: UIMessage[];
-    };
+    const { messages } =
+      /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ request.body as {
+        messages: UIMessage[];
+      };
 
     const result = aiClient.handleEntity(await convertToModelMessages(messages));
     const response = result.toUIMessageStreamResponse();

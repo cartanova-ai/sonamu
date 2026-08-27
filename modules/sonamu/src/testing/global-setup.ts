@@ -1,6 +1,10 @@
+import { z } from "zod";
+
 import { loadConfig } from "../api/config";
 import { DB } from "../database/db";
 import { ParallelDBManager } from "./parallel-db-manager";
+
+const postgresConnectionSchema = z.object({ database: z.string() }).passthrough();
 
 function restoreProcessEnv(snapshot: NodeJS.ProcessEnv): void {
   for (const key of Object.keys(process.env)) {
@@ -48,11 +52,11 @@ export function createGlobalSetup() {
 
       const maxWorkers = config.test.maxWorkers ?? 4;
       const dbConfig = DB.generateDBConfig(config.database, config.projectName);
-      const testConnection = dbConfig.test.connection;
-      const templateDb = (testConnection as { database: string }).database;
+      const testConnection = postgresConnectionSchema.parse(dbConfig.test.connection);
+      const templateDb = testConnection.database;
 
       const adminConnection = {
-        ...(testConnection as Record<string, unknown>),
+        ...testConnection,
         database: "postgres",
       };
 

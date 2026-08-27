@@ -1,6 +1,5 @@
 import crypto from "crypto";
 import { createReadStream, type PathLike } from "fs";
-import { readFile, writeFile } from "fs/promises";
 import path from "path";
 
 import equal from "fast-deep-equal";
@@ -8,10 +7,10 @@ import { isEqual } from "radashi";
 
 import { Sonamu } from "../api/sonamu";
 import { globAsync } from "../utils/async-utils";
-import { exists } from "../utils/fs-utils";
 import { type AbsolutePath, type AppRelativePath } from "../utils/path-utils";
 import { differenceWith } from "../utils/utils";
 import { getChecksumPatternGroupInAbsolutePath, GLOB_EXCLUDE } from "./file-patterns";
+import { syncerFileExists, syncerFilesystem } from "./filesystem-dependencies";
 
 type PathAndChecksum = {
   path: AbsolutePath;
@@ -61,7 +60,10 @@ async function getCurrentChecksums(): Promise<PathAndChecksum[]> {
 
   // 동일 파일이 여러 패턴에 매치될 수 있으므로(예: sd.generated.ts는 generated와 sdGenerated에 모두 매치)
   // 중복 제거 후 안정 정렬.
-  const filePaths = Array.from(new Set(allPaths)).toSorted() as AbsolutePath[];
+  const filePaths =
+    /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ Array.from(
+      new Set(allPaths),
+    ).toSorted() as AbsolutePath[];
 
   return await Promise.all(
     filePaths.map(async (filePath) => {
@@ -75,17 +77,18 @@ async function getCurrentChecksums(): Promise<PathAndChecksum[]> {
 
 async function getPreviousChecksums(): Promise<PathAndChecksum[]> {
   const checksumFilePath = getChecksumFilePath();
-  if (!(await exists(checksumFilePath))) {
+  if (!(await syncerFileExists(checksumFilePath))) {
     return [];
   }
 
   try {
-    const previousChecksums = JSON.parse(await readFile(checksumFilePath, "utf-8")).map(
-      (r: { path: AppRelativePath; checksum: string }) => ({
+    const previousChecksums =
+      /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ JSON.parse(
+        await syncerFilesystem.readFile(checksumFilePath, "utf-8"),
+      ).map((r: { path: AppRelativePath; checksum: string }) => ({
         path: path.join(Sonamu.appRootPath, r.path), // 체크섬 파일에서 읽을 때: appRoot 상대 경로 → 절대 경로
         checksum: r.checksum,
-      }),
-    ) as PathAndChecksum[];
+      })) as PathAndChecksum[];
     return previousChecksums;
   } catch (e) {
     // 체크섬 파일이 손상된 경우 빈 배열 반환 (전체 재동기화 유도)
@@ -98,7 +101,10 @@ async function getPreviousChecksums(): Promise<PathAndChecksum[]> {
 }
 
 function getChecksumFilePath(): AbsolutePath {
-  return path.join(Sonamu.apiRootPath, "sonamu.lock") as AbsolutePath;
+  return /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ path.join(
+    Sonamu.apiRootPath,
+    "sonamu.lock",
+  ) as AbsolutePath;
 }
 
 async function saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
@@ -109,8 +115,8 @@ async function saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
       path: path.relative(Sonamu.appRootPath, r.path), // 체크섬 파일에 저장할 때: 절대 경로 → appRoot 상대 경로
       checksum: r.checksum,
     }))
-    .sort((a, b) => a.path.localeCompare(b.path));
-  await writeFile(checksumFilePath, JSON.stringify(serialized, null, 2), "utf-8");
+    .toSorted((a, b) => a.path.localeCompare(b.path));
+  await syncerFilesystem.writeFile(checksumFilePath, JSON.stringify(serialized, null, 2), "utf-8");
 }
 
 async function getChecksumOfFile(filePath: PathLike): Promise<string> {

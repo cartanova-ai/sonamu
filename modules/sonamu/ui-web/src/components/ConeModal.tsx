@@ -10,8 +10,9 @@ import {
   DialogTitle,
   Textarea,
 } from "@sonamu-kit/react-components";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { type Cone } from "sonamu";
+import { z } from "zod";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 
@@ -71,8 +72,10 @@ export function ConeModal({ open, onOpenChange, title, cone, onSave }: ConeModal
 
   // 드래그 위치 상태 - 화면 중앙을 기본값으로
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [previousSource, setPreviousSource] = useState({ open, cone });
 
-  useEffect(() => {
+  if (previousSource.open !== open || previousSource.cone !== cone) {
+    setPreviousSource({ open, cone });
     if (open && cone) {
       setForm(cone);
       setTagsInput(cone.tags?.join(", ") || "");
@@ -93,7 +96,7 @@ export function ConeModal({ open, onOpenChange, title, cone, onSave }: ConeModal
     if (open) {
       setPosition({ x: 0, y: 0 });
     }
-  }, [open, cone]);
+  }
 
   // 드래그 종료 시 위치 저장
   const handleDragEnd = (event: DragEndEvent) => {
@@ -127,30 +130,21 @@ export function ConeModal({ open, onOpenChange, title, cone, onSave }: ConeModal
 
       // Parse fixtureDefault if it's a string that looks like JSON
       let fixtureDefault = form.fixtureDefault;
-      if (typeof fixtureDefault === "string" && fixtureDefault.trim()) {
+      const fixtureDefaultString = z.string().safeParse(fixtureDefault);
+      if (fixtureDefaultString.success && fixtureDefaultString.data.trim()) {
         try {
-          fixtureDefault = JSON.parse(fixtureDefault);
+          fixtureDefault = JSON.parse(fixtureDefaultString.data);
         } catch {
           // Keep as string if not valid JSON
         }
       }
 
-      const coneToSave: Cone = {
-        ...form,
-        tags: tags.length > 0 ? tags : undefined,
-        dataSource,
-        fixtureDefault,
-        // Remove undefined fields
-        note: form.note || undefined,
-        fixtureGenerator: form.fixtureGenerator || undefined,
-      };
-
-      // Remove undefined keys
-      Object.keys(coneToSave).forEach((key) => {
-        if (coneToSave[key as keyof Cone] === undefined) {
-          delete coneToSave[key as keyof Cone];
-        }
-      });
+      const coneToSave: Cone = {};
+      if (form.note) coneToSave.note = form.note;
+      if (tags.length > 0) coneToSave.tags = tags;
+      if (form.fixtureGenerator) coneToSave.fixtureGenerator = form.fixtureGenerator;
+      if (fixtureDefault !== undefined) coneToSave.fixtureDefault = fixtureDefault;
+      if (dataSource !== undefined) coneToSave.dataSource = dataSource;
 
       await onSave(coneToSave);
       onOpenChange(false);

@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import prompts from "prompts";
+import { z } from "zod";
 
 import { Sonamu } from "../api/sonamu";
 import { DB } from "../database/db";
@@ -22,6 +23,16 @@ interface FixtureCommandOptions {
   "use-llm"?: boolean;
   "no-cache"?: boolean;
 }
+
+interface SignupBody {
+  name: string;
+  email: string;
+  username: string;
+  password: string;
+  display_username?: string;
+}
+
+const SignupErrorResponse = z.object({ code: z.string().optional() }).passthrough();
 
 /**
  * username을 일반적인 규칙(영문자 시작, 영문자/숫자만, 1-20자)에 맞도록 정규화합니다.
@@ -162,7 +173,7 @@ export async function fixtureGenCommand(options: FixtureCommandOptions) {
           const displayUsername =
             userData.display_username !== undefined ? String(userData.display_username) : undefined;
 
-          const body: Record<string, unknown> = {
+          const body: SignupBody = {
             name,
             email,
             username,
@@ -181,8 +192,8 @@ export async function fixtureGenCommand(options: FixtureCommandOptions) {
           const response = await Sonamu.auth.handler(req);
 
           if (!response.ok) {
-            const responseData = (await response.json()) as Record<string, unknown>;
-            const code = typeof responseData.code === "string" ? responseData.code : undefined;
+            const responseData = SignupErrorResponse.parse(await response.json());
+            const code = responseData.code;
             if (code === "USER_ALREADY_EXISTS") {
               console.log(chalk.yellow(`  ⚠️  ${email} 이미 존재 - 건너뜁니다.`));
               continue;

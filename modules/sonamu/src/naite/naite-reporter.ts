@@ -103,7 +103,7 @@ class NaiteReporterClass {
   private async send(data: NaiteMessagingTypes.NaiteMessage): Promise<void> {
     const msg = `${JSON.stringify(data)}\n`;
 
-    await this.ensureConnection().catch((_) => {});
+    await this.ensureConnection().catch(() => {});
 
     if (this.connected && this.socket) {
       this.socket.write(msg);

@@ -13,7 +13,7 @@ import {
 } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
 import { type EntityIndex } from "sonamu";
-import z from "zod";
+import { z } from "zod";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronUpIcon from "~icons/lucide/chevron-up";
 
@@ -28,8 +28,10 @@ type EntityIndexModalProps = {
   onCompleted?: (data: EntityIndex | null) => void;
 };
 
+const entityIndexTypeSchema = z.enum(["index", "unique", "hnsw", "ivfflat"]);
+const entityIndexUsingSchema = z.enum(["btree", "hash", "gin", "gist", "pgroonga"]).optional();
 const entityIndexFormSchema = z.object({
-  type: z.enum(["index", "unique", "hnsw", "ivfflat"]),
+  type: entityIndexTypeSchema,
   columns: z.array(
     z.object({
       name: z.string(),
@@ -39,7 +41,7 @@ const entityIndexFormSchema = z.object({
     }),
   ),
   name: z.string().min(1).max(63),
-  using: z.enum(["btree", "hash", "gin", "gist", "pgroonga"]).optional(),
+  using: entityIndexUsingSchema,
   nullsNotDistinct: z.boolean().optional(),
   m: z.number().int().positive().optional(),
   efConstruction: z.number().int().positive().optional(),
@@ -179,12 +181,23 @@ function createInitialForm(oldOne?: EntityIndex): EntityIndexForm {
   };
 }
 
-function createInitialIntegerFieldValues(oldOne?: EntityIndex): IntegerFieldValues {
+function createInitialIntegerFieldValues(oldOne?: EntityIndex) {
   return {
     m: oldOne?.m?.toString() ?? "",
     efConstruction: oldOne?.efConstruction?.toString() ?? "",
     lists: oldOne?.lists?.toString() ?? "",
   };
+}
+
+function removeUndefinedColumnValues(
+  column: EntityIndexForm["columns"][number],
+): EntityIndexForm["columns"][number] {
+  const { nullsFirst, sortOrder, opclass, ...requiredValues } = column;
+  const result: EntityIndexForm["columns"][number] = requiredValues;
+  if (nullsFirst !== undefined) result.nullsFirst = nullsFirst;
+  if (sortOrder !== undefined) result.sortOrder = sortOrder;
+  if (opclass !== undefined) result.opclass = opclass;
+  return result;
 }
 
 export function EntityIndexModal({
@@ -203,10 +216,12 @@ export function EntityIndexModal({
   const [integerFieldValues, setIntegerFieldValues] = useState<IntegerFieldValues>(() =>
     createInitialIntegerFieldValues(oldOne),
   );
-
-  useEffect(() => {
+  const integerFieldSource = `${oldOne?.m ?? ""}:${oldOne?.efConstruction ?? ""}:${oldOne?.lists ?? ""}`;
+  const [previousIntegerFieldSource, setPreviousIntegerFieldSource] = useState(integerFieldSource);
+  if (previousIntegerFieldSource !== integerFieldSource) {
+    setPreviousIntegerFieldSource(integerFieldSource);
     setIntegerFieldValues(createInitialIntegerFieldValues(oldOne));
-  }, [oldOne?.m, oldOne?.efConstruction, oldOne?.lists]);
+  }
 
   useEffect(() => {
     const onKeydown = (e: KeyboardEvent) => {
@@ -249,7 +264,7 @@ export function EntityIndexModal({
       : textOpclassOptionsByUsing.gist
     : [];
 
-  const handleSubmit = () => {
+  function handleSubmit() {
     let hasError = false;
     const validatedIntegerFields: Partial<Record<IntegerField, number>> = {};
     const submittedColumns = getSubmittedColumns(form.type, form.using, form.columns);
@@ -348,7 +363,7 @@ export function EntityIndexModal({
       }
       onOpenChange(false);
     }
-  };
+  }
 
   const handleColumnChange = (_: React.FormEvent, { value }: { value: string[] }) => {
     setForm((prev) => {
@@ -364,13 +379,7 @@ export function EntityIndexModal({
   const updateColumn = (index: number, changes: Partial<EntityIndexForm["columns"][number]>) => {
     setForm((prev) => {
       const newColumns = [...prev.columns];
-      const updatedCol = { ...newColumns[index], ...changes };
-
-      Object.entries(changes).forEach(([key, value]) => {
-        if (value === undefined) {
-          delete updatedCol[key as keyof typeof updatedCol];
-        }
-      });
+      const updatedCol = removeUndefinedColumnValues({ ...newColumns[index], ...changes });
 
       newColumns[index] = updatedCol;
       return { ...prev, columns: newColumns };
@@ -404,7 +413,7 @@ export function EntityIndexModal({
     }));
   };
 
-  const typeOptions = ["index", "unique", "hnsw", "ivfflat"];
+  const typeOptions = entityIndexTypeSchema.options;
   const usingOptions = [
     { key: "btree", text: "B-Tree" },
     { key: "hash", text: "Hash" },
@@ -451,9 +460,10 @@ export function EntityIndexModal({
                   </label>
                   <Select
                     value={form.type}
-                    onValueChange={(value) =>
-                      value && setForm({ ...form, type: value as typeof form.type })
-                    }
+                    onValueChange={(value) => {
+                      const parsed = entityIndexTypeSchema.safeParse(value);
+                      if (parsed.success) setForm({ ...form, type: parsed.data });
+                    }}
                     items={typeOptions.map((type) => ({ value: type, label: type.toUpperCase() }))}
                     className="focus-0"
                   />
@@ -475,10 +485,8 @@ export function EntityIndexModal({
                     <Select
                       value={form.using}
                       onValueChange={(value) => {
-                        setForm({
-                          ...form,
-                          using: value as NonNullable<EntityIndex["using"]> | undefined,
-                        });
+                        const parsed = entityIndexUsingSchema.safeParse(value);
+                        if (parsed.success) setForm({ ...form, using: parsed.data });
                       }}
                       clearable
                       items={usingOptions.map((opt) => ({ value: opt.key, label: opt.text }))}

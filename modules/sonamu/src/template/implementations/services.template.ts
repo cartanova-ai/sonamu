@@ -11,6 +11,7 @@ import { Sonamu } from "../../api/sonamu";
 import { EntityManager } from "../../entity/entity-manager";
 import { type TemplateOptions } from "../../types/types";
 import { ApiParamType } from "../../types/types";
+import { isStringValue } from "../../utils/runtime-value";
 import { assertDefined } from "../../utils/utils";
 import { Template } from "../template";
 import { BUILT_IN_TYPES, zodTypeToTsTypeDef } from "../zod-converter";
@@ -197,8 +198,7 @@ export function ${methodNameWebSocketCamelized}(
             .map((param) => {
               // primitive 타입인지 체크
               const isPrimitive =
-                typeof param.type === "string" &&
-                ["string", "number", "boolean"].includes(param.type);
+                isStringValue(param.type) && ["string", "number", "boolean"].includes(param.type);
 
               if (isPrimitive) {
                 // primitive: 직접 formData.append

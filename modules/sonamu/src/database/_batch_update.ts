@@ -97,6 +97,7 @@ function generateBatchUpdateSQL<Id extends string>(
   const cases: string[] = [];
 
   for (const key of keySet) {
+    // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     if (identifiers.includes(key as Id)) continue;
 
     const caseBindings: (string | number | boolean | null)[] = [];

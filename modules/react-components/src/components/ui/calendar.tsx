@@ -7,6 +7,14 @@ import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 
 import { cn } from "../../lib/utils";
+
+function CalendarPreviousIcon() {
+  return <ChevronLeftIcon className="h-4 w-4" />;
+}
+
+function CalendarNextIcon() {
+  return <ChevronRightIcon className="h-4 w-4" />;
+}
 import { buttonVariants } from "./button";
 
 function Calendar({
@@ -58,8 +66,8 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: () => <ChevronLeftIcon className="h-4 w-4" />,
-        IconRight: () => <ChevronRightIcon className="h-4 w-4" />,
+        IconLeft: CalendarPreviousIcon,
+        IconRight: CalendarNextIcon,
       }}
       {...props}
     />

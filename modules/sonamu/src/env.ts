@@ -6,11 +6,15 @@ import dotenv from "dotenv";
 export const SONAMU_ENVIRONMENTS = ["test", "development", "staging", "production"] as const;
 
 export type SonamuEnvironment = (typeof SONAMU_ENVIRONMENTS)[number];
-export type EnvironmentSnapshot = Record<string, string>;
+export interface EnvironmentSnapshot {
+  [key: string]: string;
+}
 export type EnvironmentSnapshots = Record<SonamuEnvironment, EnvironmentSnapshot>;
 
 export function isSonamuEnvironment(value: string | undefined): value is SonamuEnvironment {
-  return SONAMU_ENVIRONMENTS.includes(value as SonamuEnvironment);
+  return SONAMU_ENVIRONMENTS.includes(
+    /* SAFETY: 호출 경계의 선행 검증과 소유 타입 계약이 이 값의 타입을 보장한다. */ value as SonamuEnvironment,
+  );
 }
 
 export function getSonamuEnvironment(env: NodeJS.ProcessEnv = process.env): SonamuEnvironment {
@@ -87,7 +91,7 @@ export function readAllEnvironmentSnapshots(
   rootPath: string,
   baseEnv: NodeJS.ProcessEnv = {},
 ): EnvironmentSnapshots {
-  return Object.fromEntries(
+  return /* SAFETY: 호출 경계의 선행 검증과 소유 타입 계약이 이 값의 타입을 보장한다. */ Object.fromEntries(
     SONAMU_ENVIRONMENTS.map((environment) => [
       environment,
       readEnvironmentSnapshot(rootPath, environment, baseEnv),

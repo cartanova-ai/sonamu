@@ -1,3 +1,4 @@
+import type React from "react";
 import { Button } from "semantic-ui-react";
 import { type ButtonProps, type SemanticCOLORS } from "semantic-ui-react";
 
@@ -7,7 +8,7 @@ export type ButtonSetProps = {
     text: string;
   }[];
   value?: string | number | string[];
-  onChange?: (e: unknown, prop: ButtonSetProps) => void;
+  onChange?: (e: React.MouseEvent<HTMLButtonElement>, prop: ButtonSetProps) => void;
   buttonProps?: ButtonProps;
   baseColor?: SemanticCOLORS;
   selectedColor?: SemanticCOLORS;

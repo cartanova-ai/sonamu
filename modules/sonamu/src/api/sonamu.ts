@@ -4,7 +4,7 @@ import { type IncomingMessage, type Server, type ServerResponse } from "http";
 import os from "os";
 import path from "path";
 
-import type {} from "@fastify/websocket";
+import "@fastify/websocket";
 import { dispose as logtapeDispose } from "@logtape/logtape";
 import { type Auth, type BetterAuthOptions } from "better-auth";
 import chalk from "chalk";
@@ -27,12 +27,17 @@ import { SD, setSDConfig } from "../dict/sd";
 import { type LocalizedString } from "../dict/types";
 import { getSonamuEnvironment, readAllEnvironmentSnapshots } from "../env";
 import { NotFoundException } from "../exceptions/so-exceptions";
+import { runtimeTypeOf } from "../runtime-type";
 import { BufferedFile } from "../storage/buffered-file";
 import { type StorageManager } from "../storage/storage-manager";
 import { type KeyGenerator } from "../storage/types";
 import { UploadedFile } from "../storage/uploaded-file";
 import { createMockSSEFactory } from "../stream/sse";
-import { WebSocketRuntime, type WebSocketConnection, type WebSocketEventMap } from "../stream/ws";
+import {
+  type AnyWebSocketConnection,
+  WebSocketRuntime,
+  type WebSocketConnection,
+} from "../stream/ws";
 import {
   type TelemetryContextProvider,
   type WebSocketTelemetryConnectionContext,
@@ -46,6 +51,14 @@ import { centerText } from "../utils/console-util";
 import { isDaemonServer } from "../utils/controller";
 import { exists, fileExists } from "../utils/fs-utils";
 import { type AbsolutePath } from "../utils/path-utils";
+import {
+  isBigIntValue,
+  isFunctionValue,
+  isNumberValue,
+  isObjectValue,
+  isStringValue,
+  isSymbolValue,
+} from "../utils/runtime-value";
 import { convertFastifyHeadersToStandard, merge } from "../utils/utils";
 import {
   normalizeZodCompilerPolicy,
@@ -77,6 +90,79 @@ export {
   resolveWebSocketPluginOptions,
 } from "./websocket-helpers";
 
+interface UploadedRequestFiles {
+  bufferedFiles: BufferedFile[];
+  uploadedFiles: UploadedFile[];
+}
+
+type ApiArgument =
+  | string
+  | number
+  | boolean
+  | bigint
+  | symbol
+  | CallableFunction
+  | object
+  | null
+  | undefined;
+type ApiMethodResult = ApiArgument | void;
+
+function toApiArgument<Value>(value: Value): ApiArgument {
+  if (value === null) return null;
+  if (value === undefined) return undefined;
+  if (value === true) return true;
+  if (value === false) return false;
+  if (isStringValue(value)) return value;
+  if (isNumberValue(value)) return value;
+  if (isBigIntValue(value)) return value;
+  if (isSymbolValue(value)) return value;
+  if (isFunctionValue(value)) return value;
+  if (isObjectValue(value)) {
+    return value;
+  }
+  throw new Error("지원하지 않는 API 인수 타입입니다.");
+}
+
+function toApiArgumentMap<Value extends object>(value: Value): Map<string, ApiArgument> {
+  return new Map(Object.entries(value).map(([key, item]) => [key, toApiArgument(item)]));
+}
+
+function createUnavailableSSE<T extends ZodObject>(_events: T): never {
+  throw new Error(
+    "createSSE is not available in websocket context. Define websocketContextProvider if your context setup depends on SSE helpers.",
+  );
+}
+
+function printDimSummary(message: string): void {
+  console.log(chalk.dim(`✓ ${message}`));
+}
+
+function printGreenSummary(message: string): void {
+  console.log(chalk.green(`✓ ${message}`));
+}
+
+export interface SonamuTestingSnapshot {
+  apiRootPath: AbsolutePath | null;
+  config: SonamuConfig | null;
+  syncer: Syncer | null;
+  httpValidators: WeakMap<ExtendedApi, HttpValidator>;
+  pendingHttpValidators: WeakMap<ExtendedApi, Promise<HttpValidator>>;
+  aotHttpValidatorRegistry: HttpValidatorRegistry | undefined;
+  preparedApis: readonly ExtendedApi[];
+  preparedModels: LoadedModels;
+  websocketRuntime: WebSocketRuntime | null;
+}
+
+export interface SonamuHttpValidatorDependencies {
+  createValidator: typeof createHttpValidator;
+  assertRegistry: typeof assertHttpValidatorRegistry;
+}
+
+export const defaultSonamuHttpValidatorDependencies: SonamuHttpValidatorDependencies = {
+  createValidator: createHttpValidator,
+  assertRegistry: assertHttpValidatorRegistry,
+};
+
 class SonamuClass {
   public isInitialized: boolean = false;
   public forTesting: boolean = false;
@@ -92,12 +178,12 @@ class SonamuClass {
   public getContext<T extends RuntimeContext = Context>(): T {
     const store = this.asyncLocalStorage.getStore();
     if (store?.context) {
-      return store.context as T;
+      return /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ store.context as T;
     }
 
     if (process.env.NODE_ENV === "test") {
       // 테스팅 환경에서 컨텍스트가 주입되지 않은 경우 빈 컨텍스트 리턴
-      return {
+      const mockContext = {
         transport: "http",
         request: null,
         reply: null,
@@ -107,122 +193,151 @@ class SonamuClass {
         user: null,
         session: null,
         naiteStore: new Map<string, any>(),
-      } as unknown as T;
+      };
+      // SAFETY: 테스트 기본 컨텍스트는 HTTP Context이며 기본 제네릭과 일치한다.
+      return /* SAFETY: 테스트 기본 컨텍스트는 요청 범위가 없는 HTTP 컨텍스트 대체값입니다. */ mockContext as T &
+        typeof mockContext;
     } else {
       throw new Error("Sonamu cannot find context");
     }
   }
 
-  private _apiRootPath: AbsolutePath | null = null;
+  private apiRootPathValue: AbsolutePath | null = null;
   set apiRootPath(apiRootPath: AbsolutePath) {
-    this._apiRootPath = apiRootPath;
+    this.apiRootPathValue = apiRootPath;
   }
   get apiRootPath(): AbsolutePath {
-    if (this._apiRootPath === null) {
+    if (this.apiRootPathValue === null) {
       throw new Error("Sonamu has not been initialized");
     }
-    return this._apiRootPath;
+    return this.apiRootPathValue;
   }
   get appRootPath(): string {
     return this.apiRootPath.split(path.sep).slice(0, -1).join(path.sep);
   }
 
-  private _dbConfig: SonamuDBConfig | null = null;
+  private dbConfigValue: SonamuDBConfig | null = null;
   set dbConfig(dbConfig: SonamuDBConfig) {
-    this._dbConfig = dbConfig;
+    this.dbConfigValue = dbConfig;
   }
   get dbConfig(): SonamuDBConfig {
-    if (this._dbConfig === null) {
+    if (this.dbConfigValue === null) {
       throw new Error("Sonamu has not been initialized");
     }
-    return this._dbConfig;
+    return this.dbConfigValue;
   }
 
-  private _syncer: Syncer | null = null;
+  private syncerValue: Syncer | null = null;
   set syncer(syncer: Syncer) {
-    this._syncer = syncer;
+    this.syncerValue = syncer;
   }
   get syncer(): Syncer {
-    if (this._syncer === null) {
+    if (this.syncerValue === null) {
       throw new Error("Sonamu has not been initialized");
     }
-    return this._syncer;
+    return this.syncerValue;
   }
 
-  private _config: SonamuConfig | null = null;
+  private configValue: SonamuConfig | null = null;
   set config(config: SonamuConfig) {
-    this._config = config;
+    this.configValue = config;
   }
   get config(): SonamuConfig {
-    if (this._config === null) {
+    if (this.configValue === null) {
       throw new Error("Sonamu has not been initialized");
     }
-    return this._config;
+    return this.configValue;
   }
 
   public readonly secrets: SonamuSecrets = getSecrets();
 
-  private _storage: StorageManager | null = null;
+  private storageValue: StorageManager | null = null;
   /**
    * StorageManager 인스턴스
    */
   get storage(): StorageManager {
-    if (!this._storage) {
+    if (!this.storageValue) {
       throw new Error("Storage has not been initialized. Check storage config.");
     }
-    return this._storage;
+    return this.storageValue;
   }
 
-  private _cache: CacheManager | null = null;
+  private cacheValue: CacheManager | null = null;
   /**
    * CacheManager 인스턴스 (BentoCache)
    */
   get cache(): CacheManager {
-    if (!this._cache) {
+    if (!this.cacheValue) {
       throw new Error("Cache has not been initialized. Check cache config in sonamu.config.ts.");
     }
-    return this._cache;
+    return this.cacheValue;
   }
 
-  private _workflows: WorkflowManager | null = null;
+  private workflowsValue: WorkflowManager | null = null;
   get workflows(): WorkflowManager {
-    if (this._workflows === null) {
+    if (this.workflowsValue === null) {
       throw new Error("Sonamu has not been initialized");
     }
 
-    return this._workflows;
+    return this.workflowsValue;
   }
 
-  private _auth: Auth<BetterAuthOptions> | null = null;
+  private authValue: Auth<BetterAuthOptions> | null = null;
   get auth(): Auth<BetterAuthOptions> {
-    if (!this._auth) {
+    if (!this.authValue) {
       throw new Error("Auth has not been initialized. Check auth config in sonamu.config.ts.");
     }
-    return this._auth;
+    return this.authValue;
   }
 
-  private _devVitestManager: DevVitestManager | null = null;
+  private devVitestManagerValue: DevVitestManager | null = null;
   get devVitestManager(): DevVitestManager | null {
-    return this._devVitestManager;
+    return this.devVitestManagerValue;
   }
   set devVitestManager(manager: DevVitestManager | null) {
-    this._devVitestManager = manager;
+    this.devVitestManagerValue = manager;
   }
 
   // Sonamu가 runtime을 직접 소유해 registry/connection lifecycle을 애플리케이션 수명주기와 동기화함
-  private _websocketRuntime: WebSocketRuntime | null = null;
+  private websocketRuntimeValue: WebSocketRuntime | null = null;
   // 같은 Fastify 인스턴스에 @fastify/websocket을 중복 등록하는 것을 WeakSet으로 차단함
   private readonly websocketPluginServers = new WeakSet<
     FastifyInstance<Server, IncomingMessage, ServerResponse>
   >();
   get websocketRuntime(): WebSocketRuntime {
-    if (!this._websocketRuntime) {
+    if (!this.websocketRuntimeValue) {
       throw new Error("WebSocket runtime has not been initialized.");
     }
-    return this._websocketRuntime;
+    return this.websocketRuntimeValue;
   }
   set websocketRuntime(runtime: WebSocketRuntime | null) {
-    this._websocketRuntime = runtime;
+    this.websocketRuntimeValue = runtime;
+  }
+
+  captureTestingSnapshot(): SonamuTestingSnapshot {
+    return {
+      apiRootPath: this.apiRootPathValue,
+      config: this.configValue,
+      syncer: this.syncerValue,
+      httpValidators: this.httpValidators,
+      pendingHttpValidators: this.pendingHttpValidators,
+      aotHttpValidatorRegistry: this.aotHttpValidatorRegistry,
+      preparedApis: this.preparedApis,
+      preparedModels: this.preparedModels,
+      websocketRuntime: this.websocketRuntimeValue,
+    };
+  }
+
+  restoreTestingSnapshot(snapshot: SonamuTestingSnapshot): void {
+    this.apiRootPathValue = snapshot.apiRootPath;
+    this.configValue = snapshot.config;
+    this.syncerValue = snapshot.syncer;
+    this.httpValidators = snapshot.httpValidators;
+    this.pendingHttpValidators = snapshot.pendingHttpValidators;
+    this.aotHttpValidatorRegistry = snapshot.aotHttpValidatorRegistry;
+    this.preparedApis = snapshot.preparedApis;
+    this.preparedModels = snapshot.preparedModels;
+    this.websocketRuntimeValue = snapshot.websocketRuntime;
   }
 
   // HMR 처리: 파일 시스템 감시 + HMR/sync 사이클 실행은 watcher 모듈로 위임합니다.
@@ -273,17 +388,17 @@ class SonamuClass {
     }
 
     // DB 로드
-    const { DB } = await import("../database/db");
+    const { DB: RuntimeDB } = await import("../database/db");
     const { isLocal: isLocalEnvironment } = await import("../utils/controller");
     const environmentSnapshots = isLocalEnvironment()
       ? readAllEnvironmentSnapshots(this.apiRootPath, baseEnvBeforeConfigLoad)
       : undefined;
-    this.dbConfig = DB.generateDBConfig(
+    this.dbConfig = RuntimeDB.generateDBConfig(
       this.config.database,
       this.config.projectName,
       environmentSnapshots,
     );
-    DB.setConfig(this.dbConfig);
+    RuntimeDB.setConfig(this.dbConfig);
 
     // Entity 로드
     // 테스트에서도 Entity 정보는 필요합니다.
@@ -308,7 +423,7 @@ class SonamuClass {
         database: sonamuKnexAdapter(),
         ...mergedFieldMappings,
       };
-      this._auth = betterAuth(authOptions);
+      this.authValue = betterAuth(authOptions);
     }
 
     // 테스팅인 경우 싱크 없이 중단
@@ -340,12 +455,12 @@ class SonamuClass {
     }
 
     this.isInitialized = true;
-    this._initElapsed = performance.now() - initStart;
-    this._configElapsed = configTime;
+    this.initElapsed = performance.now() - initStart;
+    this.configElapsed = configTime;
   }
 
-  private _initElapsed = 0;
-  private _configElapsed = 0;
+  private initElapsed = 0;
+  private configElapsed = 0;
 
   async createServer(initOptions?: { enableSync?: boolean; doSilent?: boolean }) {
     if (!this.isInitialized) {
@@ -370,7 +485,7 @@ class SonamuClass {
     // Storage 설정 → StorageManager 생성
     if (options.storage) {
       const { StorageManager } = await import("../storage/storage-manager");
-      this._storage = new StorageManager(options.storage);
+      this.storageValue = new StorageManager(options.storage);
     }
 
     // 플러그인 등록
@@ -432,10 +547,10 @@ class SonamuClass {
 
       server.setReplySerializer((payload) => {
         return JSON.stringify(payload, (_key, value) => {
-          if (typeof value === "string" && ISO_DATE_REGEX.test(value)) {
+          if (isStringValue(value) && ISO_DATE_REGEX.test(value)) {
             return formatInTimeZone(
               new Date(value),
-              timezone as `${string}/${string}`,
+              /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ timezone as `${string}/${string}`,
               DATE_FORMAT,
             );
           }
@@ -540,7 +655,7 @@ class SonamuClass {
   private async handleDevApiRequest(
     request: FastifyRequest,
     config: SonamuFastifyConfig,
-  ): Promise<((request: FastifyRequest, reply: FastifyReply) => Promise<unknown>) | null> {
+  ): Promise<((request: FastifyRequest, reply: FastifyReply) => Promise<ApiMethodResult>) | null> {
     const matchedApi = this.findMatchedApi(request, this.preparedApis, this.preparedModels);
 
     if (!matchedApi) {
@@ -714,7 +829,6 @@ class SonamuClass {
 
         // 2. CSR fallback
         try {
-          const fs = await import("node:fs/promises");
           let template = await fs.readFile(
             path.join(this.viteServer.config.root, "index.html"),
             "utf-8",
@@ -724,10 +838,14 @@ class SonamuClass {
           reply.type("text/html");
           return template;
         } catch (e) {
-          this.viteServer.ssrFixStacktrace(e as Error);
+          this.viteServer.ssrFixStacktrace(
+            /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ e as Error,
+          );
           console.error(e);
           reply.status(500);
-          return (e as Error).message;
+          return /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ (
+            e as Error
+          ).message;
         }
       },
     });
@@ -737,7 +855,6 @@ class SonamuClass {
       await this.viteServer.close();
     });
 
-    const chalk = (await import("chalk")).default;
     if ("port" in hmr) {
       console.log(
         chalk.dim(
@@ -787,7 +904,10 @@ class SonamuClass {
 
     // 롤링 업데이트 대응: asset hash 불일치 시 현재 버전 직접 서빙
     server.get("/assets/:filename", async (request, reply) => {
-      const requestedFile = (request.params as { filename: string }).filename;
+      const requestedFile =
+        /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ (
+          request.params as { filename: string }
+        ).filename;
       const assetsDir = path.join(webDistPath, "assets");
       const safeFilePath = this.resolvePathWithinBaseDir(assetsDir, requestedFile);
       if (safeFilePath === null) {
@@ -923,10 +1043,11 @@ class SonamuClass {
     api: ExtendedApi,
     config: SonamuFastifyConfig,
     models: LoadedModels = this.syncer.models,
-  ): (request: FastifyRequest, reply: FastifyReply) => Promise<unknown> {
-    const preparedValidator = this.getOrCreateHttpValidator(api);
+    dependencies: SonamuHttpValidatorDependencies = defaultSonamuHttpValidatorDependencies,
+  ): (request: FastifyRequest, reply: FastifyReply) => Promise<ApiMethodResult> {
+    const preparedValidator = this.getOrCreateHttpValidator(api, dependencies);
 
-    return async (request: FastifyRequest, reply: FastifyReply): Promise<unknown> => {
+    return async (request: FastifyRequest, reply: FastifyReply): Promise<ApiMethodResult> => {
       const validator =
         preparedValidator instanceof Promise ? await preparedValidator : preparedValidator;
       // Context 생성
@@ -943,20 +1064,15 @@ class SonamuClass {
 
         // request 파싱
         const which = api.options.httpMethod === "GET" ? "query" : "body";
-        let reqBody: {
-          [key: string]: unknown;
-        };
+        let reqBody = new Map<string, ApiArgument>();
         // 파일 업로드 있는 경우 임시 데이터
-        const files: {
-          bufferedFiles: BufferedFile[];
-          uploadedFiles: UploadedFile[];
-        } = {
+        const files: UploadedRequestFiles = {
           bufferedFiles: [],
           uploadedFiles: [],
         };
 
         try {
-          const body = (request[which] ?? {}) as Record<string, unknown>;
+          const body = request[which] ?? {};
           if (api.uploadOptions) {
             const parts = request.parts({
               limits: api.uploadOptions.limits,
@@ -1025,7 +1141,7 @@ class SonamuClass {
             Object.assign(body, parsed);
           }
 
-          reqBody = validator.parse(body);
+          reqBody = toApiArgumentMap(validator.parse(body));
         } catch (e) {
           const { ZodError } = await import("zod");
           if (e instanceof ZodError) {
@@ -1034,9 +1150,12 @@ class SonamuClass {
               .map((issue) => issue.message)
               .join(" ");
             const { BadRequestException } = await import("../exceptions/so-exceptions");
-            throw new BadRequestException(messages as LocalizedString, {
-              zodError: e,
-            });
+            throw new BadRequestException(
+              /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ messages as LocalizedString,
+              {
+                zodError: e,
+              },
+            );
           } else {
             throw e;
           }
@@ -1068,7 +1187,7 @@ class SonamuClass {
           if (ApiParamType.isContext(param.type)) {
             return context;
           } else {
-            return reqBody[param.name];
+            return reqBody.get(param.name);
           }
         });
 
@@ -1077,7 +1196,10 @@ class SonamuClass {
     };
   }
 
-  private getOrCreateHttpValidator(api: ExtendedApi): HttpValidator | Promise<HttpValidator> {
+  private getOrCreateHttpValidator(
+    api: ExtendedApi,
+    dependencies: SonamuHttpValidatorDependencies,
+  ): HttpValidator | Promise<HttpValidator> {
     const cached = this.httpValidators.get(api);
     if (cached !== undefined) {
       return cached;
@@ -1086,7 +1208,7 @@ class SonamuClass {
     if (existing !== undefined) {
       return existing;
     }
-    const pending = this.buildHttpValidator(api);
+    const pending = this.buildHttpValidator(api, dependencies);
     this.pendingHttpValidators.set(api, pending);
     void pending.then(
       (validator) => {
@@ -1100,7 +1222,10 @@ class SonamuClass {
     return pending;
   }
 
-  private async buildHttpValidator(api: ExtendedApi): Promise<HttpValidator> {
+  private async buildHttpValidator(
+    api: ExtendedApi,
+    dependencies: SonamuHttpValidatorDependencies,
+  ): Promise<HttpValidator> {
     const policy = normalizeZodCompilerPolicy(this.config.validation?.zodCompiler);
     const sourceAot = process.env.HOT === "yes" || process.env.VITEST === "true";
     if (policy.api === "aot" && !sourceAot) {
@@ -1108,7 +1233,7 @@ class SonamuClass {
       return this.getAotHttpValidator(api, registry);
     }
 
-    return await createHttpValidator({
+    return await dependencies.createValidator({
       api,
       policy,
       types: this.syncer.types,
@@ -1127,6 +1252,7 @@ class SonamuClass {
 
   private async loadAotHttpValidatorRegistry(
     apis: readonly ExtendedApi[] = this.syncer.apis,
+    dependencies: SonamuHttpValidatorDependencies = defaultSonamuHttpValidatorDependencies,
   ): Promise<HttpValidatorRegistry> {
     const { pathToFileURL } = await import("node:url");
     const registryPath = path.join(
@@ -1137,20 +1263,23 @@ class SonamuClass {
       throw new Error(`Generated HTTP validator registry not found: ${registryPath}`);
     }
 
-    const imported = (await import(pathToFileURL(registryPath).href)) as {
-      fingerprint?: unknown;
-      validators?: unknown;
-    };
-    if (typeof imported.fingerprint !== "string" || !(imported.validators instanceof Map)) {
+    const imported =
+      /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ (await import(
+        pathToFileURL(registryPath).href
+      )) as {
+        fingerprint?: unknown;
+        validators?: unknown;
+      };
+    if (!isStringValue(imported.fingerprint) || !(imported.validators instanceof Map)) {
       throw new Error(`Invalid generated HTTP validator registry: ${registryPath}`);
     }
     for (const [key, validator] of imported.validators) {
       if (
-        typeof key !== "string" ||
-        typeof validator !== "object" ||
+        !isStringValue(key) ||
+        !isObjectValue(validator) ||
         validator === null ||
         !("parse" in validator) ||
-        typeof validator.parse !== "function"
+        !isFunctionValue(validator.parse)
       ) {
         throw new Error(`Invalid HTTP validator registry entry: ${String(key)}`);
       }
@@ -1160,11 +1289,13 @@ class SonamuClass {
       fingerprint: imported.fingerprint,
       validators: imported.validators,
     };
-    assertHttpValidatorRegistry(apis, registry);
+    dependencies.assertRegistry(apis, registry);
     return registry;
   }
 
-  async refreshHttpValidators(): Promise<void> {
+  async refreshHttpValidators(
+    dependencies: SonamuHttpValidatorDependencies = defaultSonamuHttpValidatorDependencies,
+  ): Promise<void> {
     const policy = normalizeZodCompilerPolicy(this.config.validation?.zodCompiler);
     const sourceAot = process.env.HOT === "yes" || process.env.VITEST === "true";
     const nextApis = [...this.syncer.apis];
@@ -1174,7 +1305,7 @@ class SonamuClass {
     let nextAotRegistry: HttpValidatorRegistry | undefined;
 
     if (policy.api === "aot" && !sourceAot) {
-      const registry = await this.loadAotHttpValidatorRegistry(nextApis);
+      const registry = await this.loadAotHttpValidatorRegistry(nextApis, dependencies);
       for (const api of restApis) {
         next.set(api, this.getAotHttpValidator(api, registry));
       }
@@ -1182,7 +1313,7 @@ class SonamuClass {
     } else {
       await Promise.all(
         restApis.map(async (api) => {
-          const validator = await this.buildHttpValidator(api);
+          const validator = await this.buildHttpValidator(api, dependencies);
           next.set(api, validator);
         }),
       );
@@ -1241,6 +1372,10 @@ class SonamuClass {
   // 2) `active: false`로 먼저 등록한 뒤 context 안에서 guard를 실행해 인증 정보를 참조할 수 있게 함
   // 3) context/guard 준비가 끝난 뒤 `activate()`해 브로드캐스트가 초기화 중간 상태를 보지 못하게 함
   // 에러 발생 시에는 resolveWebSocketCloseDescriptor 정책에 따라 close code를 매핑함
+  createWebSocketHandlerForTesting(api: ExtendedApi, config: SonamuFastifyConfig) {
+    return this.createWebSocketHandler(api, config);
+  }
+
   private createWebSocketHandler(api: ExtendedApi, config: SonamuFastifyConfig) {
     return async (
       connection: {
@@ -1249,7 +1384,7 @@ class SonamuClass {
       request: FastifyRequest,
     ): Promise<void> => {
       const socket = connection.socket;
-      let wsContext: WebSocketContext | null = null;
+      let wsContext: WebSocketContext<object, object> | null = null;
       let rawWs: ReturnType<WebSocketRuntime["registerConnection"]> | null = null;
       let preRegisterPhase: "guard" | "query" | "register" | "handler" = "guard";
       let traceContext: WebSocketTelemetryConnectionContext = {};
@@ -1295,7 +1430,7 @@ class SonamuClass {
             return wsContext;
           }
 
-          return reqBody[param.name];
+          return reqBody.get(param.name);
         });
 
         await this.asyncLocalStorage.run({ context: wsContext }, async () => {
@@ -1350,14 +1485,11 @@ class SonamuClass {
 
   // onMessage/onClose처럼 다른 tick에서 실행되는 callback은 ALS context가 끊기므로 wrapper에서 `asyncLocalStorage.run`으로 다시 감싸 복원함
   // publish/join/leave/setUserId 같은 즉시 실행 API는 단순 위임만 하고, deferred callback에만 context 복원을 적용함
-  private createScopedWebSocketConnection<
-    TOut extends WebSocketEventMap,
-    TIn extends WebSocketEventMap,
-  >(
+  private createScopedWebSocketConnection<TOut extends object, TIn extends object>(
     ws: WebSocketConnection<TOut, TIn>,
     getContext: () => WebSocketContext | null,
   ): WebSocketConnection<TOut, TIn> {
-    const telemetryController = this._websocketRuntime?.telemetryController;
+    const telemetryController = this.websocketRuntimeValue?.telemetryController;
     const runInContext = <T>(callback: () => T): T => {
       const context = getContext();
       if (!context) {
@@ -1451,7 +1583,7 @@ class SonamuClass {
                 namespace: ws.namespace,
                 userId: ws.userId,
                 attributes: { event: eventName },
-                errorType: error instanceof Error ? error.name : typeof error,
+                errorType: error instanceof Error ? error.name : runtimeTypeOf(error),
                 ...traceContext,
               });
               throw error;
@@ -1480,16 +1612,23 @@ class SonamuClass {
     };
   }
 
+  createScopedWebSocketConnectionForTesting<TOut extends object, TIn extends object>(
+    ws: WebSocketConnection<TOut, TIn>,
+    getContext: () => WebSocketContext | null,
+  ): WebSocketConnection<TOut, TIn> {
+    return this.createScopedWebSocketConnection(ws, getContext);
+  }
+
   private async parseWebSocketRequestParams(
     api: ExtendedApi,
     request: FastifyRequest,
-  ): Promise<Record<string, unknown>> {
+  ): Promise<Map<string, ApiArgument>> {
     const { getZodObjectFromApi } = await import("./code-converters");
     const ReqType = getZodObjectFromApi(api, this.syncer.types);
 
     try {
       const { fastifyCaster } = await import("./caster");
-      return fastifyCaster(ReqType).parse((request.query ?? {}) as Record<string, unknown>);
+      return toApiArgumentMap(fastifyCaster(ReqType).parse(request.query ?? {}));
     } catch (e) {
       const { ZodError } = await import("zod");
       if (e instanceof ZodError) {
@@ -1498,9 +1637,12 @@ class SonamuClass {
           .map((issue) => issue.message)
           .join(" ");
         const { BadRequestException } = await import("../exceptions/so-exceptions");
-        throw new BadRequestException(messages as LocalizedString, {
-          zodError: e,
-        });
+        throw new BadRequestException(
+          /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ messages as LocalizedString,
+          {
+            zodError: e,
+          },
+        );
       }
 
       throw e;
@@ -1511,7 +1653,7 @@ class SonamuClass {
    * URL에서 path params를 추출합니다.
    * 예: pattern="/admin/companies/:companyId", url="/admin/companies/123" → { companyId: "123" }
    */
-  private extractPathParams(pattern: string, url: string): Record<string, string> {
+  private extractPathParams(pattern: string, url: string) {
     const patternParts = pattern.split("/").filter(Boolean);
     const urlParts = this.getPathnameFromUrl(url).split("/").filter(Boolean);
     const params: Record<string, string> = {};
@@ -1608,7 +1750,7 @@ class SonamuClass {
     config: SonamuFastifyConfig,
     request: FastifyRequest,
     reply: FastifyReply,
-  ): Promise<unknown> {
+  ): Promise<ApiMethodResult> {
     // Context 생성 (기존 메소드 재사용)
     const context = await this.createContext(config, request, reply);
 
@@ -1628,22 +1770,29 @@ class SonamuClass {
     });
   }
 
+  async handleDevApiRequestForTesting(request: FastifyRequest, config: SonamuFastifyConfig) {
+    return await this.handleDevApiRequest(request, config);
+  }
+
   // WS 경로에서는 HTTP reply가 없으므로 reply를 optional로 받아 공통 호출 경로를 유지함
   async invokeModelMethod(
     api: ExtendedApi,
     args: unknown[],
     reply?: FastifyReply,
     models: LoadedModels = this.syncer.models,
-  ): Promise<unknown> {
+  ): Promise<ApiMethodResult> {
     const model = models[api.modelName];
     if (model === undefined) {
       throw new Error(`Model not found: ${api.modelName}`);
     }
-    const method: unknown = Reflect.get(model, api.methodName);
-    if (typeof method !== "function") {
+    const method =
+      model[
+        /* SAFETY: 동기화기가 모델 클래스에서 수집한 API 메서드 이름만 전달한다. */ api.methodName as keyof typeof model
+      ];
+    if (!isFunctionValue(method)) {
       throw new Error(`Model method not found: ${api.modelName}.${api.methodName}`);
     }
-    const result = await Reflect.apply(method, model, args);
+    const result = await Function.prototype.apply.call(method, model, args);
     reply?.type(api.options.contentType ?? "application/json");
 
     return result;
@@ -1669,7 +1818,7 @@ class SonamuClass {
 
     // auth context 추가
     const headers = convertFastifyHeadersToStandard(request.headers);
-    const session = (await this._auth?.api.getSession({ headers })) ?? null;
+    const session = (await this.authValue?.api.getSession({ headers })) ?? null;
 
     const context: Context = await Promise.resolve(
       config.contextProvider(
@@ -1697,14 +1846,14 @@ class SonamuClass {
   async createWebSocketContext(
     config: SonamuFastifyConfig,
     request: FastifyRequest,
-    ws: WebSocketContext["ws"],
+    ws: AnyWebSocketConnection,
   ): Promise<WebSocketContext> {
     const locale =
       this.detectLocale(request.headers["accept-language"], this.config.i18n.supportedLocales) ??
       this.config.i18n.defaultLocale;
 
     const headers = convertFastifyHeadersToStandard(request.headers);
-    const session = (await this._auth?.api.getSession({ headers })) ?? null;
+    const session = (await this.authValue?.api.getSession({ headers })) ?? null;
 
     const defaultContext = {
       transport: "ws" as const,
@@ -1725,11 +1874,6 @@ class SonamuClass {
 
     // reply/createSSE에 의존하는 contextProvider가 있으면 즉시 에러를 던져 transport misuse를 빨리 드러냄
     const replyStub = createWebSocketReplyStub();
-    const createSSE = <T extends ZodObject>(_events: T) => {
-      throw new Error(
-        "createSSE is not available in websocket context. Define websocketContextProvider if your context setup depends on SSE helpers.",
-      );
-    };
     const httpLikeContext = await Promise.resolve(
       config.contextProvider(
         {
@@ -1737,7 +1881,7 @@ class SonamuClass {
           request,
           reply: replyStub,
           headers: request.headers,
-          createSSE,
+          createSSE: createUnavailableSSE,
           naiteStore: defaultContext.naiteStore,
           locale,
           user: defaultContext.user,
@@ -1834,7 +1978,11 @@ class SonamuClass {
       const compressPlugin = (await import("@fastify/compress")).default;
       const defaultOptions = {
         threshold: 1024,
-        encodings: ["br", "gzip", "deflate"] as ("br" | "gzip" | "deflate")[],
+        encodings: /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ [
+          "br",
+          "gzip",
+          "deflate",
+        ] as ("br" | "gzip" | "deflate")[],
       };
 
       if (plugins.compress === true) {
@@ -1871,7 +2019,10 @@ class SonamuClass {
     };
 
     for (const [key, pluginName] of Object.entries(pluginsModules)) {
-      await registerPlugin(key as keyof typeof plugins, pluginName);
+      await registerPlugin(
+        /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ key as keyof typeof plugins,
+        pluginName,
+      );
     }
 
     if (plugins.ws) {
@@ -1970,23 +2121,24 @@ class SonamuClass {
   }
 
   private async printStartupSummary() {
-    const chalk = (await import("chalk")).default;
     const activePreset = getSonamuEnvironment();
 
-    const dim = (msg: string) => console.log(chalk.dim(`✓ ${msg}`));
-    const green = (msg: string) => console.log(chalk.green(`✓ ${msg}`));
-
-    dim(`Config loaded${formatTime(this._configElapsed)}`);
+    printDimSummary(`Config loaded${formatTime(this.configElapsed)}`);
 
     // DB preset 목록
-    green("DB");
+    printGreenSummary("DB");
     const { isLocal } = await import("../utils/controller");
-    const presetNames = Object.keys(this.dbConfig) as (keyof SonamuDBConfig)[];
+    const presetNames =
+      /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ Object.keys(
+        this.dbConfig,
+      ) as (keyof SonamuDBConfig)[];
     const maxLen = Math.max(...presetNames.map((n) => n.length));
     for (const name of presetNames) {
-      const conn = this.dbConfig[name].connection as
-        | { host?: string; port?: number; database?: string }
-        | undefined;
+      const conn =
+        /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ this
+          .dbConfig[name].connection as
+          | { host?: string; port?: number; database?: string }
+          | undefined;
       const host = conn?.host ?? "localhost";
       const addr = `@ ${host}:${conn?.port ?? 5432}/${conn?.database ?? "(unknown)"}`;
       const padded = name.padEnd(maxLen);
@@ -2001,12 +2153,12 @@ class SonamuClass {
 
     if (this.config.server.auth) {
       const basePath = this.config.server.auth.basePath ?? "/api/auth";
-      dim(`Auth: better-auth at ${basePath}/*`);
+      printDimSummary(`Auth: better-auth at ${basePath}/*`);
     }
     if (this.config.api.timezone) {
-      dim(`Timezone: ${this.config.api.timezone}`);
+      printDimSummary(`Timezone: ${this.config.api.timezone}`);
     }
-    green(`Sonamu ready${formatTime(this._initElapsed)}`);
+    printGreenSummary(`Sonamu ready${formatTime(this.initElapsed)}`);
   }
 
   private async initializeCache(config: CacheConfig | undefined, forTesting: boolean) {
@@ -2015,8 +2167,8 @@ class SonamuClass {
     // 테스트 환경에서 메모리 드라이버 자동 사용
     if (forTesting) {
       const { createTestCacheManager } = await import("../cache/cache-manager");
-      this._cache = createTestCacheManager();
-      setCacheManagerRef(this._cache);
+      this.cacheValue = createTestCacheManager();
+      setCacheManagerRef(this.cacheValue);
       return;
     }
 
@@ -2028,14 +2180,14 @@ class SonamuClass {
 
     // 설정에 따라 CacheManager 생성
     const { createCacheManager } = await import("../cache/cache-manager");
-    this._cache = createCacheManager(config);
-    setCacheManagerRef(this._cache);
+    this.cacheValue = createCacheManager(config);
+    setCacheManagerRef(this.cacheValue);
   }
 
   private async initializeWorkflows(options: SonamuTaskOptions | undefined) {
     const { WorkflowManager } = await import("../tasks/workflow-manager");
     // NOTE: @sonamu-kit/tasks 안에선 knex config를 수정하기 때문에 connection이 아닌 config 째로 보냅니다.
-    this._workflows = new WorkflowManager(DB.getDBConfig("w"));
+    this.workflowsValue = new WorkflowManager(DB.getDBConfig("w"));
     if (!options) {
       return;
     }
@@ -2089,7 +2241,6 @@ class SonamuClass {
         await options.lifecycle?.onStart?.(server);
       })
       .catch(async (err) => {
-        const chalk = (await import("chalk")).default;
         console.error(chalk.red("Failed to start server:", err));
         await shutdown();
       });
@@ -2100,15 +2251,15 @@ class SonamuClass {
     // 먼저 처리해야함.
     await BaseModel.destroy();
     // WebSocket shutdown first to flush telemetry
-    if (this._websocketRuntime) {
-      await this._websocketRuntime.shutdown();
+    if (this.websocketRuntimeValue) {
+      await this.websocketRuntimeValue.shutdown();
     }
-    this._websocketRuntime = null;
+    this.websocketRuntimeValue = null;
     // Then shut down remaining resources in parallel
     await Promise.allSettled([
-      this._workflows?.destroy() ?? Promise.resolve(),
-      this._cache?.disconnect() ?? Promise.resolve(),
-      this._devVitestManager?.shutdown() ?? Promise.resolve(),
+      this.workflowsValue?.destroy() ?? Promise.resolve(),
+      this.cacheValue?.disconnect() ?? Promise.resolve(),
+      this.devVitestManagerValue?.shutdown() ?? Promise.resolve(),
       this.watcher?.close() ?? Promise.resolve(),
     ]);
     // LogTape dispose after WS shutdown so telemetry records are flushed first
@@ -2117,7 +2268,7 @@ class SonamuClass {
 }
 
 function getWebSocketTelemetryContext(
-  ws: WebSocketConnection<WebSocketEventMap, WebSocketEventMap>,
+  ws: AnyWebSocketConnection,
 ): WebSocketTelemetryConnectionContext {
   if (!isTelemetryContextProvider(ws)) {
     return {};
@@ -2127,9 +2278,9 @@ function getWebSocketTelemetryContext(
 }
 
 function isTelemetryContextProvider(
-  ws: WebSocketConnection<WebSocketEventMap, WebSocketEventMap>,
-): ws is WebSocketConnection<WebSocketEventMap, WebSocketEventMap> & TelemetryContextProvider {
-  return "getTelemetryContext" in ws && typeof ws.getTelemetryContext === "function";
+  ws: AnyWebSocketConnection,
+): ws is AnyWebSocketConnection & TelemetryContextProvider {
+  return "getTelemetryContext" in ws && isFunctionValue(ws.getTelemetryContext);
 }
 
 export const Sonamu = new SonamuClass();

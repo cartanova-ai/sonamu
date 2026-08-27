@@ -162,7 +162,9 @@ describe("EntityJsonSchema searchText/opclass validation", () => {
       subsets: validEntity.subsets,
       enums: validEntity.enums,
     };
-    const validResult = TemplateOptions.shape.entity.safeParse(validTemplateEntity);
+    const validResult = TemplateOptions.pick({ entity: true }).safeParse({
+      entity: validTemplateEntity,
+    });
     expect(validResult.success).toBe(true);
 
     const invalidEntity = createBaseEntity();
@@ -180,7 +182,9 @@ describe("EntityJsonSchema searchText/opclass validation", () => {
       subsets: invalidEntity.subsets,
       enums: invalidEntity.enums,
     };
-    const invalidResult = TemplateOptions.shape.entity.safeParse(invalidTemplateEntity);
+    const invalidResult = TemplateOptions.pick({ entity: true }).safeParse({
+      entity: invalidTemplateEntity,
+    });
     expect(invalidResult.success).toBe(false);
   });
 
@@ -202,7 +206,9 @@ describe("EntityJsonSchema searchText/opclass validation", () => {
       subsets: customNamedType.subsets,
       enums: customNamedType.enums,
     };
-    const customTemplateResult = TemplateOptions.shape.entity.safeParse(customTemplateEntity);
+    const customTemplateResult = TemplateOptions.pick({ entity: true }).safeParse({
+      entity: customTemplateEntity,
+    });
     expect(customTemplateResult.success).toBe(true);
   });
 

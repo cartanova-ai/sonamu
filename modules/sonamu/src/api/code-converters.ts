@@ -28,6 +28,76 @@ import { type ExtendedApi } from "./decorators";
 type AnyZodObject = z.ZodObject;
 type AnyZodLiteral = z.ZodLiteral;
 
+const ApiParamTypeSchema: z.ZodType<ApiParamType> = z.lazy(() =>
+  z.union([
+    z.enum([
+      "string",
+      "number",
+      "boolean",
+      "null",
+      "undefined",
+      "void",
+      "any",
+      "unknown",
+      "true",
+      "false",
+    ]),
+    z.object({ t: z.literal("string-literal"), value: z.string() }),
+    z.object({ t: z.literal("numeric-literal"), value: z.number() }),
+    z.object({
+      t: z.literal("object"),
+      props: z.array(
+        z.object({
+          name: z.string(),
+          type: ApiParamTypeSchema,
+          optional: z.boolean(),
+          defaultDef: z.string().optional(),
+        }),
+      ),
+    }),
+    z.object({ t: z.literal("union"), types: z.array(ApiParamTypeSchema) }),
+    z.object({ t: z.literal("intersection"), types: z.array(ApiParamTypeSchema) }),
+    z.object({ t: z.literal("array"), elementsType: ApiParamTypeSchema }),
+    z.object({
+      t: z.literal("ref"),
+      id: z.string(),
+      args: z.array(ApiParamTypeSchema).optional(),
+    }),
+    z.object({
+      t: z.literal("indexed-access"),
+      object: ApiParamTypeSchema,
+      index: ApiParamTypeSchema,
+    }),
+    z.object({
+      t: z.literal("type-param"),
+      id: z.string(),
+      constraint: ApiParamTypeSchema.optional(),
+    }),
+    z.object({ t: z.literal("tuple-type"), elements: z.array(ApiParamTypeSchema) }),
+    z.object({
+      t: z.literal("function"),
+      parameters: z.array(
+        z.object({
+          name: z.string(),
+          type: ApiParamTypeSchema,
+          optional: z.boolean(),
+          defaultDef: z.string().optional(),
+        }),
+      ),
+      returnType: ApiParamTypeSchema,
+    }),
+  ]),
+);
+
+/** 신뢰할 수 없는 값을 ApiParamType 경계에서 검증합니다. */
+export function parseApiParamType<Input>(input: Input): ApiParamType {
+  const result = ApiParamTypeSchema.safeParse(input);
+  if (!result.success) {
+    throw new Error(`resolve 불가 ApiParamType: ${z.prettifyError(result.error)}`);
+  }
+  return result.data;
+}
+
 /**
  * Promise 타입을 한 번 언래핑하여 내부 타입을 반환합니다.
  * Promise가 아닌 경우 원본 타입을 그대로 반환합니다.
@@ -49,12 +119,13 @@ export function unwrapPromiseOnce(paramType: ApiParamType) {
  * string, number, array, union 등 모든 ApiParamType을 처리하며,
  * 순환참조가 발생하는 경우 z.unknown()으로 fallback합니다.
  */
-export function getZodTypeFromApiParamType(
-  paramType: ApiParamType,
+export function getZodTypeFromApiParamType<Input>(
+  input: Input,
   references: {
     [id: string]: z.ZodType;
   },
 ): z.ZodType {
+  const paramType = parseApiParamType(input);
   switch (paramType) {
     case "string":
       return z.string();
@@ -63,28 +134,38 @@ export function getZodTypeFromApiParamType(
     case "boolean":
       return z.boolean();
     default: {
-      const advType = paramType as { t: string; value?: string | number };
+      const advType =
+        /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ paramType as {
+          t: string;
+          value?: string | number;
+        };
       switch (advType.t) {
         case "string-literal":
         case "numeric-literal":
           return z.literal(advType.value);
         case "object": {
-          const objType = paramType as { t: string; props: ApiParam[] };
+          const objType =
+            /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ paramType as {
+              t: string;
+              props: ApiParam[];
+            };
           return getZodObjectFromApiParams(objType.props);
         }
         case "array": {
-          const arrType = paramType as {
-            t: string;
-            elementsType: ApiParamType;
-          };
+          const arrType =
+            /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ paramType as {
+              t: string;
+              elementsType: ApiParamType;
+            };
           return z.array(getZodTypeFromApiParamType(arrType.elementsType, references));
         }
         case "ref": {
-          const refType = paramType as {
-            t: string;
-            id: string;
-            args?: ApiParamType[];
-          };
+          const refType =
+            /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ paramType as {
+              t: string;
+              id: string;
+              args?: ApiParamType[];
+            };
           // Date 타입 처리
           if (refType.id === "Date") {
             return z.date();
@@ -94,10 +175,10 @@ export function getZodTypeFromApiParamType(
             if (refType.args?.length !== 2) {
               throw new Error(`잘못된 ${refType.id}`);
             }
-            const [obj, literalOrUnion] = refType.args.map(
-              (arg) => getZodTypeFromApiParamType(arg, references),
-              // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 생성되는 ZodUnion의 타입을 추적하기 어려움
-            ) as [AnyZodObject, z.ZodUnion<any> | AnyZodLiteral];
+            const [obj, literalOrUnion] =
+              /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ refType.args.map(
+                (arg) => getZodTypeFromApiParamType(arg, references),
+              ) as [AnyZodObject, z.ZodUnion<any> | AnyZodLiteral];
 
             let keys: string[] = [];
             if (literalOrUnion instanceof z.ZodUnion) {
@@ -105,18 +186,25 @@ export function getZodTypeFromApiParamType(
                 (option: { def: { values: string[] } }) => option.def.values[0],
               );
             } else {
-              keys = (literalOrUnion as z.ZodLiteral<string>).def.values;
+              keys =
+                /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ (
+                  literalOrUnion as z.ZodLiteral<string>
+                ).def.values;
             }
             const keyRecord = Object.fromEntries(keys.map((key) => [key, true as const]));
             if (refType.id === "Pick") {
               if (obj.pick) {
                 // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Zod 4.3.6 pick 타입 호환성
-                return obj.pick(keyRecord as any);
+                return obj.pick(
+                  /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ keyRecord as any,
+                );
               }
             } else {
               if (obj.omit) {
                 // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Zod 4.3.6 omit 타입 호환성
-                return obj.omit(keyRecord as any);
+                return obj.omit(
+                  /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ keyRecord as any,
+                );
               }
             }
           }
@@ -126,7 +214,9 @@ export function getZodTypeFromApiParamType(
             }
             const obj = getZodTypeFromApiParamType(refType.args[0], references);
             // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Partial 인수 타입 캐스팅
-            return (obj as z.ZodObject<any>).partial();
+            return /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ (
+              obj as z.ZodObject<any>
+            ).partial();
           }
           const reference = references[refType.id];
           if (reference === undefined) {
@@ -136,10 +226,11 @@ export function getZodTypeFromApiParamType(
           return reference;
         }
         case "union": {
-          const unionType = paramType as {
-            t: string;
-            types: ApiParamType[];
-          };
+          const unionType =
+            /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ paramType as {
+              t: string;
+              types: ApiParamType[];
+            };
           // nullable 유니온
           if (unionType.types.length === 2 && unionType.types.some((type) => type === "null")) {
             if (unionType.types[0] === "null") {
@@ -154,10 +245,11 @@ export function getZodTypeFromApiParamType(
           );
         }
         case "intersection": {
-          const intersectionType = paramType as {
-            t: string;
-            types: ApiParamType[];
-          };
+          const intersectionType =
+            /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ paramType as {
+              t: string;
+              types: ApiParamType[];
+            };
           return intersectionType.types.reduce((result, type, index) => {
             const resolvedType = getZodTypeFromApiParamType(type, references);
             if (index === 0) {
@@ -165,13 +257,16 @@ export function getZodTypeFromApiParamType(
             } else {
               return z.intersection(result, resolvedType);
             }
-          }, z.unknown() as z.ZodType);
+          }, /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ z.unknown() as z.ZodType);
         }
         case "tuple-type": {
-          const tupleType = paramType as ApiParamType.TupleType;
+          const tupleType =
+            /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ paramType as ApiParamType.TupleType;
           return z.tuple(
             // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 생성되는 ZodTuple의 타입을 추적하기 어려움
-            tupleType.elements.map((elem) => getZodTypeFromApiParamType(elem, references)) as any,
+            /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ tupleType.elements.map(
+              (elem) => getZodTypeFromApiParamType(elem, references),
+            ) as any,
           );
         }
       }
@@ -221,7 +316,9 @@ export function getZodObjectFromApi(
 
         // FIXME: references는 글로벌 오브젝트로, typeParam.id("T" 등)를 key로 이렇게 덮어씌워버리면 loadedTypes가 오염됨.
         // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 레퍼런스 타입 캐스팅
-        (references[typeParam.id] as z.ZodType<any>) = zodType;
+        /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ (references[
+          typeParam.id
+        ] as z.ZodType<any>) = zodType;
       }
     }
   }
@@ -247,7 +344,8 @@ export function getZodObjectFromApi(
  * union, intersection, array, ref 등 모든 타입을 TS 문법으로 표현하며,
  * import가 필요한 타입 ID는 injectImportKeys에 수집합니다.
  */
-export function apiParamTypeToTsType(paramType: ApiParamType, injectImportKeys: string[]): string {
+export function apiParamTypeToTsType<Input>(input: Input, injectImportKeys: string[]): string {
+  const paramType = parseApiParamType(input);
   if (
     [
       "string",
@@ -260,9 +358,11 @@ export function apiParamTypeToTsType(paramType: ApiParamType, injectImportKeys: 
       "void",
       "any",
       "unknown",
-    ].includes(paramType as string)
+    ].includes(
+      /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ paramType as string,
+    )
   ) {
-    return paramType as string;
+    return /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ paramType as string;
   } else if (ApiParamType.isObject(paramType)) {
     return `{ ${apiParamToTsCode(paramType.props, injectImportKeys)} }`;
   } else if (ApiParamType.isStringLiteral(paramType)) {

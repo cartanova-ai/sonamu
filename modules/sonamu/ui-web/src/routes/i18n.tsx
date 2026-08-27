@@ -25,6 +25,10 @@ export const Route = createFileRoute("/i18n")({
   component: I18nIndex,
 });
 
+function handleExport(): void {
+  window.location.href = "/sonamu-ui/api/i18n/export";
+}
+
 function I18nIndex() {
   const { SD } = useSonamuContext();
   const { data, error, refetch } = SonamuUIService.useI18nDictionary();
@@ -83,10 +87,6 @@ function I18nIndex() {
     checkUsage();
   }, [rows]);
 
-  const handleExport = () => {
-    window.location.href = "/sonamu-ui/api/i18n/export";
-  };
-
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
@@ -114,7 +114,7 @@ function I18nIndex() {
   const startEdit = (row: I18nDictionaryRow, field: "key" | string) => {
     if (row.source === "sonamu") return; // sonamu source는 편집 불가
 
-    const currentValue = field === "key" ? row.key : ((row[field] as string) ?? "");
+    const currentValue = field === "key" ? row.key : String(row[field] ?? "");
     setEditingCell({ key: row.key, field });
     setEditValue(currentValue);
   };
@@ -127,7 +127,7 @@ function I18nIndex() {
     const oldKey = row.key;
 
     // 값이 변경되지 않았으면 취소
-    const originalValue = field === "key" ? row.key : ((row[field] as string) ?? "");
+    const originalValue = field === "key" ? row.key : String(row[field] ?? "");
     if (editValue === originalValue) {
       setEditingCell(null);
       return;
@@ -140,7 +140,7 @@ function I18nIndex() {
         const values: Record<string, string> = {};
         for (const locale of locales) {
           if (row[locale]) {
-            values[locale] = row[locale] as string;
+            values[locale] = String(row[locale]);
           }
         }
         await SonamuUIService.updateI18n({

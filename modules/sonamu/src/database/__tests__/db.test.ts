@@ -75,6 +75,7 @@ describe("DBClass.generateDBConfig", () => {
   });
 
   it("fails fast when legacy database.name or database.environments keys are present", () => {
+    // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.
     const legacyConfig = {
       database: "pg",
       name: "miomock",

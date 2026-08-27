@@ -3,6 +3,8 @@ import { extractResponseHeaders, safeParseJSON, zodSchema } from "@ai-sdk/provid
 import { type ResponseHandler } from "@ai-sdk/provider-utils";
 import { z } from "zod";
 
+import { isStringValue } from "../../../utils/runtime-value";
+
 const rtzrFlatErrorDataSchema = z.object({
   code: z.union([z.string(), z.number()]).nullish(),
   msg: z.string().nullish(),
@@ -33,7 +35,7 @@ type NormalizedRtzrError = {
   param?: unknown;
 };
 
-function isNullish(value: unknown): value is null | undefined {
+function isNullish<Value>(value: Value): value is Value & (null | undefined) {
   return value === null || value === undefined;
 }
 
@@ -45,12 +47,12 @@ function normalizeRtzrErrorData(data: RtzrErrorData): NormalizedRtzrError {
   return data;
 }
 
-function formatParam(param: unknown): string | undefined {
+function formatParam<Value>(param: Value): string | undefined {
   if (isNullish(param)) {
     return undefined;
   }
 
-  if (typeof param === "string") {
+  if (isStringValue(param)) {
     return param;
   }
 

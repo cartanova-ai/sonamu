@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { type InsertResult, type JsonColumns, type JsonSupersetValue, Naite, Puri } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, expectTypeOf, vi } from "vitest";
+import { z } from "zod";
 
 import { type AuditEventBaseSchema, type ProjectBaseSchema } from "../application/sonamu.generated";
 import { UserModel } from "../application/user/user.model";
@@ -122,9 +123,9 @@ describe("Puri Type Safety", () => {
 
       // 런타임 검증
       expect(result.length).toBeGreaterThanOrEqual(0);
-      expect(typeof result[0]?.empId).toBe("number");
-      expect(typeof result[0]?.userId).toBe("string");
-      expect(typeof result[0]?.username).toBe("string");
+      expect(result[0]?.empId).toEqual(expect.any(Number));
+      expect(result[0]?.userId).toEqual(expect.any(String));
+      expect(result[0]?.username).toEqual(expect.any(String));
 
       // join 후 selectAll() 시 양쪽 테이블 컬럼 모두 포함 여부 검증
       const selectAllResult = await db
@@ -144,9 +145,9 @@ describe("Puri Type Safety", () => {
       // 런타임 검증
       expect(selectAllResult.length).toBeGreaterThanOrEqual(0);
       if (selectAllResult[0]) {
-        expect(typeof selectAllResult[0].user_id).toBe("string");
-        expect(typeof selectAllResult[0].department_id).toBe("number");
-        expect(typeof selectAllResult[0].username).toBe("string");
+        expect(selectAllResult[0].user_id).toEqual(expect.any(String));
+        expect(selectAllResult[0].department_id).toEqual(expect.any(Number));
+        expect(selectAllResult[0].username).toEqual(expect.any(String));
         expect(selectAllResult[0]).toHaveProperty("username");
       }
     });
@@ -193,8 +194,8 @@ describe("Puri Type Safety", () => {
 
       // 런타임 검증
       expect(result.length).toBeGreaterThanOrEqual(0);
-      expect(typeof result[0]?.empId).toBe("number");
-      expect(result[0]?.deptName === null || typeof result[0]?.deptName === "string").toBe(true);
+      expect(result[0]?.empId).toEqual(expect.any(Number));
+      expect(result[0]?.deptName).toEqual(expect.any(String));
     });
 
     test("MULTIPLE JOIN 타입 안전성", async () => {
@@ -223,9 +224,9 @@ describe("Puri Type Safety", () => {
 
       // 런타임 검증
       expect(result.length).toBeGreaterThanOrEqual(0);
-      expect(typeof result[0]?.empId).toBe("number");
-      expect(typeof result[0]?.deptName).toBe("string");
-      expect(typeof result[0]?.companyName).toBe("string");
+      expect(result[0]?.empId).toEqual(expect.any(Number));
+      expect(result[0]?.deptName).toEqual(expect.any(String));
+      expect(result[0]?.companyName).toEqual(expect.any(String));
 
       // alias 사용 시 alias로만 컬럼 접근 가능 검증 (self join)
       const selfJoinQuery = db
@@ -255,12 +256,10 @@ describe("Puri Type Safety", () => {
       // 런타임 검증
       expect(selfJoinResult.length).toBeGreaterThanOrEqual(0);
       // child 테이블 컬럼 (항상 값 있음)
-      expect(typeof selfJoinResult[0]?.childId).toBe("number");
-      expect(typeof selfJoinResult[0]?.childName).toBe("string");
+      expect(selfJoinResult[0]?.childId).toEqual(expect.any(Number));
+      expect(selfJoinResult[0]?.childName).toEqual(expect.any(String));
       // parent 테이블 컬럼 (LEFT JOIN이므로 null 가능)
-      expect(
-        selfJoinResult[0]?.parentId === null || typeof selfJoinResult[0]?.parentId === "number",
-      ).toBe(true);
+      expect([null, expect.any(Number)]).toContainEqual(selfJoinResult[0]?.parentId);
     });
 
     test("SUBQUERY JOIN 타입 안전성", async () => {
@@ -297,8 +296,8 @@ describe("Puri Type Safety", () => {
 
       // 런타임 검증
       expect(result.length).toBeGreaterThanOrEqual(0);
-      expect(typeof result[0]?.deptId).toBe("number");
-      expect(typeof result[0]?.deptName).toBe("string");
+      expect(result[0]?.deptId).toEqual(expect.any(Number));
+      expect(result[0]?.deptName).toEqual(expect.any(String));
     });
   });
 
@@ -329,9 +328,9 @@ describe("Puri Type Safety", () => {
 
       // 런타임 검증
       expect(result.length).toBeGreaterThanOrEqual(0);
-      expect(typeof result[0]?.id).toBe("string");
-      expect(typeof result[0]?.username).toBe("string");
-      expect(typeof result[0]?.role).toBe("string");
+      expect(result[0]?.id).toEqual(expect.any(String));
+      expect(result[0]?.username).toEqual(expect.any(String));
+      expect(result[0]?.role).toEqual(expect.any(String));
     });
 
     test("FIRST 타입 안전성", async () => {
@@ -344,7 +343,7 @@ describe("Puri Type Safety", () => {
       expectTypeOf(result).toEqualTypeOf<{ id: string }>();
 
       // 런타임 검증
-      expect(typeof result.id).toBe("string");
+      expect(result.id).toEqual(expect.any(String));
 
       // 여러 컬럼 select 후 first()
       const multiResult = await db
@@ -364,9 +363,9 @@ describe("Puri Type Safety", () => {
       }>();
 
       // 런타임 검증
-      expect(typeof multiResult.id).toBe("string");
-      expect(typeof multiResult.username).toBe("string");
-      expect(typeof multiResult.role).toBe("string");
+      expect(multiResult.id).toEqual(expect.any(String));
+      expect(multiResult.username).toEqual(expect.any(String));
+      expect(multiResult.role).toEqual(expect.any(String));
     });
 
     test("PLUCK 타입 안전성", async () => {
@@ -397,8 +396,8 @@ describe("Puri Type Safety", () => {
       // 런타임 검증
       expect(Array.isArray(idResult)).toBe(true);
       expect(Array.isArray(usernameResult)).toBe(true);
-      idResult[0] && expect(typeof idResult[0]).toBe("string");
-      usernameResult[0] && expect(typeof usernameResult[0]).toBe("string");
+      idResult[0] && expect(idResult[0]).toEqual(expect.any(String));
+      usernameResult[0] && expect(usernameResult[0]).toEqual(expect.any(String));
     });
   });
 
@@ -524,7 +523,7 @@ describe("Puri Type Safety", () => {
           .orWhereJsonSupersetOf("event.payload_json", { action: "logout" }),
       );
 
-      const unknownValue: unknown = { source: "better-auth" };
+      const unknownValue = z.unknown().parse({ source: "better-auth" });
 
       const assertRejectedCalls = () => {
         // Compile-only rejection cases must not mutate or execute the runtime query.
@@ -630,7 +629,7 @@ describe("Puri Type Safety", () => {
 
       // 런타임 검증
       expect(result[0]).toBeDefined();
-      expect(typeof result[0]?.total).toBe("number");
+      expect(result[0]?.total).toEqual(expect.any(Number));
     });
 
     test("Puri.max() / Puri.min() 타입 안전성", async () => {
@@ -662,8 +661,8 @@ describe("Puri Type Safety", () => {
       expect(numResult.length).toBeGreaterThanOrEqual(0);
       const maxSalary = numResult[0]?.maxSalary;
       const minSalary = numResult[0]?.minSalary;
-      expect(typeof maxSalary === "number" || maxSalary === null).toBe(false);
-      expect(typeof minSalary === "number" || minSalary === null).toBe(false);
+      expect(maxSalary).toBe("95000.00");
+      expect(minSalary).toBe("55000.00");
     });
 
     test("GROUP BY 타입 안전성", async () => {
@@ -718,7 +717,7 @@ describe("Puri Type Safety", () => {
 
       // 런타임 검증
       expect(Array.isArray(groupByResult)).toBe(true);
-      groupByResult[0] && expect(typeof groupByResult[0].count).toBe("number");
+      groupByResult[0] && expect(groupByResult[0].count).toEqual(expect.any(Number));
     });
 
     test("HAVING 타입 안전성", async () => {
@@ -761,7 +760,7 @@ describe("Puri Type Safety", () => {
 
       // 런타임 검증
       expect(Array.isArray(havingResult)).toBe(true);
-      havingResult[0] && expect(typeof havingResult[0].count).toBe("number");
+      havingResult[0] && expect(havingResult[0].count).toEqual(expect.any(Number));
       havingResult[0] && expect(havingResult[0].count).toBeGreaterThan(0);
     });
   });
@@ -937,7 +936,7 @@ describe("Puri Type Safety", () => {
       // 런타임 검증
       expect(Array.isArray(insertedIds)).toBe(true);
       expect(insertedIds.length).toBe(1);
-      expect(typeof insertedIds[0]?.id).toBe("string");
+      expect(insertedIds[0]?.id).toEqual(expect.any(String));
     });
 
     test("UPDATE 타입 안전성 (WITHOUT RETURNING)", async () => {
@@ -982,7 +981,7 @@ describe("Puri Type Safety", () => {
       expectTypeOf(updateCount).toEqualTypeOf<number>();
 
       // 런타임 검증
-      expect(typeof updateCount).toBe("number");
+      expect(updateCount).toEqual(expect.any(Number));
       expect(updateCount).toBeGreaterThanOrEqual(0);
     });
 
@@ -1091,8 +1090,8 @@ describe("Puri Type Safety", () => {
       expectTypeOf(decrementResult).toEqualTypeOf<number>();
 
       // 런타임 검증
-      expect(typeof incrementResult).toBe("number");
-      expect(typeof decrementResult).toBe("number");
+      expect(incrementResult).toEqual(expect.any(Number));
+      expect(decrementResult).toEqual(expect.any(Number));
     });
   });
 

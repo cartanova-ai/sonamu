@@ -73,23 +73,23 @@ export function parseKeybinding(keybindingStr: string): ParsedKeybinding | null 
 function normalizeKey(key: string): string {
   const normalized = key.toLowerCase();
   // 일반적인 키 별칭을 매핑합니다
-  const keyMap: Record<string, string> = {
-    return: "enter",
-    cr: "enter",
-    lf: "enter",
-    space: " ",
-    sp: " ",
-    backspace: "backspace",
-    delete: "delete",
-    tab: "tab",
-    escape: "escape",
-    esc: "escape",
-    up: "up",
-    down: "down",
-    left: "left",
-    right: "right",
-  };
-  return keyMap[normalized] ?? normalized;
+  const keyMap = new Map([
+    ["return", "enter"],
+    ["cr", "enter"],
+    ["lf", "enter"],
+    ["space", " "],
+    ["sp", " "],
+    ["backspace", "backspace"],
+    ["delete", "delete"],
+    ["tab", "tab"],
+    ["escape", "escape"],
+    ["esc", "escape"],
+    ["up", "up"],
+    ["down", "down"],
+    ["left", "left"],
+    ["right", "right"],
+  ]);
+  return keyMap.get(normalized) ?? normalized;
 }
 
 /**
@@ -97,15 +97,15 @@ function normalizeKey(key: string): string {
  */
 function normalizeModifier(modifier: string): string {
   const normalized = modifier.toLowerCase();
-  const modifierMap: Record<string, string> = {
-    cmd: "meta",
-    meta: "meta",
-    ctrl: "ctrl",
-    control: "ctrl",
-    alt: "alt",
-    shift: "shift",
-  };
-  return modifierMap[normalized] ?? normalized;
+  const modifierMap = new Map([
+    ["cmd", "meta"],
+    ["meta", "meta"],
+    ["ctrl", "ctrl"],
+    ["control", "ctrl"],
+    ["alt", "alt"],
+    ["shift", "shift"],
+  ]);
+  return modifierMap.get(normalized) ?? normalized;
 }
 
 /**
@@ -177,15 +177,16 @@ function detectKeyPress(key: string): ParsedChord | null {
   }
 
   // 특수 키입니다
-  const specialKeys: Record<string, string> = {
-    "\u0008": "backspace",
-    "\u0009": "tab",
-    "\u001b": "escape",
-    "\u007f": "backspace",
-  };
+  const specialKeys = new Map([
+    ["\u0008", "backspace"],
+    ["\u0009", "tab"],
+    ["\u001b", "escape"],
+    ["\u007f", "backspace"],
+  ]);
 
-  if (specialKeys[key]) {
-    return { modifiers: [], key: specialKeys[key] };
+  const specialKey = specialKeys.get(key);
+  if (specialKey) {
+    return { modifiers: [], key: specialKey };
   }
 
   return null;

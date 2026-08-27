@@ -21,10 +21,21 @@ const INJECT_SAMPLE_COUNT = 1_000;
 type ModeName = "uncachedPlain" | "cachedPlain" | "eagerJit" | "aot";
 type IsolatedModeName = Exclude<ModeName, "uncachedPlain">;
 type Percentiles = { p50Ns: number; p95Ns: number };
+interface StartupMetric {
+  validatorMs: number;
+  fastifyMs: number;
+  totalMs: number;
+}
+interface StartupMetrics {
+  uncachedPlain?: StartupMetric;
+  cachedPlain?: StartupMetric;
+  eagerJit?: StartupMetric;
+  aot?: StartupMetric;
+}
 type BenchmarkMode = {
   name: ModeName;
   validatorStartupMs: number;
-  validate(input: unknown): ValidationResult;
+  validate<Input>(input: Input): ValidationResult;
 };
 
 function readBenchmarkMode(): IsolatedModeName {
@@ -105,7 +116,11 @@ type HandlerResult = {
   payload: unknown;
 };
 
-function createHandler(mode: BenchmarkMode): (input: unknown) => HandlerResult {
+type ValidationParityValue =
+  | Extract<ValidationResult, { success: true }>["data"]
+  | Array<{ code: string; path: PropertyKey[] }>;
+
+function createHandler(mode: BenchmarkMode): <Input>(input: Input) => HandlerResult {
   return (input) => {
     const result = mode.validate(input);
     if (result.success) {
@@ -118,7 +133,7 @@ function createHandler(mode: BenchmarkMode): (input: unknown) => HandlerResult {
   };
 }
 
-function parityValue(result: ValidationResult): unknown {
+function parityValue(result: ValidationResult): ValidationParityValue {
   return result.success
     ? result.data
     : result.error.issues.map((issue) => ({ code: issue.code, path: issue.path }));
@@ -155,7 +170,9 @@ function toPercentiles(samples: number[]): Percentiles {
 
 let resultChecksum = 0;
 
-function measureSync(operation: (input: unknown) => ValidationResult | HandlerResult): Percentiles {
+function measureSync(
+  operation: <Input>(input: Input) => ValidationResult | HandlerResult,
+): Percentiles {
   for (let index = 0; index < SYNC_WARMUP_ITERATIONS; index++) {
     const result = operation(inputs[index % inputs.length]);
     resultChecksum += "success" in result ? Number(result.success) : result.statusCode;
@@ -176,7 +193,7 @@ function measureSync(operation: (input: unknown) => ValidationResult | HandlerRe
 
 async function createBenchmarkServer(mode: BenchmarkMode): Promise<{
   app: FastifyInstance;
-  handler: (input: unknown) => HandlerResult;
+  handler: <Input>(input: Input) => HandlerResult;
   startupMs: number;
 }> {
   const startedAt = performance.now();
@@ -234,9 +251,7 @@ async function runBenchmark(modeName: IsolatedModeName): Promise<void> {
 
   const measuredModes = [selectedMode];
   const servers = new Map([[selectedMode.name, selectedServer]]);
-  const startup: Partial<
-    Record<ModeName, { validatorMs: number; fastifyMs: number; totalMs: number }>
-  > = {
+  const startup: StartupMetrics = {
     [selectedMode.name]: {
       validatorMs: Number(selectedMode.validatorStartupMs.toFixed(3)),
       fastifyMs: Number(selectedServer.startupMs.toFixed(3)),

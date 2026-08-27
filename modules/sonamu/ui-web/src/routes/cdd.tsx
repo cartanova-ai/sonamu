@@ -44,21 +44,18 @@ function CddPage() {
 
   const sortedTree = useMemo(
     () => (treeData?.tree ? sortTree(treeData.tree, true) : []),
-    [treeData?.tree],
+    [treeData],
   );
   const filteredTree = useMemo(
     () => filterTree(sortedTree, searchQuery),
     [sortedTree, searchQuery],
   );
-  const fileCount = useMemo(
-    () => (treeData?.tree ? countFiles(treeData.tree) : 0),
-    [treeData?.tree],
-  );
+  const fileCount = useMemo(() => (treeData?.tree ? countFiles(treeData.tree) : 0), [treeData]);
 
   const activeNode: CddTreeNode | null = useMemo(() => {
     if (!activeNodePath || !treeData?.tree) return null;
     return findTreeNode(treeData.tree, activeNodePath);
-  }, [activeNodePath, treeData?.tree]);
+  }, [activeNodePath, treeData]);
 
   const filteredRules = useMemo(() => {
     const rules = rulesData?.rules ?? [];
@@ -67,7 +64,7 @@ function CddPage() {
     return rules.filter(
       (r) => r.key.toLowerCase().includes(q) || r.description.toLowerCase().includes(q),
     );
-  }, [rulesData?.rules, searchQuery]);
+  }, [rulesData, searchQuery]);
 
   const handleRefresh = useCallback(() => {
     refetchTree();

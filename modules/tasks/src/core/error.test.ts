@@ -10,7 +10,7 @@ describe("serializeError", () => {
     expect(result.name).toBe("Error");
     expect(result.message).toBe("Something went wrong");
     expect(result.stack).toBeDefined();
-    expect(typeof result.stack).toBe("string");
+    expect(result.stack).toEqual(expect.any(String));
   });
 
   test("serializes TypeError with correct name", () => {

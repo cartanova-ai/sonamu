@@ -3,7 +3,7 @@ import { type FilterOperator, type FilterPropType } from "../../../lib/types";
 /**
  * Operator UI 라벨
  */
-export const operatorLabels: Record<FilterOperator, string> = {
+export const operatorLabels = {
   eq: "=",
   ne: "≠",
   gt: ">",
@@ -20,12 +20,12 @@ export const operatorLabels: Record<FilterOperator, string> = {
   after: "after",
   isNull: "null",
   isNotNull: "not null",
-};
+} satisfies Record<FilterOperator, string>;
 
 /**
  * Zod 타입 이름 정의
  */
-export const zodTypeToFilterPropTypeMap: Record<string, FilterPropType> = {
+export const zodTypeToFilterPropTypeMap = {
   string: "string",
   number: "integer",
   boolean: "boolean",
@@ -33,4 +33,4 @@ export const zodTypeToFilterPropTypeMap: Record<string, FilterPropType> = {
   enum: "enum",
   array: "json",
   object: "json",
-};
+} satisfies Record<string, FilterPropType>;

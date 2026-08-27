@@ -3,17 +3,29 @@ import { describe, expect, it, vi } from "vitest";
 import { type WebSocket } from "ws";
 import { z } from "zod";
 
-import { type AnyWebSocketConnection, WebSocketRuntime } from "../../stream/ws";
+import {
+  type AnyWebSocketConnection,
+  type WebSocketConnection,
+  WebSocketRuntime,
+} from "../../stream/ws";
 import { type WebSocketTelemetryConnectionContext } from "../../stream/ws-telemetry";
-import { type SonamuFastifyConfig } from "../config";
+import { type SonamuFastifyConfig } from "../../types/types";
 import { type WebSocketContext } from "../context";
 import { type ExtendedApi } from "../decorators";
 import { Sonamu } from "../sonamu";
 
+interface TestWebSocketMessage {
+  roomId?: string;
+}
+
+interface TestWebSocketEvents {
+  joinRoom: TestWebSocketMessage;
+}
+
 describe("Sonamu websocket context scoping", () => {
   it("웹소켓 컨텍스트를 생성한 뒤 해당 컨텍스트 안에서 guard를 실행한다", async () => {
     const executionOrder: string[] = [];
-    const rawWs = {
+    const rawWs: AnyWebSocketConnection = {
       id: "ws-guard",
       namespace: "chat",
       transport: "ws" as const,
@@ -30,12 +42,12 @@ describe("Sonamu websocket context scoping", () => {
       leave() {},
       setUserId() {},
       clearUserId() {},
-    } satisfies AnyWebSocketConnection;
+    };
     const runtime = new WebSocketRuntime({ nodeId: "websocket-guard-test" });
-    const originalRuntime = Reflect.get(Sonamu, "_websocketRuntime");
-    const originalSyncer = Reflect.get(Sonamu, "_syncer");
+    const originalState = Sonamu.captureTestingSnapshot();
     let contextCreated: WebSocketContext | null = null;
     let guardContext: WebSocketContext | null = null;
+    let guardTransport: WebSocketContext["transport"] | null = null;
 
     vi.spyOn(runtime, "registerConnection").mockReturnValue(rawWs);
     vi.spyOn(runtime, "activateConnection").mockImplementation(() => {
@@ -43,7 +55,7 @@ describe("Sonamu websocket context scoping", () => {
     });
     vi.spyOn(Sonamu, "createWebSocketContext").mockImplementation(async (_config, request, ws) => {
       executionOrder.push("context");
-      contextCreated = {
+      const context: WebSocketContext = {
         transport: "ws",
         request,
         headers: request.headers,
@@ -53,16 +65,21 @@ describe("Sonamu websocket context scoping", () => {
         user: null,
         session: null,
       };
-      return contextCreated;
+      contextCreated = context;
+      return context;
     });
     vi.spyOn(Sonamu, "invokeModelMethod").mockImplementation(async () => {
       executionOrder.push("handler");
     });
 
-    const config = {
+    const config = /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
       guardHandler() {
         executionOrder.push("guard");
         guardContext = Sonamu.getContext<WebSocketContext>();
+        guardTransport = guardContext.transport;
+      },
+      contextProvider(defaultContext) {
+        return defaultContext;
       },
     } as SonamuFastifyConfig;
     const api: ExtendedApi = {
@@ -78,28 +95,27 @@ describe("Sonamu websocket context scoping", () => {
       parameters: [],
       returnType: "void",
     };
-    const request = {
+    const request = /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {
       headers: {},
       query: {},
     } as FastifyRequest;
-    const createWebSocketHandler: (
-      api: ExtendedApi,
-      config: SonamuFastifyConfig,
-    ) => (connection: { socket: WebSocket }, request: FastifyRequest) => Promise<void> =
-      Reflect.get(Sonamu, "createWebSocketHandler");
-
     try {
       Sonamu.websocketRuntime = runtime;
-      Reflect.set(Sonamu, "_syncer", { types: {} });
+      Reflect.set(Sonamu, "syncerValue", { types: {} });
 
-      await createWebSocketHandler.call(Sonamu, api, config)({ socket: {} as WebSocket }, request);
+      await Sonamu.createWebSocketHandlerForTesting(api, config)(
+        {
+          socket:
+            /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ {} as WebSocket,
+        },
+        request,
+      );
 
       expect(executionOrder).toEqual(["context", "guard", "activate", "handler"]);
       expect(guardContext).toBe(contextCreated);
-      expect(guardContext?.transport).toBe("ws");
+      expect(guardTransport).toBe("ws");
     } finally {
-      Reflect.set(Sonamu, "_websocketRuntime", originalRuntime);
-      Reflect.set(Sonamu, "_syncer", originalSyncer);
+      Sonamu.restoreTestingSnapshot(originalState);
       vi.restoreAllMocks();
     }
   });
@@ -108,12 +124,12 @@ describe("Sonamu websocket context scoping", () => {
     const messageHandlers = new Map<
       string,
       (
-        data: unknown,
+        data: TestWebSocketMessage,
         telemetryContext?: WebSocketTelemetryConnectionContext,
       ) => void | Promise<void>
     >();
 
-    const rawWs = {
+    const rawWs: WebSocketConnection<TestWebSocketEvents, TestWebSocketEvents> = {
       id: "ws-1",
       namespace: "chat",
       transport: "ws" as const,
@@ -132,18 +148,15 @@ describe("Sonamu websocket context scoping", () => {
       leave() {},
       setUserId() {},
       clearUserId() {},
-    } satisfies AnyWebSocketConnection;
+    };
 
-    let context: WebSocketContext | null = null;
-    const createScopedWebSocketConnection: (
-      ws: AnyWebSocketConnection,
-      getContext: () => WebSocketContext | null,
-    ) => AnyWebSocketConnection = Reflect.get(Sonamu, "createScopedWebSocketConnection");
-    const scopedWs = createScopedWebSocketConnection.call(Sonamu, rawWs, () => context);
+    let context: WebSocketContext<TestWebSocketEvents, TestWebSocketEvents> | null = null;
+    const scopedWs = Sonamu.createScopedWebSocketConnectionForTesting(rawWs, () => context);
 
     context = {
       transport: "ws",
-      request: {} as WebSocketContext["request"],
+      request:
+        /* SAFETY: 테스트는 request 속성을 읽지 않고 websocket 컨텍스트 복원만 검증합니다. */ {} as WebSocketContext["request"],
       headers: {},
       ws: scopedWs,
       naiteStore: new Map(),
@@ -168,12 +181,12 @@ describe("Sonamu websocket context scoping", () => {
     const messageHandlers = new Map<
       string,
       (
-        data: unknown,
+        data: TestWebSocketMessage,
         telemetryContext?: WebSocketTelemetryConnectionContext,
       ) => void | Promise<void>
     >();
 
-    const rawWs = {
+    const rawWs: WebSocketConnection<TestWebSocketEvents, TestWebSocketEvents> = {
       id: "ws-1",
       namespace: "chat",
       transport: "ws" as const,
@@ -192,18 +205,15 @@ describe("Sonamu websocket context scoping", () => {
       leave() {},
       setUserId() {},
       clearUserId() {},
-    } satisfies AnyWebSocketConnection;
+    };
 
-    let context: WebSocketContext | null = null;
-    const createScopedWebSocketConnection: (
-      ws: AnyWebSocketConnection,
-      getContext: () => WebSocketContext | null,
-    ) => AnyWebSocketConnection = Reflect.get(Sonamu, "createScopedWebSocketConnection");
-    const scopedWs = createScopedWebSocketConnection.call(Sonamu, rawWs, () => context);
+    let context: WebSocketContext<TestWebSocketEvents, TestWebSocketEvents> | null = null;
+    const scopedWs = Sonamu.createScopedWebSocketConnectionForTesting(rawWs, () => context);
 
     context = {
       transport: "ws",
-      request: {} as WebSocketContext["request"],
+      request:
+        /* SAFETY: 테스트는 request 속성을 읽지 않고 websocket 컨텍스트 복원만 검증합니다. */ {} as WebSocketContext["request"],
       headers: {},
       ws: scopedWs,
       naiteStore: new Map(),

@@ -3,9 +3,9 @@ import {
   SonamuProvider as BaseSonamuProvider,
   useSonamuBaseContext,
 } from "@sonamu-kit/react-components";
-import type { ReactNode } from "react";
+import { type ReactNode } from "react";
 
-import type { DictKey, MergedDictionary } from "@/i18n/sd.generated";
+import { type DictKey, type MergedDictionary } from "@/i18n/sd.generated";
 import { SD } from "@/i18n/sd.generated";
 
 // TODO: User 엔티티 추가 후 authOptions를 설정하세요

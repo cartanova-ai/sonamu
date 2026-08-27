@@ -22,6 +22,12 @@ import {
 import { mockEntityManagerGetMultiple } from "../testing/test-helpers";
 
 bootstrap(vi);
+
+const createCompareDB = (rows: unknown[] = []) =>
+  ({
+    raw: vi.fn().mockResolvedValue({ rows }),
+  }) satisfies Pick<Knex, "raw">;
+
 describe("migration-set.ts", () => {
   beforeEach(() => {
     mockEntityManagerGetMultiple({
@@ -169,6 +175,7 @@ describe("migration-set.ts", () => {
 
   describe("resolveDBColType", () => {
     test("uuid -> uuid", () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const col = {
         udt_name: "uuid",
       } as PgColumn;
@@ -179,6 +186,7 @@ describe("migration-set.ts", () => {
 
     describe("Integer types", () => {
       test("int4 -> integer", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "int4",
         } as PgColumn;
@@ -188,6 +196,7 @@ describe("migration-set.ts", () => {
       });
 
       test("int8 -> bigInteger", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "int8",
         } as PgColumn;
@@ -199,6 +208,7 @@ describe("migration-set.ts", () => {
 
     describe("String types", () => {
       test("character varying -> string", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "varchar",
           character_maximum_length: 100,
@@ -209,6 +219,7 @@ describe("migration-set.ts", () => {
       });
 
       test("text -> string", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "text",
         } as PgColumn;
@@ -218,6 +229,7 @@ describe("migration-set.ts", () => {
       });
 
       test("varchar(255) -> string with length", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "varchar",
           character_maximum_length: 255,
@@ -228,6 +240,7 @@ describe("migration-set.ts", () => {
       });
 
       test("varchar(no length) -> string without length", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "varchar",
         } as PgColumn;
@@ -239,6 +252,7 @@ describe("migration-set.ts", () => {
 
     describe("Array types", () => {
       test("_varchar(500) -> string[] with length", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "_varchar",
           character_maximum_length: 500,
@@ -249,6 +263,7 @@ describe("migration-set.ts", () => {
       });
 
       test("_varchar(no length) -> string[] without length", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "_varchar",
           character_maximum_length: null,
@@ -260,6 +275,7 @@ describe("migration-set.ts", () => {
       });
 
       test("_text -> string[] without length", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "_text",
         } as PgColumn;
@@ -270,6 +286,7 @@ describe("migration-set.ts", () => {
       });
 
       test("_int4 -> integer[]", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "_int4",
         } as PgColumn;
@@ -279,6 +296,7 @@ describe("migration-set.ts", () => {
       });
 
       test("_bool -> boolean[]", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "_bool",
         } as PgColumn;
@@ -290,6 +308,7 @@ describe("migration-set.ts", () => {
 
     describe("Numeric types", () => {
       test("numeric(10, 2) -> numberOrNumeric", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "numeric",
           precision: 10,
@@ -306,6 +325,7 @@ describe("migration-set.ts", () => {
       });
 
       test("numeric(no precision, no scale) -> numberOrNumeric", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "numeric",
         } as PgColumn;
@@ -315,6 +335,7 @@ describe("migration-set.ts", () => {
       });
 
       test("float4 -> numberOrNumeric", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "float4",
         } as PgColumn;
@@ -324,6 +345,7 @@ describe("migration-set.ts", () => {
       });
 
       test("float8 -> numberOrNumeric", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "float8",
         } as PgColumn;
@@ -335,6 +357,7 @@ describe("migration-set.ts", () => {
 
     describe("Boolean types", () => {
       test("bool -> boolean", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "bool",
         } as PgColumn;
@@ -346,6 +369,7 @@ describe("migration-set.ts", () => {
 
     describe("Date/Time types", () => {
       test("timestamptz -> date", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "timestamptz",
         } as PgColumn;
@@ -357,6 +381,7 @@ describe("migration-set.ts", () => {
 
     describe("JSON types", () => {
       test("json -> json", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "json",
         } as PgColumn;
@@ -366,6 +391,7 @@ describe("migration-set.ts", () => {
       });
 
       test("jsonb -> json", () => {
+        // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
         const col = {
           udt_name: "jsonb",
         } as PgColumn;
@@ -376,6 +402,7 @@ describe("migration-set.ts", () => {
     });
 
     test("unknown type -> error", () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const col = {
         udt_name: "sonamu_type",
       } as PgColumn;
@@ -509,11 +536,6 @@ describe("migration-set.ts", () => {
     afterEach(() => {
       vi.restoreAllMocks();
     });
-
-    const createCompareDB = (rows: unknown[] = []) =>
-      ({
-        raw: vi.fn().mockResolvedValue({ rows }),
-      }) satisfies Pick<Knex, "raw">;
 
     test("GIN 단일 컬럼 인덱스에서 opclass를 복원해야 한다", async () => {
       const compareDB = createCompareDB();

@@ -2,6 +2,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { type UserConfig } from "tsdown";
+
 import { type NormalizedZodCompilerPolicy } from "../api/config";
 import { exists } from "../utils/fs-utils";
 
@@ -14,9 +16,18 @@ export type BuildArtifact<BuildCommandArgs = {}> = {
   postBuildCommand?: () => string;
 };
 
-export type ApiTsdownBuildConfig = {
-  plugins?: unknown[];
-  [key: string]: unknown;
+export type ApiTsdownBuildConfig = Pick<UserConfig, "entry" | "plugins">;
+
+type ZodCompilerPluginFactory = (typeof import("zod-compiler/rolldown"))["default"];
+
+export interface ApiZodCompilerBuildDependencies {
+  loadCompilerPlugin: () => Promise<ZodCompilerPluginFactory>;
+}
+
+const apiZodCompilerBuildDependencies: ApiZodCompilerBuildDependencies = {
+  async loadCompilerPlugin() {
+    return (await import("zod-compiler/rolldown")).default;
+  },
 };
 
 export async function composeApiZodCompilerBuildConfig<T extends ApiTsdownBuildConfig>(
@@ -25,7 +36,8 @@ export async function composeApiZodCompilerBuildConfig<T extends ApiTsdownBuildC
     policy: NormalizedZodCompilerPolicy;
     registryPath?: string;
   },
-): Promise<T> {
+  dependencies: ApiZodCompilerBuildDependencies = apiZodCompilerBuildDependencies,
+): Promise<T & ApiTsdownBuildConfig> {
   if (options.policy.api !== "aot") {
     return baseConfig;
   }
@@ -33,7 +45,7 @@ export async function composeApiZodCompilerBuildConfig<T extends ApiTsdownBuildC
     throw new Error("validation.zodCompiler.api requires the generated HTTP validator registry");
   }
 
-  const { default: zodCompiler } = await import("zod-compiler/rolldown");
+  const zodCompiler = await dependencies.loadCompilerPlugin();
   const compilerPlugin = zodCompiler({
     codegenMode: "inline",
     include: [options.registryPath],
@@ -41,9 +53,18 @@ export async function composeApiZodCompilerBuildConfig<T extends ApiTsdownBuildC
     schemas: "explicit",
   });
 
+  let configuredPlugins: Exclude<UserConfig["plugins"], undefined>[];
+  if (Array.isArray(baseConfig.plugins)) {
+    configuredPlugins = baseConfig.plugins;
+  } else if (baseConfig.plugins === undefined) {
+    configuredPlugins = [];
+  } else {
+    configuredPlugins = [baseConfig.plugins];
+  }
+
   return {
     ...baseConfig,
-    plugins: [...(baseConfig.plugins ?? []), compilerPlugin],
+    plugins: [...configuredPlugins, compilerPlugin],
   };
 }
 

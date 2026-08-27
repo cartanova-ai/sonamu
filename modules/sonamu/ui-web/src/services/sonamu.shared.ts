@@ -1,25 +1,28 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // fetching 함수는 any사용
 
-import axios from "axios";
-import { type AxiosRequestConfig } from "axios";
-import { type ZodIssue } from "zod";
+import axios, { isAxiosError, type AxiosRequestConfig } from "axios";
+import { z } from "zod";
 
 const baseURL = "";
 
-export async function fetch(options: AxiosRequestConfig) {
+const sonamuErrorResponseSchema = z.object({
+  message: z.string(),
+  issues: z.array(z.unknown()),
+});
+
+export async function fetch<T = unknown>(options: AxiosRequestConfig): Promise<T> {
   try {
-    const res = await axios({
+    const res = await axios<T>({
       baseURL,
       ...options,
     });
     return res.data;
   } catch (e: unknown) {
-    if (axios.isAxiosError(e) && e.response && e.response.data) {
-      const d = e.response.data as {
-        message: string;
-        issues: ZodIssue[];
-      };
-      throw new SonamuError(e.response.status, d.message, d.issues);
+    if (isAxiosError(e) && e.response && e.response.data) {
+      const parsed = sonamuErrorResponseSchema.safeParse(e.response.data);
+      if (parsed.success) {
+        throw new SonamuError(e.response.status, parsed.data.message, parsed.data.issues);
+      }
     }
     throw e;
   }
@@ -31,7 +34,7 @@ export class SonamuError extends Error {
   constructor(
     public code: number,
     public message: string,
-    public issues: ZodIssue[],
+    public issues: unknown[],
   ) {
     super(message);
     this.isSonamuError = true;

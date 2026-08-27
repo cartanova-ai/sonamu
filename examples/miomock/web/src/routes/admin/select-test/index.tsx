@@ -10,7 +10,7 @@ import {
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
-import z from "zod";
+import { z } from "zod";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 
 import {
@@ -51,11 +51,11 @@ type Employee = EmployeeSubsetA;
 const ProjectStatusEnum = z.enum(["active", "done", "pending"]);
 type ProjectStatus = z.infer<typeof ProjectStatusEnum>;
 
-const projectStatusLabels: Record<ProjectStatus, string> = {
+const projectStatusLabels = {
   active: "진행중",
   done: "완료",
   pending: "대기중",
-};
+} satisfies Record<ProjectStatus, string>;
 
 // ============================================================================
 // 메인 컴포넌트
@@ -111,7 +111,7 @@ function SelectTestPage() {
       });
       setCompanyOptions(result.rows);
     } catch (error) {
-      setCompanyError(error as Error);
+      setCompanyError(error instanceof Error ? error : new Error(String(error)));
     } finally {
       setCompanyLoading(false);
     }
@@ -137,7 +137,7 @@ function SelectTestPage() {
       });
       setMultiCompanyOptions(result.rows);
     } catch (error) {
-      setMultiCompanyError(error as Error);
+      setMultiCompanyError(error instanceof Error ? error : new Error(String(error)));
     } finally {
       setMultiCompanyLoading(false);
     }
@@ -552,7 +552,7 @@ function SelectTestPage() {
                     displayField="name"
                     baseListParams={{ search: "id" }}
                     {...idAsyncSingleForm.register("value")}
-                    onRowChange={(row) => setIdAsyncSingleRow(row as Company)}
+                    onRowChange={(row) => setIdAsyncSingleRow(Array.isArray(row) ? row[0] : row)}
                     placeholder="회사를 검색하세요"
                   />
                   <div className="p-3 bg-white rounded border border-orange-200">
@@ -600,7 +600,9 @@ function SelectTestPage() {
                     }
                     baseListParams={{ search: "id" }}
                     {...idAsyncMultiForm.register("value")}
-                    onRowChange={(rows) => setIdAsyncMultiRows(rows as Employee[])}
+                    onRowChange={(rows) =>
+                      setIdAsyncMultiRows(rows ? (Array.isArray(rows) ? rows : [rows]) : [])
+                    }
                     multiple={true}
                     placeholder="직원을 검색하세요"
                   />

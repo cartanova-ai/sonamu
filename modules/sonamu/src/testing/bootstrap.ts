@@ -57,14 +57,21 @@ export function bootstrap(vi: VitestUtils, options?: BootstrapOptions) {
 }
 
 function getMockContext(): Context {
+  // SAFETY: 테스트 컨텍스트에서는 Fastify 요청과 응답을 사용하지 않으며 접근 시 즉시 실패해야 합니다.
+  const request: Context["request"] = null as never;
+  // SAFETY: 테스트 컨텍스트에서는 Fastify 요청과 응답을 사용하지 않으며 접근 시 즉시 실패해야 합니다.
+  const reply: Context["reply"] = null as never;
+  // SAFETY: 모의 구현은 실제 createSSE와 같은 호출 계약을 유지하되 항상 명시적으로 실패합니다.
+  const createSSE = (() => {
+    throw new Error("createSSE is not available in mock context");
+  }) as Context["createSSE"];
+
   return {
     transport: "http",
-    request: null as unknown as Context["request"],
-    reply: null as unknown as Context["reply"],
+    request,
+    reply,
     headers: {},
-    createSSE: (() => {
-      throw new Error("createSSE is not available in mock context");
-    }) as Context["createSSE"],
+    createSSE,
     session: null,
     user: null,
     naiteStore: Naite.createStore(),

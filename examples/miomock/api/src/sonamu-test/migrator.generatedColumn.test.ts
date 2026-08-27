@@ -109,6 +109,7 @@ describe("Migrator - Generated Column", () => {
 
   test("Generated Column이 있는 신규 엔티티 생성", async () => {
     // given: Generated Column이 포함된 새 엔티티
+    // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
     const newEntity = {
       id: "Product",
       table: "products",

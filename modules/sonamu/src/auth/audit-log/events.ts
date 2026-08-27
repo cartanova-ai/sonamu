@@ -1,9 +1,23 @@
 /**
  * sonamuAuditLog 플러그인이 audit-log-ingestor로 전달하는 이벤트 body 타입.
  */
+export type AuditEventDataValue =
+  | null
+  | undefined
+  | boolean
+  | number
+  | string
+  | Date
+  | AuditEventDataValue[]
+  | AuditEventData;
+
+export interface AuditEventData {
+  [key: string]: AuditEventDataValue;
+}
+
 export type AuditLogEvent = {
   eventType: string;
-  eventData: Record<string, unknown>;
+  eventData: AuditEventData;
   eventKey: string;
   eventId?: string;
   eventDisplayName?: string;

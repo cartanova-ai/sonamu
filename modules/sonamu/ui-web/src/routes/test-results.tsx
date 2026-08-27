@@ -4,6 +4,7 @@ import JsonView from "@uiw/react-json-view";
 import classNames from "classnames";
 import type React from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 import CheckCircle2Icon from "~icons/lucide/check-circle-2";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
@@ -134,7 +135,7 @@ function TestResultsPage() {
   const { history, storageWarning, addRun, clearHistory } = useRunHistorySession();
 
   const [managerStatus, setManagerStatus] = useState<ManagerStatus | null>(null);
-  const [connecting, setConnecting] = useState(true);
+  const connecting = !connected;
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [liveRun, setLiveRun] = useState<LiveRunState | null>(null);
@@ -166,14 +167,6 @@ function TestResultsPage() {
       });
     });
   }, []);
-
-  useEffect(() => {
-    if (connected) {
-      setConnecting(false);
-    } else {
-      setConnecting(true);
-    }
-  }, [connected]);
 
   useEffect(() => {
     const unsubs: (() => void)[] = [];
@@ -990,15 +983,43 @@ function ErrorBlock({ error }: { error: { message: string; stack?: string } }) {
   );
 }
 
-function toViewerValue(value: unknown): unknown {
-  if (typeof value === "string") {
+type TraceJsonValue = null | boolean | number | string | TraceJsonValue[] | TraceJsonObject;
+type TraceJsonObject = { [key: string]: TraceJsonValue };
+type TraceViewerValue = TraceJsonObject | TraceJsonValue[];
+
+const traceStringSchema = z.string();
+const traceJsonValueSchema: z.ZodType<TraceJsonValue> = z.lazy(() =>
+  z.union([
+    z.null(),
+    z.boolean(),
+    z.number(),
+    z.string(),
+    z.array(traceJsonValueSchema),
+    z.record(z.string(), traceJsonValueSchema),
+  ]),
+);
+const traceViewerValueSchema: z.ZodType<TraceViewerValue> = z.union([
+  z.record(z.string(), traceJsonValueSchema),
+  z.array(traceJsonValueSchema),
+]);
+
+function toViewerValue(trace: SerializedTrace): TraceViewerValue {
+  const stringResult = traceStringSchema.safeParse(trace.value);
+  if (stringResult.success) {
     try {
-      return JSON.parse(value);
+      const parsedResult = traceJsonValueSchema.safeParse(JSON.parse(stringResult.data));
+      if (parsedResult.success) {
+        const parsedViewerValue = traceViewerValueSchema.safeParse(parsedResult.data);
+        return parsedViewerValue.success ? parsedViewerValue.data : { value: parsedResult.data };
+      }
     } catch {
-      return value;
+      // JSON 문자열이 아니면 원문을 그대로 표시합니다.
     }
   }
-  return value;
+
+  const viewerValueResult = traceViewerValueSchema.safeParse(trace.value);
+  if (viewerValueResult.success) return viewerValueResult.data;
+  return { value: String(trace.value) };
 }
 
 function highlightText(text: string, query: string): React.ReactNode {
@@ -1027,35 +1048,26 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
   const [expandedTraceKeys, setExpandedTraceKeys] = useState<Set<string>>(() => new Set());
   const [searchInput, setSearchInput] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const corpusCacheRef = useRef(new Map());
-
-  // 렌더 중 동기적으로 캐시를 초기화하여 traces 변경 직후 첫 렌더에서 stale 캐시 히트를 방지합니다.
-  const prevTracesRef = useRef(traces);
-  if (prevTracesRef.current !== traces) {
-    prevTracesRef.current = traces;
-    corpusCacheRef.current.clear();
-  }
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedQuery(searchInput), 300);
     return () => clearTimeout(id);
   }, [searchInput]);
 
+  const searchableTraces = useMemo(
+    () =>
+      traces.map((trace, originalIndex) => ({
+        trace,
+        originalIndex,
+        corpus: `${trace.key} ${JSON.stringify(trace.value)}`.toLowerCase(),
+      })),
+    [traces],
+  );
+
   const filteredTraces = useMemo(() => {
     const q = debouncedQuery.toLowerCase();
-    return traces.reduce<{ trace: SerializedTrace; originalIndex: number }[]>((acc, trace, i) => {
-      const cacheKey = `${trace.key}-${trace.at}-${i}`;
-      let corpus = corpusCacheRef.current.get(cacheKey);
-      if (corpus === undefined) {
-        corpus = `${trace.key} ${JSON.stringify(trace.value)}`.toLowerCase();
-        corpusCacheRef.current.set(cacheKey, corpus);
-      }
-      if (!debouncedQuery || corpus.includes(q)) {
-        acc.push({ trace, originalIndex: i });
-      }
-      return acc;
-    }, []);
-  }, [traces, debouncedQuery]);
+    return searchableTraces.filter(({ corpus }) => !debouncedQuery || corpus.includes(q));
+  }, [searchableTraces, debouncedQuery]);
 
   const toggleTrace = useCallback((cacheKey: string) => {
     setExpandedTraceKeys((prev) => {
@@ -1122,8 +1134,7 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
           {filteredTraces.map(({ trace, originalIndex }) => {
             const cacheKey = `${trace.key}-${trace.at}-${originalIndex}`;
             const isExpanded = expandedTraceKeys.has(cacheKey);
-            const raw = toViewerValue(trace.value);
-            const viewerVal = raw !== null && typeof raw === "object" ? raw : { value: raw };
+            const viewerVal = toViewerValue(trace);
             return (
               <div
                 key={cacheKey}

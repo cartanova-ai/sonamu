@@ -6,6 +6,36 @@ import { beforeAll, describe, expect, vi } from "vitest";
 
 bootstrap(vi);
 
+async function createTestServer(cacheControlHandler?: CacheControlHandler) {
+  const server = fastify();
+
+  const config: SonamuFastifyConfig = {
+    contextProvider: (defaultContext) =>
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
+      ({
+        ...defaultContext,
+        ip: "127.0.0.1",
+        session: {},
+      }) as Context,
+    guardHandler: () => true,
+    cacheControlHandler,
+  };
+
+  const userFindManyApi = Sonamu.syncer.apis.find(
+    (api) => api.modelName === "UserModel" && api.methodName === "findMany",
+  );
+  if (!userFindManyApi) {
+    throw new Error("UserModel.findMany API를 찾을 수 없습니다");
+  }
+
+  server.route({
+    method: userFindManyApi.options.httpMethod ?? "GET",
+    url: Sonamu.config.api.route.prefix + userFindManyApi.path,
+    handler: Sonamu.createApiHandler(userFindManyApi, config),
+  });
+  return { server, api: userFindManyApi };
+}
+
 describe("cache-control", () => {
   describe("buildCacheControl", () => {
     describe("기본 동작", () => {
@@ -203,38 +233,6 @@ describe("API 응답 Cache-Control 헤더", () => {
     await Sonamu.init(true, false, undefined, false);
   });
 
-  async function createTestServer(cacheControlHandler?: CacheControlHandler) {
-    const server = fastify();
-
-    const config: SonamuFastifyConfig = {
-      contextProvider: (defaultContext) =>
-        ({
-          ...defaultContext,
-          ip: "127.0.0.1",
-          session: {},
-        }) as Context,
-      guardHandler: () => true,
-      cacheControlHandler,
-    };
-
-    // UserModel.findMany API 등록
-    const userFindManyApi = Sonamu.syncer.apis.find(
-      (api) => api.modelName === "UserModel" && api.methodName === "findMany",
-    );
-
-    if (!userFindManyApi) {
-      throw new Error("UserModel.findMany API를 찾을 수 없습니다");
-    }
-
-    server.route({
-      method: userFindManyApi.options.httpMethod ?? "GET",
-      url: Sonamu.config.api.route.prefix + userFindManyApi.path,
-      handler: Sonamu.createApiHandler(userFindManyApi, config),
-    });
-
-    return { server, api: userFindManyApi };
-  }
-
   test("cacheControlHandler 미설정 시 Cache-Control 헤더 없음", async () => {
     const { server, api } = await createTestServer();
 
@@ -251,9 +249,7 @@ describe("API 응답 Cache-Control 헤더", () => {
   });
 
   test("cacheControlHandler가 설정을 반환하면 Cache-Control 헤더 설정됨", async () => {
-    const cacheControlHandler: CacheControlHandler = () => CachePresets.shortLived;
-
-    const { server, api } = await createTestServer(cacheControlHandler);
+    const { server, api } = await createTestServer(() => CachePresets.shortLived);
 
     const response = await server.inject({
       method: "GET",

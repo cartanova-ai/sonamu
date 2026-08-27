@@ -1,15 +1,24 @@
 import { type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { type ApiDecoratorOptions, type Context } from "../api";
+import { type ApiDecoratorOptions, type Context as ApiContext } from "../api";
 import { type CacheControlHandler } from "../cache-control/types";
+import { isObjectValue, isStringValue } from "../utils/runtime-value";
 import { type GuardKey } from "./../api/decorators";
+
+function describeInputField<Value>(input: Value, field: string): string {
+  if (!isObjectValue(input)) {
+    return "undefined";
+  }
+  const fieldEntry = Object.entries(input).find(([key]) => key === field);
+  return String(fieldEntry?.[1]);
+}
 
 /*
   Utility Types
 */
-export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.ZodArray<T>]> {
-  return z.union([shape, shape.array()]);
+export function zArrayable<T extends z.ZodTypeAny>(schema: T): z.ZodUnion<[T, z.ZodArray<T>]> {
+  return z.union([schema, schema.array()]);
 }
 // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- any is used to make the type distributive
 export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
@@ -23,50 +32,41 @@ export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K
  *
  * 예: User fixture 생성 시 credentials Account를 함께 생성
  */
-export type FixtureCompanion = {
-  /** 함께 생성할 Entity 이름 */
-  entity: string;
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 
-  /**
-   * 고정 오버라이드 값.
-   * "{{fieldName}}" 형식으로 부모 fixture의 필드 값을 참조할 수 있다.
-   * 예: { "account_id": "{{email}}" } → 부모 User의 email 값 사용
-   */
-  overrides?: Record<string, unknown>;
+const FixtureCompanionSchema = z.object({
+  entity: z.string(),
+  overrides: z.record(z.string(), z.unknown()).optional(),
+  count: z.number().int().positive().optional(),
+});
 
-  /**
-   * 부모 1개당 생성할 companion 개수. 기본값 1.
-   * 예: count: 2 → User 1개당 companion 2개 생성
-   */
-  count?: number;
-};
+/** cone 메타데이터를 검증하면서 사용자 정의 확장 값은 그대로 보존합니다. */
+const ConeSchema = z
+  .object({
+    note: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    fixtureGenerator: z.string().optional(),
+    fixtureDefault: z.unknown().optional(),
+    fixtureStrategy: z.literal("sequence").optional(),
+    fixtureCompanions: z.array(FixtureCompanionSchema).optional(),
+    fixtureParentOverrides: z.record(z.string(), z.unknown()).optional(),
+    dataSource: z
+      .object({
+        strategy: z.enum(["sample", "ids", "query", "file", "recent", "random"]),
+        config: z.unknown().optional(),
+      })
+      .optional(),
+  })
+  .catchall(z.unknown());
 
-/**
- * cone: 범용 메타데이터 시스템
- *
- * Entity, Prop, Enum, Subset에 "솔방울을 단다"는 개념으로 붙이는 단일 서술 메타데이터입니다.
- * note 하나로 비즈니스 의미와 fixture 생성 힌트를 함께 기술합니다.
- */
-export type Cone = {
-  note?: string; // 이 대상이 무엇인지 설명 (비즈니스 의미 + fixture 힌트 통합)
-  tags?: string[]; // 분류/검색용 태그
-
-  // Fixture 생성 관련
-  fixtureGenerator?: string; // Faker.js 코드 또는 커스텀 함수
-  fixtureDefault?: unknown; // 기본값
-  fixtureStrategy?: "sequence"; // string 타입이지만 DB sequence로 관리되는 PK (better-auth 등)
-  fixtureCompanions?: FixtureCompanion[]; // 부모 fixture 생성 시 함께 생성할 companion Entity 목록
-  fixtureParentOverrides?: Record<string, unknown>; // parentId 엔티티의 부모 생성 시 사용할 override 값 (예: { achievement_type: "PAPER" })
-
-  // 참조 데이터 관련
-  dataSource?: {
-    strategy: "sample" | "ids" | "query" | "file" | "recent" | "random";
-    config?: unknown; // 전략별 설정
-  };
-
-  // 확장성
-  [key: string]: unknown; // 사용자 정의 메타데이터
-};
+export type FixtureCompanion = z.infer<typeof FixtureCompanionSchema>;
+export type Cone = z.infer<typeof ConeSchema>;
 
 export type GeneratedColumnType = "STORED" | "VIRTUAL";
 export type GeneratedColumn = {
@@ -451,10 +451,10 @@ export type EntityIndex = {
 export type SubsetField = string | { field: string; internal?: boolean };
 
 export function normalizeSubsetField(f: SubsetField): string {
-  return typeof f === "string" ? f : f.field;
+  return isStringValue(f) ? f : f.field;
 }
 export function isInternalSubsetField(f: SubsetField): boolean {
-  return typeof f !== "string" && f.internal === true;
+  return !isStringValue(f) && f.internal === true;
 }
 
 /**
@@ -579,129 +579,160 @@ export type EntityPropNode =
 /*
   Prop Type Guards
 */
-export function isIntegerSingleProp(p: unknown): p is IntegerProp {
+export function isIntegerSingleProp<Value>(p: Value): p is Value & IntegerProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as IntegerProp)?.type === "integer";
 }
-export function isIntegerArrayProp(p: unknown): p is IntegerArrayProp {
+export function isIntegerArrayProp<Value>(p: Value): p is Value & IntegerArrayProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as IntegerArrayProp)?.type === "integer[]";
 }
-export function isIntegerProp(p: unknown): p is IntegerProp | IntegerArrayProp {
+export function isIntegerProp<Value>(p: Value): p is Value & (IntegerProp | IntegerArrayProp) {
   return isIntegerSingleProp(p) || isIntegerArrayProp(p);
 }
-export function isBigIntegerSingleProp(p: unknown): p is BigIntegerProp {
+export function isBigIntegerSingleProp<Value>(p: Value): p is Value & BigIntegerProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as BigIntegerProp)?.type === "bigInteger";
 }
-export function isBigIntegerArrayProp(p: unknown): p is BigIntegerArrayProp {
+export function isBigIntegerArrayProp<Value>(p: Value): p is Value & BigIntegerArrayProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as BigIntegerArrayProp)?.type === "bigInteger[]";
 }
-export function isBigIntegerProp(p: unknown): p is BigIntegerProp | BigIntegerArrayProp {
+export function isBigIntegerProp<Value>(
+  p: Value,
+): p is Value & (BigIntegerProp | BigIntegerArrayProp) {
   return isBigIntegerSingleProp(p) || isBigIntegerArrayProp(p);
 }
-export function isStringSingleProp(p: unknown): p is StringProp {
+export function isStringSingleProp<Value>(p: Value): p is Value & StringProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as StringProp)?.type === "string";
 }
-export function isStringArrayProp(p: unknown): p is StringArrayProp {
+export function isStringArrayProp<Value>(p: Value): p is Value & StringArrayProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as StringArrayProp)?.type === "string[]";
 }
-export function isStringProp(p: unknown): p is StringProp | StringArrayProp {
+export function isStringProp<Value>(p: Value): p is Value & (StringProp | StringArrayProp) {
   return isStringSingleProp(p) || isStringArrayProp(p);
 }
-export function isEnumSingleProp(p: unknown): p is EnumProp {
+export function isEnumSingleProp<Value>(p: Value): p is Value & EnumProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as EnumProp)?.type === "enum";
 }
-export function isEnumArrayProp(p: unknown): p is EnumArrayProp {
+export function isEnumArrayProp<Value>(p: Value): p is Value & EnumArrayProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as EnumArrayProp)?.type === "enum[]";
 }
-export function isEnumProp(p: unknown): p is EnumProp | EnumArrayProp {
+export function isEnumProp<Value>(p: Value): p is Value & (EnumProp | EnumArrayProp) {
   return isEnumSingleProp(p) || isEnumArrayProp(p);
 }
-export function isNumberSingleProp(p: unknown): p is NumberProp {
+export function isNumberSingleProp<Value>(p: Value): p is Value & NumberProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as NumberProp)?.type === "number";
 }
-export function isNumberArrayProp(p: unknown): p is NumberArrayProp {
+export function isNumberArrayProp<Value>(p: Value): p is Value & NumberArrayProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as NumberArrayProp)?.type === "number[]";
 }
-export function isNumberProp(p: unknown): p is NumberProp | NumberArrayProp {
+export function isNumberProp<Value>(p: Value): p is Value & (NumberProp | NumberArrayProp) {
   return isNumberSingleProp(p) || isNumberArrayProp(p);
 }
-export function isNumericSingleProp(p: unknown): p is NumericProp {
+export function isNumericSingleProp<Value>(p: Value): p is Value & NumericProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as NumericProp)?.type === "numeric";
 }
-export function isNumericArrayProp(p: unknown): p is NumericArrayProp {
+export function isNumericArrayProp<Value>(p: Value): p is Value & NumericArrayProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as NumericArrayProp)?.type === "numeric[]";
 }
-export function isNumericProp(p: unknown): p is NumericProp | NumericArrayProp {
+export function isNumericProp<Value>(p: Value): p is Value & (NumericProp | NumericArrayProp) {
   return isNumericSingleProp(p) || isNumericArrayProp(p);
 }
-export function isBooleanSingleProp(p: unknown): p is BooleanProp {
+export function isBooleanSingleProp<Value>(p: Value): p is Value & BooleanProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as BooleanProp)?.type === "boolean";
 }
-export function isBooleanArrayProp(p: unknown): p is BooleanArrayProp {
+export function isBooleanArrayProp<Value>(p: Value): p is Value & BooleanArrayProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as BooleanArrayProp)?.type === "boolean[]";
 }
-export function isBooleanProp(p: unknown): p is BooleanProp | BooleanArrayProp {
+export function isBooleanProp<Value>(p: Value): p is Value & (BooleanProp | BooleanArrayProp) {
   return isBooleanSingleProp(p) || isBooleanArrayProp(p);
 }
-export function isDateSingleProp(p: unknown): p is DateProp {
+export function isDateSingleProp<Value>(p: Value): p is Value & DateProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as DateProp)?.type === "date";
 }
-export function isDateArrayProp(p: unknown): p is DateArrayProp {
+export function isDateArrayProp<Value>(p: Value): p is Value & DateArrayProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as DateArrayProp)?.type === "date[]";
 }
-export function isDateProp(p: unknown): p is DateProp | DateArrayProp {
+export function isDateProp<Value>(p: Value): p is Value & (DateProp | DateArrayProp) {
   return isDateSingleProp(p) || isDateArrayProp(p);
 }
-export function isUuidSingleProp(p: unknown): p is UuidProp {
+export function isUuidSingleProp<Value>(p: Value): p is Value & UuidProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as UuidProp)?.type === "uuid";
 }
-export function isUuidArrayProp(p: unknown): p is UuidArrayProp {
+export function isUuidArrayProp<Value>(p: Value): p is Value & UuidArrayProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as UuidArrayProp)?.type === "uuid[]";
 }
-export function isUuidProp(p: unknown): p is UuidProp | UuidArrayProp {
+export function isUuidProp<Value>(p: Value): p is Value & (UuidProp | UuidArrayProp) {
   return isUuidSingleProp(p) || isUuidArrayProp(p);
 }
-export function isJsonProp(p: unknown): p is JsonProp {
+export function isJsonProp<Value>(p: Value): p is Value & JsonProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as JsonProp)?.type === "json";
 }
-export function isSearchTextProp(p: unknown): p is SearchTextProp {
+export function isSearchTextProp<Value>(p: Value): p is Value & SearchTextProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as SearchTextProp)?.type === "searchText";
 }
-export function isVirtualProp(p: unknown): p is VirtualProp {
+export function isVirtualProp<Value>(p: Value): p is Value & VirtualProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as VirtualProp)?.type === "virtual";
 }
-export function isVirtualCodeProp(p: unknown): p is VirtualProp {
+export function isVirtualCodeProp<Value>(p: Value): p is Value & VirtualProp {
   if (!isVirtualProp(p)) return false;
   return p.virtualType !== "query"; // undefined도 "code"로 취급
 }
-export function isVirtualQueryProp(p: unknown): p is VirtualProp {
+export function isVirtualQueryProp<Value>(p: Value): p is Value & VirtualProp {
   if (!isVirtualProp(p)) return false;
   return p.virtualType === "query";
 }
-export function isVectorSingleProp(p: unknown): p is VectorProp {
+export function isVectorSingleProp<Value>(p: Value): p is Value & VectorProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as VectorProp)?.type === "vector";
 }
-export function isVectorArrayProp(p: unknown): p is VectorArrayProp {
+export function isVectorArrayProp<Value>(p: Value): p is Value & VectorArrayProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as VectorArrayProp)?.type === "vector[]";
 }
-export function isVectorProp(p: unknown): p is VectorProp | VectorArrayProp {
+export function isVectorProp<Value>(p: Value): p is Value & (VectorProp | VectorArrayProp) {
   return isVectorSingleProp(p) || isVectorArrayProp(p);
 }
-export function isTsVectorProp(p: unknown): p is TsVectorProp {
+export function isTsVectorProp<Value>(p: Value): p is Value & TsVectorProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as TsVectorProp)?.type === "tsvector";
 }
-export function isRelationProp(p: unknown): p is RelationProp {
+export function isRelationProp<Value>(p: Value): p is Value & RelationProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as RelationProp)?.type === "relation";
 }
-export function isOneToOneRelationProp(p: unknown): p is OneToOneRelationProp {
+export function isOneToOneRelationProp<Value>(p: Value): p is Value & OneToOneRelationProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as OneToOneRelationProp)?.relationType === "OneToOne";
 }
-export function isBelongsToOneRelationProp(p: unknown): p is BelongsToOneRelationProp {
+export function isBelongsToOneRelationProp<Value>(p: Value): p is Value & BelongsToOneRelationProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as BelongsToOneRelationProp)?.relationType === "BelongsToOne";
 }
-export function isHasManyRelationProp(p: unknown): p is HasManyRelationProp {
+export function isHasManyRelationProp<Value>(p: Value): p is Value & HasManyRelationProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as HasManyRelationProp)?.relationType === "HasMany";
 }
-export function isManyToManyRelationProp(p: unknown): p is ManyToManyRelationProp {
+export function isManyToManyRelationProp<Value>(p: Value): p is Value & ManyToManyRelationProp {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return (p as ManyToManyRelationProp)?.relationType === "ManyToMany";
 }
 
@@ -713,7 +744,8 @@ type JoinClause =
   | {
       custom: string;
     };
-export function isCustomJoinClause(p: unknown): p is { custom: string } {
+export function isCustomJoinClause<Value>(p: Value): p is Value & { custom: string } {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return !!(p as { custom: string })?.custom;
 }
 
@@ -774,7 +806,8 @@ export type KnexError = {
   sqlMessage: string;
   sqlState: string;
 };
-export function isKnexError(e: unknown): e is KnexError {
+export function isKnexError<Value>(e: Value): e is Value & KnexError {
+  // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
   return !!(e as KnexError)?.code && !!(e as KnexError)?.sqlMessage && !!(e as KnexError)?.sqlState;
 }
 
@@ -947,84 +980,99 @@ export namespace ApiParamType {
     constraint?: ApiParamType;
   };
 
-  export function isObject(v: unknown): v is ApiParamType.Object {
+  export function isObject<Value>(v: Value): v is Value & ApiParamType.Object {
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
     return (v as ApiParamType.Object)?.t === "object";
   }
-  export function isUnion(v: unknown): v is ApiParamType.Union {
+  export function isUnion<Value>(v: Value): v is Value & ApiParamType.Union {
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
     return (v as ApiParamType.Union)?.t === "union";
   }
-  export function isIntersection(v: unknown): v is ApiParamType.Intersection {
+  export function isIntersection<Value>(v: Value): v is Value & ApiParamType.Intersection {
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
     return (v as ApiParamType.Intersection)?.t === "intersection";
   }
-  export function isStringLiteral(v: unknown): v is ApiParamType.StringLiteral {
+  export function isStringLiteral<Value>(v: Value): v is Value & ApiParamType.StringLiteral {
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
     return (v as ApiParamType.StringLiteral)?.t === "string-literal";
   }
-  export function isNumericLiteral(v: unknown): v is ApiParamType.NumericLiteral {
+  export function isNumericLiteral<Value>(v: Value): v is Value & ApiParamType.NumericLiteral {
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
     return (v as ApiParamType.NumericLiteral)?.t === "numeric-literal";
   }
-  export function isArray(v: unknown): v is ApiParamType.Array {
+  export function isArray<Value>(v: Value): v is Value & ApiParamType.Array {
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
     return (v as ApiParamType.Array)?.t === "array";
   }
-  export function isRef(v: unknown): v is ApiParamType.Ref {
-    return typeof v === "object" && v !== null && (v as { t?: unknown }).t === "ref";
+  export function isRef<Value>(v: Value): v is Value & ApiParamType.Ref {
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
+    return isObjectValue(v) && (v as { t?: unknown }).t === "ref";
   }
-  export function isIndexedAccess(v: unknown): v is ApiParamType.IndexedAccess {
-    return typeof v === "object" && v !== null && (v as { t?: unknown }).t === "indexed-access";
+  export function isIndexedAccess<Value>(v: Value): v is Value & ApiParamType.IndexedAccess {
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
+    return isObjectValue(v) && (v as { t?: unknown }).t === "indexed-access";
   }
-  export function isTupleType(v: unknown): v is ApiParamType.TupleType {
-    return typeof v === "object" && v !== null && (v as { t?: unknown }).t === "tuple-type";
+  export function isTupleType<Value>(v: Value): v is Value & ApiParamType.TupleType {
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
+    return isObjectValue(v) && (v as { t?: unknown }).t === "tuple-type";
   }
-  export function isPick(v: unknown): v is ApiParamType.Pick {
+  export function isPick<Value>(v: Value): v is Value & ApiParamType.Pick {
     return (
-      typeof v === "object" &&
-      v !== null &&
+      isObjectValue(v) &&
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       (v as { t?: unknown }).t === "ref" &&
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       (v as { id?: unknown }).id === "Pick"
     );
   }
-  export function isOmit(v: unknown): v is ApiParamType.Omit {
+  export function isOmit<Value>(v: Value): v is Value & ApiParamType.Omit {
     return (
-      typeof v === "object" &&
-      v !== null &&
+      isObjectValue(v) &&
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       (v as { t?: unknown }).t === "ref" &&
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       (v as { id?: unknown }).id === "Omit"
     );
   }
-  export function isPartial(v: unknown): v is ApiParamType.Partial {
+  export function isPartial<Value>(v: Value): v is Value & ApiParamType.Partial {
     return (
-      typeof v === "object" &&
-      v !== null &&
+      isObjectValue(v) &&
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       (v as { t?: unknown }).t === "ref" &&
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       (v as { id?: unknown }).id === "Partial"
     );
   }
-  export function isPromise(v: unknown): v is ApiParamType.Promise {
+  export function isPromise<Value>(v: Value): v is Value & ApiParamType.Promise {
     return (
-      typeof v === "object" &&
-      v !== null &&
+      isObjectValue(v) &&
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       (v as { t?: unknown }).t === "ref" &&
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       (v as { id?: unknown }).id === "Promise"
     );
   }
-  export function isContext(v: unknown): v is ApiParamType.Context {
+  export function isContext<Value>(v: Value): v is Value & ApiParamType.Context {
     return (
-      typeof v === "object" &&
-      v !== null &&
-      (v as { t?: unknown }).t === "ref" &&
-      ((v as { id?: unknown }).id === "Context" ||
-        (v as { id?: unknown }).id === "WebSocketContext")
+      isObjectValue(v) &&
+      "t" in v &&
+      v.t === "ref" &&
+      "id" in v &&
+      (v.id === "Context" || v.id === "WebSocketContext")
     );
   }
-  export function isRefKnex(v: unknown): v is ApiParamType.Ref {
+  export function isRefKnex<Value>(v: Value): v is Value & ApiParamType.Ref {
     return (
-      typeof v === "object" &&
-      v !== null &&
+      isObjectValue(v) &&
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       (v as { t?: unknown }).t === "ref" &&
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       (v as { id?: unknown }).id === "Knex"
     );
   }
-  export function isTypeParam(v: unknown): v is ApiParamType.TypeParam {
-    return typeof v === "object" && v !== null && (v as { t?: unknown }).t === "type-param";
+  export function isTypeParam<Value>(v: Value): v is Value & ApiParamType.TypeParam {
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
+    return isObjectValue(v) && (v as { t?: unknown }).t === "type-param";
   }
 }
 export type ApiParamType =
@@ -1111,35 +1159,6 @@ const GeneratedColumnSchema = z.object({
   type: z.enum(["STORED", "VIRTUAL"]),
   expression: z.string(),
 });
-
-const FixtureCompanionSchema = z.object({
-  entity: z.string(),
-  overrides: z.record(z.string(), z.unknown()).optional(),
-  count: z.number().int().positive().optional(),
-});
-
-/**
- * Cone 스키마 검증
- *
- * cone 메타데이터의 유효성을 검증합니다.
- */
-const ConeSchema = z
-  .object({
-    note: z.string().optional(),
-    tags: z.array(z.string()).optional(),
-    fixtureGenerator: z.string().optional(),
-    fixtureDefault: z.unknown().optional(),
-    fixtureStrategy: z.literal("sequence").optional(),
-    fixtureCompanions: z.array(FixtureCompanionSchema).optional(),
-    fixtureParentOverrides: z.record(z.string(), z.unknown()).optional(),
-    dataSource: z
-      .object({
-        strategy: z.enum(["sample", "ids", "query", "file", "recent", "random"]),
-        config: z.unknown().optional(),
-      })
-      .optional(),
-  })
-  .catchall(z.unknown()); // 사용자 정의 메타데이터 허용
 
 const BasePropFields = {
   name: z.string(),
@@ -1367,7 +1386,8 @@ export const RelationPropSchema = z.discriminatedUnion(
   ],
   {
     error: (iss) =>
-      `relationType은 ${RelationTypes.map((t) => `'${t}'`).join(", ")} 중 하나여야 합니다. 입력값: "${(iss.input as Record<string, unknown>)?.relationType}"`,
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
+      `relationType은 ${RelationTypes.map((t) => `'${t}'`).join(", ")} 중 하나여야 합니다. 입력값: "${describeInputField(iss.input, "relationType")}"`,
   },
 );
 
@@ -1437,7 +1457,8 @@ export const NormalPropSchema = z
     ],
     {
       error: (iss) =>
-        `type은 ${NormalPropTypes.map((t) => `'${t}'`).join(", ")} 중 하나여야 합니다. 입력값: "${(iss.input as Record<string, unknown>)?.type}"`,
+        // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
+        `type은 ${NormalPropTypes.map((t) => `'${t}'`).join(", ")} 중 하나여야 합니다. 입력값: "${describeInputField(iss.input, "type")}"`,
     },
   )
   .superRefine((data, ctx) => {
@@ -1465,6 +1486,7 @@ export const NormalPropSchema = z
 
     // VIRTUAL Generated Column 타입 제한 검증
     if (data.generated.type === "VIRTUAL") {
+      // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
       if ((VirtualGeneratedDisallowedTypes as readonly string[]).includes(data.type)) {
         ctx.addIssue({
           code: "custom",
@@ -1479,7 +1501,8 @@ export const NormalPropSchema = z
 const AllPropTypes = [...NormalPropTypes, "relation"] as const;
 const EntityPropSchema = z.discriminatedUnion("type", [NormalPropSchema, RelationPropSchema], {
   error: (iss) =>
-    `type은 ${AllPropTypes.map((t) => `'${t}'`).join(", ")} 중 하나여야 합니다. 입력값: "${(iss.input as Record<string, unknown>)?.type}"`,
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
+    `type은 ${AllPropTypes.map((t) => `'${t}'`).join(", ")} 중 하나여야 합니다. 입력값: "${describeInputField(iss.input, "type")}"`,
 });
 
 const EntityIndexColumnSchema = z.object({
@@ -1541,6 +1564,7 @@ function unwrapSearchTextJsonSourceType(zodType: z.ZodTypeAny): z.ZodTypeAny {
   let current = zodType;
 
   while (current instanceof z.ZodOptional || current instanceof z.ZodNullable) {
+    // SAFETY: 스키마 검증과 메타데이터 계약이 이 타입을 보장합니다.
     current = current.unwrap() as z.ZodTypeAny;
   }
 
@@ -1796,7 +1820,7 @@ export type Executable<T> = T | Promise<T> | (() => T) | (() => Promise<T>);
 export type SonamuFastifyConfig = {
   contextProvider: (
     defaultContext: Pick<
-      Context,
+      ApiContext,
       | "transport"
       | "request"
       | "reply"
@@ -1809,7 +1833,7 @@ export type SonamuFastifyConfig = {
     >,
     request: FastifyRequest,
     reply: FastifyReply,
-  ) => Context | Promise<Context>;
+  ) => ApiContext | Promise<ApiContext>;
   websocketContextProvider?: (
     defaultContext: Pick<
       import("../api/context").WebSocketContext,

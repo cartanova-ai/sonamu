@@ -6,6 +6,12 @@ import { type ReactNode } from "react";
 import Sidebar from "./components/Sidebar";
 import { SUPPORTED_LOCALES, setLocale } from "./i18n/sd.generated";
 
+type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+
+function isSupportedLocale(locale: string): locale is SupportedLocale {
+  return SUPPORTED_LOCALES.some((supportedLocale) => supportedLocale === locale);
+}
+
 interface AppProps {
   children?: ReactNode;
 }
@@ -14,8 +20,8 @@ function App({ children }: AppProps) {
   useEffect(() => {
     // 브라우저 locale 감지
     const browserLocale = navigator.language.split("-")[0];
-    if (SUPPORTED_LOCALES.includes(browserLocale as (typeof SUPPORTED_LOCALES)[number])) {
-      setLocale(browserLocale as (typeof SUPPORTED_LOCALES)[number]);
+    if (isSupportedLocale(browserLocale)) {
+      setLocale(browserLocale);
     }
   }, []);
 
