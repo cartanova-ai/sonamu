@@ -1,23 +1,32 @@
-/* oxlint-disable @typescript-eslint/no-explicit-any */ // axios 사용 시 타입 추론 어려우므로 허용
-
 import { Button, Card, CardContent, CardHeader } from "@sonamu-kit/react-components/components";
-import axios from "axios";
+import axios, { type AxiosRequestHeaders, type AxiosResponse, isAxiosError } from "axios";
 import { useEffect, useRef, useState } from "react";
 import TrashIcon from "~icons/lucide/trash-2";
+
+interface LogObject {
+  [key: string]: LogValue;
+}
+type LogValue = string | number | boolean | null | LogObject | LogValue[];
 
 type ApiLog = {
   id: string;
   method: string;
   url: string;
-  requestHeaders?: Record<string, any>;
-  requestBody?: any;
-  requestQuery?: Record<string, any>;
+  requestHeaders?: AxiosRequestHeaders;
+  requestBody?: LogValue;
+  requestQuery?: LogObject;
   responseStatus?: number;
-  responseHeaders?: Record<string, any>;
-  responseBody?: any;
+  responseHeaders?: AxiosResponse["headers"];
+  responseBody?: LogValue;
   duration?: number;
   timestamp: number;
 };
+
+function serializeLogValue(value: LogValue): string {
+  return Object.prototype.toString.call(value) === "[object String]"
+    ? String(value)
+    : JSON.stringify(value, null, 2);
+}
 
 export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
   const [apiLogs, setApiLogs] = useState<ApiLog[]>([]);
@@ -36,7 +45,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
           id: logId,
           method: config.method?.toUpperCase() || "GET",
           url: config.url || "",
-          requestHeaders: config.headers as Record<string, any>,
+          requestHeaders: config.headers,
           requestBody: config.data,
           requestQuery: config.params,
           timestamp: startTime,
@@ -72,7 +81,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
               ? {
                   ...log,
                   responseStatus: response.status,
-                  responseHeaders: response.headers as Record<string, any>,
+                  responseHeaders: response.headers,
                   responseBody: response.data,
                   duration,
                 }
@@ -84,9 +93,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
       },
       (error) => {
         const logId =
-          typeof error.config === "object" && error.config !== null
-            ? requestLogIds.current.get(error.config)
-            : undefined;
+          isAxiosError(error) && error.config ? requestLogIds.current.get(error.config) : undefined;
         const startTime = logId ? requestStartTimes.current.get(logId) : undefined;
         const duration = startTime ? Date.now() - startTime : undefined;
         if (logId) {
@@ -231,9 +238,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                         wordBreak: "break-all",
                       }}
                     >
-                      {typeof log.requestBody === "string"
-                        ? log.requestBody
-                        : JSON.stringify(log.requestBody, null, 2)}
+                      {serializeLogValue(log.requestBody)}
                     </pre>
                   </div>
                 )}
@@ -275,9 +280,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                         overflowY: "auto",
                       }}
                     >
-                      {typeof log.responseBody === "string"
-                        ? log.responseBody
-                        : JSON.stringify(log.responseBody, null, 2)}
+                      {serializeLogValue(log.responseBody)}
                     </pre>
                   </div>
                 )}

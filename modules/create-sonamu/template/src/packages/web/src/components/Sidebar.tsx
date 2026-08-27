@@ -10,7 +10,7 @@ import {
   SidebarMenu,
 } from "@sonamu-kit/react-components/components";
 import { Link, useRouterState } from "@tanstack/react-router";
-import type React from "react";
+import { type FC, type SVGProps, useSyncExternalStore } from "react";
 import HomeIcon from "~icons/lucide/home";
 import LogOutIcon from "~icons/lucide/log-out";
 
@@ -27,7 +27,7 @@ interface SidebarProps {
 interface MenuItemProps {
   title: string;
   path: string;
-  icon?: React.FC<React.SVGProps<SVGSVGElement>>;
+  icon?: FC<SVGProps<SVGSVGElement>>;
 }
 
 // 관리자용 메뉴
@@ -48,10 +48,49 @@ const userMenuItems: MenuItemProps[] = [
 export default function Sidebar({ className }: SidebarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { auth } = useSonamuContext();
-  const session = auth?.useSession?.();
-  const user = session?.data?.user ?? null;
-  const logout = () => auth?.signOut?.();
 
+  if (!auth) {
+    return <SidebarView className={className} pathname={pathname} user={null} />;
+  }
+
+  return <AuthenticatedSidebar className={className} pathname={pathname} auth={auth} />;
+}
+
+function AuthenticatedSidebar({
+  className,
+  pathname,
+  auth,
+}: SidebarProps & {
+  pathname: string;
+  auth: NonNullable<ReturnType<typeof useSonamuContext>["auth"]>;
+}) {
+  const sessionAtom = auth.$store.atoms.session;
+  const session = useSyncExternalStore(
+    (onStoreChange) => sessionAtom.subscribe(onStoreChange),
+    () => sessionAtom.get(),
+    () => sessionAtom.get(),
+  );
+
+  return (
+    <SidebarView
+      className={className}
+      pathname={pathname}
+      user={session.data?.user ?? null}
+      logout={() => auth.signOut()}
+    />
+  );
+}
+
+function SidebarView({
+  className,
+  pathname,
+  user,
+  logout,
+}: SidebarProps & {
+  pathname: string;
+  user: { name?: string | null; email?: string | null } | null;
+  logout?: () => void;
+}) {
   // 경로에 따라 메뉴 및 타이틀 분기
   const isAdmin = pathname.startsWith("/admin");
   const menuItems = isAdmin ? adminMenuItems : userMenuItems;

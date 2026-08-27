@@ -1,4 +1,4 @@
-import { hydrate, QueryClient } from "@tanstack/react-query";
+import { type DehydratedState, hydrate, QueryClient } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 
@@ -10,8 +10,7 @@ import { dateReviver } from "./services/sonamu.shared";
 // SSR 데이터 타입
 declare global {
   interface Window {
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- SSR 데이터를 any 타입으로 받아야 함
-    __SONAMU_SSR__?: any;
+    __SONAMU_SSR__?: DehydratedState;
     __SONAMU_SSR_CONFIG__?: {
       disableHydrate?: boolean;
     };
