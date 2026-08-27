@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import type React from "react";
 import { type ReactNode } from "react";
 import SemanticDatepicker from "react-semantic-ui-datepickers";
+import { z } from "zod";
 
 import "react-semantic-ui-datepickers/dist/react-semantic-ui-datepickers.css";
 import { type SQLDateTimeString } from "../helpers/shared";
@@ -15,9 +16,11 @@ export type SQLDateRangePickerProps = {
   ) => void;
 };
 export function SQLDateRangePicker({ label, value, onChange, ...props }: SQLDateRangePickerProps) {
+  const labelText = z.string().safeParse(label);
+
   return (
     <div className="semantic-datepicker-wrapper">
-      {typeof label === "string" ? <div className="label">{label}</div> : label}
+      {labelText.success ? <div className="label">{labelText.data}</div> : label}
       <SemanticDatepicker
         locale="ko-KR"
         type="range"

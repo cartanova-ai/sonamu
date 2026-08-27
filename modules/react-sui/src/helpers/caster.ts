@@ -1,6 +1,19 @@
-/* oxlint-disable @typescript-eslint/no-explicit-any */ // 캐스팅에는 any가 필요함.
 import { z } from "zod";
 import { type $ZodType } from "zod/v4/core";
+
+type CoercibleValue =
+  | string
+  | number
+  | boolean
+  | Date
+  | null
+  | undefined
+  | CoercibleValue[]
+  | CoercibleRecord;
+
+type CoercibleRecord = {
+  [key: string]: CoercibleValue;
+};
 
 function isNumberType(zodType: $ZodType): zodType is z.ZodNumber {
   return zodType instanceof z.ZodNumber;
@@ -26,9 +39,11 @@ function isZodNumberAnyway(zodType: $ZodType) {
 
 // ZodType을 이용해 raw를 Type Coercing
 export function caster(zodType: $ZodType, raw: any): any {
-  if (isZodNumberAnyway(zodType) && typeof raw === "string") {
+  const stringValue = z.string().safeParse(raw);
+
+  if (isZodNumberAnyway(zodType) && stringValue.success) {
     // number
-    return Number(raw);
+    return Number(stringValue.data);
   } else if (
     zodType instanceof z.ZodUnion &&
     zodType.options.some((opt) => isZodNumberAnyway(opt))
@@ -50,12 +65,14 @@ export function caster(zodType: $ZodType, raw: any): any {
   } else if (raw !== null && Array.isArray(raw) && zodType instanceof z.ZodArray) {
     // array
     return raw.map((elem: any) => caster(zodType.element, elem));
-  } else if (zodType instanceof z.ZodObject && typeof raw === "object" && raw !== null) {
+  } else if (zodType instanceof z.ZodObject && isObjectRecord(raw)) {
     // object
-    return Object.keys(raw).reduce((r, rawKey) => {
-      r[rawKey] = caster(zodType.shape[rawKey], raw[rawKey]);
-      return r;
-    }, {} as any);
+    const fields = zodType.def["shape"];
+    const result: CoercibleRecord = {};
+    for (const [rawKey, rawValue] of Object.entries(raw)) {
+      result[rawKey] = caster(fields[rawKey], rawValue);
+    }
+    return result;
   } else if (zodType instanceof z.ZodOptional) {
     // optional
     return caster(zodType.def.innerType, raw);
@@ -64,15 +81,23 @@ export function caster(zodType: $ZodType, raw: any): any {
     return caster(zodType.def.innerType, raw);
   } else if (
     zodType instanceof z.ZodDate &&
-    typeof raw === "string" &&
-    new Date(raw).toString() !== "Invalid Date"
+    stringValue.success &&
+    new Date(stringValue.data).toString() !== "Invalid Date"
   ) {
     // date
-    return new Date(raw);
+    return new Date(stringValue.data);
   } else {
     // 나머지는 처리 안함
     return raw;
   }
+}
+
+function isObjectRecord(value: any): value is CoercibleRecord {
+  return (
+    value !== null &&
+    !Array.isArray(value) &&
+    z.record(z.string(), z.any()).safeParse(value).success
+  );
 }
 
 export function fastifyCaster(schema: z.ZodObject<any>) {

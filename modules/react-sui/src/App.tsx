@@ -84,6 +84,6 @@ export const ProductListParams = ProductBaseListParams.extend({
 });
 export type ProductListParams = z.infer<typeof ProductListParams>;
 
-export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.ZodArray<T>]> {
-  return z.union([shape, shape.array()]);
+export function zArrayable<T extends z.ZodTypeAny>(itemSchema: T): z.ZodUnion<[T, z.ZodArray<T>]> {
+  return z.union([itemSchema, itemSchema.array()]);
 }

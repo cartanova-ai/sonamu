@@ -1,10 +1,11 @@
 import classnames from "classnames";
+import { type ReactElement } from "react";
 import { Table } from "semantic-ui-react";
 
 type KeyValueTableProps = {
   rows: {
     key: string;
-    value: JSX.Element;
+    value: ReactElement;
     keyClassName?: string;
     valueClassName?: string;
   }[];

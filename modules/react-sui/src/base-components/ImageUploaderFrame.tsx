@@ -1,5 +1,3 @@
-/* oxlint-disable */ // react-sui deprecated 예정이라 won't fix
-
 import {
   closestCenter,
   DndContext,
@@ -25,21 +23,15 @@ import { Button, ButtonGroup } from "semantic-ui-react";
 // lazy 모드에서 uploader 실행 후 최종 값을 반환
 export function upload(): Promise<string[]> {
   return new Promise((resolve) => {
-    document.dispatchEvent(
-      new CustomEvent("app:image-uploader/commit", {
-        detail: {
-          channel: "image-uploader",
-          done: resolve,
-        },
-      }),
-    );
+    document.dispatchEvent(new ImageUploaderCommitEvent(resolve));
   });
 }
 
 type AllEvent =
   | ChangeEvent<HTMLInputElement>
   | DragEndEvent
-  | React.MouseEvent<HTMLButtonElement, MouseEvent>;
+  | React.MouseEvent<HTMLButtonElement, MouseEvent>
+  | CustomEvent;
 
 type OnChange<T> = (e: AllEvent, data: { value: T }) => void;
 
@@ -70,31 +62,37 @@ type MultiProps = CommonProps & {
 
 export type ImageUploaderFrameProps = SingleProps | MultiProps;
 
-function useObjectUrls(files: File[]) {
-  const [urls, setUrls] = useState<string[]>([]);
+const EMPTY_FILES: File[] = [];
 
-  // files의 내용을 반영한 시그니처
-  const signature = useMemo(
-    () => files.map((f) => `${f.name}:${f.size}:${f.lastModified}`).join("|"),
-    [files],
-  );
+type ImageUploaderCommitDetail = {
+  channel: "image-uploader";
+  done: (value: string[]) => void;
+};
+
+class ImageUploaderCommitEvent extends CustomEvent<ImageUploaderCommitDetail> {
+  constructor(done: ImageUploaderCommitDetail["done"]) {
+    super("app:image-uploader/commit", {
+      detail: { channel: "image-uploader", done },
+    });
+  }
+}
+
+function useObjectUrls(files: File[]) {
+  const urls = useMemo(() => files.map((file) => URL.createObjectURL(file)), [files]);
 
   useEffect(() => {
-    const created = files.map((f) => URL.createObjectURL(f));
-    setUrls(created);
-
     return () => {
-      for (const u of created) URL.revokeObjectURL(u);
+      for (const url of urls) URL.revokeObjectURL(url);
     };
-  }, [signature]); // files 대신 signature에 의존하여 불필요한 리렌더링 방지
+  }, [urls]);
 
   return urls;
 }
 
 function asArray<T>(v: T | T[] | null | undefined): T[] {
-  if (Array.isArray(v)) return v.filter(Boolean) as T[];
-  if (v == null || (typeof v === "string" && (v as any as string) === "")) return [];
-  return [v as T];
+  if (Array.isArray(v)) return v.filter((value): value is T => Boolean(value));
+  if (v === null || v === undefined || v === "") return [];
+  return [v];
 }
 
 // 신규 파일 고유 키 (name/mtime/size가 동일하면 같은 키로 간주)
@@ -103,49 +101,56 @@ const pendingKeyOf = (f: File) => `new:${f.name}:${f.lastModified}:${f.size}`;
 /** forwardRef로 commit() 노출 */
 export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
   const {
-    multiple = true,
+    multiple: _multiple,
     maxSize,
-    value,
-    onChange,
+    value: _value,
+    onChange: _onChange,
     accept,
     mode,
-    uploader,
+    uploader: _uploader,
     preview = true,
     ...divProps
   } = props;
+  const multiple = props.multiple === true;
 
   // value는 내부에서 항상 string[]로 사용
-  const urls = useMemo<string[]>(() => asArray<string>(value as any), [value]);
+  const urls = useMemo(
+    () => (props.multiple ? props.value.filter(Boolean) : asArray(props.value)),
+    [props.multiple, props.value],
+  );
 
   const [loading, setLoading] = useState<boolean>(false);
   const refInput = useRef<HTMLInputElement | null>(null);
 
   // lazy 전용: 업로드 전 대기 파일
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const pendingPreviewUrls = useObjectUrls(mode === "lazy" ? pendingFiles : []);
+  const pendingPreviewUrls = useObjectUrls(mode === "lazy" ? pendingFiles : EMPTY_FILES);
 
   const emitChange = useCallback(
-    (e: AllEvent | {}, next: string[]) => {
-      if (multiple) {
-        (onChange as OnChange<string[]>)(e as AllEvent, { value: next });
+    (event: AllEvent, next: string[]) => {
+      if (props.multiple) {
+        props.onChange(event, { value: next });
       } else {
-        (onChange as OnChange<string>)(e as AllEvent, { value: next[0] ?? "" });
+        props.onChange(event, { value: next[0] ?? "" });
       }
     },
-    [multiple, onChange],
+    [props],
   );
 
   // uploader를 항상 File[] -> UploadedFile[]으로 정규화
   const uploadNormalized = useCallback(
     async (files: File[]): Promise<UploadedFile[]> => {
-      if (multiple) {
-        const res = await (uploader as (fs: File[]) => Promise<UploadedFile[]>)(files);
-        return res;
+      if (props.multiple) {
+        return props.uploader(files);
       }
-      const single = await (uploader as (f: File) => Promise<UploadedFile>)(files[0]);
+      const firstFile = files[0];
+      if (firstFile === undefined) {
+        return [];
+      }
+      const single = await props.uploader(firstFile);
       return [single];
     },
-    [uploader, multiple],
+    [props],
   );
 
   // ----- 통합 리스트 상태 (기존 + 신규) -----
@@ -160,16 +165,13 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
   );
   const currentIds = useMemo(() => [...existingIds, ...pendingIds], [existingIds, pendingIds]);
 
-  // order를 현재 아이템에 맞게 보정(유지 가능한 건 유지, 새로 생긴 건 뒤에 추가)
-  useEffect(() => {
-    setOrder((prev) => {
-      if (!prev || prev.length === 0) return currentIds;
-      const set = new Set(currentIds);
-      const kept = prev.filter((id) => set.has(id));
-      const missing = currentIds.filter((id) => !prev.includes(id));
-      return [...kept, ...missing];
-    });
-  }, [currentIds]);
+  // 현재 아이템을 기준으로 저장된 정렬 순서를 보정한다.
+  const reconciledOrder = useMemo(() => {
+    const currentIdSet = new Set(currentIds);
+    const kept = order.filter((id) => currentIdSet.has(id));
+    const missing = currentIds.filter((id) => !order.includes(id));
+    return [...kept, ...missing];
+  }, [currentIds, order]);
 
   // 화면에 뿌릴 통합 아이템
   type UnifiedItem = {
@@ -207,8 +209,11 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
   }, [urls, mode, pendingFiles, pendingPreviewUrls]);
 
   const unifiedItems: UnifiedItem[] = useMemo(
-    () => order.map((id) => idToItem.get(id)).filter(Boolean) as UnifiedItem[],
-    [order, idToItem],
+    () =>
+      reconciledOrder
+        .map((id) => idToItem.get(id))
+        .filter((item): item is UnifiedItem => item !== undefined),
+    [reconciledOrder, idToItem],
   );
 
   const totalCount = urls.length + (mode === "lazy" ? pendingFiles.length : 0);
@@ -278,7 +283,7 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const handleDragStart = (e: DragStartEvent) => {
-    setActiveId(e.active.id as string);
+    setActiveId(e.active.id);
   };
 
   const handleDragEndUnified = (e: DragEndEvent) => {
@@ -286,18 +291,18 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
     setActiveId(null);
     if (!over || active.id === over.id) return;
 
-    const oldIndex = order.indexOf(active.id as string);
-    const newIndex = order.indexOf(over.id as string);
+    const oldIndex = reconciledOrder.indexOf(active.id);
+    const newIndex = reconciledOrder.indexOf(over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    const newOrder = arrayMove(order, oldIndex, newIndex);
+    const newOrder = arrayMove(reconciledOrder, oldIndex, newIndex);
     setOrder(newOrder);
 
     // 1) 기존 url의 새로운 순서 계산 → 외부 onChange
     const nextUrls = newOrder
       .filter((id) => id.startsWith("exist:"))
       .map((id) => id.slice("exist:".length));
-    onChange(e, { value: nextUrls as any });
+    emitChange(e, nextUrls);
 
     // 2) pendingFiles의 새로운 순서 계산
     if (mode === "lazy") {
@@ -305,7 +310,7 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
       const nextPending = newOrder
         .filter((id) => id.startsWith("new:"))
         .map((id) => keyToFile.get(id))
-        .filter(Boolean) as File[];
+        .filter((file): file is File => file !== undefined);
       setPendingFiles(nextPending);
     }
   };
@@ -323,15 +328,13 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
       // order 순서대로 exist/new를 펼쳐서 최종 next 생성
       let upIdx = 0;
       const next: string[] = [];
-      for (const id of order) {
+      for (const id of reconciledOrder) {
         if (id.startsWith("exist:")) next.push(id.slice("exist:".length));
         else if (id.startsWith("new:")) next.push(uploadedUrls[upIdx++] ?? "");
       }
       const cleaned = next.filter(Boolean);
 
-      onChange({} as any, {
-        value: (multiple ? cleaned : cleaned.slice(0, 1)) as any,
-      });
+      emitChange(new CustomEvent("app:image-uploader/commit"), cleaned);
       setPendingFiles([]);
       return multiple ? cleaned : cleaned.slice(0, 1);
     } catch (err) {
@@ -341,22 +344,13 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
     } finally {
       setLoading(false);
     }
-  }, [mode, multiple, pendingFiles, urls, order, onChange, uploadNormalized]);
+  }, [mode, multiple, pendingFiles, urls, reconciledOrder, emitChange, uploadNormalized]);
 
   // 업로드 후 next를 계산해서 onChange 호출 + done(next)로 반환
   useEffect(() => {
-    const listener = async (ev: Event) => {
-      const { channel, done } =
-        (
-          ev as CustomEvent<{
-            channel: string;
-            done: (v: string[]) => void;
-          }>
-        ).detail || {};
-
-      if (channel !== "image-uploader") return;
-
-      handleCommit().then(done);
+    const listener = (event: Event) => {
+      if (!(event instanceof ImageUploaderCommitEvent)) return;
+      handleCommit().then(event.detail.done);
     };
 
     document.addEventListener("app:image-uploader/commit", listener);
@@ -385,7 +379,7 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
         onClick={handlePickButton}
         disabled={
           (maxSize !== undefined && totalCount >= maxSize) ||
-          (multiple === false && (urls.length > 0 || pendingFiles.length > 0))
+          (!multiple && (urls.length > 0 || pendingFiles.length > 0))
         }
         loading={loading}
       >
@@ -482,7 +476,7 @@ export function UploadedImage({
       ref={setNodeRef}
       onClick={handleImgClick}
     >
-      {preview ? <img src={src} /> : <span>{name ?? ""}</span>}
+      {preview ? <img src={src} alt={name ?? ""} /> : <span>{name ?? ""}</span>}
       <ButtonGroup size="mini" className="buttons">
         {handle && <Button color="blue" icon="grab" {...listeners} {...attributes}></Button>}
         <Button

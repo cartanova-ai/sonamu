@@ -1,81 +1,76 @@
-/* oxlint-disable @typescript-eslint/no-explicit-any */ // 동적 라우트 로드에서 any 허용
-
-import { last, set } from "radashi";
-import React from "react";
-import { type ComponentType } from "react";
+import { last } from "radashi";
+import React, { type ComponentType } from "react";
 import { Route } from "react-router-dom";
 
-type ModulePromise = () => Promise<{ default: ComponentType<any> }>;
-type ModulesObject = {
-  [key: string]:
-    | ModulesObject
-    | {
-        path: string;
-        module:
-          | ModulePromise
-          | Promise<{ default: ComponentType<any> }>
-          | { default: ComponentType<any> };
-      };
+type RouteModule = {
+  default: ComponentType<any>;
 };
 
-export function loadDynamicRoutes(modules: Record<string, () => unknown>): JSX.Element[] {
-  const keys = Object.keys(modules);
+type RouteModuleLoader = () => Promise<RouteModule>;
 
-  const modulesObject = keys.reduce((result, key) => {
-    const p = key
+type RoutePage = {
+  path: string;
+  load: RouteModuleLoader;
+};
+
+type RouteNode = {
+  children: Map<string, RouteNode>;
+  page?: RoutePage;
+};
+
+function createRouteNode(): RouteNode {
+  return { children: new Map() };
+}
+
+function renderRouteNode(node: RouteNode): React.ReactElement[] {
+  return Array.from(node.children.entries()).map(([key, childNode]) => {
+    if (childNode.page !== undefined) {
+      const Page = React.lazy(childNode.page.load);
+      const element = <Page />;
+
+      return childNode.page.path === "index" ? (
+        <Route key={key} index element={element} />
+      ) : (
+        <Route key={key} path={childNode.page.path} element={element} />
+      );
+    }
+
+    return (
+      <Route path={key} key={key}>
+        {renderRouteNode(childNode)}
+      </Route>
+    );
+  });
+}
+
+export function loadDynamicRoutes(
+  modules: Record<string, RouteModuleLoader>,
+): React.ReactElement[] {
+  const root = createRouteNode();
+
+  for (const [modulePath, load] of Object.entries(modules)) {
+    const pathParts = modulePath
       .replace(/^\.\/pages\//, "")
       .replace(/\.tsx$/, "")
       .split("/");
-    if ((last(p) ?? "").startsWith("_")) {
-      return result;
+    const routePath = last(pathParts);
+
+    if (routePath === undefined || routePath.startsWith("_")) {
+      continue;
     }
-    return set(result, p.join("."), {
-      path: last(p),
-      module: modules[key],
-    });
-  }, {} as ModulesObject);
 
-  const renderModulesObject = (obj: ModulesObject) => {
-    return Object.entries(obj).map(([key, child]) => {
-      if (
-        // react-sui deprecated 예정이라 won't fix
-        child.hasOwnProperty("module") &&
-        typeof child.module === "function"
-      ) {
-        const Page = React.lazy(child.module);
-        const element = <Page />;
-
-        const prop =
-          child.path === "index"
-            ? {
-                index: true,
-              }
-            : {
-                path: child.path as string,
-              };
-        return <Route key={key} {...prop} element={element} />;
-      } else if (child.module && typeof child.module === "object") {
-        const Page = (child.module as { default: ComponentType<any> }).default;
-        const element = <Page />;
-
-        const prop =
-          child.path === "index"
-            ? {
-                index: true,
-              }
-            : {
-                path: child.path as string,
-              };
-        return <Route key={key} {...prop} element={element} />;
-      } else {
-        return (
-          <Route path={key} key={key}>
-            {renderModulesObject(child as ModulesObject)}
-          </Route>
-        );
+    let node = root;
+    for (const pathPart of pathParts) {
+      let childNode = node.children.get(pathPart);
+      if (childNode === undefined) {
+        childNode = createRouteNode();
+        node.children.set(pathPart, childNode);
       }
-    });
-  };
+      node = childNode;
+    }
 
-  return renderModulesObject(modulesObject);
+    node.page = { path: routePath, load };
+  }
+
+  return renderRouteNode(root);
 }
