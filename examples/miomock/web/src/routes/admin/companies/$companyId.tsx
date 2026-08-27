@@ -1,6 +1,6 @@
 import { datetimeF } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
-import z from "zod";
+import { z } from "zod";
 
 import { SD } from "@/i18n/sd.generated";
 import { CompanyService } from "@/services/services.generated";

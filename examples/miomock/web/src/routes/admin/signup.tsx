@@ -37,7 +37,7 @@ function SignupPage() {
     setError("");
 
     if (password !== confirmPassword) {
-      setError(SD("signup.passwordMismatch") as string);
+      setError(SD("signup.passwordMismatch"));
       return;
     }
 

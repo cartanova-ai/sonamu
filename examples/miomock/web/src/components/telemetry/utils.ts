@@ -74,25 +74,25 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
 }
 
-export const LEVEL_COLOR: Record<EventLevel, string> = {
+export const LEVEL_COLOR = {
   debug: "text-muted-foreground bg-muted/50 border-muted",
   info: "text-blue-700 bg-blue-50 border-blue-200",
   warn: "text-amber-700 bg-amber-50 border-amber-200",
   error: "text-rose-700 bg-rose-50 border-rose-200",
-};
+} satisfies Record<EventLevel, string>;
 
-export const LEVEL_DOT: Record<EventLevel, string> = {
+export const LEVEL_DOT = {
   debug: "bg-gray-400",
   info: "bg-blue-500",
   warn: "bg-amber-500",
   error: "bg-rose-500",
-};
+} satisfies Record<EventLevel, string>;
 
-export const METRIC_KIND_COLOR: Record<MetricKind, string> = {
+export const METRIC_KIND_COLOR = {
   counter: "text-emerald-700 bg-emerald-50 border-emerald-200",
   histogram: "text-violet-700 bg-violet-50 border-violet-200",
   gauge: "text-sky-700 bg-sky-50 border-sky-200",
-};
+} satisfies Record<MetricKind, string>;
 
 export function uniqueByName<T extends { name?: string; operationName?: string }>(items: T[]): T[] {
   const seen = new Set<string>();

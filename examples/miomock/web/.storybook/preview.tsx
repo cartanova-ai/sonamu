@@ -11,6 +11,7 @@ import {
 import { Agentation } from "agentation";
 import { Provider as JotaiProvider, createStore } from "jotai";
 import { useEffect, useMemo } from "react";
+import { z } from "zod";
 
 import { SonamuProvider } from "@/contexts/sonamu-provider";
 import { SUPPORTED_LOCALES, setLocale } from "@/i18n/sd.generated";
@@ -21,8 +22,7 @@ import "../src/styles/tailwind.css";
 
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (input, init) => {
-  const url =
-    typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+  const url = input instanceof Request ? input.url : input.toString();
   if (url.includes("/api/auth/get-session")) {
     return new Response(JSON.stringify(null), {
       status: 200,
@@ -33,11 +33,8 @@ globalThis.fetch = async (input, init) => {
 };
 
 const withProviders: Decorator = (Story, ctx) => {
-  const pathname = (ctx.parameters.router?.pathname as string) ?? "/admin";
-  const localeParam = (ctx.globals.locale as string) ?? "ko";
-  const locale: SupportedLocale = SUPPORTED_LOCALES.includes(localeParam as SupportedLocale)
-    ? (localeParam as SupportedLocale)
-    : "ko";
+  const pathname = z.string().catch("/admin").parse(ctx.parameters.router?.pathname);
+  const locale: SupportedLocale = z.enum(SUPPORTED_LOCALES).catch("ko").parse(ctx.globals.locale);
 
   useEffect(() => {
     setLocale(locale);
@@ -66,8 +63,7 @@ const withProviders: Decorator = (Story, ctx) => {
       routeTree: rootRoute.addChildren([splatRoute]),
       history: createMemoryHistory({ initialEntries: [pathname] }),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Story closure는 ctx.id로 식별
-  }, [pathname, ctx.id]);
+  }, [pathname, ctx.id, Story]);
 
   return (
     <QueryClientProvider client={queryClient}>

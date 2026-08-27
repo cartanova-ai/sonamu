@@ -106,7 +106,7 @@ export function TraceWaterfall({
 }
 
 function layoutSpans(spans: SpanRecord[]): TraceItem[] {
-  const sorted = [...spans].sort((a, b) => a.timestamp - b.timestamp);
+  const sorted = spans.toSorted((a, b) => a.timestamp - b.timestamp);
   const byId = new Map<string, SpanRecord>();
   for (const span of sorted) {
     if (span.spanId) byId.set(span.spanId, span);

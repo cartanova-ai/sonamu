@@ -36,12 +36,14 @@ import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
+import { translateFilterEnumKey } from "@/admin-common/filter-utils";
 import { SD } from "@/i18n/sd.generated";
 import { TagService } from "@/services/services.generated";
 import {
   TagBaseSchema,
   TagOrderBy,
   TagOrderByLabel,
+  type TagSubsetA,
   TagSearchField,
   TagSearchFieldLabel,
 } from "@/services/sonamu.generated";
@@ -55,6 +57,48 @@ export const Route = createFileRoute("/admin/tags/")({
 });
 
 type TagListProps = {};
+
+function createTagColumns(
+  onEdit: (id: number) => void,
+  onDelete: (id: number) => void,
+): TableCol<TagSubsetA>[] {
+  return [
+    {
+      label: "ID",
+      tc: (row) => <>{row.id}</>,
+      fit: true,
+      align: "center",
+    },
+    {
+      label: SD("common.createdAt"),
+      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
+      fit: true,
+    },
+    {
+      label: SD("entity.Tag.name"),
+      tc: (row) => <>{row.name}</>,
+    },
+    {
+      label: SD("entity.Tag.name_ko"),
+      tc: (row) => <>{row.name_ko}</>,
+    },
+    {
+      label: SD("entity.Tag.name_en"),
+      tc: (row) => <>{row.name_en}</>,
+    },
+    {
+      label: SD("common.manage"),
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button variant="yellow" size="xs" icon={<EditIcon />} onClick={() => onEdit(row.id)} />
+          <Button variant="red" size="xs" icon={<TrashIcon />} onClick={() => onDelete(row.id)} />
+        </div>
+      ),
+    },
+  ];
+}
 
 function TagList({}: TagListProps) {
   const navigate = useNavigate();
@@ -87,53 +131,10 @@ function TagList({}: TagListProps) {
   };
 
   // 컬럼 정의
-  type TagRow = NonNullable<typeof rows>[number];
-  const columns: TableCol<TagRow>[] = [
-    {
-      label: "ID",
-      tc: (row) => <>{row.id}</>,
-      fit: true,
-      align: "center",
-    },
-    {
-      label: SD("common.createdAt"),
-      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
-      fit: true,
-    },
-    {
-      label: SD("entity.Tag.name"),
-      tc: (row) => <>{row.name}</>,
-    },
-    {
-      label: SD("entity.Tag.name_ko"),
-      tc: (row) => <>{row.name_ko}</>,
-    },
-    {
-      label: SD("entity.Tag.name_en"),
-      tc: (row) => <>{row.name_en}</>,
-    },
-    {
-      label: SD("common.manage"),
-      fit: true,
-      align: "center",
-      tc: (row) => (
-        <div className="flex items-center justify-center gap-1">
-          <Button
-            variant="yellow"
-            size="xs"
-            icon={<EditIcon />}
-            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
-          />
-          <Button
-            variant="red"
-            size="xs"
-            icon={<TrashIcon />}
-            onClick={() => handleDeleteClick(row.id)}
-          />
-        </div>
-      ),
-    },
-  ];
+  const columns = createTagColumns(
+    (id) => navigate({ to: `${PAGE.route}/form`, search: { id } }),
+    (id) => handleDeleteClick(id),
+  );
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -220,10 +221,7 @@ function TagList({}: TagListProps) {
                     </Button>
                     <SonamuFilterPopover
                       rules={appliedRules}
-                      fieldMeta={extractFieldMetaFromSchema(
-                        TagBaseSchema,
-                        SD as (key: string) => string,
-                      )}
+                      fieldMeta={extractFieldMetaFromSchema(TagBaseSchema, translateFilterEnumKey)}
                     >
                       <Button
                         variant="outline"

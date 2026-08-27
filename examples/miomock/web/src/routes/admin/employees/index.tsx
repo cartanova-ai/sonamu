@@ -36,6 +36,7 @@ import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
+import { translateFilterEnumKey } from "@/admin-common/filter-utils";
 import { SD } from "@/i18n/sd.generated";
 import { EmployeeListParams } from "@/services/employee/employee.types";
 import { EmployeeService } from "@/services/services.generated";
@@ -43,6 +44,7 @@ import {
   EmployeeBaseSchema,
   EmployeeOrderBy,
   EmployeeOrderByLabel,
+  type EmployeeSubsetA,
   EmployeeSearchField,
   EmployeeSearchFieldLabel,
 } from "@/services/sonamu.generated";
@@ -59,39 +61,11 @@ export const Route = createFileRoute("/admin/employees/")({
 
 type EmployeeListProps = {};
 
-function EmployeeList({}: EmployeeListProps) {
-  const navigate = useNavigate();
-
-  // 상태 관리
-  const [selectedItems, setSelectedItems] = useState(new Set());
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
-  const [filterModalOpen, setFilterModalOpen] = useState(false);
-  const [appliedRules, setAppliedRules] = useState<Rule[]>([]);
-
-  // 리스트 필터
-  const { listParams, register, setListParams } = useListParams(EmployeeListParams, {
-    num: 10,
-    page: 1,
-    keyword: "",
-    search: EmployeeSearchField.options[0],
-    orderBy: EmployeeOrderBy.options[0],
-    sonamuFilter: {},
-  });
-
-  // 리스트 쿼리
-  const { data, refetch, isLoading } = EmployeeService.useEmployees("A", listParams);
-  const { rows, total } = data ?? {};
-
-  // 현재 경로와 타이틀
-  const PAGE = {
-    route: "/admin/employees",
-    title: SD("entity.list")(SD("entity.Employee")),
-  };
-
-  // 컬럼 정의
-  type EmployeeRow = NonNullable<typeof rows>[number];
-  const columns: TableCol<EmployeeRow>[] = [
+function createEmployeeColumns(
+  onEdit: (id: number) => void,
+  onDelete: (id: number) => void,
+): TableCol<EmployeeSubsetA>[] {
+  return [
     {
       label: "ID",
       tc: (row) => <>{row.id}</>,
@@ -134,22 +108,49 @@ function EmployeeList({}: EmployeeListProps) {
       align: "center",
       tc: (row) => (
         <div className="flex items-center justify-center gap-1">
-          <Button
-            variant="yellow"
-            size="xs"
-            icon={<EditIcon />}
-            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
-          />
-          <Button
-            variant="red"
-            size="xs"
-            icon={<TrashIcon />}
-            onClick={() => handleDeleteClick(row.id)}
-          />
+          <Button variant="yellow" size="xs" icon={<EditIcon />} onClick={() => onEdit(row.id)} />
+          <Button variant="red" size="xs" icon={<TrashIcon />} onClick={() => onDelete(row.id)} />
         </div>
       ),
     },
   ];
+}
+
+function EmployeeList({}: EmployeeListProps) {
+  const navigate = useNavigate();
+
+  // 상태 관리
+  const [selectedItems, setSelectedItems] = useState(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [appliedRules, setAppliedRules] = useState<Rule[]>([]);
+
+  // 리스트 필터
+  const { listParams, register, setListParams } = useListParams(EmployeeListParams, {
+    num: 10,
+    page: 1,
+    keyword: "",
+    search: EmployeeSearchField.options[0],
+    orderBy: EmployeeOrderBy.options[0],
+    sonamuFilter: {},
+  });
+
+  // 리스트 쿼리
+  const { data, refetch, isLoading } = EmployeeService.useEmployees("A", listParams);
+  const { rows, total } = data ?? {};
+
+  // 현재 경로와 타이틀
+  const PAGE = {
+    route: "/admin/employees",
+    title: SD("entity.list")(SD("entity.Employee")),
+  };
+
+  // 컬럼 정의
+  const columns = createEmployeeColumns(
+    (id) => navigate({ to: `${PAGE.route}/form`, search: { id } }),
+    (id) => handleDeleteClick(id),
+  );
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -238,7 +239,7 @@ function EmployeeList({}: EmployeeListProps) {
                       rules={appliedRules}
                       fieldMeta={extractFieldMetaFromSchema(
                         EmployeeBaseSchema,
-                        SD as (key: string) => string,
+                        translateFilterEnumKey,
                       )}
                     >
                       <Button

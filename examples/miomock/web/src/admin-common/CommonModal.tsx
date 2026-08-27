@@ -4,7 +4,7 @@ import type React from "react";
 import { useEffect } from "react";
 
 type ExtendedDialogProps = {
-  onCompleted?: (data?: unknown) => void;
+  onCompleted?: () => void;
   onControlledOpen?: () => void;
   onControlledClose?: () => void;
   className?: string;
@@ -56,10 +56,10 @@ export function useCommonModal() {
   const [atomValue, setAtomValue] = useAtom(commonModalAtom);
   const { open, reactNode, onCompleted, onControlledClose } = atomValue;
 
-  const openModal = (reactNode: React.ReactNode, props?: ExtendedDialogProps) => {
+  const openModal = (content: React.ReactNode, props?: ExtendedDialogProps) => {
     setAtomValue({
       open: true,
-      reactNode,
+      reactNode: content,
       ...props,
     });
   };
@@ -74,10 +74,10 @@ export function useCommonModal() {
     }
   };
 
-  const doneModal = (data?: unknown) => {
+  const doneModal = () => {
     closeModal();
     if (onCompleted) {
-      onCompleted(data);
+      onCompleted();
     }
   };
 

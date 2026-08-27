@@ -41,7 +41,7 @@ export function EventsView({ records }: EventsViewProps) {
   };
 
   const levelDistribution = useMemo(() => {
-    const counts: Record<EventLevel, number> = { debug: 0, info: 0, warn: 0, error: 0 };
+    const counts = { debug: 0, info: 0, warn: 0, error: 0 };
     for (const e of events) counts[e.level] += 1;
     return counts;
   }, [events]);
@@ -59,7 +59,7 @@ export function EventsView({ records }: EventsViewProps) {
         map.set(e.name, { name: e.name, count: 1, lastLevel: e.level });
       }
     }
-    return [...map.values()].sort((a, b) => b.count - a.count).slice(0, 10);
+    return [...map.values()].toSorted((a, b) => b.count - a.count).slice(0, 10);
   }, [events]);
 
   const filtered = useMemo(() => {

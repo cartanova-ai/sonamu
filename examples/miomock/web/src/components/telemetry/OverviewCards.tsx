@@ -103,7 +103,6 @@ export function OverviewCards({ records, metrics }: OverviewCardsProps) {
 function collectSnapshots(records: TelemetryRecord[]): TelemetryMetricsSnapshot[] {
   return records
     .filter(isMetricRecord)
-    .filter((m) => m.kind === "gauge" && m.snapshot)
-    .map((m) => m.snapshot as TelemetryMetricsSnapshot)
-    .sort((a, b) => a.timestamp - b.timestamp);
+    .flatMap((m) => (m.kind === "gauge" && m.snapshot ? [m.snapshot] : []))
+    .toSorted((a, b) => a.timestamp - b.timestamp);
 }

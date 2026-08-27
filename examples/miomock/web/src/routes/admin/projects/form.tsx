@@ -73,9 +73,9 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   }, [id, setForm]);
 
   const saveMutation = ProjectService.useSaveMutation();
-  const handleSubmit = submit(async (form) => {
+  const handleSubmit = submit(async (submittedForm) => {
     saveMutation.mutate(
-      { spa: [form] },
+      { spa: [submittedForm] },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({

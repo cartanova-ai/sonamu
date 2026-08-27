@@ -39,7 +39,7 @@ export function DepartmentSearchInput({
         labels={DepartmentSearchFieldLabel}
         value={dropdownProps.value}
         onValueChange={(value) => {
-          dropdownProps.onValueChange?.(value as string | null | undefined);
+          if (!Array.isArray(value)) dropdownProps.onValueChange?.(value);
         }}
         placeholder={SD("common.search")}
         className="w-[150px] h-8"

@@ -36,6 +36,7 @@ import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
+import { translateFilterEnumKey } from "@/admin-common/filter-utils";
 import { SD } from "@/i18n/sd.generated";
 import { DepartmentListParams } from "@/services/department/department.types";
 import { DepartmentService } from "@/services/services.generated";
@@ -43,6 +44,7 @@ import {
   DepartmentBaseSchema,
   DepartmentOrderBy,
   DepartmentOrderByLabel,
+  type DepartmentSubsetA,
   DepartmentSearchField,
   DepartmentSearchFieldLabel,
 } from "@/services/sonamu.generated";
@@ -58,6 +60,56 @@ export const Route = createFileRoute("/admin/departments/")({
 });
 
 type DepartmentListProps = {};
+
+function createDepartmentColumns(
+  onEdit: (id: number) => void,
+  onDelete: (id: number) => void,
+): TableCol<DepartmentSubsetA>[] {
+  return [
+    {
+      label: "ID",
+      tc: (row) => <>{row.id}</>,
+      fit: true,
+      align: "center",
+    },
+    {
+      label: SD("common.createdAt"),
+      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
+      fit: true,
+    },
+    {
+      label: SD("entity.Department.name"),
+      tc: (row) => <>{row.name}</>,
+    },
+    {
+      label: SD("entity.Department.employee_count"),
+      tc: (row) => <>{numF(row.employee_count)}</>,
+    },
+    {
+      label: SD("entity.Department.company"),
+      tc: (row) => <>{row.company.name}</>,
+    },
+    {
+      label: SD("entity.Department.parent"),
+      tc: (row) => <>{row.parent?.name}</>,
+    },
+    {
+      label: SD("entity.Department.employees"),
+      tc: () => <>{/* array row.employees */}</>,
+    },
+    {
+      label: SD("common.manage"),
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button variant="yellow" size="xs" icon={<EditIcon />} onClick={() => onEdit(row.id)} />
+          <Button variant="red" size="xs" icon={<TrashIcon />} onClick={() => onDelete(row.id)} />
+        </div>
+      ),
+    },
+  ];
+}
 
 function DepartmentList({}: DepartmentListProps) {
   const navigate = useNavigate();
@@ -90,61 +142,10 @@ function DepartmentList({}: DepartmentListProps) {
   };
 
   // 컬럼 정의
-  type DepartmentRow = NonNullable<typeof rows>[number];
-  const columns: TableCol<DepartmentRow>[] = [
-    {
-      label: "ID",
-      tc: (row) => <>{row.id}</>,
-      fit: true,
-      align: "center",
-    },
-    {
-      label: SD("common.createdAt"),
-      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
-      fit: true,
-    },
-    {
-      label: SD("entity.Department.name"),
-      tc: (row) => <>{row.name}</>,
-    },
-    {
-      label: SD("entity.Department.employee_count"),
-      tc: (row) => <>{numF(row.employee_count)}</>,
-    },
-    {
-      label: SD("entity.Department.company"),
-      tc: (row) => <>{row.company.name}</>,
-    },
-    {
-      label: SD("entity.Department.parent"),
-      tc: (row) => <>{row.parent?.name}</>,
-    },
-    {
-      label: SD("entity.Department.employees"),
-      tc: (_row) => <>{/* array row.employees */}</>,
-    },
-    {
-      label: SD("common.manage"),
-      fit: true,
-      align: "center",
-      tc: (row) => (
-        <div className="flex items-center justify-center gap-1">
-          <Button
-            variant="yellow"
-            size="xs"
-            icon={<EditIcon />}
-            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
-          />
-          <Button
-            variant="red"
-            size="xs"
-            icon={<TrashIcon />}
-            onClick={() => handleDeleteClick(row.id)}
-          />
-        </div>
-      ),
-    },
-  ];
+  const columns = createDepartmentColumns(
+    (id) => navigate({ to: `${PAGE.route}/form`, search: { id } }),
+    (id) => handleDeleteClick(id),
+  );
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -233,7 +234,7 @@ function DepartmentList({}: DepartmentListProps) {
                       rules={appliedRules}
                       fieldMeta={extractFieldMetaFromSchema(
                         DepartmentBaseSchema,
-                        SD as (key: string) => string,
+                        translateFilterEnumKey,
                       )}
                     >
                       <Button

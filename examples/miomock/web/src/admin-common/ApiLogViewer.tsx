@@ -1,7 +1,5 @@
-/* oxlint-disable @typescript-eslint/no-explicit-any */ // axios 사용 시 타입 추론 어려우므로 허용
-
 import { Button, Card, CardContent, CardHeader } from "@sonamu-kit/react-components/components";
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
 import { useEffect, useRef, useState } from "react";
 import TrashIcon from "~icons/lucide/trash-2";
 
@@ -9,19 +7,19 @@ type ApiLog = {
   id: string;
   method: string;
   url: string;
-  requestHeaders?: Record<string, any>;
-  requestBody?: any;
-  requestQuery?: Record<string, any>;
+  requestHeaders?: string;
+  requestBody?: string;
+  requestQuery?: string;
   responseStatus?: number;
-  responseHeaders?: Record<string, any>;
-  responseBody?: any;
+  responseHeaders?: string;
+  responseBody?: string;
   duration?: number;
   timestamp: number;
 };
 
 export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
   const [apiLogs, setApiLogs] = useState<ApiLog[]>([]);
-  const requestStartTimes = useRef(new Map());
+  const requestMetadata = useRef(new WeakMap<object, { logId: string; startTime: number }>());
 
   // Axios interceptor 설정
   useEffect(() => {
@@ -29,15 +27,20 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
       (config) => {
         const logId = `${Date.now()}-${Math.random()}`;
         const startTime = Date.now();
-        requestStartTimes.current.set(logId, startTime);
+        requestMetadata.current.set(config, { logId, startTime });
 
         const log: ApiLog = {
           id: logId,
           method: config.method?.toUpperCase() || "GET",
           url: config.url || "",
-          requestHeaders: config.headers as Record<string, any>,
-          requestBody: config.data,
-          requestQuery: config.params,
+          requestHeaders: JSON.stringify(config.headers, null, 2),
+          requestBody:
+            config.data === undefined
+              ? undefined
+              : config.data instanceof Object
+                ? JSON.stringify(config.data, null, 2)
+                : String(config.data),
+          requestQuery: JSON.stringify(config.params, null, 2),
           timestamp: startTime,
         };
 
@@ -47,8 +50,6 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
         }
 
         setApiLogs((prev) => [log, ...prev]);
-        (config as any).__logId = logId;
-
         return config;
       },
       (error) => {
@@ -58,19 +59,24 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
 
     const responseInterceptor = axios.interceptors.response.use(
       (response) => {
-        const logId = (response.config as any).__logId;
-        const startTime = requestStartTimes.current.get(logId);
-        const duration = startTime ? Date.now() - startTime : undefined;
-        requestStartTimes.current.delete(logId);
+        const metadata = requestMetadata.current.get(response.config);
+        const logId = metadata?.logId;
+        const duration = metadata ? Date.now() - metadata.startTime : undefined;
+        requestMetadata.current.delete(response.config);
 
         setApiLogs((prev) =>
           prev.map((log) =>
-            log.id === logId
+            logId && log.id === logId
               ? {
                   ...log,
                   responseStatus: response.status,
-                  responseHeaders: response.headers as Record<string, any>,
-                  responseBody: response.data,
+                  responseHeaders: JSON.stringify(response.headers, null, 2),
+                  responseBody:
+                    response.data === undefined
+                      ? undefined
+                      : response.data instanceof Object
+                        ? JSON.stringify(response.data, null, 2)
+                        : String(response.data),
                   duration,
                 }
               : log,
@@ -80,12 +86,11 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
         return response;
       },
       (error) => {
-        const logId = error.config?.__logId;
-        const startTime = logId ? requestStartTimes.current.get(logId) : undefined;
-        const duration = startTime ? Date.now() - startTime : undefined;
-        if (logId) {
-          requestStartTimes.current.delete(logId);
-        }
+        const config = isAxiosError(error) ? error.config : undefined;
+        const metadata = config ? requestMetadata.current.get(config) : undefined;
+        const logId = metadata?.logId;
+        const duration = metadata ? Date.now() - metadata.startTime : undefined;
+        if (config) requestMetadata.current.delete(config);
 
         if (logId) {
           setApiLogs((prev) =>
@@ -93,9 +98,19 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
               log.id === logId
                 ? {
                     ...log,
-                    responseStatus: error.response?.status,
-                    responseHeaders: error.response?.headers,
-                    responseBody: error.response?.data,
+                    responseStatus: isAxiosError(error) ? error.response?.status : undefined,
+                    responseHeaders:
+                      isAxiosError(error) && error.response
+                        ? JSON.stringify(error.response.headers, null, 2)
+                        : undefined,
+                    responseBody:
+                      isAxiosError(error) && error.response
+                        ? error.response.data === undefined
+                          ? undefined
+                          : error.response.data instanceof Object
+                            ? JSON.stringify(error.response.data, null, 2)
+                            : String(error.response.data)
+                        : undefined,
                     duration,
                   }
                 : log,
@@ -177,7 +192,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                   )}
                 </div>
 
-                {!bodyOnly && log.requestHeaders && Object.keys(log.requestHeaders).length > 0 && (
+                {!bodyOnly && log.requestHeaders && log.requestHeaders !== "{}" && (
                   <div style={{ marginBottom: "0.5em" }}>
                     <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>Request Headers:</div>
                     <pre
@@ -189,12 +204,12 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                         overflowX: "auto",
                       }}
                     >
-                      {JSON.stringify(log.requestHeaders, null, 2)}
+                      {log.requestHeaders}
                     </pre>
                   </div>
                 )}
 
-                {!bodyOnly && log.requestQuery && Object.keys(log.requestQuery).length > 0 && (
+                {!bodyOnly && log.requestQuery && log.requestQuery !== "{}" && (
                   <div style={{ marginBottom: "0.5em" }}>
                     <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>Query Params:</div>
                     <pre
@@ -206,7 +221,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                         overflowX: "auto",
                       }}
                     >
-                      {JSON.stringify(log.requestQuery, null, 2)}
+                      {log.requestQuery}
                     </pre>
                   </div>
                 )}
@@ -225,33 +240,29 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                         wordBreak: "break-all",
                       }}
                     >
-                      {typeof log.requestBody === "string"
-                        ? log.requestBody
-                        : JSON.stringify(log.requestBody, null, 2)}
+                      {log.requestBody}
                     </pre>
                   </div>
                 )}
 
-                {!bodyOnly &&
-                  log.responseHeaders &&
-                  Object.keys(log.responseHeaders).length > 0 && (
-                    <div style={{ marginBottom: "0.5em" }}>
-                      <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>
-                        Response Headers:
-                      </div>
-                      <pre
-                        style={{
-                          margin: 0,
-                          padding: "0.5em",
-                          backgroundColor: "#252526",
-                          borderRadius: "4px",
-                          overflowX: "auto",
-                        }}
-                      >
-                        {JSON.stringify(log.responseHeaders, null, 2)}
-                      </pre>
+                {!bodyOnly && log.responseHeaders && log.responseHeaders !== "{}" && (
+                  <div style={{ marginBottom: "0.5em" }}>
+                    <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>
+                      Response Headers:
                     </div>
-                  )}
+                    <pre
+                      style={{
+                        margin: 0,
+                        padding: "0.5em",
+                        backgroundColor: "#252526",
+                        borderRadius: "4px",
+                        overflowX: "auto",
+                      }}
+                    >
+                      {log.responseHeaders}
+                    </pre>
+                  </div>
+                )}
 
                 {log.responseBody !== undefined && (
                   <div style={{ marginBottom: "0.5em" }}>
@@ -269,9 +280,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                         overflowY: "auto",
                       }}
                     >
-                      {typeof log.responseBody === "string"
-                        ? log.responseBody
-                        : JSON.stringify(log.responseBody, null, 2)}
+                      {log.responseBody}
                     </pre>
                   </div>
                 )}

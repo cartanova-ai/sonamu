@@ -11,7 +11,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import ArrowRightIcon from "~icons/lucide/arrow-right";
 
-import { useSonamuContext } from "@/contexts/sonamu-provider";
+import { authClient } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
 import {
   type ActivityGroup,
@@ -29,8 +29,7 @@ export const Route = createFileRoute("/admin/")({
 });
 
 function AdminIndexPage() {
-  const { auth } = useSonamuContext();
-  const session = auth.useSession();
+  const session = authClient.useSession();
   const user = session.data?.user ?? null;
   const navigate = useNavigate();
   const [period, setPeriod] = useState<ActivityPeriod>("7");
@@ -58,9 +57,9 @@ function AdminIndexPage() {
     },
   );
 
-  const handleChangePeriod = (period: ActivityPeriod) => {
-    setPeriod(period);
-    channel.send("setPeriod", { period });
+  const handleChangePeriod = (nextPeriod: ActivityPeriod) => {
+    setPeriod(nextPeriod);
+    channel.send("setPeriod", { period: nextPeriod });
   };
 
   const org = stats?.organization;
@@ -96,7 +95,7 @@ function AdminIndexPage() {
                     <strong>{SD("dashboard.role")}:</strong> {user.role}
                   </p>
                 </div>
-                <Button variant="secondary" onClick={() => auth.signOut()}>
+                <Button variant="secondary" onClick={() => authClient.signOut()}>
                   {SD("common.logout")}
                 </Button>
               </div>
@@ -430,11 +429,11 @@ function DocumentStatsPanel({
   );
 }
 
-const actionBadgeVariant: Record<string, "default" | "secondary" | "destructive"> = {
+const actionBadgeVariant = {
   create: "default",
   update: "secondary",
   delete: "destructive",
-};
+} satisfies Record<ActivityItem["action"], "default" | "secondary" | "destructive">;
 
 function relativeTime(date: Date): string {
   const now = new Date();

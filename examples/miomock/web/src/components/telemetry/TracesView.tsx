@@ -149,8 +149,8 @@ export function TracesView({ records }: TracesViewProps) {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-gray-100 max-h-[260px] overflow-auto">
-                {[...activeGroup.events]
-                  .sort((a, b) => a.timestamp - b.timestamp)
+                {activeGroup.events
+                  .toSorted((a, b) => a.timestamp - b.timestamp)
                   .map((e) => {
                     const key = getRecordKey(e);
                     const isSelected = selectedKey === key;
@@ -213,5 +213,5 @@ function buildTraceGroups(records: TelemetryRecord[]): TraceGroup[] {
       if (r.level === "error") group.errorCount += 1;
     }
   }
-  return [...map.values()].sort((a, b) => b.start - a.start);
+  return [...map.values()].toSorted((a, b) => b.start - a.start);
 }

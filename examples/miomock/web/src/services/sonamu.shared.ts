@@ -10,7 +10,7 @@ import { type InfiniteData } from "@tanstack/react-query";
 /*
   fetch
 */
-import { type AxiosRequestConfig } from "axios";
+import { type AxiosRequestConfig, isAxiosError } from "axios";
 import axios from "axios";
 import { EventSource } from "eventsource";
 import qs from "qs";
@@ -19,9 +19,25 @@ import { type core, z } from "zod";
 
 import { getCurrentLocale } from "@/i18n/sd.generated";
 
+type FormDataValue = string | number | boolean | bigint | null | undefined | Date | File | Blob | FormDataValue[] | FormDataFields;
+interface FormDataFields {
+  [key: string]: FormDataValue;
+}
+
+type QueryParamValue = string | number | boolean | null | undefined | QueryParamValue[] | QueryParams;
+interface QueryParams {
+  [key: string]: QueryParamValue;
+}
+
+interface SemanticQuery {
+  embedding: number[];
+  threshold?: number;
+  method?: "cosine" | "l2" | "inner_product";
+}
+
 // ISO 8601 및 타임존 포맷의 날짜 문자열을 Date 객체로 변환하는 reviver
 export function dateReviver(_key: string, value: any): any {
-  if (typeof value === "string") {
+  if (Object.prototype.toString.call(value) === "[object String]") {
     // ISO 8601 형식: 2024-01-15T09:30:00.000Z 또는 2024-01-15T09:30:00+09:00
     const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?$/;
 
@@ -40,7 +56,7 @@ export function dateReviver(_key: string, value: any): any {
 
 axios.defaults.transformResponse = [
   (data) => {
-    if (typeof data === "string") {
+    if (Object.prototype.toString.call(data) === "[object String]") {
       try {
         return JSON.parse(data, dateReviver);
       } catch {
@@ -63,7 +79,8 @@ export async function fetch(options: AxiosRequestConfig) {
     });
     return res.data;
   } catch (e: unknown) {
-    if (axios.isAxiosError(e) && e.response?.data) {
+    if (isAxiosError(e) && e.response?.data) {
+      // SAFETY: Sonamu error responses are produced by the API error handler with this payload.
       const d = e.response.data as {
         message: string;
         issues: core.$ZodIssue[];
@@ -75,7 +92,7 @@ export async function fetch(options: AxiosRequestConfig) {
 }
 
 export function toFormData(
-  obj: Record<string, unknown>,
+  obj: FormDataFields,
   formData = new FormData(),
   prefix = "",
 ): FormData {
@@ -88,8 +105,9 @@ export function toFormData(
       value.forEach((item, index) => {
         toFormData({ [index]: item }, formData, formKey);
       });
-    } else if (value !== null && value !== undefined && typeof value === "object") {
-      toFormData(value as Record<string, unknown>, formData, formKey); // 재귀로 펼치기
+    } else if (value !== null && value !== undefined && Object.prototype.toString.call(value) === "[object Object]") {
+      // SAFETY: the plain-object check establishes form-data fields before recursive traversal.
+      toFormData(value as FormDataFields, formData, formKey); // 재귀로 펼치기
     } else if (value !== null && value !== undefined) {
       formData.append(formKey, String(value));
     }
@@ -126,7 +144,7 @@ export function defaultCatch(e: any) {
   Isomorphic Types
 */
 // semanticQuery가 있으면 similarity를 추가하는 조건부 타입
-type WithSimilarity<LP, T> = LP extends { semanticQuery: Record<string, unknown> }
+type WithSimilarity<LP, T> = LP extends { semanticQuery: SemanticQuery }
   ? T & { similarity: number }
   : T;
 
@@ -244,16 +262,16 @@ export function getFieldPropType(
     return hasTime ? "datetime" : "date";
   }
 
-  if (typeof value === "number") {
+  if (Object.prototype.toString.call(value) === "[object Number]") {
     return "integer";
   }
 
-  if (typeof value === "boolean") {
+  if (Object.prototype.toString.call(value) === "[object Boolean]") {
     return "boolean";
   }
 
   // JSON 타입 (객체/배열)
-  if (value !== null && typeof value === "object") {
+  if (value !== null && Object.prototype.toString.call(value) === "[object Object]") {
     return "json";
   }
 
@@ -275,9 +293,9 @@ export type SonamuSemanticParams = z.infer<typeof SonamuSemanticParams>;
   Utils
 */
 export function zArrayable<T extends z.ZodTypeAny>(
-  shape: T,
+  schema: T,
 ): z.ZodUnion<readonly [T, z.ZodArray<T>]> {
-  return z.union([shape, shape.array()]);
+  return z.union([schema, schema.array()]);
 }
 
 /*
@@ -333,7 +351,7 @@ export type WebSocketChannelOptions = {
   protocols?: string | string[];
   traceProvider?: () => string | undefined;
 };
-export type WebSocketChannelState<TSend extends Record<string, any>> = {
+export type WebSocketChannelState<TSend extends object> = {
   isConnected: boolean;
   error: string | null;
   retryCount: number;
@@ -346,9 +364,9 @@ export type EventHandlers<T> = {
   [K in keyof T]?: (data: T[K]) => void;
 };
 
-export function useSSEStream<T extends Record<string, any>>(
+export function useSSEStream<T extends object>(
   url: string,
-  params: Record<string, any>,
+  params: QueryParams,
   handlers: {
     [K in keyof T]?: (data: T[K]) => void;
   },
@@ -416,7 +434,7 @@ export function useSSEStream<T extends Record<string, any>>(
         isEnded: false,
       }));
 
-      eventSource.onopen = () => {
+      eventSource.addEventListener("open", () => {
         setState((prev) => ({
           ...prev,
           isConnected: true,
@@ -424,9 +442,9 @@ export function useSSEStream<T extends Record<string, any>>(
           retryCount: 0,
           isEnded: false,
         }));
-      };
+      });
 
-      eventSource.onerror = (_event) => {
+      eventSource.addEventListener("error", () => {
         // 이미 다른 연결로 교체되었는지 확인
         if (eventSourceRef.current !== eventSource) {
           return; // 이미 새로운 연결이 있으면 무시
@@ -465,7 +483,7 @@ export function useSSEStream<T extends Record<string, any>>(
             };
           }
         });
-      };
+      });
 
       // 공통 'end' 이벤트 처리 (사용자 정의 이벤트와 별도)
       eventSource.addEventListener("end", () => {
@@ -479,15 +497,18 @@ export function useSSEStream<T extends Record<string, any>>(
             isEnded: true,
           }));
 
-          if (handlersRef.current.end) {
-            const endHandler = handlersRef.current.end;
-            endHandler("end" as T[string]);
+          // SAFETY: "end" is the reserved generated SSE event key.
+          const endHandler = handlersRef.current["end" as keyof T];
+          if (endHandler) {
+            // SAFETY: the reserved end event carries the literal "end" for generated SSE event maps.
+            endHandler("end" as T[keyof T]);
           }
         }
       });
 
       // 각 이벤트 타입별 리스너 등록
       Object.keys(handlersRef.current).forEach((eventType) => {
+        // SAFETY: eventType comes from Object.keys of this same handler map.
         const handler = handlersRef.current[eventType as keyof T];
         if (handler) {
           eventSource.addEventListener(eventType, (event) => {
@@ -511,7 +532,7 @@ export function useSSEStream<T extends Record<string, any>>(
       });
 
       // 기본 message 이벤트 처리 (event 타입이 없는 경우)
-      eventSource.onmessage = (event) => {
+      eventSource.addEventListener("message", (event) => {
         // 여전히 현재 연결인지 확인
         if (eventSourceRef.current !== eventSource) {
           return;
@@ -520,6 +541,7 @@ export function useSSEStream<T extends Record<string, any>>(
         try {
           const data = JSON.parse(event.data, dateReviver);
           // 'message' 핸들러가 있으면 호출
+          // SAFETY: "message" is the reserved key for untyped SSE messages.
           const messageHandler = handlersRef.current["message" as keyof T];
           if (messageHandler) {
             messageHandler(data);
@@ -527,7 +549,7 @@ export function useSSEStream<T extends Record<string, any>>(
         } catch (error) {
           console.error("Failed to parse SSE message:", error);
         }
-      };
+      });
     } catch (error) {
       setState((prev) => ({
         ...prev,
@@ -568,11 +590,11 @@ export function useSSEStream<T extends Record<string, any>>(
 }
 
 export function useWebSocketChannel<
-  TReceive extends Record<string, any>,
-  TSend extends Record<string, any>,
+  TReceive extends object,
+  TSend extends object,
 >(
   url: string,
-  params: Record<string, any>,
+  params: QueryParams,
   handlers: EventHandlers<TReceive>,
   options: WebSocketChannelOptions = {},
 ): WebSocketChannelState<TSend> {
@@ -675,6 +697,7 @@ export function useWebSocketChannel<
       }
 
       try {
+        // SAFETY: the WebSocket service serializes event envelopes with the registered event map.
         const payload = JSON.parse(event.data, dateReviver) as {
           event: keyof TReceive;
           data: TReceive[keyof TReceive];
@@ -795,7 +818,7 @@ function isRetryableWebSocketCloseCode(code: number): boolean {
   return ![1002, 1003, 1007, 1008, 1009].includes(code);
 }
 
-function resolveWebSocketUrl(url: string, params: Record<string, any>): string {
+function resolveWebSocketUrl(url: string, params: QueryParams): string {
   const queryString = qs.stringify(params);
   const withQuery = queryString ? `${url}?${queryString}` : url;
 
@@ -812,13 +835,13 @@ function resolveWebSocketBaseUrl(): string {
   // HTTP client와 WS client가 다른 origin으로 갈라지지 않게 axios baseURL을 우선 존중함
   if (configuredBaseUrl) {
     const absoluteBaseUrl =
-      typeof window !== "undefined"
+      globalThis.window
         ? new URL(configuredBaseUrl, window.location.origin).toString()
         : configuredBaseUrl;
     return toWebSocketBaseUrl(absoluteBaseUrl);
   }
 
-  if (typeof window !== "undefined") {
+  if (globalThis.window) {
     return toWebSocketBaseUrl(window.location.origin);
   }
 
@@ -842,9 +865,13 @@ export type PluralForms = {
   other?: string | ((n: number) => string);
 };
 
+function isPluralFunction(form: PluralForms["other"]): form is (n: number) => string {
+  return Object.prototype.toString.call(form) === "[object Function]";
+}
+
 export function plural(n: number, forms: PluralForms): string {
   const form = (n === 0 && forms.zero) || (n === 1 && forms.one) || forms.other;
-  return typeof form === "function" ? form(n) : (form ?? n.toString());
+  return isPluralFunction(form) ? form(n) : (form ?? n.toString());
 }
 
 export function createFormat(locale: string) {
@@ -914,7 +941,7 @@ export function dedupeAndFlatten<TRow extends { id?: unknown }>(
 
 // TanStack Query 결과에 수동 refresh 진입점과 새로고침 중 상태를 덧붙여 줍니다.
 // isRefreshing은 query.isFetching과 독립적으로 이 함수 호출로 발생한 새로고침에 한정됩니다.
-export function useRefreshable<T extends { refetch: () => Promise<unknown> }>(
+export function useRefreshable<T extends { refetch: () => Promise<object | void> }>(
   query: T,
 ): T & { refresh: () => Promise<void>; isRefreshing: boolean } {
   const [isRefreshing, setIsRefreshing] = useState(false);

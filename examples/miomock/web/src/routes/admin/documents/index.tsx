@@ -36,6 +36,7 @@ import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
+import { translateFilterEnumKey } from "@/admin-common/filter-utils";
 import { SD } from "@/i18n/sd.generated";
 import { DocumentListParams } from "@/services/document/document.types";
 import { DocumentService } from "@/services/services.generated";
@@ -43,6 +44,7 @@ import {
   DocumentBaseSchema,
   DocumentOrderBy,
   DocumentOrderByLabel,
+  type DocumentSubsetA,
   DocumentSearchField,
   DocumentSearchFieldLabel,
   DocumentStatusLabel,
@@ -58,34 +60,11 @@ export const Route = createFileRoute("/admin/documents/")({
   component: DocumentList,
 });
 
-function DocumentList() {
-  const navigate = useNavigate();
-
-  const [selectedItems, setSelectedItems] = useState(new Set());
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: number; title?: string } | null>(null);
-  const [filterModalOpen, setFilterModalOpen] = useState(false);
-  const [appliedRules, setAppliedRules] = useState<Rule[]>([]);
-
-  const { listParams, register, setListParams } = useListParams(DocumentListParams, {
-    num: 10,
-    page: 1,
-    keyword: "",
-    search: DocumentSearchField.options[0],
-    orderBy: DocumentOrderBy.options[0],
-    sonamuFilter: {},
-  });
-
-  const { data, refetch, isLoading } = DocumentService.useFindMany("A", listParams);
-  const { rows, total } = data ?? {};
-
-  const PAGE = {
-    route: "/admin/documents",
-    title: SD("entity.list")(SD("entity.Document")),
-  };
-
-  type DocumentRow = NonNullable<typeof rows>[number];
-  const columns: TableCol<DocumentRow>[] = [
+function createDocumentColumns(
+  onEdit: (id: number) => void,
+  onDelete: (id: number, title: string) => void,
+): TableCol<DocumentSubsetA>[] {
+  return [
     {
       label: "ID",
       tc: (row) => <>{row.id}</>,
@@ -117,22 +96,49 @@ function DocumentList() {
       align: "center",
       tc: (row) => (
         <div className="flex items-center justify-center gap-1">
-          <Button
-            variant="yellow"
-            size="xs"
-            icon={<EditIcon />}
-            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
-          />
+          <Button variant="yellow" size="xs" icon={<EditIcon />} onClick={() => onEdit(row.id)} />
           <Button
             variant="red"
             size="xs"
             icon={<TrashIcon />}
-            onClick={() => handleDeleteClick(row.id, row.title)}
+            onClick={() => onDelete(row.id, row.title)}
           />
         </div>
       ),
     },
   ];
+}
+
+function DocumentList() {
+  const navigate = useNavigate();
+
+  const [selectedItems, setSelectedItems] = useState(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ id: number; title?: string } | null>(null);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [appliedRules, setAppliedRules] = useState<Rule[]>([]);
+
+  const { listParams, register, setListParams } = useListParams(DocumentListParams, {
+    num: 10,
+    page: 1,
+    keyword: "",
+    search: DocumentSearchField.options[0],
+    orderBy: DocumentOrderBy.options[0],
+    sonamuFilter: {},
+  });
+
+  const { data, refetch, isLoading } = DocumentService.useFindMany("A", listParams);
+  const { rows, total } = data ?? {};
+
+  const PAGE = {
+    route: "/admin/documents",
+    title: SD("entity.list")(SD("entity.Document")),
+  };
+
+  const columns = createDocumentColumns(
+    (id) => navigate({ to: `${PAGE.route}/form`, search: { id } }),
+    (id, title) => handleDeleteClick(id, title),
+  );
 
   const handleToggleItem = (id: number) => {
     const newSelection = new Set(selectedItems);
@@ -217,7 +223,7 @@ function DocumentList() {
                       rules={appliedRules}
                       fieldMeta={extractFieldMetaFromSchema(
                         DocumentBaseSchema,
-                        SD as (key: string) => string,
+                        translateFilterEnumKey,
                       )}
                     >
                       <Button

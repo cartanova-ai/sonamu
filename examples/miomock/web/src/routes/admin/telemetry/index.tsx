@@ -49,11 +49,11 @@ function TelemetryPage() {
 
   const records = useMemo<TelemetryRecord[]>(() => {
     const raw = query.data?.records ?? [];
-    return [...raw].sort((a, b) => b.timestamp - a.timestamp);
+    return raw.toSorted((a, b) => b.timestamp - a.timestamp);
   }, [query.data?.records]);
 
   const ascRecords = useMemo<TelemetryRecord[]>(() => {
-    return [...records].sort((a, b) => a.timestamp - b.timestamp);
+    return records.toSorted((a, b) => a.timestamp - b.timestamp);
   }, [records]);
 
   const counts = useMemo(() => {
@@ -113,7 +113,14 @@ function TelemetryPage() {
 
         <OverviewCards records={ascRecords} metrics={query.data?.metrics} />
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+        <Tabs
+          value={tab}
+          onValueChange={(value) => {
+            if (value === "events" || value === "traces" || value === "metrics") {
+              setTab(value);
+            }
+          }}
+        >
           <Card className="shadow-sm border-border/40 overflow-hidden">
             <CardContent className="px-4 py-2.5 flex items-center justify-between gap-3">
               <TabsList className="bg-transparent p-0 h-auto gap-1">

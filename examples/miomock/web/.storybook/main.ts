@@ -9,12 +9,12 @@ const config: StorybookConfig = {
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(ts|tsx)"],
   addons: ["@storybook/addon-a11y", "@storybook/addon-docs"],
   framework: "@storybook/react-vite",
-  async viteFinal(config) {
+  async viteFinal(viteConfig) {
     const { mergeConfig } = await import("vite");
     const { default: tailwindcss } = await import("@tailwindcss/vite");
     const Icons = (await import("unplugin-icons/vite")).default;
 
-    return mergeConfig(config, {
+    return mergeConfig(viteConfig, {
       plugins: [tailwindcss(), Icons({ compiler: "jsx", jsx: "react", autoInstall: true })],
       resolve: {
         alias: {

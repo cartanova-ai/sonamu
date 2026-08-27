@@ -27,7 +27,7 @@ import { type TableCol } from "@sonamu-kit/react-components/components";
 import { datetimeF, useListParams, useTypeForm } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import z from "zod";
+import { z } from "zod";
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import ListIcon from "~icons/mdi/format-list-bulleted";
@@ -41,11 +41,85 @@ import { FileService } from "@/services/services.generated";
 import {
   FileOrderBy,
   FileOrderByLabel,
+  type FileSubsetA,
   FileSearchField,
   FileSearchFieldLabel,
 } from "@/services/sonamu.generated";
 import { SonamuFileSchema } from "@/services/sonamu.shared";
 import { type SonamuFile } from "@/services/sonamu.shared";
+
+type InlineUploadFile = string | File | SonamuFile;
+
+const toSonamuFileFromUrl = (url: string): SonamuFile => ({
+  name: url.split("/").pop() ?? url,
+  url,
+  mime_type: "",
+  size: 0,
+});
+
+const isSonamuFile = (value: InlineUploadFile): value is SonamuFile =>
+  SonamuFileSchema.safeParse(value).success;
+
+const replaceUploadedFiles = (
+  files: InlineUploadFile[],
+  uploadedFiles: SonamuFile[],
+): InlineUploadFile[] => {
+  let uploadedIndex = 0;
+
+  return files.map((item) => {
+    if (item instanceof File) {
+      const uploaded = uploadedFiles[uploadedIndex];
+      uploadedIndex += 1;
+      return uploaded ?? item;
+    }
+    if (isSonamuFile(item)) {
+      return item;
+    }
+    return toSonamuFileFromUrl(item);
+  });
+};
+
+function createFileColumns(
+  onEdit: (id: number) => void,
+  onDelete: (id: number) => void,
+): TableCol<FileSubsetA>[] {
+  return [
+    {
+      label: "ID",
+      tc: (row) => <>{row.id}</>,
+      fit: true,
+      align: "center",
+    },
+    {
+      label: SD("common.createdAt"),
+      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
+      fit: true,
+    },
+    {
+      label: SD("entity.File.mime_type"),
+      tc: (row) => <>{row.mime_type}</>,
+    },
+    {
+      label: SD("entity.File.name"),
+      tc: (row) => <>{row.name}</>,
+    },
+    {
+      label: SD("entity.File.url"),
+      tc: (row) => <>{row.url}</>,
+    },
+    {
+      label: SD("common.manage"),
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button variant="yellow" size="xs" icon={<EditIcon />} onClick={() => onEdit(row.id)} />
+          <Button variant="red" size="xs" icon={<TrashIcon />} onClick={() => onDelete(row.id)} />
+        </div>
+      ),
+    },
+  ];
+}
 
 export const Route = createFileRoute("/admin/files/")({
   head: () => ({
@@ -151,35 +225,8 @@ function FileList({}: FileListProps) {
 
     const result = await FileService.inlineUpload({ category }, filesToUpload);
 
-    const toSonamuFileFromUrl = (url: string): SonamuFile => ({
-      name: url.split("/").pop() ?? url,
-      url,
-      mime_type: "",
-      size: 0,
-    });
-    const isSonamuFile = (value: unknown): value is SonamuFile =>
-      typeof value === "object" &&
-      value !== null &&
-      "url" in value &&
-      "name" in value &&
-      "mime_type" in value &&
-      "size" in value;
-
-    let uploadedIndex = 0;
-    inlineUploadForm.form.files = files.map((item) => {
-      if (item instanceof File) {
-        const uploaded = result.files[uploadedIndex];
-        uploadedIndex += 1;
-        return uploaded ?? item;
-      }
-      if (typeof item === "string") {
-        return toSonamuFileFromUrl(item);
-      }
-      if (isSonamuFile(item)) {
-        return item;
-      }
-      return item;
-    });
+    const uploadedFiles = replaceUploadedFiles(files, result.files);
+    inlineUploadForm.setForm((form) => ({ ...form, files: uploadedFiles }));
     refetch();
   };
 
@@ -192,35 +239,8 @@ function FileList({}: FileListProps) {
 
     const result = await FileService.inlineUploadFlat(category, filesToUpload);
 
-    const toSonamuFileFromUrl = (url: string): SonamuFile => ({
-      name: url.split("/").pop() ?? url,
-      url,
-      mime_type: "",
-      size: 0,
-    });
-    const isSonamuFile = (value: unknown): value is SonamuFile =>
-      typeof value === "object" &&
-      value !== null &&
-      "url" in value &&
-      "name" in value &&
-      "mime_type" in value &&
-      "size" in value;
-
-    let uploadedIndex = 0;
-    inlineUploadFlatForm.form.files = files.map((item) => {
-      if (item instanceof File) {
-        const uploaded = result.files[uploadedIndex];
-        uploadedIndex += 1;
-        return uploaded ?? item;
-      }
-      if (typeof item === "string") {
-        return toSonamuFileFromUrl(item);
-      }
-      if (isSonamuFile(item)) {
-        return item;
-      }
-      return item;
-    });
+    const uploadedFiles = replaceUploadedFiles(files, result.files);
+    inlineUploadFlatForm.setForm((form) => ({ ...form, files: uploadedFiles }));
     refetch();
   };
 
@@ -244,53 +264,10 @@ function FileList({}: FileListProps) {
   };
 
   // 컬럼 정의
-  type FileRow = NonNullable<typeof rows>[number];
-  const columns: TableCol<FileRow>[] = [
-    {
-      label: "ID",
-      tc: (row) => <>{row.id}</>,
-      fit: true,
-      align: "center",
-    },
-    {
-      label: SD("common.createdAt"),
-      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
-      fit: true,
-    },
-    {
-      label: SD("entity.File.mime_type"),
-      tc: (row) => <>{row.mime_type}</>,
-    },
-    {
-      label: SD("entity.File.name"),
-      tc: (row) => <>{row.name}</>,
-    },
-    {
-      label: SD("entity.File.url"),
-      tc: (row) => <>{row.url}</>,
-    },
-    {
-      label: SD("common.manage"),
-      fit: true,
-      align: "center",
-      tc: (row) => (
-        <div className="flex items-center justify-center gap-1">
-          <Button
-            variant="yellow"
-            size="xs"
-            icon={<EditIcon />}
-            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
-          />
-          <Button
-            variant="red"
-            size="xs"
-            icon={<TrashIcon />}
-            onClick={() => handleDeleteClick(row.id)}
-          />
-        </div>
-      ),
-    },
-  ];
+  const columns = createFileColumns(
+    (id) => navigate({ to: `${PAGE.route}/form`, search: { id } }),
+    (id) => handleDeleteClick(id),
+  );
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -358,11 +335,7 @@ function FileList({}: FileListProps) {
                     {...singleEagerImageForm.register("file")}
                   />
                   <div className="text-xs text-gray-500 wrap-break-word">
-                    {typeof singleEagerImageForm.form.file === "string"
-                      ? singleEagerImageForm.form.file
-                      : singleEagerImageForm.form.file
-                        ? JSON.stringify(singleEagerImageForm.form.file)
-                        : "파일 없음"}
+                    {singleEagerImageForm.form.file ?? "파일 없음"}
                   </div>
                 </CardContent>
               </Card>
@@ -389,9 +362,9 @@ function FileList({}: FileListProps) {
                     Upload
                   </Button>
                   <div className="text-xs text-gray-500 wrap-break-word">
-                    {typeof singleLazyImageForm.form.file === "string"
-                      ? singleLazyImageForm.form.file
-                      : singleLazyImageForm.form.file?.name || "파일 없음"}
+                    {singleLazyImageForm.form.file instanceof File
+                      ? singleLazyImageForm.form.file.name
+                      : (singleLazyImageForm.form.file ?? "파일 없음")}
                   </div>
                 </CardContent>
               </Card>
@@ -410,11 +383,7 @@ function FileList({}: FileListProps) {
                     {...singleEagerFileForm.register("file")}
                   />
                   <div className="text-xs text-gray-500 wrap-break-word">
-                    {typeof singleEagerFileForm.form.file === "string"
-                      ? singleEagerFileForm.form.file
-                      : singleEagerFileForm.form.file
-                        ? JSON.stringify(singleEagerFileForm.form.file)
-                        : "파일 없음"}
+                    {singleEagerFileForm.form.file ?? "파일 없음"}
                   </div>
                 </CardContent>
               </Card>
@@ -441,9 +410,9 @@ function FileList({}: FileListProps) {
                     Upload
                   </Button>
                   <div className="text-xs text-gray-500 wrap-break-word">
-                    {typeof singleLazyFileForm.form.file === "string"
-                      ? singleLazyFileForm.form.file
-                      : singleLazyFileForm.form.file?.name || "파일 없음"}
+                    {singleLazyFileForm.form.file instanceof File
+                      ? singleLazyFileForm.form.file.name
+                      : (singleLazyFileForm.form.file ?? "파일 없음")}
                   </div>
                 </CardContent>
               </Card>

@@ -20,7 +20,7 @@ import MailIcon from "~icons/lucide/mail";
 import ShieldIcon from "~icons/lucide/shield";
 import UserPlusIcon from "~icons/lucide/user-plus";
 
-import { useSonamuContext } from "@/contexts/sonamu-provider";
+import { authClient, useSonamuContext } from "@/contexts/sonamu-provider";
 
 export const Route = createFileRoute("/admin/login")({ component: LoginTestPage });
 
@@ -30,7 +30,7 @@ function LoginTestPage() {
   const [password, setPassword] = React.useState("");
   const [passkeyLoading, setPasskeyLoading] = React.useState(false);
 
-  const session = auth.useSession();
+  const session = authClient.useSession();
   const user = session.data?.user ?? null;
   const navigate = useNavigate();
 
@@ -43,7 +43,7 @@ function LoginTestPage() {
       return;
     }
 
-    void auth.signIn.passkey({ autoFill: true });
+    void authClient.signIn.passkey({ autoFill: true });
   }, []);
 
   const handleSubmit = async () => {

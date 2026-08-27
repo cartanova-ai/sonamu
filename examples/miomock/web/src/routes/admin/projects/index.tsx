@@ -36,6 +36,7 @@ import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
+import { translateFilterEnumKey } from "@/admin-common/filter-utils";
 import { SD } from "@/i18n/sd.generated";
 import { ProjectListParams } from "@/services/project/project.types";
 import { ProjectService } from "@/services/services.generated";
@@ -43,6 +44,7 @@ import {
   ProjectBaseSchema,
   ProjectOrderBy,
   ProjectOrderByLabel,
+  type ProjectSubsetA,
   ProjectSearchField,
   ProjectSearchFieldLabel,
   ProjectStatusLabel,
@@ -59,6 +61,100 @@ export const Route = createFileRoute("/admin/projects/")({
 });
 
 type ProjectListProps = {};
+
+function createProjectColumns(
+  onView: (id: number) => void,
+  onEdit: (id: number) => void,
+  onDelete: (id: number) => void,
+): TableCol<ProjectSubsetA>[] {
+  return [
+    {
+      label: "ID",
+      tc: (row) => <>{row.id}</>,
+      fit: true,
+      align: "center",
+    },
+    {
+      label: SD("common.createdAt"),
+      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
+      fit: true,
+    },
+    {
+      label: SD("entity.Project.name"),
+      tc: (row) => (
+        <button
+          type="button"
+          className="text-primary hover:underline cursor-pointer text-left"
+          onClick={() => onView(row.id)}
+        >
+          {row.name}
+        </button>
+      ),
+    },
+    {
+      label: SD("entity.Project.status"),
+      tc: (row) => <>{ProjectStatusLabel[row.status]}</>,
+    },
+    {
+      label: SD("entity.Project.description"),
+      tc: (row) => <>{row.description}</>,
+    },
+    {
+      label: SD("entity.Project.budget"),
+      tc: (row) => <>{row.budget}</>,
+    },
+    {
+      label: SD("entity.Project.deadline"),
+      tc: (row) => <span>{row.deadline ? datetimeF(row.deadline) : "-"}</span>,
+      fit: true,
+    },
+    {
+      label: SD("entity.Project.image_urls"),
+      tc: (row) => (
+        <div className="flex gap-1">
+          {row.image_urls?.map(
+            (image, index) =>
+              image && (
+                <img
+                  key={index}
+                  src={image.url}
+                  alt={`ImageUrls ${index + 1}`}
+                  className="h-8 w-8 object-cover rounded"
+                />
+              ),
+          )}
+        </div>
+      ),
+    },
+    {
+      label: SD("entity.Project.virtual_test"),
+      tc: (row) => <>{row.virtual_test && numF(row.virtual_test)}</>,
+    },
+    {
+      label: SD("entity.Project.virtual_query_test"),
+      tc: (row) => <>{row.virtual_query_test}</>,
+    },
+    {
+      label: SD("entity.Project.employee"),
+      tc: () => <>{/* array row.employee */}</>,
+    },
+    {
+      label: SD("entity.Project.tags"),
+      tc: () => <>{/* array row.tags */}</>,
+    },
+    {
+      label: SD("common.manage"),
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button variant="yellow" size="xs" icon={<EditIcon />} onClick={() => onEdit(row.id)} />
+          <Button variant="red" size="xs" icon={<TrashIcon />} onClick={() => onDelete(row.id)} />
+        </div>
+      ),
+    },
+  ];
+}
 
 function ProjectList({}: ProjectListProps) {
   const navigate = useNavigate();
@@ -91,104 +187,11 @@ function ProjectList({}: ProjectListProps) {
   };
 
   // 컬럼 정의
-  type ProjectRow = NonNullable<typeof rows>[number];
-  const columns: TableCol<ProjectRow>[] = [
-    {
-      label: "ID",
-      tc: (row) => <>{row.id}</>,
-      fit: true,
-      align: "center",
-    },
-    {
-      label: SD("common.createdAt"),
-      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
-      fit: true,
-    },
-    {
-      label: SD("entity.Project.name"),
-      tc: (row) => (
-        <button
-          type="button"
-          className="text-primary hover:underline cursor-pointer text-left"
-          onClick={() => navigate({ to: `/admin/projects/${row.id}` })}
-        >
-          {row.name}
-        </button>
-      ),
-    },
-    {
-      label: SD("entity.Project.status"),
-      tc: (row) => <>{ProjectStatusLabel[row.status]}</>,
-    },
-    {
-      label: SD("entity.Project.description"),
-      tc: (row) => <>{row.description}</>,
-    },
-    {
-      label: SD("entity.Project.budget"),
-      tc: (row) => <>{row.budget}</>,
-    },
-    {
-      label: SD("entity.Project.deadline"),
-      tc: (row) => <span>{row.deadline ? datetimeF(row.deadline) : "-"}</span>,
-      fit: true,
-    },
-    {
-      label: SD("entity.Project.image_urls"),
-      tc: (row) => (
-        <div className="flex gap-1">
-          {row.image_urls?.map(
-            (r, i) =>
-              r && (
-                <img
-                  key={i}
-                  src={r.url}
-                  alt={`ImageUrls ${i + 1}`}
-                  className="h-8 w-8 object-cover rounded"
-                />
-              ),
-          )}
-        </div>
-      ),
-    },
-    {
-      label: SD("entity.Project.virtual_test"),
-      tc: (row) => <>{row.virtual_test && numF(row.virtual_test)}</>,
-    },
-    {
-      label: SD("entity.Project.virtual_query_test"),
-      tc: (row) => <>{row.virtual_query_test}</>,
-    },
-    {
-      label: SD("entity.Project.employee"),
-      tc: (_row) => <>{/* array row.employee */}</>,
-    },
-    {
-      label: SD("entity.Project.tags"),
-      tc: (_row) => <>{/* array row.tags */}</>,
-    },
-    {
-      label: SD("common.manage"),
-      fit: true,
-      align: "center",
-      tc: (row) => (
-        <div className="flex items-center justify-center gap-1">
-          <Button
-            variant="yellow"
-            size="xs"
-            icon={<EditIcon />}
-            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
-          />
-          <Button
-            variant="red"
-            size="xs"
-            icon={<TrashIcon />}
-            onClick={() => handleDeleteClick(row.id)}
-          />
-        </div>
-      ),
-    },
-  ];
+  const columns = createProjectColumns(
+    (id) => navigate({ to: `/admin/projects/${id}` }),
+    (id) => navigate({ to: `${PAGE.route}/form`, search: { id } }),
+    (id) => handleDeleteClick(id),
+  );
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -277,7 +280,7 @@ function ProjectList({}: ProjectListProps) {
                       rules={appliedRules}
                       fieldMeta={extractFieldMetaFromSchema(
                         ProjectBaseSchema,
-                        SD as (key: string) => string,
+                        translateFilterEnumKey,
                       )}
                     >
                       <Button
