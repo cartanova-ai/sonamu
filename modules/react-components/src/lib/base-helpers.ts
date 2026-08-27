@@ -1,5 +1,6 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // 파싱 결과이므로 any 허용
 
+import { format } from "date-fns";
 import qs from "qs";
 import { isObject } from "radashi";
 import { type z } from "zod";
@@ -70,7 +71,8 @@ export function dateF(dateValue: string | Date | null | undefined): string | nul
   if (dateValue === null || dateValue === undefined) {
     return null;
   } else if (dateValue instanceof Date) {
-    return dateValue.toISOString().slice(0, 10);
+    // toISOString은 UTC로 고정되어 로컬 시간대와 어긋난다. 로컬 기준으로 포맷한다.
+    return format(dateValue, "yyyy-MM-dd");
   } else {
     return dateValue.slice(0, 10);
   }
@@ -80,7 +82,8 @@ export function datetimeF(dateValue: string | Date | null | undefined): string |
   if (dateValue === null || dateValue === undefined) {
     return null;
   } else if (dateValue instanceof Date) {
-    return dateValue.toISOString().slice(0, 19).replace("T", " ");
+    // toISOString은 UTC로 고정되어 로컬 시간대와 어긋난다. 로컬 기준으로 포맷한다.
+    return format(dateValue, "yyyy-MM-dd HH:mm:ss");
   } else {
     return dateValue.slice(0, 19);
   }
