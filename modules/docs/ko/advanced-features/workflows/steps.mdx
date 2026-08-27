@@ -76,6 +76,8 @@ export const sendEmail = workflow({ name: "send_email" }, async ({ input, step }
 
 Step의 반환값을 다음 step에서 사용할 수 있습니다. 각 step은 독립적으로 저장되지만, 데이터는 메모리에서 전달됩니다.
 
+저장되는 step 및 workflow 출력은 JSON 호환 값이어야 합니다. 최상위 `undefined`는 `null`로 변환되고, 배열이나 객체 안에 중첩된 값을 포함한 `Date`는 ISO 문자열로 저장됩니다. 함수, 심볼, bigint, 순환 객체처럼 지원하지 않는 값은 저장 전에 오류를 발생시킵니다.
+
 ```typescript
 export const processData = workflow({ name: "process_data" }, async ({ input, step }) => {
   // Step 1: 데이터 가져오기

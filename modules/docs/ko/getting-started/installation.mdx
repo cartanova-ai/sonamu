@@ -181,6 +181,13 @@ Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니�
         <Tree.File name=".sonamu.env  (환경변수)" />
       </Tree.Folder>
     </Tree.Folder>
+    <Tree.Folder name="tools">
+      <Tree.Folder name="oxlint">
+        <Tree.Folder name="anti-slop  (생성된 Oxlint 플러그인)" />
+      </Tree.Folder>
+    </Tree.Folder>
+    <Tree.File name=".oxlintrc.json  (린트 설정)" />
+    <Tree.File name="package.json" />
     <Tree.File name="pnpm-workspace.yaml  (워크스페이스 설정)" />
     <Tree.File name="README.md" />
   </Tree.Folder>
@@ -204,6 +211,37 @@ catalog:
   vite: 7.3.0
   vitest: 4.0.16
   # ... 기타 공통 의존성
+```
+
+### Oxlint anti-slop 규칙
+
+생성된 프로젝트는 `tools/oxlint/anti-slop`에 범용 플러그인을 포함합니다. 루트 `package.json`은
+`oxlint`와 `@oxlint/plugins` 버전을 모두 `1.80.0`으로 고정하며, Effect 전용 플러그인은 포함하지
+않습니다.
+
+생성된 `.oxlintrc.json`은 이 플러그인을 `generated-anti-slop`으로 불러오고, 15개 규칙을 모두
+`error`로 설정하여 기본 린트 요구사항으로 적용합니다:
+
+```json title=".oxlintrc.json"
+{
+  "rules": {
+    "generated-anti-slop/no-chained-type-assertions": "error",
+    "generated-anti-slop/no-conditional-empty-object-spread": "error",
+    "generated-anti-slop/no-known-value-widening": "error",
+    "generated-anti-slop/no-module-mocking": "error",
+    "generated-anti-slop/no-object-parameters": "error",
+    "generated-anti-slop/no-reflect-apply": "error",
+    "generated-anti-slop/no-reflect-get": "error",
+    "generated-anti-slop/no-runtime-typeof": "error",
+    "generated-anti-slop/no-shape-in-symbol-names": "error",
+    "generated-anti-slop/no-unknown-parameters": "error",
+    "generated-anti-slop/no-unknown-returns": "error",
+    "generated-anti-slop/no-unknown-type-aliases": "error",
+    "generated-anti-slop/no-unsafe-dictionary-type": "error",
+    "generated-anti-slop/no-widen-then-assert": "error",
+    "generated-anti-slop/require-safety-comment-for-type-assertion": "error"
+  }
+}
 ```
 
 ### API 서버 엔트리포인트

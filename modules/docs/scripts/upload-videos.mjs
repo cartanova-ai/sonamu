@@ -5,8 +5,8 @@
  * Usage: pnpm upload-videos [--dry-run]
  */
 
-import { execSync } from "child_process";
 import { readdir, readFile, writeFile, stat, rename, mkdir } from "fs/promises";
+import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "path";
 import { fileURLToPath } from "url";
 
@@ -76,12 +76,21 @@ async function uploadToS3(filePath, filename) {
   }
 
   try {
-    execSync(
-      `aws s3 cp "${filePath}" "s3://${BUCKET}/sonamu-docs/${filename}" --content-type "video/mp4"`,
-      {
-        stdio: "inherit",
-      },
+    const result = spawnSync(
+      "aws",
+      [
+        "s3",
+        "cp",
+        filePath,
+        `s3://${BUCKET}/sonamu-docs/${filename}`,
+        "--content-type",
+        "video/mp4",
+      ],
+      { stdio: "inherit" },
     );
+    if (result.status !== 0) {
+      throw new Error(`aws s3 cp exited with status ${result.status ?? "unknown"}`);
+    }
     return true;
   } catch (error) {
     console.error(`  ❌ 업로드 실패: ${error.message}`);
