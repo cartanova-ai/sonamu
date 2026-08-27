@@ -488,7 +488,7 @@ export function testBackend(options: TestBackendOptions): void {
         expect(fetched?.status).toBe("sleeping");
       });
 
-      test("fails when trying to sleep a canceled workflow", async () => {
+      test("종료된 워크플로 실행을 대기 상태로 바꾸지 않는다", async () => {
         const backend = await setup();
 
         // completed run
@@ -508,11 +508,13 @@ export function testBackend(options: TestBackendOptions): void {
 
         // failed run
         claimed = await createClaimedWorkflowRun(backend);
-        await backend.failWorkflowRun({
+        const failed = await backend.failWorkflowRun({
           workflowRunId: claimed.id,
           workerId: claimed.workerId ?? "",
           error: { message: "failed" },
+          forceComplete: true,
         });
+        expect(failed.status).toBe("failed");
         await expect(
           backend.sleepWorkflowRun({
             workflowRunId: claimed.id,

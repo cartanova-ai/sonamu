@@ -153,6 +153,25 @@ export default defineConfig({
 
 <Tip>`tsdown.config.ts` 파일이 없으면 Sonamu가 제공하는 기본 API 빌드 설정을 사용합니다.</Tip>
 
+### API Zod AOT
+
+`validation.zodCompiler.api`가 `"aot"`이면 `sonamu build api`는 source config만 읽어 정책을
+결정합니다. 이 단계에서는 `Sonamu.init()`이나 DB 초기화를 실행하지 않습니다. 빌드는 sync가 만든
+`src/application/sonamu.validators.generated.ts`에만 explicit/compact/inline Rolldown plugin을
+적용하며, 변환되지 않은 `compile()` 또는 virtual runtime import가 남으면 실패합니다.
+
+기존 custom `tsdown.config.ts`는 계속 사용할 수 있습니다. Sonamu가 API root에 임시 wrapper
+config를 만들고 기존 default export를 호출한 뒤 compiler plugin을 추가합니다. 객체, 배열, 함수형
+export와 기존 plugin 배열을 보존하며 build 종료 시 wrapper를 삭제합니다.
+
+직접 `tsdown`을 실행하면 이 wrapper와 stale registry 검증을 우회합니다. AOT 프로젝트에서는
+`pnpm sonamu sync` 후 `pnpm sonamu build api`를 사용하세요. 기존 opt-in 프로젝트에는
+`zod-compiler@1.23.6` 개발 의존성도 필요합니다. 애플리케이션의 이 의존성은 AOT에서만 필요하며,
+JIT는 Sonamu의 runtime 의존성을 사용합니다. AOT를 되돌리려면 설정과 애플리케이션 의존성을
+제거한 다음 sync와 build를 다시 실행합니다. Sync가 생성된 registry를 삭제하고 build는 기존
+tsdown 경로로 돌아갑니다. Web과 Expo AOT는 아직 제공하지 않습니다.
+`validation.zodCompiler.targets`도 오류로 거부하며, 이번 단계에서는 API 정책만 설정할 수 있습니다.
+
 ## 빌드 결과물
 
 ### API 빌드 결과

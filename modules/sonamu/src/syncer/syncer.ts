@@ -34,9 +34,9 @@ import { loadApis, loadModels, loadTypes, loadWorkflows } from "./module-loader"
 import { type LoadedApis, type LoadedModels, type LoadedTypes } from "./module-loader";
 import * as SyncerActions from "./syncer-actions";
 
-type DiffGroups = {
+type DiffGroups = Partial<{
   [key in FileType]: AbsolutePath[];
-};
+}>;
 
 export class Syncer {
   apis: LoadedApis = [];
@@ -60,6 +60,9 @@ export class Syncer {
     // 바뀐 것이 없으면 그냥 넘어가요.
     const changedFiles = await findChangedFilesUsingChecksums();
     if (changedFiles.length === 0) {
+      if (await this.reconcileHttpValidatorRegistry()) {
+        await renewChecksums();
+      }
       console.log(chalk.black.bgGreen(centerText("All files are synced!")));
       return;
     }
@@ -71,12 +74,29 @@ export class Syncer {
       async () => {
         // 얘가 싱크 작업 수행하는 본체입니다.
         await this.doSyncActions(changedFiles);
+        await this.reconcileHttpValidatorRegistry();
 
         // 싱크 액션이 끝나면 항상 체크섬을 다시 갱신합니다.
         await renewChecksums();
       },
       { whenThisHappens: "SIGUSR2", waitForUpTo: 20000 },
     );
+  }
+
+  private async reconcileHttpValidatorRegistry(): Promise<boolean> {
+    const registryPath = path.join(
+      Sonamu.apiRootPath,
+      "src/application/sonamu.validators.generated.ts",
+    );
+    const policy = Sonamu.config.validation?.zodCompiler;
+    const isAot = typeof policy === "object" && policy !== null && policy.api === "aot";
+    if (isAot === (await exists(registryPath))) {
+      return false;
+    }
+
+    // 변경 목록이 registry 삭제를 놓쳐도 checksum 갱신 전에 정책과 산출물을 다시 맞춥니다.
+    await SyncerActions.actionGenerateHttpValidators();
+    return true;
   }
 
   /**
@@ -137,6 +157,7 @@ export class Syncer {
     await this.autoloadApis();
     await this.autoloadWorkflows();
     await this.autoloadSsrRoutes();
+    await Sonamu.refreshHttpValidators();
 
     this.eventEmitter.emit("onHMRCompleted");
   }
@@ -331,6 +352,22 @@ export class Syncer {
       await this.handleSonamuDictionaryRelatedChanges(diffGroups);
     }
 
+    const metadataChanged = diffTypes.some((type) =>
+      ["entity", "types", "model", "frame", "config"].includes(type),
+    );
+    if (changeMatches("httpValidatorsGenerated") && !metadataChanged) {
+      // registry 자체 drift는 최신 in-memory metadata로 즉시 덮어써 lock 갱신 전에 정합성을 복구합니다.
+      await SyncerActions.actionGenerateHttpValidators();
+    }
+
+    if (metadataChanged) {
+      // 모든 생성/복사 액션 뒤 최신 metadata를 다시 읽어 registry를 한 번만 확정합니다.
+      await this.autoloadTypes();
+      await this.autoloadModels();
+      await this.autoloadApis();
+      await SyncerActions.actionGenerateHttpValidators();
+    }
+
     if (nothingMatches()) {
       // 파일 변경은 감지되었으나 저 위 어느 changeMatches에도 걸리지 않은 파일들이 drifts입니다.
       // syncer는 소스의 변경에는 반응하지만 산출물의 변경(drift)에는 직접적으로 반응하지 않습니다.
@@ -465,6 +502,10 @@ export class Syncer {
   }
 
   async handleConfigChanges(_: DiffGroups): Promise<void> {
+    if (process.env.HOT === "yes") {
+      const { loadConfig } = await import("../api/config");
+      Sonamu.config = await loadConfig(Sonamu.apiRootPath);
+    }
     await SyncerActions.actionSyncConfig();
   }
 

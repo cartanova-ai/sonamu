@@ -5,6 +5,70 @@ description: "Zod를 활용한 런타임 데이터 검증 가이드"
 
 Sonamu는 Zod를 사용하여 TypeScript 타입을 런타임에서도 검증합니다. 이 문서는 Zod validation의 모든 기능과 패턴을 설명합니다.
 
+## API HTTP validator 최적화
+
+Sonamu는 REST 요청의 최종 `fastifyCaster` validator를 handler 수명 동안 한 번만 만듭니다. 이
+캐시는 기본 동작이며 별도 설정이 필요하지 않습니다. `zod-compiler`는 그 최종 validator를
+추가로 컴파일하는 opt-in 기능입니다.
+
+### 설정
+
+```typescript title="sonamu.config.ts"
+export default defineConfig({
+  validation: {
+    zodCompiler: {
+      api: "jit", // 또는 "aot"
+    },
+  },
+});
+```
+
+- 설정이 없거나 `zodCompiler: false`이면 cached plain Zod를 사용합니다.
+- `jit`는 장기 실행 Node.js 서버에 적합합니다. 서버가 route를 준비할 때 eager compile하며,
+  컴파일에 실패하면 첫 요청이 아니라 서버 시작이 실패합니다.
+- `aot`는 `pnpm sonamu build api`에서 생성 registry만 컴파일합니다. 개발 서버는 같은 설정에서도
+  cached plain Zod를 사용하며, 프로덕션 시작 시 registry fingerprint와 route coverage를 확인합니다.
+- Web과 Expo compiler target은 아직 제공하지 않으며 후속 작업으로 미룹니다.
+- 이번 API 전용 단계에서는 `validation.zodCompiler.api`만 설정할 수 있고,
+  `validation.zodCompiler.targets`는 오류로 거부합니다.
+
+JIT가 사용하는 runtime 의존성은 Sonamu에 포함되어 있으므로 애플리케이션에 따로 설치할 필요가
+없습니다. AOT는 생성된 source가 build helper를 직접 import하므로, 기존 프로젝트에서 AOT를
+활성화할 때만 고정 버전을 API 개발 의존성에 추가합니다.
+
+```bash
+pnpm add -D zod-compiler@1.23.6
+pnpm sonamu sync --force
+```
+
+### As-is와 To-be
+
+| 항목 | As-is | To-be |
+| --- | --- | --- |
+| HTTP schema 수명 | 요청마다 schema와 caster 생성 | handler metadata revision마다 한 번 생성 |
+| 컴파일 | plain Zod만 사용 | 설정에 따라 plain, eager JIT, production AOT 선택 |
+| AOT 산출물 | 없음 | `sonamu.validators.generated.ts`를 sync가 관리 |
+| 실패 시점 | 요청 parse | JIT는 시작, AOT는 build 또는 시작 단계에서 실패 |
+
+### 알려진 동작 차이
+
+`zod-compiler` 1.23.6은 record에서 enumerable string key만 순회하고, 일부 container는 입력
+reference를 유지하며, per-call parse option을 무시합니다. Schema-level error와 `z.config()`는
+그대로 적용됩니다. 자세한 차이는
+[zod-compiler의 Behavioral Differences](https://github.com/gajus/zod-compiler#behavioral-differences-from-zod)를
+참조하세요. Sonamu HTTP validator가 사용하는 대표 coercion과 오류 경로는 benchmark parity를
+통과했지만, 애플리케이션이 container identity나 symbol key에 의존한다면 opt-in 전에 별도로
+확인해야 합니다.
+
+되돌리려면 `validation.zodCompiler`를 제거하거나 `false`로 바꾸고 API package의
+`zod-compiler` 개발 의존성을 제거한 다음 sync와 build를 다시 실행합니다. Sync가 생성된 AOT
+registry를 삭제하며, handler cache와 기존 `BadRequestException`/`ZodError` 계약은 유지됩니다.
+
+실측 조건과 결과는 저장소의 `docs/benchmarks/zod-compiler-http-validation.md`를 참조하세요. 다시 실행한
+5회 benchmark에서 eager JIT는 validator-only median p95를 58.7%, AOT는 58.0% 줄였지만,
+Fastify inject 계층에서는 둘 다 10% 기준을 넘지 못했습니다. 따라서 compiler mode는 opt-in으로
+유지합니다.
+
 ## Zod란?
 
 <CardGroup cols={2}>

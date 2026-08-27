@@ -25,6 +25,11 @@ export default defineConfig({
   sync: {
     targets: ["web"],
   },
+  validation: {
+    zodCompiler: {
+      api: "aot",
+    },
+  },
   database: {
     database: "pg",
     defaultOptions: {

@@ -232,6 +232,7 @@ catalog:
   voyageai: ^0.0.8
   xlsx: ^0.18.5
   zod: ^4.3.6
+  zod-compiler: 1.23.6
   zx: ^8.8.5
 
 # 릴리즈 이후 2일 이상 된 패키지만 기본적으로 사용

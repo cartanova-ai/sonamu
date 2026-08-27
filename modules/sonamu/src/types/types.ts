@@ -1652,6 +1652,7 @@ export const TemplateOptions = z.object({
   generated_http: z.object({
     entityId: z.string(),
   }),
+  http_validators: z.object({}),
   model: z.object({
     entityId: z.string(),
     defaultSearchField: z.string().optional(),
@@ -1706,6 +1707,7 @@ export const TemplateKey = z.enum([
   "generated",
   "generated_sso",
   "generated_http",
+  "http_validators",
   "model",
   "model_test",
   "bridge",

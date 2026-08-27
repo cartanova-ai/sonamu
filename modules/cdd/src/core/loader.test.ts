@@ -10,7 +10,7 @@ import { findContractDir, loadProject, validateRulesStructure } from "./loader.j
 const MIOMOCK_CONTRACT_DIR = path.resolve(
   import.meta.dirname,
   "../../../..",
-  "examples/miomock/api/contract",
+  "examples/miomock/contract",
 );
 
 describe("findContractDir", () => {

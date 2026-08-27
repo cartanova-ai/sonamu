@@ -1,8 +1,8 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 
+import { type FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const tsLoaderRegisterStateKey = Symbol.for("sonamu.ts-loader-register.state");
@@ -223,19 +223,16 @@ describe("loadConfig", () => {
     process.env.VITEST = "true";
     vi.unmock("../../bin/ts-loader-registration");
     const { loadConfig } = await import("../config");
-    const supportModule = await import(
-      pathToFileURL(path.join(rootPath, "src", "support.ts")).href
-    );
-
     const firstConfig = await loadConfig(rootPath);
     const secondConfig = await loadConfig(rootPath);
+    const fastify = {} as FastifyInstance;
 
-    expect(firstConfig.server.fastify).toBe(supportModule.fastifyOptions);
-    expect(firstConfig.server.plugins?.custom).toBe(supportModule.customPlugin);
+    expect(firstConfig.server.fastify).toStrictEqual({ keepAliveTimeout: 4321 });
+    expect(firstConfig.server.plugins?.custom?.(fastify)).toBe("plugin");
     expect(firstConfig.test?.parallel).toBe(true);
     expect(firstConfig.test?.maxWorkers).toBe(3);
     expect(firstConfig.test?.devRunner?.enabled).toBe(true);
-    expect(secondConfig.server.plugins?.custom).toBe(supportModule.customPlugin);
-    expect(secondConfig.server.fastify).toBe(supportModule.fastifyOptions);
+    expect(secondConfig.server.plugins?.custom?.(fastify)).toBe("plugin");
+    expect(secondConfig.server.fastify).toStrictEqual({ keepAliveTimeout: 4321 });
   });
 });

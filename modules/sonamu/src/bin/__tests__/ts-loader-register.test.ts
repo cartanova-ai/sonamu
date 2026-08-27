@@ -32,7 +32,8 @@ describe("ensureTsLoaderRegistered", () => {
 
   it("중복 등록하지 않는다", async () => {
     const registerMock = vi.fn();
-    vi.doMock("node:module", () => ({
+    vi.doMock("node:module", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("node:module")>()),
       register: registerMock,
     }));
 

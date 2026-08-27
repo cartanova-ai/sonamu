@@ -332,6 +332,9 @@ export class BackendPostgres implements Backend {
       leaseDurationMs: params.leaseDurationMs,
     });
     return await this.knex.transaction(async (trx) => {
+      // 트랜잭션 시작 시각보다 늦게 생성된 작업도 각 쿼리의 실제 실행 시각을 기준으로 판정합니다.
+      const currentTimestamp = trx.raw("statement_timestamp()");
+
       await trx
         .withSchema(DEFAULT_SCHEMA)
         .table("workflow_runs")
@@ -340,13 +343,13 @@ export class BackendPostgres implements Backend {
           error: JSON.stringify({ message: "Workflow run deadline exceeded" }),
           worker_id: null,
           available_at: null,
-          finished_at: trx.raw("NOW()"),
-          updated_at: trx.raw("NOW()"),
+          finished_at: currentTimestamp,
+          updated_at: currentTimestamp,
         })
         .where("namespace_id", this.namespaceId)
         .whereIn("status", ["pending", "running", "sleeping"])
         .whereNotNull("deadline_at")
-        .where("deadline_at", "<=", trx.raw("NOW()"));
+        .where("deadline_at", "<=", currentTimestamp);
 
       const [candidate] = await trx
         .withSchema(DEFAULT_SCHEMA)
@@ -354,9 +357,9 @@ export class BackendPostgres implements Backend {
         .select("id", "status")
         .where("namespace_id", this.namespaceId)
         .whereIn("status", ["pending", "running", "sleeping"])
-        .where("available_at", "<=", trx.raw("NOW()"))
+        .where("available_at", "<=", currentTimestamp)
         .where((qb) => {
-          qb.whereNull("deadline_at").orWhere("deadline_at", ">", trx.raw("NOW()"));
+          qb.whereNull("deadline_at").orWhere("deadline_at", ">", currentTimestamp);
         })
         .orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
         .orderBy("available_at", "asc")
@@ -394,9 +397,11 @@ export class BackendPostgres implements Backend {
           status: "running",
           attempts: trx.raw("attempts + 1"),
           worker_id: params.workerId,
-          available_at: trx.raw("NOW() + ? * INTERVAL '1 millisecond'", [params.leaseDurationMs]),
-          started_at: trx.raw("COALESCE(started_at, NOW())"),
-          updated_at: trx.raw("NOW()"),
+          available_at: trx.raw("statement_timestamp() + ? * INTERVAL '1 millisecond'", [
+            params.leaseDurationMs,
+          ]),
+          started_at: trx.raw("COALESCE(started_at, statement_timestamp())"),
+          updated_at: currentTimestamp,
         })
         .returning("*");
 

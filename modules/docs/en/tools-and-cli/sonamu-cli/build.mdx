@@ -188,6 +188,27 @@ export default defineConfig({
   If no `tsdown.config.ts` file exists, Sonamu falls back to its bundled default API build config.
 </Tip>
 
+### API Zod AOT
+
+When `validation.zodCompiler.api` is `"aot"`, `sonamu build api` reads only the source configuration
+to select the policy. It does not run `Sonamu.init()` or initialize the database. The build applies
+an explicit, compact, inline Rolldown plugin only to
+`src/application/sonamu.validators.generated.ts`. It fails if an untransformed `compile()` boundary
+or virtual runtime import remains.
+
+Existing custom `tsdown.config.ts` files remain valid. Sonamu creates a temporary wrapper in the
+resolved API root, delegates to the existing default export, and appends the compiler plugin. Object,
+array, and function exports and existing plugin arrays are preserved. The wrapper is deleted after
+the build.
+
+Running `tsdown` directly bypasses the wrapper and stale-registry checks. For an AOT project, run
+`pnpm sonamu sync` followed by `pnpm sonamu build api`. Existing opt-in projects must also install
+`zod-compiler@1.23.6` as an API development dependency. This application-local dependency is only
+required for AOT; JIT uses Sonamu's runtime dependency. To roll back AOT, remove the setting and the
+application-local dependency, then run sync and build. Sync deletes the generated registry and the
+build returns to the existing tsdown path. Web and Expo AOT are not available in this phase.
+`validation.zodCompiler.targets` is also rejected; this phase accepts only the API policy.
+
 ## Build Output
 
 ### API Build Result
