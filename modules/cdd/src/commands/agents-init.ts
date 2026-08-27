@@ -81,8 +81,10 @@ export function runAgentsInit(force: boolean): void {
     const pkgPath = path.join(workspaceRoot, "package.json");
     if (fs.existsSync(pkgPath)) {
       try {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as { name?: string };
-        projectName = pkg.name ?? "";
+        const pkg: object = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+        if ("name" in pkg && Object.prototype.toString.call(pkg.name) === "[object String]") {
+          projectName = String(pkg.name);
+        }
       } catch {
         // 무시
       }
