@@ -18,6 +18,7 @@ import { type LoaderFileSystem } from "#ts/utility/scope";
 
 /** @internal */
 export function makeTestLoader(files: Record<string, string>) {
+  // SAFETY: 테스트 어댑터는 동기 파일 시스템에 readFileString만 추가한 LoaderFileSystem 구현이다.
   const fs = makeAsyncFileSystemFromSyncForTesting(makeTestFileSystem(files)) as LoaderFileSystem;
   const loader = makeResolveAndLoad(fs);
   const resolve = async (specifier: string, parentURL: string | undefined) => {
@@ -27,11 +28,11 @@ export function makeTestLoader(files: Record<string, string>) {
       parentURL,
     };
     const nextResolve = async (
-      specifier: string,
+      nextSpecifier: string,
       context?: Partial<ResolveHookContext>,
     ): Promise<ResolveFnOutput> => {
       assert.ok(context?.parentURL !== undefined);
-      const result = await esmResolve(fs, specifier, new URL(context.parentURL));
+      const result = await esmResolve(fs, nextSpecifier, new URL(context.parentURL));
       assert.ok(result.format !== "addon");
       return {
         url: result.url.href,
@@ -71,6 +72,8 @@ export function makeTestLoader(files: Record<string, string>) {
     const cache = new Map<string, Promise<SourceTextModule>>();
     const mainResolution = await resolve(`file:///${main}`, undefined);
     const sourceText = await load(mainResolution);
+    assert.equal(Object.prototype.toString.call(sourceText.source), "[object String]");
+    // SAFETY: 위 검증으로 로더 결과가 SourceTextModule이 요구하는 문자열임을 확인했다.
     const entry = new SourceTextModule(sourceText.source as string, {
       context,
       identifier: mainResolution.url,
@@ -84,7 +87,7 @@ export function makeTestLoader(files: Record<string, string>) {
       (() => {
         const module = (async () => {
           const loadResult = await load(resolution);
-          // eslint-disable-next-line @typescript-eslint/no-base-to-string
+          assert.equal(Object.prototype.toString.call(loadResult.source), "[object String]");
           return new SourceTextModule(String(loadResult.source), {
             context,
             identifier: resolution.url,
@@ -101,7 +104,7 @@ export function makeTestLoader(files: Record<string, string>) {
       return get(resolution);
     });
     await entry.evaluate();
-    return context as Record<string, unknown>;
+    return context;
   };
   return { evaluate, resolve };
 }

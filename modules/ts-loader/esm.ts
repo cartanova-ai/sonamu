@@ -5,7 +5,12 @@ import { resolve as cjsResolve } from "@loaderkit/resolve/cjs";
 import { resolve as esmResolve } from "@loaderkit/resolve/esm";
 import { type FileSystemAsync } from "@loaderkit/resolve/fs";
 
-import { type LoaderFileSystem, type PackageJson, type ResolutionConfig } from "./utility/scope.js";
+import {
+  type LoaderFileSystem,
+  type PackageJson,
+  type ResolutionConfig,
+  type TranspileOptions,
+} from "./utility/scope.js";
 import { makeResolveTypeScriptPackage, resolveFormat, resolvePackage } from "./utility/scope.js";
 import { transpileSource } from "./utility/transform.js";
 import {
@@ -19,10 +24,19 @@ import {
   testAnyTypeScript,
 } from "./utility/translate.js";
 
+interface TransformContext {
+  compilerOptions?: TranspileOptions;
+  packageDirectory?: URL;
+}
+
 const testHasScheme = /^[a-z][a-z0-9+.-]*:/i;
 const commonJsExtensions = [".js", ".jsx"];
 const commonJsImportConditions = ["node", "import", "require"];
 const commonJsRequireConditions = ["node", "require"];
+
+function hasKnownSourceExtension(pathname: string) {
+  return testAnyScript.test(pathname) || testAnyJSON.test(pathname);
+}
 
 /** @internal */
 export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
@@ -48,8 +62,6 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
     const packageMeta = await resolvePackage(fileSystem, url);
     return resolveTypeScriptPackage(url, packageMeta?.packagePath);
   };
-  const hasKnownSourceExtension = (pathname: string) =>
-    testAnyScript.test(pathname) || testAnyJSON.test(pathname);
   const extensionlessSourceCandidates = (url: URL) => {
     if (hasKnownSourceExtension(url.pathname) || url.pathname.endsWith("/")) {
       return [];
@@ -141,7 +153,7 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
 
   const makeResolver =
     (
-      fileSystem: FileSystemAsync,
+      resolverFileSystem: FileSystemAsync,
       packageJson: PackageJson | undefined,
       locations: ResolutionConfig | undefined,
     ) =>
@@ -150,14 +162,14 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
       if (locations?.outputBase) {
         // Projects with outputs use a stricter resolution
         if (parentFormat === "module") {
-          return esmResolve(fileSystem, specifier, parentURL);
+          return esmResolve(resolverFileSystem, specifier, parentURL);
         } else {
-          return cjsResolve(fileSystem, specifier, parentURL);
+          return cjsResolve(resolverFileSystem, specifier, parentURL);
         }
       } else {
         // Projects without outputs fall back to CJS resolution with custom conditions &
         // extensions. This simulates "bundler" like behavior.
-        return cjsResolve(fileSystem, specifier, parentURL, {
+        return cjsResolve(resolverFileSystem, specifier, parentURL, {
           conditions:
             parentFormat === "module" ? commonJsImportConditions : commonJsRequireConditions,
           extensions: commonJsExtensions,
@@ -334,12 +346,12 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
 
             // Relative imports will use a resolver which returns the source file URL. It
             // must then be mapped to an output file.
-            const resolve = makeResolver(
+            const resolveSource = makeResolver(
               sourceResolverFileSystem,
               packageMeta?.packageJson,
               tsConfig?.locations,
             );
-            const sourceResolution = await resolve(specifier, resolutionParentURL);
+            const sourceResolution = await resolveSource(specifier, resolutionParentURL);
             const resolvedTsConfig = await resolveTsConfig(resolutionParentURL);
             const outputUrl = sourceToOutput(sourceResolution.url, resolvedTsConfig?.locations);
             return {
@@ -352,12 +364,12 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
             // back to source file. We must resolve to an output file fully-qualified
             // specifiers end up digging through `package.json` which will always list
             // output files.
-            const resolve = makeResolver(
+            const resolveOutput = makeResolver(
               outputResolverFileSystem,
               packageMeta?.packageJson,
               tsConfig?.locations,
             );
-            const outputResolution = await resolve(specifier, parentURL);
+            const outputResolution = await resolveOutput(specifier, parentURL);
             const resolvedTsConfig = await resolveTsConfig(outputResolution.url);
             // 빌드된 파일을 가리키는 경우 소스 파일을 찾지 않습니다
             const isBuiltFile =
@@ -472,12 +484,13 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
           // is expected.
           const content = await fileSystem.readFileString(tsSourceUrl);
           const tsConfig = await resolveTsConfig(tsSourceUrl);
-          const transformContext = {
-            ...(tsConfig?.compilerOptions ? { compilerOptions: tsConfig.compilerOptions } : {}),
-            ...(packageMeta?.packageDirectory
-              ? { packageDirectory: packageMeta.packageDirectory }
-              : {}),
-          };
+          const transformContext: TransformContext = {};
+          if (tsConfig?.compilerOptions) {
+            transformContext.compilerOptions = tsConfig.compilerOptions;
+          }
+          if (packageMeta?.packageDirectory) {
+            transformContext.packageDirectory = packageMeta.packageDirectory;
+          }
           const payload = await transpileSource(content, tsSourceUrl, transformContext);
           return {
             format,
