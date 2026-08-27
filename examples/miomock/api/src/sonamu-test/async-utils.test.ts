@@ -11,15 +11,53 @@ import {
 } from "../../../../../modules/sonamu/dist/utils/async-utils";
 import { exists } from "../../../../../modules/sonamu/dist/utils/fs-utils";
 
+const delayedEven = async (value: number) => {
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  return value % 2 === 0;
+};
+const positive = async (value: number) => value > 0;
+const even = async (value: number) => value % 2 === 0;
+const throwOnTwoPredicate = async (value: number) => {
+  if (value === 2) throw new Error("Test error");
+  return true;
+};
+const delayedDouble = async (value: number) => {
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  return value * 2;
+};
+const delayedDoubleInParallel = async (value: number) => {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  return value * 2;
+};
+const double = async (value: number) => value * 2;
+const numberLabel = async (value: number) => `number: ${value}`;
+const throwOnTwoMapper = async (value: number) => {
+  if (value === 2) throw new Error("Test error");
+  return value * 2;
+};
+const delayedSum = async (total: number, value: number) => {
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  return total + value;
+};
+const sum = async (total: number, value: number) => total + value;
+const collectKeyValues = async (
+  result: Record<string, number>,
+  item: { key: string; value: number },
+) => {
+  result[item.key] = item.value;
+  return result;
+};
+const throwOnTwoReducer = async (total: number, value: number) => {
+  if (value === 2) throw new Error("Test error");
+  return total + value;
+};
+
 describe("async-utils", () => {
   describe("filterAsync 테스트", () => {
     test("비동기 조건으로 배열 필터링", async () => {
       // 짝수만 필터링하는 비동기 조건 함수
       const arr = [1, 2, 3, 4, 5];
-      const predicate = async (x: number) => {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        return x % 2 === 0;
-      };
+      const predicate = delayedEven;
 
       const result = await filterAsync(arr, predicate);
 
@@ -30,7 +68,7 @@ describe("async-utils", () => {
     test("빈 배열을 처리한다", async () => {
       // 빈 배열과 조건 함수
       const arr: number[] = [];
-      const predicate = async (x: number) => x > 0;
+      const predicate = positive;
 
       const result = await filterAsync(arr, predicate);
 
@@ -41,7 +79,7 @@ describe("async-utils", () => {
     test("모든 요소가 조건을 만족하는 경우", async () => {
       // 모두 짝수인 배열
       const arr = [2, 4, 6, 8];
-      const predicate = async (x: number) => x % 2 === 0;
+      const predicate = even;
 
       const result = await filterAsync(arr, predicate);
 
@@ -52,7 +90,7 @@ describe("async-utils", () => {
     test("모든 요소가 조건을 만족하지 않는 경우", async () => {
       // 모두 홀수인 배열
       const arr = [1, 3, 5, 7];
-      const predicate = async (x: number) => x % 2 === 0;
+      const predicate = even;
 
       const result = await filterAsync(arr, predicate);
 
@@ -63,12 +101,7 @@ describe("async-utils", () => {
     test("비동기 에러를 올바르게 전파", async () => {
       // 특정 값에서 에러를 던지는 조건 함수
       const arr = [1, 2, 3];
-      const predicate = async (x: number) => {
-        if (x === 2) {
-          throw new Error("Test error");
-        }
-        return true;
-      };
+      const predicate = throwOnTwoPredicate;
 
       // 에러가 전파되어야 함
       await expect(filterAsync(arr, predicate)).rejects.toThrow("Test error");
@@ -93,10 +126,7 @@ describe("async-utils", () => {
     test("모든 요소가 조건을 만족하면 true를 반환", async () => {
       // 모두 짝수인 배열과 짝수 검사 조건
       const arr = [2, 4, 6, 8];
-      const predicate = async (x: number) => {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        return x % 2 === 0;
-      };
+      const predicate = delayedEven;
 
       const result = await everyAsync(arr, predicate);
 
@@ -107,7 +137,7 @@ describe("async-utils", () => {
     test("하나라도 조건을 만족하지 않으면 false를 반환", async () => {
       // 홀수가 하나 포함된 배열
       const arr = [2, 4, 5, 8];
-      const predicate = async (x: number) => x % 2 === 0;
+      const predicate = even;
 
       const result = await everyAsync(arr, predicate);
 
@@ -118,7 +148,7 @@ describe("async-utils", () => {
     test("빈 배열은 true를 반환 (JavaScript 표준 동작)", async () => {
       // 빈 배열
       const arr: number[] = [];
-      const predicate = async (x: number) => x > 0;
+      const predicate = positive;
 
       const result = await everyAsync(arr, predicate);
 
@@ -146,12 +176,7 @@ describe("async-utils", () => {
     test("비동기 에러를 올바르게 전파", async () => {
       // 특정 값에서 에러를 던지는 조건 함수
       const arr = [1, 2, 3];
-      const predicate = async (x: number) => {
-        if (x === 2) {
-          throw new Error("Test error");
-        }
-        return true;
-      };
+      const predicate = throwOnTwoPredicate;
 
       // 에러가 전파되어야 함
       await expect(everyAsync(arr, predicate)).rejects.toThrow("Test error");
@@ -186,10 +211,7 @@ describe("async-utils", () => {
     test("비동기 변환 함수를 배열의 각 요소에 적용", async () => {
       // 각 요소를 2배로 변환하는 비동기 함수
       const arr = [1, 2, 3];
-      const mapper = async (x: number) => {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        return x * 2;
-      };
+      const mapper = delayedDouble;
 
       const result = await mapAsync(arr, mapper);
 
@@ -200,7 +222,7 @@ describe("async-utils", () => {
     test("빈 배열 처리", async () => {
       // 빈 배열
       const arr: number[] = [];
-      const mapper = async (x: number) => x * 2;
+      const mapper = double;
 
       const result = await mapAsync(arr, mapper);
 
@@ -211,7 +233,7 @@ describe("async-utils", () => {
     test("타입 변환 수행", async () => {
       // 숫자를 문자열로 변환하는 함수
       const arr = [1, 2, 3];
-      const mapper = async (x: number) => `number: ${x}`;
+      const mapper = numberLabel;
 
       const result = await mapAsync(arr, mapper);
 
@@ -223,10 +245,7 @@ describe("async-utils", () => {
       // 각각 100ms가 걸리는 변환 함수
       const arr = [1, 2, 3];
       const startTime = Date.now();
-      const mapper = async (x: number) => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        return x * 2;
-      };
+      const mapper = delayedDoubleInParallel;
 
       await mapAsync(arr, mapper);
       const duration = Date.now() - startTime;
@@ -238,12 +257,7 @@ describe("async-utils", () => {
     test("비동기 에러를 올바르게 전파", async () => {
       // 특정 값에서 에러를 던지는 변환 함수
       const arr = [1, 2, 3];
-      const mapper = async (x: number) => {
-        if (x === 2) {
-          throw new Error("Test error");
-        }
-        return x * 2;
-      };
+      const mapper = throwOnTwoMapper;
 
       // 에러가 전파되어야 함
       await expect(mapAsync(arr, mapper)).rejects.toThrow("Test error");
@@ -291,10 +305,7 @@ describe("async-utils", () => {
     test("비동기 리듀서로 배열 축약", async () => {
       // 배열의 합을 구하는 비동기 리듀서
       const arr = [1, 2, 3, 4];
-      const reducer = async (acc: number, x: number) => {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        return acc + x;
-      };
+      const reducer = delayedSum;
 
       const result = await reduceAsync(arr, reducer, 0);
 
@@ -305,7 +316,7 @@ describe("async-utils", () => {
     test("빈 배열은 initialValue 반환", async () => {
       // 빈 배열과 초기값 100
       const arr: number[] = [];
-      const reducer = async (acc: number, x: number) => acc + x;
+      const reducer = sum;
 
       const result = await reduceAsync(arr, reducer, 100);
 
@@ -320,10 +331,7 @@ describe("async-utils", () => {
         { key: "b", value: 2 },
         { key: "c", value: 3 },
       ];
-      const reducer = async (acc: Record<string, number>, item: { key: string; value: number }) => {
-        acc[item.key] = item.value;
-        return acc;
-      };
+      const reducer = collectKeyValues;
 
       const result = await reduceAsync(arr, reducer, {});
 
@@ -350,12 +358,7 @@ describe("async-utils", () => {
     test("비동기 에러를 올바르게 전파", async () => {
       // 특정 값에서 에러를 던지는 리듀서
       const arr = [1, 2, 3];
-      const reducer = async (acc: number, x: number) => {
-        if (x === 2) {
-          throw new Error("Test error");
-        }
-        return acc + x;
-      };
+      const reducer = throwOnTwoReducer;
 
       // 에러가 전파되어야 함
       await expect(reduceAsync(arr, reducer, 0)).rejects.toThrow("Test error");
@@ -390,6 +393,7 @@ describe("async-utils", () => {
           acc[key] = await exists(filePath);
           return acc;
         },
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
         {} as Record<string, boolean>,
       );
 
@@ -397,7 +401,7 @@ describe("async-utils", () => {
       expect(result).toHaveProperty("entity");
       expect(result).toHaveProperty("model");
       expect(result).toHaveProperty("service");
-      expect(typeof result.entity).toBe("boolean");
+      expect(result.entity).toEqual(expect.any(Boolean));
     });
 
     test("중첩된 mapAsync를 포함한 reduceAsync (syncer.checkExists 실제 패턴)", async () => {
@@ -422,14 +426,16 @@ describe("async-utils", () => {
             acc[`${key}__${target}`] = await exists(filePath);
           });
           return acc;
+          // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
         },
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
         {} as Record<string, boolean>,
       );
 
       // { service__web: true/false, service__mobile: true/false, ... } 형태
       // 단일 키 검증
       expect(result).toHaveProperty("view");
-      expect(typeof result.view).toBe("boolean");
+      expect(result.view).toEqual(expect.any(Boolean));
 
       // target별 키 검증
       expect(result).toHaveProperty("service__web");

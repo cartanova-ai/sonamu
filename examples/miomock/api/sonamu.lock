@@ -37,7 +37,7 @@
   },
   {
     "path": "api/src/application/chat/chat.types.ts",
-    "checksum": "639aafae98b2ad7cf87fc114f8c0ccbac97a6924"
+    "checksum": "3282e308429db2c9be8cb401a55057bebe6cc838"
   },
   {
     "path": "api/src/application/company/company.entity.json",
@@ -53,7 +53,7 @@
   },
   {
     "path": "api/src/application/dashboard/dashboard.frame.ts",
-    "checksum": "965b9e91e9bf882aa9cc228d2d0278d4c294cb22"
+    "checksum": "bf1901b620689bd8a5be02640c8cf6df72d6117b"
   },
   {
     "path": "api/src/application/dashboard/dashboard.types.ts",
@@ -81,7 +81,7 @@
   },
   {
     "path": "api/src/application/document/document.types.ts",
-    "checksum": "96a506a29c5fe0499e2292750b45e6e35f39e8c1"
+    "checksum": "174863521cb921b6e7858fabca5371374f599d3f"
   },
   {
     "path": "api/src/application/employee/employee.entity.json",
@@ -157,7 +157,7 @@
   },
   {
     "path": "api/src/application/sonamu.generated.sso.ts",
-    "checksum": "2299b9c30896fdd0d18ac90d0b9ca03e862a703e"
+    "checksum": "0e7ec3355d00b9633e870fd2d8cd093319115f02"
   },
   {
     "path": "api/src/application/sonamu.generated.ts",
@@ -245,7 +245,7 @@
   },
   {
     "path": "api/src/i18n/ja.ts",
-    "checksum": "a9815282c703ffb74c5ec120c73de4b1963cb8df"
+    "checksum": "3af3410f2d4e3069f4737eec18721c4028d46500"
   },
   {
     "path": "api/src/i18n/ko.ts",
@@ -253,7 +253,7 @@
   },
   {
     "path": "api/src/i18n/sd.generated.ts",
-    "checksum": "595b331b9aa5fcc28b383b23ea015578f851991e"
+    "checksum": "58b787915d727c55a50417b5547e5bae37d277cd"
   },
   {
     "path": "api/src/sonamu.config.ts",
@@ -265,7 +265,7 @@
   },
   {
     "path": "web/src/i18n/ja.ts",
-    "checksum": "0a6e9c6420b87b096514a383fadcab343830674c"
+    "checksum": "e7519059d0975a7a3bae3c9c21220030037c4b63"
   },
   {
     "path": "web/src/i18n/ko.ts",
@@ -273,7 +273,7 @@
   },
   {
     "path": "web/src/i18n/sd.generated.ts",
-    "checksum": "8a0493889ff6b57cf546f6a60bf3ace918b3f8bf"
+    "checksum": "1d8c9fcf60959004ad3b98345f8ea69bedb5b788"
   },
   {
     "path": "web/src/services/account/account.types.ts",
@@ -289,7 +289,7 @@
   },
   {
     "path": "web/src/services/chat/chat.types.ts",
-    "checksum": "231b82b4a6a9223a4db695ee9444677a7d3ba837"
+    "checksum": "767394615ba8e2ab340a69b58e9ad4ce19509387"
   },
   {
     "path": "web/src/services/company/company.types.ts",
@@ -305,7 +305,7 @@
   },
   {
     "path": "web/src/services/document/document.types.ts",
-    "checksum": "38b60180374699d9ac5ed94fb221567da1c3fdbe"
+    "checksum": "b087684bdfb478dba54bf304f03d2cb8781fbe14"
   },
   {
     "path": "web/src/services/employee/employee.types.ts",

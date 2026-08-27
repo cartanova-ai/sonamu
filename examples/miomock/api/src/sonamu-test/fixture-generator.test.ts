@@ -1,6 +1,7 @@
-import { DB, type DBPreset, EntityManager } from "sonamu";
+import { DB, EntityManager } from "sonamu";
 import { bootstrap, DataExplorer, FixtureGenerator, test } from "sonamu/test";
 import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
+import { z } from "zod";
 
 import {
   cleanupTestRecords,
@@ -15,9 +16,18 @@ const insertedUserIds = new Set<string>();
 const insertedCompanyIds = new Set<number>();
 const insertedDepartmentIds = new Set<number>();
 const insertedEmployeeIds = new Set<number>();
+const stringId = z.string();
+const numericId = z.number();
 
 // fixture 데이터의 max ID
 let fixtureMaxIds: Awaited<ReturnType<typeof getFixtureMaxIds>>;
+
+/** FixtureManager 초기화 후 테스트용 생성기를 현재 트랜잭션에 연결한다. */
+const getGenerator = () => {
+  const sourceDb = DB.getDB("fixture");
+  const targetDb = DB.testTransaction || DB.getDB("w");
+  return new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
+};
 
 // 테스트 시작 전 준비
 beforeAll(async () => {
@@ -42,20 +52,6 @@ afterAll(async () => {
 });
 
 describe("FixtureGenerator", () => {
-  /**
-   * FixtureGenerator 인스턴스를 생성합니다.
-   *
-   * 참고: FixtureManager.init()은 bootstrap에서 자동으로 처리되므로
-   * 테스트 코드에서 직접 호출할 필요가 없습니다.
-   */
-  const getGenerator = () => {
-    // sourceDb: fixture DB에서 데이터 읽기
-    const sourceDb = DB.getDB("fixture" as DBPreset);
-    // targetDb: test DB로 데이터 insert
-    const targetDb = DB.testTransaction || DB.getDB("w");
-    return new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
-  };
-
   describe("generate() - 메모리 생성만 테스트", () => {
     test("단일 fixture 생성 (메모리)", async () => {
       const generator = getGenerator();
@@ -65,7 +61,7 @@ describe("FixtureGenerator", () => {
 
       expect(user.email).toBe("test@example.com");
       expect(user.username).toBeDefined();
-      expect(typeof user.username).toBe("string");
+      expect(z.string().safeParse(user.username).success).toBe(true);
     });
 
     test("override 없이 기본값으로 생성", async () => {
@@ -74,7 +70,7 @@ describe("FixtureGenerator", () => {
 
       expect(user.email).toBeDefined();
       expect(user.username).toBeDefined();
-      expect(typeof user.email).toBe("string");
+      expect(z.string().safeParse(user.email).success).toBe(true);
     });
 
     test("여러 필드 override", async () => {
@@ -122,8 +118,9 @@ describe("FixtureGenerator", () => {
       expect(selectedDept).toHaveProperty("id");
       expect(selectedDept).toHaveProperty("company_id");
 
+      const selectedDepartmentId = numericId.parse(selectedDept?.id);
       const employees = await sourceDb("employees")
-        .where("department_id", (selectedDept?.id as number) ?? 0)
+        .where("department_id", selectedDepartmentId)
         .limit(2);
 
       if (employees.length > 0) {
@@ -131,7 +128,7 @@ describe("FixtureGenerator", () => {
         expect(employee).toHaveProperty("id");
         expect(employee).toHaveProperty("employee_number");
         expect(employee).toHaveProperty("user_id");
-        expect(employee.department_id).toBe((selectedDept?.id as number) ?? 0);
+        expect(employee.department_id).toBe(selectedDepartmentId);
       }
     });
   });
@@ -188,7 +185,7 @@ describe("FixtureGenerator", () => {
       // 각 Entity가 유효한 ID를 가지는지 확인
       expect(companies[0]?.data.id).toBeGreaterThan(0);
       expect(users[0]?.data.id).toBeDefined();
-      expect(typeof users[0]?.data.id).toBe("string");
+      expect(stringId.safeParse(users[0]?.data.id).success).toBe(true);
     });
   });
 
@@ -248,7 +245,7 @@ describe("FixtureGenerator", () => {
         throw new Error("User 결과를 찾을 수 없습니다");
       }
       const accountFromResult = results.find((r) => r.entityId === "Account");
-      console.log("user.data.id:", user.data.id, typeof user.data.id);
+      console.log("user.data.id:", user.data.id);
       console.log("accountFromResult:", accountFromResult?.data);
       const allAccounts = await db("accounts").select("id", "user_id").limit(5);
       console.log("accounts in DB:", allAccounts);
@@ -302,13 +299,13 @@ describe("FixtureGenerator", () => {
       // insert된 ID 추적
       results.forEach((result) => {
         if (result.entityId === "User") {
-          insertedUserIds.add(result.data.id as string);
+          insertedUserIds.add(stringId.parse(result.data.id));
         } else if (result.entityId === "Employee") {
-          insertedEmployeeIds.add(result.data.id as number);
+          insertedEmployeeIds.add(numericId.parse(result.data.id));
         } else if (result.entityId === "Department") {
-          insertedDepartmentIds.add(result.data.id as number);
+          insertedDepartmentIds.add(numericId.parse(result.data.id));
         } else if (result.entityId === "Company") {
-          insertedCompanyIds.add(result.data.id as number);
+          insertedCompanyIds.add(numericId.parse(result.data.id));
         }
       });
 
@@ -340,7 +337,7 @@ describe("FixtureGenerator", () => {
 
       // insert된 ID 추적
       results.forEach((result) => {
-        insertedCompanyIds.add(result.data.id as number);
+        insertedCompanyIds.add(numericId.parse(result.data.id));
       });
 
       // Company만 있어야 함
@@ -369,13 +366,13 @@ describe("FixtureGenerator", () => {
       // insert된 ID 추적
       results.forEach((result) => {
         if (result.entityId === "User") {
-          insertedUserIds.add(result.data.id as string);
+          insertedUserIds.add(stringId.parse(result.data.id));
         } else if (result.entityId === "Employee") {
-          insertedEmployeeIds.add(result.data.id as number);
+          insertedEmployeeIds.add(numericId.parse(result.data.id));
         } else if (result.entityId === "Department") {
-          insertedDepartmentIds.add(result.data.id as number);
+          insertedDepartmentIds.add(numericId.parse(result.data.id));
         } else if (result.entityId === "Company") {
-          insertedCompanyIds.add(result.data.id as number);
+          insertedCompanyIds.add(numericId.parse(result.data.id));
         }
       });
 
@@ -383,13 +380,10 @@ describe("FixtureGenerator", () => {
       expect(results.length).toBeGreaterThan(0);
 
       // 결과 분석: 엔티티별 개수 확인
-      const entityCounts = results.reduce(
-        (acc, r) => {
-          acc[r.entityId] = (acc[r.entityId] || 0) + 1;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
+      const entityCounts = results.reduce<Record<string, number>>((acc, r) => {
+        acc[r.entityId] = (acc[r.entityId] || 0) + 1;
+        return acc;
+      }, {});
 
       // User는 반드시 import되어야 함
       expect(entityCounts.User).toBeGreaterThan(0);

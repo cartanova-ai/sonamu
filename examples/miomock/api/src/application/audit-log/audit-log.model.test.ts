@@ -3,6 +3,7 @@ import assert from "assert";
 import { DB } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+import { z } from "zod";
 
 import { CompanyModel } from "../company/company.model";
 import { TagModel } from "../tag/tag.model";
@@ -291,7 +292,8 @@ describe("AuditLogModel", () => {
       expect(log).toBeDefined();
       expect(log?.action).toBe("delete");
       expect(log?.old_value).toBeDefined();
-      expect((log?.old_value as Record<string, unknown>)?.name).toBe(companyName);
+      const oldValue = z.object({ name: z.string() }).passthrough().parse(log?.old_value);
+      expect(oldValue.name).toBe(companyName);
     });
 
     test("Tag save(create) → audit_logs에 create 로그 자동 생성", async () => {
@@ -333,8 +335,8 @@ describe("AuditLogModel", () => {
     test("audit_logs 테이블에 save/del API가 없음 (Model에 메서드 미노출)", async () => {
       // AuditLogModel에 save, del 메서드가 공개 API로 노출되지 않음을 확인
       // @api 데코레이터가 없으므로 HTTP 엔드포인트로 접근 불가
-      expect(typeof (AuditLogModel as unknown as Record<string, unknown>).save).toBe("undefined");
-      expect(typeof (AuditLogModel as unknown as Record<string, unknown>).del).toBe("undefined");
+      expect("save" in AuditLogModel).toBe(false);
+      expect("del" in AuditLogModel).toBe(false);
     });
   });
 

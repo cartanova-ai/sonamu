@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { Naite, Puri } from "sonamu";
+import { Naite, parseFuzzyOperator, Puri } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 
@@ -21,32 +21,34 @@ beforeAll(async () => {
   await resetSequencesToFixture(fixtureMaxIds);
 });
 
+type ConflictJsonValue = string[] | string | Record<string, string>;
+
+async function expectConflictJsonValue(value: ConflictJsonValue) {
+  const db = UserModel.getPuri("w");
+  const [inserted] = await db
+    .table("sync_fixtures")
+    .insert({ name: "충돌 전", status: "draft", tags: ["tag1"] })
+    .returning("id");
+
+  expect(inserted).toBeDefined();
+  if (!inserted) {
+    return;
+  }
+
+  const [updated] = await db
+    .table("sync_fixtures")
+    .insert({ id: inserted.id, name: "충돌 후", status: "active", tags: ["tag2"] })
+    .onConflict("id", { update: { tags: JSON.parse(JSON.stringify(value)) } })
+    .returning("*");
+
+  expect(updated?.tags).toEqual(value);
+}
+
 describe("Puri Query", () => {
   describe("A. BASIC CRUD", () => {
     afterEach(async () => {
       await cleanupTestRecords(fixtureMaxIds);
     });
-
-    async function expectConflictJsonValue(value: string[] | string | Record<string, unknown>) {
-      const db = UserModel.getPuri("w");
-      const [inserted] = await db
-        .table("sync_fixtures")
-        .insert({ name: "충돌 전", status: "draft", tags: ["tag1"] })
-        .returning("id");
-
-      expect(inserted).toBeDefined();
-      if (!inserted) {
-        return;
-      }
-
-      const [updated] = await db
-        .table("sync_fixtures")
-        .insert({ id: inserted.id, name: "충돌 후", status: "active", tags: ["tag2"] })
-        .onConflict("id", { update: { tags: JSON.parse(JSON.stringify(value)) } })
-        .returning("*");
-
-      expect(updated?.tags).toEqual(value);
-    }
 
     test("select", async () => {
       const db = UserModel.getPuri("r");
@@ -1086,20 +1088,18 @@ describe("Puri Query", () => {
     test("whereFuzzy - 연산자 공백 정규화", () => {
       const db = UserModel.getPuri("r");
       const puri = db.table("documents");
-      Reflect.apply(puri.whereFuzzy, puri, ["documents.title", "검색어", { operator: "  %  " }]);
+      const operator = parseFuzzyOperator("  %  ");
+      puri.whereFuzzy("documents.title", "검색어", { operator });
       const query = puri.toQuery();
 
+      expect(operator).toBe("%");
       expect(query).toContain('"documents"."title" % \'검색어\'');
     });
 
     test("whereFuzzy - 잘못된 연산자 거부", () => {
-      const db = UserModel.getPuri("r");
-      const puri = db.table("documents");
       const queryCountBefore = Naite.get("puri:executed-query").result().length;
 
-      expect(() =>
-        Reflect.apply(puri.whereFuzzy, puri, ["documents.title", "검색어", { operator: "||" }]),
-      ).toThrowError("Invalid fuzzy operator: ||");
+      expect(() => parseFuzzyOperator("||")).toThrowError("Invalid fuzzy operator: ||");
       expect(Naite.get("puri:executed-query").result()).toHaveLength(queryCountBefore);
     });
 

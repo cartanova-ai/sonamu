@@ -1,25 +1,14 @@
-import { DB, EntityManager } from "sonamu";
-import { type DBPreset } from "sonamu";
-import { bootstrap, FixtureGenerator, test } from "sonamu/test";
+import { type Cone, DB, EntityManager } from "sonamu";
+import { bootstrap, FixtureGenerator, type FixtureTextGenerator, test } from "sonamu/test";
 import { afterAll, beforeAll, beforeEach, describe, expect, vi } from "vitest";
-
-// ai 패키지의 generateText 모킹
-vi.mock("ai", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("ai")>();
-  return {
-    ...actual,
-    generateText: vi.fn(),
-  };
-});
+import { z } from "zod";
 
 bootstrap(vi);
 
-// 모킹된 generateText 함수
-let mockGenerateText: ReturnType<typeof vi.fn>;
+// 테스트용 generateText 함수
+const mockGenerateText = vi.fn<FixtureTextGenerator>();
 
-beforeEach(async () => {
-  const ai = await import("ai");
-  mockGenerateText = ai.generateText as ReturnType<typeof vi.fn>;
+beforeEach(() => {
   mockGenerateText.mockReset(); // 각 테스트 전에 mock 완전 초기화 (once 큐 포함)
 
   // 테스트에서 더미 API 키 설정
@@ -28,7 +17,7 @@ beforeEach(async () => {
 
 describe("FixtureGenerator LLM", () => {
   // User 엔티티의 bio 필드 원본 cone을 저장하여 모든 테스트 후 복원
-  let savedOriginalCone: unknown;
+  let savedOriginalCone: Cone | undefined;
 
   beforeAll(() => {
     const userEntity = EntityManager.get("User");
@@ -45,7 +34,7 @@ describe("FixtureGenerator LLM", () => {
     const userEntity = EntityManager.get("User");
     const bioProp = userEntity.props.find((p) => p.name === "bio");
     if (bioProp) {
-      bioProp.cone = savedOriginalCone as typeof bioProp.cone;
+      bioProp.cone = savedOriginalCone;
     }
   });
 
@@ -54,11 +43,12 @@ describe("FixtureGenerator LLM", () => {
     delete process.env.ANTHROPIC_API_KEY;
 
     const userEntity = EntityManager.get("User");
-    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const sourceDb = DB.getDB("fixture");
     const targetDb = DB.testTransaction || DB.getDB("w");
 
     const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager, {
       useLLM: true,
+      generateText: mockGenerateText,
     });
 
     // note가 있는 필드를 임시로 추가
@@ -105,11 +95,12 @@ describe("FixtureGenerator LLM", () => {
     });
 
     const userEntity = EntityManager.get("User");
-    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const sourceDb = DB.getDB("fixture");
     const targetDb = DB.testTransaction || DB.getDB("w");
 
     const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager, {
       useLLM: true,
+      generateText: mockGenerateText,
     });
 
     // bio 필드에 note 추가 (테스트용)
@@ -158,11 +149,12 @@ describe("FixtureGenerator LLM", () => {
       }
     }
 
-    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const sourceDb = DB.getDB("fixture");
     const targetDb = DB.testTransaction || DB.getDB("w");
 
     const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager, {
       useLLM: true,
+      generateText: mockGenerateText,
     });
 
     // note가 있는 필드들을 override해서 LLM 호출 방지
@@ -185,8 +177,8 @@ describe("FixtureGenerator LLM", () => {
 
     // email은 fixtureGenerator가 있음 → LLM 안 씀
     expect(fixture.email).toBeDefined();
-    expect(typeof fixture.email).toBe("string");
-    expect((fixture.email as string).includes("@")).toBe(true);
+    const email = z.string().parse(fixture.email);
+    expect(email.includes("@")).toBe(true);
 
     // username도 fixtureGenerator가 있음
     expect(fixture.username).toBeDefined();
@@ -202,11 +194,12 @@ describe("FixtureGenerator LLM", () => {
     });
 
     const userEntity = EntityManager.get("User");
-    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const sourceDb = DB.getDB("fixture");
     const targetDb = DB.testTransaction || DB.getDB("w");
 
     const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager, {
       useLLM: true,
+      generateText: mockGenerateText,
       enableLLMCache: true,
     });
 
@@ -260,11 +253,12 @@ describe("FixtureGenerator LLM", () => {
     });
 
     const userEntity = EntityManager.get("User");
-    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const sourceDb = DB.getDB("fixture");
     const targetDb = DB.testTransaction || DB.getDB("w");
 
     const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager, {
       useLLM: true,
+      generateText: mockGenerateText,
     });
 
     // age 필드를 integer로 가정하고 fixtureHint 추가
@@ -280,7 +274,7 @@ describe("FixtureGenerator LLM", () => {
     try {
       const fixture = await generator.generate("User", {});
       expect(fixture[ageProp.name]).toBe(42);
-      expect(typeof fixture[ageProp.name]).toBe("number");
+      z.number().parse(fixture[ageProp.name]);
     } finally {
       ageProp.cone = originalCone;
     }
@@ -293,11 +287,12 @@ describe("FixtureGenerator LLM", () => {
     });
 
     const userEntity = EntityManager.get("User");
-    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const sourceDb = DB.getDB("fixture");
     const targetDb = DB.testTransaction || DB.getDB("w");
 
     const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager, {
       useLLM: true,
+      generateText: mockGenerateText,
     });
 
     // integer[] 타입 필드 찾기
@@ -312,10 +307,9 @@ describe("FixtureGenerator LLM", () => {
 
     try {
       const fixture = await generator.generate("User", {});
-      const value = fixture[arrayProp.name];
-      expect(Array.isArray(value)).toBe(true);
-      expect((value as number[]).length).toBe(3);
-      expect((value as number[])[0]).toBe(1);
+      const value = z.array(z.number()).parse(fixture[arrayProp.name]);
+      expect(value).toHaveLength(3);
+      expect(value[0]).toBe(1);
     } finally {
       arrayProp.cone = originalCone;
     }
@@ -325,11 +319,12 @@ describe("FixtureGenerator LLM", () => {
     mockGenerateText.mockRejectedValueOnce(new Error("LLM API Error"));
 
     const userEntity = EntityManager.get("User");
-    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const sourceDb = DB.getDB("fixture");
     const targetDb = DB.testTransaction || DB.getDB("w");
 
     const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager, {
       useLLM: true,
+      generateText: mockGenerateText,
     });
 
     const bioProp = userEntity.props.find((p) => p.name === "bio");
@@ -371,11 +366,12 @@ describe("FixtureGenerator LLM", () => {
     });
 
     const userEntity = EntityManager.get("User");
-    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const sourceDb = DB.getDB("fixture");
     const targetDb = DB.testTransaction || DB.getDB("w");
 
     const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager, {
       useLLM: true,
+      generateText: mockGenerateText,
       enableLLMCache: true,
     });
 
@@ -424,7 +420,7 @@ describe("FixtureGenerator LLM", () => {
 
 describe("executeGenerator 인자 파싱", () => {
   test("객체 인자: faker.number.int({ min: 1000, max: 9999 })", async () => {
-    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const sourceDb = DB.getDB("fixture");
     const targetDb = DB.testTransaction || DB.getDB("w");
     const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
 
@@ -444,8 +440,7 @@ describe("executeGenerator 인자 파싱", () => {
         employee_number: "12345678",
         user_id: "test-user-id",
       });
-      const salary = fixture.salary as number;
-      expect(typeof salary).toBe("number");
+      const salary = z.number().parse(fixture.salary);
       expect(salary).toBeGreaterThanOrEqual(1000);
       expect(salary).toBeLessThanOrEqual(9999);
     } finally {
@@ -454,7 +449,7 @@ describe("executeGenerator 인자 파싱", () => {
   });
 
   test("배열 내 single-quote 문자열: faker.helpers.arrayElement(['a', 'b', 'c'])", async () => {
-    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const sourceDb = DB.getDB("fixture");
     const targetDb = DB.testTransaction || DB.getDB("w");
     const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
 
@@ -487,7 +482,7 @@ describe("executeGenerator 인자 파싱", () => {
   });
 
   test("객체 배열 (weighted): faker.helpers.weightedArrayElement", async () => {
-    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const sourceDb = DB.getDB("fixture");
     const targetDb = DB.testTransaction || DB.getDB("w");
     const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
 
@@ -521,7 +516,7 @@ describe("executeGenerator 인자 파싱", () => {
   });
 
   test("날짜 객체 인자: faker.date.past({ years: 5 })", async () => {
-    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const sourceDb = DB.getDB("fixture");
     const targetDb = DB.testTransaction || DB.getDB("w");
     const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
 

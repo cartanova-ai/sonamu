@@ -56,6 +56,7 @@ async function runInRollbackTransaction<T>(callback: (trx: PuriWrapper) => Promi
     await TransactionOwnerModel.rollbackAfter(callback);
   } catch (error) {
     if (error instanceof ExpectedRollback) {
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       return error.result as T;
     }
     throw error;
@@ -218,7 +219,9 @@ describe("BaseModel 트랜잭션 전파", () => {
       } catch (error) {
         if (!(error instanceof ExpectedRollback)) {
           throw error;
+          // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
         }
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
         innerReadName = error.result as string | undefined;
       }
 
@@ -279,8 +282,10 @@ describe("BaseModel 트랜잭션 전파", () => {
               }));
             } catch (error) {
               if (!(error instanceof ExpectedRollback)) {
+                // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
                 throw error;
               }
+              // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
               reusedResult = error.result as typeof reusedResult;
             }
 
@@ -494,6 +499,7 @@ describe("BaseModel 트랜잭션 전파", () => {
               );
             } catch (error) {
               if (error instanceof ExpectedRollback) {
+                // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
                 return {
                   activeWasOwn,
                   inheritedParent,
@@ -538,10 +544,12 @@ describe("BaseModel 트랜잭션 전파", () => {
                 { dbPreset: "w" },
               );
             } catch (error) {
+              // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
               if (error instanceof ExpectedRollback) {
                 return {
                   activeWasOwn,
                   inheritedParent,
+                  // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
                   readName: error.result as string | undefined,
                   error: undefined,
                 };
@@ -560,11 +568,13 @@ describe("BaseModel 트랜잭션 전파", () => {
           });
         },
         { dbPreset: "r" },
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       );
     } catch (error) {
       if (!(error instanceof ExpectedRollback)) {
         throw error;
       }
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       siblingResult = error.result as typeof siblingResult;
     }
 

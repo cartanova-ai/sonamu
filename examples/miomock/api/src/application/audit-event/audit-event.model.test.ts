@@ -4,6 +4,7 @@ import { createHash } from "crypto";
 import { type AuditLogEvent, DB, ingestAuditEvent } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+import { z } from "zod";
 
 bootstrap(vi);
 
@@ -74,7 +75,7 @@ describe("AuditEventModel ingest() 기본 동작", () => {
     assert(row);
 
     // source는 이벤트 소스 식별자로 ingest()가 채워야 한다 (NOT NULL, entity.json 예: better_auth)
-    expect(typeof row.source).toBe("string");
+    z.string().parse(row.source);
     expect(row.source.length).toBeGreaterThan(0);
     expect(row.event_type).toBe("user_created");
     expect(row.event_key).toBe(eventKey);
@@ -117,7 +118,7 @@ describe("AuditEventModel ingest() 기본 동작", () => {
 
     const rows = await wdb("audit_events").where("event_key", eventKey).select("payload_json");
     expect(rows.length).toBe(1);
-    const payload = rows[0]?.payload_json as Record<string, unknown>;
+    const payload = rows[0]?.payload_json;
     expect(payload).toEqual(eventData);
   });
 

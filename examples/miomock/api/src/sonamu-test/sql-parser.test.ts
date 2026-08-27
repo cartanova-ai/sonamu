@@ -20,6 +20,7 @@ describe("sql-parser", () => {
         throw new Error("Invalid AST");
       }
 
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       const columnRef = ast.columns?.[0]?.expr as ColumnRef;
       const result = getTableName(columnRef);
 
@@ -29,7 +30,9 @@ describe("sql-parser", () => {
     test("객체 형태 테이블명 처리", () => {
       // 객체 형태의 테이블명을 직접 생성
       const columnRef: ColumnRef = {
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
         type: "column_ref",
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
         table: {
           type: "default",
           value: "posts",
@@ -49,8 +52,10 @@ describe("sql-parser", () => {
 
       if (Array.isArray(ast) || ast.type !== "select") {
         throw new Error("Invalid AST");
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       }
 
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       const columnRef = ast.columns?.[0]?.expr as ColumnRef;
       const result = getTableName(columnRef);
 

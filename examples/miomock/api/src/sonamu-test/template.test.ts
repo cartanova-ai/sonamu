@@ -47,8 +47,8 @@ describe("TemplateManager", () => {
 
         expect(entityTemplate).toBeDefined();
         expect(entityTemplate.key).toBe("entity");
-        expect(typeof entityTemplate.render).toBe("function");
-        expect(typeof entityTemplate.getTargetAndPath).toBe("function");
+        expect(entityTemplate.render).toEqual(expect.any(Function));
+        expect(entityTemplate.getTargetAndPath).toEqual(expect.any(Function));
       });
 
       // 목적: 존재하지 않는 템플릿 조회 시 명확한 에러가 발생하는지 확인
@@ -118,6 +118,7 @@ describe("TemplateManager", () => {
           getTargetAndPath: vi.fn(),
           getRequiredDictKeys: vi.fn(),
         };
+        // SAFETY: reload 검증용 객체는 등록 과정에서 필요한 key와 세 템플릿 메서드를 모두 제공한다.
         TemplateManager.register(customTemplate as Template);
         expect(TemplateManager.exists("reload-test-custom")).toBe(true);
 
@@ -203,7 +204,7 @@ describe("TemplateManager", () => {
           getTargetAndPath: vi.fn(),
           getRequiredDictKeys: vi.fn(),
         };
-
+        // SAFETY: 격리 등록용 객체는 관리자가 사용하는 key와 세 템플릿 메서드를 모두 제공한다.
         isolatedManager.register(customTemplate as Template);
 
         // 격리된 인스턴스에만 존재
@@ -225,6 +226,7 @@ describe("TemplateManager", () => {
         class CustomTemplate extends Template {
           constructor() {
             // 커스텀 템플릿은 임의의 문자열 키를 허용해야 하므로 타입 단언 사용
+            // SAFETY: 이 테스트 전용 키는 등록과 조회에 같은 문자열을 사용하며 빌트인 키와 충돌하지 않는다.
             super("custom-test-template" as TemplateKey);
           }
 
@@ -269,7 +271,9 @@ describe("TemplateManager", () => {
           getRequiredDictKeys: vi.fn(),
         };
 
+        // SAFETY: 첫 덮어쓰기 fixture는 TemplateManager가 호출하는 key와 세 메서드를 모두 갖춘다.
         TemplateManager.register(template1 as Template);
+        // SAFETY: 두 번째 fixture도 같은 완전한 형태를 가지며 의도적으로 첫 fixture의 key만 공유한다.
         TemplateManager.register(template2 as Template);
 
         const result = await TemplateManager.get("overwrite-test").render({});
@@ -303,6 +307,7 @@ describe("TemplateManager", () => {
           },
         ];
 
+        // SAFETY: 배열의 세 fixture는 서로 다른 key와 관리자가 요구하는 세 템플릿 메서드를 모두 제공한다.
         TemplateManager.registerAll(templates as Template[]);
 
         expect(TemplateManager.size).toBe(initialSize + 3);
@@ -361,6 +366,7 @@ describe("TemplateManager", () => {
           getTargetAndPath: vi.fn(),
           getRequiredDictKeys: vi.fn(),
         };
+        // SAFETY: 격리 fixture는 등록에 필요한 key와 세 템플릿 메서드를 모두 제공한다.
         TemplateManager.register(customTemplate as Template);
 
         expect(TemplateManager.exists("isolated-pattern-1")).toBe(true);

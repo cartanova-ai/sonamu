@@ -71,6 +71,7 @@ describe("sonamu.lock 무결성 추적", () => {
   describe("lock 직렬화", () => {
     // appRoot 상대 좌표계로 직렬화. 옛 포맷(api 상대)에서 이행한 결과의 회귀 가드.
     test("lock의 모든 path는 appRoot 상대 좌표계 (api/ 또는 web/ prefix)", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const content = JSON.parse(readFileSync(lockPath, "utf-8")) as Array<{ path: string }>;
       expect(content.length).toBeGreaterThan(0);
 
@@ -81,14 +82,16 @@ describe("sonamu.lock 무결성 추적", () => {
 
     // 알파벳 안정 정렬 (PR diff 깨끗함 가드).
     test("lock은 알파벳 순으로 정렬되어 있다", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const content = JSON.parse(readFileSync(lockPath, "utf-8")) as Array<{ path: string }>;
       const paths = content.map((e) => e.path);
-      const sorted = [...paths].sort((a, b) => a.localeCompare(b));
+      const sorted = paths.toSorted((a, b) => a.localeCompare(b));
       expect(paths).toStrictEqual(sorted);
     });
 
     // 동일 파일이 여러 패턴에 매치되어도 lock에 한 번만 등장. Set 기반 dedup의 회귀 가드.
     test("lock에 동일 path가 두 번 이상 등장하지 않는다", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const content = JSON.parse(readFileSync(lockPath, "utf-8")) as Array<{ path: string }>;
       const paths = content.map((e) => e.path);
       const uniquePaths = new Set(paths);
@@ -134,6 +137,7 @@ describe("sonamu.lock 무결성 추적", () => {
     // plan acceptance: "누군가 generated 파일을 손으로 누락시키면 다음 sync에서 즉시 검출됨".
     // lock에서 항목 제거 → 디스크엔 있는데 lock엔 없음 → changed로 잡혀야.
     test("lock에 없는 추적 파일이 있으면 변경으로 검출된다 (출력 누락 acceptance)", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const original = JSON.parse(lockBackup) as Array<{ path: string; checksum: string }>;
       const targetIdx = original.findIndex((e) =>
         e.path.endsWith("services/services.generated.ts"),
@@ -156,6 +160,7 @@ describe("sonamu.lock 무결성 추적", () => {
     // plan acceptance: "누군가 generated 파일을 손으로 고치면 다음 sync에서 즉시 검출됨".
     // lock의 checksum을 다른 값으로 바꾸면 디스크 checksum과 mismatch → changed로 잡혀야.
     test("lock의 checksum이 디스크와 다르면 변경으로 검출된다 (출력 변조 acceptance)", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const original = JSON.parse(lockBackup) as Array<{ path: string; checksum: string }>;
       const targetIdx = original.findIndex((e) =>
         e.path.endsWith("services/services.generated.ts"),

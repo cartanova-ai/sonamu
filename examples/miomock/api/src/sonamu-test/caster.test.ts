@@ -1,6 +1,6 @@
 import { test } from "sonamu/test";
 import { describe, expect } from "vitest";
-import z from "zod";
+import { z } from "zod";
 
 import { caster, fastifyCaster } from "../../../../../modules/sonamu/dist/api/caster";
 
@@ -11,7 +11,7 @@ describe("caster", () => {
       const raw = "123";
       const result = caster(schema, raw);
       expect(result).toBe(123);
-      expect(typeof result).toBe("number");
+      expect(result).toEqual(expect.any(Number));
     });
 
     test("isNullOrOptional: nullable 타입을 인식하여 내부 타입 변환 수행", () => {

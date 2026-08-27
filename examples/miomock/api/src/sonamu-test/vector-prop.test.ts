@@ -122,6 +122,7 @@ describe("vector-prop.test.ts", () => {
 
   describe("resolveDBColType - Vector 타입", () => {
     test("USER-DEFINED vector 타입을 올바르게 인식해야 한다", () => {
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       const col = {
         data_type: "USER-DEFINED",
         udt_name: "vector",
@@ -132,6 +133,7 @@ describe("vector-prop.test.ts", () => {
     });
 
     test("vector 타입은 기본 dimensions 0을 반환해야 한다", () => {
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       // Note: 실제 dimensions는 getVectorDimensions 쿼리로 조회됨
       const col = {
         data_type: "USER-DEFINED",
@@ -142,8 +144,10 @@ describe("vector-prop.test.ts", () => {
       expect(result).toMatchObject({ type: "vector", dimensions: 0 });
     });
 
+    // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
     test("vector[] 배열 타입을 올바르게 인식해야 한다", () => {
       // PostgreSQL에서 배열 타입은 udt_name이 _vector로 시작함
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       const col = {
         data_type: "ARRAY",
         udt_name: "_vector",

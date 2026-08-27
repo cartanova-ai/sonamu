@@ -1,5 +1,5 @@
 import { DB, Entity, EntityManager, TemplateManager } from "sonamu";
-import { type DBPreset, type EntityJson, type Template } from "sonamu";
+import { type EntityJson, type Template } from "sonamu";
 import { vi } from "vitest";
 import { type Mock } from "vitest";
 
@@ -74,7 +74,7 @@ export function mockTemplateManagerGetMultiple(
  * fixture 데이터가 추가되어도 자동으로 반영됩니다.
  */
 export async function getFixtureMaxIds() {
-  const fixtureDb = DB.getDB("fixture" as DBPreset);
+  const fixtureDb = DB.getDB("fixture");
 
   const [userResult, companyResults, deptResults, empResults] = await Promise.all([
     fixtureDb.raw("SELECT MAX(CAST(id AS INTEGER)) as max_id FROM users WHERE id ~ '^[0-9]+$'"),
@@ -84,10 +84,10 @@ export async function getFixtureMaxIds() {
   ]);
 
   return {
-    users: userResult.rows[0]?.max_id || 0,
-    companies: (companyResults[0]?.maxId as number) || 0,
-    departments: (deptResults[0]?.maxId as number) || 0,
-    employees: (empResults[0]?.maxId as number) || 0,
+    users: Number(userResult.rows[0]?.max_id) || 0,
+    companies: Number(companyResults[0]?.maxId) || 0,
+    departments: Number(deptResults[0]?.maxId) || 0,
+    employees: Number(empResults[0]?.maxId) || 0,
   };
 }
 

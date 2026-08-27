@@ -1,23 +1,24 @@
 import { api, registeredApis, stream, transactional } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeEach, describe, expect, vi } from "vitest";
-import z from "zod";
+import { z } from "zod";
 
 bootstrap(vi);
+
+const createMockTarget = (modelName: string, methodName: string) => {
+  const target = {
+    constructor: { name: `${modelName}Class` },
+  };
+  Object.defineProperty(target, methodName, { value: () => {}, configurable: true });
+  return target;
+};
+
+const originalTransactionalFn = async () => "original";
 
 describe("decorators", () => {
   beforeEach(() => {
     registeredApis.length = 0;
   });
-
-  // Mock DecoratorTarget 생성 헬퍼
-  const createMockTarget = (modelName: string, methodName: string) => {
-    const target: Record<string, unknown> & { constructor: { name: string } } = {
-      constructor: { name: `${modelName}Class` },
-    };
-    target[methodName] = () => {}; // 빈 메서드 추가
-    return target;
-  };
 
   describe("@api + @stream 동시 사용 금지", () => {
     const mockEvents = z.object({
@@ -161,13 +162,12 @@ describe("decorators", () => {
   describe("@transactional", () => {
     test("descriptor.value가 교체됨", () => {
       const target = createMockTarget("PracticeModel", "save");
-      const originalFn = async () => "original";
-      const descriptor = { value: originalFn };
+      const descriptor = { value: originalTransactionalFn };
 
       transactional()(target, "save", descriptor);
 
-      expect(descriptor.value).not.toBe(originalFn);
-      expect(typeof descriptor.value).toBe("function");
+      expect(descriptor.value).not.toBe(originalTransactionalFn);
+      expect(descriptor.value).toEqual(expect.any(Function));
     });
 
     test("options 전달 확인 (isolation, readOnly, dbPreset)", () => {

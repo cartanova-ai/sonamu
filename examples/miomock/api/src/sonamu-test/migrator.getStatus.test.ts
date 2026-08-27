@@ -1,6 +1,7 @@
 import { Migrator, Naite, Sonamu } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, describe, expect, vi } from "vitest";
+import { z } from "zod";
 
 bootstrap(vi, { forTesting: false });
 
@@ -23,7 +24,7 @@ describe("Migrator - getStatus", () => {
     // 각 DB 상태 검증
     const statuses = Naite.get("migrator:getStatus:status").result();
     expect(statuses).toHaveLength(5);
-    statuses.forEach((status) => expect(typeof status).toBe("number"));
+    statuses.forEach((statusValue) => expect(z.number().safeParse(statusValue).success).toBe(true));
 
     // conns 구조 검증
     expect(status.conns).toHaveLength(5);
@@ -56,6 +57,7 @@ describe("Migrator - getStatus", () => {
       "production",
     ]);
     connections.forEach((conn) => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const configured = Sonamu.dbConfig[conn.connKey].connection as {
         host?: string;
         port?: number;
@@ -105,13 +107,13 @@ describe("Migrator - getStatus", () => {
 
     const statuses = Naite.get("migrator:getStatus:status").result();
     expect(statuses).toHaveLength(5);
-    statuses.forEach((status) => expect(typeof status).toBe("number"));
+    statuses.forEach((statusValue) => expect(z.number().safeParse(statusValue).success).toBe(true));
 
     // pending이 있는 DB 확인
     const pendingConns = status.conns.filter((conn) => conn.pending.length > 0);
     if (pendingConns.length > 0) {
       pendingConns.forEach((conn) => {
-        expect(typeof conn.status).toBe("number");
+        expect(z.number().safeParse(conn.status).success).toBe(true);
         expect(conn.status).not.toBe(0);
         expect(Array.isArray(conn.pending)).toBe(true);
       });

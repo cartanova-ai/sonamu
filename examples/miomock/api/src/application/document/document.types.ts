@@ -4,9 +4,7 @@ import { z } from "zod";
 import { DocumentBaseListParams, DocumentBaseSchema } from "../sonamu.generated";
 
 // Document - SemanticParams
-export const DocumentSemanticParams = DocumentBaseListParams.extend(
-  SonamuSemanticParams.shape,
-).extend({
+export const DocumentSemanticParams = DocumentBaseListParams.merge(SonamuSemanticParams).extend({
   which: z.enum(["title", "content"]),
 });
 export type DocumentSemanticParams = z.infer<typeof DocumentSemanticParams>;

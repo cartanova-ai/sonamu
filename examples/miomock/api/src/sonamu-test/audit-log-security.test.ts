@@ -21,7 +21,7 @@ describe("감사 로그 클라이언트 IP", () => {
   test("Fastify가 해석한 IP가 위조된 전달 헤더보다 우선된다", async () => {
     const trustedIp = "203.0.113.10";
     const server = fastify();
-    server.get("/bridge", async (request) => {
+    server.get("/bridge", (request) => {
       const authRequest = createBetterAuthRequest(request, ["x-client-ip"]);
       return {
         cfConnectingIp: authRequest.headers.get("cf-connecting-ip"),

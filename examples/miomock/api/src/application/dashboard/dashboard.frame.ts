@@ -188,7 +188,7 @@ class DashboardFrameClass extends BaseFrameClass {
     }
 
     // 일반 사용자는 본인 이력만 (AC4), 관리자는 전체 (AC5)
-    if (user && (user as { role?: string }).role !== "admin") {
+    if (user && (!("role" in user) || user.role !== "admin")) {
       query.where("actor_id", String(user.id));
     }
 

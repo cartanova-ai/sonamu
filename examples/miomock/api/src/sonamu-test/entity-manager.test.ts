@@ -10,6 +10,38 @@ import { type AbsolutePath } from "../../../../../modules/sonamu/dist/utils/path
 
 bootstrap(vi);
 
+function createSearchTextEntity(jsonTypeId: string): EntityJson {
+  return {
+    id: "SearchTextRuntimeValidation",
+    title: "SearchText Runtime Validation",
+    table: "search_text_runtime_validations",
+    props: [
+      { name: "id", type: "string" },
+      { name: "aliases", type: "json", id: jsonTypeId },
+      {
+        name: "search_text",
+        type: "searchText",
+        sourceColumns: [{ name: "aliases", caseInsensitive: true }],
+      },
+    ],
+    indexes: [],
+    subsets: {},
+    enums: {},
+  };
+}
+
+function createTypeProviderEntity(id: string): EntityJson {
+  return {
+    id,
+    title: `${id} Type Provider`,
+    table: `${id.toLowerCase()}_type_providers`,
+    props: [{ name: "id", type: "string" }],
+    indexes: [],
+    subsets: {},
+    enums: {},
+  };
+}
+
 describe("entityManager", () => {
   // 테스트 실행 후 EntityManager 초기화
   afterEach(async () => {
@@ -38,6 +70,7 @@ describe("entityManager", () => {
       ] satisfies [string, string][];
 
       for (const [filePath, expectedEntityId] of cases) {
+        // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
         expect(EntityManager.getEntityIdFromPath(filePath as AbsolutePath)).toBe(expectedEntityId);
       }
     });
@@ -57,6 +90,7 @@ describe("entityManager", () => {
     });
 
     it("string PK - text 타입 ID 엔티티", async () => {
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       // string PK를 가진 엔티티 등록
       const stringPkEntity = {
         id: "ExternalResource",
@@ -83,8 +117,10 @@ describe("entityManager", () => {
       }
     });
 
+    // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
     it("uuid PK - UUID 타입 ID 엔티티", async () => {
       // uuid PK를 가진 엔티티 등록
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       const uuidPkEntity = {
         id: "AuditLog",
         table: "audit_logs",
@@ -106,9 +142,11 @@ describe("entityManager", () => {
       expect(pkProp.name).toBe("id");
       expect(pkProp.type).toBe("uuid");
     });
+    // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
 
     it("id 필드가 없는 엔티티 → 에러", async () => {
       // id 필드가 없는 엔티티 등록
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       const noIdEntity = {
         id: "NoIdEntity",
         table: "no_id_entities",
@@ -727,38 +765,6 @@ describe("entityManager", () => {
   });
 
   describe("searchText json source runtime validation", () => {
-    function createSearchTextEntity(jsonTypeId: string): EntityJson {
-      return {
-        id: "SearchTextRuntimeValidation",
-        title: "SearchText Runtime Validation",
-        table: "search_text_runtime_validations",
-        props: [
-          { name: "id", type: "string" },
-          { name: "aliases", type: "json", id: jsonTypeId },
-          {
-            name: "search_text",
-            type: "searchText",
-            sourceColumns: [{ name: "aliases", caseInsensitive: true }],
-          },
-        ],
-        indexes: [],
-        subsets: {},
-        enums: {},
-      };
-    }
-
-    function createTypeProviderEntity(id: string): EntityJson {
-      return {
-        id,
-        title: `${id} Type Provider`,
-        table: `${id.toLowerCase()}_type_providers`,
-        props: [{ name: "id", type: "string" }],
-        indexes: [],
-        subsets: {},
-        enums: {},
-      };
-    }
-
     it("optional/nullable wrapper가 있는 string[] json 타입을 허용해야 한다", async () => {
       const registerModulePathsSpy = vi
         .spyOn(Entity.prototype, "registerModulePaths")

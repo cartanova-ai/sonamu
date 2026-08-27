@@ -10,7 +10,10 @@ const SUPPORTED_LOCALES = ["ko", "en", "ja"] as const;
 function getCurrentLocale(): (typeof SUPPORTED_LOCALES)[number] {
   try {
     const ctx = Sonamu.getContext();
-    return (ctx.locale as (typeof SUPPORTED_LOCALES)[number]) ?? DEFAULT_LOCALE;
+    const locale = ctx.locale;
+    return (
+      SUPPORTED_LOCALES.find((supportedLocale) => supportedLocale === locale) ?? DEFAULT_LOCALE
+    );
   } catch {
     return DEFAULT_LOCALE;
   }
@@ -486,7 +489,10 @@ export function defineLocale(dict: Partial<MergedDictionary>) {
 }
 
 // 각 locale별로 rc-keys + entity labels + 프로젝트 dict 합침
-const dictionaries: Record<string, Partial<MergedDictionary>> = {
+type DictionaryRegistry = {
+  [L in (typeof SUPPORTED_LOCALES)[number]]: Partial<MergedDictionary>;
+};
+const dictionaries: DictionaryRegistry = {
   ko: { ...rcKeysKo, ...entityLabels, ...ko },
   en: { ...rcKeysEn, ...en },
   ja: { ...rcKeysKo, ...ja },
@@ -496,29 +502,36 @@ type SDReturnType<K extends DictKey> = MergedDictionary[K] extends (...args: inf
   ? (...args: P) => LocalizedString
   : LocalizedString;
 
-function getDictValue<K extends DictKey>(key: K, locale: string): SDReturnType<K> {
+function getDictValue<K extends DictKey>(
+  key: K,
+  locale: (typeof SUPPORTED_LOCALES)[number],
+): SDReturnType<K> {
   // 1. 지정된 locale에서 조회
   const dict = dictionaries[locale];
   if (dict?.[key] !== undefined) {
-    return dict[key] as unknown as SDReturnType<K>;
+    // SAFETY: 요청 locale의 같은 키는 MergedDictionary가 정한 반환 종류를 유지합니다.
+    return dict[key] as SDReturnType<K>;
   }
 
   // 2. default locale에서 조회
   if (locale !== DEFAULT_LOCALE && dictionaries[DEFAULT_LOCALE]?.[key] !== undefined) {
-    return dictionaries[DEFAULT_LOCALE][key] as unknown as SDReturnType<K>;
+    // SAFETY: 기본 locale의 같은 키는 MergedDictionary가 정한 반환 종류를 유지합니다.
+    return dictionaries[DEFAULT_LOCALE][key] as SDReturnType<K>;
   }
 
   // 3. supported locales 순회
   for (const supportedLocale of SUPPORTED_LOCALES) {
     if (supportedLocale !== locale && supportedLocale !== DEFAULT_LOCALE) {
       if (dictionaries[supportedLocale]?.[key] !== undefined) {
-        return dictionaries[supportedLocale][key] as unknown as SDReturnType<K>;
+        // SAFETY: 대체 locale의 같은 키는 MergedDictionary가 정한 반환 종류를 유지합니다.
+        return dictionaries[supportedLocale][key] as SDReturnType<K>;
       }
     }
   }
 
-  // 4. 모두 실패 시 key 반환
-  return key as unknown as SDReturnType<K>;
+  // 모든 locale에 값이 없으면 동적으로 조합된 키를 그대로 노출합니다.
+  // SAFETY: 누락된 사전 키의 문자열 표현은 LocalizedString fallback 규약을 따릅니다.
+  return String(key) as SDReturnType<K>;
 }
 
 /**
@@ -590,61 +603,84 @@ type LocalizedColumnCandidate<T, K extends string> =
 type LocalizedColumnReturn<T, K extends string> =
   | LocalizedColumnValueFrom<LocalizedColumnCandidate<T, K>>
   | undefined;
-type LocaleValueMap = Partial<Record<(typeof SUPPORTED_LOCALES)[number], unknown>>;
+type LocaleValueMap = {
+  [L in (typeof SUPPORTED_LOCALES)[number]]?: LocalizedColumnValue;
+};
+function isString<V>(value: V): value is V & string {
+  return Object.prototype.toString.call(value) === "[object String]";
+}
 
-function isLocalizedColumnValue(value: unknown): value is LocalizedColumnValue {
-  return (
-    typeof value === "string" ||
-    (Array.isArray(value) && value.every((item) => typeof item === "string"))
+function isLocalizedColumnValue<V>(value: V): value is V & LocalizedColumnValue {
+  return isString(value) || (Array.isArray(value) && value.every(isString));
+}
+
+function isLocalizedColumnScalarValue<V>(value: V): value is V & LocalizedColumnScalarValue {
+  return ["[object String]", "[object Number]", "[object Boolean]", "[object BigInt]"].includes(
+    Object.prototype.toString.call(value),
   );
 }
 
-function isLocalizedColumnScalarValue(value: unknown): value is LocalizedColumnScalarValue {
-  return ["string", "number", "boolean", "bigint"].includes(typeof value);
-}
-
-function isEmptyLocalizedColumnValue(value: unknown): value is null | undefined | "" {
+function isEmptyLocalizedColumnValue<V>(value: V): value is V & (null | undefined | "") {
   return value === null || value === undefined || value === "";
 }
 
-function getNestedLocaleValue<T extends Record<string, unknown>, K extends LocalizedBaseColumn<T>>(
+type PropertyValue<T, K extends PropertyKey> = K extends keyof T ? T[K] : undefined;
+
+function getProperty<T extends object, K extends PropertyKey>(row: T, key: K): PropertyValue<T, K> {
+  if (!(key in row)) {
+    // SAFETY: 존재하지 않는 후보 키는 조건부 속성 타입에서도 undefined입니다.
+    return undefined as PropertyValue<T, K>;
+  }
+
+  // SAFETY: own/inherited 키 존재를 확인했으므로 해당 키의 조건부 속성 타입으로 좁힐 수 있습니다.
+  return (row as T & Record<K, PropertyValue<T, K>>)[key];
+}
+
+function getNestedLocaleValue<T extends object, K extends LocalizedBaseColumn<T>>(
   row: T,
   column: K,
   locale: (typeof SUPPORTED_LOCALES)[number],
-): unknown {
-  const columnValue = row[column];
-  if (columnValue === null || typeof columnValue !== "object" || Array.isArray(columnValue)) {
+): LocalizedColumnValue | undefined {
+  const columnValue = getProperty(row, column);
+  if (columnValue === null || Object.prototype.toString.call(columnValue) !== "[object Object]") {
     return undefined;
   }
 
+  // SAFETY: 일반 객체 검사를 통과한 값만 locale별 값 맵으로 조회합니다.
   return (columnValue as LocaleValueMap)[locale];
 }
 
-export function localizedColumn<
-  T extends Record<string, unknown>,
-  K extends LocalizedBaseColumn<T>,
->(row: T, column: K): LocalizedColumnReturn<T, K> {
-  const currentLocale = getCurrentLocale();
-  const locale = SUPPORTED_LOCALES.includes(currentLocale) ? currentLocale : DEFAULT_LOCALE;
+function localizedKey<K extends string>(
+  columnName: K,
+  localeName: (typeof SUPPORTED_LOCALES)[number],
+) {
+  return `${columnName}_${localeName}`;
+}
+
+export function localizedColumn<T extends object, K extends LocalizedBaseColumn<T>>(
+  row: T,
+  column: K,
+): LocalizedColumnReturn<T, K> {
+  const requestedLocale = getCurrentLocale();
+  const locale = SUPPORTED_LOCALES.includes(requestedLocale) ? requestedLocale : DEFAULT_LOCALE;
   const otherLocales = SUPPORTED_LOCALES.filter(
-    (l: string) => l !== locale && l !== DEFAULT_LOCALE,
+    (candidateLocale) => candidateLocale !== locale && candidateLocale !== DEFAULT_LOCALE,
   );
-  const localizedKey = (column: K, locale: (typeof SUPPORTED_LOCALES)[number]) =>
-    `${column}_${locale}`;
   const values = [
-    { value: row[localizedKey(column, locale)], source: "direct" },
+    { value: getProperty(row, localizedKey(column, locale)), source: "direct" },
     { value: getNestedLocaleValue(row, column, locale), source: "nested" },
-    { value: row[column], source: "direct" },
-    { value: row[localizedKey(column, DEFAULT_LOCALE)], source: "direct" },
+    { value: getProperty(row, column), source: "direct" },
+    { value: getProperty(row, localizedKey(column, DEFAULT_LOCALE)), source: "direct" },
     { value: getNestedLocaleValue(row, column, DEFAULT_LOCALE), source: "nested" },
     ...otherLocales.flatMap((l) => [
-      { value: row[localizedKey(column, l)], source: "direct" },
+      { value: getProperty(row, localizedKey(column, l)), source: "direct" },
       { value: getNestedLocaleValue(row, column, l), source: "nested" },
     ]),
   ];
 
   for (const { value, source } of values) {
     if (!isEmptyLocalizedColumnValue(value) && isLocalizedColumnValue(value)) {
+      // SAFETY: 값 가드가 선택한 컬럼의 문자열 또는 문자열 배열임을 확인했습니다.
       return value as LocalizedColumnReturn<T, K>;
     }
     if (
@@ -652,6 +688,7 @@ export function localizedColumn<
       !isEmptyLocalizedColumnValue(value) &&
       isLocalizedColumnScalarValue(value)
     ) {
+      // SAFETY: 직접 컬럼의 스칼라 값은 문자열로 변환해 지역화 반환 타입을 충족합니다.
       return String(value) as LocalizedColumnReturn<T, K>;
     }
   }
@@ -666,15 +703,23 @@ export function localizedColumn<
  * @example
  * SD.enumLabels("TagOrderBy")[key]  // → 현재 locale의 라벨
  */
-SD.enumLabels = (enumName: string): Record<string, LocalizedString> => {
-  return new Proxy({} as Record<string, LocalizedString>, {
-    get(_, key: string | symbol) {
-      if (typeof key === "symbol") {
-        return undefined;
-      }
+interface EnumLabels {
+  [key: string]: LocalizedString;
+}
 
-      const dictKey = `enum.${enumName}.${key}` as DictKey;
-      return getDictValue(dictKey, getCurrentLocale());
+SD.enumLabels = (enumName: string): EnumLabels => {
+  return new Proxy<EnumLabels>(
+    {},
+    {
+      get(_, key: string | symbol) {
+        if (Object.prototype.toString.call(key) === "[object Symbol]") {
+          return undefined;
+        }
+
+        // SAFETY: 생성된 enum 이름과 값의 조합은 enum 사전 키 형식을 따릅니다.
+        const dictKey = `enum.${enumName}.${String(key)}` as DictKey;
+        return getDictValue(dictKey, getCurrentLocale());
+      },
     },
-  });
+  );
 };

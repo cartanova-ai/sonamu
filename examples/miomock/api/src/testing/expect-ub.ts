@@ -33,8 +33,8 @@ type UBExpectMap = {
   rows: unknown[];
   rowCount: number;
   row: unknown | undefined;
-  refs: unknown[];
-  uniquesMap: Record<string, unknown>;
+  refs: string[];
+  uniquesMap: Record<string, string>;
   uniqueIndexes: unknown[];
 };
 
@@ -67,63 +67,106 @@ const omitUuid = <T extends { uuid?: unknown }>({ uuid: _ignored, ...rest }: T) 
  *   { "email": "test@test.com" }
  * `);
  */
-export function expectUB<P extends UBPart>(
+export function expectUB(
   ub: UpsertBuilder,
-  part: P,
+  part: "tables",
   tableName?: string,
   index?: number,
-): ReturnType<typeof expect<UBExpectValue<P>>> {
+): ReturnType<typeof expect<UBExpectMap["tables"]>>;
+export function expectUB(
+  ub: UpsertBuilder,
+  part: "hasTable",
+  tableName?: string,
+  index?: number,
+): ReturnType<typeof expect<UBExpectMap["hasTable"]>>;
+export function expectUB(
+  ub: UpsertBuilder,
+  part: "rows",
+  tableName?: string,
+  index?: number,
+): ReturnType<typeof expect<UBExpectMap["rows"]>>;
+export function expectUB(
+  ub: UpsertBuilder,
+  part: "rowCount",
+  tableName?: string,
+  index?: number,
+): ReturnType<typeof expect<UBExpectMap["rowCount"]>>;
+export function expectUB(
+  ub: UpsertBuilder,
+  part: "row",
+  tableName?: string,
+  index?: number,
+): ReturnType<typeof expect<UBExpectMap["row"]>>;
+export function expectUB(
+  ub: UpsertBuilder,
+  part: "refs",
+  tableName?: string,
+  index?: number,
+): ReturnType<typeof expect<UBExpectMap["refs"]>>;
+export function expectUB(
+  ub: UpsertBuilder,
+  part: "uniquesMap",
+  tableName?: string,
+  index?: number,
+): ReturnType<typeof expect<UBExpectMap["uniquesMap"]>>;
+export function expectUB(
+  ub: UpsertBuilder,
+  part: "uniqueIndexes",
+  tableName?: string,
+  index?: number,
+): ReturnType<typeof expect<UBExpectMap["uniqueIndexes"]>>;
+export function expectUB(ub: UpsertBuilder, part: UBPart, tableName?: string, index?: number) {
   switch (part) {
     case "tables": {
       const value = Array.from(ub.tables.keys());
-      return expect(value) as ReturnType<typeof expect<UBExpectValue<P>>>;
+      return expect(value);
     }
 
     case "hasTable": {
-      const value = ub.hasTable(tableName as string);
-      return expect(value) as ReturnType<typeof expect<UBExpectValue<P>>>;
+      const value = tableName !== undefined && ub.hasTable(tableName);
+      return expect(value);
     }
 
     case "rows": {
-      const table = ub.tables.get(tableName as string);
+      const table = tableName === undefined ? undefined : ub.tables.get(tableName);
       const rowsWithoutUuid = (table?.rows ?? []).map(omitUuid);
-      return expect(rowsWithoutUuid) as ReturnType<typeof expect<UBExpectValue<P>>>;
+      return expect(rowsWithoutUuid);
     }
 
     case "rowCount": {
-      const table = ub.tables.get(tableName as string);
+      const table = tableName === undefined ? undefined : ub.tables.get(tableName);
       const value = table?.rows.length ?? 0;
-      return expect(value) as ReturnType<typeof expect<UBExpectValue<P>>>;
+      return expect(value);
     }
 
     case "row": {
-      const table = ub.tables.get(tableName as string);
+      const table = tableName === undefined ? undefined : ub.tables.get(tableName);
       const row = table?.rows[index ?? 0];
       const value = row ? omitUuid(row) : undefined;
-      return expect(value) as ReturnType<typeof expect<UBExpectValue<P>>>;
+      return expect(value);
     }
 
     case "refs": {
-      const table = ub.tables.get(tableName as string);
+      const table = tableName === undefined ? undefined : ub.tables.get(tableName);
       const value = Array.from(table?.references ?? []);
-      return expect(value) as ReturnType<typeof expect<UBExpectValue<P>>>;
+      return expect(value);
     }
 
     case "uniquesMap": {
-      const table = ub.tables.get(tableName as string);
+      const table = tableName === undefined ? undefined : ub.tables.get(tableName);
       const value = Object.fromEntries(table?.uniquesMap ?? new Map());
-      return expect(value) as ReturnType<typeof expect<UBExpectValue<P>>>;
+      return expect(value);
     }
 
     case "uniqueIndexes": {
-      const table = ub.tables.get(tableName as string);
+      const table = tableName === undefined ? undefined : ub.tables.get(tableName);
       const value = table?.uniqueIndexes ?? [];
-      return expect(value) as ReturnType<typeof expect<UBExpectValue<P>>>;
+      return expect(value);
     }
 
     default: {
-      const _exhaustiveCheck: never = part;
-      throw new Error(`처리되지 않은 UBPart: ${_exhaustiveCheck}`);
+      const exhaustiveCheck: never = part;
+      throw new Error(`처리되지 않은 UBPart: ${exhaustiveCheck}`);
     }
   }
 }

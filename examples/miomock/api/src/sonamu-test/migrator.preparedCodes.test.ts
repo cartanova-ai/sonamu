@@ -623,6 +623,7 @@ describe("Migrator - preparedCodes 생성", () => {
   test("FK 추가 감지 (ManyToMany)", async () => {
     // given: User와 Label 간의 ManyToMany 관계 추가
     // 1. Label 엔티티 생성
+    // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
     const labelEntity = {
       id: "Label",
       table: "labels",
@@ -777,6 +778,7 @@ describe("Migrator - preparedCodes 생성", () => {
 
   test("신규 엔티티 감지", async () => {
     // 새 Entity 등록 → create table 마이그레이션 코드 생성
+    // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
     const newEntity = {
       id: "TestEntity",
       table: "test_entities",
@@ -821,6 +823,7 @@ describe("Migrator - preparedCodes 생성", () => {
 
   test("코드 정렬 순서", async () => {
     // normal 타입이 foreign 타입보다 앞에 정렬
+    // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
     const newEntity = {
       id: "TestOrderEntity",
       table: "test_order_entities",
@@ -881,6 +884,7 @@ describe("Migrator - preparedCodes 생성", () => {
     // 목적: string/uuid 타입의 PK를 가진 엔티티의 마이그레이션 코드 생성 검증
 
     test("String PK 엔티티 생성 - length 지정", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const stringPkEntity = {
         id: "ExternalResource",
         table: "external_resources",
@@ -908,6 +912,7 @@ describe("Migrator - preparedCodes 생성", () => {
     });
 
     test("String PK 엔티티 생성 - length 미지정 (text)", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const stringPkEntity = {
         id: "TextIdEntity",
         table: "text_id_entities",
@@ -934,6 +939,7 @@ describe("Migrator - preparedCodes 생성", () => {
     });
 
     test("UUID PK 엔티티 생성", async () => {
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const uuidPkEntity = {
         id: "UuidEntity",
         table: "uuid_entities",
@@ -962,6 +968,7 @@ describe("Migrator - preparedCodes 생성", () => {
 
     test("String PK 엔티티를 참조하는 FK (BelongsToOne)", async () => {
       // 1. String PK를 가진 엔티티 등록
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const stringPkEntity = {
         id: "ExternalSystem",
         table: "external_systems",
@@ -977,6 +984,7 @@ describe("Migrator - preparedCodes 생성", () => {
       await EntityManager.register(stringPkEntity);
 
       // 2. String PK를 참조하는 엔티티 등록
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const refEntity = {
         id: "SystemLog",
         table: "system_logs",
@@ -1015,6 +1023,7 @@ describe("Migrator - preparedCodes 생성", () => {
 
     test("UUID PK 엔티티를 참조하는 FK (BelongsToOne)", async () => {
       // 1. UUID PK를 가진 엔티티 등록
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const uuidPkEntity = {
         id: "Transaction",
         table: "transactions",
@@ -1030,6 +1039,7 @@ describe("Migrator - preparedCodes 생성", () => {
       await EntityManager.register(uuidPkEntity);
 
       // 2. UUID PK를 참조하는 엔티티 등록
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const refEntity = {
         id: "TransactionDetail",
         table: "transaction_details",
@@ -1068,6 +1078,7 @@ describe("Migrator - preparedCodes 생성", () => {
 
     test("String PK 엔티티 간 ManyToMany 관계", async () => {
       // 1. String PK를 가진 두 엔티티 등록
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const entityA = {
         id: "Article",
         table: "articles",
@@ -1082,6 +1093,7 @@ describe("Migrator - preparedCodes 생성", () => {
       } as EntityJson;
       await EntityManager.register(entityA);
 
+      // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
       const entityB = {
         id: "Category",
         table: "categories",

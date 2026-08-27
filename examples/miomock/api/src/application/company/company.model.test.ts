@@ -19,7 +19,7 @@ describe("CompanyModel", () => {
       assert(companyId);
 
       // ID는 정수 타입 (Spec: Technical Constraints)
-      expect(typeof companyId).toBe("number");
+      expect(Number.isInteger(companyId)).toBe(true);
 
       const company = await CompanyModel.findById("A", companyId);
       expect(company.name).toBe("테스트회사");

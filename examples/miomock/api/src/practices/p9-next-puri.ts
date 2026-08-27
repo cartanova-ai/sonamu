@@ -13,8 +13,8 @@ Sonamu.runScript(async () => {
     id: "users.id",
     username: "users.username",
   });
-  // @ts-expect-error - unused
-  const _t3Result = await test3;
+  const t3Result = await test3;
+  void t3Result;
   expectAndLog(
     "select `u`.`id` as `id`, `u`.`name` as `name` from `users` as `u`",
     test3.toQuery(),
@@ -23,13 +23,13 @@ Sonamu.runScript(async () => {
   // Test: select 타입 체크
   type Test4Result = Awaited<typeof test3>[0];
   // 예상: { id: string, username: string }
-  // @ts-expect-error - unused
-  const _test4Check: Test4Result = {
+  const test4Check: Test4Result = {
     id: "1",
     username: "test",
     // @ts-expect-error - email은 select 안 했으므로 없어야 함
     email: "test@test.com",
   };
+  void test4Check;
 
   // Test: where
   const test5 = puri.from({ users: "users" }).where({ "users.role": "normal" });
@@ -78,18 +78,18 @@ Sonamu.runScript(async () => {
     id: "users.id",
     username: "users.username",
   });
-  // @ts-expect-error - unused
-  const _test9 = puri
+  const test9Result = puri
     .from({ users: "users" })
     .join({ c: sq }, "users.id", "c.id")
     .where("c.username", "test");
+  void test9Result;
 
   // test: join with subquery and callback
-  // @ts-expect-error - unused
-  const _test10 = puri.from("users").join({ c: sq }, (j) => {
+  const test10Result = puri.from("users").join({ c: sq }, (j) => {
     j.on("users.username", "c.username");
     j.orOn("users.id", "c.id");
   });
+  void test10Result;
 
   // test: select with sql expression
   puri.from({ users: "users" }).select({
@@ -122,31 +122,35 @@ Sonamu.runScript(async () => {
 
   // test: pluck
   const test14 = puri.from({ users: "users" }).pluck("id");
-  // @ts-expect-error - unused
-  const _t14Result = await test14;
+  const t14Result = await test14;
+  void t14Result;
 
   // test: insert
-  // @ts-expect-error - unused
-  const _test15 = puri.from({ users: "users" }).insert({
+  const test15Result = puri.from({ users: "users" }).insert({
     email: "test@test.com",
     username: "test",
     password: "test",
     role: "normal",
   });
+  void test15Result;
 
   // test: join 상황에서 insert 시도시 불가
   // @ts-expect-error - unused
-  const _test16 = puri.from("users").insert({
+  const test16Result = puri.from("users").insert({
     bio: "aa",
   });
+  void test16Result;
 
   // test: JOIN 후 업데이트
-  // @ts-expect-error - unused
-  const _test17 = puri.from({ u: "users" }).join({ e: "employees" }, "u.id", "e.user_id").update({
-    "u.bio": "aa",
-    "e.id": 1,
-    "e.salary": "10000",
-  });
+  const test17Result = puri
+    .from({ u: "users" })
+    .join({ e: "employees" }, "u.id", "e.user_id")
+    .update({
+      "u.bio": "aa",
+      "e.id": 1,
+      "e.salary": "10000",
+    });
+  void test17Result;
 });
 
 function expectAndLog(expected: string, actual: string) {

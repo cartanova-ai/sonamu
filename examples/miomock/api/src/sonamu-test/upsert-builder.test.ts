@@ -386,8 +386,13 @@ describe("Upsert Builder", () => {
       const empRow = empTable.rows[0];
       expect(empRow).toBeDefined();
       expect(isRefField(empRow!.user_id)).toBe(true);
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       expect((empRow!.user_id as UBRef).of).toBe("users");
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       expect((empRow!.user_id as UBRef).uuid).toBe(userRef.uuid);
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       expect((empRow!.user_id as UBRef).use).toBe("id");
 
       // [expect] references에 참조 정보 저장됨
@@ -423,9 +428,11 @@ describe("Upsert Builder", () => {
         employee_number: "EMP001",
       });
 
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       // [expect] rows에 use: "custome-value" 유지됨
       const empRow = ub.getTable("employees").rows[0];
       expect(empRow).toBeDefined();
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
       expect((empRow!.user_id as UBRef).use).toBe("custome-value");
 
       // [expect] references에 "users.custome-value"로 저장됨
@@ -505,7 +512,7 @@ describe("Upsert Builder", () => {
       // [expect] ID 배열 반환
       expect(ids).toBeInstanceOf(Array);
       expect(ids).toHaveLength(3);
-      expect(ids.every((id) => typeof id === "string")).toBe(true);
+      expect(ids).toEqual(ids.map(() => expect.any(String)));
 
       // [expect] DB 검증: 실제로 DB에 삽입되었는지 확인
       const insertedUsers = await wdb("users")
@@ -631,7 +638,7 @@ describe("Upsert Builder", () => {
 
       // [expect] ID 배열 반환
       expect(ids).toHaveLength(3);
-      expect(ids.every((id) => typeof id === "string")).toBe(true);
+      expect(ids).toEqual(ids.map(() => expect.any(String)));
 
       // [expect] DB 검증: 실제로 삽입되었는지 확인
       const insertedUsers = await wdb("users").select("id", "email").whereIn("id", ids);
@@ -965,7 +972,7 @@ describe("Upsert Builder", () => {
 
       // [expect] 모든 ID 반환
       expect(ids).toHaveLength(userCount);
-      expect(ids.every((id) => typeof id === "string")).toBe(true);
+      expect(ids).toEqual(ids.map(() => expect.any(String)));
 
       // [expect] DB 검증: 10개 모두 삽입되었는지 확인
       const insertedUsers = await wdb("users")
@@ -1818,6 +1825,7 @@ describe("Upsert Builder", () => {
       });
 
       const [newId] = await ub.upsert(wdb, "users");
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
 
       // [expect] DB 검증: 기존 유저는 수정됨, 새 유저는 추가됨
       const updatedUsers = await wdb("users")

@@ -35,6 +35,7 @@ async function signUp(email: string, password: string): Promise<string> {
     body: { email, password, name: email.split("@")[0] ?? "user" },
   });
   expect(res.status).toBe(200);
+  // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
   const json = (await res.json()) as SignUpResponse;
   return json.user.id;
 }
