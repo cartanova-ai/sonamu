@@ -12,6 +12,10 @@ import {
   normalizeStepOutput,
 } from "./step";
 
+interface CircularStructure {
+  self?: CircularStructure;
+}
+
 describe("createStepAttemptCacheFromAttempts", () => {
   test("creates empty cache from empty array", () => {
     const cache = createStepAttemptCacheFromAttempts([]);
@@ -244,6 +248,55 @@ describe("normalizeStepOutput", () => {
   test("passes through empty array", () => {
     const arr: unknown[] = [];
     expect(normalizeStepOutput(arr)).toBe(arr);
+  });
+
+  test("객체에서 JSON으로 직렬화할 수 없는 속성을 제거한다", () => {
+    const value = {
+      kept: "value",
+      omittedUndefined: undefined,
+      omittedFunction: () => "value",
+      omittedSymbol: Symbol("value"),
+    };
+
+    expect(normalizeStepOutput(value)).toEqual({ kept: "value" });
+  });
+
+  test("배열에서 JSON으로 직렬화할 수 없는 항목을 null로 변환한다", () => {
+    const value = [undefined, () => "value", Symbol("value"), "kept"];
+
+    expect(normalizeStepOutput(value)).toEqual([null, null, null, "kept"]);
+  });
+
+  test("유한하지 않은 숫자를 null로 변환한다", () => {
+    expect(normalizeStepOutput(Number.NaN)).toBeNull();
+    expect(normalizeStepOutput(Number.POSITIVE_INFINITY)).toBeNull();
+    expect(normalizeStepOutput(Number.NEGATIVE_INFINITY)).toBeNull();
+  });
+
+  test("Date와 toJSON 메서드가 있는 객체를 직렬화한다", () => {
+    const date = new Date("2025-06-15T10:30:00.000Z");
+    const value = {
+      toJSON: () => ({ serialized: true }),
+    };
+
+    expect(normalizeStepOutput(date)).toBe("2025-06-15T10:30:00.000Z");
+    expect(normalizeStepOutput(value)).toEqual({ serialized: true });
+  });
+
+  test("null 프로토타입 객체를 허용한다", () => {
+    const value: { foo: string; nested: { count: number } } = Object.create(null);
+    value.foo = "bar";
+    value.nested = { count: 1 };
+
+    expect(normalizeStepOutput(value)).toBe(value);
+  });
+
+  test("순환 구조와 BigInt를 거부한다", () => {
+    const circular: CircularStructure = {};
+    circular.self = circular;
+
+    expect(() => normalizeStepOutput(circular)).toThrow(TypeError);
+    expect(() => normalizeStepOutput(1n)).toThrow(TypeError);
   });
 });
 
