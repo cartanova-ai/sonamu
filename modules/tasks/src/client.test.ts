@@ -62,7 +62,7 @@ describe("OpenWorkflow", () => {
         const client = new OpenWorkflow({ backend });
         const workflow = client.defineWorkflow({ name: "schema-zod-invalid", schema }, noopFn);
 
-        await expect(workflow.run({ userId: "not-a-uuid", count: 0 } as never)).rejects.toThrow();
+        await expect(workflow.run({ userId: "not-a-uuid", count: 0 })).rejects.toThrow();
       });
     });
   });
@@ -276,9 +276,12 @@ describe("OpenWorkflow", () => {
     test("defineWorkflow wraps declareWorkflow and implementWorkflow", async () => {
       const client = new OpenWorkflow({ backend });
 
-      const workflow = client.defineWorkflow({ name: "define-wrap-test" }, ({ input }) => ({
-        doubled: (input as { n: number }).n * 2,
-      }));
+      const workflow = client.defineWorkflow<{ n: number }, { doubled: number }>(
+        { name: "define-wrap-test" },
+        ({ input }) => ({
+          doubled: input.n * 2,
+        }),
+      );
 
       const handle = await workflow.run({ n: 21 });
       const worker = client.newWorker();

@@ -24,6 +24,7 @@ import {
   type ResumeWorkflowRunParams,
   type SleepWorkflowRunParams,
 } from "../backend";
+import { type JsonValue } from "../core/json";
 import { mergeRetryPolicy } from "../core/retry";
 import { type SerializableRetryPolicy } from "../core/retry";
 import { type StepAttempt } from "../core/step";
@@ -43,8 +44,15 @@ interface BackendPostgresOptions {
   usePubSub?: boolean;
 }
 
+interface DatabaseRow {
+  [column: string]: JsonValue | Date | Buffer | bigint | undefined;
+}
+
 const logger = getLogger(["sonamu", "internal", "tasks"]);
 const queryLogger = getLogger(["sonamu", "internal", "tasks", "query"]);
+
+const camelizeRow = (row: DatabaseRow) =>
+  Object.fromEntries(Object.entries(row).map(([key, value]) => [camelize(key, true), value]));
 
 /**
  * Manages a connection to a Postgres database for workflow operations.
@@ -57,11 +65,11 @@ export class BackendPostgres implements Backend {
   private initialized: boolean = false;
   private runMigrations: boolean;
 
-  private _knex: Knex | null = null;
+  private knexInstance: Knex | null = null;
   private get knex(): Knex {
-    if (!this._knex) {
-      this._knex = knex(this.config);
-      this._knex.on("query", (query) => {
+    if (!this.knexInstance) {
+      this.knexInstance = knex(this.config);
+      this.knexInstance.on("query", (query) => {
         queryLogger.debug("SQL: {query}, Values: {bindings}", {
           query: query.sql,
           bindings: query.bindings,
@@ -69,7 +77,7 @@ export class BackendPostgres implements Backend {
       });
     }
 
-    return this._knex;
+    return this.knexInstance;
   }
 
   constructor(config: Knex.Config, options?: BackendPostgresOptions) {
@@ -83,11 +91,6 @@ export class BackendPostgres implements Backend {
         if (config?.postProcessResponse) {
           result = config.postProcessResponse(result, _queryContext);
         }
-
-        const camelizeRow = (row: Record<string, unknown>) =>
-          Object.fromEntries(
-            Object.entries(row).map(([key, value]) => [camelize(key, true), value]),
-          );
 
         if (Array.isArray(result)) {
           return result.map(camelizeRow);
@@ -161,7 +164,7 @@ export class BackendPostgres implements Backend {
     await this.pubsub?.destroy();
     this.pubsub = null;
     await this.knex.destroy();
-    this._knex = null;
+    this.knexInstance = null;
     this.initialized = false;
   }
 
@@ -176,10 +179,10 @@ export class BackendPostgres implements Backend {
     });
 
     // config에 retryPolicy를 포함시킵니다.
-    const configWithRetryPolicy = {
-      ...(typeof params.config === "object" && params.config !== null ? params.config : {}),
-      retryPolicy: params.retryPolicy ?? undefined,
-    };
+    const configWithRetryPolicy =
+      params.config !== null && !Array.isArray(params.config) && params.config instanceof Object
+        ? { ...params.config, retryPolicy: params.retryPolicy ?? undefined }
+        : { retryPolicy: params.retryPolicy ?? undefined };
 
     const qb = this.knex
       .withSchema(DEFAULT_SCHEMA)
@@ -277,12 +280,7 @@ export class BackendPostgres implements Backend {
       .orderBy("id", before ? reverseOrder : order)
       .limit(limit + 1);
 
-    return this.processPaginationResults(
-      rows,
-      limit,
-      typeof after === "string",
-      typeof before === "string",
-    );
+    return this.processPaginationResults(rows, limit, after !== undefined, before !== undefined);
   }
 
   private buildListWorkflowRunsWhere(
@@ -542,7 +540,9 @@ export class BackendPostgres implements Backend {
     }
 
     const config =
-      typeof workflowRun.config === "string" ? JSON.parse(workflowRun.config) : workflowRun.config;
+      Object.prototype.toString.call(workflowRun.config) === "[object String]"
+        ? JSON.parse(String(workflowRun.config))
+        : workflowRun.config;
     const savedRetryPolicy: SerializableRetryPolicy | undefined = config?.retryPolicy;
     const retryPolicy = mergeRetryPolicy(savedRetryPolicy);
 
@@ -906,12 +906,7 @@ export class BackendPostgres implements Backend {
       .orderBy("id", before ? reverseOrder : order)
       .limit(limit + 1);
 
-    return this.processPaginationResults(
-      rows,
-      limit,
-      typeof after === "string",
-      typeof before === "string",
-    );
+    return this.processPaginationResults(rows, limit, after !== undefined, before !== undefined);
   }
 
   private buildListStepAttemptsWhere(

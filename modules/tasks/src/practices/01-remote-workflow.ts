@@ -4,20 +4,20 @@ import { randomUUID } from "node:crypto";
 import { BackendPostgres, OpenWorkflow } from "../";
 import { KNEX_GLOBAL_CONFIG } from "../testing/connection";
 
-let _backend: BackendPostgres | null = null;
+let sharedBackend: BackendPostgres | null = null;
 
 async function getBackend(): Promise<BackendPostgres> {
-  if (_backend !== null) {
-    return _backend;
+  if (sharedBackend !== null) {
+    return sharedBackend;
   }
 
-  _backend = new BackendPostgres(KNEX_GLOBAL_CONFIG, {
+  sharedBackend = new BackendPostgres(KNEX_GLOBAL_CONFIG, {
     runMigrations: true,
     namespaceId: randomUUID(),
   });
 
-  await _backend.initialize();
-  return _backend;
+  await sharedBackend.initialize();
+  return sharedBackend;
 }
 
 async function practice() {

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { type DurationString } from "./duration";
 import { parseDuration } from "./duration";
+import { type Result } from "./result";
 import { err, ok } from "./result";
 
 describe("parseDuration", () => {
@@ -301,27 +302,38 @@ describe("parseDuration", () => {
     });
 
     test("returns error on non-string types", () => {
-      expect(parseDuration(undefined as unknown as DurationString)).toEqual(
+      expect(parseRuntimeDuration(undefined)).toEqual(
         err(new TypeError("Invalid duration format: expected a string but received undefined")),
       );
-      expect(parseDuration(null as unknown as DurationString)).toEqual(
+      expect(parseRuntimeDuration(null)).toEqual(
         err(new TypeError("Invalid duration format: expected a string but received object")),
       );
-      expect(parseDuration([] as unknown as DurationString)).toEqual(
+      expect(parseRuntimeDuration([])).toEqual(
         err(new TypeError("Invalid duration format: expected a string but received object")),
       );
-      expect(parseDuration({} as unknown as DurationString)).toEqual(
+      expect(parseRuntimeDuration({})).toEqual(
         err(new TypeError("Invalid duration format: expected a string but received object")),
       );
-      expect(parseDuration(Number.NaN as unknown as DurationString)).toEqual(
+      expect(parseRuntimeDuration(Number.NaN)).toEqual(
         err(new TypeError("Invalid duration format: expected a string but received number")),
       );
-      expect(parseDuration(Number.POSITIVE_INFINITY as unknown as DurationString)).toEqual(
+      expect(parseRuntimeDuration(Number.POSITIVE_INFINITY)).toEqual(
         err(new TypeError("Invalid duration format: expected a string but received number")),
       );
-      expect(parseDuration(Number.NEGATIVE_INFINITY as unknown as DurationString)).toEqual(
+      expect(parseRuntimeDuration(Number.NEGATIVE_INFINITY)).toEqual(
         err(new TypeError("Invalid duration format: expected a string but received number")),
       );
     });
   });
 });
+
+type RuntimeDurationInput =
+  | DurationString
+  | null
+  | undefined
+  | number
+  | readonly never[]
+  | Record<PropertyKey, never>;
+
+// SAFETY: 이 테스트 어댑터는 런타임 방어 로직에 잘못된 입력을 전달하기 위해 입력 타입만 넓힌다.
+const parseRuntimeDuration = parseDuration as (value: RuntimeDurationInput) => Result<number>;

@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 
 import knex from "knex";
 import { type Knex } from "knex";
+import { z } from "zod";
 
 export const DEFAULT_SCHEMA = "sonamu_tasks";
 const MIGRATION_FILE_PATTERN = /\.(?:[cm]?[jt]s)$/;
@@ -18,6 +19,15 @@ type MigrationEntry = {
   canonicalName: string;
   fileName: string;
 };
+
+const migrationModuleSchema = z.object({
+  up: z.custom<MigrationModule["up"]>((value) =>
+    Object.prototype.toString.call(value).endsWith("Function]"),
+  ),
+  down: z.custom<MigrationModule["down"]>((value) =>
+    Object.prototype.toString.call(value).endsWith("Function]"),
+  ),
+});
 
 function toCanonicalMigrationName(fileName: string): string {
   return fileName.replace(/\.(?:[cm]?[jt]s)$/, ".ts");
@@ -37,7 +47,7 @@ async function listMigrationEntries(directory: string): Promise<MigrationEntry[]
       canonicalName: toCanonicalMigrationName(dirent.name),
       fileName: dirent.name,
     }))
-    .sort((left, right) => left.canonicalName.localeCompare(right.canonicalName));
+    .toSorted((left, right) => left.canonicalName.localeCompare(right.canonicalName));
 }
 
 export function createMigrationSource(directory: string): Knex.MigrationSource<MigrationEntry> {
@@ -46,7 +56,15 @@ export function createMigrationSource(directory: string): Knex.MigrationSource<M
     getMigrationName: (migration) => migration.fileName,
     getMigration: async (migration): Promise<MigrationModule> => {
       const migrationUrl = pathToFileURL(path.join(directory, migration.fileName)).href;
-      return import(migrationUrl) as Promise<MigrationModule>;
+      const migrationModule = migrationModuleSchema.safeParse(await import(migrationUrl));
+      if (!migrationModule.success) {
+        throw new TypeError(`마이그레이션 모듈에 up/down 함수가 없습니다: ${migration.fileName}`);
+      }
+      const { up, down } = migrationModule.data;
+      return {
+        up: async (database) => up(database),
+        down: async (database) => down(database),
+      };
     },
   };
 }
@@ -72,6 +90,6 @@ export async function migrate(config: Knex.Config, schema: string) {
 /**
  * dropSchema drops the specified schema from the database.
  */
-export async function dropSchema(knex: Knex, schema: string) {
-  await knex.schema.dropSchemaIfExists(schema, true);
+export async function dropSchema(database: Knex, schema: string) {
+  await database.schema.dropSchemaIfExists(schema, true);
 }

@@ -26,7 +26,7 @@ describe("validateInput", () => {
 
   test("validates input successfully against schema", async () => {
     const schema = createMockSchema<{ name: string }>({
-      validate: (input) => ({ value: input as { name: string } }),
+      validate: (input) => ({ value: input }),
     });
     const input = { name: "test" };
 
@@ -40,7 +40,7 @@ describe("validateInput", () => {
 
   test("transforms input using schema", async () => {
     const schema = createMockSchema<string, number>({
-      validate: (input) => ({ value: Number.parseInt(input as string, 10) }),
+      validate: (input) => ({ value: Number.parseInt(input, 10) }),
     });
 
     const result = await validateInput(schema, "42");
@@ -103,7 +103,7 @@ describe("validateInput", () => {
     const schema = createMockSchema<string>({
       validate: async (input) => {
         await new Promise((resolve) => setTimeout(resolve, 1));
-        return { value: (input as string).toUpperCase() };
+        return { value: input.toUpperCase() };
       },
     });
 
@@ -173,13 +173,18 @@ describe("DEFAULT_WORKFLOW_RESULT_CONFIG", () => {
 });
 
 function createMockSchema<I, O = I>(options: {
-  validate: (input: unknown) => StandardSchemaV1.Result<O> | Promise<StandardSchemaV1.Result<O>>;
+  validate: (input: I) => StandardSchemaV1.Result<O> | Promise<StandardSchemaV1.Result<O>>;
 }): StandardSchemaV1<I, O> {
   return {
     "~standard": {
       version: 1,
       vendor: "test",
-      validate: options.validate,
+      validate: (input) => {
+        if (input === undefined) {
+          return { issues: [{ message: "입력이 필요합니다." }] };
+        }
+        return options.validate(input);
+      },
     },
   };
 }

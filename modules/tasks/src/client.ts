@@ -69,6 +69,7 @@ export class OpenWorkflow {
     fn: WorkflowFunction<Input, Output>,
   ): void {
     const workflow: Workflow<Input, Output, RunInput> = { spec, fn };
+    // SAFETY: 레지스트리는 이름으로 조회하며 실행 시 원래 Workflow 제네릭 쌍을 함께 복원한다.
     this.registry.register(workflow as Workflow<unknown, unknown, unknown>);
   }
 
@@ -152,6 +153,7 @@ export class OpenWorkflow {
     WorkflowRunInput<TSchema, Input>
   > {
     const workflow = defineWorkflow(spec, fn);
+    // SAFETY: 레지스트리는 이름으로 조회하며 실행 시 원래 Workflow 제네릭 쌍을 함께 복원한다.
     this.registry.register(workflow as Workflow<unknown, unknown, unknown>);
     return new RunnableWorkflow(this, workflow);
   }
@@ -299,6 +301,7 @@ export class WorkflowRunHandle<Output> {
 
       // 'succeeded' status is deprecated
       if (latest.status === "succeeded" || latest.status === "completed") {
+        // SAFETY: 완료된 실행의 output은 이 핸들을 만든 Workflow의 Output으로 저장됐다.
         return latest.output as Output;
       }
 

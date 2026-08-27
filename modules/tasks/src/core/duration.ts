@@ -21,65 +21,75 @@ export type DurationString = `${number}` | `${number}${UnitAnyCase}` | `${number
  * @returns Milliseconds
  */
 export function parseDuration(str: DurationString): Result<number> {
-  if (typeof str !== "string") {
+  const valueTag = Object.prototype.toString.call(str);
+  if (valueTag !== "[object String]") {
+    const primitiveType = new Map([
+      ["[object Undefined]", "undefined"],
+      ["[object Number]", "number"],
+      ["[object BigInt]", "bigint"],
+      ["[object Boolean]", "boolean"],
+      ["[object Symbol]", "symbol"],
+    ]).get(valueTag);
+    const receivedType = primitiveType ?? (valueTag.endsWith("Function]") ? "function" : "object");
     return err(
-      new TypeError(`Invalid duration format: expected a string but received ${typeof str}`),
+      new TypeError(`Invalid duration format: expected a string but received ${receivedType}`),
     );
   }
 
-  if (str.length === 0) {
+  const duration = String(str);
+  if (duration.length === 0) {
     return err(new Error('Invalid duration format: ""'));
   }
 
-  const match = /^(-?\.?\d+(?:\.\d+)?)\s*([a-z]+)?$/i.exec(str);
+  const match = /^(-?\.?\d+(?:\.\d+)?)\s*([a-z]+)?$/i.exec(duration);
 
   if (!match?.[1]) {
-    return err(new Error(`Invalid duration format: "${str}"`));
+    return err(new Error(`Invalid duration format: "${duration}"`));
   }
 
   const numValue = Number.parseFloat(match[1]);
   const unit = match[2]?.toLowerCase() ?? "ms"; // default to ms if not provided
 
-  const multipliers: Record<string, number> = {
-    millisecond: 1,
-    milliseconds: 1,
-    msec: 1,
-    msecs: 1,
-    ms: 1,
-    second: 1000,
-    seconds: 1000,
-    sec: 1000,
-    secs: 1000,
-    s: 1000,
-    minute: 60 * 1000,
-    minutes: 60 * 1000,
-    min: 60 * 1000,
-    mins: 60 * 1000,
-    m: 60 * 1000,
-    hour: 60 * 60 * 1000,
-    hours: 60 * 60 * 1000,
-    hr: 60 * 60 * 1000,
-    hrs: 60 * 60 * 1000,
-    h: 60 * 60 * 1000,
-    day: 24 * 60 * 60 * 1000,
-    days: 24 * 60 * 60 * 1000,
-    d: 24 * 60 * 60 * 1000,
-    week: 7 * 24 * 60 * 60 * 1000,
-    weeks: 7 * 24 * 60 * 60 * 1000,
-    w: 7 * 24 * 60 * 60 * 1000,
-    month: 2_629_800_000,
-    months: 2_629_800_000,
-    mo: 2_629_800_000,
-    year: 31_557_600_000,
-    years: 31_557_600_000,
-    yr: 31_557_600_000,
-    yrs: 31_557_600_000,
-    y: 31_557_600_000,
-  };
+  const multipliers = new Map<string, number>([
+    ["millisecond", 1],
+    ["milliseconds", 1],
+    ["msec", 1],
+    ["msecs", 1],
+    ["ms", 1],
+    ["second", 1000],
+    ["seconds", 1000],
+    ["sec", 1000],
+    ["secs", 1000],
+    ["s", 1000],
+    ["minute", 60 * 1000],
+    ["minutes", 60 * 1000],
+    ["min", 60 * 1000],
+    ["mins", 60 * 1000],
+    ["m", 60 * 1000],
+    ["hour", 60 * 60 * 1000],
+    ["hours", 60 * 60 * 1000],
+    ["hr", 60 * 60 * 1000],
+    ["hrs", 60 * 60 * 1000],
+    ["h", 60 * 60 * 1000],
+    ["day", 24 * 60 * 60 * 1000],
+    ["days", 24 * 60 * 60 * 1000],
+    ["d", 24 * 60 * 60 * 1000],
+    ["week", 7 * 24 * 60 * 60 * 1000],
+    ["weeks", 7 * 24 * 60 * 60 * 1000],
+    ["w", 7 * 24 * 60 * 60 * 1000],
+    ["month", 2_629_800_000],
+    ["months", 2_629_800_000],
+    ["mo", 2_629_800_000],
+    ["year", 31_557_600_000],
+    ["years", 31_557_600_000],
+    ["yr", 31_557_600_000],
+    ["yrs", 31_557_600_000],
+    ["y", 31_557_600_000],
+  ]);
 
-  const multiplier = multipliers[unit];
+  const multiplier = multipliers.get(unit);
   if (multiplier === undefined) {
-    return err(new Error(`Invalid duration format: "${str}"`));
+    return err(new Error(`Invalid duration format: "${duration}"`));
   }
 
   return ok(numValue * multiplier);

@@ -114,8 +114,68 @@ export function addToStepAttemptCache(
  * @param result - The result from a step function
  * @returns A JSON-serializable value
  */
-export function normalizeStepOutput(result: unknown): JsonValue {
-  return (result ?? null) as JsonValue;
+export function normalizeStepOutput<Output>(result: Output): JsonValue {
+  const normalized = result ?? null;
+  if (isJsonValue(normalized, new WeakSet())) return normalized;
+  return normalizeJsonValue(normalized, new WeakSet());
+}
+
+function normalizeJsonValue<Value>(value: Value, ancestors: WeakSet<object>): JsonValue {
+  if (value === null) return null;
+  const tag = Object.prototype.toString.call(value);
+  if (tag === "[object String]" && !(value instanceof Object)) return String(value);
+  if (tag === "[object Boolean]" && !(value instanceof Object)) return Boolean(value);
+  if (tag === "[object Number]" && !(value instanceof Object) && Number.isFinite(Number(value))) {
+    return Number(value);
+  }
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      throw new TypeError("Step output must be JSON-compatible");
+    }
+    return value.toISOString();
+  }
+  if (!(value instanceof Object)) throw new TypeError("Step output must be JSON-compatible");
+
+  if (ancestors.has(value)) {
+    throw new TypeError("Step output must be JSON-compatible");
+  }
+  ancestors.add(value);
+
+  if (Array.isArray(value)) {
+    const normalized = value.map((item) => normalizeJsonValue(item, ancestors));
+    ancestors.delete(value);
+    return normalized;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError("Step output must be JSON-compatible");
+  }
+
+  const normalized: Record<string, JsonValue> = {};
+  for (const [key, item] of Object.entries(value)) {
+    normalized[key] = normalizeJsonValue(item, ancestors);
+  }
+  ancestors.delete(value);
+  return normalized;
+}
+
+function isJsonValue<Value>(value: Value, ancestors: WeakSet<object>): value is Value & JsonValue {
+  if (value === null) return true;
+  const tag = Object.prototype.toString.call(value);
+  if (tag === "[object String]" || tag === "[object Boolean]") return !(value instanceof Object);
+  if (tag === "[object Number]") {
+    return !(value instanceof Object) && Number.isFinite(Number(value));
+  }
+  if (!(value instanceof Object) || value instanceof Date || ancestors.has(value)) return false;
+
+  const prototype = Object.getPrototypeOf(value);
+  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) return false;
+
+  ancestors.add(value);
+  const valid = Object.values(value).every((item) => isJsonValue(item, ancestors));
+  ancestors.delete(value);
+  return valid;
 }
 
 /**
@@ -142,10 +202,12 @@ export function calculateSleepResumeAt(
  * @param resumeAt - The time when the sleep should resume
  * @returns The context object for the sleep step
  */
-export function createSleepContext(resumeAt: Readonly<Date>): {
+export interface SleepContext {
   kind: "sleep";
   resumeAt: string;
-} {
+}
+
+export function createSleepContext(resumeAt: Readonly<Date>): SleepContext {
   return {
     kind: "sleep" as const,
     resumeAt: resumeAt.toISOString(),

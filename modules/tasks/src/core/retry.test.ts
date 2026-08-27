@@ -13,6 +13,12 @@ import {
   shouldRetryByPolicy,
 } from "./retry";
 
+const rejectRetry = (_error: SerializedError, _attempt: number) => ({
+  shouldRetry: false,
+  delayMs: 5000,
+});
+const acceptRetry = () => ({ shouldRetry: true, delayMs: 1000 });
+
 describe("calculateRetryDelayMs", () => {
   test("calculates exponential backoff correctly", () => {
     expect(calculateRetryDelayMs(1)).toBe(1000);
@@ -130,18 +136,14 @@ describe("mergeRetryPolicy", () => {
   });
 
   test("returns only maxAttempts and shouldRetry for dynamic policy", () => {
-    const customFn = (_error: SerializedError, _attempt: number) => ({
-      shouldRetry: false,
-      delayMs: 5000,
-    });
     const dynamicPolicy: DynamicRetryPolicy = {
       maxAttempts: 3,
-      shouldRetry: customFn,
+      shouldRetry: rejectRetry,
     };
     const merged = mergeRetryPolicy(dynamicPolicy);
 
     expect(merged.maxAttempts).toBe(3);
-    expect(merged.shouldRetry).toBe(customFn);
+    expect(merged.shouldRetry).toBe(rejectRetry);
     // 동적 정책에서는 backoff 필드들이 없어야 합니다.
     expect("initialIntervalMs" in merged).toBe(false);
     expect("backoffCoefficient" in merged).toBe(false);
@@ -149,14 +151,13 @@ describe("mergeRetryPolicy", () => {
   });
 
   test("uses default maxAttempts for dynamic policy when not specified", () => {
-    const customFn = () => ({ shouldRetry: true, delayMs: 1000 });
     const dynamicPolicy: DynamicRetryPolicy = {
-      shouldRetry: customFn,
+      shouldRetry: acceptRetry,
     };
     const merged = mergeRetryPolicy(dynamicPolicy);
 
     expect(merged.maxAttempts).toBe(5); // 기본값
-    expect(merged.shouldRetry).toBe(customFn);
+    expect(merged.shouldRetry).toBe(acceptRetry);
   });
 });
 

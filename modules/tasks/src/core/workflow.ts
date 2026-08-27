@@ -87,9 +87,10 @@ export async function validateInput<RunInput, Input>(
 ): Promise<ValidationResult<Input>> {
   // No schema means no validation - pass through as-is
   if (!schema) {
+    // SAFETY: 스키마가 없으면 실행 입력 타입과 워크플로우 입력 타입이 동일하다는 API 규약을 따른다.
     return {
       success: true,
-      value: input as unknown as Input,
+      value: input as Input,
     };
   }
 

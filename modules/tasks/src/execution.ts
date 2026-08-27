@@ -1,7 +1,6 @@
 import { type Backend } from "./backend";
 import { type DurationString } from "./core/duration";
 import { serializeError } from "./core/error";
-import { type JsonValue } from "./core/json";
 import { isDynamicRetryPolicy } from "./core/retry";
 import { type RetryPolicy } from "./core/retry";
 import { type StepAttempt, type StepAttemptCache } from "./core/step";
@@ -124,6 +123,7 @@ export class StepExecutor implements StepApi {
     // return cached result if available
     const existingAttempt = getCachedStepAttempt(this.cache, name);
     if (existingAttempt) {
+      // SAFETY: 캐시 항목은 같은 이름의 StepFunction<Output>이 저장한 결과다.
       return existingAttempt.output as Output;
     }
 
@@ -156,6 +156,7 @@ export class StepExecutor implements StepApi {
       // cache result
       this.cache = addToStepAttemptCache(this.cache, savedAttempt);
 
+      // SAFETY: 저장된 결과는 바로 위에서 실행한 StepFunction<Output>의 출력이다.
       return savedAttempt.output as Output;
     } catch (error) {
       // mark failure — null이면 외부에서 워크플로우 상태가 변경된 것입니다(pause/cancel).
@@ -237,11 +238,12 @@ export async function executeWorkflow(params: Readonly<ExecuteWorkflowParams>): 
     const attempts: StepAttempt[] = [];
     let cursor: string | undefined;
     do {
-      const response = await backend.listStepAttempts({
+      const listParams = {
         workflowRunId: workflowRun.id,
-        ...(cursor ? { after: cursor } : {}),
         limit: 1000,
-      });
+        after: cursor,
+      };
+      const response = await backend.listStepAttempts(listParams);
       attempts.push(...response.data);
       cursor = response.pagination.next ?? undefined;
     } while (cursor);
@@ -294,7 +296,7 @@ export async function executeWorkflow(params: Readonly<ExecuteWorkflowParams>): 
 
     // execute workflow
     const output = await workflowFn({
-      input: workflowRun.input as unknown,
+      input: workflowRun.input,
       step: executor,
       version: workflowVersion,
     });
@@ -303,7 +305,7 @@ export async function executeWorkflow(params: Readonly<ExecuteWorkflowParams>): 
     await backend.completeWorkflowRun({
       workflowRunId: workflowRun.id,
       workerId,
-      output: (output ?? null) as JsonValue,
+      output: normalizeStepOutput(output),
     });
   } catch (error) {
     // handle sleep signal by setting workflow to sleeping status
