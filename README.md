@@ -38,6 +38,7 @@ mise run build # 모노레포 내 패키지들 빌드
 ### 3. 예제 프로젝트 실행
 
 데이터베이스를 docker로 올려줍니다;
+
 ```bash
 # 클론받은 sonamu 저장소 루트 기준입니다.
 cd examples/miomock/api/database
@@ -45,20 +46,17 @@ docker compose up -d
 ```
 
 API 서버를 실행합니다;
+
 ```bash
 # 클론받은 sonamu 저장소 루트 기준입니다.
 cd examples/miomock/api
 mise exec -- pnpm dev
 ```
 
-Sonamu UI를 실행합니다;
-```bash
-# 클론받은 sonamu 저장소 루트 기준입니다.
-cd examples/miomock/api
-mise exec -- pnpm sonamu ui
-```
+API 개발 서버가 제공하는 Sonamu UI를 엽니다: <http://localhost:34900/sonamu-ui>
 
 Web 서버를 실행합니다;
+
 ```bash
 # 클론받은 sonamu 저장소 루트 기준입니다.
 cd examples/miomock/web

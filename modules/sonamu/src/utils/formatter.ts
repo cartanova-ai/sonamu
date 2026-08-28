@@ -1,11 +1,13 @@
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 // 테스트 환경에서는 fs/promises가 mock되지만, 아래 runOxlint이 isTest 가드로 안 도니까
 // 그냥 fs/promises 그대로 사용. (production에서만 임시파일 흐름이 돕니다.)
-import { readFile, unlink, writeFile } from "fs/promises";
-import { createRequire } from "module";
-import path, { dirname, join } from "path";
+import { constants } from "node:fs";
+import { access, readFile, unlink, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import path, { dirname, join } from "node:path";
 
 import { format, type FormatConfig } from "oxfmt";
+import { z } from "zod";
 
 import { cached } from "./async-utils";
 import { isTest } from "./controller";
@@ -13,6 +15,17 @@ import { execute } from "./process-utils";
 import { isNumberValue } from "./runtime-value";
 
 const requireFromHere = createRequire(import.meta.url);
+
+export type ResolveOxlintBinOptions = {
+  resolveModule: (specifier: string) => string;
+  readFile: (filePath: string) => Promise<string>;
+  access: (filePath: string, mode: number) => Promise<void>;
+};
+
+const OxlintStringBinManifestSchema = z.object({ bin: z.string().trim().min(1) });
+const OxlintNamedBinManifestSchema = z.object({
+  bin: z.object({ oxlint: z.string().trim().min(1) }),
+});
 
 /**
  * 코드를 프로젝트의 oxfmt + oxlint 설정에 맞춰 포매팅한 문자열을 반환합니다.
@@ -119,9 +132,13 @@ async function runOxlint(code: string): Promise<string> {
     await writeFile(tmpFile, code, "utf-8");
 
     try {
-      await execute(resolveOxlintBin(), ["--fix", "--fix-suggestions", "--type-aware", tmpFile], {
-        timeout: 10000,
-      });
+      await execute(
+        await resolveOxlintBin(),
+        ["--fix", "--fix-suggestions", "--type-aware", tmpFile],
+        {
+          timeout: 10000,
+        },
+      );
     } catch (e) {
       // lint 위반 시 exit code != 0이지만 --fix는 적용됨. exec 자체 실패만 throw.
       // SAFETY: 선행 분기와 함수 계약이 이 타입을 보장합니다.
@@ -140,10 +157,57 @@ async function runOxlint(code: string): Promise<string> {
   }
 }
 
-function resolveOxlintBin(): string {
+export async function resolveOxlintBin(
+  options: ResolveOxlintBinOptions = {
+    resolveModule: (specifier) => requireFromHere.resolve(specifier),
+    readFile: (filePath) => readFile(filePath, "utf-8"),
+    access: (filePath, mode) => access(filePath, mode),
+  },
+): Promise<string> {
+  let manifestPath: string;
   try {
-    return requireFromHere.resolve("oxlint/bin/oxlint");
+    manifestPath = options.resolveModule("oxlint/package.json");
   } catch {
-    return "oxlint";
+    throw createOxlintBinResolutionError(
+      "oxlint package.json을 찾을 수 없습니다. oxlint 의존성을 설치한 뒤 다시 시도해 주세요.",
+    );
   }
+
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(await options.readFile(manifestPath));
+  } catch {
+    throw createOxlintBinResolutionError(
+      "oxlint package.json을 읽거나 해석할 수 없습니다. 패키지를 다시 설치한 뒤 시도해 주세요.",
+    );
+  }
+
+  // npm의 bin은 단일 실행 파일 문자열과 명령 이름별 객체를 모두 허용합니다.
+  const stringBinManifest = OxlintStringBinManifestSchema.safeParse(manifest);
+  const namedBinManifest = OxlintNamedBinManifestSchema.safeParse(manifest);
+  let bin: string | null = null;
+  if (stringBinManifest.success) {
+    bin = stringBinManifest.data.bin;
+  } else if (namedBinManifest.success) {
+    bin = namedBinManifest.data.bin.oxlint;
+  }
+  if (bin === null) {
+    throw createOxlintBinResolutionError(
+      "oxlint package.json의 bin 필드가 없거나 올바르지 않습니다. 호환되는 oxlint 패키지를 설치해 주세요.",
+    );
+  }
+
+  const binPath = path.resolve(dirname(manifestPath), bin);
+  try {
+    await options.access(binPath, constants.F_OK | constants.X_OK);
+  } catch {
+    throw createOxlintBinResolutionError(
+      "oxlint package.json의 bin 실행 파일이 없거나 실행할 수 없습니다. 패키지를 다시 설치해 주세요.",
+    );
+  }
+
+  return binPath;
+}
+function createOxlintBinResolutionError(message: string): NodeJS.ErrnoException {
+  return Object.assign(new Error(message), { code: "OXLINT_BIN_RESOLUTION_FAILED" });
 }

@@ -20,7 +20,8 @@ pnpm test:watch       # 테스트 watch 모드
 
 ```bash
 pnpm dump             # miomock_test → latest.sql 덤프 생성 (테스트 데이터 변경 후 실행)
-pnpm seed             # latest.sql → miomock_fixture_remote 적용 (최신 dump pull 받은 후 실행)
+pnpm seed             # latest.sql을 fixture DB에 적용한 뒤 test DB로 동기화
+pnpm sync:dump        # seed, 승인된 Migration 실행, dump를 순서대로 실행
 ```
 
 ### 파일 구조
@@ -45,11 +46,8 @@ database/
 # 1. 최신 dump 파일 받기
 git pull
 
-# 2. pull 받은 dump를 miomock_fixture_remote에 적용
+# 2. dump를 fixture DB에 적용하고 test DB로 동기화
 pnpm seed
-
-# 3. miomock_fixture_remote 데이터를 miomock_test로 동기화
-pnpm sonamu fixture sync
 ```
 
 #### 테스트 데이터 수정하기

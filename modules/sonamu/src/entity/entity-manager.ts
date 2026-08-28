@@ -50,11 +50,12 @@ class EntityManagerClass {
   public isAutoloaded: boolean = false;
 
   // 경로 전달받아 모든 entity.json 파일 로드
-  async autoload(doSilent: boolean = false) {
+  async autoload(doSilent: boolean = false, explicitApiRootPath?: string) {
     if (this.isAutoloaded) {
       return;
     }
-    const pathPattern = path.join(Sonamu.apiRootPath, "/src/application/**/*.entity.json");
+    const apiRootPath = explicitApiRootPath ?? Sonamu.apiRootPath;
+    const pathPattern = path.join(apiRootPath, "/src/application/**/*.entity.json");
 
     for await (const file of glob(path.resolve(pathPattern))) {
       const json = parseEntityJson((await readFile(file)).toString());
@@ -62,7 +63,7 @@ class EntityManagerClass {
       // entity.json 스키마 검증
       const error = this.schemaValidate(json);
       if (error) {
-        const relativePath = path.relative(Sonamu.apiRootPath, file);
+        const relativePath = path.relative(apiRootPath, file);
         const errorMessage = prettifyError(error);
         if (!doSilent) {
           console.error(
@@ -74,7 +75,7 @@ class EntityManagerClass {
       await this.register(json, { deferSearchTextJsonSourceValidation: true });
     }
 
-    await this.registerNonEntityTypeModulePaths();
+    await this.registerNonEntityTypeModulePaths(apiRootPath);
     await this.validateAllRegisteredSearchTextJsonSources();
 
     this.isAutoloaded = true;
@@ -296,10 +297,10 @@ class EntityManagerClass {
     return inflection.camelize(entityBaseName.replace(/-/g, "_"));
   }
 
-  private async registerNonEntityTypeModulePaths(): Promise<void> {
+  private async registerNonEntityTypeModulePaths(apiRootPath: string): Promise<void> {
     const typePathsPatterns = [
-      path.join(Sonamu.apiRootPath, runtimePath("src/application/**/*.types.ts")),
-      path.join(Sonamu.apiRootPath, runtimePath("src/application/**/*.generated.ts")),
+      path.join(apiRootPath, runtimePath("src/application/**/*.types.ts")),
+      path.join(apiRootPath, runtimePath("src/application/**/*.generated.ts")),
     ];
     const typePaths = (
       await Promise.all(typePathsPatterns.map((pattern) => globAsync(pattern)))

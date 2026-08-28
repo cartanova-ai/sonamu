@@ -15,8 +15,8 @@
     "sonamu": "sonamu",
     "dump": "bash database/scripts/dump.sh",
     "seedOnly": "bash database/scripts/seed.sh",
-    "seed": "pnpm seedOnly && sonamu fixture sync",
-    "sync:dump": "pnpm seed && pnpm sonamu migrate run && pnpm dump",
+    "seed": "pnpm seedOnly && sonamu fixture sync --execute --confirm",
+    "sync:dump": "pnpm seed && pnpm sonamu migrate run --execute --confirm && pnpm dump",
     "docker:up": "docker compose --env-file .env -f database/docker-compose.yml up -d",
     "docker:down": "docker compose --env-file .env -f database/docker-compose.yml down"
   },
@@ -29,6 +29,7 @@
     "@logtape/pretty": "catalog:",
     "@logtape/redaction": "catalog:",
     "@oxc-project/runtime": "catalog:",
+    "@sonamu-kit/cli": "workspace:^",
     "ai": "catalog:",
     "bcrypt": "catalog:",
     "better-auth": "catalog:",

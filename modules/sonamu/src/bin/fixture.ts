@@ -1,4 +1,8 @@
+import { spawn, type SpawnOptions } from "node:child_process";
+import { open } from "node:fs/promises";
+
 import chalk from "chalk";
+import knex, { type Knex } from "knex";
 import prompts from "prompts";
 import { z } from "zod";
 
@@ -10,18 +14,22 @@ import { getSonamuEnvironment } from "../env";
 import { DataExplorer } from "../testing/data-explorer";
 import { type DataExplorerStrategy } from "../testing/data-explorer";
 import { FixtureGenerator } from "../testing/fixture-generator";
+import { FixtureManager } from "../testing/fixture-manager";
+import { exists } from "../utils/fs-utils";
 
-interface FixtureCommandOptions {
+export interface FixtureCommandOptions {
   _?: string[];
   all?: boolean;
   include?: string;
   exclude?: string;
-  count?: string;
+  count?: string | number;
   "save-to"?: string;
   strategy?: DataExplorerStrategy;
-  limit?: string;
+  limit?: string | number;
   "use-llm"?: boolean;
   "no-cache"?: boolean;
+  nonInteractive?: boolean;
+  userMode?: "login" | "dummy";
 }
 
 interface SignupBody {
@@ -33,6 +41,160 @@ interface SignupBody {
 }
 
 const SignupErrorResponse = z.object({ code: z.string().optional() }).passthrough();
+
+function runProcess(
+  executable: string,
+  args: string[],
+  stdio: SpawnOptions["stdio"] = ["ignore", "inherit", "inherit"],
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(executable, args, { stdio });
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      if (code === 0) resolve();
+      else
+        reject(
+          new Error(`${executable} 명령이 ${code ?? signal ?? "unknown"} 상태로 실패했습니다.`),
+        );
+    });
+  });
+}
+
+async function writeMysqlDump(args: string[], outputPath: string) {
+  const output = await open(outputPath, "w");
+  try {
+    await runProcess("mysqldump", args, ["ignore", output.fd, "inherit"]);
+  } finally {
+    await output.close();
+  }
+}
+
+async function runMysqlWithInput(args: string[], inputPath: string) {
+  const input = await open(inputPath, "r");
+  try {
+    await runProcess("mysql", args, [input.fd, "inherit", "inherit"]);
+  } finally {
+    await input.close();
+  }
+}
+
+function mysqlConnectionArgs(connection: Knex.ConnectionConfig) {
+  return [
+    `-h${String(connection.host)}`,
+    `-u${String(connection.user)}`,
+    `-p${String(connection.password)}`,
+  ];
+}
+
+export async function fixtureInitCommand(): Promise<void> {
+  const srcConfig = Sonamu.dbConfig[getSonamuEnvironment()];
+  const fixtureConnection =
+    /* SAFETY: Sonamu DB 구성은 초기화 시 Knex 연결 구성으로 검증됩니다. */ Sonamu.dbConfig.fixture
+      .connection as Knex.ConnectionConfig;
+  const testConnection =
+    /* SAFETY: Sonamu DB 구성은 초기화 시 Knex 연결 구성으로 검증됩니다. */ Sonamu.dbConfig.test
+      .connection as Knex.ConnectionConfig;
+  const targets: Array<{ label: string; config: Knex.Config; toSkip?: boolean }> = [
+    { label: "(REMOTE) Fixture DB", config: Sonamu.dbConfig.fixture },
+    {
+      label: "(LOCAL) Testing DB",
+      config: Sonamu.dbConfig.test,
+      // 같은 DB를 가리키면 원격 fixture를 다시 덮어쓰지 않습니다.
+      toSkip:
+        fixtureConnection.host === testConnection.host &&
+        fixtureConnection.database === testConnection.database,
+    },
+  ];
+
+  const dumpFilename = `/tmp/sonamu-fixture-init-${Date.now()}.sql`;
+  const migrationsDump = `/tmp/sonamu-fixture-init-migrations-${Date.now()}.sql`;
+  const srcConnection =
+    /* SAFETY: Sonamu DB 구성은 초기화 시 Knex 연결 구성으로 검증됩니다. */ srcConfig.connection as Knex.ConnectionConfig;
+  await writeMysqlDump(
+    [
+      ...mysqlConnectionArgs(srcConnection),
+      "--single-transaction",
+      "-d",
+      "--no-create-db",
+      "--triggers",
+      String(srcConnection.database),
+    ],
+    dumpFilename,
+  );
+
+  const sourceDb = knex(srcConfig);
+  try {
+    const [[migrations]] = await sourceDb.raw(
+      "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = 'knex_migrations'",
+      [srcConnection.database],
+    );
+    if (migrations.count > 0) {
+      await writeMysqlDump(
+        [
+          ...mysqlConnectionArgs(srcConnection),
+          "--single-transaction",
+          "--no-create-db",
+          "--triggers",
+          String(srcConnection.database),
+          "knex_migrations",
+          "knex_migrations_lock",
+        ],
+        migrationsDump,
+      );
+    }
+
+    for (const { label, config, toSkip } of targets) {
+      const connection =
+        /* SAFETY: targets는 검증된 Sonamu DB 구성에서만 조합됩니다. */ config.connection as Knex.ConnectionConfig;
+      if (toSkip === true) {
+        console.log(chalk.red(`${label}: Skipped!`));
+        continue;
+      }
+
+      const databaseConnection =
+        /* SAFETY: targets는 검증된 Sonamu DB 구성에서만 조합됩니다. */ (config.connection ??
+          {}) as Knex.ConnectionConfig;
+      const db = knex({
+        ...config,
+        connection: { ...databaseConnection, database: undefined },
+      });
+      try {
+        const [[row]] = await db.raw(`SHOW DATABASES LIKE "${connection.database}"`);
+        if (row) {
+          console.log(chalk.yellow(`${label}: Database "${connection.database}" Already exists`));
+          continue;
+        }
+
+        const connectionArgs = mysqlConnectionArgs(connection);
+        const database = String(connection.database);
+        const escapedDatabase = database.replaceAll("`", "``");
+        await runProcess("mysql", [
+          ...connectionArgs,
+          "-e",
+          `DROP DATABASE IF EXISTS \`${escapedDatabase}\``,
+        ]);
+        await runProcess("mysql", [
+          ...connectionArgs,
+          "-e",
+          `CREATE DATABASE \`${escapedDatabase}\``,
+        ]);
+        await runMysqlWithInput([...connectionArgs, database], dumpFilename);
+        if (await exists(migrationsDump)) {
+          await runMysqlWithInput([...connectionArgs, database], migrationsDump);
+        }
+      } finally {
+        await db.destroy();
+      }
+    }
+  } finally {
+    await sourceDb.destroy();
+  }
+}
+
+export async function fixtureCleanupCommand(): Promise<void> {
+  await FixtureManager.destroy();
+  await Sonamu.destroy();
+}
 
 /**
  * username을 일반적인 규칙(영문자 시작, 영문자/숫자만, 1-20자)에 맞도록 정규화합니다.
@@ -70,6 +232,11 @@ export async function fixtureGenCommand(options: FixtureCommandOptions) {
       }
     } else if (options.include) {
       entityNames = options.include.split(",").map((s: string) => s.trim());
+    } else if (options.nonInteractive === true) {
+      throw Object.assign(new Error("Fixture gen selector is required."), {
+        code: "MISSING_ARGUMENT",
+        exitCode: 2,
+      });
     } else {
       const result = await prompts({
         type: "multiselect",
@@ -87,8 +254,8 @@ export async function fixtureGenCommand(options: FixtureCommandOptions) {
       entityNames = result.entities;
     }
 
-    let count = options.count ? Number.parseInt(options.count, 10) : 5;
-    if (!options.count) {
+    let count = options.count ? Number.parseInt(String(options.count), 10) : 5;
+    if (!options.count && options.nonInteractive !== true) {
       const result = await prompts({
         type: "number",
         name: "count",
@@ -109,25 +276,30 @@ export async function fixtureGenCommand(options: FixtureCommandOptions) {
     const hasUser = entityNames.includes("User");
 
     if (hasUser) {
-      const userModeResult = await prompts({
-        type: "select",
-        name: "userMode",
-        message: "User 엔티티가 포함되어 있습니다. 생성 방식을 선택하세요:",
-        choices: [
-          { title: "1. 로그인 가능한 사용자 fixture 생성", value: "login" },
-          { title: "2. 확인용 데이터(로그인 불가) 생성", value: "dummy" },
-        ],
-      });
+      let userMode = options.userMode;
+      if (userMode === undefined && options.nonInteractive === true) userMode = "dummy";
+      if (userMode === undefined) {
+        const userModeResult = await prompts({
+          type: "select",
+          name: "userMode",
+          message: "User 엔티티가 포함되어 있습니다. 생성 방식을 선택하세요:",
+          choices: [
+            { title: "1. 로그인 가능한 사용자 fixture 생성", value: "login" },
+            { title: "2. 확인용 데이터(로그인 불가) 생성", value: "dummy" },
+          ],
+        });
+        userMode = userModeResult.userMode;
+      }
 
-      if (!userModeResult.userMode) {
+      if (!userMode) {
         console.log(chalk.yellow("취소되었습니다."));
         return;
       }
 
-      if (userModeResult.userMode === "login") {
+      if (userMode === "login") {
         // LLM 사용 여부
         let useLLM = options["use-llm"] ?? false;
-        if (!options["use-llm"]) {
+        if (options["use-llm"] === undefined && options.nonInteractive !== true) {
           const llmResult = await prompts({
             type: "confirm",
             name: "useLLM",
@@ -232,7 +404,7 @@ export async function fixtureGenCommand(options: FixtureCommandOptions) {
     }
 
     let saveTarget = options["save-to"] || "db";
-    if (!options["save-to"]) {
+    if (!options["save-to"] && options.nonInteractive !== true) {
       const result = await prompts({
         type: "select",
         name: "saveTarget",
@@ -266,7 +438,7 @@ export async function fixtureGenCommand(options: FixtureCommandOptions) {
 
     // LLM 사용 여부 결정
     let useLLM = options["use-llm"] ?? false;
-    if (!options["use-llm"]) {
+    if (options["use-llm"] === undefined && options.nonInteractive !== true) {
       const llmResult = await prompts({
         type: "confirm",
         name: "useLLM",
@@ -387,6 +559,11 @@ export async function fixtureFetchCommand(options: FixtureCommandOptions) {
       }
     } else if (options.include) {
       entityNames = options.include.split(",").map((s: string) => s.trim());
+    } else if (options.nonInteractive === true) {
+      throw Object.assign(new Error("Fixture fetch selector is required."), {
+        code: "MISSING_ARGUMENT",
+        exitCode: 2,
+      });
     } else {
       const result = await prompts({
         type: "multiselect",
@@ -405,7 +582,7 @@ export async function fixtureFetchCommand(options: FixtureCommandOptions) {
     }
 
     const strategy: DataExplorerStrategy = options.strategy ?? "recent";
-    const limit = options.limit ? Number.parseInt(options.limit, 10) : 10;
+    const limit = options.limit ? Number.parseInt(String(options.limit), 10) : 10;
 
     // fixture fetch: 현재 환경 데이터를 fixture DB로 import합니다
     const sourceDb = DB.getDB("r");
@@ -449,6 +626,12 @@ export async function fixtureExploreCommand(options: FixtureCommandOptions) {
 
     let entityName = options.include;
 
+    if (!entityName && options.nonInteractive === true) {
+      throw Object.assign(new Error("Fixture explore selector is required."), {
+        code: "MISSING_ARGUMENT",
+        exitCode: 2,
+      });
+    }
     if (!entityName) {
       const result = await prompts({
         type: "select",
@@ -470,7 +653,7 @@ export async function fixtureExploreCommand(options: FixtureCommandOptions) {
     }
 
     const strategy: DataExplorerStrategy = options.strategy ?? "sample";
-    const limit = options.limit ? Number.parseInt(options.limit, 10) : 10;
+    const limit = options.limit ? Number.parseInt(String(options.limit), 10) : 10;
 
     const db = DB.getDB("r");
     const explorer = new DataExplorer(db, EntityManager);

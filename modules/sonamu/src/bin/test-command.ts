@@ -40,6 +40,13 @@ export interface TestCommandDependencies {
   loadConfig: (apiRootPath: string) => Promise<TestCommandConfig>;
 }
 
+export interface LegacyTestCommandInput {
+  files?: readonly string[];
+  pattern?: string;
+  traces?: boolean;
+  status?: boolean;
+}
+
 const testCommandDependencies: TestCommandDependencies = {
   fetch: globalThis.fetch,
   findApiRootPath,
@@ -74,10 +81,6 @@ export async function testCommand(
   dependencies: TestCommandDependencies = testCommandDependencies,
 ): Promise<void> {
   const args = process.argv.slice(3);
-
-  const config = await loadDevServerConfig(dependencies);
-
-  // process.argv 파싱: sonamu test [file...] --pattern "이름" --traces --status
   const files: string[] = [];
   let pattern: string | undefined;
   let showTraces = false;
@@ -95,6 +98,26 @@ export async function testCommand(
       files.push(arg);
     }
   }
+
+  return runTestCommand({ files, pattern, traces: showTraces, status: showStatus }, dependencies);
+}
+
+export async function testCommandWithInput(
+  input: LegacyTestCommandInput,
+  dependencies: TestCommandDependencies = testCommandDependencies,
+): Promise<void> {
+  return runTestCommand(input, dependencies);
+}
+
+async function runTestCommand(
+  input: LegacyTestCommandInput,
+  dependencies: TestCommandDependencies,
+): Promise<void> {
+  const config = await loadDevServerConfig(dependencies);
+  const files = [...(input.files ?? [])];
+  const pattern = input.pattern;
+  const showTraces = input.traces === true;
+  const showStatus = input.status === true;
 
   if (showStatus) {
     return testStatusCommand(config, dependencies.fetch);

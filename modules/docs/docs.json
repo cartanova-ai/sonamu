@@ -379,6 +379,7 @@
               {
                 "group": "Sonamu CLI",
                 "pages": [
+                  "ko/tools-and-cli/sonamu-cli/reference",
                   "ko/tools-and-cli/sonamu-cli/dev",
                   "ko/tools-and-cli/sonamu-cli/build",
                   "ko/tools-and-cli/sonamu-cli/migrate",
@@ -934,6 +935,7 @@
               {
                 "group": "Sonamu CLI",
                 "pages": [
+                  "en/tools-and-cli/sonamu-cli/reference",
                   "en/tools-and-cli/sonamu-cli/dev",
                   "en/tools-and-cli/sonamu-cli/build",
                   "en/tools-and-cli/sonamu-cli/migrate",

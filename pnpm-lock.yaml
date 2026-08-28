@@ -132,6 +132,12 @@ catalogs:
     '@logtape/redaction':
       specifier: 2.0.0
       version: 2.0.0
+    '@optique/core':
+      specifier: 1.2.4
+      version: 1.2.4
+    '@optique/run':
+      specifier: 1.2.4
+      version: 1.2.4
     '@oxc-project/runtime':
       specifier: ^0.79.0
       version: 0.79.1
@@ -588,9 +594,6 @@ catalogs:
     tsdown:
       specifier: ^0.22.3
       version: 0.22.3
-    tsicli:
-      specifier: ^1.0.5
-      version: 1.0.5
     tsx:
       specifier: ^4.21.0
       version: 4.21.0
@@ -755,6 +758,9 @@ importers:
       '@sonamu-kit/cdd':
         specifier: workspace:^
         version: link:../../../modules/cdd
+      '@sonamu-kit/cli':
+        specifier: workspace:^
+        version: link:../../../modules/cli
       ai:
         specifier: 'catalog:'
         version: 6.0.3(zod@4.3.6)
@@ -996,6 +1002,46 @@ importers:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@25.0.7)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@25.0.7)(esbuild@0.27.7)(jiti@2.7.0)(sass@1.97.1)(tsx@4.21.0))
 
+  modules/cli:
+    dependencies:
+      '@optique/core':
+        specifier: 'catalog:'
+        version: 1.2.4
+      '@optique/run':
+        specifier: 'catalog:'
+        version: 1.2.4
+      prompts:
+        specifier: 'catalog:'
+        version: 2.4.2
+      zod:
+        specifier: 'catalog:'
+        version: 4.3.6
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.0.7
+      '@types/prompts':
+        specifier: 'catalog:'
+        version: 2.4.9
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.55.0
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.80.0(oxlint-tsgolint@7.0.2001)
+      sonamu:
+        specifier: workspace:^
+        version: link:../sonamu
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.22.3(@typescript/native-preview@7.0.0-dev.20251226.1)(tsx@4.21.0)(typescript@6.0.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@25.0.7)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@25.0.7)(esbuild@0.27.7)(jiti@2.7.0)(sass@1.97.1)(tsx@4.21.0))
+
   modules/create-sonamu:
     dependencies:
       chalk:
@@ -1116,6 +1162,8 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
+
+  modules/hmr-hook/tmp: {}
 
   modules/hmr-runner:
     dependencies:
@@ -1701,9 +1749,6 @@ importers:
       radashi:
         specifier: 'catalog:'
         version: 12.7.1
-      tsicli:
-        specifier: 'catalog:'
-        version: 1.0.5
       vite:
         specifier: 'catalog:'
         version: 8.0.16(@types/node@25.0.7)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.97.1)(tsx@4.21.0)
@@ -3419,6 +3464,14 @@ packages:
   '@opentelemetry/semantic-conventions@1.40.0':
     resolution: {integrity: sha512-cifvXDhcqMwwTlTK04GBNeIe7yyo28Mfby85QXFe1Yk8nmi36Ab/5UQwptOx84SsoGNRg+EVSjwzfSZMy6pmlw==}
     engines: {node: '>=14'}
+
+  '@optique/core@1.2.4':
+    resolution: {integrity: sha512-jECnA/bShyqP0qKxm312+FgoY8w4WnOx+WB2I73qYeArsgIkdilIsjnUJx7wrdUe75T9fT1Q8MhCmoOd/KyLEg==}
+    engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
+
+  '@optique/run@1.2.4':
+    resolution: {integrity: sha512-v57aw0hIVp/sn33FtVy5wlmoLSoRjouhS3sI995LuZ1gRU2VTmoLGzwcms8EkuIdFBO9mV80F4Q+0slmEn/W7w==}
+    engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
 
   '@oxc-project/runtime@0.79.1':
     resolution: {integrity: sha512-sKObiX1IODLUcrklqL+gaYq+Q/AbXs09mibyYgH6V31O0M3fEipmQcP22rWXUfYQFH0h1aetsl0URAnLtyFmWA==}
@@ -10686,9 +10739,6 @@ packages:
       unrun:
         optional: true
 
-  tsicli@1.0.5:
-    resolution: {integrity: sha512-b0MHqUOtCpnyKenn57LzrjB4iPENTEmwDU0H7VvCOH4wYB9LjmHl5lTFsdlUS6W1mpZkG2dtEkhJFJjKV5P4QQ==}
-
   tslib@1.14.1:
     resolution: {integrity: sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==}
 
@@ -13419,6 +13469,12 @@ snapshots:
   '@opentelemetry/api@1.9.0': {}
 
   '@opentelemetry/semantic-conventions@1.40.0': {}
+
+  '@optique/core@1.2.4': {}
+
+  '@optique/run@1.2.4':
+    dependencies:
+      '@optique/core': 1.2.4
 
   '@oxc-project/runtime@0.79.1': {}
 
@@ -21056,11 +21112,6 @@ snapshots:
       - '@typescript/native-preview'
       - oxc-resolver
       - vue-tsc
-
-  tsicli@1.0.5:
-    dependencies:
-      chalk: 4.1.2
-      prompts: 2.4.2
 
   tslib@1.14.1: {}
 

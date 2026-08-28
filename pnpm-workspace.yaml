@@ -59,6 +59,8 @@ catalog:
   "@logtape/logtape": 2.0.0
   "@logtape/pretty": 2.0.0
   "@logtape/redaction": 2.0.0
+  "@optique/core": 1.2.4
+  "@optique/run": 1.2.4
   "@oxc-project/runtime": ^0.79.0
   "@oxlint/plugins": 1.80.0
 
@@ -220,7 +222,6 @@ catalog:
   tailwindcss: ^4.0.0
   ts-node: ^10.9.2
   tsdown: ^0.22.3
-  tsicli: ^1.0.5
   tsx: ^4.21.0
   typescript: ^6.0.3
   unplugin-icons: 0.20.2
@@ -240,6 +241,7 @@ catalog:
 minimumReleaseAge: 2880
 # 메인 툴체인에 대해선 적용 제외
 minimumReleaseAgeExclude:
+  - "@optique/*"
   - oxlint*
   - oxfmt
   - oxc*

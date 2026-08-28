@@ -81,6 +81,19 @@ mise exec -- pnpm dev
 
 > Web만 별도로 실행하고 싶다면 `mise exec -- pnpm sonamu dev web`을 사용할 수 있습니다 (`--` 뒤에 Vite 옵션 전달 가능).
 
+### CLI 의존성
+
+API 패키지는 `sonamu`와 `@sonamu-kit/cli`를 모두 직접 의존합니다. 이전 버전에서 생성한
+프로젝트를 업그레이드했다면 API 패키지에서 CLI를 추가하세요.
+
+```bash
+cd packages/api
+mise exec -- pnpm add sonamu@^0.11.0 @sonamu-kit/cli@0.1.0
+```
+
+`@sonamu-kit/cli` 0.1.0은 `sonamu` `^0.11.0`과 호환됩니다. `sonamu` 패키지는 이전 CLI를 대신
+실행하는 호환용 실행 파일을 제공하지 않습니다.
+
 ---
 
 ## 📝 자동 생성되는 파일들
@@ -133,19 +146,20 @@ web/src/services/
 
 ### API (`packages/api/`)
 
-| 명령어                           | 설명                                      |
-| -------------------------------- | ----------------------------------------- |
-| `mise exec -- pnpm dev`          | 통합 개발 서버 시작 (= `sonamu dev all`)  |
-| `mise exec -- pnpm build`        | 전체 프로덕션 빌드 (= `sonamu build all`) |
-| `mise exec -- pnpm build api`    | API만 빌드 (= `sonamu build api`)         |
-| `mise exec -- pnpm build web`    | Web만 빌드 (= `sonamu build web`)         |
-| `mise exec -- pnpm start`        | 프로덕션 서버 시작                        |
-| `mise exec -- pnpm test`         | 테스트 실행                               |
-| `mise exec -- pnpm docker:up`    | Docker DB 시작                            |
-| `mise exec -- pnpm docker:down`  | Docker DB 중지                            |
-| `mise exec -- pnpm docker:reset` | Docker DB 초기화 (볼륨 삭제 후 재시작)    |
-| `mise exec -- pnpm dump`         | 테스트 DB 덤프 생성                       |
-| `mise exec -- pnpm seed`         | 덤프를 fixture DB에 적용                  |
+| 명령어                           | 설명                                              |
+| -------------------------------- | ------------------------------------------------- |
+| `mise exec -- pnpm dev`          | 통합 개발 서버 시작 (= `sonamu dev all`)          |
+| `mise exec -- pnpm build`        | 전체 프로덕션 빌드 (= `sonamu build all`)         |
+| `mise exec -- pnpm build api`    | API만 빌드 (= `sonamu build api`)                 |
+| `mise exec -- pnpm build web`    | Web만 빌드 (= `sonamu build web`)                 |
+| `mise exec -- pnpm start`        | 프로덕션 서버 시작                                |
+| `mise exec -- pnpm test`         | 테스트 실행                                       |
+| `mise exec -- pnpm docker:up`    | Docker DB 시작                                    |
+| `mise exec -- pnpm docker:down`  | Docker DB 중지                                    |
+| `mise exec -- pnpm docker:reset` | Docker DB 초기화 (볼륨 삭제 후 재시작)            |
+| `mise exec -- pnpm dump`         | 테스트 DB 덤프 생성                               |
+| `mise exec -- pnpm seed`         | 덤프를 fixture DB에 적용하고 test DB 동기화       |
+| `mise exec -- pnpm sync:dump`    | seed, 승인된 Migration 실행, dump를 순서대로 실행 |
 
 ### 개발 서버 모드
 
@@ -229,11 +243,8 @@ git commit -m "feat: 테스트 데이터 추가"
 
 # --- 팀원이 pull 받은 후 ---
 
-# 4. fixture DB에 덤프 적용
+# 4. fixture DB에 덤프를 적용하고 test DB로 동기화
 mise exec -- pnpm seed
-
-# 5. test DB에 fixture 동기화
-mise exec -- pnpm sonamu fixture sync
 ```
 
 ---

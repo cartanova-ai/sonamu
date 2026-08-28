@@ -41,6 +41,8 @@ export type MigrationResult = {
   applied: string[];
 }[];
 
+type ShadowMigrationTarget = Extract<MigrationTarget, "fixture" | "test">;
+
 function padDatePart(number: number, size: number = 2): string {
   return number.toString().padStart(size, "0");
 }
@@ -95,13 +97,9 @@ export class Migrator {
     const maybePostgresError =
       /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ error as {
         code?: unknown;
-        message?: unknown;
       };
-    return (
-      maybePostgresError.code === "42P01" &&
-      isStringValue(maybePostgresError.message) &&
-      maybePostgresError.message.includes("knex_migrations")
-    );
+    // PostgreSQL undefined_table 코드는 사용자 지정 migration table에도 동일하게 적용됩니다.
+    return maybePostgresError.code === "42P01";
   }
 
   /** 현재 실행 환경에서 허용된 마이그레이션 대상 키를 반환합니다. */
@@ -372,6 +370,61 @@ export class Migrator {
       await withTimeout(tConn.destroy(), MIGRATION_CONN_TIMEOUT_MS, () => {
         return new Error("connection destroy timeout");
       }).catch(() => {});
+    }
+  }
+
+  /**
+   * 대상 DB에서 가장 최근에 적용된 migration batch를 반환합니다.
+   *
+   * @category 분리형 마이그레이션 API
+   */
+  async getLatestAppliedBatch(
+    connKey: MigrationTarget,
+  ): Promise<{ batchNo: number; files: string[] }> {
+    this.assertMigrationTarget(connKey);
+    const knexOptions = Sonamu.dbConfig[connKey];
+    const connection =
+      /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ knexOptions.connection as Knex.PgConnectionConfig;
+    const tConn = createKnexInstance({
+      ...knexOptions,
+      connection: {
+        ...connection,
+        connectionTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
+      },
+      pool: {
+        ...knexOptions.pool,
+        min: 0,
+        acquireTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
+        createTimeoutMillis: MIGRATION_CONN_TIMEOUT_MS,
+        propagateCreateError: true,
+      },
+    });
+
+    try {
+      const tableName = knexOptions.migrations?.tableName ?? "knex_migrations";
+      const schemaName = knexOptions.migrations?.schemaName;
+      const migrationsTable =
+        schemaName === undefined
+          ? tConn<{ id: number; name: string; batch: number }>(tableName)
+          : tConn<{ id: number; name: string; batch: number }>(tableName).withSchema(schemaName);
+      const latest = await migrationsTable.clone().select("batch").orderBy("batch", "desc").first();
+      if (latest === undefined) return { batchNo: 0, files: [] };
+
+      // 같은 batch 안에서는 Knex 실행 순서대로 롤백 계획을 고정한다.
+      const rows = await migrationsTable
+        .clone()
+        .select("name")
+        .where("batch", latest.batch)
+        .orderBy("id", "asc");
+      return {
+        batchNo: latest.batch,
+        files: rows.map(({ name }) => name.replace(/\.ts$/, "")),
+      };
+    } catch (caught) {
+      if (this.isMissingMigrationTableError(caught)) return { batchNo: 0, files: [] };
+      throw caught;
+    } finally {
+      await tConn.destroy();
     }
   }
 
@@ -659,15 +712,41 @@ export class Migrator {
    *
    * @category 분리형 마이그레이션 API
    */
-  async runShadowTest(options?: MigrationRunOptions): Promise<MigrationResult> {
-    const baseTestConn =
-      /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ Sonamu.dbConfig
-        .test.connection as Knex.PgConnectionConfig;
-    const workerId = process.env.SONAMU_WORKER_DB === "true" ? process.env.VITEST_POOL_ID : null;
+  async runShadowTest(
+    options?: MigrationRunOptions & { target?: MigrationTarget },
+  ): Promise<MigrationResult> {
+    const target = options?.target ?? "test";
+    if (target !== "test" && target !== "fixture") {
+      // 운영 계열 DB는 설정 조회나 연결 생성보다 먼저 차단한다.
+      throw Object.assign(new Error(`지원하지 않는 Shadow 마이그레이션 대상입니다: ${target}`), {
+        code: "INVALID_SHADOW_MIGRATION_TARGET",
+        target,
+      });
+    }
+    const shadowTarget: ShadowMigrationTarget = target;
+    const baseTargetConn =
+      /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ Sonamu.dbConfig[
+        shadowTarget
+      ].connection as Knex.PgConnectionConfig;
+    const configuredDatabase = baseTargetConn.database;
+    if (!configuredDatabase) {
+      throw Object.assign(new Error(`Shadow 대상 DB 이름이 없습니다: ${shadowTarget}`), {
+        code: "INVALID_SHADOW_DATABASE_CONFIG",
+        target: shadowTarget,
+      });
+    }
+    const workerId =
+      shadowTarget === "test" && process.env.SONAMU_WORKER_DB === "true"
+        ? process.env.VITEST_POOL_ID
+        : null;
     const templateDatabase =
-      workerId !== null ? `${baseTestConn.database}_${workerId ?? "1"}` : baseTestConn.database;
-    const tdbConn = { ...baseTestConn, database: templateDatabase };
+      workerId !== null ? `${configuredDatabase}_${workerId ?? "1"}` : configuredDatabase;
     const shadowDatabase = `${templateDatabase}__migration_shadow`;
+    const createShadowConnection = (database: string) =>
+      createKnexInstance({
+        ...Sonamu.dbConfig[shadowTarget],
+        connection: { ...baseTargetConn, database },
+      });
 
     // 테스트 상황에서는 트랜잭션을 초기화하고, 새 데이터베이스 커넥션을 가져와야 함
     if (isTest()) {
@@ -676,33 +755,23 @@ export class Migrator {
     }
 
     // 기존 Shadow DB 삭제 후 Shadow DB 생성
-    const tdb = createKnexInstance({
-      ...Sonamu.dbConfig.test,
-      connection: {
-        ...baseTestConn,
-        database: "postgres",
-      },
-    });
+    const tdb = createShadowConnection("postgres");
     try {
       !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
-      await tdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase}`);
-      await tdb.raw(`
+      await tdb.raw("DROP DATABASE IF EXISTS ??", [shadowDatabase]);
+      await tdb.raw(
+        `
         SELECT pg_terminate_backend(pg_stat_activity.pid)
         FROM pg_stat_activity
-        WHERE datname = '${tdbConn.database}'
+        WHERE datname = ?
           AND pid <> pg_backend_pid();
-      `);
-      await tdb.raw(`CREATE DATABASE ${shadowDatabase} TEMPLATE ${tdbConn.database}`);
+      `,
+        [templateDatabase],
+      );
+      await tdb.raw("CREATE DATABASE ?? TEMPLATE ??", [shadowDatabase, templateDatabase]);
 
       // Shadow DB에 연결
-      const sdb = createKnexInstance({
-        ...Sonamu.dbConfig.test,
-        connection: {
-          ...tdbConn,
-          database: shadowDatabase,
-          password: tdbConn.password,
-        },
-      });
+      const sdb = createShadowConnection(shadowDatabase);
 
       // shadow DB 테스트 진행
       try {
@@ -742,7 +811,7 @@ export class Migrator {
       // Shadow DB 삭제
       !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
       try {
-        await tdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase}`);
+        await tdb.raw("DROP DATABASE IF EXISTS ??", [shadowDatabase]);
       } catch (e) {
         console.error("Shadow DB 정리 실패:", e); // 이게 없으면 조용히 누수
       } finally {
