@@ -128,11 +128,24 @@ export async function configureLogTape<TSinkId extends string, TFilterId extends
   const external = getExternalLogTapeConfiguration();
   const fastifyCategory = options.fastifyCategory ?? ["fastify"];
 
-  const sinks = {
+  const projectSinks = {
     "fastify-console": defaultFastifySink(fastifyCategory),
     ...options.sinks,
-    ...external?.config.sinks,
-  };
+  } satisfies Record<string, Sink>;
+  const externalSinkIds = new Map<string, string>();
+  const externalSinks: Record<string, Sink> = {};
+  for (const [sinkId, sink] of Object.entries(external?.config.sinks ?? {})) {
+    let namespacedId = `sonamu-cli:${sinkId}`;
+    while (
+      Object.hasOwn(projectSinks, namespacedId) ||
+      Object.hasOwn(externalSinks, namespacedId)
+    ) {
+      namespacedId = `${namespacedId}-`;
+    }
+    externalSinkIds.set(sinkId, namespacedId);
+    externalSinks[namespacedId] = sink;
+  }
+  const sinks = { ...projectSinks, ...externalSinks };
 
   const filters = {
     "fastify-console": defaultFastifyFilter(fastifyCategory),
@@ -140,8 +153,12 @@ export async function configureLogTape<TSinkId extends string, TFilterId extends
     ...external?.config.filters,
   };
 
+  const externalLoggers = (external?.config.loggers ?? []).map((logger) => ({
+    ...logger,
+    sinks: logger.sinks?.map((sinkId) => externalSinkIds.get(sinkId) ?? sinkId),
+  }));
   const loggers = new Set<LoggerConfig<string, string>>([
-    ...(external?.config.loggers ?? []),
+    ...externalLoggers,
     ...(options.loggers ?? []),
   ]);
 

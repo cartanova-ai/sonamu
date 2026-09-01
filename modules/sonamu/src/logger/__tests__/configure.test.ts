@@ -20,8 +20,8 @@ describe("CLI LogTape 설정 합성", () => {
     globalThis.sonamuKitCliLogTapeOverride = { config: cliConfig, applied: false };
 
     await configureLogTape({
-      sinks: { app: (record) => appRecords.push(record) },
-      loggers: [{ category: ["app"], lowestLevel: "debug", sinks: ["app"] }],
+      sinks: { default: (record) => appRecords.push(record) },
+      loggers: [{ category: ["app"], lowestLevel: "debug", sinks: ["default"] }],
     });
     getLogger(["cli"]).debug("CLI 로그");
     getLogger(["app"]).debug("프로젝트 로그");

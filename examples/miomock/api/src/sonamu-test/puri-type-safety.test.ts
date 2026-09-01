@@ -904,9 +904,9 @@ describe("Puri Type Safety", () => {
       // @ts-expect-error - 필수 컬럼 누락 시 에러
       db.table("users").insert({ ...defaultUserData, id: randomUUID(), email: undefined });
 
-      // @ts-expect-error - 존재하지 않는 컬럼
       db.table("users").insert({
         ...defaultUserData,
+        // @ts-expect-error - 존재하지 않는 컬럼 입력으로 insert overload가 거절됨
         id: randomUUID(),
         nonexistent_column: "value",
       });
