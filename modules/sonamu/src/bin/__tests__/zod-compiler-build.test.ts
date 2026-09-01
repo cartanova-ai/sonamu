@@ -1,6 +1,8 @@
+import { exec } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,14 +12,79 @@ import {
   assertApiZodCompilerSourceRegistry,
   composeApiZodCompilerBuildConfig,
   createApiZodCompilerBuildWrapper,
+  createWebTypecheckCommand,
+  quoteShellArgument,
+  WEB_ARTIFACTS,
 } from "../build-config";
 
 const compilerPluginFake = vi.fn();
+const execAsync = promisify(exec);
+const webTypecheckRoots: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(
+    webTypecheckRoots.splice(0).map((rootPath) => rm(rootPath, { recursive: true, force: true })),
+  );
+});
 const compilerDependencies = {
   async loadCompilerPlugin() {
     return compilerPluginFake;
   },
 };
+
+describe("TypeScript 7 Web 빌드 정책", () => {
+  it("셸 메타문자가 포함된 실행 경로를 단일 인수로 보존한다", async () => {
+    const argument = "공백 '따옴표' $(echo 위험) `echo 위험` $HOME";
+    const { stdout } = await execAsync(`printf %s ${quoteShellArgument(argument)}`);
+
+    expect(stdout).toBe(argument);
+  });
+
+  it("선언을 만들지 않는 앱은 모든 project reference를 타입 검사한다", async () => {
+    const webRoot = await mkdtemp(path.join(process.cwd(), ".sonamu-web-typecheck-test-"));
+    webTypecheckRoots.push(webRoot);
+    await writeFile(
+      path.join(webRoot, "tsconfig.json"),
+      `{
+        // TypeScript가 지원하는 JSONC 형식을 유지합니다.
+        "references": [
+          { "path": "tsconfig.app.json" },
+          { "path": "tsconfig.worker.json" },
+        ],
+      }`,
+    );
+    for (const project of ["app", "worker"]) {
+      await writeFile(
+        path.join(webRoot, `tsconfig.${project}.json`),
+        JSON.stringify({
+          compilerOptions: {
+            composite: true,
+            declaration: true,
+            declarationMap: true,
+            emitDeclarationOnly: true,
+            strict: true,
+          },
+          files: [`${project}.ts`],
+        }),
+      );
+    }
+    await writeFile(path.join(webRoot, "app.ts"), "export const app: string = 1;\n");
+    await writeFile(path.join(webRoot, "worker.ts"), 'export const worker: string = "ok";\n');
+
+    await expect(execAsync(createWebTypecheckCommand(), { cwd: webRoot })).rejects.toThrow();
+    await writeFile(path.join(webRoot, "app.ts"), 'export const app: string = "ok";\n');
+    await writeFile(path.join(webRoot, "worker.ts"), "export const worker: string = 1;\n");
+    await expect(execAsync(createWebTypecheckCommand(), { cwd: webRoot })).rejects.toThrow();
+    await writeFile(path.join(webRoot, "worker.ts"), 'export const worker: string = "ok";\n');
+    await expect(execAsync(createWebTypecheckCommand(), { cwd: webRoot })).resolves.toBeDefined();
+
+    for (const artifact of WEB_ARTIFACTS) {
+      const command = artifact.buildCommand({ configFilePath: "" });
+      expect(command).toContain("typecheck-web");
+      expect(command).not.toContain("tsc -b");
+    }
+  });
+});
 
 describe("API zod-compiler 빌드 정책", () => {
   const tempRoots: string[] = [];

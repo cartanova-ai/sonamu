@@ -1,0 +1,261 @@
+---
+title: "CLI reference"
+description: "Install and run the parser-backed Sonamu CLI"
+---
+
+`@sonamu-kit/cli` 0.1.0 is the only package that installs the `sonamu` executable. Install it
+directly beside `sonamu`; the framework package does not provide a compatibility executable.
+
+```bash
+pnpm add sonamu@^0.11.0 @sonamu-kit/cli@0.1.0
+pnpm sonamu --version
+```
+
+If the project already depends on `sonamu`, update it to `^0.11.0` and add
+`@sonamu-kit/cli@0.1.0`. This CLI release supports Sonamu `^0.11.0`.
+
+The CLI uses Optique 1.2.4. Run `pnpm sonamu --help` for the grammar in your installed version.
+
+## Interactive use
+
+Run commands without automation flags when you want TTY prompts and fuzzy discovery:
+
+```bash
+# Choose a command
+pnpm sonamu
+
+# Choose an Entity
+pnpm sonamu scaffold model
+
+# Choose an Entity for fixture import; IDs remain required
+pnpm sonamu fixture import 1 2 3 --execute
+```
+
+In a TTY, an omitted, invalid, or fuzzy top-level command opens a searchable command menu; type to
+filter it. Every selection stage shows at most 10 visible choices. After you select a command
+group, the CLI progressively opens its immediate children and, when the group is itself runnable,
+a `Use current command` choice. An incomplete path such as `pnpm sonamu fixture` starts directly
+in that group's child menu. Pressing Ctrl+C at any command-selection stage exits with code 130.
+
+Commands that accept an Entity can prompt for a selection or resolve fuzzy Entity input. This
+includes `fixture import`; it can select or fuzzy-match the Entity in a TTY but never prompts for
+missing numeric IDs. Outside a TTY, omitted or invalid input is a usage error. `--non-interactive`
+disables discovery and confirmation prompts. Entity discovery reads Entity metadata only; it does
+not import Model or other application runtime modules. It never falls back to a prompt, even when
+required input is missing.
+
+## Automation and coding agents
+
+Pass explicit inputs with both automation flags:
+
+```bash
+pnpm sonamu entity show User --non-interactive --json
+```
+
+Finite commands other than `dev` and `start` write one JSON envelope to stdout. This includes
+`build`. Success uses `ok`, `command`, `data`, and `warnings`; the CLI normalizes an absent handler
+result to `data: null`. Failure uses `ok: false`, `command`, `error`, and `exitCode`. The `error`
+object can include sanitized `details`; failed test runs preserve their `runId` and structured test
+result there without exposing attached credentials.
+
+`task watch` returns an asynchronous stream and writes each changed workflow-run snapshot as one
+newline-delimited JSON (NDJSON) line:
+
+```bash
+pnpm sonamu task watch RUN_ID --non-interactive --json
+```
+
+Parse JSON or NDJSON and the process exit code. Never scrape human-readable output.
+
+`dev` and `start` delegate to long-running child processes and support human output only. With
+`--json`, they return one `JSON_UNSUPPORTED` failure envelope with exit code `2` before spawning the
+child. In human mode, they stream child output and preserve arbitrary child exit codes, including
+`128 + signal number` for signal termination. `build` keeps the normal finite-command behavior and
+supports JSON.
+
+Metadata output bypasses JSON envelopes. `--help` and `--version` emit plain Optique metadata.
+`completion` emits a plain shell script when invoked without JSON automation flags.
+
+| Exit code | Meaning                                          |
+| --------- | ------------------------------------------------ |
+| `0`       | Success, metadata output, or a completed preview |
+| `1`       | Command or domain failure                        |
+| `2`       | Command, argument, option, or option-value error |
+| `3`       | Required mutation execution or confirmation input is missing |
+| `130`     | Interactive cancellation                         |
+
+Delegated `dev` and `start` processes can return codes outside this table.
+
+### Strict fixture automation
+
+Non-interactive fixture helpers use deterministic defaults and reject missing selectors with exit
+code `2` instead of prompting:
+
+- `fixture gen` requires `--all` or `--include ENTITY_LIST`.
+- Legacy `fixture fetch` requires `--all` or `--include ENTITY_LIST`.
+- `fixture explore` requires `--include ENTITY` with exactly one Entity. Do not pass a
+  comma-separated list; `--all` is not a non-interactive selector for this command.
+- Fixture transfer preview requires the positional `ENTITY` and every selector option: `--source`,
+  `--target`, `--field`, at least one `--value`, `--relation include|exclude|none`, and `--depth`.
+
+For non-interactive `fixture gen`, the deterministic defaults are count `5`, save target `db`, LLM
+disabled, cache enabled, and dummy-user mode. Explicit options override these defaults.
+
+## Logging options
+
+The CLI uses Optique's LogTape integration. Starting from the default `warning` level, `-v`, `-vv`,
+and `-vvv` select `info`, `debug`, and `trace` logging respectively. The long `--verbose` option is
+also repeatable and raises the level once per use.
+
+```bash
+pnpm sonamu sync -vv
+pnpm sonamu migrate status --log-output=- --log-format=plain
+pnpm sonamu task watch --log-output=sonamu.log --log-format=jsonl
+```
+
+`--log-format` accepts `jsonl`, `logfmt`, `color`, or `plain`. Logs default to stderr when
+`--log-output` is omitted. `--log-output=-` also routes logs to stderr, while any other value is a
+file path. In `--json` mode, command envelopes and event objects remain the only stdout content.
+When no logging option is supplied, the Sonamu project's logging configuration remains unchanged.
+Invalid logging values exit with code `2` before command initialization.
+
+## Mutation workflow
+
+Inspect or dry-run a change before execution. Execution options vary by command:
+
+```bash
+# Entity patch dry-run and application
+pnpm sonamu entity apply --file entity.patch.json --dry-run --non-interactive --json
+pnpm sonamu entity apply --file entity.patch.json --execute --confirm --non-interactive --json
+
+# Scaffold preview and non-interactive batch execution
+pnpm sonamu scaffold preview --entity User,Post --template model --non-interactive --json
+pnpm sonamu scaffold batch --entity User,Post --template model --execute --confirm --non-interactive --json
+
+# Migration preview and execution
+pnpm sonamu migrate preview production --action apply --non-interactive --json
+pnpm sonamu migrate apply production --execute --confirm --force-reason CHANGE_REQUEST --non-interactive --json
+
+# Strict fixture import and complete transfer preview
+pnpm sonamu fixture import User 1 2 3 --execute --confirm --non-interactive --json
+pnpm sonamu fixture fetch User --source production --target fixture --field id --value 1,2 --relation include --depth 1 --dry-run --non-interactive --json
+
+# Task mutation preview and execution
+pnpm sonamu task pause RUN_ID --dry-run --non-interactive --json
+pnpm sonamu task pause RUN_ID --execute --confirm --non-interactive --json
+
+# Filtered i18n list, JSON export, and import
+pnpm sonamu i18n list --locale en --non-interactive --json
+pnpm sonamu i18n export --format json --file translations-en.json --locale en --non-interactive --json
+pnpm sonamu i18n import --format json --file translations.json --execute --confirm --non-interactive --json
+
+# CDD rule dry-run and execution
+pnpm sonamu cdd rule add --rule-key api --id require-auth --when "adding an endpoint" --text "Require authentication." --dry-run --non-interactive --json
+pnpm sonamu cdd rule add --rule-key api --id require-auth --when "adding an endpoint" --text "Require authentication." --execute --confirm --non-interactive --json
+pnpm sonamu cdd ac --document requirements/signup.md --text "Reject duplicate email addresses." --dry-run --non-interactive --json
+pnpm sonamu cdd ac --document requirements/signup.md --text "Reject duplicate email addresses." --execute --confirm --non-interactive --json
+```
+
+`migrate apply` and `migrate rollback` require `--execute --confirm` for non-interactive execution.
+Production execution also requires `--force-reason REASON`. `fixture init`, `fixture import`,
+`fixture sync`, and `fixture gen` default to dry-run; only `--execute` changes data. In a TTY, these
+commands request confirmation. A non-interactive call must include `--execute --confirm`, and a
+default or explicit dry-run without execution approval exits with code `3`. The strict import form
+is `fixture import ENTITY ID... --execute`; provide the Entity and one or more numeric IDs. In a TTY,
+the Entity can be selected or fuzzy-matched, but the IDs remain required.
+
+`fixture fetch` defaults to dry-run. Execute it with `--execute` and a TTY confirmation, or use
+`--execute --confirm`. Its transfer form requires `ENTITY`, `--source`, `--target`, `--field`, at
+least one `--value`, `--relation`, and `--depth`; its strict legacy form requires `--all` or
+`--include`.
+
+`scaffold batch`, `task pause`, `task resume`, `task cancel`, `cdd rule add`, and `cdd ac` default to
+dry-run. To write in a TTY, pass `--execute` and accept the confirmation prompt, or add `--confirm`.
+For non-interactive execution, pass `--execute --confirm`. `cdd rule add` also requires `--rule-key`,
+`--id`, `--when`, and `--text`.
+
+`migrate run` defaults to dry-run, but that mode does not produce a migration plan. Inspect the
+apply plan with `migrate preview TARGET --action apply`, then execute with `migrate run --execute`
+and a TTY confirmation or add `--confirm`. Calling `migrate run --execute` under
+`NODE_ENV=production` also requires `--force-reason REASON`; omitting it exits with code `3`.
+
+`migrate shadow TARGET` accepts only `test` and `fixture`. Its dry-run validates the input without
+performing shadow validation. Pass `--execute` and confirm in a TTY, or pass
+`--execute --confirm`, to run the shadow migration. `scaffold batch` generates files only with `--execute`. Add `--overwrite` to the
+execution command when reviewed output may replace existing files.
+
+`i18n import` accepts `--format workbook|json` and reads `--file FILE`; `i18n export` writes that
+format to the specified file. i18n imports and entry mutations use `--execute --confirm`; exports do
+not accept these flags. Add `--locale LOCALE` to `i18n list` or `i18n export` to include only that
+locale.
+
+Add `--source project|entity` to `i18n update` to state which source owns the entry. Omitting it
+keeps the source already registered in the dictionary; when the key is not in the dictionary yet,
+the source falls back to `project`.
+
+`skills sync` is a compatibility command for postinstall scripts left by older projects. It changes
+no files, prints the external installation notice, and exits with code `0`.
+
+`entity show ENTITY` fails when the Entity id is unknown. It returns the `ENTITY_NOT_FOUND` error
+envelope and exits with code `1` instead of the earlier `ok: true` envelope with `data: null` and
+exit code `0`. Update `--json` automation that treated a null payload as "not found".
+
+The CLI has no Entity proposal command. Rich AI-assisted Entity chat remains available in Sonamu
+Web.
+
+## Command paths
+
+| Group     | Commands                                                                                                                                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entity    | `entity list`, `entity show ENTITY`, `entity search QUERY`, `entity apply --file FILE`                                                                                                                                          |
+| Fixture   | `fixture init`, `fixture import ENTITY ID...`, `fixture sync`, `fixture gen`, `fixture fetch [ENTITY]`, `fixture explore`                                                                                                             |
+| Migration | `migrate run`, `migrate apply TARGET...`, `migrate generate`, `migrate status`, `migrate connections`, `migrate code TARGET`, `migrate preview TARGET`, `migrate shadow TARGET`, `migrate rollback TARGET`                            |
+| Scaffold  | `stub entity NAME`, `stub practice NAME`, `scaffold model ENTITY`, `scaffold model_test ENTITY`, `scaffold view_list ENTITY`, `scaffold view_form ENTITY`, `scaffold status`, `scaffold preview`, `scaffold batch`, `cone gen ENTITY` |
+| Runtime   | `build`, `dev`, `sync`, `start`                                                                                                                                                                                                       |
+| i18n      | `i18n list`, `i18n check`, `i18n import`, `i18n export`, `i18n create`, `i18n update`, `i18n delete`                                                                                                                                  |
+| Tasks     | `task definitions`, `task list`, `task show RUN_ID`, `task steps RUN_ID`, `task watch RUN_ID`, `task pause RUN_ID`, `task resume RUN_ID`, `task cancel RUN_ID`                                                                        |
+| Tests     | `test [FILES...] [-p PATTERN] [-t]`, `test -s`                                                                                                                                                                                        |
+| CDD       | `cdd tree`, `cdd read PATH`, `cdd rules`, `cdd rule show RULE_KEY`, `cdd rule add`, `cdd ac`                                                                                                                                          |
+| Auth      | `auth generate`, `auth add-companions`                                                                                                                                                                                                |
+| Compat    | `skills sync`                                                                                                                                                                                                                         |
+
+`migrate apply` accepts any ordered combination of the five targets: `development`, `staging`,
+`production`, `fixture`, and `test`. In a TTY, omit the targets to choose one or more from a
+multiselect prompt. Non-TTY and `--non-interactive` calls must provide at least one target.
+`migrate shadow TARGET` accepts only the local `fixture` and `test` targets. `migrate code`,
+`migrate preview`, and `migrate rollback` accept any one of the five targets.
+
+`auth generate --plugins PLUGINS` accepts a comma-separated list of these plugin IDs:
+
+```text
+2fa, admin, anonymous, api-key, audit-log, jwt, organization, passkey,
+phone-number, sso, username
+```
+
+Use command help for required options and finite choices:
+
+```bash
+pnpm sonamu migrate rollback --help
+pnpm sonamu fixture fetch --help
+```
+
+## Completion
+
+Optique 1.2.4 generates completion scripts for Bash, zsh, fish, PowerShell, and Nushell:
+
+```bash
+pnpm sonamu completion bash
+pnpm sonamu completion zsh
+pnpm sonamu completion fish
+pnpm sonamu completion pwsh
+pnpm sonamu completion nu
+```
+
+Save and source the output according to your shell's completion setup.
+
+## Detailed guides
+
+- [Migrations](/en/tools-and-cli/sonamu-cli/migrate)
+- [Fixtures](/en/tools-and-cli/sonamu-cli/fixture)
+- [Scaffolding](/en/tools-and-cli/sonamu-cli/scaffold)
+- [Tests](/en/tools-and-cli/sonamu-cli/test)

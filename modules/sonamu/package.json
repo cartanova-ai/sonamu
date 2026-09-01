@@ -1,6 +1,6 @@
 {
   "name": "sonamu",
-  "version": "0.10.13",
+  "version": "0.11.0",
   "description": "Sonamu — TypeScript Fullstack API Framework",
   "keywords": [
     "framework",
@@ -16,11 +16,9 @@
     "type": "git",
     "url": "https://github.com/cartanova-ai/sonamu.git"
   },
-  "bin": "./bin/cli.js",
   "files": [
     "dist",
     "src",
-    "bin",
     "tsdown.api.config.ts"
   ],
   "type": "module",
@@ -78,6 +76,11 @@
     "./cdd-types": {
       "import": "./dist/ui/cdd-types.js",
       "types": "./dist/ui/cdd-types.d.ts"
+    },
+    "./tooling": {
+      "import": "./dist/tooling/index.js",
+      "types": "./dist/tooling/index.d.ts",
+      "development": "./src/tooling/index.ts"
     }
   },
   "scripts": {
@@ -116,6 +119,7 @@
     "@sonamu-kit/tasks": "workspace:^",
     "@sonamu-kit/ts-loader": "workspace:^",
     "@types/ws": "catalog:",
+    "@typescript/typescript6": "catalog:",
     "bcrypt": "catalog:",
     "bentocache": "catalog:",
     "better-auth": "catalog:",
@@ -140,7 +144,6 @@
     "prompts": "catalog:",
     "qs": "catalog:",
     "radashi": "catalog:",
-    "tsicli": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "zod-compiler": "catalog:"

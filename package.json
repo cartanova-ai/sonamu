@@ -9,6 +9,7 @@
     "@aws-sdk/client-ecr-public": "catalog:",
     "@oxlint/plugins": "catalog:",
     "@types/node": "catalog:",
+    "@typescript/typescript6": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "corepack": "catalog:",
     "lefthook": "^2.1.6",

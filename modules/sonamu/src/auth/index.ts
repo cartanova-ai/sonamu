@@ -1,5 +1,5 @@
 export type { GenerateBetterAuthEntitiesOptions } from "./auth-generator";
-export { generateBetterAuthEntities } from "./auth-generator";
+export { addCompanionsToEntities, generateBetterAuthEntities } from "./auth-generator";
 export { ingestAuditEvent } from "./audit-log-ingestor";
 export { type AuditLogEvent } from "./audit-log/events";
 export { sonamuAuditLog } from "./audit-log/plugin";

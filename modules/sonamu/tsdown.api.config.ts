@@ -1,7 +1,5 @@
-import { readdirSync, statSync } from "node:fs";
+import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
-
-import { defineConfig } from "tsdown";
 
 const srcRoot = path.resolve(process.cwd(), "src");
 const ignoredSuffixes = [".test.ts", ".test-hold.ts", ".ignore.ts", ".d.ts"];
@@ -10,19 +8,19 @@ interface BuildEntries {
   [entryName: string]: string;
 }
 
-function collectEntries(directory: string): BuildEntries {
+async function collectEntries(directory: string): Promise<BuildEntries> {
   const entries: BuildEntries = {};
 
-  for (const entry of readdirSync(directory)) {
+  for (const entry of await readdir(directory)) {
     if (ignoredDirectories.has(entry)) {
       continue;
     }
 
     const absolutePath = path.join(directory, entry);
-    const stats = statSync(absolutePath);
+    const stats = await stat(absolutePath);
 
     if (stats.isDirectory()) {
-      Object.assign(entries, collectEntries(absolutePath));
+      Object.assign(entries, await collectEntries(absolutePath));
       continue;
     }
 
@@ -41,13 +39,13 @@ function collectEntries(directory: string): BuildEntries {
   return entries;
 }
 
-export default defineConfig({
+export default {
   clean: true,
   deps: {
     neverBundle: [/^sonamu(?:\/.*)?$/],
   },
   dts: false,
-  entry: collectEntries(srcRoot),
+  entry: await collectEntries(srcRoot),
   fixedExtension: false,
   format: "esm",
   outDir: path.resolve(process.cwd(), "dist"),
@@ -56,4 +54,4 @@ export default defineConfig({
   target: "esnext",
   treeshake: false,
   unbundle: true,
-});
+};

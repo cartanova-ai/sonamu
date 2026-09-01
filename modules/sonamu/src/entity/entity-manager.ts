@@ -48,13 +48,17 @@ class EntityManagerClass {
   public modulePaths: Map<string, string> = new Map();
   private tableSpecs: Map<string, TableSpec> = new Map();
   public isAutoloaded: boolean = false;
+  // reload()가 Sonamu 초기화 없이도 같은 루트를 다시 읽도록 명시적 api root를 보존합니다.
+  private explicitApiRootPath: string | undefined;
 
   // 경로 전달받아 모든 entity.json 파일 로드
-  async autoload(doSilent: boolean = false) {
+  async autoload(doSilent: boolean = false, explicitApiRootPath?: string) {
     if (this.isAutoloaded) {
       return;
     }
-    const pathPattern = path.join(Sonamu.apiRootPath, "/src/application/**/*.entity.json");
+    this.explicitApiRootPath = explicitApiRootPath;
+    const apiRootPath = explicitApiRootPath ?? Sonamu.apiRootPath;
+    const pathPattern = path.join(apiRootPath, "/src/application/**/*.entity.json");
 
     for await (const file of glob(path.resolve(pathPattern))) {
       const json = parseEntityJson((await readFile(file)).toString());
@@ -62,7 +66,7 @@ class EntityManagerClass {
       // entity.json 스키마 검증
       const error = this.schemaValidate(json);
       if (error) {
-        const relativePath = path.relative(Sonamu.apiRootPath, file);
+        const relativePath = path.relative(apiRootPath, file);
         const errorMessage = prettifyError(error);
         if (!doSilent) {
           console.error(
@@ -71,11 +75,14 @@ class EntityManagerClass {
         }
       }
 
-      await this.register(json, { deferSearchTextJsonSourceValidation: true });
+      await this.register(json, {
+        deferSearchTextJsonSourceValidation: true,
+        apiRootPath,
+      });
     }
 
-    await this.registerNonEntityTypeModulePaths();
-    await this.validateAllRegisteredSearchTextJsonSources();
+    await this.registerNonEntityTypeModulePaths(apiRootPath);
+    await this.validateAllRegisteredSearchTextJsonSources(apiRootPath);
 
     this.isAutoloaded = true;
   }
@@ -85,36 +92,36 @@ class EntityManagerClass {
     return result.success ? null : result.error;
   }
 
-  async reload(doSilent: boolean = false) {
+  async reload(doSilent: boolean = false, explicitApiRootPath?: string) {
     this.entities.clear();
     this.modulePaths.clear();
     this.tableSpecs.clear();
     this.isAutoloaded = false;
 
-    return await this.autoload(doSilent);
+    return await this.autoload(doSilent, explicitApiRootPath ?? this.explicitApiRootPath);
   }
 
   async register(
     json: EntityJson,
-    options: { deferSearchTextJsonSourceValidation?: boolean } = {},
+    options: { deferSearchTextJsonSourceValidation?: boolean; apiRootPath?: string } = {},
   ): Promise<void> {
     const { Entity } = await import("./entity");
     const entity = new Entity(json);
-    await entity.registerModulePaths();
+    await entity.registerModulePaths(options.apiRootPath);
     if (!options.deferSearchTextJsonSourceValidation) {
-      await this.validateSearchTextJsonSources(entity);
+      await this.validateSearchTextJsonSources(entity, options.apiRootPath);
     }
     entity.registerTableSpecs();
     this.entities.set(json.id, entity);
   }
 
-  async validateAllRegisteredSearchTextJsonSources(): Promise<void> {
+  async validateAllRegisteredSearchTextJsonSources(apiRootPath?: string): Promise<void> {
     for (const entity of this.entities.values()) {
-      await this.validateSearchTextJsonSources(entity);
+      await this.validateSearchTextJsonSources(entity, apiRootPath);
     }
   }
 
-  private async validateSearchTextJsonSources(entity: Entity): Promise<void> {
+  private async validateSearchTextJsonSources(entity: Entity, apiRootPath?: string): Promise<void> {
     const propsByName = new Map(entity.props.map((prop) => [prop.name, prop]));
 
     for (const prop of entity.props) {
@@ -128,7 +135,11 @@ class EntityManagerClass {
           continue;
         }
 
-        const zodType = await this.resolveSearchTextJsonSourceType(entity, sourceProp.id);
+        const zodType = await this.resolveSearchTextJsonSourceType(
+          entity,
+          sourceProp.id,
+          apiRootPath,
+        );
         if (!zodType) {
           throw new Error(
             `searchText source "${source.name}"의 json 타입 "${sourceProp.id}"을(를) 로드할 수 없습니다.`,
@@ -147,6 +158,7 @@ class EntityManagerClass {
   private async resolveSearchTextJsonSourceType(
     entity: Entity,
     typeId: string,
+    explicitApiRootPath?: string,
   ): Promise<z.ZodTypeAny | null> {
     const localType = entity.types[typeId];
     if (localType instanceof z.ZodType) {
@@ -173,7 +185,7 @@ class EntityManagerClass {
     }
 
     const moduleFilePath = path.join(
-      Sonamu.apiRootPath,
+      explicitApiRootPath ?? Sonamu.apiRootPath,
       runtimePath(`dist/application/${modulePath}.js`),
     );
     const importedMembers = await importMembers<unknown>(moduleFilePath);
@@ -296,10 +308,10 @@ class EntityManagerClass {
     return inflection.camelize(entityBaseName.replace(/-/g, "_"));
   }
 
-  private async registerNonEntityTypeModulePaths(): Promise<void> {
+  private async registerNonEntityTypeModulePaths(apiRootPath: string): Promise<void> {
     const typePathsPatterns = [
-      path.join(Sonamu.apiRootPath, runtimePath("src/application/**/*.types.ts")),
-      path.join(Sonamu.apiRootPath, runtimePath("src/application/**/*.generated.ts")),
+      path.join(apiRootPath, runtimePath("src/application/**/*.types.ts")),
+      path.join(apiRootPath, runtimePath("src/application/**/*.generated.ts")),
     ];
     const typePaths = (
       await Promise.all(typePathsPatterns.map((pattern) => globAsync(pattern)))

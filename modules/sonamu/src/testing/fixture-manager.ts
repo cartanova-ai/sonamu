@@ -1,7 +1,7 @@
-import assert from "assert";
-import { execSync, type ExecSyncOptions } from "child_process";
-import { readFileSync, writeFileSync } from "fs";
-import { inspect } from "util";
+import assert from "node:assert";
+import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process";
+import { readFile, writeFile } from "node:fs/promises";
+import { inspect } from "node:util";
 
 import chalk from "chalk";
 import inflection from "inflection";
@@ -61,10 +61,51 @@ type UpsertRow = {
   [columnName: string]: UpsertRowValue;
 };
 
-function executeFixtureSyncCommand(command: string, options: ExecSyncOptions): void {
+function waitForFixtureCommand(child: ChildProcess, executable: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      if (code === 0) resolve();
+      else
+        reject(
+          new Error(`${executable} 명령이 ${code ?? signal ?? "unknown"} 상태로 실패했습니다.`),
+        );
+    });
+  });
+}
+
+function executeFixtureCommand(
+  executable: string,
+  args: string[],
+  options: Pick<SpawnOptions, "env" | "stdio">,
+): Promise<void> {
+  return waitForFixtureCommand(spawn(executable, args, options), executable);
+}
+
+async function pipeFixtureCommands(
+  source: { executable: string; args: string[]; env: NodeJS.ProcessEnv },
+  destination: { executable: string; args: string[]; env: NodeJS.ProcessEnv },
+): Promise<void> {
+  const sourceProcess = spawn(source.executable, source.args, {
+    env: source.env,
+    stdio: ["ignore", "pipe", "inherit"],
+  });
+  const destinationProcess = spawn(destination.executable, destination.args, {
+    env: destination.env,
+    stdio: ["pipe", "inherit", "inherit"],
+  });
+  assert(sourceProcess.stdout);
+  assert(destinationProcess.stdin);
+  sourceProcess.stdout.pipe(destinationProcess.stdin);
+
   try {
-    execSync(command, options);
+    await Promise.all([
+      waitForFixtureCommand(sourceProcess, source.executable),
+      waitForFixtureCommand(destinationProcess, destination.executable),
+    ]);
   } catch (error) {
+    sourceProcess.kill();
+    destinationProcess.kill();
     throw new Error("Fixture database synchronization command failed", { cause: error });
   }
 }
@@ -74,6 +115,8 @@ export interface DuplicateCheckOptions {
   columns?: {
     [entityId: string]: string[];
   };
+  includeRelations?: boolean;
+  maxDepth?: number;
 }
 
 export class FixtureManagerClass {
@@ -137,40 +180,76 @@ export class FixtureManagerClass {
 
     // 1. 로컬 test DB 연결 종료 및 재생성
     const testPgEnv = { PGPASSWORD: testConn.password || "" };
-    executeFixtureSyncCommand(
-      `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "
+    const testPsqlArgs = [
+      "-h",
+      testConn.host ?? "localhost",
+      "-p",
+      String(testConn.port ?? 5432),
+      "-U",
+      testConn.user ?? "",
+      "-d",
+      "postgres",
+      "-c",
+    ];
+    await executeFixtureCommand(
+      "psql",
+      [
+        ...testPsqlArgs,
+        `
         SELECT pg_terminate_backend(pg_stat_activity.pid)
         FROM pg_stat_activity
         WHERE datname = '${testConn.database}'
           AND pid <> pg_backend_pid();
-      "`,
+      `,
+      ],
       { stdio: "inherit", env: { ...process.env, ...testPgEnv } },
     );
-
-    executeFixtureSyncCommand(
-      `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "DROP DATABASE IF EXISTS \\"${testConn.database}\\""`,
+    await executeFixtureCommand(
+      "psql",
+      [...testPsqlArgs, `DROP DATABASE IF EXISTS "${testConn.database}"`],
       { stdio: "inherit", env: { ...process.env, ...testPgEnv } },
     );
-
-    executeFixtureSyncCommand(
-      `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "CREATE DATABASE \\"${testConn.database}\\""`,
+    await executeFixtureCommand(
+      "psql",
+      [...testPsqlArgs, `CREATE DATABASE "${testConn.database}"`],
       { stdio: "inherit", env: { ...process.env, ...testPgEnv } },
     );
 
     // 2. 원격 fixture DB → 로컬 test DB로 복사 (pg_dump | pg_restore)
     const fixturePgEnv = { PGPASSWORD: fixtureConn.password || "" };
-    const dumpCmd = `pg_dump -h ${fixtureConn.host} -p ${fixtureConn.port ?? 5432} -U ${fixtureConn.user} -d ${fixtureConn.database} -Fc`;
-    const restoreCmd = `pg_restore -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d ${testConn.database} --no-owner --no-acl`;
-
-    executeFixtureSyncCommand(
-      `${dumpCmd} | PGPASSWORD="${testConn.password || ""}" ${restoreCmd}`,
+    await pipeFixtureCommands(
       {
-        stdio: "inherit",
+        executable: "pg_dump",
+        args: [
+          "-h",
+          fixtureConn.host ?? "localhost",
+          "-p",
+          String(fixtureConn.port ?? 5432),
+          "-U",
+          fixtureConn.user ?? "",
+          "-d",
+          fixtureConn.database,
+          "-Fc",
+        ],
         env: { ...process.env, ...fixturePgEnv },
-        shell: "/bin/bash",
+      },
+      {
+        executable: "pg_restore",
+        args: [
+          "-h",
+          testConn.host ?? "localhost",
+          "-p",
+          String(testConn.port ?? 5432),
+          "-U",
+          testConn.user ?? "",
+          "-d",
+          testConn.database,
+          "--no-owner",
+          "--no-acl",
+        ],
+        env: { ...process.env, ...testPgEnv },
       },
     );
-
     // 3. 시퀀스 리셋 (데이터 복사 후 시퀀스를 MAX(id)로 정렬)
     await this.resetSequences(Sonamu.dbConfig.test);
   }
@@ -364,6 +443,8 @@ export class FixtureManagerClass {
         const initialRecordsLength = fixtures.length;
         const newRecords = await this.createFixtureRecord(entity, row, {
           db: sourceDB,
+          includeRelations: duplicateCheck?.includeRelations,
+          maxDepth: duplicateCheck?.maxDepth,
         });
         fixtures.push(...newRecords);
         const currentFixtureRecord = fixtures.find((r) => r.fixtureId === `${entityId}#${row.id}`);
@@ -421,12 +502,14 @@ export class FixtureManagerClass {
     options?: {
       singleRecord?: boolean;
       db?: Knex;
+      includeRelations?: boolean;
+      maxDepth?: number;
     },
   ): Promise<FixtureRecord[]> {
     const records: FixtureRecord[] = [];
     const visitedEntities = new Set<string>();
 
-    const create = async (entity: Entity, row: FixtureSourceRecord) => {
+    const create = async (entity: Entity, row: FixtureSourceRecord, depth: number) => {
       const fixtureId = `${entity.id}#${row.id}`;
       if (visitedEntities.has(fixtureId)) {
         return;
@@ -488,14 +571,23 @@ export class FixtureManagerClass {
           if (relatedId) {
             record.belongsRecords.push(`${prop.with}#${relatedId}`);
           }
-          if (!options?.singleRecord && relatedId) {
+          if (
+            !options?.singleRecord &&
+            options?.includeRelations !== false &&
+            depth < (options?.maxDepth ?? Number.POSITIVE_INFINITY) &&
+            relatedId
+          ) {
             const relatedEntity = EntityManager.get(prop.with);
             const relatedRow = await db(relatedEntity.table).where("id", relatedId).first();
             if (relatedRow) {
-              await create(relatedEntity, {
-                ...dataExplorerRecordSchema.parse(relatedRow),
-                id: z.union([z.number(), z.string()]).parse(relatedRow.id),
-              });
+              await create(
+                relatedEntity,
+                {
+                  ...dataExplorerRecordSchema.parse(relatedRow),
+                  id: z.union([z.number(), z.string()]).parse(relatedRow.id),
+                },
+                depth + 1,
+              );
             }
           }
         }
@@ -504,7 +596,7 @@ export class FixtureManagerClass {
       records.push(record);
     };
 
-    await create(rootEntity, rootRow);
+    await create(rootEntity, rootRow, 0);
 
     return records;
   }
@@ -1120,7 +1212,7 @@ export class FixtureManagerClass {
 
   async addFixtureLoader(code: string) {
     const path = `${Sonamu.apiRootPath}/src/testing/fixture.ts`;
-    const content = readFileSync(path).toString();
+    const content = await readFile(path, "utf8");
 
     const fixtureLoaderStart = content.indexOf("const fixtureLoader = {");
     const fixtureLoaderEnd = content.indexOf("};", fixtureLoaderStart);
@@ -1128,7 +1220,7 @@ export class FixtureManagerClass {
     if (fixtureLoaderStart !== -1 && fixtureLoaderEnd !== -1) {
       const newContent = `${content.slice(0, fixtureLoaderEnd)}  ${code}\n${content.slice(fixtureLoaderEnd)}`;
 
-      writeFileSync(path, newContent);
+      await writeFile(path, newContent);
     } else {
       throw new Error("Failed to find fixtureLoader in fixture.ts");
     }

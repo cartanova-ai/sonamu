@@ -1,0 +1,267 @@
+---
+title: "CLI 레퍼런스"
+description: "Sonamu CLI 설치와 자동화"
+---
+
+`@sonamu-kit/cli` 0.1.0은 `sonamu` 실행 파일을 제공하는 유일한 패키지입니다. API 프로젝트에서
+`sonamu`와 함께 직접 설치하세요. `sonamu` 패키지는 이전 CLI를 대신 실행하는 호환용 실행 파일을
+제공하지 않습니다.
+
+```bash
+pnpm add sonamu@^0.11.0 @sonamu-kit/cli@0.1.0
+pnpm sonamu --version
+```
+
+기존 프로젝트에 `sonamu`가 이미 설치되어 있다면 `^0.11.0`으로 업데이트하고
+`@sonamu-kit/cli@0.1.0`을 추가하세요. 이 CLI 릴리스는 Sonamu `^0.11.0`을 지원합니다.
+CLI는 Optique 1.2.4를 사용합니다. 설치된 버전의 정확한 명령 구조는 `pnpm sonamu --help`에서
+확인할 수 있습니다.
+
+## 대화형 사용
+
+TTY 터미널에서는 자동화 옵션 없이 실행합니다.
+
+```bash
+# 명령 선택
+pnpm sonamu
+
+# Entity 선택
+pnpm sonamu scaffold model
+
+# Fixture import용 Entity 선택. ID는 생략할 수 없음
+pnpm sonamu fixture import 1 2 3 --execute
+```
+
+TTY에서 최상위 명령을 생략하거나 잘못 입력하거나 퍼지하게 입력하면 명령 검색 메뉴가 열리며,
+입력하는 즉시 목록이 필터링됩니다. 각 선택 단계에는 최대 10개 항목만 표시됩니다. 명령 그룹을
+선택하면 바로 아래 하위 명령이 단계적으로 열리고, 그룹 자체도 실행할 수 있으면
+`Use current command` 항목이 함께 표시됩니다. `pnpm sonamu fixture`처럼 불완전한 경로는 해당
+그룹의 하위 명령 메뉴에서 바로 시작합니다. 명령 선택 중 어느 단계에서든 Ctrl+C를 누르면 종료
+코드 130으로 끝납니다.
+
+Entity를 받는 명령은 목록에서 Entity를 선택하거나 입력한 Entity 이름을 퍼지 검색할 수 있습니다.
+`fixture import`도 TTY에서 Entity를 선택하거나 퍼지 검색하지만, 숫자 ID는 입력해야 합니다. TTY가
+아니면 프롬프트를 열지 않으며, 빠진 인자와 잘못된 입력은 사용 오류로 처리합니다.
+Entity 검색은 Entity 메타데이터만 읽으며 Model이나 다른 애플리케이션 런타임 모듈을 불러오지
+않습니다. `--non-interactive`를 지정하면 TTY에서도 검색과 확인 프롬프트를 사용하지 않습니다.
+필수 입력이 빠져도 프롬프트로 전환하지 않습니다.
+
+## 자동화와 코딩 에이전트
+
+모든 필수 입력을 명시하고 두 자동화 옵션을 함께 전달하세요.
+
+```bash
+pnpm sonamu entity show User --non-interactive --json
+```
+
+`dev`와 `start`를 제외한 유한한 명령은 stdout에 JSON envelope 한 줄을 씁니다. `build`도 이에
+포함됩니다. 성공 결과에는 `ok`, `command`, `data`, `warnings`가 들어가며, handler가 데이터를
+반환하지 않으면 CLI가 `data: null`로 정규화합니다. 실패 결과에는 `ok: false`, `command`, `error`,
+`exitCode`가 들어갑니다. `error`에는 정제된 `details`가 포함될 수 있습니다. 실패한 테스트는
+인증 정보를 노출하지 않고 `details`에 `runId`와 구조화된 테스트 결과를 보존합니다.
+
+`task watch`는 비동기 스트림을 반환하며 변경된 Workflow 실행 snapshot마다 newline-delimited
+JSON(NDJSON) 한 줄을 씁니다.
+
+```bash
+pnpm sonamu task watch RUN_ID --non-interactive --json
+```
+
+사람이 읽는 출력 문자열을 분석하지 마세요. JSON 또는 NDJSON과 프로세스 종료 코드를 함께
+처리하세요.
+
+`dev`와 `start`는 장시간 실행되는 자식 프로세스에 작업을 위임하므로 사람이 읽는 출력만
+지원합니다. `--json`을 지정하면 자식을 시작하기 전에 종료 코드 `2`와 `JSON_UNSUPPORTED` 실패
+envelope 한 줄을 반환합니다. 사람용 모드에서는 자식 출력을 그대로 전달하며, signal로 종료되면
+`128 + signal 번호`를 포함한 자식 종료 코드를 그대로 반환합니다. `build`는 일반 유한 명령처럼
+JSON을 지원합니다.
+
+메타데이터 출력은 JSON envelope를 사용하지 않습니다. `--help`와 `--version`은 Optique의 일반
+텍스트 메타데이터를 출력합니다. `completion`은 JSON 자동화 옵션 없이 호출하면 일반 텍스트 자동
+완성 스크립트를 출력합니다.
+
+| 종료 코드 | 의미                                          |
+| --------- | --------------------------------------------- |
+| `0`       | 성공, 메타데이터 출력 또는 preview 완료       |
+| `1`       | 도메인 또는 CLI 런타임 실패                   |
+| `2`       | 명령, 인자, 옵션, 옵션 값 또는 필수 입력 오류 |
+| `3`       | 변경 작업에 필요한 실행 또는 확인 입력이 없음 |
+| `130`     | 대화형 작업 취소                              |
+
+위임된 `dev`와 `start` 프로세스는 이 표에 없는 종료 코드도 반환할 수 있습니다.
+
+### Fixture 자동화 입력
+
+비대화형 fixture helper는 결정적 기본값을 사용합니다. 다음 selector가 없으면 프롬프트를 열지 않고
+종료 코드 `2`를 반환합니다.
+
+- `fixture gen`에는 `--all` 또는 `--include ENTITY_LIST`가 필요합니다.
+- 기존 방식의 `fixture fetch`에는 `--all` 또는 `--include ENTITY_LIST`가 필요합니다.
+- `fixture explore`에는 Entity 하나를 지정하는 `--include ENTITY`가 필요합니다. 쉼표로 구분한
+  목록을 전달하지 마세요. 이 명령에서 `--all`은 비대화형 selector로 인정하지 않습니다.
+- Fixture 전송 preview에는 위치 인자 `ENTITY`와 `--source`, `--target`, `--field`, 하나 이상의
+  `--value`, `--relation include|exclude|none`, `--depth`가 모두 필요합니다.
+
+비대화형 `fixture gen`은 기본적으로 count `5`, 저장 대상 `db`, LLM 미사용, cache 사용, dummy user
+모드를 선택합니다. 명시한 옵션은 이 기본값을 대체합니다.
+
+## 로깅 옵션
+
+CLI는 Optique의 LogTape 통합을 사용합니다. 기본 `warning` 레벨에서 `-v`, `-vv`, `-vvv`를
+추가하면 각각 `info`, `debug`, `trace` 로그를 선택합니다. 긴 옵션 `--verbose`도 반복할 수 있으며
+한 번 추가할 때마다 로그 레벨을 한 단계 높입니다.
+
+```bash
+pnpm sonamu sync -vv
+pnpm sonamu migrate status --log-output=- --log-format=plain
+pnpm sonamu task watch --log-output=sonamu.log --log-format=jsonl
+```
+
+`--log-format`은 `jsonl`, `logfmt`, `color`, `plain`을 받습니다. `--log-output`을 생략하면 로그는
+기본적으로 stderr로 전송됩니다. `--log-output=-`도 로그를 stderr로 보내며, 다른 값은 파일
+경로로 처리합니다. `--json` 모드에서는 명령 봉투와 이벤트 객체만 stdout에 기록됩니다. 로깅
+옵션을 지정하지 않으면 프로젝트의 Sonamu 로깅 설정을 변경하지 않습니다. 잘못된 로깅 값은
+명령 초기화 전에 종료 코드 `2`로 거절합니다.
+
+## 변경 작업
+
+실행 전에 전용 preview 명령이나 해당 명령의 `--dry-run`을 사용하세요. 실행 옵션은 명령마다
+다릅니다.
+
+```bash
+# Entity patch dry-run과 적용
+pnpm sonamu entity apply --file entity.patch.json --dry-run --non-interactive --json
+pnpm sonamu entity apply --file entity.patch.json --execute --confirm --non-interactive --json
+
+# Scaffold 확인과 비대화형 일괄 생성
+pnpm sonamu scaffold preview --entity User,Post --template model --non-interactive --json
+pnpm sonamu scaffold batch --entity User,Post --template model --execute --confirm --non-interactive --json
+
+# Migration 확인과 실행
+pnpm sonamu migrate preview production --action apply --non-interactive --json
+pnpm sonamu migrate apply production --execute --confirm --force-reason CHANGE_REQUEST --non-interactive --json
+
+# 엄격한 Fixture import와 완전한 전송 preview
+pnpm sonamu fixture import User 1 2 3 --execute --confirm --non-interactive --json
+pnpm sonamu fixture fetch User --source production --target fixture --field id --value 1,2 --relation include --depth 1 --dry-run --non-interactive --json
+
+# Task 변경 preview와 실행
+pnpm sonamu task pause RUN_ID --dry-run --non-interactive --json
+pnpm sonamu task pause RUN_ID --execute --confirm --non-interactive --json
+
+# locale로 거른 i18n 목록, JSON export와 import
+pnpm sonamu i18n list --locale en --non-interactive --json
+pnpm sonamu i18n export --format json --file translations-en.json --locale en --non-interactive --json
+pnpm sonamu i18n import --format json --file translations.json --execute --confirm --non-interactive --json
+
+# CDD 규칙 dry-run과 실행
+pnpm sonamu cdd rule add --rule-key api --id require-auth --when "엔드포인트를 추가할 때" --text "인증을 적용한다." --dry-run --non-interactive --json
+pnpm sonamu cdd rule add --rule-key api --id require-auth --when "엔드포인트를 추가할 때" --text "인증을 적용한다." --execute --confirm --non-interactive --json
+pnpm sonamu cdd ac --document requirements/signup.md --text "중복 이메일 가입을 거절한다." --dry-run --non-interactive --json
+pnpm sonamu cdd ac --document requirements/signup.md --text "중복 이메일 가입을 거절한다." --execute --confirm --non-interactive --json
+```
+
+`migrate apply`와 `migrate rollback`의 비대화형 실행에는 `--execute --confirm`이 필요합니다.
+운영 DB를 대상으로 실행할 때는 `--force-reason REASON`도 전달해야 합니다. `fixture init`,
+`fixture import`, `fixture sync`, `fixture gen`은 기본적으로 dry-run이며, `--execute`를 지정해야만
+데이터를 변경합니다. TTY에서는 확인 프롬프트에 응답해야 합니다. 비대화형 호출에는
+`--execute --confirm`이 필요하며, 실행 승인 없이 기본 또는 명시적 dry-run을 호출하면 종료 코드
+`3`을 반환합니다. 엄격한 import 형식은 `fixture import ENTITY ID... --execute`입니다. Entity와
+숫자 ID를 하나 이상 명시하세요. TTY에서는 Entity를 선택하거나 퍼지 검색할 수 있지만 ID는
+입력해야 합니다.
+
+`fixture fetch`는 기본적으로 dry-run입니다. 실행하려면 `--execute`를 지정하고 TTY 확인
+프롬프트에 응답하거나 `--execute --confirm`을 사용합니다. 전송 형식에는 `ENTITY`, `--source`,
+`--target`, `--field`, 하나 이상의 `--value`, `--relation`, `--depth`가 모두 필요하며, 기존
+형식에는 `--all` 또는 `--include`가 필요합니다.
+
+`scaffold batch`, `task pause`, `task resume`, `task cancel`, `cdd rule add`, `cdd ac`는 기본적으로
+dry-run입니다. TTY에서 파일이나 상태를 변경하려면 `--execute`를 지정하고 확인 프롬프트에
+응답하거나 `--confirm`을 추가하세요. 비대화형 실행에는 `--execute --confirm`을 사용합니다.
+`cdd rule add`에는 `--rule-key`, `--id`, `--when`, `--text`가 모두 필요합니다.
+
+`migrate run`은 기본적으로 dry-run이지만 이 모드는 Migration 계획을 만들지 않습니다.
+`migrate preview TARGET --action apply`로 적용 계획을 확인한 다음, `migrate run --execute`를
+실행하고 TTY 프롬프트에 응답하거나 `--confirm`을 추가하세요. `NODE_ENV=production`에서
+`migrate run --execute`를 호출할 때는 `--force-reason REASON`도 전달해야 하며, 생략하면 종료
+코드 `3`을 반환합니다.
+
+`migrate shadow TARGET`은 `test`와 `fixture`만 받습니다. dry-run은 입력만 검증하며 Shadow
+Migration을 실행하지 않습니다. 실제 Shadow 검증에는 `--execute`를 지정하고 TTY 프롬프트에
+응답하거나 `--execute --confirm`을 사용하세요. `scaffold batch`는 `--execute`를 지정해야 파일을
+생성합니다. 확인한 결과가 기존 파일을 대체해야 한다면 실행 명령에도 `--overwrite`를 추가합니다.
+
+`i18n import`는 `--format workbook|json` 형식의 `--file FILE`을 읽고, `i18n export`는 지정한 형식과
+경로에 파일을 씁니다. i18n import와 항목 변경에는 `--execute --confirm`을 사용하며, export는
+파일만 생성합니다. `i18n list`나 `i18n export`에 `--locale LOCALE`을 추가하면 해당 locale만
+포함합니다.
+
+`i18n update`에 `--source project|entity`를 추가하면 갱신할 항목의 출처를 명시합니다. 생략하면
+사전에 등록된 기존 출처를 그대로 사용하며, 사전에 없는 key라면 `project`로 폴백합니다.
+
+`skills sync`는 이전 프로젝트의 postinstall 스크립트를 위한 호환 명령입니다. 파일을 변경하지
+않고 외부 설치 안내만 출력한 뒤 종료 코드 `0`으로 끝납니다.
+
+`entity show ENTITY`는 존재하지 않는 Entity id를 받으면 실패합니다. 이전처럼 `ok: true`와
+`data: null`을 종료 코드 `0`으로 반환하지 않고, `ENTITY_NOT_FOUND` 오류 봉투와 종료 코드 `1`을
+반환합니다. null 응답을 "찾지 못함"으로 처리하던 `--json` 자동화는 수정해야 합니다.
+
+CLI는 Entity 제안 명령을 제공하지 않습니다. AI를 이용한 Entity 대화 기능은 Sonamu Web에서만
+사용할 수 있습니다.
+
+## 명령 경로
+
+| 그룹      | 명령                                                                                                                                                                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entity    | `entity list`, `entity show ENTITY`, `entity search QUERY`, `entity apply --file FILE`                                                                                                                                          |
+| Fixture   | `fixture init`, `fixture import ENTITY ID...`, `fixture sync`, `fixture gen`, `fixture fetch [ENTITY]`, `fixture explore`                                                                                                             |
+| Migration | `migrate run`, `migrate apply TARGET...`, `migrate generate`, `migrate status`, `migrate connections`, `migrate code TARGET`, `migrate preview TARGET`, `migrate shadow TARGET`, `migrate rollback TARGET`                            |
+| Scaffold  | `stub entity NAME`, `stub practice NAME`, `scaffold model ENTITY`, `scaffold model_test ENTITY`, `scaffold view_list ENTITY`, `scaffold view_form ENTITY`, `scaffold status`, `scaffold preview`, `scaffold batch`, `cone gen ENTITY` |
+| 런타임    | `build`, `dev`, `sync`, `start`                                                                                                                                                                                                       |
+| i18n      | `i18n list`, `i18n check`, `i18n import`, `i18n export`, `i18n create`, `i18n update`, `i18n delete`                                                                                                                                  |
+| Task      | `task definitions`, `task list`, `task show RUN_ID`, `task steps RUN_ID`, `task watch RUN_ID`, `task pause RUN_ID`, `task resume RUN_ID`, `task cancel RUN_ID`                                                                        |
+| Test      | `test [FILES...] [-p PATTERN] [-t]`, `test -s`                                                                                                                                                                                        |
+| CDD       | `cdd tree`, `cdd read PATH`, `cdd rules`, `cdd rule show RULE_KEY`, `cdd rule add`, `cdd ac`                                                                                                                                          |
+| Auth      | `auth generate`, `auth add-companions`                                                                                                                                                                                                |
+| 호환      | `skills sync`                                                                                                                                                                                                                         |
+
+`migrate apply`는 `development`, `staging`, `production`, `fixture`, `test` 다섯 대상을 원하는 순서와
+조합으로 받습니다. TTY에서는 대상을 생략하면 하나 이상을 고르는 다중 선택 프롬프트가 열립니다.
+TTY가 아니거나 `--non-interactive`를 지정한 호출에는 대상을 하나 이상 전달해야 합니다.
+`migrate shadow TARGET`은 로컬의 `fixture`와 `test` 대상만 받습니다. `migrate code`,
+`migrate preview`, `migrate rollback`은 다섯 대상 중 하나를 받습니다.
+
+`auth generate --plugins PLUGINS`에는 다음 plugin ID를 쉼표로 구분해 전달할 수 있습니다.
+
+```text
+2fa, admin, anonymous, api-key, audit-log, jwt, organization, passkey,
+phone-number, sso, username
+```
+
+필수 옵션과 허용된 값을 확인하려면 하위 명령의 도움말을 실행하세요.
+
+```bash
+pnpm sonamu migrate rollback --help
+pnpm sonamu fixture fetch --help
+```
+
+## 셸 자동 완성
+
+Optique 1.2.4는 Bash, zsh, fish, PowerShell, Nushell용 스크립트를 생성합니다.
+
+```bash
+pnpm sonamu completion bash
+pnpm sonamu completion zsh
+pnpm sonamu completion fish
+pnpm sonamu completion pwsh
+pnpm sonamu completion nu
+```
+
+생성한 표준 출력을 해당 셸의 자동 완성 설정에 저장하거나 source 하세요.
+
+## 관련 문서
+
+- [Migration](/ko/tools-and-cli/sonamu-cli/migrate)
+- [Fixture](/ko/tools-and-cli/sonamu-cli/fixture)
+- [Scaffold](/ko/tools-and-cli/sonamu-cli/scaffold)
+- [Test](/ko/tools-and-cli/sonamu-cli/test)

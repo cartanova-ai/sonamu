@@ -22,8 +22,8 @@ pnpm stub practice test-api
 
 # Generated:
 # src/practices/p1-test-api.ts
-# Automatically opens in VS Code
-# Run command copied to clipboard
+# The command prints the created file name and path, and nothing else happens:
+# it does not open an editor or copy anything to the clipboard.
 ```
 
 **Generated file**:
@@ -42,9 +42,14 @@ Sonamu.runScript(async () => {
 **Run**:
 
 ```bash
-# Paste from clipboard (Cmd+V)
+# Build first, then run the compiled practice script
 pnpm node -r dotenv/config --enable-source-maps dist/practices/p1-test-api.js
 ```
+
+<Note>
+  The practice name may contain only letters, digits, `.`, `-`, and `_`, and must start with a
+  letter or digit. Other names are rejected, and an existing practice file is never overwritten.
+</Note>
 
 ### entity - Generate Entity
 

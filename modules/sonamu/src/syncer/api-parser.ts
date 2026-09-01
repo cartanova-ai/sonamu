@@ -1,8 +1,8 @@
 import assert from "assert";
 import { readFile } from "fs/promises";
 
+import ts from "@typescript/typescript6";
 import inflection from "inflection";
-import ts from "typescript";
 
 import { registeredApis } from "../api/decorators";
 import { type ExtendedApi } from "../api/decorators";

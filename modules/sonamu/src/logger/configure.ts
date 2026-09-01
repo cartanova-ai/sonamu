@@ -1,5 +1,6 @@
 import { configure, getConsoleSink } from "@logtape/logtape";
 import {
+  type Config,
   type Filter,
   type FilterLike,
   type LoggerConfig,
@@ -11,6 +12,23 @@ import { getPrettyFormatter } from "@logtape/pretty";
 import { type FastifyReply, type FastifyRequest } from "fastify";
 
 import { isSameCategory } from "./category";
+
+interface ExternalLogTapeConfiguration {
+  readonly config: Config<string, string>;
+  applied: boolean;
+}
+
+declare global {
+  var sonamuKitCliLogTapeOverride: ExternalLogTapeConfiguration | undefined;
+}
+
+function getExternalLogTapeConfiguration(): ExternalLogTapeConfiguration | undefined {
+  return globalThis.sonamuKitCliLogTapeOverride;
+}
+
+export function hasExternalLogTapeConfiguration(): boolean {
+  return getExternalLogTapeConfiguration() !== undefined;
+}
 
 export type SonamuLoggingOptions<TSinkId extends string, TFilterId extends string> = {
   // fastify 로깅 카테고리 (a.b.c의 형태로 넣으면 [a, b, c]로 들어갑니다.)
@@ -107,19 +125,42 @@ function defaultFastifyFilter(fastifyCategory: readonly string[]): Filter {
 export async function configureLogTape<TSinkId extends string, TFilterId extends string>(
   options: SonamuLoggingOptions<TSinkId, TFilterId>,
 ) {
+  const external = getExternalLogTapeConfiguration();
   const fastifyCategory = options.fastifyCategory ?? ["fastify"];
 
-  const sinks = {
+  const projectSinks = {
     "fastify-console": defaultFastifySink(fastifyCategory),
     ...options.sinks,
-  };
+  } satisfies Record<string, Sink>;
+  const externalSinkIds = new Map<string, string>();
+  const externalSinks: Record<string, Sink> = {};
+  for (const [sinkId, sink] of Object.entries(external?.config.sinks ?? {})) {
+    let namespacedId = `sonamu-cli:${sinkId}`;
+    while (
+      Object.hasOwn(projectSinks, namespacedId) ||
+      Object.hasOwn(externalSinks, namespacedId)
+    ) {
+      namespacedId = `${namespacedId}-`;
+    }
+    externalSinkIds.set(sinkId, namespacedId);
+    externalSinks[namespacedId] = sink;
+  }
+  const sinks = { ...projectSinks, ...externalSinks };
 
   const filters = {
     "fastify-console": defaultFastifyFilter(fastifyCategory),
     ...options.filters,
+    ...external?.config.filters,
   };
 
-  const loggers = new Set<LoggerConfig<string, string>>(options.loggers ?? []);
+  const externalLoggers = (external?.config.loggers ?? []).map((logger) => ({
+    ...logger,
+    sinks: logger.sinks?.map((sinkId) => externalSinkIds.get(sinkId) ?? sinkId),
+  }));
+  const loggers = new Set<LoggerConfig<string, string>>([
+    ...externalLoggers,
+    ...(options.loggers ?? []),
+  ]);
 
   // logtape의 meta logger 표시를 비활성화
   loggers.add({
@@ -136,5 +177,6 @@ export async function configureLogTape<TSinkId extends string, TFilterId extends
     });
   }
 
+  if (external !== undefined) external.applied = true;
   return configure({ sinks, filters, loggers: [...loggers], reset: true });
 }

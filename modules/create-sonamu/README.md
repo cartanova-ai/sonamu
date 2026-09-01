@@ -124,11 +124,25 @@ mise exec -- pnpm dev
 
 🎉 **완료!**
 
-- API + Web: http://localhost:34900 (통합 모드)
-- Sonamu UI: http://localhost:34900/sonamu-ui (엔티티 관리)
+- API + Web: <http://localhost:34900> (통합 모드)
+- Sonamu UI: <http://localhost:34900/sonamu-ui> (엔티티 관리)
 
 > **참고**: `mise exec -- pnpm dev`는 `sonamu dev`를 실행하며, 기본적으로 API와 Web을 하나의 포트로 통합 서빙합니다.
 > Web만 별도로 실행하려면 `sonamu dev web`을 사용하세요.
+
+### 기존 프로젝트의 CLI 의존성
+
+새로 생성한 API 패키지는 `sonamu`와 `@sonamu-kit/cli`를 모두 직접 의존합니다. 기존 프로젝트를
+업그레이드할 때는 API 패키지에서 CLI도 추가하세요.
+
+```bash
+cd packages/api
+mise exec -- pnpm add sonamu@^0.11.0 @sonamu-kit/cli@0.1.0
+```
+
+`@sonamu-kit/cli` 0.1.0은 `sonamu` `^0.11.0`과 호환됩니다. `sonamu` 패키지는 이전 CLI를 대신
+실행하는 호환용 실행 파일을 제공하지 않습니다. 기존 `sonamu dev`, `sonamu build` 스크립트는 두
+의존성을 업데이트한 뒤 그대로 사용할 수 있습니다.
 
 ---
 
@@ -171,8 +185,8 @@ mise exec -- pnpm dev
 
 | 서비스               | 포트                | URL                              |
 | -------------------- | ------------------- | -------------------------------- |
-| **API + Web (통합)** | `BASE_PORT` (34900) | http://localhost:34900           |
-| **Sonamu UI**        | -                   | http://localhost:34900/sonamu-ui |
+| **API + Web (통합)** | `BASE_PORT` (34900) | <http://localhost:34900>           |
+| **Sonamu UI**        | -                   | <http://localhost:34900/sonamu-ui> |
 | **PostgreSQL**       | 5432                | -                                |
 
 **참고**:
@@ -198,8 +212,9 @@ mise exec -- pnpm dev
 | `mise exec -- pnpm docker:up`      | Docker 데이터베이스 시작                  |
 | `mise exec -- pnpm docker:down`    | Docker 데이터베이스 중지                  |
 | `mise exec -- pnpm docker:reset`   | 데이터베이스 초기화 (볼륨 삭제 후 재시작) |
-| `mise exec -- pnpm dump`           | 테스트 DB → 덤프 파일 생성                |
-| `mise exec -- pnpm seed`           | 덤프 파일 → fixture DB 적용               |
+| `mise exec -- pnpm dump`           | 테스트 DB → 덤프 파일 생성                          |
+| `mise exec -- pnpm seed`           | 덤프를 fixture DB에 적용하고 test DB 동기화         |
+| `mise exec -- pnpm sync:dump`      | seed, 승인된 Migration 실행, dump를 순서대로 실행   |
 
 ### 개발 서버 모드
 
@@ -228,7 +243,7 @@ mise exec -- pnpm dev
 
 ### 1. 엔티티 생성
 
-API 서버를 실행한 상태에서 http://localhost:34900/sonamu-ui 접속 → **Entities** 탭 → **+ Entity** 클릭
+API 서버를 실행한 상태에서 <http://localhost:34900/sonamu-ui> 접속 → **Entities** 탭 → **+ Entity** 클릭
 
 ### 2. 자동 생성되는 파일들
 
@@ -388,8 +403,7 @@ git commit -m "update fixture"
 
 # 동료가 받을 때
 git pull
-mise exec -- pnpm seed         # fixture DB에 적용
-mise exec -- pnpm sonamu fixture sync # 테스트 DB로 동기화
+mise exec -- pnpm seed         # fixture DB에 적용한 뒤 test DB로 동기화
 ```
 
 ---

@@ -2253,6 +2253,7 @@ class SonamuClass {
   }
 
   async destroy(): Promise<void> {
+    const { hasExternalLogTapeConfiguration } = await import("../logger/configure");
     const { BaseModel } = await import("../database/base-model");
     // 먼저 처리해야함.
     await BaseModel.destroy();
@@ -2269,7 +2270,7 @@ class SonamuClass {
       this.watcher?.close() ?? Promise.resolve(),
     ]);
     // LogTape dispose after WS shutdown so telemetry records are flushed first
-    await logtapeDispose();
+    if (!hasExternalLogTapeConfiguration()) await logtapeDispose();
   }
 }
 

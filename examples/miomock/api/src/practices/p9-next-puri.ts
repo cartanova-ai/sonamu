@@ -135,8 +135,8 @@ Sonamu.runScript(async () => {
   void test15Result;
 
   // test: join 상황에서 insert 시도시 불가
-  // @ts-expect-error - unused
   const test16Result = puri.from("users").insert({
+    // @ts-expect-error - 단일 테이블 alias 없이 insert할 수 없음
     bio: "aa",
   });
   void test16Result;
