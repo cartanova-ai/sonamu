@@ -30,14 +30,19 @@ export type BuildArtifact<BuildCommandArgs = {}> = {
 
 export type ApiTsdownBuildConfig = Pick<UserConfig, "entry" | "plugins">;
 
+export function quoteShellArgument(value: string): string {
+  // 작은따옴표 자체만 셸 경계를 닫지 못하도록 분리해 리터럴 인수를 보존합니다.
+  return `'${value.replaceAll("'", `'"'"'`)}'`;
+}
+
 export function createWebTypecheckCommand(): string {
   const isSourceModule = path.extname(import.meta.filename) === ".ts";
   const scriptPath = path.join(
     import.meta.dirname,
     `typecheck-web.${isSourceModule ? "ts" : "js"}`,
   );
-  const runner = isSourceModule ? "pnpm exec tsx" : JSON.stringify(process.execPath);
-  return `${runner} ${JSON.stringify(scriptPath)}`;
+  const runner = isSourceModule ? "pnpm exec tsx" : quoteShellArgument(process.execPath);
+  return `${runner} ${quoteShellArgument(scriptPath)}`;
 }
 
 type ZodCompilerPluginFactory = (typeof import("zod-compiler/rolldown"))["default"];

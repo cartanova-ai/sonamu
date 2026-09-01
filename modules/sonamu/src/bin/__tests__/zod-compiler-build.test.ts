@@ -13,6 +13,7 @@ import {
   composeApiZodCompilerBuildConfig,
   createApiZodCompilerBuildWrapper,
   createWebTypecheckCommand,
+  quoteShellArgument,
   WEB_ARTIFACTS,
 } from "../build-config";
 
@@ -32,6 +33,13 @@ const compilerDependencies = {
 };
 
 describe("TypeScript 7 Web 빌드 정책", () => {
+  it("셸 메타문자가 포함된 실행 경로를 단일 인수로 보존한다", async () => {
+    const argument = "공백 '따옴표' $(echo 위험) `echo 위험` $HOME";
+    const { stdout } = await execAsync(`printf %s ${quoteShellArgument(argument)}`);
+
+    expect(stdout).toBe(argument);
+  });
+
   it("선언을 만들지 않는 앱은 모든 project reference를 타입 검사한다", async () => {
     const webRoot = await mkdtemp(path.join(process.cwd(), ".sonamu-web-typecheck-test-"));
     webTypecheckRoots.push(webRoot);
