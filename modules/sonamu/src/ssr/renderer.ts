@@ -6,6 +6,7 @@ import { type ViteDevServer } from "vite";
 import { applyCacheHeaders } from "../cache-control/cache-control";
 import { type CacheControlRequest } from "../cache-control/types";
 import { type SonamuFastifyConfig } from "../types/types";
+import { HMR_OPT_OUT_SCRIPT, isHmrDisabledByQuery } from "./hmr-opt-out";
 import { type PreloadedData, type SSRRoute } from "./types";
 
 export async function renderSSR(
@@ -60,6 +61,11 @@ export async function renderSSR(
 
     // Vite가 주입한 스크립트 추출
     viteScripts = extractScriptTags(transformedHtml);
+
+    // ?hmr=false로 연 페이지는 HMR 웹소켓만 끊어 새로고침되지 않게 한다.
+    if (isHmrDisabledByQuery(url)) {
+      viteScripts = `${HMR_OPT_OUT_SCRIPT}\n${viteScripts}`;
+    }
 
     const entryModule = await vite.ssrLoadModule("/src/entry-server.generated.tsx");
     render = entryModule.render;
