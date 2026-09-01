@@ -119,6 +119,7 @@
     "@sonamu-kit/tasks": "workspace:^",
     "@sonamu-kit/ts-loader": "workspace:^",
     "@types/ws": "catalog:",
+    "@typescript/typescript6": "catalog:",
     "bcrypt": "catalog:",
     "bentocache": "catalog:",
     "better-auth": "catalog:",
@@ -143,7 +144,6 @@
     "prompts": "catalog:",
     "qs": "catalog:",
     "radashi": "catalog:",
-    "typescript-legacy": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "zod-compiler": "catalog:"

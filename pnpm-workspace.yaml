@@ -130,6 +130,7 @@ catalog:
   "@types/supertest": ^6.0.3
   "@types/ws": ^8.18.1
   "@typescript/native-preview": ^7.0.0-dev.20251225.1
+  "@typescript/typescript6": 6.0.2
   "@uiw/react-json-view": 2.0.0-alpha.41
   "@vitejs/plugin-react": 6.0.2
   "@vitest/coverage-v8": ^4.1.9
@@ -229,7 +230,6 @@ catalog:
   tsdown: ^0.22.3
   tsx: ^4.21.0
   typescript: 7.1.0-dev.20260831.1
-  typescript-legacy: npm:typescript@6.0.3
   unplugin-icons: 0.20.2
   uuid: ^13.0.0
   vaul: ^1.1.2
