@@ -835,6 +835,12 @@ class SonamuClass {
           );
           template = await this.viteServer.transformIndexHtml(url, template);
 
+          // ?hmr=false로 연 페이지는 HMR 웹소켓만 끊어 새로고침되지 않게 한다.
+          const { HMR_OPT_OUT_SCRIPT, isHmrDisabledByQuery } = await import("../ssr/hmr-opt-out");
+          if (isHmrDisabledByQuery(url)) {
+            template = template.replace("<head>", `<head>\n${HMR_OPT_OUT_SCRIPT}`);
+          }
+
           reply.type("text/html");
           return template;
         } catch (e) {
