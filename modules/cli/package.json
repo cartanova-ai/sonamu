@@ -35,6 +35,7 @@
     "@optique/logtape": "catalog:",
     "@optique/run": "catalog:",
     "@optique/zod": "catalog:",
+    "@sonamu-kit/hmr-runner": "workspace:^",
     "zod": "catalog:"
   },
   "devDependencies": {

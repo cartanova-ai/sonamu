@@ -827,7 +827,12 @@ export class Entity {
     });
   }
 
-  async registerModulePaths() {
+  /**
+   * Entity가 노출하는 타입 이름과 모듈 경로를 EntityManager에 등록합니다.
+   *
+   * @param explicitApiRootPath - Sonamu 초기화 없이 등록할 때 사용할 API 루트 경로
+   */
+  async registerModulePaths(explicitApiRootPath?: string) {
     const basePath = `${this.names.parentFs}`;
 
     // base-scheme
@@ -853,7 +858,7 @@ export class Entity {
     // types
     const typesModulePath = `${basePath}/${this.names.parentFs}.types`;
     const typesFilePath = path.join(
-      Sonamu.apiRootPath,
+      explicitApiRootPath ?? Sonamu.apiRootPath,
       runtimePath(`dist/application/${typesModulePath}.js`),
     );
 

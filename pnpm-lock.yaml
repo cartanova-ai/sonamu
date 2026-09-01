@@ -1049,6 +1049,9 @@ importers:
       '@optique/zod':
         specifier: 'catalog:'
         version: 1.2.4(zod@4.3.6)
+      '@sonamu-kit/hmr-runner':
+        specifier: workspace:^
+        version: link:../hmr-runner
       zod:
         specifier: 'catalog:'
         version: 4.3.6

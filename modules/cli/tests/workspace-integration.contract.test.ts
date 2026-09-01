@@ -217,10 +217,7 @@ describe("최종 CLI 패키지 워크스페이스 통합", () => {
       try {
         const manifest = await readManifest(`modules/${module.name}/package.json`);
         const ownsDefaultSonamuBin = manifest.name === "sonamu" && manifest.bin !== undefined;
-        const ownsNamedSonamuBin = Object.prototype.hasOwnProperty.call(
-          manifest.bin ?? {},
-          "sonamu",
-        );
+        const ownsNamedSonamuBin = Object.hasOwn(manifest.bin ?? {}, "sonamu");
         if (ownsDefaultSonamuBin || ownsNamedSonamuBin) {
           owners.push(manifest.name ?? module.name);
         }
@@ -269,6 +266,23 @@ describe("최종 CLI 패키지 워크스페이스 통합", () => {
       path.join(repositoryRoot, "modules/cli"),
     );
     expect(cliManifest.bin).toEqual({ sonamu: "./bin/sonamu.js" });
+  });
+
+  it("CLI가 dev 명령에서 해석하는 hmr-runner를 자체 dependencies로 선언한다", async () => {
+    const [cliManifest, sonamuManifest, hmrRunnerManifest, handlerSource] = await Promise.all([
+      readManifest("modules/cli/package.json"),
+      readManifest("modules/sonamu/package.json"),
+      readManifest("modules/hmr-runner/package.json"),
+      readRepositoryFile("modules/cli/src/handlers.ts"),
+    ]);
+
+    // dev 실행 경로를 CLI 패키지 기준으로 해석하므로 CLI 자신이 의존성을 선언해야 합니다.
+    expect(handlerSource).toContain("@sonamu-kit/hmr-runner/bin/run.js");
+    expect(hmrRunnerManifest.name).toBe("@sonamu-kit/hmr-runner");
+    expect(cliManifest.dependencies?.["@sonamu-kit/hmr-runner"]).toBe(
+      sonamuManifest.dependencies?.["@sonamu-kit/hmr-runner"],
+    );
+    expect(cliManifest.dependencies?.["@sonamu-kit/hmr-runner"]).toBe("workspace:^");
   });
 
   it("CLI는 sonamu를 peer로 요구하고 sonamu는 CLI를 런타임 의존하지 않는다", async () => {

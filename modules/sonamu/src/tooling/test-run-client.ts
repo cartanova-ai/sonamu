@@ -75,10 +75,30 @@ const testRunResultSchema = z.object({
   results: z.array(jsonValueSchema),
 });
 
+/**
+ * sonamu.config를 소스(`src/sonamu.config.ts`)에서 읽도록 강제해 설정을 불러옵니다.
+ *
+ * loadConfig는 VITEST/HOT 환경변수로 dist/소스 설정을 고르므로, dist 빌드가 없는
+ * 일반 개발 셸에서도 소스 설정을 읽도록 VITEST를 잠시 켜고 원래 값을 그대로 복원합니다.
+ */
+async function loadSourceConfig(dependencies: TestRunClientDependencies): Promise<object> {
+  const previousVitest = process.env.VITEST;
+  process.env.VITEST = "true";
+  try {
+    return await dependencies.loadConfig(dependencies.projectRoot);
+  } finally {
+    if (previousVitest === undefined) {
+      delete process.env.VITEST;
+    } else {
+      process.env.VITEST = previousVitest;
+    }
+  }
+}
+
 async function resolveBaseUrl(dependencies: TestRunClientDependencies): Promise<string> {
   let config: object;
   try {
-    config = await dependencies.loadConfig(dependencies.projectRoot);
+    config = await loadSourceConfig(dependencies);
   } catch {
     throw new TestRunClientError(
       "TEST_RUN_CONFIG_ERROR",

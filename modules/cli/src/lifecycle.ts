@@ -32,6 +32,7 @@ export const COMMAND_LIFECYCLE_POLICIES = {
   "migrate.shadow": { resources: ["sonamu"] },
   "migrate.rollback": { resources: ["sonamu"] },
   "stub.entity": { resources: ["sonamu"] },
+  "stub.practice": { resources: ["sonamu"] },
   "scaffold.model": { resources: ["sonamu"] },
   "scaffold.model_test": { resources: ["sonamu"] },
   "scaffold.view_list": { resources: ["sonamu"] },
@@ -73,6 +74,7 @@ export const COMMAND_LIFECYCLE_POLICIES = {
   "cdd.ac": { resources: ["sonamu"] },
   "auth.generate": { resources: ["sonamu"] },
   "auth.add-companions": { resources: ["sonamu"] },
+  "skills.sync": { resources: [] },
 } as const satisfies Record<string, LifecyclePolicy>;
 
 export interface LifecycleManager<ResourceMap extends LifecycleResources> {

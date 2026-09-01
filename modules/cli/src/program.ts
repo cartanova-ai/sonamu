@@ -91,6 +91,7 @@ const SCAFFOLD_TEMPLATES = [
 ] as const;
 const MIGRATION_ACTIONS = ["apply", "rollback"] as const;
 const I18N_FORMATS = ["workbook", "json"] as const;
+const I18N_SOURCES = ["project", "entity"] as const;
 
 // 문법에서 사용자가 선택할 수 있는 대표 명령 경로를 한곳에서 관리합니다.
 export const SONAMU_COMMAND_CANDIDATES = [
@@ -119,6 +120,7 @@ export const SONAMU_COMMAND_CANDIDATES = [
   "migrate shadow",
   "migrate rollback",
   "stub entity",
+  "stub practice",
   "scaffold model",
   "scaffold model_test",
   "scaffold view_list",
@@ -156,6 +158,7 @@ export const SONAMU_COMMAND_CANDIDATES = [
   "cdd rule show",
   "cdd rule add",
   "cdd ac",
+  "skills sync",
 ] as const;
 
 const unknownOption = (invalidOption: string, suggestions: readonly string[]) =>
@@ -401,6 +404,7 @@ function migrateParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
     object({
       mode: mutationMode(),
       confirm: withDefault(flag("--confirm", { errors: flagErrors }), false),
+      forceReason: optional(option("--force-reason", string(), { errors: optionErrors })),
     }),
     ({ mode, ...options }) => result("migrate.run", {}, { ...mode, ...options }),
   );
@@ -471,7 +475,11 @@ function stubParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
     }),
     ({ name, ...options }) => result("stub.entity", { name }, options),
   );
-  return branch("stub", branch("entity", entity));
+  // practice 스텁은 이름만 받아 API 프로젝트의 practices 스크립트를 만듭니다.
+  const practice = map(argument(string(), { errors: argumentErrors }), (name) =>
+    result("stub.practice", { name }),
+  );
+  return branch("stub", alternatives([branch("entity", entity), branch("practice", practice)]));
 }
 
 function scaffoldParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
@@ -606,17 +614,28 @@ function i18nParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
     }),
     ({ mode, ...options }) => result("i18n.import", {}, { ...mode, ...options }),
   );
-  const write = (commandName: "i18n.create" | "i18n.update") =>
-    map(
-      object({
-        key: argument(string(), { errors: argumentErrors }),
-        values: multiple(option("--value", localizedValue(), { errors: optionErrors }), { min: 1 }),
-        mode: mutationMode(),
-        confirm: withDefault(flag("--confirm", { errors: flagErrors }), false),
-      }),
-      ({ key, values, mode, ...options }) =>
-        result(commandName, { key }, { values: Object.fromEntries(values), ...mode, ...options }),
-    );
+  const create = map(
+    object({
+      key: argument(string(), { errors: argumentErrors }),
+      values: multiple(option("--value", localizedValue(), { errors: optionErrors }), { min: 1 }),
+      mode: mutationMode(),
+      confirm: withDefault(flag("--confirm", { errors: flagErrors }), false),
+    }),
+    ({ key, values, mode, ...options }) =>
+      result("i18n.create", { key }, { values: Object.fromEntries(values), ...mode, ...options }),
+  );
+  // 항목 출처를 명시하지 않으면 tooling이 사전에서 기존 출처를 조회하도록 undefined로 남깁니다.
+  const update = map(
+    object({
+      key: argument(string(), { errors: argumentErrors }),
+      values: multiple(option("--value", localizedValue(), { errors: optionErrors }), { min: 1 }),
+      source: optional(option("--source", choice(I18N_SOURCES), { errors: optionErrors })),
+      mode: mutationMode(),
+      confirm: withDefault(flag("--confirm", { errors: flagErrors }), false),
+    }),
+    ({ key, values, mode, ...options }) =>
+      result("i18n.update", { key }, { values: Object.fromEntries(values), ...mode, ...options }),
+  );
   const remove = map(
     object({
       key: argument(string(), { errors: argumentErrors }),
@@ -639,8 +658,8 @@ function i18nParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
       branch("check", leaf("i18n.check")),
       branch("import", importTerms),
       branch("export", transfer("i18n.export")),
-      branch("create", write("i18n.create")),
-      branch("update", write("i18n.update")),
+      branch("create", create),
+      branch("update", update),
       branch("delete", remove),
     ]),
   );
@@ -755,6 +774,11 @@ function pluginList(): ValueParser<"sync", string> {
   };
 }
 
+// 이전 postinstall 스크립트가 호출하던 명령이라 설치를 실패시키지 않도록 문법을 유지합니다.
+function skillsParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
+  return branch("skills", branch("sync", leaf("skills.sync")));
+}
+
 function rootParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
   const sync = map(
     object({ force: withDefault(flag("--force", { errors: flagErrors }), false) }),
@@ -776,6 +800,7 @@ function rootParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
     testParser(),
     cddParser(),
     authParser(),
+    skillsParser(),
   ]);
 }
 

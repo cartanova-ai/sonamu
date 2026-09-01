@@ -22,8 +22,8 @@ pnpm stub practice test-api
 
 # 생성됨:
 # src/practices/p1-test-api.ts
-# VS Code에서 자동으로 열림
-# 실행 명령어가 클립보드에 복사됨
+# 생성한 파일 이름과 경로만 출력하며,
+# 에디터를 열거나 클립보드에 복사하는 부수 효과는 없습니다.
 ```
 
 **생성된 파일**:
@@ -42,9 +42,14 @@ Sonamu.runScript(async () => {
 **실행**:
 
 ```bash
-# 클립보드에서 붙여넣기 (Cmd+V)
+# 빌드한 뒤 컴파일된 practice 스크립트를 실행합니다
 pnpm node -r dotenv/config --enable-source-maps dist/practices/p1-test-api.js
 ```
+
+<Note>
+  practice 이름에는 영문자, 숫자, `.`, `-`, `_`만 사용할 수 있고 첫 글자는 영문자나 숫자여야
+  합니다. 그 외의 이름은 거절하며, 이미 있는 practice 파일은 덮어쓰지 않습니다.
+</Note>
 
 ### entity - Entity 생성
 

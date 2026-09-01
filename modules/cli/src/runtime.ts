@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import * as clack from "@clack/prompts";
 import { configure, dispose, type Config } from "@logtape/logtape";
 import { prompt as clackParserPrompt } from "@optique/clack";
@@ -762,6 +764,20 @@ function commandCancellation(): Error {
   return Object.assign(new Error("Cancelled."), { code: "CANCELLED", exitCode: 130 });
 }
 
+const cliManifestSchema = z.object({ version: z.string() });
+let cliVersion: Promise<string> | undefined;
+
+/**
+ * CLI 패키지 매니페스트에서 버전을 읽습니다.
+ * `src`와 번들된 `dist` 모두 패키지 루트 바로 아래에 있으므로 같은 상대 경로를 사용합니다.
+ */
+function resolveCliVersion(): Promise<string> {
+  cliVersion ??= readFile(new URL("../package.json", import.meta.url), "utf8")
+    .then((manifest) => cliManifestSchema.parse(JSON.parse(manifest)).version)
+    .catch(() => "unknown");
+  return cliVersion;
+}
+
 export async function applyDiscovery(
   rawArgs: readonly string[],
   interaction: CliInteraction,
@@ -1072,17 +1088,25 @@ function hasMutationApproval(parsed: ParsedSonamuArgs): boolean {
   return execute && confirmed;
 }
 
+function missingForceReason(parsed: ParsedSonamuArgs): boolean {
+  const reason = z.string().safeParse(parsed.options.forceReason);
+  return !reason.success || reason.data.trim() === "";
+}
+
 function productionMigrationNeedsReason(parsed: ParsedSonamuArgs): boolean {
-  if (parsed.command !== "migrate.apply" && parsed.command !== "migrate.rollback") return false;
   if (parsed.options.execute !== true) return false;
+  // migrate run은 대상 인자 없이 현재 NODE_ENV의 커넥션에 적용하므로 실행 환경으로 판단합니다.
+  if (parsed.command === "migrate.run") {
+    return process.env.NODE_ENV === "production" && missingForceReason(parsed);
+  }
+  if (parsed.command !== "migrate.apply" && parsed.command !== "migrate.rollback") return false;
   const targets = z
     .array(z.string())
     .safeParse(
       parsed.command === "migrate.apply" ? parsed.arguments.targets : [parsed.arguments.target],
     );
   if (!targets.success || !targets.data.includes("production")) return false;
-  const reason = z.string().safeParse(parsed.options.forceReason);
-  return !reason.success || reason.data.trim() === "";
+  return missingForceReason(parsed);
 }
 
 function requiresMutationApproval(parsed: ParsedSonamuArgs): boolean {
@@ -1099,7 +1123,7 @@ function requiresMutationApproval(parsed: ParsedSonamuArgs): boolean {
 
 export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<RunSonamuCliResult> {
   const args = options.args ?? process.argv.slice(2);
-  const version = options.version ?? "0.1.0";
+  const version = options.version ?? (await resolveCliVersion());
   const stdoutWrite = process.stdout.write.bind(process.stdout);
   const stderrWrite = process.stderr.write.bind(process.stderr);
   const destination = options.output ?? {
@@ -1194,6 +1218,9 @@ export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<R
     setExitCode(normalized.exitCode);
     return { exitCode: normalized.exitCode, error: normalized };
   }
+
+  // trace 표시 여부는 파싱 이후에만 알 수 있으므로 여기서 사람용 출력에 반영합니다.
+  output.configure({ traces: parsed.options.traces === true });
 
   if (globals.json && JSON_UNSUPPORTED_COMMANDS.has(parsed.command)) {
     const error = {

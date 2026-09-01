@@ -157,6 +157,25 @@ function parseCddRules(contents: string): CddRuleDocument {
   }
 }
 
+/**
+ * 규칙 문서를 읽되, 아직 파일이 없으면 빈 문서로 취급합니다.
+ *
+ * 첫 규칙 등록 시 rules 디렉터리와 파일이 없는 상태를 부트스트랩하기 위한 처리이며,
+ * 깨진 JSON은 그대로 INVALID_CDD_RULES로 실패시켜 덮어쓰기를 막습니다.
+ */
+async function readCddRuleDocument(
+  files: { read(relativePath: string): Promise<string> },
+  relativePath: string,
+): Promise<CddRuleDocument> {
+  try {
+    return parseCddRules(await files.read(relativePath));
+  } catch (error) {
+    // SAFETY: node:fs 읽기 실패의 code만 읽어 규칙 문서 부재를 구분합니다.
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
+    throw error;
+  }
+}
+
 export function createDefaultCddToolingAdapter({
   contractRoot,
   fs = defaultFs,
@@ -215,7 +234,7 @@ export function createDefaultCddToolingAdapter({
       if (input.dryRun) return { dryRun: true as const, rule };
 
       const relativePath = `rules/${input.ruleKey}.rules.json`;
-      const document = parseCddRules(await files.read(relativePath));
+      const document = await readCddRuleDocument(files, relativePath);
       document.rules ??= [];
       document.rules.push({
         id: input.id,

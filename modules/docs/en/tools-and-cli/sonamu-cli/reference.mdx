@@ -176,7 +176,8 @@ For non-interactive execution, pass `--execute --confirm`. `cdd rule add` also r
 
 `migrate run` defaults to dry-run, but that mode does not produce a migration plan. Inspect the
 apply plan with `migrate preview TARGET --action apply`, then execute with `migrate run --execute`
-and a TTY confirmation or add `--confirm`.
+and a TTY confirmation or add `--confirm`. Calling `migrate run --execute` under
+`NODE_ENV=production` also requires `--force-reason REASON`; omitting it exits with code `3`.
 
 `migrate shadow TARGET` accepts only `test` and `fixture`. Its dry-run validates the input without
 performing shadow validation. Pass `--execute` and confirm in a TTY, or pass
@@ -188,6 +189,17 @@ format to the specified file. i18n imports and entry mutations use `--execute --
 not accept these flags. Add `--locale LOCALE` to `i18n list` or `i18n export` to include only that
 locale.
 
+Add `--source project|entity` to `i18n update` to state which source owns the entry. Omitting it
+keeps the source already registered in the dictionary; when the key is not in the dictionary yet,
+the source falls back to `project`.
+
+`skills sync` is a compatibility command for postinstall scripts left by older projects. It changes
+no files, prints the external installation notice, and exits with code `0`.
+
+`entity show ENTITY` fails when the Entity id is unknown. It returns the `ENTITY_NOT_FOUND` error
+envelope and exits with code `1` instead of the earlier `ok: true` envelope with `data: null` and
+exit code `0`. Update `--json` automation that treated a null payload as "not found".
+
 The CLI has no Entity proposal command. Rich AI-assisted Entity chat remains available in Sonamu
 Web.
 
@@ -198,13 +210,14 @@ Web.
 | Entity    | `entity list`, `entity show ENTITY`, `entity search QUERY`, `entity apply --file FILE`                                                                                                                                          |
 | Fixture   | `fixture init`, `fixture import ENTITY ID...`, `fixture sync`, `fixture gen`, `fixture fetch [ENTITY]`, `fixture explore`                                                                                                             |
 | Migration | `migrate run`, `migrate apply TARGET...`, `migrate generate`, `migrate status`, `migrate connections`, `migrate code TARGET`, `migrate preview TARGET`, `migrate shadow TARGET`, `migrate rollback TARGET`                            |
-| Scaffold  | `stub entity NAME`, `scaffold model ENTITY`, `scaffold model_test ENTITY`, `scaffold view_list ENTITY`, `scaffold view_form ENTITY`, `scaffold status`, `scaffold preview`, `scaffold batch`, `cone gen ENTITY` |
+| Scaffold  | `stub entity NAME`, `stub practice NAME`, `scaffold model ENTITY`, `scaffold model_test ENTITY`, `scaffold view_list ENTITY`, `scaffold view_form ENTITY`, `scaffold status`, `scaffold preview`, `scaffold batch`, `cone gen ENTITY` |
 | Runtime   | `build`, `dev`, `sync`, `start`                                                                                                                                                                                                       |
 | i18n      | `i18n list`, `i18n check`, `i18n import`, `i18n export`, `i18n create`, `i18n update`, `i18n delete`                                                                                                                                  |
 | Tasks     | `task definitions`, `task list`, `task show RUN_ID`, `task steps RUN_ID`, `task watch RUN_ID`, `task pause RUN_ID`, `task resume RUN_ID`, `task cancel RUN_ID`                                                                        |
 | Tests     | `test [FILES...] [-p PATTERN] [-t]`, `test -s`                                                                                                                                                                                        |
 | CDD       | `cdd tree`, `cdd read PATH`, `cdd rules`, `cdd rule show RULE_KEY`, `cdd rule add`, `cdd ac`                                                                                                                                          |
 | Auth      | `auth generate`, `auth add-companions`                                                                                                                                                                                                |
+| Compat    | `skills sync`                                                                                                                                                                                                                         |
 
 `migrate apply` accepts any ordered combination of the five targets: `development`, `staging`,
 `production`, `fixture`, and `test`. In a TTY, omit the targets to choose one or more from a

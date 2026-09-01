@@ -74,6 +74,7 @@ const REQUIRED_METHODS = {
   i18n: ["list", "check", "import", "export", "create", "update", "remove"],
   task: ["definitions", "runs", "show", "steps", "watch", "pause", "resume", "cancel"],
   cdd: ["tree", "read", "rules", "showRule", "addRule", "addAcceptanceCriterion"],
+  stub: ["practice"],
 } as const;
 
 let initialization: Promise<void> | undefined;
@@ -105,6 +106,19 @@ function requiredText(input: CommandInput, key: string): string {
   const value = text(input, key);
   if (value !== undefined && value.length > 0) return value;
   throw Object.assign(new Error(`Missing ${key}.`), { code: "MISSING_ARGUMENT", exitCode: 2 });
+}
+
+/**
+ * 생략한 값은 `undefined`로 통과시키되, 값이 있는데 문자열이 아니면 인자 오류로 거절합니다.
+ *
+ * `text()`처럼 조용히 무시하면 잘못된 타입의 입력이 기본값으로 둔갑합니다.
+ */
+function optionalText(input: CommandInput, key: string): string | undefined {
+  const value = input[key];
+  if (value === undefined || value === null) return undefined;
+  const parsed = z.string().safeParse(value);
+  if (parsed.success) return parsed.data;
+  throw Object.assign(new Error(`Invalid ${key}.`), { code: "INVALID_ARGUMENT", exitCode: 2 });
 }
 
 function parseJson<Schema extends z.ZodType>(
@@ -144,6 +158,27 @@ const i18nEntriesSchema = z.array(
 );
 const dictionaryValuesSchema = z.record(z.string(), z.string());
 const dictionarySourceSchema = z.enum(["entity", "project", "sonamu"]);
+const coneLocaleSchema = z.enum(["ko", "en", "ja"]);
+
+/**
+ * cone 생성에 사용할 locale을 결정합니다.
+ *
+ * 명시한 locale이 최우선이고, 없으면 프로젝트 i18n 기본 locale, 그마저 없으면 "ko"를 사용합니다.
+ */
+async function resolveConeLocale(input: CommandInput): Promise<z.infer<typeof coneLocaleSchema>> {
+  const explicit = coneLocaleSchema.safeParse(input.locale);
+  if (explicit.success) return explicit.data;
+
+  const { Sonamu } = await import("../api/sonamu");
+  let configuredLocale: unknown;
+  try {
+    configuredLocale = Sonamu.config.i18n?.defaultLocale;
+  } catch {
+    // 설정을 아직 읽을 수 없는 실행 경로에서는 기본 locale로 폴백합니다.
+  }
+  const configured = coneLocaleSchema.safeParse(configuredLocale);
+  return configured.success ? configured.data : "ko";
+}
 
 async function entityOperation(method: string, input: CommandInput): Promise<ToolingResult> {
   await ensureSonamu();
@@ -153,7 +188,12 @@ async function entityOperation(method: string, input: CommandInput): Promise<Too
   if (method === "list") return entities.map((entity) => entity.toJson());
   if (method === "show") {
     const entityId = requiredText(input, "entityId");
-    return EntityManager.exists(entityId) ? EntityManager.get(entityId).toJson() : undefined;
+    if (!EntityManager.exists(entityId)) {
+      throw Object.assign(new Error(`Entity not found: ${entityId}`), {
+        code: "ENTITY_NOT_FOUND",
+      });
+    }
+    return EntityManager.get(entityId).toJson();
   }
   if (method === "search") {
     const query = requiredText(input, "query").toLocaleLowerCase();
@@ -168,11 +208,10 @@ async function entityOperation(method: string, input: CommandInput): Promise<Too
     if (input.noCones === true) return { entityId, cones: "skipped" };
     const entity = EntityManager.get(entityId);
     if (input.ai === true) {
-      const selectedLocale = z.enum(["ko", "en", "ja"]).catch("ko").parse(input.locale);
       return entity.generateCones({
         preserveExisting: false,
         onlyEmpty: false,
-        locale: selectedLocale,
+        locale: await resolveConeLocale(input),
       });
     }
     await entity.generateTemplateCones();
@@ -180,21 +219,22 @@ async function entityOperation(method: string, input: CommandInput): Promise<Too
   }
   if (method === "cones") {
     const entityId = requiredText(input, "entityId");
-    const entities =
+    const targets =
       input.all === true || entityId === "all"
         ? EntityManager.getAllEntities()
         : EntityManager.exists(entityId)
           ? [EntityManager.get(entityId)]
           : [];
-    if (entities.length === 0) {
+    if (targets.length === 0) {
       throw Object.assign(new Error(`Entity not found: ${entityId}`), {
         code: "ENTITY_NOT_FOUND",
       });
     }
     const regenerate = input.regenerate === true;
-    const selectedLocale = z.enum(["ko", "en", "ja"]).catch("ko").parse(input.locale);
-    return Promise.all(
-      entities.map(async (entity) => ({
+    const selectedLocale = await resolveConeLocale(input);
+    // 한 엔티티의 실패가 나머지 엔티티의 cone 생성을 취소하지 않도록 전부 끝까지 실행합니다.
+    const settled = await Promise.allSettled(
+      targets.map(async (entity) => ({
         entityId: entity.id,
         ...(await entity.generateCones({
           preserveExisting: !regenerate,
@@ -203,6 +243,23 @@ async function entityOperation(method: string, input: CommandInput): Promise<Too
         })),
       })),
     );
+    const results = [];
+    const failures = [];
+    for (const [index, outcome] of settled.entries()) {
+      if (outcome.status === "fulfilled") {
+        results.push(outcome.value);
+        continue;
+      }
+      failures.push({
+        entityId: targets[index].id,
+        message: outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason),
+      });
+    }
+    if (failures.length === 0) return results;
+    throw Object.assign(new Error(`Cone generation failed for ${failures.length} entity(s).`), {
+      code: "CONE_GENERATION_FAILED",
+      details: { results, failures },
+    });
   }
 
   const file = requiredText(input, "file");
@@ -224,11 +281,22 @@ async function entityOperation(method: string, input: CommandInput): Promise<Too
   const target = EntityManager.get(patch.entityId);
   const before = target.toJson();
   const after = structuredClone(before);
-  // SAFETY: entityPatchSchema validates the required Entity prop fields and JSON-compatible extras.
-  after.props = [
+  const nextProps = [
     ...after.props,
     ...patch.operations.map(({ value }) => structuredClone(value)),
-  ] as typeof after.props;
+  ];
+  // 파일이나 등록된 엔티티를 건드리기 전에 patch 적용 결과 전체를 entity 스키마로 검증합니다.
+  const { EntityJsonSchema } = await import("../types/types");
+  const validation = EntityJsonSchema.safeParse({ ...after, props: nextProps });
+  if (!validation.success) {
+    throw Object.assign(new Error("Invalid entity patch."), {
+      code: "INVALID_ENTITY_PATCH",
+      exitCode: 2,
+      cause: validation.error,
+    });
+  }
+  // SAFETY: EntityJsonSchema가 patch 적용 결과 전체를 검증했습니다.
+  after.props = nextProps as typeof after.props;
   if (mutationRequested(input)) {
     // SAFETY: after.props originates from the current entity plus schema-validated prop additions.
     target.props = after.props as typeof target.props;
@@ -245,7 +313,9 @@ async function renderScaffolds(input: CommandInput) {
   const rendered = [];
   for (const entityId of entities) {
     for (const template of templates) {
-      const templateKey = z.enum(["model", "model_test", "view_list", "view_form"]).parse(template);
+      const templateKey = z
+        .enum(["model", "model_test", "view_list", "view_form", "view_search_input"])
+        .parse(template);
       const files = await renderTemplate(templateKey, { entityId });
       rendered.push({ entityId, template: templateKey, files });
     }
@@ -436,7 +506,8 @@ async function fixtureOperation(method: string, input: CommandInput): Promise<To
   const field = requiredText(input, "field");
   const values = strings(input, "values");
   const relations = requiredText(input, "relations");
-  const depth = z.number().int().positive().safeParse(input.depth);
+  // CLI 문법이 integer({ min: 0 })이므로 관계 순회를 끄는 depth 0을 허용합니다.
+  const depth = z.number().int().nonnegative().safeParse(input.depth);
   if (
     !Object.hasOwn(Sonamu.dbConfig, source) ||
     !Object.hasOwn(Sonamu.dbConfig, target) ||
@@ -507,8 +578,9 @@ const betterAuthPluginSchema = z.enum([
 async function authOperation(method: string, input: CommandInput): Promise<ToolingResult> {
   const { addCompanionsToEntities, generateBetterAuthEntities } = await import("../auth");
   if (method === "addCompanions") return addCompanionsToEntities();
+  // plugins는 선택 옵션이므로 생략하면 core 엔티티만 생성합니다.
   const plugins = z.array(betterAuthPluginSchema).parse(
-    requiredText(input, "plugins")
+    (optionalText(input, "plugins") ?? "")
       .split(",")
       .map((plugin) => plugin.trim())
       .filter(Boolean),
@@ -599,10 +671,17 @@ async function i18nOperation(method: string, input: CommandInput): Promise<Tooli
   }
   if (method === "update") {
     if (explicitlyDryRun(input)) return { operation: "update", input, dryRun: true };
+    const explicitSource = text(input, "source");
+    // source를 생략하면 사전에 등록된 기존 source를 유지해 entity 항목이 project override로 덮이지 않게 합니다.
+    const resolvedSource =
+      explicitSource === undefined
+        ? ((await sonamuDictionary.getDictionary()).rows.find((row) => row.key === key)?.source ??
+          "project")
+        : explicitSource;
     return sonamuDictionary.updateEntry({
       oldKey: key,
       newKey: text(input, "newKey") ?? key,
-      source: dictionarySourceSchema.parse(text(input, "source") ?? "project"),
+      source: dictionarySourceSchema.parse(resolvedSource),
       values: dictionaryValuesSchema.parse(input.values),
     });
   }
@@ -652,6 +731,105 @@ async function taskOperation(method: string, input: CommandInput): Promise<Tooli
 async function cddRootPath(): Promise<string> {
   const [{ Sonamu }, path] = await Promise.all([import("../api/sonamu"), import("node:path")]);
   return path.join(Sonamu.appRootPath, "contract");
+}
+
+const practiceSequencePattern = /^p([0-9]+)-/;
+
+// 이름은 파일명과 스텁 본문의 문자열 리터럴에 그대로 들어가므로,
+// 경로 구분자/상위 경로 참조/따옴표/역슬래시를 원천 차단하는 문자만 허용합니다.
+const practiceNamePattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+function invalidPracticeName(name: string): Error {
+  return Object.assign(
+    new Error(
+      `Invalid practice name: ${name}. Use letters, digits, ".", "-", and "_" only, starting with a letter or digit.`,
+    ),
+    { code: "INVALID_PRACTICE_NAME", exitCode: 2 },
+  );
+}
+
+function invalidPracticeDirectory(directory: string): Error {
+  return Object.assign(new Error(`Practice directory escapes the API root: ${directory}`), {
+    code: "INVALID_PRACTICE_PATH",
+    exitCode: 2,
+  });
+}
+
+/**
+ * `src/practices` 아래에 다음 시퀀스 번호를 가진 practice 스텁 파일을 만듭니다.
+ *
+ * 구 CLI(`stub practice`)의 파일명 규칙과 스텁 본문을 그대로 유지합니다.
+ */
+async function stubPracticeOperation(input: CommandInput): Promise<ToolingResult> {
+  const name = requiredText(input, "name");
+  if (!practiceNamePattern.test(name)) throw invalidPracticeName(name);
+  await ensureSonamu();
+  const [{ Sonamu }, { constants }, { mkdir, open, readdir, realpath }, path] = await Promise.all([
+    import("../api/sonamu"),
+    import("node:fs"),
+    import("node:fs/promises"),
+    import("node:path"),
+  ]);
+  const practiceDirectory = path.default.join(Sonamu.apiRootPath, "src", "practices");
+  await mkdir(practiceDirectory, { recursive: true });
+  // cdd-service와 같이 실제 경로까지 확인해, symlink로 연결된 practices 디렉터리가
+  // api root 밖을 가리키는 경우를 차단합니다.
+  const [canonicalApiRoot, canonicalDirectory] = await Promise.all([
+    realpath(Sonamu.apiRootPath),
+    realpath(practiceDirectory),
+  ]);
+  const directoryRelative = path.default.relative(canonicalApiRoot, canonicalDirectory);
+  if (directoryRelative.startsWith("..") || path.default.isAbsolute(directoryRelative)) {
+    throw invalidPracticeDirectory(practiceDirectory);
+  }
+  const fileNames = await readdir(practiceDirectory);
+  const maxSequence = fileNames
+    .filter((fileName) => fileName.startsWith("p") && fileName.endsWith(".ts"))
+    .reduce((largest, fileName) => {
+      const matched = practiceSequencePattern.exec(fileName);
+      return matched === null ? largest : Math.max(largest, Number.parseInt(matched[1], 10));
+    }, 0);
+
+  const fileName = `p${maxSequence + 1}-${name}.ts`;
+  // 이름 패턴이 경로 구분자를 차단하므로 파일명은 항상 이 디렉터리의 직계 자식입니다.
+  // 경로는 설정된 값 그대로 돌려주고, 탈출 여부는 위의 canonical 검사로 판단합니다.
+  const filePath = path.default.resolve(practiceDirectory, fileName);
+  const stubCode = [
+    `import { Sonamu } from "sonamu";`,
+    "",
+    `console.clear();`,
+    `console.log("${fileName}");`,
+    "",
+    `Sonamu.runScript(async () => {`,
+    ` // TODO`,
+    `});`,
+    "",
+  ].join("\n");
+  let handle;
+  try {
+    // 기존 파일을 truncate하지 않도록 배타 생성하고, 최종 경로의 symlink는 따라가지 않습니다.
+    handle = await open(
+      filePath,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+      0o666,
+    );
+    await handle.writeFile(stubCode, "utf8");
+  } catch (error) {
+    // SAFETY: node:fs open 실패의 code만 읽어 기존 파일/symlink 충돌을 정규화합니다.
+    const errorCode = (error as NodeJS.ErrnoException).code;
+    if (errorCode === "EEXIST" || errorCode === "ELOOP") {
+      throw Object.assign(new Error(`Practice file already exists: ${filePath}`), {
+        code: "PRACTICE_FILE_EXISTS",
+        exitCode: 2,
+        cause: error,
+      });
+    }
+    throw error;
+  } finally {
+    await handle?.close();
+  }
+  // 에디터 열기/클립보드 복사 같은 대화형 부수효과는 비대화형 실행을 깨뜨리므로 호출자에게 맡깁니다.
+  return { fileName, path: filePath };
 }
 
 async function readCddTree(directory: string, root: string): Promise<object[]> {
@@ -736,6 +914,7 @@ async function invokeDefault(
   if (group === "auth") return authOperation(method, input);
   if (group === "i18n") return i18nOperation(method, input);
   if (group === "task") return taskOperation(method, input);
+  if (group === "stub") return stubPracticeOperation(input);
   return cddOperation(method, input);
 }
 

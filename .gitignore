@@ -70,3 +70,6 @@ Thumbs.db
 # Temporary folders
 tmp/
 temp/
+
+# CLI 매니페스트 버전 테스트 픽스처 (테스트 중단 시 잔여물 보호)
+modules/cli/tests/.manifest-version-fixture/

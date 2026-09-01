@@ -14,6 +14,7 @@ const TOOLING_HANDLER_MAPPINGS = [
   ["entity.search", "entity", "search"],
   ["entity.apply", "entity", "applyPatch"],
   ["stub.entity", "entity", "create"],
+  ["stub.practice", "stub", "practice"],
   ["cone.gen", "entity", "cones"],
   ["scaffold.model", "scaffold", "model"],
   ["scaffold.model_test", "scaffold", "model_test"],
@@ -152,7 +153,18 @@ const processHandlers: CliHandlers = {
   },
 };
 
+// 이전 프로젝트의 postinstall이 호출하던 명령이라 설치를 실패시키지 않는 안내 전용 no-op으로 유지합니다.
+const compatibilityHandlers: CliHandlers = {
+  "skills.sync": () => ({
+    status: "unsupported",
+    message:
+      "sonamu skills sync is no longer supported and changes no files. Install Sonamu skills with the command below, then remove the postinstall script from packages/api/package.json.",
+    command: "npx skills@latest add cartanova-ai/skills",
+  }),
+};
+
 export const CLI_HANDLERS: CliHandlers = {
   ...createLazyToolingHandlers(),
   ...processHandlers,
+  ...compatibilityHandlers,
 };

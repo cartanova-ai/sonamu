@@ -1,3 +1,7 @@
+import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import nodePath from "node:path";
+
 import { describe, expect, it, vi } from "vitest";
 
 import { type CliHandler } from "../src/runtime";
@@ -131,6 +135,19 @@ describe("Web UI 대체 명령 문법", () => {
       {
         command: "migrate.rollback",
         arguments: { target: "production" },
+        options: {
+          dryRun: false,
+          execute: true,
+          confirm: true,
+          forceReason: "incident-42",
+        },
+      },
+    ],
+    [
+      "migrate run 운영 승인 실행",
+      ["migrate", "run", "--execute", "--confirm", "--force-reason", "incident-42"],
+      {
+        command: "migrate.run",
         options: {
           dryRun: false,
           execute: true,
@@ -464,5 +481,177 @@ describe("비대화형 실행 안전성", () => {
       { type: "step", id: "step-1", state: "completed" },
       { type: "finished", id: "run-1", ok: true },
     ]);
+  });
+});
+
+describe("migrate run 운영 이유 옵션 문법", () => {
+  it("--force-reason을 생략하면 undefined로 남긴다", async () => {
+    const parsed = await parse(["migrate", "run", "--execute", "--confirm"]);
+
+    expect(parsed.command).toBe("migrate.run");
+    expect(parsed.options.forceReason).toBeUndefined();
+  });
+
+  it("--force-reason은 migrate apply와 같은 텍스트 값을 받는다", async () => {
+    const [run, apply] = await Promise.all([
+      parse(["migrate", "run", "--execute", "--confirm", "--force-reason", "release-42"]),
+      parse([
+        "migrate",
+        "apply",
+        "production",
+        "--execute",
+        "--confirm",
+        "--force-reason",
+        "release-42",
+      ]),
+    ]);
+
+    expect(run.options.forceReason).toBe(apply.options.forceReason);
+    expect(run.options.forceReason).toBe("release-42");
+  });
+});
+
+describe("복원한 레거시 명령 문법", () => {
+  it("stub practice가 이름 인자를 stub.practice 명령으로 해석한다", async () => {
+    await expect(parse(["stub", "practice", "import-orders"])).resolves.toMatchObject({
+      command: "stub.practice",
+      arguments: { name: "import-orders" },
+    });
+  });
+
+  it("stub entity 문법은 그대로 유지한다", async () => {
+    await expect(parse(["stub", "entity", "User", "--ai"])).resolves.toMatchObject({
+      command: "stub.entity",
+      arguments: { name: "User" },
+      options: { ai: true },
+    });
+  });
+
+  it("stub practice를 명령 후보, lifecycle, handler 등록에 모두 포함한다", async () => {
+    const [{ SONAMU_COMMAND_CANDIDATES }, { COMMAND_LIFECYCLE_POLICIES }, { CLI_HANDLERS }] =
+      await Promise.all([
+        importProduction("../src/program.ts"),
+        importProduction("../src/lifecycle.ts"),
+        importProduction("../src/handlers.ts"),
+      ]);
+
+    expect(SONAMU_COMMAND_CANDIDATES).toContain("stub practice");
+    // practice 스크립트는 API 루트 경로가 필요하므로 stub entity와 같은 자원을 쓴다.
+    expect(COMMAND_LIFECYCLE_POLICIES["stub.practice"]?.resources).toEqual(
+      COMMAND_LIFECYCLE_POLICIES["stub.entity"].resources,
+    );
+    expect(CLI_HANDLERS["stub.practice"]).toEqual(expect.any(Function));
+  });
+
+  it("stub practice 실행이 이름을 tooling 입력으로 전달한다", async () => {
+    const harness = createRuntimeHarness(
+      ["stub", "practice", "import-orders", "--non-interactive"],
+      "stub.practice",
+      vi.fn(async (input: CommandInput) => ({ input })),
+    );
+    const { runSonamuCli } = await importProduction("../src/runtime.ts");
+
+    await expect(runSonamuCli(harness.options)).resolves.toMatchObject({ exitCode: 0 });
+    expect(harness.handler).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "import-orders" }),
+      expect.anything(),
+    );
+  });
+});
+
+describe("skills sync 호환 명령", () => {
+  it("skills sync를 독립된 명령으로 해석하고 handler를 등록한다", async () => {
+    const { CLI_HANDLERS } = await importProduction("../src/handlers.ts");
+
+    await expect(parse(["skills", "sync"])).resolves.toMatchObject({ command: "skills.sync" });
+    expect(CLI_HANDLERS["skills.sync"]).toEqual(expect.any(Function));
+  });
+
+  it("skills sync는 파일을 변경하지 않고 이전 안내만 출력한 뒤 0으로 끝난다", async () => {
+    const { runSonamuCli } = await importProduction("../src/runtime.ts");
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    // 레거시 postinstall은 프로젝트 디렉터리에서 실행되므로 빈 작업 디렉터리에서 검증합니다.
+    const workspace = await mkdtemp(nodePath.join(tmpdir(), "sonamu-skills-sync-"));
+    const previousCwd = process.cwd();
+
+    try {
+      process.chdir(workspace);
+      const result = await runSonamuCli({
+        args: ["skills", "sync", "--non-interactive"],
+        version: "0.10.12",
+        interaction: {
+          enabled: false,
+          stdinIsTTY: false,
+          stdoutIsTTY: false,
+          prompt: { select: vi.fn(), text: vi.fn(), confirm: vi.fn() },
+        },
+        output: {
+          stdout: (chunk: string) => stdout.push(chunk),
+          stderr: (chunk: string) => stderr.push(chunk),
+        },
+        exit: { setExitCode: vi.fn() },
+      });
+      const printed = stdout.join("") + stderr.join("");
+
+      expect(result.exitCode).toBe(0);
+      expect(await readdir(workspace)).toEqual([]);
+      expect(printed).toContain("npx skills@latest add cartanova-ai/skills");
+      expect(printed).toMatch(/no longer supported|더 이상 지원/i);
+    } finally {
+      process.chdir(previousCwd);
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("i18n update 출처 옵션", () => {
+  const baseArgs = ["i18n", "update", "user.name", "--value", "ko=이름"] as const;
+
+  it.each(["project", "entity"] as const)("--source %s를 그대로 보존한다", async (source) => {
+    await expect(parse([...baseArgs, "--source", source])).resolves.toMatchObject({
+      command: "i18n.update",
+      arguments: { key: "user.name" },
+      options: { source, values: { ko: "이름" } },
+    });
+  });
+
+  it("--source를 생략하면 기본값을 만들지 않고 undefined로 남긴다", async () => {
+    const parsed = await parse([...baseArgs]);
+
+    expect(parsed.command).toBe("i18n.update");
+    expect(parsed.options.source).toBeUndefined();
+  });
+
+  it("project와 entity 이외의 --source 값은 사용 오류로 거절한다", async () => {
+    await expect(parse([...baseArgs, "--source", "database"])).rejects.toMatchObject({
+      code: "INVALID_OPTION_VALUE",
+      exitCode: 2,
+    });
+  });
+
+  it.each([
+    ["entity", "entity"],
+    [undefined, undefined],
+  ] as const)("--source %s를 tooling 입력으로 그대로 전달한다", async (source, expected) => {
+    const args = [
+      ...baseArgs,
+      ...(source === undefined ? [] : ["--source", source]),
+      "--execute",
+      "--confirm",
+      "--non-interactive",
+    ];
+    const harness = createRuntimeHarness(
+      args,
+      "i18n.update",
+      vi.fn(async (input: CommandInput) => ({ input })),
+    );
+    const { runSonamuCli } = await importProduction("../src/runtime.ts");
+
+    await expect(runSonamuCli(harness.options)).resolves.toMatchObject({ exitCode: 0 });
+    expect(harness.handler).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "user.name", source: expected }),
+      expect.anything(),
+    );
   });
 });
