@@ -2,7 +2,7 @@ import assert from "assert";
 import { readFile } from "fs/promises";
 
 import inflection from "inflection";
-import ts from "typescript";
+import ts from "typescript-legacy";
 
 import { registeredApis } from "../api/decorators";
 import { type ExtendedApi } from "../api/decorators";

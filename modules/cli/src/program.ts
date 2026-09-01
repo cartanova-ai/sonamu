@@ -13,14 +13,17 @@ import {
   option,
   optional,
   or,
-  parseSync,
+  parseAsync,
   passThrough,
   string,
-  suggestSync,
+  suggestAsync,
   withDefault,
   type Parser,
   type ValueParser,
 } from "@optique/core";
+import { loggingOptions } from "@optique/logtape";
+import { zod } from "@optique/zod";
+import { z } from "zod";
 
 export type SonamuCommandArguments = Record<
   string,
@@ -40,7 +43,7 @@ export interface ParsedSonamuArgs {
 
 export interface SonamuProgram {
   readonly version: string;
-  readonly parser: Parser<"sync", ParsedSonamuArgs, unknown>;
+  readonly parser: Parser<"async", ParsedSonamuArgs, unknown>;
 }
 
 export type SonamuUsageErrorCode =
@@ -163,6 +166,13 @@ const optionErrors = {
 } as const;
 const flagErrors = { noMatch: unknownOption } as const;
 const argumentErrors = { invalidValue: message`[INVALID_ARGUMENT]` } as const;
+
+const migrationTargetValue = () =>
+  zod(z.enum(MIGRATION_TARGETS), {
+    metavar: "TARGET",
+    placeholder: "development",
+    errors: { zodError: message`[INVALID_ARGUMENT]` },
+  });
 
 function result(
   commandName: string,
@@ -396,7 +406,7 @@ function migrateParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
   );
   const apply = map(
     object({
-      targets: multiple(argument(choice(MIGRATION_TARGETS), { errors: argumentErrors }), {
+      targets: multiple(argument(migrationTargetValue(), { errors: argumentErrors }), {
         min: 1,
       }),
       execute: withDefault(flag("--execute", { errors: flagErrors }), false),
@@ -406,26 +416,26 @@ function migrateParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
     ({ targets, ...options }) => result("migrate.apply", { targets }, options),
   );
   const target = (commandName: string) =>
-    map(argument(choice(MIGRATION_TARGETS), { errors: argumentErrors }), (migrationTarget) =>
-      result(commandName, { target: migrationTarget }),
+    map(argument(migrationTargetValue(), { errors: argumentErrors }), (targetValue) =>
+      result(commandName, { target: targetValue }),
     );
   const preview = map(
     object({
-      target: argument(choice(MIGRATION_TARGETS), { errors: argumentErrors }),
+      target: argument(migrationTargetValue(), { errors: argumentErrors }),
       action: optional(option("--action", choice(MIGRATION_ACTIONS), { errors: optionErrors })),
     }),
-    ({ target: migrationTarget, ...options }) =>
-      result("migrate.preview", { target: migrationTarget }, options),
+    ({ target: targetValue, ...options }) =>
+      result("migrate.preview", { target: targetValue }, options),
   );
   const rollback = map(
     object({
-      target: argument(choice(MIGRATION_TARGETS), { errors: argumentErrors }),
+      target: argument(migrationTargetValue(), { errors: argumentErrors }),
       mode: mutationMode(),
       confirm: withDefault(flag("--confirm", { errors: flagErrors }), false),
       forceReason: optional(option("--force-reason", string(), { errors: optionErrors })),
     }),
-    ({ target: migrationTarget, mode, ...options }) =>
-      result("migrate.rollback", { target: migrationTarget }, { ...mode, ...options }),
+    ({ target: targetValue, mode, ...options }) =>
+      result("migrate.rollback", { target: targetValue }, { ...mode, ...options }),
   );
   const shadow = map(
     object({
@@ -433,8 +443,8 @@ function migrateParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
       mode: mutationMode(),
       confirm: withDefault(flag("--confirm", { errors: flagErrors }), false),
     }),
-    ({ target: migrationTarget, mode, ...options }) =>
-      result("migrate.shadow", { target: migrationTarget }, { ...mode, ...options }),
+    ({ target: targetValue, mode, ...options }) =>
+      result("migrate.shadow", { target: targetValue }, { ...mode, ...options }),
   );
   return branch(
     "migrate",
@@ -769,8 +779,33 @@ function rootParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
   ]);
 }
 
+function asAsyncParser<Value, State>(
+  parser: Parser<"sync", Value, State>,
+): Parser<"async", Value, State> {
+  return {
+    ...parser,
+    mode: "async",
+    parse: async (context) => parser.parse(context),
+    complete: async (state, execution) => parser.complete(state, execution),
+    async *suggest(context, prefix) {
+      yield* parser.suggest(context, prefix);
+    },
+    validateValue: parser.validateValue
+      ? async (value) => parser.validateValue?.(value) ?? { success: true, value }
+      : undefined,
+  };
+}
+
 export function createSonamuProgram(options: { readonly version: string }): SonamuProgram {
-  return { version: options.version, parser: rootParser() };
+  const parser = map(
+    object({
+      command: rootParser(),
+      logging: loggingOptions({ level: "verbosity", formatter: "--log-format" }),
+    }),
+    ({ command: parsedCommand }) => parsedCommand,
+  );
+  // 공개 파서는 비동기 프롬프트와 값 파서를 문법 변경 없이 합성할 수 있게 비동기화합니다.
+  return { version: options.version, parser: asAsyncParser(parser) };
 }
 
 function editDistance(left: string, right: string): number {
@@ -791,15 +826,15 @@ function editDistance(left: string, right: string): number {
   return row[right.length];
 }
 
-function optionHint(
+async function optionHint(
   program: SonamuProgram,
   args: readonly string[],
   invalidOption: string,
-): string | undefined {
+): Promise<string | undefined> {
   if (args.length === 0) return undefined;
   const completionArgs: [string, ...string[]] =
     args.length === 1 ? ["--"] : [args[0], ...args.slice(1, -1), "--"];
-  const closest = suggestSync(program.parser, completionArgs)
+  const closest = (await suggestAsync(program.parser, completionArgs))
     .flatMap((suggestion) => (suggestion.kind === "literal" ? [suggestion.text] : []))
     .filter((suggestion) => suggestion.startsWith("-"))
     .toSorted(
@@ -808,11 +843,11 @@ function optionHint(
   return closest ? `Did you mean ${closest}?` : undefined;
 }
 
-function classifyError(
+async function classifyError(
   program: SonamuProgram,
   args: readonly string[],
   formatted: string,
-): SonamuUsageError {
+): Promise<SonamuUsageError> {
   const marker = formatted.match(/\[(UNKNOWN_OPTION|INVALID_ARGUMENT|INVALID_OPTION_VALUE)\]/)?.[1];
   if (marker === "UNKNOWN_OPTION") {
     const optionNames = formatted.match(/--?[\w-]+/g) ?? [];
@@ -826,19 +861,28 @@ function classifyError(
   if (/cannot be used together|mutually exclusive/i.test(formatted)) {
     return new SonamuUsageError("INVALID_OPTION_VALUE", formatted);
   }
-  const unexpected = formatted.match(/Unexpected option or subcommand: `([^`]+)`/)?.[1];
+  const unexpected = formatted.match(
+    /Unexpected option or (?:subcommand|argument): [`"]([^`"]+)[`"]/,
+  )?.[1];
   if (unexpected?.startsWith("-")) {
-    return new SonamuUsageError("UNKNOWN_OPTION", formatted, optionHint(program, args, unexpected));
+    return new SonamuUsageError(
+      "UNKNOWN_OPTION",
+      formatted,
+      await optionHint(program, args, unexpected),
+    );
   }
   return new SonamuUsageError("UNKNOWN_COMMAND", formatted);
 }
 
-export function parseSonamuArgs(program: SonamuProgram, args: readonly string[]): ParsedSonamuArgs {
+export async function parseSonamuArgs(
+  program: SonamuProgram,
+  args: readonly string[],
+): Promise<ParsedSonamuArgs> {
   // 제거된 test watch 경로를 test.run의 위치 인자로 다시 해석하지 않습니다.
   if (args[0] === "test" && args[1] === "watch") {
     throw new SonamuUsageError("UNKNOWN_COMMAND", "Unknown command: watch");
   }
-  const parsed = parseSync(program.parser, args);
-  if (!parsed.success) throw classifyError(program, args, formatMessage(parsed.error));
+  const parsed = await parseAsync(program.parser, args);
+  if (!parsed.success) throw await classifyError(program, args, formatMessage(parsed.error));
   return parsed.value;
 }

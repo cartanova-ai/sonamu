@@ -1,5 +1,6 @@
 import { configure, getConsoleSink } from "@logtape/logtape";
 import {
+  type Config,
   type Filter,
   type FilterLike,
   type LoggerConfig,
@@ -11,6 +12,23 @@ import { getPrettyFormatter } from "@logtape/pretty";
 import { type FastifyReply, type FastifyRequest } from "fastify";
 
 import { isSameCategory } from "./category";
+
+interface ExternalLogTapeConfiguration {
+  readonly config: Config<string, string>;
+  applied: boolean;
+}
+
+declare global {
+  var sonamuKitCliLogTapeOverride: ExternalLogTapeConfiguration | undefined;
+}
+
+function getExternalLogTapeConfiguration(): ExternalLogTapeConfiguration | undefined {
+  return globalThis.sonamuKitCliLogTapeOverride;
+}
+
+export function hasExternalLogTapeConfiguration(): boolean {
+  return getExternalLogTapeConfiguration() !== undefined;
+}
 
 export type SonamuLoggingOptions<TSinkId extends string, TFilterId extends string> = {
   // fastify 로깅 카테고리 (a.b.c의 형태로 넣으면 [a, b, c]로 들어갑니다.)
@@ -107,19 +125,25 @@ function defaultFastifyFilter(fastifyCategory: readonly string[]): Filter {
 export async function configureLogTape<TSinkId extends string, TFilterId extends string>(
   options: SonamuLoggingOptions<TSinkId, TFilterId>,
 ) {
+  const external = getExternalLogTapeConfiguration();
   const fastifyCategory = options.fastifyCategory ?? ["fastify"];
 
   const sinks = {
     "fastify-console": defaultFastifySink(fastifyCategory),
     ...options.sinks,
+    ...external?.config.sinks,
   };
 
   const filters = {
     "fastify-console": defaultFastifyFilter(fastifyCategory),
     ...options.filters,
+    ...external?.config.filters,
   };
 
-  const loggers = new Set<LoggerConfig<string, string>>(options.loggers ?? []);
+  const loggers = new Set<LoggerConfig<string, string>>([
+    ...(external?.config.loggers ?? []),
+    ...(options.loggers ?? []),
+  ]);
 
   // logtape의 meta logger 표시를 비활성화
   loggers.add({
@@ -136,5 +160,6 @@ export async function configureLogTape<TSinkId extends string, TFilterId extends
     });
   }
 
+  if (external !== undefined) external.applied = true;
   return configure({ sinks, filters, loggers: [...loggers], reset: true });
 }

@@ -143,6 +143,7 @@
     "prompts": "catalog:",
     "qs": "catalog:",
     "radashi": "catalog:",
+    "typescript-legacy": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "zod-compiler": "catalog:"

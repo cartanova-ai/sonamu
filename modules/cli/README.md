@@ -61,6 +61,24 @@ Failures use the same channel:
 `task watch --json` emits one JSON object per event. Long-running `dev` and
 `start` commands reject `--json` before starting a child process.
 
+## Logging
+
+The CLI uses LogTape options provided by Optique. Add `-v`, `-vv`, or `-vvv`
+to select `info`, `debug`, or `trace` logging from the default `warning` level.
+The long `--verbose` option is repeatable and raises the level once per use.
+
+```sh
+sonamu sync -vv
+sonamu migrate status --log-output=- --log-format=plain
+sonamu task watch --log-output=sonamu.log --log-format=jsonl
+```
+
+`--log-format` accepts `jsonl`, `logfmt`, `color`, or `plain`. Logs default to
+stderr when `--log-output` is omitted. `--log-output=-` also writes logs to
+stderr; another value is treated as a file path. JSON command envelopes and events remain the only stdout content in
+`--json` mode. Without a logging option, the project’s Sonamu logging
+configuration is unchanged.
+
 ## Mutations
 
 Mutation commands default to preview or dry-run where their grammar supports it.

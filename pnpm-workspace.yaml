@@ -55,12 +55,17 @@ catalog:
   "@japa/snapshot": ^2.0.9
   "@julr/tooling-configs": ^4.0.0
   "@loaderkit/resolve": ^1.0.4
-  "@logtape/fastify": 2.0.0
-  "@logtape/logtape": 2.0.0
-  "@logtape/pretty": 2.0.0
-  "@logtape/redaction": 2.0.0
+  "@clack/prompts": ^1.6.0
+  "@logtape/fastify": 2.2.2
+  "@logtape/file": 2.2.2
+  "@logtape/logtape": 2.2.2
+  "@logtape/pretty": 2.2.2
+  "@logtape/redaction": 2.2.2
+  "@optique/clack": 1.2.4
   "@optique/core": 1.2.4
+  "@optique/logtape": 1.2.4
   "@optique/run": 1.2.4
+  "@optique/zod": 1.2.4
   "@oxc-project/runtime": ^0.79.0
   "@oxlint/plugins": 1.80.0
 
@@ -223,7 +228,8 @@ catalog:
   ts-node: ^10.9.2
   tsdown: ^0.22.3
   tsx: ^4.21.0
-  typescript: ^6.0.3
+  typescript: 7.1.0-dev.20260831.1
+  typescript-legacy: npm:typescript@6.0.3
   unplugin-icons: 0.20.2
   uuid: ^13.0.0
   vaul: ^1.1.2
@@ -242,6 +248,7 @@ minimumReleaseAge: 2880
 # 메인 툴체인에 대해선 적용 제외
 minimumReleaseAgeExclude:
   - "@optique/*"
+  - typescript
   - oxlint*
   - oxfmt
   - oxc*

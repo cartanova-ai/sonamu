@@ -99,6 +99,24 @@ JSON을 지원합니다.
 비대화형 `fixture gen`은 기본적으로 count `5`, 저장 대상 `db`, LLM 미사용, cache 사용, dummy user
 모드를 선택합니다. 명시한 옵션은 이 기본값을 대체합니다.
 
+## 로깅 옵션
+
+CLI는 Optique의 LogTape 통합을 사용합니다. 기본 `warning` 레벨에서 `-v`, `-vv`, `-vvv`를
+추가하면 각각 `info`, `debug`, `trace` 로그를 선택합니다. 긴 옵션 `--verbose`도 반복할 수 있으며
+한 번 추가할 때마다 로그 레벨을 한 단계 높입니다.
+
+```bash
+pnpm sonamu sync -vv
+pnpm sonamu migrate status --log-output=- --log-format=plain
+pnpm sonamu task watch --log-output=sonamu.log --log-format=jsonl
+```
+
+`--log-format`은 `jsonl`, `logfmt`, `color`, `plain`을 받습니다. `--log-output`을 생략하면 로그는
+기본적으로 stderr로 전송됩니다. `--log-output=-`도 로그를 stderr로 보내며, 다른 값은 파일
+경로로 처리합니다. `--json` 모드에서는 명령 봉투와 이벤트 객체만 stdout에 기록됩니다. 로깅
+옵션을 지정하지 않으면 프로젝트의 Sonamu 로깅 설정을 변경하지 않습니다. 잘못된 로깅 값은
+명령 초기화 전에 종료 코드 `2`로 거절합니다.
+
 ## 변경 작업
 
 실행 전에 전용 preview 명령이나 해당 명령의 `--dry-run`을 사용하세요. 실행 옵션은 명령마다

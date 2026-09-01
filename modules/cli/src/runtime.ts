@@ -1,4 +1,14 @@
-import prompts from "prompts";
+import * as clack from "@clack/prompts";
+import { configure, dispose, type Config } from "@logtape/logtape";
+import { prompt as clackParserPrompt } from "@optique/clack";
+import {
+  argument as optiqueArgument,
+  formatMessage,
+  message as optiqueMessage,
+  parseAsync,
+} from "@optique/core";
+import { createLoggingConfig, loggingOptions, type LoggingOptionsResult } from "@optique/logtape";
+import { zod } from "@optique/zod";
 import { z } from "zod";
 
 import { COMMAND_LIFECYCLE_POLICIES } from "./lifecycle.js";
@@ -113,7 +123,18 @@ interface PromptAnswer {
   readonly value?: string | boolean | readonly string[];
 }
 
-type PromptConfig = prompts.PromptObject<"value">;
+interface PromptConfigBase {
+  readonly name: "value";
+  readonly message: string;
+}
+
+type PromptConfig =
+  | (PromptConfigBase & { readonly type: "text"; readonly initial?: string })
+  | (PromptConfigBase & { readonly type: "confirm"; readonly initial?: boolean })
+  | (PromptConfigBase & {
+      readonly type: "select" | "multiselect";
+      readonly choices: readonly { readonly title: string; readonly value: string }[];
+    });
 type PromptImplementation = (config: PromptConfig) => Promise<PromptAnswer>;
 
 function fuzzyMatchRank(input: string, candidate: string): number | undefined {
@@ -157,7 +178,38 @@ export function findFuzzyMatches(input: string, candidates: readonly string[]): 
 export function createPromptsAdapter(
   options: { readonly promptImpl?: PromptImplementation } = {},
 ): CliPrompt {
-  const promptImpl: PromptImplementation = options.promptImpl ?? ((config) => prompts(config));
+  const promptImpl: PromptImplementation =
+    options.promptImpl ??
+    (async (config) => {
+      const common = { message: config.message };
+      const promptValue =
+        config.type === "text"
+          ? await clack.text({
+              ...common,
+              initialValue: config.initial,
+            })
+          : config.type === "confirm"
+            ? await clack.confirm({
+                ...common,
+                initialValue: config.initial,
+              })
+            : config.type === "multiselect"
+              ? await clack.multiselect({
+                  ...common,
+                  options: (config.choices ?? []).map(({ title: label, value }) => ({
+                    label,
+                    value,
+                  })),
+                })
+              : await clack.select({
+                  ...common,
+                  options: (config.choices ?? []).map(({ title: label, value }) => ({
+                    label,
+                    value,
+                  })),
+                });
+      return clack.isCancel(promptValue) ? {} : { value: promptValue };
+    });
   return {
     async select(request: {
       readonly message: string;
@@ -369,22 +421,80 @@ async function defaultHandlers(): Promise<CliHandlers> {
   return registry.CLI_HANDLERS;
 }
 
-function takeGlobalFlags(args: readonly string[]) {
+async function takeGlobalFlags(args: readonly string[]) {
   let json = false;
   let nonInteractive = false;
   const commandArgs: string[] = [];
+  const loggingArgs: string[] = [];
   let passthrough = false;
-  for (const arg of args) {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
     if (arg === "--") passthrough = true;
     if (passthrough) {
       commandArgs.push(arg);
       continue;
     }
-    if (arg === "--json") json = true;
+    if (/^-v+$/.test(arg) || arg === "--verbose") loggingArgs.push(arg);
+    else if (arg === "--log-output" || arg === "--log-format") {
+      loggingArgs.push(arg);
+      const value = args[index + 1];
+      if (value !== undefined && (!value.startsWith("-") || value === "-")) {
+        loggingArgs.push(value);
+        index += 1;
+      }
+    } else if (arg.startsWith("--log-output=") || arg.startsWith("--log-format=")) {
+      loggingArgs.push(arg);
+    } else if (arg === "--json") json = true;
     else if (arg === "--non-interactive") nonInteractive = true;
     else commandArgs.push(arg);
   }
-  return { commandArgs, json, nonInteractive };
+  const loggingParser = loggingOptions({ level: "verbosity", formatter: "--log-format" });
+  const parsedLogging = await parseAsync(loggingParser, loggingArgs);
+  if (!parsedLogging.success) {
+    throw new SonamuUsageError("INVALID_OPTION_VALUE", formatMessage(parsedLogging.error));
+  }
+  return {
+    commandArgs,
+    json,
+    nonInteractive,
+    logging: parsedLogging.value,
+    loggingRequested: loggingArgs.length > 0,
+  };
+}
+
+interface CliLogTapeOverride {
+  readonly config: Config<string, string>;
+  applied: boolean;
+}
+
+declare global {
+  var sonamuKitCliLogTapeOverride: CliLogTapeOverride | undefined;
+}
+
+interface CliLoggingSession {
+  ensureConfigured(): Promise<void>;
+  destroy(): Promise<void>;
+}
+
+async function createCliLoggingSession(
+  logging: LoggingOptionsResult,
+  enabled: boolean,
+): Promise<CliLoggingSession | undefined> {
+  if (!enabled) return undefined;
+  const config = await createLoggingConfig(logging, { stream: "stderr" }, { reset: true });
+  const override: CliLogTapeOverride = { config, applied: false };
+  globalThis.sonamuKitCliLogTapeOverride = override;
+  return {
+    async ensureConfigured() {
+      if (override.applied) return;
+      override.applied = true;
+      await configure(config);
+    },
+    async destroy() {
+      globalThis.sonamuKitCliLogTapeOverride = undefined;
+      if (override.applied) await dispose();
+    },
+  };
 }
 
 function isMetaCommand(args: readonly string[]): boolean {
@@ -401,10 +511,10 @@ async function renderMeta(
   stdout: (chunk: string) => void,
   stderr: (chunk: string) => void,
 ): Promise<number> {
-  const { runSync } = await import("@optique/run");
+  const { runAsync } = await import("@optique/run");
   const program = createSonamuProgram({ version });
   try {
-    runSync(
+    await runAsync(
       { parser: program.parser, metadata: { name: "sonamu", version } },
       {
         args,
@@ -586,6 +696,30 @@ async function applyDiscovery(
 }
 
 const MIGRATION_TARGETS = ["development", "staging", "production", "fixture", "test"] as const;
+const migrationTargetSchema = z.enum(MIGRATION_TARGETS);
+
+async function validatePromptedMigrationTarget(value: string): Promise<string> {
+  const parser = clackParserPrompt(
+    optiqueArgument(
+      zod(migrationTargetSchema, {
+        metavar: "TARGET",
+        placeholder: "development",
+        errors: { zodError: optiqueMessage`[INVALID_ARGUMENT]` },
+      }),
+    ),
+    {
+      type: "select",
+      message: "Migration target",
+      options: MIGRATION_TARGETS,
+      prompter: async () => value,
+    },
+  );
+  const parsed = await parseAsync(parser, []);
+  if (!parsed.success) {
+    throw new SonamuUsageError("INVALID_ARGUMENT", formatMessage(parsed.error));
+  }
+  return parsed.value;
+}
 
 function hasMigrationTarget(args: readonly string[]): boolean {
   for (let index = 2; index < args.length; index += 1) {
@@ -628,7 +762,8 @@ async function fillMigrationTargets(
   if (selected.value === undefined || selected.value.length === 0) {
     return usageError("MISSING_ARGUMENT", "Select at least one migration target.");
   }
-  args.splice(2, 0, ...selected.value);
+  const targets = await Promise.all(selected.value.map(validatePromptedMigrationTarget));
+  args.splice(2, 0, ...targets);
   return undefined;
 }
 
@@ -839,7 +974,19 @@ export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<R
     return { exitCode };
   }
 
-  const globals = takeGlobalFlags(args);
+  let globals: Awaited<ReturnType<typeof takeGlobalFlags>>;
+  try {
+    globals = await takeGlobalFlags(args);
+  } catch (error) {
+    const normalized = normalizeError(error instanceof Error ? error : new Error(String(error)));
+    const output = createCliOutput({
+      mode: args.includes("--json") ? "json" : "human",
+      ...destination,
+    });
+    output.error(args[0] ?? "sonamu", normalized);
+    setExitCode(normalized.exitCode);
+    return { exitCode: normalized.exitCode, error: normalized };
+  }
   const output = createCliOutput({
     mode: globals.json ? "json" : "human",
     stdout: destination.stdout,
@@ -895,7 +1042,7 @@ export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<R
       candidateProvider,
     );
     if (filled.error) throw Object.assign(new Error(filled.error.message), filled.error);
-    parsed = parseSonamuArgs(createSonamuProgram({ version }), filled.args ?? discoveredArgs);
+    parsed = await parseSonamuArgs(createSonamuProgram({ version }), filled.args ?? discoveredArgs);
     if (candidateProvider === undefined) {
       parsed = await refineParsedEntity(parsed, interaction, globals.nonInteractive);
     }
@@ -951,91 +1098,101 @@ export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<R
   try {
     const resources = lifecycleResources(parsed.command);
     const execution = await runWithAmbientOutputIsolation(globals.json, async () => {
-      const lifecycle =
-        resources.length > 0
-          ? (options.lifecycle ?? (await createDefaultLifecycle({ resources })))
-          : undefined;
-      let outcome:
-        | { readonly ok: true; readonly data: HandlerResult; readonly exitCode: number }
-        | { readonly ok: false; readonly error: Error };
-
+      const loggingSession = await createCliLoggingSession(
+        globals.logging,
+        globals.loggingRequested,
+      );
       try {
-        if (lifecycle !== undefined) {
-          await lifecycle.init();
-        }
+        const lifecycle =
+          resources.length > 0
+            ? (options.lifecycle ?? (await createDefaultLifecycle({ resources })))
+            : undefined;
+        let outcome:
+          | { readonly ok: true; readonly data: HandlerResult; readonly exitCode: number }
+          | { readonly ok: false; readonly error: Error };
 
-        // 지연 tooling 로딩도 Sonamu 초기화 이후, 해제 이전에만 수행합니다.
-        const handlers = options.handlers ?? (await defaultHandlers());
-        const handler = handlers[parsed.command];
-        if (handler === undefined) {
-          throw Object.assign(new Error(`No handler is registered for ${parsed.command}.`), {
-            code: "HANDLER_NOT_FOUND",
-          });
-        }
+        try {
+          if (lifecycle !== undefined) {
+            await lifecycle.init();
+          }
+          await loggingSession?.ensureConfigured();
 
-        const input = commandInput(parsed);
-        if (!interaction.enabled && NON_INTERACTIVE_INPUT_COMMANDS.has(parsed.command)) {
-          input.nonInteractive = true;
-        }
-        const data = await handler(input, {
-          command: parsed.command,
-          interaction,
-          output,
-        });
-        let exitCode = 0;
-        if (isAsyncIterable(data)) {
-          for await (const event of data) output.event(event);
-        } else {
-          const childResult = z.object({ exitCode: z.number().int() }).safeParse(data);
-          exitCode = childResult.success ? childResult.data.exitCode : 0;
-          if (exitCode !== 0) {
-            throw Object.assign(new Error(`Child process exited with code ${exitCode}.`), {
-              code: "CHILD_PROCESS_FAILED",
-              exitCode,
+          // 지연 tooling 로딩도 Sonamu 초기화 이후, 해제 이전에만 수행합니다.
+          const handlers = options.handlers ?? (await defaultHandlers());
+          const handler = handlers[parsed.command];
+          if (handler === undefined) {
+            throw Object.assign(new Error(`No handler is registered for ${parsed.command}.`), {
+              code: "HANDLER_NOT_FOUND",
             });
           }
-        }
-        outcome = { ok: true, data, exitCode };
-      } catch (error) {
-        outcome = {
-          ok: false,
-          error: error instanceof Error ? error : new Error(String(error)),
-        };
-      }
 
-      if (lifecycle !== undefined) {
-        try {
-          await lifecycle.destroy();
-        } catch (cleanupError) {
-          if (outcome.ok) {
-            outcome = {
-              ok: false,
-              error: cleanupError instanceof Error ? cleanupError : new Error(String(cleanupError)),
-            };
+          const input = commandInput(parsed);
+          if (!interaction.enabled && NON_INTERACTIVE_INPUT_COMMANDS.has(parsed.command)) {
+            input.nonInteractive = true;
+          }
+          const data = await handler(input, {
+            command: parsed.command,
+            interaction,
+            output,
+          });
+          let exitCode = 0;
+          if (isAsyncIterable(data)) {
+            for await (const event of data) output.event(event);
           } else {
-            const primaryError = outcome.error;
-            const primaryMessage =
-              primaryError instanceof Error ? primaryError.message : String(primaryError);
-            const cleanupMessage =
-              cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
-            outcome = {
-              ok: false,
-              error: Object.assign(new Error(`${primaryMessage}; ${cleanupMessage}`), {
-                code: "LIFECYCLE_FAILED",
-                details: {
-                  errors: [
-                    { phase: "init-or-command", message: primaryMessage },
-                    { phase: "destroy", message: cleanupMessage },
-                  ],
-                },
-              }),
-            };
+            const childResult = z.object({ exitCode: z.number().int() }).safeParse(data);
+            exitCode = childResult.success ? childResult.data.exitCode : 0;
+            if (exitCode !== 0) {
+              throw Object.assign(new Error(`Child process exited with code ${exitCode}.`), {
+                code: "CHILD_PROCESS_FAILED",
+                exitCode,
+              });
+            }
+          }
+          outcome = { ok: true, data, exitCode };
+        } catch (error) {
+          outcome = {
+            ok: false,
+            error: error instanceof Error ? error : new Error(String(error)),
+          };
+        }
+
+        if (lifecycle !== undefined) {
+          try {
+            await lifecycle.destroy();
+          } catch (cleanupError) {
+            if (outcome.ok) {
+              outcome = {
+                ok: false,
+                error:
+                  cleanupError instanceof Error ? cleanupError : new Error(String(cleanupError)),
+              };
+            } else {
+              const primaryError = outcome.error;
+              const primaryMessage =
+                primaryError instanceof Error ? primaryError.message : String(primaryError);
+              const cleanupMessage =
+                cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+              outcome = {
+                ok: false,
+                error: Object.assign(new Error(`${primaryMessage}; ${cleanupMessage}`), {
+                  code: "LIFECYCLE_FAILED",
+                  details: {
+                    errors: [
+                      { phase: "init-or-command", message: primaryMessage },
+                      { phase: "destroy", message: cleanupMessage },
+                    ],
+                  },
+                }),
+              };
+            }
           }
         }
-      }
 
-      if (!outcome.ok) throw outcome.error;
-      return outcome;
+        if (!outcome.ok) throw outcome.error;
+        return outcome;
+      } finally {
+        await loggingSession?.destroy();
+      }
     });
 
     if (!isAsyncIterable(execution.data)) {

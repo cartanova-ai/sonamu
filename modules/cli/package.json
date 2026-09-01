@@ -27,14 +27,18 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@clack/prompts": "catalog:",
+    "@logtape/file": "catalog:",
+    "@logtape/logtape": "catalog:",
+    "@optique/clack": "catalog:",
     "@optique/core": "catalog:",
+    "@optique/logtape": "catalog:",
     "@optique/run": "catalog:",
-    "prompts": "catalog:",
+    "@optique/zod": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@types/prompts": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "sonamu": "workspace:^",

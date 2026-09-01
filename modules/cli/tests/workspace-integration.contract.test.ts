@@ -67,6 +67,18 @@ function expectSafePublishBackupMapping(source: string) {
 }
 
 describe("최종 CLI 패키지 워크스페이스 통합", () => {
+  it("CLI가 Optique 통합 패키지만 선언하고 기존 prompts 의존성을 제거한다", async () => {
+    const manifest = await readManifest("modules/cli/package.json");
+
+    expect(manifest.dependencies).toMatchObject({
+      "@optique/clack": "catalog:",
+      "@optique/logtape": "catalog:",
+      "@optique/zod": "catalog:",
+    });
+    expect(manifest.dependencies?.prompts).toBeUndefined();
+    expect(manifest.devDependencies?.["@types/prompts"]).toBeUndefined();
+  });
+
   it("sonamu가 tooling 진입점만 공개하고 CLI 실행 파일과 tsicli를 소유하지 않는다", async () => {
     const manifest = await readManifest("modules/sonamu/package.json");
 

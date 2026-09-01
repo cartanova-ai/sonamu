@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 
 import { Workbook } from "@sheetkit/node";
-import ts from "typescript";
+import ts from "typescript-legacy";
 
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";

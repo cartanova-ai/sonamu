@@ -96,6 +96,24 @@ code `2` instead of prompting:
 For non-interactive `fixture gen`, the deterministic defaults are count `5`, save target `db`, LLM
 disabled, cache enabled, and dummy-user mode. Explicit options override these defaults.
 
+## Logging options
+
+The CLI uses Optique's LogTape integration. Starting from the default `warning` level, `-v`, `-vv`,
+and `-vvv` select `info`, `debug`, and `trace` logging respectively. The long `--verbose` option is
+also repeatable and raises the level once per use.
+
+```bash
+pnpm sonamu sync -vv
+pnpm sonamu migrate status --log-output=- --log-format=plain
+pnpm sonamu task watch --log-output=sonamu.log --log-format=jsonl
+```
+
+`--log-format` accepts `jsonl`, `logfmt`, `color`, or `plain`. Logs default to stderr when
+`--log-output` is omitted. `--log-output=-` also routes logs to stderr, while any other value is a
+file path. In `--json` mode, command envelopes and event objects remain the only stdout content.
+When no logging option is supplied, the Sonamu project's logging configuration remains unchanged.
+Invalid logging values exit with code `2` before command initialization.
+
 ## Mutation workflow
 
 Inspect or dry-run a change before execution. Execution options vary by command:
