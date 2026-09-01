@@ -30,6 +30,16 @@ export type BuildArtifact<BuildCommandArgs = {}> = {
 
 export type ApiTsdownBuildConfig = Pick<UserConfig, "entry" | "plugins">;
 
+export function createWebTypecheckCommand(): string {
+  const isSourceModule = path.extname(import.meta.filename) === ".ts";
+  const scriptPath = path.join(
+    import.meta.dirname,
+    `typecheck-web.${isSourceModule ? "ts" : "js"}`,
+  );
+  const runner = isSourceModule ? "pnpm exec tsx" : JSON.stringify(process.execPath);
+  return `${runner} ${JSON.stringify(scriptPath)}`;
+}
+
 type ZodCompilerPluginFactory = (typeof import("zod-compiler/rolldown"))["default"];
 
 export interface ApiZodCompilerBuildDependencies {
@@ -215,7 +225,7 @@ export const WEB_ARTIFACTS: BuildArtifact[] = [
     projectPath: "web",
     preBuildCommand: () => "rm -rf dist/client",
     buildCommand: () =>
-      "tsc -b --noEmit && vite build --config vite.config.ts --outDir dist/client",
+      `${createWebTypecheckCommand()} && vite build --config vite.config.ts --outDir dist/client`,
   },
   {
     name: "Web Server",
@@ -223,7 +233,7 @@ export const WEB_ARTIFACTS: BuildArtifact[] = [
     projectPath: "web",
     preBuildCommand: () => "rm -rf dist/server",
     buildCommand: () =>
-      "tsc -b --noEmit && vite build --config vite.config.ts --ssr src/entry-server.generated.tsx --outDir dist/server",
+      `${createWebTypecheckCommand()} && vite build --config vite.config.ts --ssr src/entry-server.generated.tsx --outDir dist/server`,
     postBuildCommand: () =>
       "rm -rf ../api/web-dist && mkdir -p ../api/web-dist && cp -r dist/* ../api/web-dist",
   },
