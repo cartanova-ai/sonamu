@@ -31,13 +31,18 @@ pnpm sonamu scaffold model
 pnpm sonamu fixture import 1 2 3 --execute
 ```
 
-In a TTY, an omitted top-level command or incomplete nested command opens fuzzy command discovery.
+In a TTY, an omitted, invalid, or fuzzy top-level command opens a searchable command menu; type to
+filter it. Every selection stage shows at most 10 visible choices. After you select a command
+group, the CLI progressively opens its immediate children and, when the group is itself runnable,
+a `Use current command` choice. An incomplete path such as `pnpm sonamu fixture` starts directly
+in that group's child menu. Pressing Ctrl+C at any command-selection stage exits with code 130.
+
 Commands that accept an Entity can prompt for a selection or resolve fuzzy Entity input. This
 includes `fixture import`; it can select or fuzzy-match the Entity in a TTY but never prompts for
-missing numeric IDs. Outside a TTY, omitted or invalid input is a usage error. `--non-interactive` disables discovery and
-confirmation prompts. Entity discovery reads Entity metadata only; it does not import Model or
-other application runtime modules. It never falls back to a prompt, even when required input is
-missing.
+missing numeric IDs. Outside a TTY, omitted or invalid input is a usage error. `--non-interactive`
+disables discovery and confirmation prompts. Entity discovery reads Entity metadata only; it does
+not import Model or other application runtime modules. It never falls back to a prompt, even when
+required input is missing.
 
 ## Automation and coding agents
 

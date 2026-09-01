@@ -15,7 +15,7 @@ function createHarness(overrides: Partial<RunSonamuCliOptions> = {}) {
   const stdout: string[] = [];
   const stderr: string[] = [];
   const setExitCode = vi.fn();
-  const init = vi.fn(async () => ({ name: "sonamu" }));
+  const init = vi.fn(async () => undefined);
   const destroy = vi.fn(async () => undefined);
   const prompt = {
     select: vi.fn(),
@@ -97,7 +97,7 @@ describe("전역 인터페이스와 종료 정책", () => {
   });
 
   it.each([
-    [["unknown"], 2],
+    [["unknown", "--non-interactive"], 2],
     [["scaffold", "model", "--non-interactive"], 2],
   ])("사용 오류 %j는 종료 코드 2를 반환하고 초기화하지 않는다", async (args, exitCode) => {
     const harness = createHarness({ args });

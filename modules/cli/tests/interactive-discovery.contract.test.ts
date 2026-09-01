@@ -1,73 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 
-const STANDALONE_COMMANDS = ["sync", "build", "dev", "start", "test"] as const;
-
-const LEAF_COMMANDS = [
-  "entity list",
-  "entity show",
-  "entity search",
-  "entity apply",
-  "fixture init",
-  "fixture import",
-  "fixture sync",
-  "fixture gen",
-  "fixture fetch",
-  "fixture explore",
-  "migrate run",
-  "migrate apply",
-  "migrate generate",
-  "migrate status",
-  "migrate connections",
-  "migrate code",
-  "migrate preview",
-  "migrate shadow",
-  "migrate rollback",
-  "stub entity",
-  "scaffold model",
-  "scaffold model_test",
-  "scaffold view_list",
-  "scaffold view_form",
-  "scaffold status",
-  "scaffold preview",
-  "scaffold batch",
-  "cone gen",
-  "build all",
-  "build api",
-  "build web",
-  "dev all",
-  "dev api",
-  "dev web",
-  "auth generate",
-  "auth add-companions",
-  "i18n list",
-  "i18n check",
-  "i18n import",
-  "i18n export",
-  "i18n create",
-  "i18n update",
-  "i18n delete",
-  "task definitions",
-  "task list",
-  "task show",
-  "task steps",
-  "task watch",
-  "task pause",
-  "task resume",
-  "task cancel",
-  "cdd tree",
-  "cdd read",
-  "cdd rules",
-  "cdd rule show",
-  "cdd rule add",
-  "cdd ac",
-] as const;
-
-const COMMAND_CANDIDATES = [...new Set([...STANDALONE_COMMANDS, ...LEAF_COMMANDS])].toSorted();
 const ENTITY_IDS = ["Comment", "Post", "User"] as const;
 
 interface EntityDiscoveryContext {
   readonly command: string;
   readonly candidates: readonly string[];
+}
+
+interface SelectRequest {
+  readonly message: string;
+  readonly choices?: readonly string[];
+  readonly initial?: string;
+  readonly labels?: Readonly<Record<string, string>>;
+  readonly hints?: Readonly<Record<string, string>>;
+  readonly descriptions?: Readonly<Record<string, string>>;
 }
 
 async function importRuntime() {
@@ -77,7 +23,14 @@ async function importRuntime() {
 function createPrompt() {
   return {
     select: vi.fn(
-      async (): Promise<{ value?: string; cancelled?: boolean }> => ({ cancelled: true }),
+      async (_request: SelectRequest): Promise<{ value?: string; cancelled?: boolean }> => ({
+        cancelled: true,
+      }),
+    ),
+    multiselect: vi.fn(
+      async (): Promise<{ value?: readonly string[]; cancelled?: boolean }> => ({
+        cancelled: true,
+      }),
     ),
     text: vi.fn(
       async (): Promise<{ value?: string; cancelled?: boolean }> => ({ cancelled: true }),
@@ -139,48 +92,113 @@ function createHarness(args: readonly string[]) {
 }
 
 describe("인자 없는 명령 탐색", () => {
-  it("TTY에서 전체 명령 경로를 보여 주고 선택한 경로를 토큰화해 실행한다", async () => {
+  it("최상위 그룹부터 하위 명령을 단계적으로 선택해 같은 핸들러를 실행한다", async () => {
     const { runSonamuCli } = await importRuntime();
     const harness = createHarness([]);
-    harness.command.mockResolvedValue("entity list");
-    harness.handlers["entity.list"] = vi.fn(async () => ["User"]);
+    harness.command.mockResolvedValueOnce("migrate").mockResolvedValueOnce("migrate apply");
+    harness.prompt.multiselect.mockResolvedValue({ value: ["development"] });
+    harness.prompt.confirm.mockResolvedValue({ value: true });
+    harness.handlers["migrate.apply"] = vi.fn(async (input) => input);
 
     const result = await runSonamuCli(harness.options);
 
-    expect(result).toMatchObject({ exitCode: 0, data: ["User"] });
-    expect(harness.command).toHaveBeenCalledOnce();
-    const [input, candidates] = harness.command.mock.calls[0];
-    expect(input).toBe("");
-    expect([...candidates].toSorted()).toEqual(COMMAND_CANDIDATES);
-    expect(harness.handlers["entity.list"]).toHaveBeenCalledWith(
-      expect.objectContaining({ passthrough: [] }),
-      expect.objectContaining({ command: "entity.list" }),
+    expect(result.exitCode).toBe(0);
+    expect(harness.command).toHaveBeenNthCalledWith(1, "", expect.any(Array));
+    const topLevelCandidates = harness.command.mock.calls[0][1];
+    expect(topLevelCandidates).toContain("migrate");
+    expect(topLevelCandidates).not.toContain("migrate apply");
+    expect(topLevelCandidates.every((candidate) => !candidate.includes(" "))).toBe(true);
+    expect(harness.command).toHaveBeenNthCalledWith(
+      2,
+      "migrate",
+      expect.arrayContaining(["migrate apply", "migrate status", "migrate rollback"]),
     );
-    expect(harness.setExitCode).toHaveBeenCalledWith(0);
+    expect(harness.command.mock.calls[1][1]).not.toContain("entity list");
+    expect(harness.prompt.multiselect).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringMatching(/migration targets/i) }),
+    );
+    expect(harness.handlers["migrate.apply"]).toHaveBeenCalledWith(
+      expect.objectContaining({ passthrough: [], targets: ["development"] }),
+      expect.objectContaining({ command: "migrate.apply" }),
+    );
   });
 
-  it("명령 후보에 독립 실행 명령과 인자가 필요 없는 하위 경로를 포함한다", async () => {
+  it.each([["migrate"], ["mig"]])(
+    "불완전한 %s 입력에서 마이그레이션 하위 명령을 선택한다",
+    async (...args) => {
+      const { runSonamuCli } = await importRuntime();
+      const harness = createHarness(args);
+      if (args[0] === "mig") {
+        harness.command.mockResolvedValueOnce("migrate").mockResolvedValueOnce("migrate status");
+      } else {
+        harness.command.mockResolvedValueOnce("migrate status");
+      }
+      harness.handlers["migrate.status"] = vi.fn(async () => ({ ok: true }));
+
+      await expect(runSonamuCli(harness.options)).resolves.toMatchObject({ exitCode: 0 });
+
+      const nestedCall = harness.command.mock.calls.at(-1);
+      expect(nestedCall).toEqual([
+        "migrate",
+        expect.arrayContaining(["migrate run", "migrate status", "migrate rollback"]),
+      ]);
+      expect(nestedCall?.[1]).not.toContain("fixture init");
+      expect(harness.handlers["migrate.status"]).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("명시한 CDD 그룹은 중복 없는 바로 아래 명령만 탐색한다", async () => {
     const { runSonamuCli } = await importRuntime();
-    const harness = createHarness(["syncc"]);
-    harness.command.mockResolvedValue("sync");
-    harness.handlers.sync = vi.fn(async () => ({ synced: true }));
+    const harness = createHarness(["cdd"]);
+    harness.command.mockResolvedValue("cdd tree");
+    harness.handlers["cdd.tree"] = vi.fn(async () => ({ ok: true }));
 
     await expect(runSonamuCli(harness.options)).resolves.toMatchObject({ exitCode: 0 });
 
-    expect(harness.command).toHaveBeenCalledWith("syncc", expect.any(Array));
+    expect(harness.command).toHaveBeenCalledOnce();
     const candidates = harness.command.mock.calls[0][1];
-    expect(candidates).toEqual(expect.arrayContaining([...STANDALONE_COMMANDS]));
-    expect(candidates).toEqual(
-      expect.arrayContaining([
-        "entity list",
-        "fixture fetch",
-        "migrate connections",
-        "i18n check",
-        "task definitions",
-        "cdd rules",
-      ]),
+    expect(candidates.filter((candidate) => candidate === "cdd rule")).toHaveLength(1);
+    expect(candidates).not.toContain("cdd rule show");
+    expect(harness.handlers["cdd.tree"]).toHaveBeenCalledOnce();
+  });
+
+  it("중첩 그룹을 한 단계씩 선택해 최종 명령 경로까지 탐색한다", async () => {
+    const { runSonamuCli } = await importRuntime();
+    const harness = createHarness([]);
+    harness.command
+      .mockResolvedValueOnce("cdd")
+      .mockResolvedValueOnce("cdd rule")
+      .mockResolvedValueOnce("cdd rule show");
+    harness.handlers["cdd.rule.show"] = vi.fn(async () => ({ shown: true }));
+    const explicitHarness = createHarness(["cdd", "rule", "show"]);
+    explicitHarness.options.interaction.enabled = false;
+    explicitHarness.options.interaction.stdinIsTTY = false;
+    explicitHarness.options.interaction.stdoutIsTTY = false;
+    explicitHarness.handlers["cdd.rule.show"] = vi.fn(async () => ({ shown: true }));
+
+    const [result, explicitResult] = await Promise.all([
+      runSonamuCli(harness.options),
+      runSonamuCli(explicitHarness.options),
+    ]);
+
+    expect(result.exitCode).toBe(explicitResult.exitCode);
+    expect(result.error?.code).toBe(explicitResult.error?.code);
+
+    expect(harness.command).toHaveBeenNthCalledWith(2, "cdd", expect.any(Array));
+    const cddCandidates = harness.command.mock.calls[1][1];
+    expect(cddCandidates.filter((candidate) => candidate === "cdd rule")).toHaveLength(1);
+    expect(cddCandidates).not.toContain("cdd rule show");
+    expect(harness.command).toHaveBeenNthCalledWith(
+      3,
+      "cdd rule",
+      expect.arrayContaining(["cdd rule show", "cdd rule add"]),
     );
-    expect(harness.handlers.sync).toHaveBeenCalledOnce();
+    expect(harness.handlers["cdd.rule.show"]).not.toHaveBeenCalled();
+    expect(harness.init).not.toHaveBeenCalled();
+    expect(harness.destroy).not.toHaveBeenCalled();
+    expect(explicitHarness.handlers["cdd.rule.show"]).not.toHaveBeenCalled();
+    expect(explicitHarness.init).not.toHaveBeenCalled();
+    expect(explicitHarness.destroy).not.toHaveBeenCalled();
   });
 
   it("명령 선택을 취소하면 수명주기와 핸들러를 호출하지 않고 130으로 끝난다", async () => {
@@ -195,6 +213,91 @@ describe("인자 없는 명령 탐색", () => {
     expect(harness.init).not.toHaveBeenCalled();
     expect(harness.destroy).not.toHaveBeenCalled();
     expect(harness.handlers.sync).not.toHaveBeenCalled();
+  });
+
+  it("잘못된 최상위 토큰의 자동완성을 취소하면 수명주기와 핸들러 없이 130으로 끝난다", async () => {
+    const { runSonamuCli } = await importRuntime();
+    const harness = createHarness(["mig"]);
+    harness.command.mockResolvedValue(undefined);
+    harness.handlers["migrate.status"] = vi.fn();
+
+    const result = await runSonamuCli(harness.options);
+
+    expect(harness.command).toHaveBeenCalledWith("mig", expect.any(Array));
+    expect(result).toMatchObject({ exitCode: 130, error: { code: "CANCELLED" } });
+    expect(harness.init).not.toHaveBeenCalled();
+    expect(harness.destroy).not.toHaveBeenCalled();
+    expect(harness.handlers["migrate.status"]).not.toHaveBeenCalled();
+  });
+
+  it("중첩 명령 선택을 취소하면 수명주기와 핸들러를 호출하지 않고 130으로 끝난다", async () => {
+    const { runSonamuCli } = await importRuntime();
+    const harness = createHarness([]);
+    harness.command.mockResolvedValueOnce("migrate").mockResolvedValueOnce(undefined);
+    harness.handlers["migrate.apply"] = vi.fn();
+
+    const result = await runSonamuCli(harness.options);
+
+    expect(result).toMatchObject({ exitCode: 130, error: { code: "CANCELLED" } });
+    expect(harness.init).not.toHaveBeenCalled();
+    expect(harness.destroy).not.toHaveBeenCalled();
+    expect(harness.handlers["migrate.apply"]).not.toHaveBeenCalled();
+  });
+
+  it("기본 상호작용은 입력값과 의미 있는 명령 안내를 선택 프롬프트에 전달한다", async () => {
+    const { createDefaultInteraction } = await importRuntime();
+    const prompt = createPrompt();
+    prompt.select.mockResolvedValue({ value: "migrate" });
+    const interaction = createDefaultInteraction({ prompt, stdinIsTTY: true, stdoutIsTTY: true });
+
+    await interaction.discovery?.command?.("mig", ["migrate", "fixture"]);
+
+    expect(prompt.select).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringMatching(/command/i),
+        choices: ["migrate", "fixture"],
+        initial: "mig",
+      }),
+    );
+    const request = prompt.select.mock.calls[0][0];
+    expect(request.message).not.toMatch(/select a value for/i);
+    const presentation = request.labels ?? request.hints ?? request.descriptions;
+    expect(presentation).toBeDefined();
+    expect((presentation?.migrate ?? "").trim()).not.toBe("");
+    expect((presentation?.fixture ?? "").trim()).not.toBe("");
+  });
+
+  it("정확한 마이그레이션 그룹은 빈 검색어와 하위 명령 설명으로 탐색한다", async () => {
+    const { createDefaultInteraction } = await importRuntime();
+    const prompt = createPrompt();
+    const interaction = createDefaultInteraction({ prompt, stdinIsTTY: true, stdoutIsTTY: true });
+
+    await interaction.discovery?.command?.("migrate", [
+      "migrate run",
+      "migrate apply",
+      "migrate status",
+    ]);
+
+    expect(prompt.select).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringMatching(/migrate command/i),
+        choices: ["migrate run", "migrate apply", "migrate status"],
+        initial: "",
+        labels: {
+          "migrate run": "run",
+          "migrate apply": "apply",
+          "migrate status": "status",
+        },
+      }),
+    );
+    const request = prompt.select.mock.calls[0][0];
+    const runHint = request.hints?.["migrate run"] ?? "";
+    const statusHint = request.hints?.["migrate status"] ?? "";
+    expect.soft(runHint).not.toMatch(/continue with/i);
+    expect.soft(statusHint).not.toMatch(/continue with/i);
+    expect(`${runHint} ${statusHint}`).toMatch(
+      /migration|pending|applied|execute|database|schema/i,
+    );
   });
 });
 

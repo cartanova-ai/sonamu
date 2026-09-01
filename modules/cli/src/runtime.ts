@@ -32,6 +32,10 @@ export interface CliPrompt {
     readonly message: string;
     readonly choices?: readonly string[];
     readonly initial?: string;
+    readonly labels?: Readonly<Record<string, string>>;
+    readonly hints?: Readonly<Record<string, string>>;
+    readonly placeholder?: string;
+    readonly maxItems?: number;
   }): Promise<PromptResult<string>>;
   multiselect?(request: {
     readonly message: string;
@@ -123,6 +127,12 @@ interface PromptAnswer {
   readonly value?: string | boolean | readonly string[];
 }
 
+interface AutocompletePromptOption {
+  label: string;
+  value: string;
+  hint?: string;
+}
+
 interface PromptConfigBase {
   readonly name: "value";
   readonly message: string;
@@ -132,8 +142,15 @@ type PromptConfig =
   | (PromptConfigBase & { readonly type: "text"; readonly initial?: string })
   | (PromptConfigBase & { readonly type: "confirm"; readonly initial?: boolean })
   | (PromptConfigBase & {
-      readonly type: "select" | "multiselect";
-      readonly choices: readonly { readonly title: string; readonly value: string }[];
+      readonly type: "select" | "multiselect" | "autocomplete";
+      readonly choices: readonly {
+        readonly title: string;
+        readonly value: string;
+        readonly hint?: string;
+      }[];
+      readonly initial?: string;
+      readonly placeholder?: string;
+      readonly maxItems?: number;
     });
 type PromptImplementation = (config: PromptConfig) => Promise<PromptAnswer>;
 
@@ -201,13 +218,25 @@ export function createPromptsAdapter(
                     value,
                   })),
                 })
-              : await clack.select({
-                  ...common,
-                  options: (config.choices ?? []).map(({ title: label, value }) => ({
-                    label,
-                    value,
-                  })),
-                });
+              : config.type === "autocomplete"
+                ? await clack.autocomplete({
+                    ...common,
+                    options: config.choices.map(({ title: label, value, hint }) => {
+                      const option: AutocompletePromptOption = { label, value };
+                      if (hint !== undefined) option.hint = hint;
+                      return option;
+                    }),
+                    initialUserInput: config.initial,
+                    placeholder: config.placeholder,
+                    maxItems: config.maxItems,
+                  })
+                : await clack.select({
+                    ...common,
+                    options: (config.choices ?? []).map(({ title: label, value }) => ({
+                      label,
+                      value,
+                    })),
+                  });
       return clack.isCancel(promptValue) ? {} : { value: promptValue };
     });
   return {
@@ -215,26 +244,36 @@ export function createPromptsAdapter(
       readonly message: string;
       readonly choices?: readonly string[];
       readonly initial?: string;
+      readonly labels?: Readonly<Record<string, string>>;
+      readonly hints?: Readonly<Record<string, string>>;
+      readonly placeholder?: string;
+      readonly maxItems?: number;
     }) {
       const { message, choices = [] } = request;
-      const search = await promptImpl({
-        type: "text",
-        name: "value",
-        message,
-        initial: request.initial,
-      });
-      if (!Object.hasOwn(search, "value")) return { cancelled: true };
-      if (choices.length === 0) return { value: String(search.value) };
-
-      const matches = rankFuzzyMatches(String(search.value), choices, String);
-      if (matches.length === 0) return { cancelled: true };
-      if (matches.length === 1) return { value: matches[0] };
+      if (choices.length === 0) {
+        const answer = await promptImpl({
+          type: "text",
+          name: "value",
+          message,
+          initial: request.initial,
+        });
+        return Object.hasOwn(answer, "value")
+          ? { value: String(answer.value) }
+          : { cancelled: true };
+      }
 
       const selected = await promptImpl({
-        type: "select",
+        type: "autocomplete",
         name: "value",
         message,
-        choices: matches.map((value) => ({ title: value, value })),
+        choices: choices.map((value) => ({
+          title: request.labels?.[value] ?? value,
+          value,
+          hint: request.hints?.[value],
+        })),
+        initial: request.initial,
+        placeholder: request.placeholder ?? "Type to search commands",
+        maxItems: Math.min(10, Math.max(1, request.maxItems ?? 10)),
       });
       const selectedValue = z.string().safeParse(selected.value);
       return selectedValue.success ? { value: selectedValue.data } : { cancelled: true };
@@ -273,6 +312,34 @@ export function createPromptsAdapter(
 
 const defaultInteractions = new WeakSet<CliInteraction>();
 
+const COMMAND_HINTS = new Map<string, string>([
+  ["sync", "Synchronize Sonamu project metadata"],
+  ["build", "Build Sonamu applications"],
+  ["dev", "Start development servers"],
+  ["start", "Start the Sonamu application"],
+  ["test", "Run the project test suite"],
+  ["entity", "Inspect and manage entities"],
+  ["fixture", "Create and manage fixture data"],
+  ["migrate", "Manage database schema migrations"],
+  ["stub", "Generate typed entity stubs"],
+  ["scaffold", "Generate models, views, and tests"],
+  ["cone", "Generate localized entity resources"],
+  ["auth", "Generate authentication integrations"],
+  ["i18n", "Manage translation resources"],
+  ["task", "Inspect and control background tasks"],
+  ["cdd", "Browse Contract-Driven Development resources"],
+  ["cdd rule", "Inspect or add CDD rules"],
+  ["migrate run", "Execute pending database migrations"],
+  ["migrate apply", "Apply migration changes to selected targets"],
+  ["migrate generate", "Generate a migration from schema changes"],
+  ["migrate status", "Show applied and pending migrations"],
+  ["migrate connections", "List configured migration database connections"],
+  ["migrate code", "Generate migration code"],
+  ["migrate preview", "Preview migration changes before applying them"],
+  ["migrate shadow", "Run migrations against a shadow database"],
+  ["migrate rollback", "Roll back applied database migrations"],
+]);
+
 export function createDefaultInteraction(
   options: {
     readonly prompt?: CliPrompt;
@@ -281,7 +348,7 @@ export function createDefaultInteraction(
   } = {},
 ): CliInteraction {
   const prompt = options.prompt ?? createPromptsAdapter();
-  const discover = async (input: string, candidates: readonly string[]) => {
+  const discoverValue = async (input: string, candidates: readonly string[]) => {
     const selected = await prompt.select({
       message: `Select a value for “${input}”`,
       choices: candidates,
@@ -294,8 +361,44 @@ export function createDefaultInteraction(
     stdoutIsTTY: options.stdoutIsTTY ?? process.stdout.isTTY,
     prompt,
     discovery: {
-      command: discover,
-      value: discover,
+      async command(input, candidates) {
+        const prefixTokens = input.trim().split(/\s+/).filter(Boolean);
+        const inputPath = prefixTokens.join(" ");
+        const isCurrentGroup =
+          inputPath !== "" && candidates.some((candidate) => candidate.startsWith(`${inputPath} `));
+        const parent = isCurrentGroup
+          ? inputPath
+          : prefixTokens.length > 1
+            ? prefixTokens.slice(0, -1).join(" ")
+            : "";
+        const initial = isCurrentGroup ? "" : (prefixTokens.at(-1) ?? "");
+        const labels = Object.fromEntries(
+          candidates.map((candidate) => {
+            const relative =
+              parent !== "" && candidate.startsWith(`${parent} `)
+                ? candidate.slice(parent.length + 1)
+                : candidate;
+            return [candidate, relative === parent ? "Use current command" : relative];
+          }),
+        );
+        const hints = Object.fromEntries(
+          candidates.flatMap((candidate) => {
+            const hint = COMMAND_HINTS.get(candidate);
+            return hint === undefined ? [] : [[candidate, hint]];
+          }),
+        );
+        const selected = await prompt.select({
+          message: parent === "" ? "Choose a command" : `Choose a ${parent} command`,
+          choices: candidates,
+          initial,
+          labels,
+          hints,
+          placeholder: "Type to search commands",
+          maxItems: 10,
+        });
+        return selected.cancelled ? undefined : selected.value;
+      },
+      value: discoverValue,
       async entity(_input, context) {
         const selected = await prompt.select({
           message: "Entity",
@@ -588,7 +691,7 @@ function replaceDiscoveredCommand(args: string[], selected: string, mismatchDept
   args.splice(0, consumed, ...selectedTokens);
 }
 
-function nestedCommandDiscovery(
+export function nestedCommandDiscovery(
   args: readonly string[],
   candidatePaths: readonly (readonly string[])[],
 ):
@@ -619,22 +722,47 @@ function nestedCommandDiscovery(
     if (isFuzzyCorrection) {
       return {
         input: args.slice(0, depth + 1).join(" "),
-        candidates: SONAMU_COMMAND_CANDIDATES,
+        candidates: childPaths.map((path) => path.slice(0, depth + 1).join(" ")),
         mismatchDepth: depth,
       };
     }
 
     // 알 수 없는 토큰은 빠진 하위 명령 뒤의 인자로 보고 선택 후에도 보존합니다.
+    const prefix = args.slice(0, depth).join(" ");
     return {
       input: args.slice(0, depth).join(" "),
-      candidates: childPaths.map((path) => path.join(" ")),
+      candidates: [
+        ...new Set([
+          ...(matchingPaths.some((path) => path.length === depth) ? [prefix] : []),
+          ...childPaths.map((path) => path.slice(0, depth + 1).join(" ")),
+        ]),
+      ],
       mismatchDepth: depth - 1,
     };
   }
   return undefined;
 }
 
-async function applyDiscovery(
+function immediateCommandCandidates(
+  prefix: string,
+  candidatePaths: readonly (readonly string[])[],
+): readonly string[] {
+  const prefixTokens = prefix.split(" ");
+  const matchingPaths = candidatePaths.filter((path) =>
+    prefixTokens.every((token, index) => path[index] === token),
+  );
+  const candidates = matchingPaths
+    .filter((path) => path.length > prefixTokens.length)
+    .map((path) => path.slice(0, prefixTokens.length + 1).join(" "));
+  if (matchingPaths.some((path) => path.length === prefixTokens.length)) candidates.unshift(prefix);
+  return [...new Set(candidates)];
+}
+
+function commandCancellation(): Error {
+  return Object.assign(new Error("Cancelled."), { code: "CANCELLED", exitCode: 130 });
+}
+
+export async function applyDiscovery(
   rawArgs: readonly string[],
   interaction: CliInteraction,
   nonInteractive: boolean,
@@ -653,25 +781,38 @@ async function applyDiscovery(
 
   const candidatePaths = SONAMU_COMMAND_CANDIDATES.map((candidate) => candidate.split(" "));
   const topLevelCommands = new Set(candidatePaths.map(([topLevel]) => topLevel));
+  let selectedPrefix: string | undefined;
 
   if ((args.length === 0 || !topLevelCommands.has(args[0])) && discovery.command) {
     const input = args[0] ?? "";
-    const command = await discovery.command(input, SONAMU_COMMAND_CANDIDATES);
-    if (command === undefined && args.length === 0) {
-      throw Object.assign(new Error("Cancelled."), { code: "CANCELLED", exitCode: 130 });
-    }
-    if (command !== undefined) {
+    const topLevelCandidates = [...topLevelCommands];
+    const command = await discovery.command(input, topLevelCandidates);
+    if (command === undefined) {
+      throw commandCancellation();
+    } else {
       replaceDiscoveredCommand(args, command, 0);
+      selectedPrefix = command;
     }
   }
 
   if (args.length > 0 && topLevelCommands.has(args[0]) && discovery.command) {
-    const nested = nestedCommandDiscovery(args, candidatePaths);
-    if (nested !== undefined) {
-      const command = await discovery.command(nested.input, nested.candidates);
-      if (command !== undefined) {
-        replaceDiscoveredCommand(args, command, nested.mismatchDepth);
+    // 대화형으로 선택한 그룹은 leaf이기도 해도 현재 명령과 하위 명령을 명시적으로 고르게 합니다.
+    if (selectedPrefix !== undefined && rawArgs.length <= 1) {
+      const candidates = immediateCommandCandidates(selectedPrefix, candidatePaths);
+      if (candidates.length > 1) {
+        const command = await discovery.command(selectedPrefix, candidates);
+        if (command === undefined) throw commandCancellation();
+        if (command === selectedPrefix) return args;
+        replaceDiscoveredCommand(args, command, selectedPrefix.split(" ").length - 1);
       }
+    }
+
+    for (let nested = nestedCommandDiscovery(args, candidatePaths); nested !== undefined; ) {
+      const command = await discovery.command(nested.input, nested.candidates);
+      if (command === undefined) throw commandCancellation();
+      if (command === nested.input) break;
+      replaceDiscoveredCommand(args, command, nested.mismatchDepth);
+      nested = nestedCommandDiscovery(args, candidatePaths);
     }
   }
 

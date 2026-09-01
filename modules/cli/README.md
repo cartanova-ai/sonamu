@@ -14,13 +14,18 @@ The previous Sonamu-owned tsicli implementation has been removed.
 
 ## Interactive use
 
-Run without arguments in a terminal to search for a command:
+Run without arguments in a terminal to search top-level commands and groups:
 
 ```sh
 sonamu
 ```
 
-Incomplete command paths such as `sonamu fixture` also open fuzzy selection.
+Autocomplete keeps each menu to at most 10 visible choices and narrows the list
+as you type. Selecting a group opens its immediate subcommands and, when the
+group is itself runnable, a `Use current command` choice. Incomplete paths such
+as `sonamu fixture` start directly at that group's children. Press Ctrl+C at any
+command-selection stage to cancel with exit code 130.
+
 Entity commands can select an Entity when it is omitted or misspelled. Explicit
 valid arguments skip prompts.
 
