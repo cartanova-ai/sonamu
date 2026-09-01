@@ -35,13 +35,13 @@ pnpm sonamu fixture import [entityId] [recordIds]
 **파라미터**:
 
 - `entityId`: Entity 이름 (예: "User", "Post")
-- `recordIds`: 가져올 레코드 ID 배열 (쉼표로 구분)
+- `recordIds`: 가져올 하나 이상의 레코드 ID (공백으로 구분한 위치 인자)
 
 ### 예제
 
 ```bash
 # User ID 1, 2, 3을 Fixture DB로 가져오기
-pnpm sonamu fixture import User 1,2,3
+pnpm sonamu fixture import User 1 2 3
 
 # Post ID 42를 Fixture DB로 가져오기
 pnpm sonamu fixture import Post 42
@@ -143,7 +143,7 @@ async function fixture_import(entityId: string, recordIds: number[]) {
 ### 사용자 가져오기
 
 ```bash
-pnpm sonamu fixture import User 1,2,3
+pnpm sonamu fixture import User 1 2 3
 
 { entityId: 'User', field: 'id', id: 1 }
 { entityId: 'Profile', field: 'id', id: 1 }
@@ -186,7 +186,7 @@ INSERT IGNORE INTO fixture.posts ...
 pnpm sonamu fixture import User 1
 
 # 2. User의 Posts를 별도로 가져오기
-pnpm sonamu fixture import Post 10,11,12
+pnpm sonamu fixture import Post 10 11 12
 
 # HasMany는 자동으로 추적되지 않음
 # (너무 많은 데이터가 가져와질 수 있음)
@@ -240,10 +240,10 @@ this.visitedRecords.add(recordKey);
 
 ```bash
 # ✅ 올바른 방법: 필요한 것만
-pnpm sonamu fixture import User 1,2
+pnpm sonamu fixture import User 1 2
 
 # ❌ 잘못된 방법: 너무 많은 데이터
-pnpm sonamu fixture import User 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+pnpm sonamu fixture import User 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
 ```
 
 ### 2. 대표 케이스
@@ -313,11 +313,11 @@ GRANT ALL PRIVILEGES ON fixture.* TO 'user'@'%';
 
 ```bash
 # 한 번에 너무 많은 ID를 가져오면 느림
-pnpm sonamu fixture import User 1,2,3,...,100
+pnpm sonamu fixture import User $(seq 1 100)
 
 # 해결: 여러 번 나눠서 실행
-pnpm sonamu fixture import User 1,2,3,4,5
-pnpm sonamu fixture import User 6,7,8,9,10
+pnpm sonamu fixture import User 1 2 3 4 5
+pnpm sonamu fixture import User 6 7 8 9 10
 ```
 
 ## 주의사항

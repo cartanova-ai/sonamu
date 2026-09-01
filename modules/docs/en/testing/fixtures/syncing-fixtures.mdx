@@ -102,7 +102,7 @@ pg_restore -h localhost -d myapp_test --no-owner --no-acl
 
 ```bash
 # Add new data to Fixture
-pnpm sonamu fixture import User 10,11,12
+pnpm sonamu fixture import User 10 11 12
 
 # Sync runs automatically
 # But manual is also possible:
@@ -204,7 +204,7 @@ async function fixture_import(entityId: string, recordIds: number[]) {
 ```
 
 ```bash
-$ pnpm sonamu fixture import User 1,2,3
+$ pnpm sonamu fixture import User 1 2 3
 
 # After import completes, automatically:
 ✅ Import complete! Syncing to test DB...
@@ -226,14 +226,14 @@ pnpm sonamu fixture sync
 
 ```bash
 # 1. Import necessary data from production
-pnpm sonamu fixture import User 1,2,3
+pnpm sonamu fixture import User 1 2 3
 # → Sync runs automatically
 
 # 2. Run tests
 pnpm test
 
 # 3. Import additional data if needed
-pnpm sonamu fixture import Post 10,11,12
+pnpm sonamu fixture import Post 10 11 12
 # → Sync runs automatically
 
 # 4. Re-run tests
@@ -244,7 +244,7 @@ pnpm test
 
 ```bash
 # Team member A
-pnpm sonamu fixture import User 100,101,102
+pnpm sonamu fixture import User 100 101 102
 # → Saved to Fixture DB (remote)
 
 # Team member B
@@ -288,10 +288,10 @@ Keep only necessary data in Fixture:
 
 ```bash
 # ✅ Correct: Only what's needed
-pnpm sonamu fixture import User 1,2,3
+pnpm sonamu fixture import User 1 2 3
 
 # ❌ Wrong: Too much data
-pnpm sonamu fixture import User 1,2,3,...,1000
+pnpm sonamu fixture import User $(seq 1 1000)
 ```
 
 ## Best Practices

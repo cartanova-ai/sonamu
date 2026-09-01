@@ -102,7 +102,7 @@ pg_restore -h localhost -d myapp_test --no-owner --no-acl
 
 ```bash
 # Fixture에 새 데이터 추가
-pnpm sonamu fixture import User 10,11,12
+pnpm sonamu fixture import User 10 11 12
 
 # 자동으로 sync 실행됨
 # 하지만 수동으로도 가능:
@@ -204,7 +204,7 @@ async function fixture_import(entityId: string, recordIds: number[]) {
 ```
 
 ```bash
-$ pnpm sonamu fixture import User 1,2,3
+$ pnpm sonamu fixture import User 1 2 3
 
 # Import 완료 후 자동으로:
 ✅ Import complete! Syncing to test DB...
@@ -226,14 +226,14 @@ pnpm sonamu fixture sync
 
 ```bash
 # 1. 프로덕션에서 필요한 데이터 가져오기
-pnpm sonamu fixture import User 1,2,3
+pnpm sonamu fixture import User 1 2 3
 # → 자동으로 sync 실행됨
 
 # 2. 테스트 실행
 pnpm test
 
 # 3. 필요시 추가 데이터 가져오기
-pnpm sonamu fixture import Post 10,11,12
+pnpm sonamu fixture import Post 10 11 12
 # → 자동으로 sync 실행됨
 
 # 4. 테스트 재실행
@@ -244,7 +244,7 @@ pnpm test
 
 ```bash
 # 팀원 A
-pnpm sonamu fixture import User 100,101,102
+pnpm sonamu fixture import User 100 101 102
 # → Fixture DB(원격)에 저장됨
 
 # 팀원 B
@@ -288,10 +288,10 @@ Fixture에 필요한 최소 데이터만 유지:
 
 ```bash
 # ✅ 올바른 방법: 필요한 것만
-pnpm sonamu fixture import User 1,2,3
+pnpm sonamu fixture import User 1 2 3
 
 # ❌ 잘못된 방법: 너무 많은 데이터
-pnpm sonamu fixture import User 1,2,3,...,1000
+pnpm sonamu fixture import User $(seq 1 1000)
 ```
 
 ## 베스트 프랙티스
