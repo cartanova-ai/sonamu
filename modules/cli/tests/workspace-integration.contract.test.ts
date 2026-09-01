@@ -120,6 +120,12 @@ describe("최종 CLI 패키지 워크스페이스 통합", () => {
     }
   });
 
+  it("CI 유닛 테스트 준비가 마이그레이션을 명시적으로 승인해 실행한다", async () => {
+    const source = await readRepositoryFile("scripts/miomock-unit-test.sh");
+
+    expect(source).toContain("sonamu migrate run --execute --confirm");
+  });
+
   it("create-sonamu 배포 준비가 sonamu와 CLI의 워크스페이스 버전을 모두 치환한다", async () => {
     const source = await readRepositoryFile("modules/create-sonamu/scripts/prepublish.mjs");
 
