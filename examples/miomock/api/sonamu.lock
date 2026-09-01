@@ -201,7 +201,7 @@
   },
   {
     "path": "api/src/application/telemetry/telemetry.frame.ts",
-    "checksum": "bbb08c1cb9fc3c4060cfdf5b2d75e6e37dfedcd8"
+    "checksum": "9fbd0fa9d898d22a4ac1465fb4634f31c9cb81b8"
   },
   {
     "path": "api/src/application/telemetry/telemetry.types.ts",
@@ -253,7 +253,7 @@
   },
   {
     "path": "api/src/i18n/sd.generated.ts",
-    "checksum": "58b787915d727c55a50417b5547e5bae37d277cd"
+    "checksum": "96721601b00593a6b1a00284c4467281b15df813"
   },
   {
     "path": "api/src/sonamu.config.ts",
@@ -273,7 +273,7 @@
   },
   {
     "path": "web/src/i18n/sd.generated.ts",
-    "checksum": "1d8c9fcf60959004ad3b98345f8ea69bedb5b788"
+    "checksum": "d60f341e35b8db838b603b9240a6e7dcd853f856"
   },
   {
     "path": "web/src/services/account/account.types.ts",
