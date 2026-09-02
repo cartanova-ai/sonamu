@@ -669,13 +669,14 @@ export class Migrator {
     const codes: GenMigrationCode[] = [];
     const batchSize = 4;
 
+    // 테이블마다 스키마를 조회하면 왕복이 테이블 수에 비례해 늘어난다.
+    // 종류별로 한 번씩만 읽어두고 아래에서 테이블명으로 찾아 쓴다.
+    const dbSets = await PostgreSQLSchemaReader.getMigrationSetFromDBAll(compareDB);
+
     for (let i = 0; i < entitySets.length; i += batchSize) {
       const batchCodes = await Promise.all(
         entitySets.slice(i, i + batchSize).map(async (entitySet) => {
-          const dbSet = await PostgreSQLSchemaReader.getMigrationSetFromDB(
-            compareDB,
-            entitySet.table,
-          );
+          const dbSet = dbSets.get(entitySet.table) ?? null;
           Naite.t(`migrator:compareMigrations:entitySet:${entitySet.table}`, entitySet);
           Naite.t(`migrator:compareMigrations:dbSet:${entitySet.table}`, dbSet);
 

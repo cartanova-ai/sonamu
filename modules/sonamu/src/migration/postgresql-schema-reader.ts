@@ -68,6 +68,12 @@ type PgForeign = {
   delete_rule: string;
 };
 
+type TableSchemaRows = {
+  columns: PgColumn[];
+  indexes: PgIndex[];
+  foreigns: PgForeign[];
+};
+
 type RawCapableKnex = Pick<Knex, "raw">;
 
 class PostgreSQLSchemaReaderClass {
@@ -96,6 +102,53 @@ class PostgreSQLSchemaReaderClass {
     // vector 컬럼의 dimensions 조회
     const vectorDimensions = await this.getVectorDimensions(compareDB, table);
 
+    return this.buildMigrationSet(table, dbColumns, dbIndexes, dbForeigns, vectorDimensions);
+  }
+
+  /**
+   * public 스키마의 모든 테이블을 한 번에 읽어서 테이블별 MigrationSet을 반환합니다.
+   *
+   * getMigrationSetFromDB를 테이블마다 호출하면 (컬럼/인덱스/FK/벡터차원) × 테이블 수 만큼
+   * 왕복이 발생한다. 비교 대상이 수십 개면 원격 DB에서 왕복 비용이 지배적이 되므로,
+   * 종류별로 한 번씩만 조회한다. 행 해석은 getMigrationSetFromDB와 동일한
+   * buildMigrationSet을 공유한다.
+   *
+   * @returns 테이블명 → MigrationSet. DB에 없는 테이블은 항목이 없다.
+   */
+  async getMigrationSetFromDBAll(compareDB: RawCapableKnex): Promise<Map<string, MigrationSet>> {
+    const [tables, vectorDimensions] = await Promise.all([
+      this.readTables(compareDB),
+      this.getVectorDimensionsAll(compareDB),
+    ]);
+
+    const migrationSets = new Map<string, MigrationSet>();
+    for (const [table, rows] of tables) {
+      migrationSets.set(
+        table,
+        this.buildMigrationSet(
+          table,
+          rows.columns,
+          rows.indexes,
+          rows.foreigns,
+          vectorDimensions.get(table) ?? {},
+        ),
+      );
+    }
+    return migrationSets;
+  }
+
+  /**
+   * 조회 결과 행들을 MigrationSet으로 변환합니다.
+   * 테이블 단위 조회(getMigrationSetFromDB)와 전체 일괄 조회(getMigrationSetFromDBAll)가
+   * 이 로직을 공유합니다.
+   */
+  private buildMigrationSet(
+    table: string,
+    dbColumns: PgColumn[],
+    dbIndexes: PgIndex[],
+    dbForeigns: PgForeign[],
+    vectorDimensions: Record<string, number>,
+  ): MigrationSet {
     const columns: MigrationColumn[] = dbColumns.map((dbColumn) => {
       const dbColType = this.resolveDBColType(dbColumn);
 
@@ -257,9 +310,32 @@ class PostgreSQLSchemaReaderClass {
     compareDB: RawCapableKnex,
     tableName: string,
   ): Promise<[PgColumn[], PgIndex[], PgForeign[]]> {
+    const tables = await this.readTables(compareDB, tableName);
+    const rows = tables.get(tableName);
+    if (rows === undefined) {
+      throw new Error(`Table not found: ${tableName}`);
+    }
+    return [rows.columns, rows.indexes, rows.foreigns];
+  }
+
+  /**
+   * public 스키마 테이블들의 cols/indexes/foreigns를 테이블별로 묶어서 반환합니다.
+   *
+   * tableName을 주면 그 테이블만, 생략하면 전체를 조회합니다. 쿼리는 두 경로가 공유하므로
+   * 단일 조회와 일괄 조회의 해석이 갈라지지 않습니다. 전체 조회 시에는 테이블마다 4번씩
+   * 왕복하는 대신 종류별로 한 번씩만 돌기 때문에, 원격 DB에서 왕복 비용이 크게 줄어듭니다.
+   */
+  private async readTables(
+    compareDB: RawCapableKnex,
+    tableName?: string,
+  ): Promise<Map<string, TableSchemaRows>> {
+    const bindings = tableName === undefined ? [] : [tableName, tableName, tableName];
+    const tableFilter = (column: string) => (tableName === undefined ? "" : `AND ${column} = ?`);
+
     // Columns 조회 (Generated Column 정보 포함)
     const columnsQuery = `
       SELECT
+        c.table_name,
         c.column_name,
         c.data_type,
         c.udt_name,
@@ -282,20 +358,15 @@ class PostgreSQLSchemaReaderClass {
           SELECT oid FROM pg_class WHERE relname = c.table_name
           AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = c.table_schema)
         )
-      WHERE c.table_name = ?
-        AND c.table_schema = 'public'
-      ORDER BY c.ordinal_position
+      WHERE c.table_schema = 'public'
+        ${tableFilter("c.table_name")}
+      ORDER BY c.table_name, c.ordinal_position
     `;
-    const columns = /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ (
-      await compareDB.raw(columnsQuery, [tableName])
-    ).rows as PgColumn[];
-    if (columns.length === 0) {
-      throw new Error(`Table not found: ${tableName}`);
-    }
 
     // Indexes 조회 (PGroonga 표현식 인덱스 포함)
     const indexesQuery = `
       SELECT
+          t.relname AS table_name,
           i.relname AS index_name,
           CASE
               WHEN am.amname = 'pgroonga' AND u.attnum = 0 THEN
@@ -325,6 +396,7 @@ class PostgreSQLSchemaReaderClass {
           pg_get_indexdef(ix.indexrelid) AS index_definition,
           pg_get_expr(ix.indpred, ix.indrelid) AS predicate
       FROM pg_class t
+      JOIN pg_namespace ns ON ns.oid = t.relnamespace
       JOIN pg_index ix ON t.oid = ix.indrelid
       JOIN pg_class i ON i.oid = ix.indexrelid
       JOIN pg_am am ON i.relam = am.oid
@@ -334,9 +406,11 @@ class PostgreSQLSchemaReaderClass {
           AND a.attnum = u.attnum 
           AND u.attnum > 0
       LEFT JOIN LATERAL (
-          SELECT 
-              unnest(
-                  CASE 
+          -- PGroonga 표현식 인덱스는 모든 행의 attnum이 0이라 u.ord가 같다.
+          -- 표현식 배열의 순번(expr_ord)을 함께 뽑아 정렬을 확정한다.
+          SELECT expr.column_expr, expr.expr_ord
+          FROM unnest(
+                  CASE
                       WHEN pg_get_expr(ix.indexprs, ix.indrelid) ~ '^ARRAY\\[' THEN
                           string_to_array(
                               regexp_replace(
@@ -349,13 +423,14 @@ class PostgreSQLSchemaReaderClass {
                       ELSE
                           ARRAY[pg_get_expr(ix.indexprs, ix.indrelid)]
                   END
-              ) as column_expr
+              ) WITH ORDINALITY AS expr(column_expr, expr_ord)
       ) pgroonga_col ON am.amname = 'pgroonga' AND u.attnum = 0
-      WHERE t.relname = ?
+      WHERE t.relkind = 'r'
+          AND ns.nspname = 'public'
+          ${tableFilter("t.relname")}
           AND (u.attnum > 0 OR (am.amname = 'pgroonga' AND u.attnum = 0))
-      ORDER BY i.relname, u.ord;
+      ORDER BY t.relname, i.relname, u.ord, pgroonga_col.expr_ord;
 `;
-    const indexes = (await compareDB.raw(indexesQuery, [tableName])).rows;
 
     // Foreign Keys 조회
     //
@@ -371,6 +446,7 @@ class PostgreSQLSchemaReaderClass {
     // 짝지어야 복합 FK에서 컬럼 대응이 어긋나지 않는다.
     const foreignsQuery = `
       SELECT
+        cl.relname AS table_name,
         con.conname AS constraint_name,
         att.attname AS column_name,
         ref_cl.relname AS foreign_table_name,
@@ -402,12 +478,46 @@ class PostgreSQLSchemaReaderClass {
         ON ref_att.attrelid = ref_cl.oid AND ref_att.attnum = ref_key_col.attnum
       WHERE con.contype = 'f'
         AND ns.nspname = 'public'
-        AND cl.relname = ?
-      ORDER BY con.conname, key_col.ord
+        ${tableFilter("cl.relname")}
+      ORDER BY cl.relname, con.conname, key_col.ord
     `;
-    const foreigns = (await compareDB.raw(foreignsQuery, [tableName])).rows;
 
-    return [columns, indexes, foreigns];
+    // 종류별로 한 번씩만 조회한 뒤 테이블명으로 묶습니다.
+    const [columnRows, indexRows, foreignRows] = await Promise.all([
+      compareDB
+        .raw(columnsQuery, bindings.slice(0, 1))
+        .then((result: { rows: (PgColumn & { table_name: string })[] }) => result.rows),
+      compareDB
+        .raw(indexesQuery, bindings.slice(1, 2))
+        .then((result: { rows: (PgIndex & { table_name: string })[] }) => result.rows),
+      compareDB
+        .raw(foreignsQuery, bindings.slice(2, 3))
+        .then((result: { rows: (PgForeign & { table_name: string })[] }) => result.rows),
+    ]);
+
+    const tables = new Map<string, TableSchemaRows>();
+    const ensure = (table: string): TableSchemaRows => {
+      const existing = tables.get(table);
+      if (existing !== undefined) {
+        return existing;
+      }
+      const created: TableSchemaRows = { columns: [], indexes: [], foreigns: [] };
+      tables.set(table, created);
+      return created;
+    };
+
+    // 컬럼이 없는 테이블은 존재하지 않는 것으로 취급하므로 컬럼 기준으로 항목을 만듭니다.
+    for (const row of columnRows) {
+      ensure(row.table_name).columns.push(row);
+    }
+    for (const row of indexRows) {
+      tables.get(row.table_name)?.indexes.push(row);
+    }
+    for (const row of foreignRows) {
+      tables.get(row.table_name)?.foreigns.push(row);
+    }
+
+    return tables;
   }
 
   private restoreMigrationIndexType(
@@ -788,24 +898,41 @@ class PostgreSQLSchemaReaderClass {
     compareDB: RawCapableKnex,
     tableName: string,
   ): Promise<Record<string, number>> {
+    return (await this.getVectorDimensionsAll(compareDB, tableName)).get(tableName) ?? {};
+  }
+
+  /**
+   * vector 컬럼의 dimensions를 테이블별로 조회합니다.
+   * tableName을 생략하면 public 스키마 전체를 한 번에 조회합니다.
+   */
+  private async getVectorDimensionsAll(
+    compareDB: RawCapableKnex,
+    tableName?: string,
+  ): Promise<Map<string, Record<string, number>>> {
     const query = `
       SELECT
+        c.relname as table_name,
         a.attname as column_name,
         a.atttypmod as dimensions
       FROM pg_attribute a
       JOIN pg_class c ON a.attrelid = c.oid
+      JOIN pg_namespace n ON n.oid = c.relnamespace
       JOIN pg_type t ON a.atttypid = t.oid
-      WHERE c.relname = ?
-        AND t.typname = 'vector'
+      WHERE t.typname = 'vector'
         AND a.attnum > 0
+        AND n.nspname = 'public'
+        ${tableName === undefined ? "" : "AND c.relname = ?"}
     `;
-    const result = await compareDB.raw(query, [tableName]);
-    const dimensions: Record<string, number> = {};
+    const result = await compareDB.raw(query, tableName === undefined ? [] : [tableName]);
+
+    const dimensionsByTable = new Map<string, Record<string, number>>();
     for (const row of result.rows) {
+      const dimensions = dimensionsByTable.get(row.table_name) ?? {};
       // atttypmod에서 실제 dimensions 값 추출
       dimensions[row.column_name] = row.dimensions > 0 ? row.dimensions : 0;
+      dimensionsByTable.set(row.table_name, dimensions);
     }
-    return dimensions;
+    return dimensionsByTable;
   }
 
   /**

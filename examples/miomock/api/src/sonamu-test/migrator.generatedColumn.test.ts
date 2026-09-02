@@ -383,8 +383,8 @@ describe("Migrator - Generated Column", () => {
       ),
     } satisfies EntityJson;
 
-    const originalGetMigrationSetFromDB =
-      PostgreSQLSchemaReader.getMigrationSetFromDB.bind(PostgreSQLSchemaReader);
+    const originalGetMigrationSetFromDBAll =
+      PostgreSQLSchemaReader.getMigrationSetFromDBAll.bind(PostgreSQLSchemaReader);
     const originalGetByTable = EntityManager.getByTable.bind(EntityManager);
     const dbSet = buildDbSetWithGeneratedSearchText(
       getMigrationSetFromEntity(new Entity(previousUser)),
@@ -400,13 +400,12 @@ describe("Migrator - Generated Column", () => {
       return originalGetByTable(table);
     });
     const schemaReaderSpy = vi
-      .spyOn(PostgreSQLSchemaReader, "getMigrationSetFromDB")
-      .mockImplementation(async (compareDB, table) => {
-        if (table === "users") {
-          return dbSet;
-        }
-
-        return originalGetMigrationSetFromDB(compareDB, table);
+      .spyOn(PostgreSQLSchemaReader, "getMigrationSetFromDBAll")
+      .mockImplementation(async (compareDB) => {
+        // users만 합성 dbSet으로 바꾸고 나머지 테이블은 실제 스키마를 그대로 쓴다.
+        const dbSets = await originalGetMigrationSetFromDBAll(compareDB);
+        dbSets.set("users", dbSet);
+        return dbSets;
       });
 
     try {
@@ -481,8 +480,8 @@ describe("Migrator - Generated Column", () => {
       ),
     } satisfies EntityJson;
 
-    const originalGetMigrationSetFromDB =
-      PostgreSQLSchemaReader.getMigrationSetFromDB.bind(PostgreSQLSchemaReader);
+    const originalGetMigrationSetFromDBAll =
+      PostgreSQLSchemaReader.getMigrationSetFromDBAll.bind(PostgreSQLSchemaReader);
     const originalGetByTable = EntityManager.getByTable.bind(EntityManager);
     const dbSet = buildDbSetWithGeneratedSearchText(
       getMigrationSetFromEntity(new Entity(previousUser)),
@@ -498,13 +497,12 @@ describe("Migrator - Generated Column", () => {
       return originalGetByTable(table);
     });
     const schemaReaderSpy = vi
-      .spyOn(PostgreSQLSchemaReader, "getMigrationSetFromDB")
-      .mockImplementation(async (compareDB, table) => {
-        if (table === "users") {
-          return dbSet;
-        }
-
-        return originalGetMigrationSetFromDB(compareDB, table);
+      .spyOn(PostgreSQLSchemaReader, "getMigrationSetFromDBAll")
+      .mockImplementation(async (compareDB) => {
+        // users만 합성 dbSet으로 바꾸고 나머지 테이블은 실제 스키마를 그대로 쓴다.
+        const dbSets = await originalGetMigrationSetFromDBAll(compareDB);
+        dbSets.set("users", dbSet);
+        return dbSets;
       });
 
     try {
@@ -565,8 +563,8 @@ describe("Migrator - Generated Column", () => {
       indexes: previousUser.indexes.filter((index) => index.name !== "users_search_text_trgm"),
     } satisfies EntityJson;
 
-    const originalGetMigrationSetFromDB =
-      PostgreSQLSchemaReader.getMigrationSetFromDB.bind(PostgreSQLSchemaReader);
+    const originalGetMigrationSetFromDBAll =
+      PostgreSQLSchemaReader.getMigrationSetFromDBAll.bind(PostgreSQLSchemaReader);
     const originalGetByTable = EntityManager.getByTable.bind(EntityManager);
     const dbSet = buildDbSetWithGeneratedSearchText(
       getMigrationSetFromEntity(new Entity(previousUser)),
@@ -582,13 +580,12 @@ describe("Migrator - Generated Column", () => {
       return originalGetByTable(table);
     });
     const schemaReaderSpy = vi
-      .spyOn(PostgreSQLSchemaReader, "getMigrationSetFromDB")
-      .mockImplementation(async (compareDB, table) => {
-        if (table === "users") {
-          return dbSet;
-        }
-
-        return originalGetMigrationSetFromDB(compareDB, table);
+      .spyOn(PostgreSQLSchemaReader, "getMigrationSetFromDBAll")
+      .mockImplementation(async (compareDB) => {
+        // users만 합성 dbSet으로 바꾸고 나머지 테이블은 실제 스키마를 그대로 쓴다.
+        const dbSets = await originalGetMigrationSetFromDBAll(compareDB);
+        dbSets.set("users", dbSet);
+        return dbSets;
       });
 
     try {
