@@ -25,6 +25,10 @@ import {
 } from "../types/types";
 import { exhaustive } from "../utils/utils";
 
+// numeric 컬럼에서 precision/scale을 생략했을 때 실제로 생성되는 값(knex decimal의 기본값)이다.
+const NUMERIC_DEFAULT_PRECISION = 8;
+const NUMERIC_DEFAULT_SCALE = 2;
+
 /**
  * Entity를 읽어서 MigrationSetAndJoinTable을 만들어옵니다.
  * @param entity Entity 객체
@@ -62,11 +66,24 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
               length: prop.length,
             }),
           // Number/Numeric 타입의 경우 precision, scale 추가
-          ...((isNumberProp(prop) || isNumericProp(prop)) && {
-            precision: prop.precision,
-            scale: prop.scale,
-            numberType: isNumberProp(prop) ? (prop.numberType ?? "numeric") : "numeric",
-          }),
+          ...((isNumberProp(prop) || isNumericProp(prop)) &&
+            (() => {
+              const numberType = isNumberProp(prop) ? (prop.numberType ?? "numeric") : "numeric";
+
+              // numeric에서 precision/scale을 생략하면 knex decimal의 기본값(8, 2)으로 컬럼이
+              // 만들어지는데, DB에서는 그 값이 그대로 읽히므로 엔티티 쪽을 undefined로 두면
+              // 매번 불일치로 잡힌다. 비교 전에 같은 기본값을 채워 실제 스키마와 맞춘다.
+              if (numberType === "numeric") {
+                return {
+                  numberType,
+                  precision: prop.precision ?? NUMERIC_DEFAULT_PRECISION,
+                  scale: prop.scale ?? NUMERIC_DEFAULT_SCALE,
+                };
+              }
+
+              // real/double precision은 precision/scale을 쓰지 않는다(DB 리더도 반환하지 않음).
+              return { numberType, precision: prop.precision, scale: prop.scale };
+            })()),
           // Vector 타입의 경우 dimensions 추가
           ...(isVectorProp(prop) && {
             dimensions: prop.dimensions,
