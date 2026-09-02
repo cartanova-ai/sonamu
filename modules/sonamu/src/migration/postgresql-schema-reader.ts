@@ -358,26 +358,52 @@ class PostgreSQLSchemaReaderClass {
     const indexes = (await compareDB.raw(indexesQuery, [tableName])).rows;
 
     // Foreign Keys 조회
+    //
+    // information_schema(table_constraints × key_column_usage × constraint_column_usage
+    // × referential_constraints) 4중 조인 대신 pg_constraint를 직접 읽는다.
+    // constraint_column_usage는 뷰 안으로 테이블 필터가 밀려들어가지 않아 DB 전체의
+    // 제약조건을 훑는다. 제약이 조금만 많아져도 테이블 하나 조회에 1초 이상 걸리고,
+    // 비교는 테이블마다 이 쿼리를 돌리므로 전체 소요가 급격히 커진다.
+    // contype='f' 인덱스 스캔으로 바꾸면 NOT NULL 제약(PG 17+에서 pg_constraint에
+    // 기록된다) 등을 아예 건너뛴다.
+    //
+    // conkey/confkey는 컬럼 순서를 담은 배열이므로 WITH ORDINALITY로 같은 순번끼리
+    // 짝지어야 복합 FK에서 컬럼 대응이 어긋나지 않는다.
     const foreignsQuery = `
       SELECT
-        tc.constraint_name,
-        kcu.column_name,
-        ccu.table_name AS foreign_table_name,
-        ccu.column_name AS foreign_column_name,
-        rc.update_rule,
-        rc.delete_rule
-      FROM information_schema.table_constraints AS tc
-      JOIN information_schema.key_column_usage AS kcu
-        ON tc.constraint_name = kcu.constraint_name
-        AND tc.table_schema = kcu.table_schema
-      JOIN information_schema.constraint_column_usage AS ccu
-        ON ccu.constraint_name = tc.constraint_name
-        AND ccu.table_schema = tc.table_schema
-      JOIN information_schema.referential_constraints AS rc
-        ON rc.constraint_name = tc.constraint_name
-        AND rc.constraint_schema = tc.table_schema
-      WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name = ?
+        con.conname AS constraint_name,
+        att.attname AS column_name,
+        ref_cl.relname AS foreign_table_name,
+        ref_att.attname AS foreign_column_name,
+        CASE con.confupdtype
+          WHEN 'a' THEN 'NO ACTION'
+          WHEN 'r' THEN 'RESTRICT'
+          WHEN 'c' THEN 'CASCADE'
+          WHEN 'n' THEN 'SET NULL'
+          WHEN 'd' THEN 'SET DEFAULT'
+        END AS update_rule,
+        CASE con.confdeltype
+          WHEN 'a' THEN 'NO ACTION'
+          WHEN 'r' THEN 'RESTRICT'
+          WHEN 'c' THEN 'CASCADE'
+          WHEN 'n' THEN 'SET NULL'
+          WHEN 'd' THEN 'SET DEFAULT'
+        END AS delete_rule
+      FROM pg_constraint con
+      JOIN pg_class cl ON cl.oid = con.conrelid
+      JOIN pg_namespace ns ON ns.oid = cl.relnamespace
+      JOIN pg_class ref_cl ON ref_cl.oid = con.confrelid
+      JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS key_col(attnum, ord) ON true
+      JOIN LATERAL unnest(con.confkey) WITH ORDINALITY AS ref_key_col(attnum, ord)
+        ON ref_key_col.ord = key_col.ord
+      JOIN pg_attribute att
+        ON att.attrelid = cl.oid AND att.attnum = key_col.attnum
+      JOIN pg_attribute ref_att
+        ON ref_att.attrelid = ref_cl.oid AND ref_att.attnum = ref_key_col.attnum
+      WHERE con.contype = 'f'
+        AND ns.nspname = 'public'
+        AND cl.relname = ?
+      ORDER BY con.conname, key_col.ord
     `;
     const foreigns = (await compareDB.raw(foreignsQuery, [tableName])).rows;
 
