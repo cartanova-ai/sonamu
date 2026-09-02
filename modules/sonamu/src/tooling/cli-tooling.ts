@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { type FixtureCommandOptions } from "../bin/fixture";
+import { type TemplateKey } from "../types/types";
 
 const jsonValueSchema = z.json();
 type CommandValue = z.infer<typeof jsonValueSchema> | undefined;
@@ -323,6 +324,29 @@ async function renderScaffolds(input: CommandInput) {
   return rendered;
 }
 
+/**
+ * 템플릿이 요구하는 dict 키를 프로젝트 사전에 채웁니다.
+ *
+ * 생성 코드에는 SD("error.entityNotFound") 같은 호출이 박히는데, 키가 프로젝트 사전에
+ * 없으면 번역이 되지 않아 사람이 매번 손으로 채우거나 다른 키로 바꿔야 한다.
+ * Sonamu UI 경로(ui/api.ts)는 이미 같은 처리를 하므로, CLI도 동일하게 맞춘다.
+ */
+async function ensureTemplateDictKeys(templateKeys: TemplateKey[]): Promise<void> {
+  const [{ TemplateManager }, { sonamuDictionary }] = await Promise.all([
+    import("../template/template-manager"),
+    import("../dict/sonamu-dictionary"),
+  ]);
+
+  const requiredKeys = templateKeys.flatMap(
+    (templateKey) => TemplateManager.get(templateKey).getRequiredDictKeys() ?? [],
+  );
+  if (requiredKeys.length === 0) {
+    return;
+  }
+
+  await sonamuDictionary.ensureDictKeys([...new Set(requiredKeys)]);
+}
+
 async function scaffoldOperation(method: string, input: CommandInput): Promise<ToolingResult> {
   const directTemplate = z
     .enum(["model", "model_test", "view_list", "view_form"])
@@ -331,6 +355,7 @@ async function scaffoldOperation(method: string, input: CommandInput): Promise<T
     await ensureSonamu();
     const { Sonamu } = await import("../api/sonamu");
     const entityId = requiredText(input, "entityId");
+    await ensureTemplateDictKeys([directTemplate.data]);
     return directTemplate.data === "view_list"
       ? Sonamu.syncer.generateTemplate("view_list", { entityId, extra: input.extra })
       : Sonamu.syncer.generateTemplate(directTemplate.data, { entityId });
@@ -358,6 +383,9 @@ async function scaffoldOperation(method: string, input: CommandInput): Promise<T
   );
   if (method === "status") return items.map(({ content: _content, ...item }) => item);
   if (method === "preview" || (method === "batch" && explicitlyDryRun(input))) return items;
+
+  // 실제로 파일을 쓰는 경우에만 사전을 건드린다(status/preview/dry-run은 위에서 반환됨).
+  await ensureTemplateDictKeys([...new Set(items.map((item) => item.template))]);
 
   const results = [];
   for (const item of items) {
