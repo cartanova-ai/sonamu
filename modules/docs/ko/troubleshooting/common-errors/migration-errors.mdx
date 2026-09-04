@@ -83,11 +83,12 @@ mv 20240115_create_users.ts 20240115_002_create_users.ts
 
 #### 2. 타임스탬프 형식 사용
 
-Sonamu는 `YYYYMMDD_HHMMSS` 형식을 지원합니다:
+Sonamu가 생성하는 Migration 파일은 `YYYYMMDDHHMMSS_{title}.ts` 형식이며, Entity 변경분에서
+자동으로 만들어집니다. 빈 Migration을 이름만 지정해 만드는 명령은 없습니다.
 
 ```bash
-pnpm sonamu migrate create add_email_column
-# 생성: 20240115_143022_add_email_column.ts
+pnpm sonamu migrate generate
+# 생성: src/migrations/20240115143022_alter__users__add__email.ts
 ```
 
 ## Generated Column 오류
@@ -261,9 +262,10 @@ export async function up(knex: Knex): Promise<void> {
 
 ### 증상
 
-```bash
-pnpm sonamu migrate rollback
+Sonamu UI의 **Migrations** 탭에서 롤백을 실행했을 때(또는
+`Migrator.runAction("rollback", targets)` 호출 시):
 
+```
 Error: Migration 20240115_create_users.ts has no down() function
 ```
 
@@ -376,7 +378,7 @@ TRUNCATE knex_migrations;
 
 ```bash
 # 테이블 초기화 후
-pnpm sonamu migrate latest
+pnpm sonamu migrate run
 ```
 
 ## MySQL에서 PostgreSQL로 마이그레이션

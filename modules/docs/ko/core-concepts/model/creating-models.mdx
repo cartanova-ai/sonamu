@@ -43,7 +43,7 @@ Entity 저장 시 자동으로 타입 파일이 생성됩니다.
 Sonamu CLI를 사용하여 Model 템플릿을 생성합니다.
 
 ```bash
-pnpm sonamu generate model --entity User
+pnpm sonamu scaffold model User
 ```
 
 또는 Sonamu UI의 **Scaffolding** 탭에서 생성할 수 있습니다.
@@ -70,24 +70,25 @@ async login(params: LoginParams) {
 
 <CodeGroup>
 ```bash title="기본 사용법"
-# Entity 이름 지정
-pnpm sonamu generate model --entity User
+# Entity ID를 인자로 전달
+pnpm sonamu scaffold model User
 
-# 여러 Entity 한번에 생성
+# Entity ID를 생략하면 선택 프롬프트가 표시됨
+pnpm sonamu scaffold model
+```
 
-pnpm sonamu generate model --entity User,Post,Comment
-
-````
-
-```bash title="옵션"
-# 기존 파일 덮어쓰기
-pnpm sonamu generate model --entity User --overwrite
-
-# 특정 디렉토리에 생성
-pnpm sonamu generate model --entity User --output ./custom/path
-````
+```bash title="Model 테스트 함께 생성"
+# Model 테스트 스캐폴드는 별도 커맨드
+pnpm sonamu scaffold model_test User
+```
 
 </CodeGroup>
+
+<Info>
+  Entity ID는 한 번에 하나만 전달할 수 있으며, 덮어쓰기·출력 경로 옵션은 제공되지 않습니다. 생성
+  대상 파일이 이미 존재하면 해당 파일은 건너뛰고, 생성할 파일이 하나도 남지 않으면 "이미 모든
+  파일이 존재합니다" 에러로 종료됩니다. 기존 Model을 다시 만들려면 파일을 먼저 옮기거나 삭제하세요.
+</Info>
 
 ### Sonamu UI 사용
 

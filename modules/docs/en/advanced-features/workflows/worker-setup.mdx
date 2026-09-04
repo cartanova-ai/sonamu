@@ -65,11 +65,12 @@ const result = await handle.result();
 ### 1. Daemon Mode (Auto-enabled)
 
 ```bash
-# Worker starts automatically
-pnpm sonamu daemon
+# Booting with NODE_TYPE=daemon starts the Worker automatically
+NODE_TYPE=daemon pnpm sonamu start
 ```
 
-In daemon mode, `enableWorker: true` is the default.
+Daemon mode is detected from the `NODE_TYPE` environment variable (`isDaemonServer()`), and in that
+mode `enableWorker` defaults to `true`. There is no separate `daemon` CLI subcommand.
 
 ### 2. Separate Worker Process
 

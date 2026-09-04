@@ -65,11 +65,12 @@ const result = await handle.result();
 ### 1. Daemon 모드 (자동 활성화)
 
 ```bash
-# Worker가 자동으로 시작됨
-pnpm sonamu daemon
+# NODE_TYPE=daemon으로 띄우면 Worker가 자동으로 시작됨
+NODE_TYPE=daemon pnpm sonamu start
 ```
 
-Daemon 모드에서는 `enableWorker: true`가 기본값입니다.
+Daemon 모드는 `NODE_TYPE` 환경변수로 판별하며(`isDaemonServer()`), 이때 `enableWorker`의
+기본값이 `true`가 됩니다. `daemon`이라는 별도 CLI 서브커맨드는 없습니다.
 
 ### 2. 별도 Worker 프로세스
 
