@@ -113,14 +113,34 @@ mise exec -- pnpm create sonamu my_app \
 
 ### 실행하기
 
+생성된 프로젝트 루트로 이동합니다.
+
+```bash
+cd my_app
+```
+
+생성 시 도구·의존성 설치를 건너뛰었거나 프로젝트를 새로 클론했다면 먼저 설치합니다.
+
+```bash
+mise trust
+mise install --locked
+mise exec -- pnpm install
+```
+
+Docker Engine과 Docker Compose가 설치되어 있고 Docker가 실행 중이어야 합니다. 다음 명령은 생성된 프로젝트 루트 기준이며, 이후 터미널 명령은 `packages/api`에서 실행합니다.
+
+Docker 설정을 건너뛰었다면 먼저 `packages/api/.env`에 DB 연결 정보와 `PROJECT_NAME`, `CONTAINER_NAME`을 설정하세요.
+
 ```bash
 # 1. 데이터베이스 시작
-cd my_app/packages/api
+cd packages/api
 mise exec -- pnpm docker:up
 
-# 2. 개발 서버 시작 (API + Web 통합 모드)
+# 2. PostgreSQL이 준비되면 개발 서버 시작 (API + Web 통합 모드)
 mise exec -- pnpm dev
 ```
+
+Docker 초기화는 데이터베이스만 생성합니다. Sonamu UI에서 첫 엔티티를 정의한 뒤 **DB Migration** 탭에서 마이그레이션 파일을 생성하고 `development` DB에 적용하세요.
 
 🎉 **완료!**
 
@@ -128,7 +148,7 @@ mise exec -- pnpm dev
 - Sonamu UI: <http://localhost:34900/sonamu-ui> (엔티티 관리)
 
 > **참고**: `mise exec -- pnpm dev`는 `sonamu dev`를 실행하며, 기본적으로 API와 Web을 하나의 포트로 통합 서빙합니다.
-> Web만 별도로 실행하려면 `sonamu dev web`을 사용하세요.
+> Web만 별도로 실행하려면 `mise exec -- pnpm sonamu dev web`을 사용하세요.
 
 ### 기존 프로젝트의 CLI 의존성
 
@@ -136,6 +156,7 @@ mise exec -- pnpm dev
 업그레이드할 때는 API 패키지에서 CLI도 추가하세요.
 
 ```bash
+# 프로젝트 루트 기준
 cd packages/api
 mise exec -- pnpm add sonamu@^0.11.0 @sonamu-kit/cli@0.1.0
 ```
@@ -181,11 +202,11 @@ mise exec -- pnpm add sonamu@^0.11.0 @sonamu-kit/cli@0.1.0
 
 ## 포트 구성
 
-> 여러 프로젝트를 동시에 실행할 수 있습니다.
+API·웹과 Sonamu UI의 포트는 `packages/api/src/sonamu.config.ts`의 `port` 상수로 설정합니다. PostgreSQL의 호스트 포트는 `packages/api/.env`의 `SONAMU_DB_PORT`로 설정합니다. 여러 프로젝트를 함께 실행할 때는 포트와 `CONTAINER_NAME`이 겹치지 않도록 변경하세요.
 
 | 서비스               | 포트                | URL                              |
 | -------------------- | ------------------- | -------------------------------- |
-| **API + Web (통합)** | `BASE_PORT` (34900) | <http://localhost:34900>           |
+| **API + Web (통합)** | 34900               | <http://localhost:34900>           |
 | **Sonamu UI**        | -                   | <http://localhost:34900/sonamu-ui> |
 | **PostgreSQL**       | 5432                | -                                |
 
@@ -193,13 +214,13 @@ mise exec -- pnpm add sonamu@^0.11.0 @sonamu-kit/cli@0.1.0
 
 - `sonamu dev` (= `sonamu dev all`)은 API와 Web을 하나의 포트(one-port)로 통합 서빙합니다
 - Sonamu UI는 API 서버에 통합되어 있어 별도 실행이 필요 없습니다
-- Web만 별도로 실행하려면 `sonamu dev web`을 사용하세요
+- Web만 별도로 실행하려면 `mise exec -- pnpm sonamu dev web`을 사용하세요
 
 ---
 
 ## 📜 스크립트 레퍼런스
 
-### API (`api/`)
+### API (`packages/api/`)
 
 | 명령어                             | 설명                                      |
 | ---------------------------------- | ----------------------------------------- |
@@ -211,7 +232,6 @@ mise exec -- pnpm add sonamu@^0.11.0 @sonamu-kit/cli@0.1.0
 | `mise exec -- pnpm test`           | 테스트 실행                               |
 | `mise exec -- pnpm docker:up`      | Docker 데이터베이스 시작                  |
 | `mise exec -- pnpm docker:down`    | Docker 데이터베이스 중지                  |
-| `mise exec -- pnpm docker:reset`   | 데이터베이스 초기화 (볼륨 삭제 후 재시작) |
 | `mise exec -- pnpm dump`           | 테스트 DB → 덤프 파일 생성                          |
 | `mise exec -- pnpm seed`           | 덤프를 fixture DB에 적용하고 test DB 동기화         |
 | `mise exec -- pnpm sync:dump`      | seed, 승인된 Migration 실행, dump를 순서대로 실행   |
@@ -333,7 +353,7 @@ Sonamu Skills는 프레임워크 사용법을 에이전트에 제공하는 별�
 ### npx skills
 
 ```bash
-npx skills@latest add cartanova-ai/skills
+mise exec -- npx skills@latest add cartanova-ai/skills
 ```
 
 ### Claude Code 플러그인
@@ -387,16 +407,27 @@ Skills를 설치한 뒤 Claude에게 다음과 같이 요청할 수 있습니다
 
 ### 데이터베이스 구성
 
-| DB 이름          | 용도          |
-| ---------------- | ------------- |
-| `{name}`         | 메인 개발 DB  |
-| `{name}_fixture` | fixture DB    |
-| `{name}_test`    | 테스트 실행용 |
+| 기본 DB 이름          | 용도          |
+| --------------------- | ------------- |
+| `{name}_development` | 개발 DB       |
+| `{name}_staging`     | 스테이징 DB   |
+| `{name}_production`  | 프로덕션 DB   |
+| `{name}_fixture`     | fixture DB    |
+| `{name}_test`        | 테스트 실행용 |
+
+`{name}`은 `.env`의 `PROJECT_NAME`을 소문자로 바꾸고 특수문자를 언더스코어로 정규화한 값입니다. 생성 시 `--db-name`으로 지정한 값은 이 기본 이름으로 사용됩니다. 환경별 DB 이름은 `.env.development` 등에서 `SONAMU_DB_NAME`으로, fixture DB 이름은 `SONAMU_DB_FIXTURE_NAME`으로 재정의할 수 있습니다. 이름을 재정의한 DB는 별도로 생성해야 할 수 있습니다.
 
 ### Fixture 워크플로우
 
+명령은 `packages/api`에서 실행합니다. `seed`에는 로컬에서 실행 가능한 PostgreSQL 18 클라이언트 도구(`psql`, `pg_dump`, `pg_restore`)가 필요합니다. `dump`는 Docker 컨테이너 안의 `pg_dump`를 사용합니다.
+
+새 프로젝트에는 테스트 데이터 덤프가 없습니다. 먼저 엔티티의 마이그레이션 파일을 생성한 뒤 test DB에 적용하고 테스트 데이터를 넣어 첫 덤프를 만드세요.
+
 ```bash
-# 테스트 데이터 수정 후
+# 생성한 마이그레이션을 test DB에 적용
+mise exec -- pnpm sonamu migrate apply test --execute --confirm
+
+# DB 클라이언트로 test DB에 데이터를 입력하거나 수정한 후
 mise exec -- pnpm dump         # 덤프 생성
 git add database/dumps/
 git commit -m "update fixture"
@@ -406,12 +437,15 @@ git pull
 mise exec -- pnpm seed         # fixture DB에 적용한 뒤 test DB로 동기화
 ```
 
+`seed`는 기존 fixture·test DB를 다시 생성하여 데이터를 교체합니다. 개발 DB에는 테스트 데이터를 복사하지 않습니다.
+
 ---
 
 ## 📋 요구사항
 
 - **mise** (프로젝트의 Node.js 24.19.0과 pnpm 11.24.0 설치)
-- **Docker** (데이터베이스용)
+- **Docker Engine과 Docker Compose** (데이터베이스용, Docker 실행 필요)
+- **PostgreSQL 18 클라이언트 도구** (`seed` 실행 시 `psql`, `pg_dump`, `pg_restore` 필요)
 
 ---
 
@@ -433,7 +467,7 @@ mise exec -- pnpm seed         # fixture DB에 적용한 뒤 test DB로 동기�
 
 ## 📚 더 알아보기
 
-- 📖 [Sonamu 공식 문서](https://sonamu.cartanova.ai/)
+- 📖 [Sonamu 공식 문서](https://sonamu.cartanova.ai/ko)
 - 💬 [이슈 & 피드백](https://github.com/cartanova-ai/sonamu/issues)
 
 ---

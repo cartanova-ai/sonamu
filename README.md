@@ -1,6 +1,6 @@
 # 🌲Sonamu — TypeScript Fullstack API Framework
 
-- [Sonamu Documentation (test-docs, outdated)](https://rurruur.github.io/test-docs/)
+- [Sonamu Documentation](https://sonamu.cartanova.ai/ko)
 
 Sonamu는 Node.js/TypeScript 기반의 풀스택 프레임워크입니다.
 
@@ -13,7 +13,8 @@ Sonamu는 E2E Type-safety, 효율적인 서브셋 쿼리, 스캐폴딩을 통한
 다음 환경이 필요합니다:
 
 - [mise](https://mise.jdx.dev/)
-- Docker CLI(`docker` 명령어 실행 가능)
+- Docker Engine과 Docker Compose(`docker compose` 명령어 실행 가능, Docker 실행 중)
+- 테스트 데이터 준비 시 PostgreSQL 클라이언트 도구(`psql`, `pg_dump`, `pg_restore`; 예제 DB와 같은 PostgreSQL 18 버전)
 
 ### 1. 프로젝트 클론
 
@@ -31,40 +32,43 @@ mise exec -- pnpm install # 의존성 패키지 설치
 mise run build # 모노레포 내 패키지들 빌드
 ```
 
-워크스페이스 내 모든 package들의 의존성이 최상단 `.pnpm/cache` 디렉토리에 설치됩니다.
-
 프로젝트 실행에 필요한 도구들(`@sonamu-kit/ts-loader`, `@sonamu-kit/hmr-hook`, `@sonamu-kit/hmr-runner` 등)이 준비(build)되어야 하기 때문에 최초 한 번은 `mise run build`를 실행해주어야 합니다.
 
 ### 3. 예제 프로젝트 실행
 
-데이터베이스를 docker로 올려줍니다;
+저장소 루트에서 예제 API 디렉토리로 이동한 뒤 데이터베이스를 실행합니다. 이후 명령도 이 디렉토리에서 실행합니다.
 
 ```bash
-# 클론받은 sonamu 저장소 루트 기준입니다.
-cd examples/miomock/api/database
-docker compose up -d
-```
-
-API 서버를 실행합니다;
-
-```bash
-# 클론받은 sonamu 저장소 루트 기준입니다.
 cd examples/miomock/api
-mise exec -- pnpm dev
+docker compose -f database/docker-compose.yml up -d
 ```
 
-API 개발 서버가 제공하는 Sonamu UI를 엽니다: <http://localhost:34900/sonamu-ui>
-
-Web 서버를 실행합니다;
+Docker 초기화는 데이터베이스 생성까지만 수행합니다. PostgreSQL이 연결을 받을 준비가 되면 개발 DB에 마이그레이션을 적용하여 테이블을 생성합니다.
 
 ```bash
-# 클론받은 sonamu 저장소 루트 기준입니다.
-cd examples/miomock/web
+mise exec -- pnpm sonamu migrate apply development --execute --confirm
+```
+
+테스트 데이터를 준비하려면 다음 명령을 실행합니다. `seed`는 저장소의 덤프를 fixture DB에 복원한 뒤 test DB로 복사하므로, 기존 fixture·test DB 데이터를 교체합니다. 개발 DB에는 테스트 데이터를 복사하지 않습니다.
+
+```bash
+mise exec -- pnpm seed
+mise exec -- pnpm sonamu migrate apply fixture test --execute --confirm
+```
+
+API와 웹 개발 서버를 함께 실행합니다.
+
+```bash
 mise exec -- pnpm dev
 ```
+
+- 예제 웹: <http://localhost:10280>
+- Sonamu UI: <http://localhost:10280/sonamu-ui>
+
+접속 포트는 `examples/miomock/api/src/sonamu.config.ts`의 서버 설정을 따릅니다.
 
 ## 기타
 
-### 변동이 잦음
+### 버전 호환성
 
-큰 breaking change가 진행중입니다. 프로젝트가 불안정할 수 있습니다.
+안정화 전 단계로, 버전 업데이트 시 호환성이 깨질 수 있습니다.
