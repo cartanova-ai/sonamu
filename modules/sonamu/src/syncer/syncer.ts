@@ -380,20 +380,10 @@ export class Syncer {
       await this.handleSonamuDictionaryRelatedChanges();
     }
 
-    const metadataChanged = diffTypes.some((type) =>
-      ["entity", "types", "model", "frame", "config"].includes(type),
-    );
-    if (changeMatches("httpValidatorsGenerated") && !metadataChanged) {
-      // registry 자체 drift는 최신 in-memory metadata로 즉시 덮어써 lock 갱신 전에 정합성을 복구합니다.
-      await this.dependencies.actionGenerateHttpValidators();
-    }
-
-    if (metadataChanged) {
-      // 모든 생성/복사 액션 뒤 최신 metadata를 다시 읽어 registry를 한 번만 확정합니다.
-      await this.autoloadTypes();
-      await this.autoloadModels();
-      await this.autoloadApis();
-      await this.dependencies.actionGenerateHttpValidators();
+    if (changeMatches("entity", "types", "model", "frame", "config", "httpValidatorsGenerated")) {
+      // 생성물(httpValidatorsGenerated)에 드리프트가 생긴 경우도 처리합니다.
+      // 다른 것 안 바뀌고 딱 httpValidatorsGenerated만 바뀐 경우에도 동등한 처리(=무지성 오토로드)를 합니다. 그냥 이뻐서요 ㅋ
+      await this.handleHttpValidatorRelatedChanges();
     }
 
     // 위에서 처리 안 된 변경들이 있다?
@@ -544,6 +534,13 @@ export class Syncer {
 
   async handleSonamuDictionaryRelatedChanges(): Promise<void> {
     await SyncerActions.actionSyncSonamuDictionary();
+  }
+
+  async handleHttpValidatorRelatedChanges(): Promise<void> {
+    await this.autoloadTypes();
+    await this.autoloadModels();
+    await this.autoloadApis();
+    await this.dependencies.actionGenerateHttpValidators();
   }
 
   async handleDrifts(drifts: AbsolutePath[]): Promise<void> {
