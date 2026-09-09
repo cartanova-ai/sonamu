@@ -4,7 +4,7 @@ import { pathToFileURL } from "url";
 
 import { type EntityJson, type EntityProp, type TemplateKey, type TemplateOptions } from "sonamu";
 import { getEnumDefValues, Naite, registeredApis, Sonamu, Template } from "sonamu";
-import { bootstrap, test } from "sonamu/test";
+import { bootstrap, configureSyncerFilesystem, test } from "sonamu/test";
 import { beforeAll, beforeEach, describe, expect, vi } from "vitest";
 import { z } from "zod";
 
@@ -160,6 +160,88 @@ describe("Syncer", () => {
   // 1. 파일 변경 감지 워크플로우
   // ============================================
   describe("파일 변경 감지 워크플로우", () => {
+    // 목적: workflow 파일은 lock 추적 입력이지만 생성 산출물이 아니므로 별도 쓰기나 drift 경고 없이 처리되는지 확인
+    test("workflow 파일 변경 → 생성 없이 사용자 소스로 처리", async () => {
+      // SAFETY: Sonamu 앱 루트에서 구성한 테스트 픽스처의 절대 경로입니다.
+      const workflowPath = join(apiRootPath, "src/application/tag/tag.workflow.ts") as AbsolutePath;
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+      const result = await syncer.doSyncActions([workflowPath]);
+
+      expect(syncer.calculateDiffGroups([workflowPath])).toStrictEqual({
+        workflow: [workflowPath],
+      });
+      expect(result.diffTypes).toStrictEqual(["workflow"]);
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(Naite.get("fs/promises:writeFile").result()).toStrictEqual([]);
+    });
+
+    // 목적: 실제 생성 파일만 변경되면 기존 drift 경고가 유지되는지 확인
+    test("generated 파일 변경 → drift 경고 유지", async () => {
+      // SAFETY: Sonamu 앱 루트에서 구성한 테스트 픽스처의 절대 경로입니다.
+      const generatedPath = join(
+        apiRootPath,
+        "src/application/sonamu.generated.ts",
+      ) as AbsolutePath;
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+      await syncer.doSyncActions([generatedPath]);
+
+      const warnings = warnSpy.mock.calls.flat().join("\n");
+      expect(warnings).toContain("자동 생성한 파일");
+      expect(warnings).toContain("api/src/application/sonamu.generated.ts");
+      expect(warnings).toContain("pnpm sonamu sync --force");
+      expect(Naite.get("fs/promises:writeFile").result()).toStrictEqual([]);
+    });
+
+    // 목적: workflow와 생성 파일이 함께 변경되면 생성 파일만 drift로 경고되는지 확인
+    test("workflow + generated 파일 변경 → generated 파일만 drift 경고", async () => {
+      // SAFETY: Sonamu 앱 루트에서 구성한 테스트 픽스처의 절대 경로입니다.
+      const workflowPath = join(apiRootPath, "src/application/tag/tag.workflow.ts") as AbsolutePath;
+      // SAFETY: Sonamu 앱 루트에서 구성한 테스트 픽스처의 절대 경로입니다.
+      const generatedPath = join(
+        apiRootPath,
+        "src/application/sonamu.generated.ts",
+      ) as AbsolutePath;
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+      await syncer.doSyncActions([workflowPath, generatedPath]);
+
+      const warnings = warnSpy.mock.calls.flat().join("\n");
+      expect(warnings).toContain("api/src/application/sonamu.generated.ts");
+      expect(warnings).not.toContain("api/src/application/tag/tag.workflow.ts");
+    });
+
+    // 목적: 사용자 소스 처리 여부와 무관하게 남은 생성 파일 drift가 누락되지 않는지 확인
+    test("functions + generated 파일 변경 → 처리되지 않은 generated 파일 경고", async () => {
+      // SAFETY: Sonamu 앱 루트에서 구성한 테스트 픽스처의 절대 경로입니다.
+      const functionsPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.functions.ts",
+      ) as AbsolutePath;
+      // SAFETY: Sonamu 앱 루트에서 구성한 테스트 픽스처의 절대 경로입니다.
+      const generatedPath = join(
+        apiRootPath,
+        "src/application/sonamu.generated.ts",
+      ) as AbsolutePath;
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      const restoreFilesystem = configureSyncerFilesystem({
+        access: async () => undefined,
+        readFile: async () => "export const syncFixture = true;\n",
+      });
+
+      try {
+        await syncer.doSyncActions([functionsPath, generatedPath]);
+      } finally {
+        restoreFilesystem();
+      }
+
+      const warnings = warnSpy.mock.calls.flat().join("\n");
+      expect(warnings).toContain("api/src/application/sonamu.generated.ts");
+      expect(warnings).not.toContain("api/src/application/sync-fixture/sync-fixture.functions.ts");
+      expect(Naite.get("fs/promises:writeFile").result()).toHaveLength(1);
+    });
+
     // 목적: model 파일이 변경되면 자동으로 HTTP 파일이 재생성되는지 확인
     test("model 파일 변경 → http 재생성", async () => {
       // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.
@@ -245,6 +327,25 @@ describe("Syncer", () => {
   // sonamu 패키지 내부에서 import하므로 vi.mock 적용 안됨 skip 처리
   // ============================================
   describe("hmrAndSync", () => {
+    // 목적: workflow 변경 시 drift 경고 없이 실제 workflow 맵과 실행 관리자가 갱신되고 HMR 완료 이벤트가 발생하는지 확인
+    test("change 이벤트 (workflow 파일) → workflow 재로드 및 HMR 완료", async () => {
+      // SAFETY: Sonamu 앱 루트에서 구성한 테스트 픽스처의 절대 경로입니다.
+      const workflowPath = join(apiRootPath, "src/application/tag/tag.workflow.ts") as AbsolutePath;
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      const synchronizeSpy = vi.spyOn(Sonamu.workflows, "synchronize");
+      const completedSpy = vi.fn();
+      syncer.eventEmitter.once("onHMRCompleted", completedSpy);
+
+      await syncer.hmrAndSync(new Map([[workflowPath, "change"]]));
+
+      expect(syncer.workflows.get(workflowPath)?.map((workflow) => workflow.name)).toContain(
+        "test-workflow",
+      );
+      expect(synchronizeSpy).toHaveBeenCalledWith(syncer.workflows);
+      expect(completedSpy).toHaveBeenCalledOnce();
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
     // 목적: model 파일 변경 시 doSyncActions가 호출되어 http 파일이 생성되고, autoload가 실행되어 모듈이 재로드되는지 확인
     test("change 이벤트 (model 파일) → 파일 생성 및 모듈 재로드", async () => {
       // SAFETY: 테스트 픽스처가 대상 API의 입력 타입과 일치하도록 구성되었습니다.

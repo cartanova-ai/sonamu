@@ -351,7 +351,7 @@ export class Syncer {
 
     // 여기는 별로 중요한 파트는 아닙니다.
     // 아래의 if 전개를 깔끔하게 하려고 만든 DSL 같은 거라서, 무시하셔도 됩니다.
-    const { changeMatches, nothingMatches, unhandledPaths } = this.changeMatcher(
+    const { changeMatches, unhandledPaths, unhandledChangesLeft } = this.changeMatcher(
       diffTypes,
       diffGroups,
     );
@@ -370,6 +370,10 @@ export class Syncer {
 
     if (changeMatches("config")) {
       await this.handleConfigChanges();
+    }
+
+    if (changeMatches("workflow")) {
+      // 뭐 딱히 안 해요. 그래도 이 if 조건은 eval되어야 하기 때문에 남겨둡니다 ㅎㅎ
     }
 
     if (changeMatches("i18n", "entity" /*레이블*/, "config" /*defaultLocale등*/)) {
@@ -392,10 +396,10 @@ export class Syncer {
       await this.dependencies.actionGenerateHttpValidators();
     }
 
-    if (nothingMatches()) {
-      // 파일 변경은 감지되었으나 저 위 어느 changeMatches에도 걸리지 않은 파일들이 drifts입니다.
-      // syncer는 소스의 변경에는 반응하지만 산출물의 변경(drift)에는 직접적으로 반응하지 않습니다.
-      // 대신 이 drift에 대해 경고 정도만 출력해줍니다.
+    // 위에서 처리 안 된 변경들이 있다?
+    // 체크섬 관리 대상이긴 한데 위에서 핸들링이 안 된 것이라면 결국 생성물입니다.
+    // 이 친구들이 변경된 것은 drift로 간주해도 마땅합니다.
+    if (unhandledChangesLeft()) {
       await this.handleDrifts(unhandledPaths());
     }
 
@@ -443,17 +447,17 @@ export class Syncer {
     };
 
     /**
-     * changeMatches로 매칭된 것이 하나도 없는지 여부를 가져옵니다.
-     */
-    const nothingMatches = () => handled.size === 0;
-
-    /**
      * 어떤 changeMatches 호출에도 걸리지 않은 FileType들의 실제 파일 경로를 모아서 반환합니다.
      */
     const unhandledPaths = (): AbsolutePath[] =>
       diffTypes.filter((t) => !handled.has(t)).flatMap((t) => diffGroups[t] ?? []);
 
-    return { changeMatches, nothingMatches, unhandledPaths };
+    /**
+     * changeMatches 호출에도 걸리지 않은 FileType들이 존재하는지 확인합니다.
+     */
+    const unhandledChangesLeft = () => unhandledPaths().length > 0;
+
+    return { changeMatches, unhandledPaths, unhandledChangesLeft };
   }
 
   async handleTruthSourceChanges(diffGroups: DiffGroups): Promise<void> {
@@ -543,17 +547,19 @@ export class Syncer {
   }
 
   async handleDrifts(drifts: AbsolutePath[]): Promise<void> {
-    if (drifts.length > 0) {
-      console.warn(
-        chalk.yellow(
-          "⚠️ Sonamu가 자동 생성한 파일에 대한 변경이 감지되었습니다. 파일이 Sonamu watcher 외부에서 변경된 것으로 추정됩니다.",
-        ),
-      );
-      for (const p of drifts) {
-        console.warn(chalk.yellow(`  - ${path.relative(Sonamu.appRootPath, p)}`));
-      }
-      console.warn(chalk.dim("  → `pnpm sonamu sync --force`를 권장합니다."));
+    if (drifts.length === 0) {
+      return;
     }
+
+    console.warn(
+      chalk.yellow(
+        "⚠️ Sonamu가 자동 생성한 파일에 대한 변경이 감지되었습니다. 파일이 Sonamu watcher 외부에서 변경된 것으로 추정됩니다.",
+      ),
+    );
+    for (const p of drifts) {
+      console.warn(chalk.yellow(`  - ${path.relative(Sonamu.appRootPath, p)}`));
+    }
+    console.warn(chalk.dim("  → `pnpm sonamu sync --force`를 권장합니다."));
   }
 
   /**
