@@ -37,30 +37,12 @@ import * as SyncerActions from "./syncer-actions";
 type DiffGroupKey = FileType | "unknown";
 type DiffGroups = Partial<Record<DiffGroupKey, AbsolutePath[]>>;
 
-export interface SyncerDependencies {
-  actionCopySharedToTargetsIfNotExists: typeof SyncerActions.actionCopySharedToTargetsIfNotExists;
-  actionGenerateHttpValidators: typeof SyncerActions.actionGenerateHttpValidators;
-  actionGenerateSsrEntryServerIfNotExists: typeof SyncerActions.actionGenerateSsrEntryServerIfNotExists;
-  findChangedFilesUsingChecksums: typeof findChangedFilesUsingChecksums;
-  renewChecksums: typeof renewChecksums;
-}
-
-const defaultSyncerDependencies: SyncerDependencies = {
-  actionCopySharedToTargetsIfNotExists: SyncerActions.actionCopySharedToTargetsIfNotExists,
-  actionGenerateHttpValidators: SyncerActions.actionGenerateHttpValidators,
-  actionGenerateSsrEntryServerIfNotExists: SyncerActions.actionGenerateSsrEntryServerIfNotExists,
-  findChangedFilesUsingChecksums,
-  renewChecksums,
-};
-
 export class Syncer {
   apis: LoadedApis = [];
   types: LoadedTypes = {};
   models: LoadedModels = {};
   workflows: Map<string, WorkflowMetadata[]> = new Map();
   eventEmitter: EventEmitter = new EventEmitter();
-
-  constructor(private readonly dependencies: SyncerDependencies = defaultSyncerDependencies) {}
 
   /**
    * 체크섬이 변경된 부분에 대해 싱크를 진행합니다.
@@ -71,14 +53,14 @@ export class Syncer {
     // 초기 부트스트랩! 얘네들은 idempotent하고 가볍기 때문에 무지성 실행해도 됩니다.
     // 얘네들은 sonamu.lock에 들어가지도 않고 따라서 HMR 경로를 타지도 않는 친구들입니다.
     // 그래서 아무 때나 그냥 돌려주면 되는데, hmrAndSync에서 매번 하는 것은 낭비이니 여기서 한 번만 합니다.
-    await this.dependencies.actionCopySharedToTargetsIfNotExists();
-    await this.dependencies.actionGenerateSsrEntryServerIfNotExists();
+    await SyncerActions.actionCopySharedToTargetsIfNotExists();
+    await SyncerActions.actionGenerateSsrEntryServerIfNotExists();
 
     // 바뀐 것이 없으면 그냥 넘어가요.
-    const changedFiles = await this.dependencies.findChangedFilesUsingChecksums();
+    const changedFiles = await findChangedFilesUsingChecksums();
     if (changedFiles.length === 0) {
       if (await this.reconcileHttpValidatorRegistry()) {
-        await this.dependencies.renewChecksums();
+        await renewChecksums();
       }
       console.log(chalk.black.bgGreen(centerText("All files are synced!")));
       return;
@@ -94,7 +76,7 @@ export class Syncer {
         await this.reconcileHttpValidatorRegistry();
 
         // 싱크 액션이 끝나면 항상 체크섬을 다시 갱신합니다.
-        await this.dependencies.renewChecksums();
+        await renewChecksums();
       },
       { whenThisHappens: "SIGUSR2", waitForUpTo: 20000 },
     );
@@ -112,7 +94,7 @@ export class Syncer {
     }
 
     // 변경 목록이 registry 삭제를 놓쳐도 checksum 갱신 전에 정책과 산출물을 다시 맞춥니다.
-    await this.dependencies.actionGenerateHttpValidators();
+    await SyncerActions.actionGenerateHttpValidators();
     return true;
   }
 
@@ -540,7 +522,7 @@ export class Syncer {
     await this.autoloadTypes();
     await this.autoloadModels();
     await this.autoloadApis();
-    await this.dependencies.actionGenerateHttpValidators();
+    await SyncerActions.actionGenerateHttpValidators();
   }
 
   async handleDrifts(drifts: AbsolutePath[]): Promise<void> {
@@ -675,6 +657,6 @@ export class Syncer {
    * 하위호환용 프록시 메소드입니다.
    */
   async renewChecksums(): Promise<void> {
-    return await this.dependencies.renewChecksums();
+    return await renewChecksums();
   }
 }
