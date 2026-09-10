@@ -178,46 +178,36 @@ pnpm sonamu migrate run
 # 프로덕션
 NODE_ENV=production pnpm sonamu migrate run
 
-# 롤백
-pnpm sonamu migrate rollback
+# 롤백은 CLI가 아닌 Sonamu UI(Migrations 탭) 또는 Migrator API로 수행
+# → /ko/database/migrations/rolling-back 참고
 ```
 
 </Accordion>
 
 <Accordion title="마이그레이션을 안전하게 테스트하려면?">
 
-Shadow DB를 사용하여 테스트합니다:
+Shadow DB 테스트를 사용합니다. 스크립트에서 `Migrator.runShadowTest()`를 호출하는 방식이며, 전용 CLI
+명령은 없습니다. (Sonamu UI의 Migrations 탭은 현재 Apply·Rollback 버튼만 제공합니다.)
 
-```bash
-# Shadow DB 테스트
-pnpm sonamu migrate shadow-test
-# → 임시 Shadow DB 생성
-# → Migration 적용
-# → 성공 확인
-# → Shadow DB 삭제
+```typescript title="src/scripts/shadow-test.ts"
+import { Migrator, Sonamu } from "sonamu";
+
+Sonamu.runScript(async () => {
+  const migrator = new Migrator();
+  await migrator.runShadowTest();
+});
 ```
 
-Shadow DB 설정:
+동작 순서:
 
-```typescript
-// sonamu.config.ts
-export default {
-  database: {
-    connections: {
-      main: {
-        // ...
-      },
-      shadow: {
-        host: "localhost",
-        port: 5432,
-        database: "myapp_shadow",
-        user: "postgres",
-        password: "password",
-      },
-    },
-  },
-} satisfies SonamuConfig;
-```
+- `test` 커넥션의 DB를 TEMPLATE으로 삼아 `{test_db}__migration_shadow` DB를 생성
+- 해당 Shadow DB에 pending Migration 전체를 적용
+- 결과를 반환하고 Shadow DB를 삭제
+
+<Warning>
+  Shadow DB는 **`test` 커넥션**을 기준으로 만들어지며 DB 이름도 자동으로 결정됩니다. 별도의 shadow
+  커넥션을 설정하는 옵션은 없으므로, `test` 커넥션에 CREATE/DROP DATABASE 권한이 있어야 합니다.
+</Warning>
 
 </Accordion>
 

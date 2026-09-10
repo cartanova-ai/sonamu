@@ -177,11 +177,11 @@ const dbSecret = await getSecret("prod/database");
 NODE_ENV=production pnpm sonamu migrate status
 ```
 
-**2. Test on Shadow DB (recommended):**
+**2. Verify on Shadow DB first (recommended):**
 
-```bash
-NODE_ENV=production pnpm sonamu migrate shadow-test
-```
+The Shadow DB test runs against the `test` connection, so run it locally or in CI before a production
+deploy by calling `Migrator.runShadowTest()`. There is no dedicated CLI command and no
+production-targeted run. See the database FAQ for details.
 
 **3. Apply to actual DB:**
 
@@ -191,8 +191,16 @@ NODE_ENV=production pnpm sonamu migrate run
 
 **4. Rollback (if needed):**
 
-```bash
-NODE_ENV=production pnpm sonamu migrate rollback
+There is no rollback CLI command. Use the **Migrations** tab in Sonamu UI, or call `Migrator`
+directly from a script.
+
+```typescript title="src/scripts/rollback-migration.ts"
+import { Migrator, Sonamu } from "sonamu";
+
+Sonamu.runScript(async () => {
+  const migrator = new Migrator();
+  await migrator.runAction("rollback", ["production"]);
+});
 ```
 
 </Accordion>

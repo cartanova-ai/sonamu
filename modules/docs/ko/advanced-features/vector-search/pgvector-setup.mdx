@@ -221,7 +221,7 @@ export async function down(knex: Knex): Promise<void> {
 **실행**:
 
 ```bash
-pnpm sonamu migrate:latest
+pnpm sonamu migrate run
 ```
 
 ### 4. 처음부터 벡터 테이블 만들기
@@ -419,7 +419,7 @@ class KnowledgeBaseModelClass extends BaseModelClass {
 4. **Migration으로 관리**: 직접 SQL보다 Migration 사용
 
    ```bash
-   pnpm sonamu migrate:latest
+   pnpm sonamu migrate run
    ```
 
 5. **확장 버전**: 0.5.1 이상 권장

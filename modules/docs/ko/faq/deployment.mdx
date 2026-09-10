@@ -177,11 +177,11 @@ const dbSecret = await getSecret("prod/database");
 NODE_ENV=production pnpm sonamu migrate status
 ```
 
-**2. Shadow DB에서 테스트 (권장):**
+**2. Shadow DB에서 미리 검증 (권장):**
 
-```bash
-NODE_ENV=production pnpm sonamu migrate shadow-test
-```
+Shadow DB 테스트는 `test` 커넥션을 기준으로 동작하므로, 프로덕션 배포 전 로컬/CI 환경에서
+`Migrator.runShadowTest()`로 수행합니다. 전용 CLI 명령이나 프로덕션 대상 실행은 제공되지 않습니다.
+[안전하게 테스트하기](/ko/faq/database) 항목을 참고하세요.
 
 **3. 실제 DB에 적용:**
 
@@ -191,8 +191,16 @@ NODE_ENV=production pnpm sonamu migrate run
 
 **4. 롤백 (필요시):**
 
-```bash
-NODE_ENV=production pnpm sonamu migrate rollback
+롤백 전용 CLI 명령은 없습니다. Sonamu UI의 **Migrations** 탭 또는 스크립트에서 `Migrator`를
+직접 호출합니다.
+
+```typescript title="src/scripts/rollback-migration.ts"
+import { Migrator, Sonamu } from "sonamu";
+
+Sonamu.runScript(async () => {
+  const migrator = new Migrator();
+  await migrator.runAction("rollback", ["production"]);
+});
 ```
 
 </Accordion>
