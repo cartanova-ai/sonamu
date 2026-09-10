@@ -138,11 +138,11 @@ web/src/services/
 
 ## 🌐 포트 구성
 
-| 서비스           | 포트                     | URL                                |
-| ---------------- | ------------------------ | ---------------------------------- |
-| API + Web (통합) | 34900                    | <http://localhost:34900>           |
-| Sonamu UI        | -                        | <http://localhost:34900/sonamu-ui> |
-| PostgreSQL       | 5432                     | -                                  |
+| 서비스           | 포트  | URL                                |
+| ---------------- | ----- | ---------------------------------- |
+| API + Web (통합) | 34900 | <http://localhost:34900>           |
+| Sonamu UI        | -     | <http://localhost:34900/sonamu-ui> |
+| PostgreSQL       | 5432  | -                                  |
 
 API·웹과 Sonamu UI의 포트는 `packages/api/src/sonamu.config.ts`의 `port` 상수로 설정합니다. PostgreSQL의 호스트 포트는 `packages/api/.env`의 `SONAMU_DB_PORT`로 설정합니다. 여러 프로젝트를 함께 실행할 때는 포트와 `CONTAINER_NAME`이 겹치지 않도록 변경하세요.
 
@@ -160,19 +160,19 @@ API·웹과 Sonamu UI의 포트는 `packages/api/src/sonamu.config.ts`의 `port`
 
 ### API (`packages/api/`)
 
-| 명령어                           | 설명                                              |
-| -------------------------------- | ------------------------------------------------- |
-| `mise exec -- pnpm dev`          | 통합 개발 서버 시작 (= `sonamu dev all`)          |
-| `mise exec -- pnpm build`        | 전체 프로덕션 빌드 (= `sonamu build all`)         |
-| `mise exec -- pnpm build api`    | API만 빌드 (= `sonamu build api`)                 |
-| `mise exec -- pnpm build web`    | Web만 빌드 (= `sonamu build web`)                 |
-| `mise exec -- pnpm start`        | 프로덕션 서버 시작                                |
-| `mise exec -- pnpm test`         | 테스트 실행                                       |
-| `mise exec -- pnpm docker:up`    | Docker DB 시작                                    |
-| `mise exec -- pnpm docker:down`  | Docker DB 중지                                    |
-| `mise exec -- pnpm dump`         | 테스트 DB 덤프 생성                               |
-| `mise exec -- pnpm seed`         | 덤프를 fixture DB에 적용하고 test DB 동기화       |
-| `mise exec -- pnpm sync:dump`    | seed, 승인된 Migration 실행, dump를 순서대로 실행 |
+| 명령어                          | 설명                                              |
+| ------------------------------- | ------------------------------------------------- |
+| `mise exec -- pnpm dev`         | 통합 개발 서버 시작 (= `sonamu dev all`)          |
+| `mise exec -- pnpm build`       | 전체 프로덕션 빌드 (= `sonamu build all`)         |
+| `mise exec -- pnpm build api`   | API만 빌드 (= `sonamu build api`)                 |
+| `mise exec -- pnpm build web`   | Web만 빌드 (= `sonamu build web`)                 |
+| `mise exec -- pnpm start`       | 프로덕션 서버 시작                                |
+| `mise exec -- pnpm test`        | 테스트 실행                                       |
+| `mise exec -- pnpm docker:up`   | Docker DB 시작                                    |
+| `mise exec -- pnpm docker:down` | Docker DB 중지                                    |
+| `mise exec -- pnpm dump`        | 테스트 DB 덤프 생성                               |
+| `mise exec -- pnpm seed`        | 덤프를 fixture DB에 적용하고 test DB 동기화       |
+| `mise exec -- pnpm sync:dump`   | seed, 승인된 Migration 실행, dump를 순서대로 실행 |
 
 ### 개발 서버 모드
 
@@ -333,8 +333,8 @@ Skills를 설치한 뒤 Claude에게 다음과 같이 요청할 수 있습니다
 
 ### 데이터베이스 구성
 
-| 기본 DB 이름          | 용도          |
-| --------------------- | ------------- |
+| 기본 DB 이름         | 용도          |
+| -------------------- | ------------- |
 | `{name}_development` | 개발 DB       |
 | `{name}_staging`     | 스테이징 DB   |
 | `{name}_production`  | 프로덕션 DB   |
