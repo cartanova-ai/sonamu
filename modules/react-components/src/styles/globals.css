@@ -300,120 +300,52 @@
 }
 
 /**
- * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
+ * Base typography.
+ *
+ * Tailwind v4는 CSS를 theme < base < components < utilities 레이어 순서로 적용한다.
+ * 요소 자신에 붙은 text-*, font-*, leading-* 유틸리티는 항상 base 위에 오므로
+ * 여기서는 조건 없이 태그 기본값만 정한다.
+ *
+ * :has()로 조상의 클래스를 검사하는 조건은 두지 않는다. Firefox는 :has()가 포함된
+ * 전역 셀렉터를 DOM 변경마다 모든 조상에 대해 재평가하므로, 수백 행이 갱신되는
+ * 화면에서 수십 초의 멈춤이 발생한다(SON-540).
+ *
+ * 부모의 유틸리티가 상속되도록 헤딩 외에는 크기와 행간을 정하지 않는다.
+ * font-family는 body 상속과 Preflight(button, input의 font: inherit)로 충분하다.
  */
 @layer base {
-  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
-    h1 {
-      font-family:
-        "Pretendard",
-        -apple-system,
-        BlinkMacSystemFont,
-        system-ui,
-        Roboto,
-        sans-serif;
-      font-size: var(--text-2xl);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
 
-    h2 {
-      font-family:
-        "Pretendard",
-        -apple-system,
-        BlinkMacSystemFont,
-        system-ui,
-        Roboto,
-        sans-serif;
-      font-size: var(--text-xl);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
 
-    h3 {
-      font-family:
-        "Pretendard",
-        -apple-system,
-        BlinkMacSystemFont,
-        system-ui,
-        Roboto,
-        sans-serif;
-      font-size: var(--text-lg);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
 
-    h4 {
-      font-family:
-        "Pretendard",
-        -apple-system,
-        BlinkMacSystemFont,
-        system-ui,
-        Roboto,
-        sans-serif;
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
 
-    p {
-      font-family:
-        "Pretendard",
-        -apple-system,
-        BlinkMacSystemFont,
-        system-ui,
-        Roboto,
-        sans-serif;
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-normal);
-      line-height: 1.5;
-    }
-
-    label {
-      font-family:
-        "Pretendard",
-        -apple-system,
-        BlinkMacSystemFont,
-        system-ui,
-        Roboto,
-        sans-serif;
-      font-size: var(--text-sm);
-      font-weight: var(--font-weight-normal);
-      line-height: 1.5;
-    }
-
-    button {
-      font-family:
-        "Pretendard",
-        -apple-system,
-        BlinkMacSystemFont,
-        system-ui,
-        Roboto,
-        sans-serif;
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
-
-    input {
-      font-family:
-        "Pretendard",
-        -apple-system,
-        BlinkMacSystemFont,
-        system-ui,
-        Roboto,
-        sans-serif;
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-normal);
-      line-height: 1.5;
-    }
+  button {
+    font-weight: var(--font-weight-medium);
   }
 }
 
 html {
   font-size: var(--font-size);
 }
-
 /* Custom Scrollbar Styles */
 ::-webkit-scrollbar {
   width: 8px;
