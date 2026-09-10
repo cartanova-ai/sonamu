@@ -62,6 +62,25 @@ type MigrationMatrixProps = {
   onOpenCode: (path: string, editor: MigrationEditor) => void;
 };
 
+function MigrationFilename({ name }: { name: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <button
+      type="button"
+      aria-expanded={expanded}
+      title={name}
+      onClick={() => setExpanded((current) => !current)}
+      className={classNames(
+        "min-w-0 flex-1 cursor-pointer rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2",
+        expanded ? "whitespace-normal break-all" : "truncate",
+      )}
+    >
+      {name}
+    </button>
+  );
+}
+
 function FileState({ children, tone }: { children: ReactNode; tone: "green" | "yellow" }) {
   return (
     <span
@@ -121,7 +140,7 @@ function ConnectionHeader({
         <div
           className={classNames(
             "relative flex w-max min-w-0 flex-col gap-1 px-4",
-            detailed ? "max-w-[252px] py-2" : "py-1",
+            detailed ? "py-2" : "py-1",
             { "opacity-60": error !== undefined },
           )}
         >
@@ -137,7 +156,9 @@ function ConnectionHeader({
               onClick={(event) => event.stopPropagation()}
             />
             <span
-              className={classNames("min-w-0 truncate", { "migration-shimmer": query.isFetching })}
+              className={classNames("shrink-0 whitespace-nowrap", {
+                "migration-shimmer": query.isFetching,
+              })}
             >
               {connection.name}
             </span>
@@ -182,7 +203,7 @@ function ConnectionHeader({
               <Button
                 size="xs"
                 variant="ghost"
-                className="-mr-1 ml-auto hover:bg-black/10 hover:text-foreground"
+                className="-mr-1 ml-auto shrink-0 hover:bg-black/10 hover:text-foreground"
                 icon={<RefreshCwIcon className={query.isFetching ? "animate-spin" : ""} />}
                 disabled={query.isFetching}
                 aria-label={SD("migration.matrix.refreshStatus").replace("{name}", connection.name)}
@@ -194,7 +215,7 @@ function ConnectionHeader({
             ) : null}
           </div>
           {detailed ? (
-            <div className="flex min-w-0 flex-col gap-0.5 pl-6 font-mono text-[11px] font-normal normal-case text-muted-foreground">
+            <div className="flex w-0 min-w-full flex-col gap-0.5 pl-6 font-mono text-[11px] font-normal normal-case text-muted-foreground">
               <span className="flex min-w-0 items-center gap-1">
                 <span className="truncate">
                   {connection.host}:{connection.port}
@@ -309,6 +330,7 @@ export function MigrationMatrix({
           </Button>
         </span>
       </h3>
+      {/* DB 열은 헤더에 필요한 너비만 사용하고 남는 공간은 파일명 열에 배분합니다. */}
       <Table className="border-separate border-spacing-x-0.5 border-spacing-y-0 text-[0.9em]">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
@@ -325,8 +347,7 @@ export function MigrationMatrix({
               return (
                 <TableHead
                   key={connection.connKey}
-                  style={{ width: "1px" }}
-                  className={classNames("h-auto p-0! align-middle", {
+                  className={classNames("h-auto w-px p-0! align-middle", {
                     "bg-[#dafde6]": selected,
                     "bg-gray-100": !selected,
                     "cursor-pointer select-none": ready,
@@ -358,9 +379,10 @@ export function MigrationMatrix({
           {codes.map((code) => (
             <Fragment key={code.name}>
               <TableRow>
-                <TableCell className="border-b font-mono">
-                  <span className="flex items-center gap-1">
-                    {code.name}
+                <TableCell className="min-w-80 max-w-0 border-b font-mono">
+                  {/* 파일명을 펼쳐도 DB 선택 열이 밀리지 않도록 너비를 유지합니다. */}
+                  <div className="flex w-full items-start gap-1">
+                    <MigrationFilename name={code.name} />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -368,7 +390,7 @@ export function MigrationMatrix({
                           size="xs"
                           variant="secondary"
                           icon={<CodeIcon />}
-                          className="ml-1"
+                          className="ml-1 shrink-0"
                         />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
@@ -390,7 +412,7 @@ export function MigrationMatrix({
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </span>
+                  </div>
                 </TableCell>
                 {connections.map((connection, index) => {
                   const query = statusQueries[index];
@@ -427,7 +449,7 @@ export function MigrationMatrix({
               </TableRow>
               {expandedCodes.includes(code.name) ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={connections.length + 1} className="py-2">
+                  <TableCell colSpan={connections.length + 1} className="max-w-0 py-2">
                     {loadingCodes.includes(code.name) ? (
                       <Skeleton className="h-28 w-full" />
                     ) : codeErrors[code.name] !== undefined ? (
