@@ -126,6 +126,144 @@ describe("Puri JSONB containment", () => {
   });
 });
 
+describe("Puri JSONB 텍스트 표현식", () => {
+  it("단일 경로와 중첩 경로를 값으로 바인딩해 select에서 사용한다", () => {
+    const hostilePath = `title'); DROP TABLE users; --`;
+    const query = usersQuery();
+    const selected = query
+      .select({
+        singleText: query.jsonText("users.payload", "message"),
+        nested: query.jsonText("users.payload", "actor", hostilePath),
+      })
+      .rawQuery()
+      .toSQL();
+
+    expect(selected.sql).toContain('"users"."payload"');
+    expect(selected.sql).toContain('AS "singleText"');
+    expect(selected.sql).toContain('AS "nested"');
+    expect(selected.sql).not.toContain("message");
+    expect(selected.sql).not.toContain("actor");
+    expect(selected.sql).not.toContain(hostilePath);
+    expect(selected.bindings).toEqual(["message", "actor", hostilePath]);
+  });
+
+  it("중첩 표현식의 바인딩 순서를 보존하고 원본 표현식과 쿼리를 변경하지 않는다", () => {
+    const query = usersQuery();
+    const originalQuery = query.rawQuery().toSQL();
+    const title = Object.freeze(query.jsonText("payload", "actor", "role"));
+    const description = Object.freeze(query.jsonText("payload", "message"));
+    const titleWithFallback = Object.freeze(Puri.coalesce(title, "역할 없음"));
+    const expression = Puri.concatExpressions(
+      "역할: ",
+      titleWithFallback,
+      "\n메시지: ",
+      Puri.coalesce(description, "메시지 없음"),
+    );
+
+    const unchangedQuery = query.rawQuery().toSQL();
+    expect(unchangedQuery.sql).toBe(originalQuery.sql);
+    expect(unchangedQuery.bindings).toEqual(originalQuery.bindings);
+    expect(title._params).toEqual(["payload", "actor", "role"]);
+    expect(description._params).toEqual(["payload", "message"]);
+    expect(titleWithFallback._params).toEqual(["payload", "actor", "role", "역할 없음"]);
+
+    const selected = query.select({ summary: expression }).rawQuery().toSQL();
+
+    expect(selected.sql).toContain('AS "summary"');
+    expect(selected.bindings).toEqual([
+      "역할: ",
+      "actor",
+      "role",
+      "역할 없음",
+      "\n메시지: ",
+      "message",
+      "메시지 없음",
+    ]);
+  });
+
+  it("기존 concat은 모든 문자열을 값으로 바인딩한다", () => {
+    const selected = usersQuery()
+      .select({ value: Puri.concat("users.name", "고정값") })
+      .rawQuery()
+      .toSQL();
+
+    expect(selected.sql).toBe('select CONCAT(?, ?) AS "value" from "users"');
+    expect(selected.bindings).toEqual(["users.name", "고정값"]);
+  });
+});
+
+describe("Puri PostgreSQL 전문 검색", () => {
+  it("최상위 조건에서 JSON 텍스트 표현식 인자를 설정과 검색어보다 먼저 바인딩한다", () => {
+    const query = usersQuery();
+    const role = query.jsonText("users.payload", "actor", "role");
+    const compiled = query
+      .whereTsSearch(role, "관리자", {
+        config: "english",
+        parser: "plainto_tsquery",
+      })
+      .rawQuery()
+      .toSQL();
+
+    expect(compiled.sql).toBe(
+      'select * from "users" where "users"."payload" #>> ARRAY[?, ?] @@ plainto_tsquery(?, ?)',
+    );
+    expect(compiled.bindings).toEqual(["actor", "role", "english", "관리자"]);
+  });
+
+  it("그룹의 AND OR 조건에서 각 JSON 텍스트 표현식 인자의 바인딩 순서를 보존한다", () => {
+    const query = usersQuery();
+    const message = query.jsonText("payload", "message");
+    const role = query.jsonText("payload", "actor", "role");
+    const compiled = query
+      .whereGroup((group) => {
+        group.whereTsSearch(message, "로그인", "simple").orWhereTsSearch(role, "관리자", {
+          config: "english",
+          parser: "phraseto_tsquery",
+        });
+      })
+      .rawQuery()
+      .toSQL();
+
+    expect(compiled.sql).toBe(
+      'select * from "users" where ("payload" #>> ARRAY[?] @@ websearch_to_tsquery(?, ?) or "payload" #>> ARRAY[?, ?] @@ phraseto_tsquery(?, ?))',
+    );
+    expect(compiled.bindings).toEqual([
+      "message",
+      "simple",
+      "로그인",
+      "actor",
+      "role",
+      "english",
+      "관리자",
+    ]);
+  });
+});
+
+describe("Puri JSONB 키 존재 조건", () => {
+  it("키를 값으로 바인딩하고 그룹의 AND OR 우선순위를 보존한다", () => {
+    const hostileKey = `title' OR TRUE --`;
+    const query = usersQuery()
+      .where("id", 1)
+      .whereJsonKeyExists("users.payload", "message")
+      .whereGroup((group) => {
+        group
+          .whereJsonKeyExists("payload", hostileKey)
+          .orWhereJsonKeyExists("payload", "nullableKey");
+      })
+      .where("name", "사용자")
+      .rawQuery()
+      .toSQL();
+
+    expect(query.sql).toBe(
+      'select * from "users" where "id" = ? and "users"."payload" \\? ? and ("payload" \\? ? or "payload" \\? ?) and "name" = ?',
+    );
+    expect(query.sql).not.toContain("message");
+    expect(query.sql).not.toContain(hostileKey);
+    expect(query.sql).not.toContain("nullableKey");
+    expect(query.bindings).toEqual([1, "message", hostileKey, "nullableKey", "사용자"]);
+  });
+});
+
 describe("Puri onConflict JSON 직렬화", () => {
   it("객체 update의 배열을 JSON 문자열 binding으로 변환한다", () => {
     const binding = withJsonTableSpec(["tags"], () =>

@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 
-import { type InsertResult, type JsonColumns, type JsonSupersetValue, Naite, Puri } from "sonamu";
+import {
+  type InsertResult,
+  type JsonColumns,
+  type JsonSupersetValue,
+  Naite,
+  Puri,
+  type SqlExpression,
+} from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, expectTypeOf, vi } from "vitest";
 import { z } from "zod";
@@ -553,6 +560,51 @@ describe("Puri Type Safety", () => {
         db.table("audit_events").orWhereJsonSupersetOf("payload_json", {
           source: "better-auth",
         });
+      };
+
+      expectTypeOf(assertRejectedCalls).toBeFunction();
+    });
+
+    test("생성 스키마의 JSONB 텍스트와 키 존재 API를 타입 안전하게 제한한다", () => {
+      const db = UserModel.getPuri("r");
+      const query = db.table({ event: "audit_events" });
+      const eventType = query.jsonText("event.payload_json", "event", "type");
+      const eventTypeWithFallback = Puri.coalesce(eventType, "알 수 없음");
+      const summary = Puri.concatExpressions("이벤트: ", eventType, eventTypeWithFallback);
+      const selected = query.select({ eventType, eventTypeWithFallback, summary });
+
+      expectTypeOf(eventType).toEqualTypeOf<SqlExpression<"string", true>>();
+      expectTypeOf(eventTypeWithFallback).toEqualTypeOf<SqlExpression<"string">>();
+      expectTypeOf(summary).toEqualTypeOf<SqlExpression<"string">>();
+      expectTypeOf<Awaited<typeof selected>[number]>().toEqualTypeOf<{
+        eventType: string | null;
+        eventTypeWithFallback: string;
+        summary: string;
+      }>();
+      query.whereJsonKeyExists("event.payload_json", "nullable_key");
+      query.whereGroup((group) =>
+        group
+          .whereJsonKeyExists("event.payload_json", "title")
+          .orWhereJsonKeyExists("event.payload_json", "description"),
+      );
+
+      const joined = db
+        .table({ event: "audit_events" })
+        .join({ fixture: "sync_fixtures" }, "event.id", "fixture.id");
+      joined.jsonText("event.payload_json", "title");
+      joined.whereJsonKeyExists("fixture.tags", "0");
+
+      const assertRejectedCalls = () => {
+        // @ts-expect-error alias가 원래 테이블명을 대체합니다.
+        query.jsonText("audit_events.payload_json", "title");
+        // @ts-expect-error 일반 문자열 컬럼은 JSON 텍스트 추출에 사용할 수 없습니다.
+        query.jsonText("event.event_type", "title");
+        // @ts-expect-error JOIN 뒤에는 JSON 컬럼을 테이블 alias로 한정해야 합니다.
+        joined.jsonText("payload_json", "title");
+        // @ts-expect-error JOIN하지 않은 테이블의 JSON 컬럼은 사용할 수 없습니다.
+        query.whereJsonKeyExists("fixture.tags", "title");
+        // @ts-expect-error 최상위 OR 키 존재 조건은 제공하지 않습니다.
+        query.orWhereJsonKeyExists("event.payload_json", "title");
       };
 
       expectTypeOf(assertRejectedCalls).toBeFunction();
