@@ -153,11 +153,9 @@ Built-in SQL functions provided by Puri.
 
 <CodeGroup>
 ```typescript title="CONCAT"
-const results = await db
-  .table("users")
-  .select({
-    fullName: Puri.concat("first_name", "' '", "last_name"),
-  });
+const results = await db.table("messages").select({
+  greeting: Puri.concat("Hello", ", ", "Sonamu"),
+});
 ```
 
 ```typescript title="UPPER / LOWER"
@@ -168,6 +166,11 @@ const results = await db.table("users").select({
 ```
 
 </CodeGroup>
+
+`Puri.concat()` binds every argument as a string value. It does not interpret an argument such as
+`"users.name"` as a column. To combine string SQL expressions with literal text, use
+`Puri.concatExpressions()` and `Puri.coalesce()` as shown in [JSON Field
+Extraction](#json-field-extraction).
 
 ### Aggregate Functions
 
@@ -456,13 +459,44 @@ const results = await db
 ### JSON Field Extraction
 
 ```typescript
-const results = await db.table("users").select({
-  id: "id",
-  city: Puri.rawString("metadata->>'city'"),
-  age: Puri.rawNumber("(metadata->>'age')::integer"),
-  tags: Puri.rawStringArray("ARRAY(SELECT jsonb_array_elements_text(metadata->'tags'))"),
+const query = db.table("documents");
+const title = query.jsonText("metadata", "title");
+const description = query.jsonText("metadata", "document", "description");
+
+const results = await query.select({
+  title,
+  summary: Puri.concatExpressions(
+    Puri.coalesce(title, "Untitled"),
+    " — ",
+    Puri.coalesce(description, "No description"),
+  ),
 });
 ```
+
+`jsonText()` accepts a generated JSON column and one or more path segments. It returns a string SQL
+expression without changing the query. PostgreSQL produces SQL `NULL` when the path is missing or
+its JSON value is `null`, so selecting `jsonText()` directly infers `string | null`. `Puri.coalesce()`
+turns that nullable expression into a non-null `string`, as `summary` uses above. Path segments,
+literal text, and fallback values are bound as values.
+`Puri.concatExpressions()` accepts only literal strings and string SQL expressions.
+
+### JSON Key Existence
+
+```typescript
+const results = await db
+  .table("documents")
+  .whereJsonKeyExists("metadata", "nullable_key")
+  .whereGroup((group) => {
+    group
+      .whereJsonKeyExists("metadata", "title")
+      .orWhereJsonKeyExists("metadata", "description");
+  });
+```
+
+`whereJsonKeyExists()` uses PostgreSQL's JSONB `?` operator and binds the key as a value. It checks
+whether the top-level key exists, so a key whose JSON value is `null` is still present. Use
+`whereJsonKeyExists()` and `orWhereJsonKeyExists()` inside a group to keep AND/OR precedence
+explicit.
 
 ### JSON Aggregation
 
