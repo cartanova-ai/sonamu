@@ -1051,6 +1051,77 @@ describe("Puri Query", () => {
         JSON.stringify({ action: "logout" }),
       ]);
     });
+
+    test("생성 JSONB 컬럼에서 텍스트를 조합하고 null 값의 키도 존재하는 것으로 조회한다", async () => {
+      const db = UserModel.getPuri("w");
+      const dedupeKey = randomUUID();
+      try {
+        const [inserted] = await db
+          .table("audit_events")
+          .insert({
+            source: "sonamu-test",
+            category: "security",
+            event_type: "jsonb_api_test",
+            event_key: dedupeKey,
+            dedupe_key: dedupeKey,
+            payload_json: {
+              title: "최상위 제목",
+              document: { title: "중첩 제목", description: null },
+              nullable_key: null,
+            },
+            occurred_at: new Date(),
+          })
+          .returning("id");
+
+        expect(inserted).toBeDefined();
+        if (!inserted) {
+          return;
+        }
+
+        const extractionQuery = db.table("audit_events").where("id", inserted.id);
+        const nestedTitle = extractionQuery.jsonText("payload_json", "document", "title");
+        const vectorSource = Puri.concatExpressions(
+          Puri.coalesce(nestedTitle, "제목 없음"),
+          "\n",
+          Puri.coalesce(
+            extractionQuery.jsonText("payload_json", "document", "description"),
+            "설명 없음",
+          ),
+        );
+        const [extracted] = await extractionQuery.select({
+          topLevelTitle: extractionQuery.jsonText("payload_json", "title"),
+          nestedTitle,
+          missingText: Puri.coalesce(
+            extractionQuery.jsonText("payload_json", "document", "missing"),
+            "누락 없음",
+          ),
+          vectorSource,
+        });
+
+        expect(extracted).toEqual({
+          topLevelTitle: "최상위 제목",
+          nestedTitle: "중첩 제목",
+          missingText: "누락 없음",
+          vectorSource: "중첩 제목\n설명 없음",
+        });
+
+        const presentRows = await db
+          .table("audit_events")
+          .where("id", inserted.id)
+          .whereJsonKeyExists("payload_json", "nullable_key")
+          .select({ id: "id" });
+        const missingRows = await db
+          .table("audit_events")
+          .where("id", inserted.id)
+          .whereJsonKeyExists("payload_json", "missing_key")
+          .select({ id: "id" });
+
+        expect(presentRows).toEqual([{ id: inserted.id }]);
+        expect(missingRows).toEqual([]);
+      } finally {
+        await db.table("audit_events").where("dedupe_key", dedupeKey).delete();
+      }
+    });
   });
 
   describe("K. FUZZY SEARCH (pg_trgm)", () => {
