@@ -39,6 +39,7 @@ export type PgColumn = {
   character_maximum_length: number | null;
   precision: number | null;
   numeric_scale: number | null;
+  atttypmod?: number | null;
   is_nullable: string;
   column_default: string | null;
   is_generated: string; // 's' = STORED, 'v' = VIRTUAL, '' = none
@@ -75,6 +76,21 @@ type TableSchemaRows = {
 };
 
 type RawCapableKnex = Pick<Knex, "raw">;
+
+function decodeNumericTypeModifier(
+  typeModifier: number | null | undefined,
+): Pick<MigrationColumn, "precision" | "scale"> | null {
+  if (typeModifier === undefined || typeModifier === null || typeModifier < 4) {
+    return null;
+  }
+
+  // information_schema가 잃는 배열 typmod와 음수 scale을 PostgreSQL 내부 표현에서 복원한다.
+  const modifier = typeModifier - 4;
+  const precision = modifier >>> 16;
+  const unsignedScale = modifier & 0x7ff;
+  const scale = unsignedScale >= 1024 ? unsignedScale - 2048 : unsignedScale;
+  return { precision, scale };
+}
 
 class PostgreSQLSchemaReaderClass {
   private readonly genericIndexTypes = new Set(["btree", "hash", "gin", "gist", "pgroonga"]);
@@ -348,6 +364,7 @@ class PostgreSQLSchemaReaderClass {
         ) AS character_maximum_length,
         COALESCE(c.datetime_precision, c.numeric_precision) AS precision,
         c.numeric_scale,
+        a.atttypmod,
         c.is_nullable,
         c.column_default,
         COALESCE(a.attgenerated, '') as is_generated,
@@ -987,14 +1004,13 @@ class PostgreSQLSchemaReaderClass {
 
     // NumberOrNumeric types
     if (udt_name === "numeric") {
+      const numericMetadata =
+        decodeNumericTypeModifier(dbColumn.atttypmod) ??
+        (precision !== null && numeric_scale !== null ? { precision, scale: numeric_scale } : {});
       return {
         type: `numberOrNumeric${singleOrArray}`,
         numberType: "numeric",
-        ...(precision !== null &&
-          numeric_scale !== null && {
-            precision: precision,
-            scale: numeric_scale,
-          }),
+        ...numericMetadata,
       };
     }
     if (udt_name === "float4") {

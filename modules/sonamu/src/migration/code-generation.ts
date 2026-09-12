@@ -32,6 +32,9 @@ type ColumnDefinitionResult = {
   raw: string[];
 };
 
+const NUMERIC_DEFAULT_PRECISION = 8;
+const NUMERIC_DEFAULT_SCALE = 2;
+
 type SearchTextHelperKind = "text-array" | "jsonb-array";
 
 type SearchTextExpressionToken =
@@ -929,7 +932,8 @@ function getPgArrayType(column: MigrationColumn, elementType: string): string {
   if (elementType === "numberOrNumeric") {
     if (column.numberType === "real") return "real[]";
     if (column.numberType === "double precision") return "double precision[]";
-    return `numeric(${column.precision}, ${column.scale})[]`;
+    if (column.precision === undefined && column.scale === undefined) return "numeric[]";
+    return `numeric(${column.precision ?? NUMERIC_DEFAULT_PRECISION}, ${column.scale ?? NUMERIC_DEFAULT_SCALE})[]`;
   }
   if (elementType === "string") {
     return column.length ? `varchar(${column.length})[]` : "text[]";

@@ -7,7 +7,9 @@ import {
   isHasManyRelationProp,
   isManyToManyRelationProp,
   isNumberProp,
+  isNumberSingleProp,
   isNumericProp,
+  isNumericSingleProp,
   isOneToOneRelationProp,
   isRelationProp,
   isStringProp,
@@ -74,10 +76,18 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
               // 만들어지는데, DB에서는 그 값이 그대로 읽히므로 엔티티 쪽을 undefined로 두면
               // 매번 불일치로 잡힌다. 비교 전에 같은 기본값을 채워 실제 스키마와 맞춘다.
               if (numberType === "numeric") {
+                if (isNumberSingleProp(prop) || isNumericSingleProp(prop)) {
+                  return {
+                    numberType,
+                    precision: prop.precision ?? NUMERIC_DEFAULT_PRECISION,
+                    scale: prop.scale ?? NUMERIC_DEFAULT_SCALE,
+                  };
+                }
+
                 return {
                   numberType,
-                  precision: prop.precision ?? NUMERIC_DEFAULT_PRECISION,
-                  scale: prop.scale ?? NUMERIC_DEFAULT_SCALE,
+                  ...(prop.precision !== undefined && { precision: prop.precision }),
+                  ...(prop.scale !== undefined && { scale: prop.scale }),
                 };
               }
 
