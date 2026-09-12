@@ -1350,26 +1350,51 @@ async function generateAlterCode_ColumnAndIndexes(
 /**
  * 컬럼 비교를 위해 Generated Column의 expression을 제외한 객체를 생성
  */
+function normalizeJsonbEmptyDefaultForComparison<Value>(defaultTo: Value): Value | string {
+  if (!isStringValue(defaultTo)) {
+    return defaultTo;
+  }
+
+  const withoutCast = defaultTo
+    .trim()
+    .replace(/::\s*jsonb$/i, "")
+    .trim();
+  if (withoutCast === "'[]'" || withoutCast === '"[]"') {
+    return '"[]"';
+  }
+  if (withoutCast === "'{}'" || withoutCast === '"{}"') {
+    return '"{}"';
+  }
+  return defaultTo;
+}
+
 function normalizeColumnForComparison(
   col: MigrationColumn,
   searchTextColumnNames: Set<string>,
 ): MigrationColumn {
-  if (!col.generated) {
-    return col;
+  const normalizedDefaultTo =
+    col.type === "json" && col.defaultTo !== undefined
+      ? normalizeJsonbEmptyDefaultForComparison(col.defaultTo)
+      : col.defaultTo;
+  const normalizedColumn =
+    normalizedDefaultTo === col.defaultTo ? col : { ...col, defaultTo: normalizedDefaultTo };
+
+  if (!normalizedColumn.generated) {
+    return normalizedColumn;
   }
 
-  if (!searchTextColumnNames.has(col.name)) {
+  if (!searchTextColumnNames.has(normalizedColumn.name)) {
     return {
-      ...col,
+      ...normalizedColumn,
       generated: undefined,
     };
   }
 
   return {
-    ...col,
+    ...normalizedColumn,
     generated: {
-      ...col.generated,
-      expression: canonicalizeSearchTextGeneratedExpression(col.generated.expression),
+      ...normalizedColumn.generated,
+      expression: canonicalizeSearchTextGeneratedExpression(normalizedColumn.generated.expression),
     },
   };
 }
