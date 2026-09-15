@@ -295,7 +295,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
     return {
       _type: "sql_expression",
       _return: "string",
-      _sql: `CONCAT(${args.map((arg) => (isStringValue(arg) ? "?" : arg._sql)).join(", ")})`,
+      _sql: `CONCAT(${args.map((arg) => (isStringValue(arg) ? "?::text" : arg._sql)).join(", ")})`,
       _params: args.flatMap((arg) => (isStringValue(arg) ? [arg] : arg._params)),
     };
   }
