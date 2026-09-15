@@ -166,10 +166,15 @@ describe("Puri JSONB 텍스트 표현식", () => {
     expect(title._params).toEqual(["payload", "actor", "role"]);
     expect(description._params).toEqual(["payload", "message"]);
     expect(titleWithFallback._params).toEqual(["payload", "actor", "role", "역할 없음"]);
+    expect(expression._sql).toBe(
+      "CONCAT(?::text, COALESCE(?? #>> ARRAY[?, ?], ?), ?::text, COALESCE(?? #>> ARRAY[?], ?))",
+    );
 
     const selected = query.select({ summary: expression }).rawQuery().toSQL();
 
-    expect(selected.sql).toContain('AS "summary"');
+    expect(selected.sql).toBe(
+      'select CONCAT(?::text, COALESCE("payload" #>> ARRAY[?, ?], ?), ?::text, COALESCE("payload" #>> ARRAY[?], ?)) AS "summary" from "users"',
+    );
     expect(selected.bindings).toEqual([
       "역할: ",
       "actor",
