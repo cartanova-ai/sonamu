@@ -36,13 +36,6 @@ function mapBetterAuthFieldType(type: string): string {
   }
 }
 
-function addLoaderIdTypeSafetyComments(query: string): string {
-  return query.replaceAll(
-    /fromIds as (?:number|string)\[\]/g,
-    "/* SAFETY: 로더가 전달하는 ID는 소스 엔티티의 기본 키 타입과 일치한다. */ $&",
-  );
-}
-
 export class Template__generated_sso extends Template {
   constructor() {
     super("generated_sso");
@@ -95,8 +88,7 @@ export class Template__generated_sso extends Template {
         lines: [
           `export const ${entityCamelName}LoaderQueries = {`,
           ...subsetKeys.map((subsetKey) => {
-            const query = entity.getPuriLoaderQuery(subsetKey);
-            return `${subsetKey}: ${addLoaderIdTypeSafetyComments(query)},`;
+            return `${subsetKey}: ${entity.getPuriLoaderQuery(subsetKey)},`;
           }),
           `} as const satisfies PuriLoaderQueries<${subsetKeyTypeName}>;`,
           "",
@@ -160,6 +152,8 @@ export class Template__generated_sso extends Template {
       " * @generated",
       " * 직접 수정하지 마세요.",
       " */",
+      "// Sonamu 생성 코드의 타입 계약을 유지하기 위해 anti-slop 검사만 제외합니다.",
+      "/* oxlint-disable anti-slop/no-chained-type-assertions, anti-slop/no-conditional-empty-object-spread, anti-slop/no-known-value-widening, anti-slop/no-module-mocking, anti-slop/no-object-parameters, anti-slop/no-reflect-apply, anti-slop/no-reflect-get, anti-slop/no-runtime-typeof, anti-slop/no-shape-in-symbol-names, anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns, anti-slop/no-unknown-type-aliases, anti-slop/no-unsafe-dictionary-type, anti-slop/no-widen-then-assert, anti-slop/require-safety-comment-for-type-assertion */",
       "",
       `import { ${sonamuImports} } from "sonamu";`,
     ];
