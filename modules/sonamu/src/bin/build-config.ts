@@ -211,11 +211,8 @@ export const API_ARTIFACTS: BuildArtifact<{ configFilePath: string }>[] = [
     description: "API 프로젝트 빌드 산출물",
     projectPath: "api",
     preBuildCommand: () => "rm -rf dist",
-    buildCommand: ({ configFilePath }) => {
-      const configExtension = path.extname(configFilePath);
-      const configLoader = [".ts", ".tsx"].includes(configExtension) ? " --config-loader tsx" : "";
-      return `tsc --noEmit && pnpm exec tsdown --config ${JSON.stringify(configFilePath)}${configLoader}`;
-    },
+    buildCommand: ({ configFilePath }) =>
+      `tsc --noEmit && pnpm exec tsdown --config ${JSON.stringify(configFilePath)}`,
   },
 ];
 
