@@ -154,7 +154,7 @@ Puri가 제공하는 내장 SQL 함수들입니다.
 <CodeGroup>
 ```typescript title="CONCAT"
 const results = await db.table("messages").select({
-  greeting: Puri.concat("안녕하세요", ", ", "Sonamu"),
+  greeting: Puri.concatExpressions("안녕하세요", ", ", "Sonamu"),
 });
 ```
 
@@ -167,8 +167,11 @@ const results = await db.table("users").select({
 
 </CodeGroup>
 
-`Puri.concat()`은 모든 인자를 문자열 값으로 바인딩합니다. `"users.name"` 같은 인자를 컬럼으로
-해석하지 않습니다. 문자열 SQL 표현식과 리터럴 텍스트를 조합하려면 [JSON 필드
+`Puri.concatExpressions()`는 바인딩된 리터럴 매개변수에 PostgreSQL `text` 타입 캐스트를
+추가하므로 위 예시처럼 리터럴만 사용한 표현식도 실행할 수 있습니다. 기존 `Puri.concat()`은
+리터럴을 타입이 지정되지 않은 매개변수로 바인딩하며, `"users.name"` 같은 인자를 컬럼으로
+해석하지 않습니다. 따라서 리터럴만 사용한 독립적인 `Puri.concat()` 표현식은 PostgreSQL에서
+실행할 수 없습니다. 문자열 SQL 표현식과 리터럴 텍스트를 조합하려면 [JSON 필드
 추출](#json-필드-추출)의 `Puri.concatExpressions()`와 `Puri.coalesce()`를 사용하세요.
 
 ### 집계 함수

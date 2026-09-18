@@ -85,14 +85,17 @@ console.log(stats.average); // number
 ```typescript
 const users = await puri.table("users").select({
   id: "users.id",
-  display_label: Puri.concat("Sonamu", " ", "User"),
+  display_label: Puri.concatExpressions("Sonamu", " ", "User"),
   email_upper: Puri.upper("users.email"),
   email_lower: Puri.lower("users.email"),
 });
 ```
 
-`Puri.concat()`은 모든 인자를 문자열 리터럴 값으로 처리합니다. 문자열 SQL 표현식과 리터럴 텍스트를
-조합하려면 `Puri.concatExpressions()`를 사용하세요.
+`Puri.concatExpressions()`는 바인딩된 리터럴 매개변수에 PostgreSQL `text` 타입 캐스트를
+추가하므로 위 예시처럼 리터럴만 사용한 표현식도 실행할 수 있습니다. 기존 `Puri.concat()`은
+리터럴을 타입이 지정되지 않은 매개변수로 바인딩하며 컬럼처럼 보이는 문자열도 컬럼으로 해석하지
+않습니다. 따라서 리터럴만 사용한 독립적인 `Puri.concat()` 표현식은 PostgreSQL에서 실행할 수
+없습니다. 문자열 SQL 표현식과 리터럴 텍스트를 조합하려면 `Puri.concatExpressions()`를 사용하세요.
 
 ## Raw SQL 표현식
 
