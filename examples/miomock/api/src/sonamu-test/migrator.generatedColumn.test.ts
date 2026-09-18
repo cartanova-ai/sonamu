@@ -66,7 +66,7 @@ describe("Migrator - Generated Column", () => {
 
     const alterCode = status.preparedCodes.find((code) => code.table === "users");
     expect(alterCode).toBeDefined();
-    expect(alterCode?.title).toBe("alter_users_add1_alter7");
+    expect(alterCode?.title).toBe("alter_users_add1_alter6");
 
     // Generated Column은 ALTER TABLE ADD COLUMN 방식으로 생성
     expect(alterCode?.formatted).toContain(
@@ -178,7 +178,7 @@ describe("Migrator - Generated Column", () => {
 
     const alterCode = status.preparedCodes.find((code) => code.table === "users");
     expect(alterCode).toBeDefined();
-    expect(alterCode?.title).toBe("alter_users_add2_alter7");
+    expect(alterCode?.title).toBe("alter_users_add2_alter6");
 
     // 일반 컬럼은 alterTable 내부에서 추가
     expect(alterCode?.formatted).toContain('table.string("nickname", 50)');

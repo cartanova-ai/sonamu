@@ -5,6 +5,36 @@ import { z } from "zod";
 
 bootstrap(vi, { forTesting: false });
 
+const migrationConnectionKeys = [
+  "test",
+  "fixture",
+  "development",
+  "staging",
+  "production",
+] as const;
+
+type MigrationConnectionKey = (typeof migrationConnectionKeys)[number];
+
+function getExpectedConnString(connKey: MigrationConnectionKey): string {
+  const connection = z
+    .object({
+      user: z.string(),
+      host: z.string(),
+      port: z.number(),
+      database: z.string(),
+    })
+    .safeParse(Sonamu.dbConfig[connKey]?.connection);
+
+  if (!connection.success) {
+    throw new Error(`DB connection 설정을 확인할 수 없습니다: ${connKey}`, {
+      cause: connection.error,
+    });
+  }
+
+  const { user, host, port, database } = connection.data;
+  return `pg://${user}@${host}:${port}/${database}`;
+}
+
 describe("Migrator - getStatus", () => {
   let migrator: Migrator;
   beforeAll(async () => {
@@ -123,13 +153,12 @@ describe("Migrator - getStatus", () => {
   test("각 db의 connections 확인", async () => {
     await migrator.getStatus();
 
-    const dbUser = Sonamu.config.database.defaultOptions?.connection?.user ?? "root";
     expect(Naite.get("migrator:getStatus:conns").first()).toMatchObject([
       // 이거 아래에 나타나는 순서가 중요한 테스트입니다!
       // 이 순서는 Sonamu UI의 DB Migration 탭에 표시되는 순서와 동일합니다.
       {
         connKey: "test",
-        connString: `pg://${dbUser}@127.0.0.1:5432/miomock_test`,
+        connString: getExpectedConnString("test"),
         currentVersion: expect.any(String),
         name: "test",
         pending: [],
@@ -137,7 +166,7 @@ describe("Migrator - getStatus", () => {
       },
       {
         connKey: "fixture",
-        connString: `pg://${dbUser}@127.0.0.1:5432/miomock_fixture`,
+        connString: getExpectedConnString("fixture"),
         currentVersion: expect.any(String),
         name: "fixture",
         pending: [],
@@ -145,7 +174,7 @@ describe("Migrator - getStatus", () => {
       },
       {
         connKey: "development",
-        connString: `pg://${dbUser}@127.0.0.1:5432/miomock_development`,
+        connString: getExpectedConnString("development"),
         currentVersion: expect.any(String),
         name: "development",
         pending: [],
@@ -153,7 +182,7 @@ describe("Migrator - getStatus", () => {
       },
       {
         connKey: "staging",
-        connString: `pg://${dbUser}@127.0.0.1:5432/miomock_staging`,
+        connString: getExpectedConnString("staging"),
         currentVersion: expect.any(String),
         name: "staging",
         pending: expect.any(Array),
@@ -161,7 +190,7 @@ describe("Migrator - getStatus", () => {
       },
       {
         connKey: "production",
-        connString: `pg://${dbUser}@127.0.0.1:5432/miomock_production`,
+        connString: getExpectedConnString("production"),
         currentVersion: expect.any(String),
         name: "production",
         pending: expect.any(Array),
