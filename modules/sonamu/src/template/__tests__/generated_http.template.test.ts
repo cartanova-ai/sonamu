@@ -53,6 +53,175 @@ describe("Template__generated_http 요청 기본값 변환", () => {
     expect(template.resolveApiParams(api, {})).toEqual({ key: "KEY", limit: 20 });
   });
 
+  it("이스케이프된 작은따옴표 문자열 기본값을 조리된 값으로 반영한다", () => {
+    const api = {
+      modelName: "SearchModel",
+      methodName: "findMany",
+      path: "/search/findMany",
+      options: { httpMethod: "GET" },
+      typeParameters: [],
+      parameters: [
+        {
+          name: "keyword",
+          type: "string",
+          optional: true,
+          defaultDef: "'can\\'t\\nstop'",
+        },
+      ],
+      returnType: "unknown",
+    } satisfies ExtendedApi;
+
+    expect(template.resolveApiParams(api, {})).toEqual({ keyword: "can't\nstop" });
+  });
+
+  it("API 문자열 기본값의 치환 없는 템플릿 리터럴을 요청 기본값으로 반영한다", () => {
+    const api = {
+      modelName: "SearchModel",
+      methodName: "findMany",
+      path: "/search/findMany",
+      options: { httpMethod: "GET" },
+      typeParameters: [],
+      parameters: [{ name: "keyword", type: "string", optional: true, defaultDef: "`default`" }],
+      returnType: "unknown",
+    } satisfies ExtendedApi;
+
+    expect(template.resolveApiParams(api, {})).toEqual({ keyword: "default" });
+  });
+
+  it("부호가 있는 숫자 구분자 기본값을 숫자로 반영한다", () => {
+    const api = {
+      modelName: "SearchModel",
+      methodName: "findMany",
+      path: "/search/findMany",
+      options: { httpMethod: "GET" },
+      typeParameters: [],
+      parameters: [
+        { name: "minimum", type: "number", optional: true, defaultDef: "-1_000" },
+        { name: "maximum", type: "number", optional: true, defaultDef: "+42" },
+      ],
+      returnType: "unknown",
+    } satisfies ExtendedApi;
+
+    expect(template.resolveApiParams(api, {})).toEqual({ minimum: -1000, maximum: 42 });
+  });
+
+  it("잘못된 숫자 구분자 기본값은 숫자 타입 예시 값으로 대체한다", () => {
+    const api = {
+      modelName: "SearchModel",
+      methodName: "findMany",
+      path: "/search/findMany",
+      options: { httpMethod: "GET" },
+      typeParameters: [],
+      parameters: [{ name: "limit", type: "number", optional: true, defaultDef: "1__0" }],
+      returnType: "unknown",
+    } satisfies ExtendedApi;
+
+    expect(template.resolveApiParams(api, {})).toEqual({ limit: 0 });
+  });
+
+  it("문장이 삽입된 문자열 기본값을 실행하지 않고 문자열 타입 예시 값으로 대체한다", () => {
+    let calls = 0;
+    const previousFactory = Object.getOwnPropertyDescriptor(globalThis, "factory");
+    Object.defineProperty(globalThis, "factory", {
+      configurable: true,
+      value: () => {
+        calls += 1;
+      },
+    });
+    const api = {
+      modelName: "SearchModel",
+      methodName: "findMany",
+      path: "/search/findMany",
+      options: { httpMethod: "GET" },
+      typeParameters: [],
+      parameters: [
+        {
+          name: "keyword",
+          type: "string",
+          optional: true,
+          defaultDef: "'safe'; factory()",
+        },
+      ],
+      returnType: "unknown",
+    } satisfies ExtendedApi;
+
+    try {
+      expect(template.resolveApiParams(api, {})).toEqual({ keyword: "KEYWORD" });
+      expect(calls).toBe(0);
+    } finally {
+      if (previousFactory === undefined) {
+        Reflect.deleteProperty(globalThis, "factory");
+      } else {
+        Object.defineProperty(globalThis, "factory", previousFactory);
+      }
+    }
+  });
+
+  it("기존 JSON 불리언과 null 리터럴 기본값을 계속 반영한다", () => {
+    const api = {
+      modelName: "SearchModel",
+      methodName: "findMany",
+      path: "/search/findMany",
+      options: { httpMethod: "GET" },
+      typeParameters: [],
+      parameters: [
+        { name: "enabled", type: "boolean", optional: true, defaultDef: "true" },
+        {
+          name: "keyword",
+          type: { t: "union", types: ["string", "null"] },
+          optional: true,
+          defaultDef: "null",
+        },
+      ],
+      returnType: "unknown",
+    } satisfies ExtendedApi;
+
+    expect(template.resolveApiParams(api, {})).toEqual({ enabled: true, keyword: null });
+  });
+
+  it("실행 가능한 기본값 표현식을 실행하지 않고 타입 기반 예시 값으로 대체한다", () => {
+    let calls = 0;
+    const previousFactory = Object.getOwnPropertyDescriptor(globalThis, "factory");
+    Object.defineProperty(globalThis, "factory", {
+      configurable: true,
+      value: () => {
+        calls += 1;
+        return "실행된 기본값";
+      },
+    });
+    const api = {
+      modelName: "SearchModel",
+      methodName: "findMany",
+      path: "/search/findMany",
+      options: { httpMethod: "GET" },
+      typeParameters: [],
+      parameters: [
+        { name: "executable", type: "string", optional: true, defaultDef: "factory()" },
+        {
+          name: "interpolated",
+          type: "string",
+          optional: true,
+          defaultDef: "`prefix-${factory()}`",
+        },
+      ],
+      returnType: "unknown",
+    } satisfies ExtendedApi;
+
+    try {
+      expect(template.resolveApiParams(api, {})).toEqual({
+        executable: "EXECUTABLE",
+        interpolated: "INTERPOLATED",
+      });
+      expect(calls).toBe(0);
+    } finally {
+      if (previousFactory === undefined) {
+        Reflect.deleteProperty(globalThis, "factory");
+      } else {
+        Object.defineProperty(globalThis, "factory", previousFactory);
+      }
+    }
+  });
+
   it("API 객체 기본값을 검사할 때 중첩 기본값 팩토리를 실행하지 않는다", () => {
     let calls = 0;
     const optionsSchema = z.object({

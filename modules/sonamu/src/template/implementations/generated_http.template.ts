@@ -1,3 +1,4 @@
+import ts from "@typescript/typescript6";
 import qs from "qs";
 import { z } from "zod";
 
@@ -39,6 +40,70 @@ const requestDefaultValueSchema: z.ZodType<RequestDefaultValue> = z.lazy(() =>
     z.record(z.string(), requestDefaultValueSchema),
   ]),
 );
+
+function parsePrimitiveDefault(defaultDef: string): RequestDefaultValue | undefined {
+  const sourceFile = ts.createSourceFile(
+    "api-default.ts",
+    `const apiDefault = ${defaultDef};`,
+    ts.ScriptTarget.Latest,
+    false,
+    ts.ScriptKind.TS,
+  );
+
+  // 문법 오류나 문장 삽입이 있는 표현식은 기본값으로 해석하지 않는다.
+  const parseDiagnostics =
+    /* SAFETY: createSourceFile 결과에는 파서가 수집한 구문 진단이 포함된다. */ (
+      sourceFile as ts.SourceFile & {
+        readonly parseDiagnostics: readonly ts.Diagnostic[];
+      }
+    ).parseDiagnostics;
+  if (parseDiagnostics.length > 0 || sourceFile.statements.length !== 1) {
+    return undefined;
+  }
+
+  const statement = sourceFile.statements[0];
+  if (!ts.isVariableStatement(statement) || statement.declarationList.declarations.length !== 1) {
+    return undefined;
+  }
+
+  const initializer = statement.declarationList.declarations[0]?.initializer;
+  if (initializer === undefined) {
+    return undefined;
+  }
+
+  if (ts.isStringLiteral(initializer) || ts.isNoSubstitutionTemplateLiteral(initializer)) {
+    return initializer.text;
+  }
+  if (ts.isNumericLiteral(initializer)) {
+    return Number(initializer.text);
+  }
+  if (ts.isPrefixUnaryExpression(initializer)) {
+    if (!ts.isNumericLiteral(initializer.operand)) {
+      return undefined;
+    }
+
+    const value = Number(initializer.operand.text);
+    if (initializer.operator === ts.SyntaxKind.PlusToken) {
+      return value;
+    }
+    if (initializer.operator === ts.SyntaxKind.MinusToken) {
+      return -value;
+    }
+
+    return undefined;
+  }
+
+  switch (initializer.kind) {
+    case ts.SyntaxKind.TrueKeyword:
+      return true;
+    case ts.SyntaxKind.FalseKeyword:
+      return false;
+    case ts.SyntaxKind.NullKeyword:
+      return null;
+    default:
+      return undefined;
+  }
+}
 
 // 원본 스키마의 사용자 정의 로직을 실행하지 않도록 메타데이터로 새 스키마를 구성한다.
 function getMetadataDefaultSchema(parameterSchema: z.ZodType): z.ZodType | undefined {
@@ -256,23 +321,22 @@ export class Template__generated_http extends Template {
           continue;
         }
 
-        try {
-          const requestDefaultResult = requestDefaultValueSchema.safeParse(
-            JSON.parse(param.defaultDef),
-          );
-          if (!requestDefaultResult.success) {
-            continue;
-          }
+        const parsedDefault = parsePrimitiveDefault(param.defaultDef);
+        if (parsedDefault === undefined) {
+          continue;
+        }
 
-          const metadataDefaultSchema = getMetadataDefaultSchema(parameterSchema);
-          if (
-            metadataDefaultSchema !== undefined &&
-            metadataDefaultSchema.safeParse(requestDefaultResult.data).success
-          ) {
-            requestDefaults[param.name] = requestDefaultResult.data;
-          }
-        } catch {
-          // 실행이 필요한 TypeScript 표현식은 평가하지 않고 기존 예시값을 사용한다.
+        const requestDefaultResult = requestDefaultValueSchema.safeParse(parsedDefault);
+        if (!requestDefaultResult.success) {
+          continue;
+        }
+
+        const metadataDefaultSchema = getMetadataDefaultSchema(parameterSchema);
+        if (
+          metadataDefaultSchema !== undefined &&
+          metadataDefaultSchema.safeParse(requestDefaultResult.data).success
+        ) {
+          requestDefaults[param.name] = requestDefaultResult.data;
         }
       }
 
