@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getZodObjectFromApi } from "../../api/code-converters";
 import { type ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
+import { ApiParamType } from "../../types/types";
 import { Template } from "../template";
 
 type RequestDefaultValue =
@@ -21,27 +22,257 @@ interface RequestDefaultObject {
   [key: string]: RequestDefaultValue;
 }
 
-const requestDefaultNumberSchema = z.union([
-  z.number(),
-  z.nan(),
-  z.literal(Infinity),
-  z.literal(-Infinity),
+type PrimitiveDefault = null | boolean | number | string;
+
+const metadataDefaultParseContext = {
+  // 전역 오류 맵 대신 부작용 없는 오류 메시지를 사용한다.
+  error: () => "API 메타데이터 기본값이 스키마 제약을 충족하지 않습니다.",
+};
+
+const metadataInnerTypeSchema = z.instanceof(z.ZodType);
+const metadataEmptyChecksSchema = z.tuple([]).optional();
+const metadataCheckFunctionSchema = z.instanceof(Function);
+
+const metadataEmailDefSchema = z.strictObject({
+  type: z.literal("string"),
+  check: z.literal("string_format"),
+  format: z.literal("email"),
+  abort: z.literal(false),
+  pattern: z.instanceof(RegExp),
+});
+
+const metadataStringMinLengthDefSchema = z.strictObject({
+  check: z.literal("min_length"),
+  minimum: z.number(),
+  when: metadataCheckFunctionSchema,
+});
+
+const metadataStringMaxLengthDefSchema = z.strictObject({
+  check: z.literal("max_length"),
+  maximum: z.number(),
+  when: metadataCheckFunctionSchema,
+});
+
+const metadataStringLengthDefSchema = z.strictObject({
+  check: z.literal("length_equals"),
+  length: z.number(),
+  when: metadataCheckFunctionSchema,
+});
+
+const metadataStringCheckSchema = z.union([
+  z.instanceof(z.ZodEmail),
+  z.instanceof(z.core.$ZodCheckMinLength),
+  z.instanceof(z.core.$ZodCheckMaxLength),
+  z.instanceof(z.core.$ZodCheckLengthEquals),
 ]);
 
-const requestDefaultValueSchema: z.ZodType<RequestDefaultValue> = z.lazy(() =>
-  z.union([
-    z.null(),
-    z.undefined(),
-    z.bigint(),
-    z.boolean(),
-    requestDefaultNumberSchema,
-    z.string(),
-    z.array(requestDefaultValueSchema),
-    z.record(z.string(), requestDefaultValueSchema),
-  ]),
-);
+const metadataCheckedStringDefSchema = z.strictObject({
+  type: z.literal("string"),
+  coerce: z.literal(false).optional(),
+  checks: z.array(metadataStringCheckSchema),
+});
 
-function parsePrimitiveDefault(defaultDef: string): RequestDefaultValue | undefined {
+const metadataSafeIntDefSchema = z.strictObject({
+  type: z.literal("number"),
+  check: z.literal("number_format"),
+  abort: z.literal(false),
+  format: z.literal("safeint"),
+});
+
+const metadataGreaterThanDefSchema = z.strictObject({
+  check: z.literal("greater_than"),
+  value: z.number(),
+  inclusive: z.boolean(),
+});
+
+const metadataLessThanDefSchema = z.strictObject({
+  check: z.literal("less_than"),
+  value: z.number(),
+  inclusive: z.boolean(),
+});
+
+const metadataNumberCheckSchema = z.union([
+  z.instanceof(z.ZodNumberFormat),
+  z.instanceof(z.core.$ZodCheckGreaterThan),
+  z.instanceof(z.core.$ZodCheckLessThan),
+]);
+
+const metadataCheckedNumberDefSchema = z.strictObject({
+  type: z.literal("number"),
+  coerce: z.literal(false).optional(),
+  checks: z.array(metadataNumberCheckSchema),
+});
+
+const metadataStringDefSchema = z.strictObject({
+  type: z.literal("string"),
+  coerce: z.literal(false).optional(),
+  checks: metadataEmptyChecksSchema,
+});
+
+const metadataNumberDefSchema = z.strictObject({
+  type: z.literal("number"),
+  coerce: z.literal(false).optional(),
+  checks: metadataEmptyChecksSchema,
+});
+
+const metadataBooleanDefSchema = z.strictObject({
+  type: z.literal("boolean"),
+  coerce: z.literal(false).optional(),
+  checks: metadataEmptyChecksSchema,
+});
+
+const metadataEnumDefSchema = z.strictObject({
+  type: z.literal("enum"),
+  entries: z.record(z.string(), z.union([z.string(), z.number()])),
+});
+
+const metadataLiteralDefSchema = z.strictObject({
+  type: z.literal("literal"),
+  values: z.array(z.union([z.string(), z.number(), z.boolean(), z.null()])).min(1),
+});
+
+const metadataOptionalDefSchema = z.strictObject({
+  type: z.literal("optional"),
+  innerType: metadataInnerTypeSchema,
+});
+
+const metadataNullableDefSchema = z.strictObject({
+  type: z.literal("nullable"),
+  innerType: metadataInnerTypeSchema,
+});
+
+const metadataDefaultInnerDefSchema = z.strictObject({
+  type: z.literal("default"),
+  innerType: metadataInnerTypeSchema,
+});
+
+function cloneMetadataRegExp(pattern: RegExp): RegExp | undefined {
+  const sourceGetter = Object.getOwnPropertyDescriptor(RegExp.prototype, "source")?.get;
+  const flagsGetter = Object.getOwnPropertyDescriptor(RegExp.prototype, "flags")?.get;
+  if (sourceGetter === undefined || flagsGetter === undefined) {
+    return undefined;
+  }
+
+  try {
+    // SAFETY: 원본의 재정의 가능한 프로퍼티와 test를 호출하지 않는다.
+    return new RegExp(sourceGetter.call(pattern), flagsGetter.call(pattern));
+  } catch {
+    return undefined;
+  }
+}
+
+function cloneMetadataEmailPattern(definition: z.ZodEmail["def"]): RegExp | undefined {
+  const result = metadataEmailDefSchema.safeParse(definition, metadataDefaultParseContext);
+  if (!result.success) {
+    return undefined;
+  }
+
+  return cloneMetadataRegExp(result.data.pattern);
+}
+
+function cloneMetadataString(reference: z.ZodString): z.ZodString | undefined {
+  const result = metadataCheckedStringDefSchema.safeParse(
+    reference.def,
+    metadataDefaultParseContext,
+  );
+  if (!result.success) {
+    return undefined;
+  }
+
+  let schema = z.string();
+  for (const check of result.data.checks) {
+    // SAFETY: 원본 검사는 실행하지 않고 엄격히 검증한 원시 메타데이터만 사용한다.
+    if (check instanceof z.ZodEmail) {
+      const pattern = cloneMetadataEmailPattern(check.def);
+      if (pattern === undefined) {
+        return undefined;
+      }
+      schema = schema.regex(pattern);
+    } else if (check instanceof z.core.$ZodCheckMinLength) {
+      const checkResult = metadataStringMinLengthDefSchema.safeParse(
+        check._zod.def,
+        metadataDefaultParseContext,
+      );
+      if (!checkResult.success) {
+        return undefined;
+      }
+      schema = schema.min(checkResult.data.minimum);
+    } else if (check instanceof z.core.$ZodCheckMaxLength) {
+      const checkResult = metadataStringMaxLengthDefSchema.safeParse(
+        check._zod.def,
+        metadataDefaultParseContext,
+      );
+      if (!checkResult.success) {
+        return undefined;
+      }
+      schema = schema.max(checkResult.data.maximum);
+    } else {
+      const checkResult = metadataStringLengthDefSchema.safeParse(
+        check._zod.def,
+        metadataDefaultParseContext,
+      );
+      if (!checkResult.success) {
+        return undefined;
+      }
+      schema = schema.length(checkResult.data.length);
+    }
+  }
+
+  return schema;
+}
+
+function cloneMetadataNumber(reference: z.ZodNumber): z.ZodNumber | undefined {
+  const result = metadataCheckedNumberDefSchema.safeParse(
+    reference.def,
+    metadataDefaultParseContext,
+  );
+  if (!result.success) {
+    return undefined;
+  }
+
+  let schema = z.number();
+  for (const check of result.data.checks) {
+    // SAFETY: 원본 검사는 실행하지 않고 엄격히 검증한 원시 메타데이터만 사용한다.
+    if (check instanceof z.ZodNumberFormat) {
+      const checkResult = metadataSafeIntDefSchema.safeParse(
+        check.def,
+        metadataDefaultParseContext,
+      );
+      if (!checkResult.success) {
+        return undefined;
+      }
+      schema = schema.int();
+    } else if (check instanceof z.core.$ZodCheckGreaterThan) {
+      const checkResult = metadataGreaterThanDefSchema.safeParse(
+        check._zod.def,
+        metadataDefaultParseContext,
+      );
+      if (!checkResult.success) {
+        return undefined;
+      }
+      schema = checkResult.data.inclusive
+        ? schema.min(checkResult.data.value)
+        : schema.gt(checkResult.data.value);
+    } else if (check instanceof z.core.$ZodCheckLessThan) {
+      const checkResult = metadataLessThanDefSchema.safeParse(
+        check._zod.def,
+        metadataDefaultParseContext,
+      );
+      if (!checkResult.success) {
+        return undefined;
+      }
+      schema = checkResult.data.inclusive
+        ? schema.max(checkResult.data.value)
+        : schema.lt(checkResult.data.value);
+    } else {
+      return undefined;
+    }
+  }
+
+  return schema;
+}
+
+function parsePrimitiveDefault(defaultDef: string): PrimitiveDefault | undefined {
   const sourceFile = ts.createSourceFile(
     "api-default.ts",
     `const apiDefault = ${defaultDef};`,
@@ -105,42 +336,121 @@ function parsePrimitiveDefault(defaultDef: string): RequestDefaultValue | undefi
   }
 }
 
-// 원본 스키마의 사용자 정의 로직을 실행하지 않도록 메타데이터로 새 스키마를 구성한다.
-function getMetadataDefaultSchema(parameterSchema: z.ZodType): z.ZodType | undefined {
-  let unwrappedSchema = parameterSchema;
-  let acceptsNull = false;
-
-  while (
-    unwrappedSchema instanceof z.ZodOptional ||
-    unwrappedSchema instanceof z.ZodNullable ||
-    unwrappedSchema instanceof z.ZodDefault
-  ) {
-    if (unwrappedSchema instanceof z.ZodNullable) {
-      acceptsNull = true;
-    }
-
-    // SAFETY: 지원하는 래퍼 분기에서는 innerType이 Classic Zod 스키마다.
-    unwrappedSchema = unwrappedSchema.def.innerType as z.ZodType;
-  }
-
-  let defaultSchema: z.ZodType;
-  if (unwrappedSchema instanceof z.ZodNumber) {
-    defaultSchema = z.number();
-  } else if (unwrappedSchema instanceof z.core.$ZodString) {
-    defaultSchema = z.string();
-  } else if (unwrappedSchema instanceof z.ZodBoolean) {
-    defaultSchema = z.boolean();
-  } else if (unwrappedSchema instanceof z.ZodEnum) {
-    defaultSchema = z.enum(unwrappedSchema.def.entries);
-  } else if (unwrappedSchema instanceof z.ZodLiteral) {
-    defaultSchema = z.literal(unwrappedSchema.def.values);
-  } else if (unwrappedSchema instanceof z.ZodNull) {
-    defaultSchema = z.null();
-  } else {
+function cloneReferencedMetadataDefaultSchema(
+  reference: z.ZodType,
+  visited: Set<z.ZodType> = new Set(),
+): z.ZodType | undefined {
+  if (visited.has(reference)) {
     return undefined;
   }
+  visited.add(reference);
 
-  return acceptsNull ? z.union([defaultSchema, z.null()]) : defaultSchema;
+  if (reference instanceof z.ZodOptional) {
+    const result = metadataOptionalDefSchema.safeParse(reference.def, metadataDefaultParseContext);
+    return result.success
+      ? cloneReferencedMetadataDefaultSchema(result.data.innerType, visited)
+      : undefined;
+  }
+  if (reference instanceof z.ZodNullable) {
+    const result = metadataNullableDefSchema.safeParse(reference.def, metadataDefaultParseContext);
+    return result.success
+      ? cloneReferencedMetadataDefaultSchema(result.data.innerType, visited)
+      : undefined;
+  }
+  if (reference instanceof z.ZodDefault) {
+    const definition = reference.def;
+
+    // defaultValue 접근자는 팩토리를 실행하므로 키만 확인하고 안전한 필드만 복사한다.
+    const definitionKeys = Reflect.ownKeys(definition);
+    const allowedKeys = ["type", "innerType", "defaultValue"];
+    if (
+      definitionKeys.length !== allowedKeys.length ||
+      !allowedKeys.every((key) => Object.prototype.hasOwnProperty.call(definition, key))
+    ) {
+      return undefined;
+    }
+    const result = metadataDefaultInnerDefSchema.safeParse(
+      { type: definition.type, innerType: definition.innerType },
+      metadataDefaultParseContext,
+    );
+    return result.success
+      ? cloneReferencedMetadataDefaultSchema(result.data.innerType, visited)
+      : undefined;
+  }
+
+  if (reference instanceof z.ZodEmail) {
+    const pattern = cloneMetadataEmailPattern(reference.def);
+    return pattern === undefined ? undefined : z.string().regex(pattern);
+  }
+  if (reference instanceof z.ZodString) {
+    const result = metadataStringDefSchema.safeParse(reference.def, metadataDefaultParseContext);
+    return result.success ? z.string() : cloneMetadataString(reference);
+  }
+  if (reference instanceof z.ZodNumber) {
+    const result = metadataNumberDefSchema.safeParse(reference.def, metadataDefaultParseContext);
+    return result.success ? z.number() : cloneMetadataNumber(reference);
+  }
+  if (reference instanceof z.ZodBoolean) {
+    const result = metadataBooleanDefSchema.safeParse(reference.def, metadataDefaultParseContext);
+    return result.success ? z.boolean() : undefined;
+  }
+  if (reference instanceof z.ZodEnum) {
+    const result = metadataEnumDefSchema.safeParse(reference.def, metadataDefaultParseContext);
+    return result.success ? z.enum(result.data.entries) : undefined;
+  }
+  if (reference instanceof z.ZodLiteral) {
+    const result = metadataLiteralDefSchema.safeParse(reference.def, metadataDefaultParseContext);
+    return result.success ? z.literal(result.data.values) : undefined;
+  }
+
+  return undefined;
+}
+
+function getMetadataDefaultSchema(
+  paramType: ApiParamType,
+  references: { [typeName: string]: z.ZodType },
+): z.ZodType | undefined {
+  if (paramType === "string") {
+    return z.string();
+  }
+  if (paramType === "number") {
+    return z.number();
+  }
+  if (paramType === "boolean") {
+    return z.boolean();
+  }
+  // 직접 true/false/null 리터럴은 GET 쿼리 전송과 Fastify 캐스터가 그대로 보존하지 못해 적용하지 않는다.
+  if (ApiParamType.isStringLiteral(paramType) || ApiParamType.isNumericLiteral(paramType)) {
+    return z.literal(paramType.value);
+  }
+  if (ApiParamType.isUnion(paramType) && paramType.types.length > 0) {
+    const schemas: z.ZodType[] = [];
+    for (const type of paramType.types) {
+      if (type === "null") {
+        continue;
+      }
+
+      const schema = getMetadataDefaultSchema(type, references);
+      if (schema === undefined) {
+        return undefined;
+      }
+      schemas.push(schema);
+    }
+
+    if (schemas.length === 1) {
+      return schemas[0];
+    }
+    if (schemas.length > 1) {
+      return z.union(schemas);
+    }
+  }
+
+  if (ApiParamType.isRef(paramType)) {
+    const reference = references[paramType.id];
+    return reference === undefined ? undefined : cloneReferencedMetadataDefaultSchema(reference);
+  }
+
+  return undefined;
 }
 
 export class Template__generated_http extends Template {
@@ -155,6 +465,13 @@ export class Template__generated_http extends Template {
       target: `${dir}/src/application`,
       path: `sonamu.generated.http`,
     };
+  }
+
+  stringifyQueryParams(params: RequestDefaultObject): string {
+    return qs
+      .stringify(params, { encodeValuesOnly: true, format: "RFC3986" })
+      .split("&")
+      .join("\n\t&");
   }
 
   async render() {
@@ -174,7 +491,7 @@ export class Template__generated_http extends Template {
         const dataLines = await (async () => {
           if ((api.options.httpMethod ?? "GET") === "GET") {
             return {
-              querystring: [qs.stringify(reqObject, { encode: false }).split("&").join("\n\t&")],
+              querystring: [this.stringifyQueryParams(reqObject)],
               body: [],
             };
           } else {
@@ -316,27 +633,23 @@ export class Template__generated_http extends Template {
       ) as RequestDefaultObject;
 
       for (const param of api.parameters) {
-        const parameterSchema = reqType["shape"][param.name];
-        if (param.defaultDef === undefined || parameterSchema === undefined) {
+        if (!Object.hasOwn(requestDefaults, param.name) || param.defaultDef === undefined) {
+          continue;
+        }
+
+        const metadataDefaultSchema = getMetadataDefaultSchema(param.type, references);
+        if (metadataDefaultSchema === undefined) {
           continue;
         }
 
         const parsedDefault = parsePrimitiveDefault(param.defaultDef);
-        if (parsedDefault === undefined) {
+        // 명시적 null 기본값은 GET 쿼리 전송과 Fastify 캐스터가 그대로 보존하지 못해 적용하지 않는다.
+        if (parsedDefault === undefined || parsedDefault === null) {
           continue;
         }
 
-        const requestDefaultResult = requestDefaultValueSchema.safeParse(parsedDefault);
-        if (!requestDefaultResult.success) {
-          continue;
-        }
-
-        const metadataDefaultSchema = getMetadataDefaultSchema(parameterSchema);
-        if (
-          metadataDefaultSchema !== undefined &&
-          metadataDefaultSchema.safeParse(requestDefaultResult.data).success
-        ) {
-          requestDefaults[param.name] = requestDefaultResult.data;
+        if (metadataDefaultSchema.safeParse(parsedDefault, metadataDefaultParseContext).success) {
+          requestDefaults[param.name] = parsedDefault;
         }
       }
 
