@@ -20,6 +20,64 @@ interface RequestDefaultObject {
   [key: string]: RequestDefaultValue;
 }
 
+const requestDefaultNumberSchema = z.union([
+  z.number(),
+  z.nan(),
+  z.literal(Infinity),
+  z.literal(-Infinity),
+]);
+
+const requestDefaultValueSchema: z.ZodType<RequestDefaultValue> = z.lazy(() =>
+  z.union([
+    z.null(),
+    z.undefined(),
+    z.bigint(),
+    z.boolean(),
+    requestDefaultNumberSchema,
+    z.string(),
+    z.array(requestDefaultValueSchema),
+    z.record(z.string(), requestDefaultValueSchema),
+  ]),
+);
+
+// 원본 스키마의 사용자 정의 로직을 실행하지 않도록 메타데이터로 새 스키마를 구성한다.
+function getMetadataDefaultSchema(parameterSchema: z.ZodType): z.ZodType | undefined {
+  let unwrappedSchema = parameterSchema;
+  let acceptsNull = false;
+
+  while (
+    unwrappedSchema instanceof z.ZodOptional ||
+    unwrappedSchema instanceof z.ZodNullable ||
+    unwrappedSchema instanceof z.ZodDefault
+  ) {
+    if (unwrappedSchema instanceof z.ZodNullable) {
+      acceptsNull = true;
+    }
+
+    // SAFETY: 지원하는 래퍼 분기에서는 innerType이 Classic Zod 스키마다.
+    unwrappedSchema = unwrappedSchema.def.innerType as z.ZodType;
+  }
+
+  let defaultSchema: z.ZodType;
+  if (unwrappedSchema instanceof z.ZodNumber) {
+    defaultSchema = z.number();
+  } else if (unwrappedSchema instanceof z.core.$ZodString) {
+    defaultSchema = z.string();
+  } else if (unwrappedSchema instanceof z.ZodBoolean) {
+    defaultSchema = z.boolean();
+  } else if (unwrappedSchema instanceof z.ZodEnum) {
+    defaultSchema = z.enum(unwrappedSchema.def.entries);
+  } else if (unwrappedSchema instanceof z.ZodLiteral) {
+    defaultSchema = z.literal(unwrappedSchema.def.values);
+  } else if (unwrappedSchema instanceof z.ZodNull) {
+    defaultSchema = z.null();
+  } else {
+    return undefined;
+  }
+
+  return acceptsNull ? z.union([defaultSchema, z.null()]) : defaultSchema;
+}
+
 export class Template__generated_http extends Template {
   constructor() {
     super("generated_http");
@@ -184,10 +242,41 @@ export class Template__generated_http extends Template {
     references: { [typeName: string]: z.ZodType },
   ): RequestDefaultObject {
     const reqType = getZodObjectFromApi(api, references);
+
     try {
       // SAFETY: getZodObjectFromApi는 객체 스키마를 반환하므로 기본값도 객체이다.
-      const def = this.zodTypeToReqDefault(reqType, "unknownName") as RequestDefaultObject;
-      return def;
+      const requestDefaults = this.zodTypeToReqDefault(
+        reqType,
+        "unknownName",
+      ) as RequestDefaultObject;
+
+      for (const param of api.parameters) {
+        const parameterSchema = reqType["shape"][param.name];
+        if (param.defaultDef === undefined || parameterSchema === undefined) {
+          continue;
+        }
+
+        try {
+          const requestDefaultResult = requestDefaultValueSchema.safeParse(
+            JSON.parse(param.defaultDef),
+          );
+          if (!requestDefaultResult.success) {
+            continue;
+          }
+
+          const metadataDefaultSchema = getMetadataDefaultSchema(parameterSchema);
+          if (
+            metadataDefaultSchema !== undefined &&
+            metadataDefaultSchema.safeParse(requestDefaultResult.data).success
+          ) {
+            requestDefaults[param.name] = requestDefaultResult.data;
+          }
+        } catch {
+          // 실행이 필요한 TypeScript 표현식은 평가하지 않고 기존 예시값을 사용한다.
+        }
+      }
+
+      return requestDefaults;
     } catch (error) {
       console.error(error);
       throw new Error(`Invalid zod type detected on ${api.modelName}:${api.methodName}`, {
