@@ -85,13 +85,16 @@ console.log(stats.average); // number
 ```typescript
 const users = await puri.table("users").select({
   id: "users.id",
-  display_label: Puri.concat("Sonamu", " ", "User"),
+  display_label: Puri.concatExpressions("Sonamu", " ", "User"),
   email_upper: Puri.upper("users.email"),
   email_lower: Puri.lower("users.email"),
 });
 ```
 
-`Puri.concat()` treats every argument as a literal string value. Use
+`Puri.concatExpressions()` adds PostgreSQL `text` casts to bound literal parameters, so
+literal-only expressions like the example above are runnable. Legacy `Puri.concat()` binds
+literals as untyped parameters and does not treat column-like strings as columns. A standalone
+literal-only `Puri.concat()` expression is therefore not runnable on PostgreSQL. Use
 `Puri.concatExpressions()` to combine string SQL expressions with literal text.
 
 ## Raw SQL Expressions

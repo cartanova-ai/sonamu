@@ -154,7 +154,7 @@ Built-in SQL functions provided by Puri.
 <CodeGroup>
 ```typescript title="CONCAT"
 const results = await db.table("messages").select({
-  greeting: Puri.concat("Hello", ", ", "Sonamu"),
+  greeting: Puri.concatExpressions("Hello", ", ", "Sonamu"),
 });
 ```
 
@@ -167,10 +167,12 @@ const results = await db.table("users").select({
 
 </CodeGroup>
 
-`Puri.concat()` binds every argument as a string value. It does not interpret an argument such as
-`"users.name"` as a column. To combine string SQL expressions with literal text, use
-`Puri.concatExpressions()` and `Puri.coalesce()` as shown in [JSON Field
-Extraction](#json-field-extraction).
+`Puri.concatExpressions()` adds PostgreSQL `text` casts to bound literal parameters, so
+literal-only expressions like the example above are runnable. Legacy `Puri.concat()` binds
+literals as untyped parameters and does not interpret an argument such as `"users.name"` as a
+column. A standalone literal-only `Puri.concat()` expression is therefore not runnable on
+PostgreSQL. To combine string SQL expressions with literal text, use `Puri.concatExpressions()`
+and `Puri.coalesce()` as shown in [JSON Field Extraction](#json-field-extraction).
 
 ### Aggregate Functions
 
