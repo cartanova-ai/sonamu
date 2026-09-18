@@ -4,6 +4,7 @@ import {
   asArray,
   NotFoundException,
   BadRequestException,
+  Puri,
   api,
   exhaustive,
 } from "sonamu";
@@ -61,6 +62,41 @@ class AuditEventModelClass extends BaseModelClass<
     });
 
     return rows[0] ?? null;
+  }
+
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+  async findByPayloadKey(
+    key: string,
+    limit: number = 20,
+  ): Promise<{ id: number; eventType: string; payloadValue: string | null; summary: string }[]> {
+    // 잘못된 입력은 읽기 쿼리를 만들기 전에 거부한다.
+    if (key.trim().length === 0) {
+      throw new BadRequestException(SD("error.badRequest"));
+    }
+    if (!Number.isInteger(limit) || limit <= 0 || limit > 100) {
+      throw new BadRequestException(SD("error.badRequest"));
+    }
+
+    const rdb = this.getPuri("r");
+    const query = rdb.table("audit_events");
+    const payloadValue = query.jsonText("audit_events.payload_json", key);
+    const actor = query.jsonText("audit_events.payload_json", "triggeredBy");
+
+    return query
+      .whereJsonKeyExists("audit_events.payload_json", key)
+      .select({
+        id: "audit_events.id",
+        eventType: "audit_events.event_type",
+        payloadValue,
+        summary: Puri.concatExpressions(
+          Puri.coalesce(actor, "system"),
+          " → ",
+          Puri.coalesce(payloadValue, "(null)"),
+        ),
+      })
+      .orderBy("audit_events.occurred_at", "desc")
+      .orderBy("audit_events.id", "desc")
+      .limit(limit);
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "AuditEvents" })

@@ -248,6 +248,14 @@ export namespace AuditEventService {
   export const getAuditEvent = <T extends AuditEventSubsetKey>(subset: T, id: number): SSRQuery =>
     createSSRQuery("AuditEventModel", "findById", [subset, id], ["AuditEvent", "getAuditEvent"]);
 
+  export const findByPayloadKey = (key: string, limit: number = 20): SSRQuery =>
+    createSSRQuery(
+      "AuditEventModel",
+      "findByPayloadKey",
+      [key, limit],
+      ["AuditEvent", "findByPayloadKey"],
+    );
+
   export const getAuditEvents = <T extends AuditEventSubsetKey, LP extends AuditEventListParams>(
     subset: T,
     rawParams?: LP,
