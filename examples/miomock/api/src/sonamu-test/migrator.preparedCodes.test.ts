@@ -45,7 +45,7 @@ describe("Migrator - preparedCodes 생성", () => {
 
     const alterCode = status.preparedCodes.find((code) => code.table === "users");
     expect(alterCode).toBeDefined();
-    expect(alterCode?.title).toBe("alter_users_add2_alter6");
+    expect(alterCode?.title).toBe("alter_users_add2_alter7");
 
     // up
     expect(alterCode?.formatted).toContain(
@@ -73,7 +73,7 @@ describe("Migrator - preparedCodes 생성", () => {
 
     const alterCode = status.preparedCodes.find((code) => code.title.startsWith("alter_users_"));
     expect(alterCode).toBeDefined();
-    expect(alterCode?.title).toBe("alter_users_drop1_alter5");
+    expect(alterCode?.title).toBe("alter_users_drop1_alter6");
 
     // up
     expect(alterCode?.formatted).toContain('table.dropColumns("deleted_at")');
@@ -101,7 +101,7 @@ describe("Migrator - preparedCodes 생성", () => {
 
     const alterCode = status.preparedCodes.find((code) => code.table === "users");
     expect(alterCode).toBeDefined();
-    expect(alterCode?.title).toBe("alter_users_alter6");
+    expect(alterCode?.title).toBe("alter_users_alter7");
 
     // up
     expect(alterCode?.formatted).toContain(
@@ -142,7 +142,7 @@ describe("Migrator - preparedCodes 생성", () => {
       (code) => code.table === "users" && code.type === "normal",
     );
     expect(alterCode).toBeDefined();
-    expect(alterCode?.title).toBe("alter_users_add1_drop1_alter6");
+    expect(alterCode?.title).toBe("alter_users_add1_drop1_alter7");
 
     // up
     expect(alterCode?.formatted).toContain('table.string("full_name", 255).notNullable()');
@@ -204,7 +204,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(Naite.get("migrator:getStatus:preparedCodes").first()).toMatchSnapshot();
     const preparedCodes = status.preparedCodes.find((code) => code.table === "users");
     expect(preparedCodes).toBeDefined();
-    expect(preparedCodes?.title).toBe("alter_users_alter6");
+    expect(preparedCodes?.title).toBe("alter_users_alter7");
 
     // up
     expect(preparedCodes?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
@@ -449,7 +449,7 @@ describe("Migrator - preparedCodes 생성", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.table === "users");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_users_alter6");
+      expect(alterCode?.title).toBe("alter_users_alter7");
 
       // up: 기존 인덱스 삭제 후 새 인덱스 생성
       expect(alterCode?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
@@ -480,7 +480,7 @@ describe("Migrator - preparedCodes 생성", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.table === "users");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_users_alter6");
+      expect(alterCode?.title).toBe("alter_users_alter7");
 
       // up: 기존 인덱스 삭제 후 NULLS NOT DISTINCT 인덱스 생성
       expect(alterCode?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
@@ -510,7 +510,7 @@ describe("Migrator - preparedCodes 생성", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.table === "users");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_users_alter6");
+      expect(alterCode?.title).toBe("alter_users_alter7");
 
       // up: 기존 인덱스 삭제 후 NULLS FIRST 인덱스 생성
       expect(alterCode?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
@@ -550,7 +550,7 @@ describe("Migrator - preparedCodes 생성", () => {
 
     const alterCode = status.preparedCodes.find((code) => code.table === "users");
     expect(alterCode).toBeDefined();
-    expect(alterCode?.title).toBe("alter_users_add1_alter6");
+    expect(alterCode?.title).toBe("alter_users_add1_alter7");
 
     // up
     expect(alterCode?.formatted).toContain('table.integer("company_id").notNullable()');
@@ -585,7 +585,7 @@ describe("Migrator - preparedCodes 생성", () => {
     // then
     const alterCode = status.preparedCodes.find((code) => code.table === "users");
     expect(alterCode).toBeDefined();
-    expect(alterCode?.title).toBe("alter_users_add1_alter6");
+    expect(alterCode?.title).toBe("alter_users_add1_alter7");
 
     // up
     expect(alterCode?.formatted).toContain('table.integer("main_company_id").notNullable()');
