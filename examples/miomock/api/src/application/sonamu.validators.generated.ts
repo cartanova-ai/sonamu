@@ -41,12 +41,14 @@ import { TagListParams, TagSaveParams } from "./tag/tag.types";
 import { TelemetryQueryParams } from "./telemetry/telemetry.types";
 import { UserListParams, UserSaveParams } from "./user/user.types";
 
-export const fingerprint = "e966fe0b7dcecdecf3f6fd9c99219beaee0f07f41087ed0416e519c0bb9e9345";
+export const fingerprint = "b3a11764171147a9bc3d07bb479816e35a240affd15a7b36a5b64b7b8de2d597";
 export const routeIds = {
   '["AuditEventModel","del","POST","/auditEvent/del"]':
     "167a3b99f09bee1d82f7dff5188522d7d10cc77f541484728120dd644a884e6f",
   '["AuditEventModel","findById","GET","/auditEvent/findById"]':
     "4dc7e31b5673abab878ded5d811747377b4bf4e82bd03349e8ae43bc3071fb59",
+  '["AuditEventModel","findByPayloadKey","GET","/auditEvent/findByPayloadKey"]':
+    "af3f358d151ac069231f40d60663f174ed1f7990e4485e612cecd614a0dd3c67",
   '["AuditEventModel","findMany","GET","/auditEvent/findMany"]':
     "2ef4cf5b7b7995caec6e9387a1216dc2fa306c6ab1c586c79017237bb19641ef",
   '["AuditEventModel","save","POST","/auditEvent/save"]':
@@ -248,6 +250,25 @@ export const validator_4dc7e31b5673abab878ded5d811747377b4bf4e82bd03349e8ae43bc3
         parameters: [
           { name: "subset", type: { t: "ref", id: "T" }, optional: false },
           { name: "id", type: "number", optional: false },
+        ],
+        returnType: "unknown",
+      },
+      { ...types },
+    ),
+  ),
+);
+export const validator_af3f358d151ac069231f40d60663f174ed1f7990e4485e612cecd614a0dd3c67 = compile(
+  fastifyCaster(
+    getZodObjectFromApi(
+      {
+        modelName: "AuditEventModel",
+        methodName: "findByPayloadKey",
+        path: "/auditEvent/findByPayloadKey",
+        options: { httpMethod: "GET" },
+        typeParameters: [],
+        parameters: [
+          { name: "key", type: "string", optional: false },
+          { name: "limit", type: "number", optional: true, defaultDef: "20" },
         ],
         returnType: "unknown",
       },
@@ -1561,6 +1582,10 @@ export const validators = new Map([
   [
     '["AuditEventModel","findById","GET","/auditEvent/findById"]',
     validator_4dc7e31b5673abab878ded5d811747377b4bf4e82bd03349e8ae43bc3071fb59,
+  ],
+  [
+    '["AuditEventModel","findByPayloadKey","GET","/auditEvent/findByPayloadKey"]',
+    validator_af3f358d151ac069231f40d60663f174ed1f7990e4485e612cecd614a0dd3c67,
   ],
   [
     '["AuditEventModel","findMany","GET","/auditEvent/findMany"]',

@@ -368,23 +368,27 @@ export async function down(knex: Knex): Promise<void> {
 <AccordionGroup>
 <Accordion title="How do I use PostgreSQL JSONB operators in Puri?">
 
-Use the type-safe `.whereJsonSupersetOf()` for the JSONB containment operator `@>`. For other
-JSONB operators, use `Puri.rawString()` and parameterized `.whereRaw()`.
+Use `jsonText()` for text extraction, `.whereJsonSupersetOf()` for containment, and
+`.whereJsonKeyExists()` for top-level key existence. Use `Puri.rawString()` and parameterized
+`.whereRaw()` only for JSONB operations that these helpers do not support.
 
-**JSONB property query (->>, ->):**
+**JSONB text extraction (->>):**
 
 ```typescript
-// metadata->>'brand' = 'Samsung'
-const products = await ProductModel.getPuri("r")
-  .table("products")
-  .select({
-    id: "products.id",
-    name: "products.name",
-    brand: Puri.rawString("products.metadata->>'brand'"),
-    tags: Puri.rawStringArray("products.metadata->'tags'"),
-  })
-  .whereRaw("products.metadata->>'brand' = ?", ["Samsung"]);
+const query = ProductModel.getPuri("r").table("products");
+const brand = query.jsonText("products.metadata", "brand");
+
+const products = await query.select({
+  id: "products.id",
+  name: "products.name",
+  brand, // string | null
+  brandWithFallback: Puri.coalesce(brand, "Unknown"), // string
+});
 ```
+
+`jsonText()` also accepts multiple path segments for nested text. A missing path or JSON `null`
+produces SQL `NULL`, so a direct selection is `string | null`; `Puri.coalesce()` provides a
+non-null fallback.
 
 **JSONB containment operator (@>):**
 
@@ -409,28 +413,29 @@ OR condition inside parentheses, use `orWhereJsonSupersetOf()` on a `whereGroup(
 const productsWithDiscount = await ProductModel.getPuri("r")
   .table("products")
   .select("*")
-  .whereRaw("products.metadata ?? 'discount'"); // Use ?? instead of ?
+  .whereJsonKeyExists("products.metadata", "discount");
 ```
+
+`whereJsonKeyExists()` checks only top-level keys. A key still exists when its JSON value is
+`null`.
 
 **Nested JSONB properties:**
 
 ```typescript
 // metadata->'specs'->>'cpu'
-const laptops = await ProductModel.getPuri("r")
-  .table("products")
-  .select({
-    id: "products.id",
-    name: "products.name",
-    cpu: Puri.rawString("products.metadata->'specs'->>'cpu'"),
-    ram: Puri.rawString("products.metadata->'specs'->>'ram'"),
-  })
-  .whereRaw("products.metadata->'specs'->>'cpu' LIKE ?", ["%Intel%"]);
+const query = ProductModel.getPuri("r").table("products");
+const laptops = await query.select({
+  id: "products.id",
+  name: "products.name",
+  cpu: query.jsonText("products.metadata", "specs", "cpu"),
+  ram: query.jsonText("products.metadata", "specs", "ram"),
+});
 ```
 
 **Notes:**
 
 - `->>` returns text, `->` returns JSONB
-- Use parameter binding to prevent SQL Injection
+- For unsupported operations, use raw expressions with parameter binding to prevent SQL injection
 - GIN index recommended: `CREATE INDEX ON products USING gin(metadata);`
 
 </Accordion>
