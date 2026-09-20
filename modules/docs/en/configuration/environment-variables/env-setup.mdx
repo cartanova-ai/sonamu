@@ -24,6 +24,20 @@ For the active `NODE_ENV`, Sonamu applies sources in this order:
 Each source can override values loaded before it. If `NODE_ENV` is not set, Sonamu uses
 `development`. Allowed values are `test`, `development`, `staging`, and `production`.
 
+## Programmatic Environment API
+
+Import the current environment reader and its return type from the root package:
+
+```typescript
+import { getSonamuEnvironment, type SonamuEnvironment } from "sonamu";
+
+const environment: SonamuEnvironment = getSonamuEnvironment();
+```
+
+`SonamuEnvironment` is `"test" | "development" | "staging" | "production"`. An absent or empty
+`NODE_ENV` returns `"development"`. Any non-empty value outside these four environments throws an
+error.
+
 ## File Layout
 
 ```bash

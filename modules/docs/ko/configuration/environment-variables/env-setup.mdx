@@ -22,6 +22,20 @@ Sonamu는 `sonamu.config.ts`를 import하기 전에 API 패키지 루트의 dote
 뒤에 오는 값이 앞의 값을 덮습니다. `NODE_ENV`가 없으면 `development`를 사용합니다. 허용 값은
 `test`, `development`, `staging`, `production`입니다.
 
+## 프로그래밍 환경 API
+
+현재 환경 조회 함수와 반환 타입을 루트 패키지에서 import할 수 있습니다.
+
+```typescript
+import { getSonamuEnvironment, type SonamuEnvironment } from "sonamu";
+
+const environment: SonamuEnvironment = getSonamuEnvironment();
+```
+
+`SonamuEnvironment`는 `"test" | "development" | "staging" | "production"`입니다. `NODE_ENV`가
+없거나 빈 문자열이면 `"development"`를 반환합니다. 이 네 환경에 속하지 않는 비어 있지 않은
+값이면 에러를 던집니다.
+
 ## 파일 구조
 
 ```bash

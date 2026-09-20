@@ -23,6 +23,7 @@ export * from "./database/puri-wrapper";
 export * from "./database/upsert-builder";
 export * from "./entity/entity";
 export * from "./entity/entity-manager";
+export { getSonamuEnvironment, type SonamuEnvironment } from "./env";
 export * from "./exceptions/error-handler";
 export * from "./exceptions/so-exceptions";
 export * from "./filter";
