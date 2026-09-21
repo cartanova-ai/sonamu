@@ -24,6 +24,10 @@ interface RequestDefaultObject {
 
 type PrimitiveDefault = null | boolean | number | string;
 
+type MetadataDefaultUnionCollection =
+  | { unsupported: false; schemas: z.ZodType[] }
+  | { unsupported: true };
+
 const metadataDefaultParseContext = {
   // 전역 오류 맵 대신 부작용 없는 오류 메시지를 사용한다.
   error: () => "API 메타데이터 기본값이 스키마 제약을 충족하지 않습니다.",
@@ -406,6 +410,40 @@ function cloneReferencedMetadataDefaultSchema(
   return undefined;
 }
 
+function collectMetadataDefaultUnionSchemas(
+  paramType: ApiParamType.Union,
+  references: { [typeName: string]: z.ZodType },
+): MetadataDefaultUnionCollection {
+  if (paramType.types.length === 0) {
+    return { unsupported: true };
+  }
+
+  const schemas: z.ZodType[] = [];
+  for (const type of paramType.types) {
+    if (type === "null" || type === "undefined") {
+      continue;
+    }
+
+    if (ApiParamType.isUnion(type)) {
+      // nullish 전용 중첩 유니온과 미지원 멤버를 구분해 바깥 유니온을 잘못 거부하지 않는다.
+      const nested = collectMetadataDefaultUnionSchemas(type, references);
+      if (nested.unsupported) {
+        return nested;
+      }
+      schemas.push(...nested.schemas);
+      continue;
+    }
+
+    const schema = getMetadataDefaultSchema(type, references);
+    if (schema === undefined) {
+      return { unsupported: true };
+    }
+    schemas.push(schema);
+  }
+
+  return { unsupported: false, schemas };
+}
+
 function getMetadataDefaultSchema(
   paramType: ApiParamType,
   references: { [typeName: string]: z.ZodType },
@@ -423,25 +461,16 @@ function getMetadataDefaultSchema(
   if (ApiParamType.isStringLiteral(paramType) || ApiParamType.isNumericLiteral(paramType)) {
     return z.literal(paramType.value);
   }
-  if (ApiParamType.isUnion(paramType) && paramType.types.length > 0) {
-    const schemas: z.ZodType[] = [];
-    for (const type of paramType.types) {
-      if (type === "null") {
-        continue;
-      }
-
-      const schema = getMetadataDefaultSchema(type, references);
-      if (schema === undefined) {
-        return undefined;
-      }
-      schemas.push(schema);
+  if (ApiParamType.isUnion(paramType)) {
+    const collection = collectMetadataDefaultUnionSchemas(paramType, references);
+    if (collection.unsupported) {
+      return undefined;
     }
-
-    if (schemas.length === 1) {
-      return schemas[0];
+    if (collection.schemas.length === 1) {
+      return collection.schemas[0];
     }
-    if (schemas.length > 1) {
-      return z.union(schemas);
+    if (collection.schemas.length > 1) {
+      return z.union(collection.schemas);
     }
   }
 

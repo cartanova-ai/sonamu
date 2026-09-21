@@ -460,6 +460,128 @@ describe("Template__generated_http 직접 타입 기본값", () => {
     });
   });
 
+  it("문자열과 undefined의 직접 유니온은 문자열 기본값을 반영한다", () => {
+    const api = createApi([
+      {
+        name: "keyword",
+        type: { t: "union", types: ["string", "undefined"] },
+        optional: true,
+        defaultDef: '"declared-string"',
+      },
+    ]);
+
+    expect(template.resolveApiParams(api, {})).toEqual({ keyword: "declared-string" });
+  });
+
+  it("undefined 분기가 중첩된 지원 원시·리터럴 유니온은 비 undefined 기본값을 반영한다", () => {
+    const api = createApi([
+      {
+        name: "nested",
+        type: {
+          t: "union",
+          types: [
+            "undefined",
+            {
+              t: "union",
+              types: ["number", { t: "string-literal", value: "recursive" }],
+            },
+          ],
+        },
+        optional: true,
+        defaultDef: '"recursive"',
+      },
+    ]);
+
+    expect(template.resolveApiParams(api, {})).toEqual({ nested: "recursive" });
+  });
+
+  it("중첩된 nullish 전용 유니온은 미지원 분기가 아니며 문자열 기본값을 반영한다", () => {
+    const api = createApi([
+      {
+        name: "nestedNullish",
+        type: {
+          t: "union",
+          types: ["string", { t: "union", types: ["undefined", "null"] }],
+        },
+        optional: true,
+        defaultDef: '"declared-string"',
+      },
+    ]);
+
+    expect(template.resolveApiParams(api, {})).toEqual({ nestedNullish: "declared-string" });
+  });
+
+  it("undefined만 있거나 미지원 비 undefined 멤버가 섞인 유니온과 직접 undefined는 기존 예시를 유지한다", () => {
+    const api = createApi([
+      {
+        name: "onlyUndefined",
+        type: { t: "union", types: ["undefined"] },
+        optional: false,
+        defaultDef: '"must-not-apply"',
+      },
+      {
+        name: "unsupportedUnion",
+        type: {
+          t: "union",
+          types: ["string", { t: "array", elementsType: "string" }, "undefined"],
+        },
+        optional: false,
+        defaultDef: '"valid-string-default"',
+      },
+      {
+        name: "directUndefined",
+        type: "undefined",
+        optional: false,
+        defaultDef: '"must-not-apply"',
+      },
+    ]);
+
+    expect(template.resolveApiParams(api, {})).toEqual({
+      onlyUndefined: "unknown",
+      unsupportedUnion: "UNSUPPORTEDUNION",
+      directUndefined: "unknown",
+    });
+  });
+
+  it("undefined 표현식은 기본값으로 적용하거나 실행하지 않고 기존 예시를 유지한다", () => {
+    let calls = 0;
+    const previousFactory = Object.getOwnPropertyDescriptor(globalThis, "factory");
+    Object.defineProperty(globalThis, "factory", {
+      configurable: true,
+      value: () => {
+        calls += 1;
+      },
+    });
+    const api = createApi([
+      {
+        name: "identifier",
+        type: { t: "union", types: ["string", "undefined"] },
+        optional: true,
+        defaultDef: "undefined",
+      },
+      {
+        name: "voidExpression",
+        type: { t: "union", types: ["string", "undefined"] },
+        optional: true,
+        defaultDef: "void factory()",
+      },
+    ]);
+
+    try {
+      expect(template.resolveApiParams(api, {})).toEqual({
+        identifier: "IDENTIFIER",
+        voidExpression: "VOIDEXPRESSION",
+      });
+      expect(calls).toBe(0);
+    } finally {
+      if (previousFactory === undefined) {
+        Reflect.deleteProperty(globalThis, "factory");
+      } else {
+        Object.defineProperty(globalThis, "factory", previousFactory);
+      }
+    }
+  });
+
   it("잘못된 직접 원시 기본값은 예시로 대체하고 전역 오류 콜백을 추가 호출하지 않는다", () => {
     const config = z.config();
     const originalCustomErrorDescriptor = Object.getOwnPropertyDescriptor(config, "customError");
