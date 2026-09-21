@@ -1,10 +1,13 @@
 import assert from "assert";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 
-import { type AuditLogEvent, DB, ingestAuditEvent } from "sonamu";
+import { type AuditLogEvent, BadRequestException, DB, ingestAuditEvent, Naite } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
 import { z } from "zod";
+
+import { AuditEventModel } from "./audit-event.model";
+import { type AuditEventPayload } from "./audit-event.types";
 
 bootstrap(vi);
 
@@ -43,6 +46,50 @@ function computeDedupeKey(parts: {
   ].join("|");
   return createHash("sha256").update(normalized).digest("hex");
 }
+
+type PayloadAuditEventSeed = {
+  eventType: string;
+  payload: AuditEventPayload;
+  occurredAt: Date;
+};
+
+async function seedPayloadAuditEvents(
+  seeds: PayloadAuditEventSeed[],
+): Promise<Array<{ id: number; eventType: string }>> {
+  const inserted = await DB.getDB("w")("audit_events")
+    .insert(
+      seeds.map((seed) => {
+        const uniqueKey = randomUUID();
+        return {
+          source: "model-test",
+          category: "user",
+          event_type: seed.eventType,
+          event_key: uniqueKey,
+          dedupe_key: uniqueKey,
+          payload_json: seed.payload,
+          occurred_at: seed.occurredAt,
+        };
+      }),
+    )
+    .returning(["id", "event_type"]);
+
+  assert.strictEqual(inserted.length, seeds.length);
+  return inserted.map((row) => ({ id: row.id, eventType: row.event_type }));
+}
+
+async function seedPayloadAuditEvent(seed: PayloadAuditEventSeed): Promise<number> {
+  const [inserted] = await seedPayloadAuditEvents([seed]);
+
+  assert(inserted);
+  return inserted.id;
+}
+
+type PayloadKeyResult = {
+  id: number;
+  eventType: string;
+  payloadValue: string | null;
+  summary: string;
+};
 
 describe("AuditEventModel ingest() 기본 동작", () => {
   test("ingest() 호출 시 audit_events에 1건 INSERT되고 각 컬럼 값이 올바르게 저장된다", async () => {
@@ -456,5 +503,145 @@ describe("AuditEventModel 시각 구분", () => {
 
     // 두 컬럼은 서로 다른 시각으로 별도 기록되어야 한다
     expect(ingestedAt.getTime()).not.toBe(occurredAt.getTime());
+  });
+});
+
+describe("AuditEventModel findByPayloadKey()", () => {
+  test("스칼라 값을 정확한 4개 필드와 요약으로 반환하고 요청 키가 없는 행은 제외한다", async () => {
+    const wdb = DB.getDB("w");
+    const key = `scalar-${randomUUID()}`;
+    const eventType = `payload-scalar-${randomUUID()}`;
+    const includedId = await seedPayloadAuditEvent({
+      eventType,
+      payload: { [key]: 42, triggeredBy: "actor-42" },
+      occurredAt: new Date("2026-09-18T01:00:00.000Z"),
+    });
+    const excludedId = await seedPayloadAuditEvent({
+      eventType: `payload-missing-${randomUUID()}`,
+      payload: { anotherKey: 42, triggeredBy: "actor-missing" },
+      occurredAt: new Date("2026-09-18T02:00:00.000Z"),
+    });
+    const countBefore = await wdb("audit_events").count("* as count").first();
+    const seededRowsBefore = await wdb("audit_events")
+      .whereIn("id", [includedId, excludedId])
+      .orderBy("id", "asc")
+      .select("*");
+
+    const result = await AuditEventModel.findByPayloadKey(key);
+
+    expect(result).toEqual([
+      {
+        id: includedId,
+        eventType,
+        payloadValue: "42",
+        summary: "actor-42 → 42",
+      },
+    ]);
+    const countAfter = await wdb("audit_events").count("* as count").first();
+    const seededRowsAfter = await wdb("audit_events")
+      .whereIn("id", [includedId, excludedId])
+      .orderBy("id", "asc")
+      .select("*");
+    expect(Number(countAfter?.count)).toBe(Number(countBefore?.count));
+    expect(seededRowsAfter).toEqual(seededRowsBefore);
+  });
+
+  test("개수를 생략하면 최신 20건만 반환하고 21번째 과거 행을 제외한다", async () => {
+    const key = `default-limit-${randomUUID()}`;
+    const baseTime = new Date("2026-09-19T00:00:00.000Z").getTime();
+    const seeds = Array.from(
+      { length: 21 },
+      (_, index): PayloadAuditEventSeed => ({
+        eventType: `payload-default-${index}-${randomUUID()}`,
+        payload: { [key]: `감사 값 ${index + 1}`, triggeredBy: `사용자 ${index + 1}` },
+        occurredAt: new Date(baseTime + index * 60_000),
+      }),
+    );
+    const inserted = await seedPayloadAuditEvents(seeds);
+    const idByEventType = new Map(inserted.map((row) => [row.eventType, row.id]));
+
+    const result = await AuditEventModel.findByPayloadKey(key);
+
+    const expected = seeds
+      .slice(1)
+      .reverse()
+      .map((seed, reverseIndex) => {
+        const originalIndex = 20 - reverseIndex;
+        return {
+          id: idByEventType.get(seed.eventType),
+          eventType: seed.eventType,
+          payloadValue: `감사 값 ${originalIndex + 1}`,
+          summary: `사용자 ${originalIndex + 1} → 감사 값 ${originalIndex + 1}`,
+        };
+      });
+
+    expect(result).toHaveLength(20);
+    expect(result).toEqual(expected);
+    expect(result.at(0)?.eventType).toBe(seeds[20]?.eventType);
+    expect(result.at(-1)?.eventType).toBe(seeds[1]?.eventType);
+    expect(result.some(({ eventType }) => eventType === seeds[0]?.eventType)).toBe(false);
+  });
+
+  test("명시적 JSON null 키를 포함하고 값과 액터가 null이면 요약 폴백을 적용한다", async () => {
+    const key = `nullable-${randomUUID()}`;
+    const eventType = `payload-null-${randomUUID()}`;
+    const id = await seedPayloadAuditEvent({
+      eventType,
+      payload: { [key]: null, triggeredBy: null },
+      occurredAt: new Date("2026-09-18T03:00:00.000Z"),
+    });
+
+    await expect(AuditEventModel.findByPayloadKey(key, 100)).resolves.toEqual([
+      {
+        id,
+        eventType,
+        payloadValue: null,
+        summary: "system → (null)",
+      },
+    ]);
+  });
+
+  test("발생 시각 내림차순과 ID 내림차순으로 정렬한 뒤 요청한 개수만 반환한다", async () => {
+    const key = `ordering-${randomUUID()}`;
+    const tiedOccurredAt = new Date("2026-09-18T05:00:00.000Z");
+    const firstNewerId = await seedPayloadAuditEvent({
+      eventType: `payload-newer-first-${randomUUID()}`,
+      payload: { [key]: "첫 번째 최신값", triggeredBy: "actor-1" },
+      occurredAt: tiedOccurredAt,
+    });
+    await seedPayloadAuditEvent({
+      eventType: `payload-older-${randomUUID()}`,
+      payload: { [key]: "과거값", triggeredBy: "actor-old" },
+      occurredAt: new Date("2026-09-18T04:00:00.000Z"),
+    });
+    const secondNewerId = await seedPayloadAuditEvent({
+      eventType: `payload-newer-second-${randomUUID()}`,
+      payload: { [key]: "두 번째 최신값", triggeredBy: "actor-2" },
+      occurredAt: tiedOccurredAt,
+    });
+
+    const result: PayloadKeyResult[] = await AuditEventModel.findByPayloadKey(key, 2);
+
+    expect(result.map(({ id, payloadValue }) => ({ id, payloadValue }))).toEqual([
+      { id: secondNewerId, payloadValue: "두 번째 최신값" },
+      { id: firstNewerId, payloadValue: "첫 번째 최신값" },
+    ]);
+  });
+
+  test("빈 키와 허용 범위를 벗어난 개수는 쿼리 전에 거부한다", async () => {
+    const queryCountBefore = Naite.get("puri:executed-query").result().length;
+
+    for (const key of ["", " \t "]) {
+      await expect(AuditEventModel.findByPayloadKey(key)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    }
+    for (const limit of [0, -1, 1.5, 101, Number.NaN, Number.POSITIVE_INFINITY]) {
+      await expect(AuditEventModel.findByPayloadKey("valid-key", limit)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    }
+
+    expect(Naite.get("puri:executed-query").result()).toHaveLength(queryCountBefore);
   });
 });

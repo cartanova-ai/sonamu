@@ -51,7 +51,20 @@ import { FUZZY_OPERATORS } from "./puri.types";
 
 type PuriOrderByDirection = "asc" | "desc";
 type PuriOrderByNulls = "first" | "last";
-type PuriOrderByExpression = SqlExpression<"number"> | SqlExpression<"string">;
+type AnySqlExpression = SqlExpression<
+  "string" | "number" | "boolean" | "date" | "string[]" | "tsvector",
+  boolean
+>;
+type StringSqlExpression<TNullable extends boolean = boolean> = SqlExpression<"string", TNullable>;
+type PuriOrderByExpression = SqlExpression<"number" | "string", boolean>;
+type StringExpressionSelect = Record<string, StringSqlExpression>;
+type StringExpressionSelectResult<TSelect extends StringExpressionSelect> = {
+  [K in keyof TSelect]: TSelect[K] extends SqlExpression<"string", infer TNullable>
+    ? true extends TNullable
+      ? string | null
+      : string
+    : never;
+};
 type PuriOrderByItem<TColumn extends string> = {
   column: TColumn | PuriOrderByExpression;
   order?: PuriOrderByDirection;
@@ -155,8 +168,12 @@ function isOrderByEntries<Value>(
   return Array.isArray(value);
 }
 
-function isSqlExpression<Value>(value: Value): value is Value & PuriOrderByExpression {
+function isSqlExpression<Value>(value: Value): value is Value & AnySqlExpression {
   return isObjectValue(value) && "_type" in value && value["_type"] === "sql_expression";
+}
+
+function isOrderByExpression<Value>(value: Value): value is Value & PuriOrderByExpression {
+  return isSqlExpression(value);
 }
 
 function isNestedSelectObject<TTables extends object>(
@@ -266,6 +283,22 @@ export class Puri<TSchema, TTables extends object, TResult> {
       _params: args,
     };
   }
+  static coalesce(expression: StringSqlExpression, fallback: string): SqlExpression<"string"> {
+    return {
+      _type: "sql_expression",
+      _return: "string",
+      _sql: `COALESCE(${expression._sql}, ?)`,
+      _params: [...expression._params, fallback],
+    };
+  }
+  static concatExpressions(...args: (string | StringSqlExpression)[]): SqlExpression<"string"> {
+    return {
+      _type: "sql_expression",
+      _return: "string",
+      _sql: `CONCAT(${args.map((arg) => (isStringValue(arg) ? "?::text" : arg._sql)).join(", ")})`,
+      _params: args.flatMap((arg) => (isStringValue(arg) ? [arg] : arg._params)),
+    };
+  }
   static upper(column: string): SqlExpression<"string"> {
     return {
       _type: "sql_expression",
@@ -283,10 +316,15 @@ export class Puri<TSchema, TTables extends object, TResult> {
     };
   }
 
-  static wordSimilarity(
-    column: string | SqlExpression<"string">,
+  static wordSimilarity(column: string, query: string): SqlExpression<"number">;
+  static wordSimilarity<TNullable extends boolean>(
+    column: StringSqlExpression<TNullable>,
     query: string,
-  ): SqlExpression<"number"> {
+  ): SqlExpression<"number", TNullable>;
+  static wordSimilarity(
+    column: string | StringSqlExpression,
+    query: string,
+  ): SqlExpression<"number", boolean> {
     if (isStringValue(column)) {
       return {
         _type: "sql_expression",
@@ -304,10 +342,15 @@ export class Puri<TSchema, TTables extends object, TResult> {
     };
   }
 
-  static similarity(
-    column: string | SqlExpression<"string">,
+  static similarity(column: string, query: string): SqlExpression<"number">;
+  static similarity<TNullable extends boolean>(
+    column: StringSqlExpression<TNullable>,
     query: string,
-  ): SqlExpression<"number"> {
+  ): SqlExpression<"number", TNullable>;
+  static similarity(
+    column: string | StringSqlExpression,
+    query: string,
+  ): SqlExpression<"number", boolean> {
     if (isStringValue(column)) {
       return {
         _type: "sql_expression",
@@ -325,10 +368,15 @@ export class Puri<TSchema, TTables extends object, TResult> {
     };
   }
 
-  static strictWordSimilarity(
-    column: string | SqlExpression<"string">,
+  static strictWordSimilarity(column: string, query: string): SqlExpression<"number">;
+  static strictWordSimilarity<TNullable extends boolean>(
+    column: StringSqlExpression<TNullable>,
     query: string,
-  ): SqlExpression<"number"> {
+  ): SqlExpression<"number", TNullable>;
+  static strictWordSimilarity(
+    column: string | StringSqlExpression,
+    query: string,
+  ): SqlExpression<"number", boolean> {
     if (isStringValue(column)) {
       return {
         _type: "sql_expression",
@@ -512,10 +560,26 @@ export class Puri<TSchema, TTables extends object, TResult> {
     );
   }
 
+  jsonText(
+    column: JsonColumns<TTables>,
+    ...path: [string, ...string[]]
+  ): SqlExpression<"string", true> {
+    return {
+      _type: "sql_expression",
+      _return: "string",
+      _sql: `?? #>> ARRAY[${path.map(() => "?").join(", ")}]`,
+      _params: [column, ...path],
+    };
+  }
+
   // SELECT (overwrite)
+  select<TSelect extends StringExpressionSelect>(
+    selectObj: TSelect,
+  ): Puri<TSchema, TTables, StringExpressionSelectResult<TSelect>>;
   select<TSelect extends SelectObject<TTables>>(
     selectObj: TSelect,
-  ): Puri<TSchema, TTables, ParseSelectObject<TTables, TSelect>> {
+  ): Puri<TSchema, TTables, ParseSelectObject<TTables, TSelect>>;
+  select(selectObj: SelectObject<TTables>): Puri<TSchema, TTables, any> {
     // 중첩 객체를 flat하게 변환
     const flatSelect = this.flattenSelect(selectObj);
 
@@ -1082,6 +1146,11 @@ export class Puri<TSchema, TTables extends object, TResult> {
     return this;
   }
 
+  whereJsonKeyExists(column: JsonColumns<TTables>, key: string): this {
+    this.knexQuery.whereRaw("?? \\? ?", [column, key]);
+    return this;
+  }
+
   // WHERE MATCH
   whereMatch<TColumn extends FulltextColumns<TTables>>(column: TColumn, value: string): this {
     this.knexQuery.whereRaw(`MATCH (${String(column)}) AGAINST (?)`, [value]);
@@ -1121,7 +1190,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
   }
 
   // WHERE FULLTEXT
-  whereTsSearch<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
+  whereTsSearch<TColumn extends AvailableColumns<TTables> | StringSqlExpression>(
     column: TColumn,
     value: string,
     options?: TsQueryOptions | TsQueryConfig,
@@ -1132,16 +1201,16 @@ export class Puri<TSchema, TTables extends object, TResult> {
 
     const parser = opts.parser ?? "websearch_to_tsquery";
     const config = opts.config ?? "simple";
-    const columnExpr =
-      isSqlExpression(column) && column["_type"] === "sql_expression"
-        ? column["_sql"]
-        : String(column);
+    const columnExpr = isSqlExpression(column) ? column["_sql"] : String(column);
+    const params = isSqlExpression(column)
+      ? [...column["_params"], config, value]
+      : [config, value];
 
-    this.knexQuery.whereRaw(`${columnExpr} @@ ${parser}(?, ?)`, [config, value]);
+    this.knexQuery.whereRaw(`${columnExpr} @@ ${parser}(?, ?)`, params);
     return this;
   }
 
-  whereFuzzy<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
+  whereFuzzy<TColumn extends AvailableColumns<TTables> | StringSqlExpression>(
     column: TColumn,
     value: string,
     options?: {
@@ -1205,7 +1274,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
   ): this {
     if (isOrderByEntries(columnOrColumns)) {
       for (const entry of columnOrColumns) {
-        if (isStringValue(entry) || isSqlExpression(entry)) {
+        if (isStringValue(entry) || isOrderByExpression(entry)) {
           this.applyOrderBy(entry);
         } else {
           this.applyOrderBy(entry.column, entry.order, entry.nulls);
@@ -1226,7 +1295,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
     const normalizedDirection = normalizeOrderByDirection(direction);
     const normalizedNulls = normalizeOrderByNulls(nulls);
 
-    if (isSqlExpression(column)) {
+    if (isOrderByExpression(column)) {
       this.knexQuery.orderByRaw(
         `${column["_sql"]} ${normalizedDirection}${formatNullsSuffix(normalizedNulls)}`,
         column["_params"],
@@ -1773,6 +1842,16 @@ export class WhereGroup<TTables extends object> {
     return this;
   }
 
+  whereJsonKeyExists(column: JsonColumns<TTables>, key: string): this {
+    this.builder.whereRaw("?? \\? ?", [column, key]);
+    return this;
+  }
+
+  orWhereJsonKeyExists(column: JsonColumns<TTables>, key: string): this {
+    this.builder.orWhereRaw("?? \\? ?", [column, key]);
+    return this;
+  }
+
   // WHERE MATCH
   whereMatch<TColumn extends FulltextColumns<TTables>>(column: TColumn, value: string): this;
   whereMatch(...args: any[]): this {
@@ -1824,7 +1903,7 @@ export class WhereGroup<TTables extends object> {
   }
 
   // WHERE FULLTEXT
-  whereTsSearch<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
+  whereTsSearch<TColumn extends AvailableColumns<TTables> | StringSqlExpression>(
     column: TColumn,
     value: string,
     options?: TsQueryOptions | TsQueryConfig,
@@ -1837,12 +1916,15 @@ export class WhereGroup<TTables extends object> {
     const parser = opts.parser ?? "websearch_to_tsquery";
     const config = opts.config ?? "simple";
     const columnExpr = isSqlExpression(args[0]) ? args[0]["_sql"] : String(args[0]);
+    const params = isSqlExpression(args[0])
+      ? [...args[0]["_params"], config, args[1]]
+      : [config, args[1]];
 
-    this.builder.whereRaw(`${columnExpr} @@ ${parser}(?, ?)`, [config, args[1]]);
+    this.builder.whereRaw(`${columnExpr} @@ ${parser}(?, ?)`, params);
     return this;
   }
 
-  orWhereTsSearch<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
+  orWhereTsSearch<TColumn extends AvailableColumns<TTables> | StringSqlExpression>(
     column: TColumn,
     value: string,
     options?: TsQueryOptions | TsQueryConfig,
@@ -1855,12 +1937,15 @@ export class WhereGroup<TTables extends object> {
     const parser = opts.parser ?? "websearch_to_tsquery";
     const config = opts.config ?? "simple";
     const columnExpr = isSqlExpression(args[0]) ? args[0]["_sql"] : String(args[0]);
+    const params = isSqlExpression(args[0])
+      ? [...args[0]["_params"], config, args[1]]
+      : [config, args[1]];
 
-    this.builder.orWhereRaw(`${columnExpr} @@ ${parser}(?, ?)`, [config, args[1]]);
+    this.builder.orWhereRaw(`${columnExpr} @@ ${parser}(?, ?)`, params);
     return this;
   }
 
-  whereFuzzy<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
+  whereFuzzy<TColumn extends AvailableColumns<TTables> | StringSqlExpression>(
     column: TColumn,
     value: string,
     options?: {
@@ -1887,7 +1972,7 @@ export class WhereGroup<TTables extends object> {
     return this;
   }
 
-  orWhereFuzzy<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
+  orWhereFuzzy<TColumn extends AvailableColumns<TTables> | StringSqlExpression>(
     column: TColumn,
     value: string,
     options?: {

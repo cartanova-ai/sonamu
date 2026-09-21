@@ -748,6 +748,13 @@ Content-Type: application/json
 
 ###
 
+GET {{baseUrl}}/api/auditEvent/findByPayloadKey
+	?key=KEY
+	&limit=20
+Content-Type: application/json
+
+###
+
 GET {{baseUrl}}/api/auditEvent/findMany
 	?subset=A
 	&rawParams[num]=24

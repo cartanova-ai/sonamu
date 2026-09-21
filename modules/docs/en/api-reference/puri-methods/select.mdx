@@ -85,11 +85,17 @@ console.log(stats.average); // number
 ```typescript
 const users = await puri.table("users").select({
   id: "users.id",
-  full_name: Puri.concat("users.first_name", "' '", "users.last_name"),
+  display_label: Puri.concatExpressions("Sonamu", " ", "User"),
   email_upper: Puri.upper("users.email"),
   email_lower: Puri.lower("users.email"),
 });
 ```
+
+`Puri.concatExpressions()` adds PostgreSQL `text` casts to bound literal parameters, so
+literal-only expressions like the example above are runnable. Legacy `Puri.concat()` binds
+literals as untyped parameters and does not treat column-like strings as columns. A standalone
+literal-only `Puri.concat()` expression is therefore not runnable on PostgreSQL. Use
+`Puri.concatExpressions()` to combine string SQL expressions with literal text.
 
 ## Raw SQL Expressions
 
@@ -306,7 +312,9 @@ results[0].strict_score; // number
 
 **Weighted score example:**
 
-The return values of similarity functions (`SqlExpression<"number">`) can be combined with `rawNumber` to compute per-column weighted scores.
+For a plain column or non-null string expression, similarity functions return
+`SqlExpression<"number">`. These expressions can be combined with `rawNumber` to compute
+per-column weighted scores.
 
 ```typescript
 const results = await puri
@@ -332,7 +340,10 @@ const results = await puri
 | `Puri.strictWordSimilarity(column, query)` | `strict_word_similarity(query, column)` | Strict substring similarity                   |
 
 <Info>
-These functions return `SqlExpression<"number">` and can be used within `select`. The `pg_trgm` extension must be installed.
+The result preserves the input expression's nullability. `jsonText()` produces a nullable string
+expression; passing it to a similarity helper produces `SqlExpression<"number", true>` and selects as `number | null`; a plain
+column or non-null expression produces `SqlExpression<"number">` and selects as `number`. The
+`pg_trgm` extension must be installed.
 </Info>
 
 ## Practical Examples
@@ -400,12 +411,12 @@ These functions return `SqlExpression<"number">` and can be used within `select`
           views: "posts.views"
         },
 
-        // Calculated field
-        full_info: Puri.concat(
-          "users.name",
-          "' ('",
-          "users.email",
-          "')'"
+        // Calculated field from typed string expressions
+        full_info: Puri.concatExpressions(
+          Puri.upper("users.name"),
+          " (",
+          Puri.lower("users.email"),
+          ")"
         )
       });
 

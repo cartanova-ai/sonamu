@@ -1933,6 +1933,34 @@ export namespace AuditEventService {
       }),
     );
 
+  export async function findByPayloadKey(
+    key: string,
+    limit: number = 20,
+  ): Promise<{ id: number; eventType: string; payloadValue: string | null; summary: string }[]> {
+    return fetch({
+      method: "GET",
+      url: `/api/auditEvent/findByPayloadKey?${qs.stringify({ key, limit })}`,
+    });
+  }
+
+  export const findByPayloadKeyQueryOptions = (key: string, limit: number = 20) =>
+    queryOptions({
+      queryKey: ["AuditEvent", "findByPayloadKey", key, limit],
+      queryFn: () => findByPayloadKey(key, limit),
+    });
+
+  export const useFindByPayloadKey = (
+    key: string,
+    limit: number = 20,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useQuery({
+        ...findByPayloadKeyQueryOptions(key, limit),
+        ...options,
+      }),
+    );
+
   export async function getAuditEvents<
     T extends AuditEventSubsetKey,
     LP extends AuditEventListParams,

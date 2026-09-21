@@ -18,6 +18,7 @@ type GeneratedKey = "__generated__";
 type VectorKey = "__vector__";
 type JsonKey = "__json__";
 type VirtualQueryKey = "__virtual_query__";
+type SqlExpressionType = "string" | "number" | "boolean" | "date" | "string[]" | "tsvector";
 
 type InternalTypeKeys =
   | FulltextKey
@@ -126,7 +127,7 @@ export type ResultAvailableColumns<TTables extends object, TResult = any> =
 // Select 값 타입 확장 (단일 컬럼 또는 SQL 표현식)
 export type SelectValue<TTables extends object> =
   | AvailableColumns<TTables>
-  | SqlExpression<"string" | "number" | "boolean" | "date" | "string[]">;
+  | SqlExpression<"string" | "number" | "boolean" | "date" | "string[]", boolean>;
 
 // 중첩 Select 객체 타입 (재귀적)
 // 예: { parent: { id: "parent.id", name: "parent.name" } }
@@ -140,7 +141,7 @@ export type SelectObject<TTables extends object> = NestedSelectObject<TTables>;
 // 값이 중첩 객체인지 판별하는 헬퍼 타입
 type IsNestedObject<T> = T extends string
   ? false
-  : T extends SqlExpression<any>
+  : T extends SqlExpression<SqlExpressionType, boolean>
     ? false
     : T extends object
       ? true
@@ -213,18 +214,8 @@ type ParseSelectObjectWithPath<
   TSelect extends SelectObject<TTables>,
   Prefix extends string,
 > = Expand<{
-  [K in keyof TSelect]: TSelect[K] extends SqlExpression<infer R>
-    ? R extends "string"
-      ? string
-      : R extends "number"
-        ? number
-        : R extends "boolean"
-          ? boolean
-          : R extends "date"
-            ? Date
-            : R extends "string[]"
-              ? string[]
-              : never
+  [K in keyof TSelect]: TSelect[K] extends SqlExpression<SqlExpressionType, boolean>
+    ? ParseSqlExpression<TSelect[K]>
     : IsNestedObject<TSelect[K]> extends true
       ? TSelect[K] extends NestedSelectObject<TTables>
         ? IsNullableJoinedTable<TTables, JoinPath<Prefix, K & string>> extends true // 주어진 테이블이 FK nullable에 leftJoin되었는지 여부에 따라 select 결과 객체의 타입이 달라집니다.
@@ -242,18 +233,8 @@ type ParseSelectObjectInner<
   TSelect extends SelectObject<TTables>,
   Prefix extends string,
 > = Expand<{
-  [K in keyof TSelect]: TSelect[K] extends SqlExpression<infer R>
-    ? R extends "string"
-      ? string
-      : R extends "number"
-        ? number
-        : R extends "boolean"
-          ? boolean
-          : R extends "date"
-            ? Date
-            : R extends "string[]"
-              ? string[]
-              : never
+  [K in keyof TSelect]: TSelect[K] extends SqlExpression<SqlExpressionType, boolean>
+    ? ParseSqlExpression<TSelect[K]>
     : IsNestedObject<TSelect[K]> extends true
       ? TSelect[K] extends NestedSelectObject<TTables>
         ? IsNullableJoinedTable<TTables, JoinPath<Prefix, K & string>> extends true
@@ -324,14 +305,30 @@ export const FUZZY_OPERATORS = ["<%", "%", "<<%"] as const;
 export type FuzzyOperator = (typeof FUZZY_OPERATORS)[number];
 
 // SQL Expression 타입 정의
-export type SqlExpression<
-  T extends "string" | "number" | "boolean" | "date" | "string[]" | "tsvector",
-> = {
+export type SqlExpression<T extends SqlExpressionType, TNullable extends boolean = false> = {
   _type: "sql_expression"; // 또는 "computed_value"
   _return: T;
   _sql: string;
   _params: Knex.RawBinding[];
+  readonly _nullable?: TNullable;
 };
+
+type ParseSqlExpression<TExpression> =
+  TExpression extends SqlExpression<infer TReturn, infer TNullable>
+    ?
+        | (TReturn extends "string"
+            ? string
+            : TReturn extends "number"
+              ? number
+              : TReturn extends "boolean"
+                ? boolean
+                : TReturn extends "date"
+                  ? Date
+                  : TReturn extends "string[]"
+                    ? string[]
+                    : never)
+        | (true extends TNullable ? null : never)
+    : never;
 
 // 결과 타입 가독성을 위한 타입 확장
 export type Expand<T> = T extends any[]
