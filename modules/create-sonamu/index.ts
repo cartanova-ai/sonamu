@@ -264,7 +264,11 @@ overrides:
   mdast-util-to-hast@>=13.0.0 <13.2.1: ">=13.2.1"
   prismjs@<1.30.0: ">=1.30.0"
   # pnpm 11에서 호환되는 serializer 패키지군을 유지하도록 seroval 버전을 고정합니다.
+  # seroval-plugins 1.6 이상은 seroval에서 isStream을 import하는데 1.4.2는 이를
+  # export하지 않는다. router-core가 최신 seroval-plugins를 끌어오면 web의
+  # build/dev가 모두 깨지므로, createPlugin만 쓰는 1.5.6으로 함께 고정한다.
   seroval: 1.4.2
+  seroval-plugins: 1.5.6
 `;
   fs.writeFileSync(path.join(targetRoot, "pnpm-workspace.yaml"), workspaceContent);
   console.log(`${chalk.green("CREATE")} ${path.join(targetRoot, "pnpm-workspace.yaml")}`);
