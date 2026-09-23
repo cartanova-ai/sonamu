@@ -43,7 +43,7 @@ Generated files:
 Use Sonamu CLI to generate a Model template.
 
 ```bash
-pnpm sonamu generate model --entity User
+pnpm sonamu scaffold model User
 ```
 
 Or generate from the **Scaffolding** tab in Sonamu UI.
@@ -70,24 +70,25 @@ async login(params: LoginParams) {
 
 <CodeGroup>
 ```bash title="Basic usage"
-# Specify Entity name
-pnpm sonamu generate model --entity User
+# Pass the Entity ID as an argument
+pnpm sonamu scaffold model User
 
-# Generate multiple Entities at once
+# Omit the Entity ID to get a selection prompt
+pnpm sonamu scaffold model
+```
 
-pnpm sonamu generate model --entity User,Post,Comment
-
-````
-
-```bash title="Options"
-# Overwrite existing file
-pnpm sonamu generate model --entity User --overwrite
-
-# Generate in specific directory
-pnpm sonamu generate model --entity User --output ./custom/path
-````
+```bash title="Generating the Model test too"
+# The Model test scaffold is a separate command
+pnpm sonamu scaffold model_test User
+```
 
 </CodeGroup>
+
+<Info>
+  Only one Entity ID can be passed at a time, and there are no overwrite or output-path options. Files
+  that already exist are skipped, and if no file is left to generate the command exits with an "all
+  files already exist" error. To regenerate an existing Model, move or delete the file first.
+</Info>
 
 ### Using Sonamu UI
 
