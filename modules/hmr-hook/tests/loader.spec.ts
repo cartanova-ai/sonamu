@@ -10,8 +10,8 @@ import { HotHookLoader } from "../src/loader.js";
 import { type DumpNode } from "../src/types.js";
 import { createHandlerFile, fakeInstall, manualInvalidationSource, runProcess } from "./helpers.js";
 
-test.group("Loader shebang", () => {
-  async function loadSource(source: string) {
+test.group("Loader source normalization", () => {
+  async function loadSource(source: string | Buffer) {
     const loader = new HotHookLoader({});
     return loader.load(
       "file:///app.mjs",
@@ -59,6 +59,47 @@ test.group("Loader shebang", () => {
       await import(`data:text/javascript,${encodeURIComponent(output)}`);
     }
   });
+
+  for (const binary of [false, true]) {
+    const inputType = binary ? "Buffer" : "문자열";
+    test(`${inputType}: 맨 앞 BOM만 제거하고 본문의 BOM과 공백은 보존한다`, async ({ assert }) => {
+      const body = ' \t\nexport const value = "\uFEFF"; export const hot = import.meta.hot;\n';
+      const source = `\uFEFF${body}`;
+      const loaded = await loadSource(binary ? Buffer.from(source) : source);
+      const output = String(loaded.source);
+
+      assert.isTrue(output.startsWith(" import.meta.hot = {};"));
+      assert.isTrue(output.endsWith(body));
+      assert.equal(output.split("\uFEFF").length, 2);
+      const module = await import(`data:text/javascript,${encodeURIComponent(output)}`);
+      assert.equal(module.value, "\uFEFF");
+      assert.isFunction(module.hot.dispose);
+    });
+
+    for (const lineEnding of ["\n", "\r\n", "\r", "\u2028", "\u2029", ""]) {
+      test(`${inputType}: BOM 뒤 shebang을 처리한다 (${JSON.stringify(lineEnding)})`, async ({
+        assert,
+      }) => {
+        const body = lineEnding
+          ? "export const value = 42; export const hot = import.meta.hot;"
+          : "";
+        const source = `\uFEFF#!/usr/bin/env node${lineEnding}${body}`;
+        const loaded = await loadSource(binary ? Buffer.from(source) : source);
+        const output = String(loaded.source);
+
+        assert.isTrue(
+          output.startsWith(`#!/usr/bin/env node${lineEnding || "\n"} import.meta.hot = {};`),
+        );
+        assert.notInclude(output, "\uFEFF");
+        assert.isTrue(output.endsWith(body));
+        const module = await import(`data:text/javascript,${encodeURIComponent(output)}`);
+        if (lineEnding) {
+          assert.equal(module.value, 42);
+          assert.isFunction(module.hot.dispose);
+        }
+      });
+    }
+  }
 });
 
 test.group("Loader ignore", () => {
