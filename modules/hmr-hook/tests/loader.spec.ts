@@ -10,6 +10,57 @@ import { HotHookLoader } from "../src/loader.js";
 import { type DumpNode } from "../src/types.js";
 import { createHandlerFile, fakeInstall, manualInvalidationSource, runProcess } from "./helpers.js";
 
+test.group("Loader shebang", () => {
+  async function loadSource(source: string) {
+    const loader = new HotHookLoader({});
+    return loader.load(
+      "file:///app.mjs",
+      { format: "module", conditions: [], importAttributes: {} },
+      async () => ({ format: "module", source }),
+    );
+  }
+
+  for (const [name, lineEnding] of [
+    ["LF", "\n"],
+    ["CRLF", "\r\n"],
+    ["CR", "\r"],
+    ["줄 구분 문자", "\u2028"],
+    ["문단 구분 문자", "\u2029"],
+  ]) {
+    test(`${name}: shebang 뒤에 코드를 삽입하고 ESM으로 실행할 수 있다`, async ({ assert }) => {
+      const firstLine = `#!/usr/bin/env node${lineEnding}`;
+      const body = "export const value = 42; export const hot = import.meta.hot;\n";
+      const loaded = await loadSource(firstLine + body);
+      const output = String(loaded.source);
+
+      assert.isTrue(output.startsWith(`${firstLine} import.meta.hot = {};`));
+      assert.isTrue(output.endsWith(body));
+      assert.equal(output.split(lineEnding).length, (firstLine + body).split(lineEnding).length);
+
+      const module = await import(`data:text/javascript,${encodeURIComponent(output)}`);
+      assert.equal(module.value, 42);
+      assert.isFunction(module.hot.dispose);
+    });
+  }
+
+  test("줄바꿈 없는 shebang에는 줄바꿈을 추가한 뒤 코드를 삽입한다", async ({ assert }) => {
+    const loaded = await loadSource("#!/usr/bin/env node");
+    const output = String(loaded.source);
+    assert.isTrue(output.startsWith("#!/usr/bin/env node\n import.meta.hot = {};"));
+    await import(`data:text/javascript,${encodeURIComponent(output)}`);
+  });
+
+  test("shebang이 없는 소스는 기존처럼 맨 앞에 코드를 삽입한다", async ({ assert }) => {
+    for (const source of ["", "export const value = '#!';\n"]) {
+      const loaded = await loadSource(source);
+      const output = String(loaded.source);
+      assert.isTrue(output.startsWith(" import.meta.hot = {};"));
+      assert.isTrue(output.endsWith(source));
+      await import(`data:text/javascript,${encodeURIComponent(output)}`);
+    }
+  });
+});
+
 test.group("Loader ignore", () => {
   for (const scenario of [
     { name: "node_modules의 shebang", path: "node_modules/tool/index.mjs", ignored: true },
