@@ -308,7 +308,9 @@ export class HotHookLoader {
     const actualParentPath = this.#resolvedSourcePaths.get(parentPath) || parentPath;
 
     const isHardcodedBoundary = this.#hardcodedBoundaryMatcher.match(actualSourcePath);
-    const reloadable = result.importAttributes?.hot === "true" ? true : isHardcodedBoundary;
+    // resolve 결과가 속성을 생략하면 입력 속성을 유지하는 Node.js 규칙을 따른다.
+    const importAttributes = result.importAttributes ?? context.importAttributes;
+    const reloadable = importAttributes?.hot === "true" ? true : isHardcodedBoundary;
 
     if (reloadable) {
       /**

@@ -1,12 +1,93 @@
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { MessageChannel } from "node:worker_threads";
 
 import { test } from "@japa/runner";
 import { pEvent } from "p-event";
 import supertest from "supertest";
 
+import { HotHookLoader } from "../src/loader.js";
+import { type DumpNode } from "../src/types.js";
 import { createHandlerFile, fakeInstall, manualInvalidationSource, runProcess } from "./helpers.js";
 
 test.group("Loader", () => {
+  const importAttributeScenarios: {
+    title: string;
+    contextAttributes: Record<string, string>;
+    resultAttributes?: Record<string, string>;
+    reloadable: boolean;
+  }[] = [
+    {
+      title: "반환 속성이 없으면 입력 hot 속성으로 boundary를 판정한다",
+      contextAttributes: { hot: "true" },
+      reloadable: true,
+    },
+    {
+      title: "반환 hot 속성이 입력 hot 속성보다 우선한다",
+      contextAttributes: { hot: "true" },
+      resultAttributes: { hot: "false" },
+      reloadable: false,
+    },
+    {
+      title: "빈 반환 속성이 있으면 입력 hot 속성을 사용하지 않는다",
+      contextAttributes: { hot: "true" },
+      resultAttributes: {},
+      reloadable: false,
+    },
+    {
+      title: "반환 hot 속성으로 boundary를 활성화할 수 있다",
+      contextAttributes: { hot: "false" },
+      resultAttributes: { hot: "true" },
+      reloadable: true,
+    },
+    {
+      title: "입력과 반환 속성에 hot이 없으면 boundary가 아니다",
+      contextAttributes: {},
+      reloadable: false,
+    },
+  ];
+
+  for (const scenario of importAttributeScenarios) {
+    test(scenario.title, async ({ fs, assert }) => {
+      await fs.create("server.js", "await import('./app.js')");
+      await fs.create("app.js", "export default 'app'");
+      const root = join(fs.basePath, "server.js");
+      const appPath = join(fs.basePath, "app.js");
+      const { port1, port2 } = new MessageChannel();
+      try {
+        const loader = new HotHookLoader({ root, rootDirectory: fs.basePath, messagePort: port2 });
+        await loader.resolve(
+          "./app.js",
+          {
+            parentURL: pathToFileURL(root).href,
+            conditions: [],
+            importAttributes: scenario.contextAttributes,
+          },
+          async () => ({
+            url: pathToFileURL(appPath).href,
+            format: "module",
+            importAttributes: scenario.resultAttributes,
+          }),
+        );
+
+        // MessagePort의 EventTarget 래퍼 대신 EventEmitter의 메시지 본문을 받는다.
+        const response = pEvent<string, { type: string; dump: DumpNode[] }>(
+          { on: port1.on.bind(port1), off: port1.off.bind(port1) },
+          "message",
+          { filter: (message) => message.type === "hmr-hook:dump-done", timeout: 1_000 },
+        );
+        port1.postMessage({ type: "hmr-hook:dump" });
+        const { dump } = await response;
+        const app = dump.find((node) => node.nodePath === appPath);
+        assert.isDefined(app);
+        assert.equal(app?.reloadable, scenario.reloadable);
+      } finally {
+        port1.close();
+        port2.close();
+      }
+    });
+  }
+
   for (const entry of ["init", "register"] as const) {
     test(`${entry}: 수동 무효화 후에만 갱신된다`, async ({ fs, assert }) => {
       await fakeInstall(fs.basePath);
