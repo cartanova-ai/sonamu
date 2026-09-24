@@ -10,7 +10,106 @@ import { HotHookLoader } from "../src/loader.js";
 import { type DumpNode } from "../src/types.js";
 import { createHandlerFile, fakeInstall, manualInvalidationSource, runProcess } from "./helpers.js";
 
-test.group("Loader", () => {
+test.group("Loader ignore", () => {
+  for (const scenario of [
+    { name: "node_modules의 shebang", path: "node_modules/tool/index.mjs", ignored: true },
+    { name: "사용자 제외 패턴", path: "config/settings.js", ignored: true },
+    {
+      name: "제외된 실제 TS 소스",
+      path: "dist/settings.js",
+      source: "config/settings.ts",
+      ignored: true,
+    },
+    { name: "비제외 실제 TS 소스", path: "config/app.js", source: "src/app.ts", ignored: false },
+  ]) {
+    test(`${scenario.name}: resolve와 load의 제외 판정이 일치한다`, async ({ fs, assert }) => {
+      const root = join(fs.basePath, "index.js");
+      const loader = new HotHookLoader({
+        root,
+        rootDirectory: fs.basePath,
+        ignore: ["**/node_modules/**", "config/**"],
+        boundaries: [],
+      });
+      const url = pathToFileURL(join(fs.basePath, scenario.path)).href;
+      const resolved = await loader.resolve(
+        url,
+        { parentURL: pathToFileURL(root).href, conditions: [], importAttributes: {} },
+        async () => ({
+          url,
+          importAttributes: scenario.source
+            ? { ts: pathToFileURL(join(fs.basePath, scenario.source)).href }
+            : {},
+        }),
+      );
+      assert.equal(new URL(resolved.url).searchParams.has("hmr-hook"), !scenario.ignored);
+
+      const source = scenario.ignored
+        ? "#!/usr/bin/env node\nexport const value = 1;\n"
+        : "export const value = 1;\n";
+      const nextResult = { format: "module", source };
+      const loaded = await loader.load(
+        resolved.url,
+        { format: "module", conditions: [], importAttributes: {} },
+        async () => nextResult,
+      );
+      if (scenario.ignored) {
+        assert.strictEqual(loaded, nextResult);
+        assert.equal(loaded.source, source);
+      } else {
+        assert.include(String(loaded.source), "import.meta.hot = {}");
+        assert.isTrue(String(loaded.source).endsWith(source));
+      }
+    });
+  }
+
+  test("resolve 매핑이 없는 제외 파일의 바이너리 소스도 그대로 반환한다", async ({
+    fs,
+    assert,
+  }) => {
+    const loader = new HotHookLoader({
+      root: join(fs.basePath, "index.js"),
+      rootDirectory: fs.basePath,
+      ignore: ["config/**"],
+      boundaries: [],
+    });
+    const source = Buffer.from("#!/usr/bin/env node\nexport {};\n");
+    const result = { format: "module", source };
+    const loaded = await loader.load(
+      pathToFileURL(join(fs.basePath, "config/tool.mjs")).href,
+      { format: "module", conditions: [], importAttributes: {} },
+      async () => result,
+    );
+    assert.strictEqual(loaded.source, source);
+  });
+
+  test("nextLoad에 전달하기 전에 HMR 쿼리와 hot 속성만 제거한다", async ({ assert }) => {
+    const loader = new HotHookLoader({});
+    await loader.load(
+      "file:///app.mjs?other=keep&hmr-hook=1",
+      { format: "module", conditions: [], importAttributes: { hot: "true", other: "keep" } },
+      async (url, context) => {
+        assert.equal(url, "file:///app.mjs?other=keep");
+        assert.deepEqual(context?.importAttributes, { other: "keep" });
+        return { format: "module", source: "export{}" };
+      },
+    );
+  });
+
+  test("비파일 ESM과 비ESM의 기존 처리를 유지한다", async ({ assert }) => {
+    const loader = new HotHookLoader({});
+    const context = { format: "module", conditions: [], importAttributes: {} };
+    const esm = await loader.load("data:text/javascript,export{}", context, async () => ({
+      format: "module",
+      source: "export{}",
+    }));
+    assert.include(String(esm.source), "import.meta.hot = {}");
+    const commonjs = { format: "commonjs", source: "module.exports = {};" };
+    assert.strictEqual(
+      await loader.load("file:///app.cjs", context, async () => commonjs),
+      commonjs,
+    );
+  });
+
   const importAttributeScenarios: {
     title: string;
     contextAttributes: Record<string, string>;
@@ -203,7 +302,7 @@ test.group("Loader", () => {
     });
   }
 
-  test("ignore 파일에도 import.meta.hot을 주입한다", async ({ fs, assert }) => {
+  test("제외 파일에는 import.meta.hot을 주입하지 않는다", async ({ fs, assert }) => {
     await fakeInstall(fs.basePath);
     await fs.createJson("package.json", { type: "module" });
     await fs.create("config/test.js", "export default Boolean(import.meta.hot)");
@@ -223,7 +322,7 @@ test.group("Loader", () => {
         timeout: 1_000,
       },
     );
-    assert.isTrue(result.enabled);
+    assert.isFalse(result.enabled);
   });
 
   for (const scenario of [
