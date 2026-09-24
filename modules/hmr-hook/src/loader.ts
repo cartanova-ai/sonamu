@@ -248,6 +248,13 @@ export class HotHookLoader {
     const result = await nextLoad(url, context);
     if (result.format !== "module") return result;
 
+    if (parsedUrl.protocol === "file:") {
+      const sourcePath = fileURLToPath(parsedUrl);
+      const actualSourcePath = this.#resolvedSourcePaths.get(sourcePath) || sourcePath;
+      // resolve와 같은 실제 소스 경로 기준으로 제외 정책을 적용한다.
+      if (this.#pathIgnoredMatcher?.match(actualSourcePath)) return result;
+    }
+
     result.source = this.#getImportMetaHotSource() + result.source;
     return result;
   };
