@@ -92,7 +92,7 @@ test.group("Loader", () => {
       "message",
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
       (message: any) =>
-        message?.type === "hot-hook:full-reload" && message.path === join(fs.basePath, "app.js"),
+        message?.type === "hmr-hook:full-reload" && message.path === join(fs.basePath, "app.js"),
     );
     assert.isDefined(result);
   });
@@ -227,7 +227,7 @@ test.group("Loader", () => {
       "message",
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
       (message: any) =>
-        message?.type === "hot-hook:invalidated" &&
+        message?.type === "hmr-hook:invalidated" &&
         message.paths.includes(join(fs.basePath, "config/test.js")),
     );
 
@@ -322,7 +322,7 @@ test.group("Loader", () => {
       server.child,
       "message",
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
-      (message: any) => message?.type === "hot-hook:full-reload",
+      (message: any) => message?.type === "hmr-hook:full-reload",
     );
     assert.isDefined(result);
   });
@@ -369,7 +369,7 @@ test.group("Loader", () => {
       "message",
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
       (message: any) =>
-        message?.type === "hot-hook:full-reload" && message.shouldBeReloadable === true,
+        message?.type === "hmr-hook:full-reload" && message.shouldBeReloadable === true,
     );
     assert.isDefined(result);
   });
@@ -425,7 +425,7 @@ test.group("Loader", () => {
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
     const result = await pEvent(server.child, "message", (message: any) => {
       console.log(message);
-      return message?.type === "hot-hook:full-reload" && message.shouldBeReloadable === true;
+      return message?.type === "hmr-hook:full-reload" && message.shouldBeReloadable === true;
     });
     assert.isDefined(result);
   });
