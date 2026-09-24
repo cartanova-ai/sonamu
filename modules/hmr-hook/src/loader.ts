@@ -256,7 +256,8 @@ export class HotHookLoader {
     }
 
     const hotSource = this.#getImportMetaHotSource();
-    const source = "" + result.source;
+    // 본문의 공백과 BOM은 보존하고 소스 맨 앞의 BOM 하나만 제거한다.
+    const source = ("" + result.source).replace(/^\uFEFF/, "");
     if (source.startsWith("#!")) {
       // shebang은 소스의 맨 앞에 있어야 하므로 첫 줄 종결자 뒤에 주입한다.
       const lineEnding = /\r\n|[\n\r\u2028\u2029]/.exec(source);
