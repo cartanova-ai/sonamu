@@ -59,11 +59,9 @@ class Hot {
     const envIgnore = process.env.HOT_HOOK_IGNORE?.split(",").map((p) => p.trim());
     const envRestart = process.env.HOT_HOOK_RESTART?.split(",").map((p) => p.trim());
     const envBoundaries = process.env.HOT_HOOK_BOUNDARIES?.split(",").map((p) => p.trim());
-    const envInclude = process.env.HOT_HOOK_INCLUDE?.split(",").map((p) => p.trim());
 
     this.#options = Object.assign(
       {
-        include: envInclude || ["**/*"],
         boundaries: envBoundaries || [],
         restart: envRestart || [".env"],
         throwWhenBoundariesAreNotDynamicallyImported: false,
@@ -96,7 +94,6 @@ class Hot {
       data: {
         root: this.#options.root,
         ignore: this.#options.ignore,
-        include: this.#options.include,
         restart: this.#options.restart,
         boundaries: this.#options.boundaries,
         messagePort: this.#messageChannel.port2,
@@ -168,7 +165,7 @@ class Hot {
 
   /**
    * 수동으로 파일 변경을 hmr-hook에 알리고 처리 완료를 기다립니다.
-   * disableAutoWatch: true로 초기화한 경우 사용합니다.
+   * 자체 watcher가 없으므로 syncer 등 외부 변경 감지 주체가 호출해야 합니다.
    *
    * @param path 변경된 파일의 경로
    * @param action 파일 변경 액션 ('change' | 'add' | 'unlink')
