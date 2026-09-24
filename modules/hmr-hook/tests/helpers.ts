@@ -8,6 +8,18 @@ import fs from "fs-extra";
 import { pEvent } from "p-event";
 import pTimeout from "p-timeout";
 
+import { type FileChangeAction, type MessageChannelMessage } from "../src/types.js";
+
+// 파일 변경 감지는 테스트가 담당하고, 자식 프로세스에는 syncer처럼 명시적으로 전달한다.
+export const manualInvalidationSource = `
+process.on('message', async (message) => {
+  if (message.type !== 'test:invalidate') return
+  const { hot } = await import('@sonamu-kit/hmr-hook')
+  const paths = await hot.invalidateFile(message.path, message.action)
+  process.send({ type: 'test:invalidate-done', paths })
+})
+`;
+
 export const projectRoot = join(import.meta.url, "../");
 
 interface PackageMetadata {
@@ -73,6 +85,26 @@ export function runProcess(scriptPath: string, options?: NodeOptions) {
 
   return {
     child,
+    async invalidateFile(filePath: string, action: FileChangeAction = "change") {
+      const messages: MessageChannelMessage[] = [];
+      const collect = (message: MessageChannelMessage) => messages.push(message);
+      child.on("message", collect);
+      // 완료 응답까지 기다려 다음 import와 수동 무효화 사이의 순서를 보장한다.
+      const done = pEvent<string, { type: string; paths: string[] }>(child, "message", {
+        filter: (message) => message.type === "test:invalidate-done",
+        timeout: 2_000,
+      });
+      try {
+        child.send({ type: "test:invalidate", path: filePath, action });
+        const { paths } = await done;
+        return {
+          paths,
+          messages: messages.filter((message) => message.type.startsWith("hmr-hook:")),
+        };
+      } finally {
+        child.off("message", collect);
+      }
+    },
     async waitForOutput(output: string, timeout = 10_000) {
       const waitUntilOutput = async () => {
         // 린트 리팩토링: execa로 생성된 child는 항상 stdout 존재

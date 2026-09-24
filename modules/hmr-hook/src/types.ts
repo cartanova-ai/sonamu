@@ -49,13 +49,6 @@ export interface InitOptions {
   rootDirectory?: string;
 
   /**
-   * Paths/glob patterns that will be watched by the hook.
-   *
-   * @default ['**\/*']
-   */
-  include?: PathOrGlobPattern[];
-
-  /**
    * Paths/glob patterns that will not be watched by the hook.
    * @default ['/node_modules/']
    */
@@ -74,8 +67,8 @@ export interface InitOptions {
    * reload will be automatically detected.
    *
    * For example an `.env` file is a good candidate for this list.
-   * HMR Hook will watch these files and send a full reload message
-   * to the main thread when they change.
+   * Calling hot.invalidateFile() for these files requests a full reload.
+   * The caller is responsible for detecting file changes.
    *
    * @default ['.env']
    */
@@ -86,14 +79,6 @@ export interface InitOptions {
    * imported.
    */
   throwWhenBoundariesAreNotDynamicallyImported?: boolean;
-
-  /**
-   * If false, hmr-hook will create its own file watcher.
-   * By default, you must manually notify file changes using hot.invalidateFile().
-   *
-   * @default undefined (watcher disabled)
-   */
-  disableAutoWatch?: boolean;
 }
 
 export type InitializeHookOptions = Pick<
@@ -102,10 +87,8 @@ export type InitializeHookOptions = Pick<
   | "root"
   | "rootDirectory"
   | "boundaries"
-  | "include"
   | "restart"
   | "throwWhenBoundariesAreNotDynamicallyImported"
-  | "disableAutoWatch"
 > & {
   /**
    * The message port to communicate with the parent thread.

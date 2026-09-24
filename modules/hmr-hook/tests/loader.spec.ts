@@ -1,471 +1,210 @@
 import { join } from "node:path";
-import { setTimeout } from "node:timers/promises";
 
 import { test } from "@japa/runner";
 import { pEvent } from "p-event";
 import supertest from "supertest";
 
-import { createHandlerFile, fakeInstall, runProcess } from "./helpers.js";
+import { createHandlerFile, fakeInstall, manualInvalidationSource, runProcess } from "./helpers.js";
 
 test.group("Loader", () => {
-  test("Works fine", async ({ fs }) => {
-    await fakeInstall(fs.basePath);
+  for (const entry of ["init", "register"] as const) {
+    test(`${entry}: 수동 무효화 후에만 갱신된다`, async ({ fs, assert }) => {
+      await fakeInstall(fs.basePath);
+      const config = { boundaries: ["./app.js"] };
+      await fs.createJson("package.json", { type: "module", hotHook: config });
+      await fs.create("app.js", "export default 'before'");
+      await fs.create(
+        "server.js",
+        `import { writeFile } from 'node:fs/promises'
+           import { setTimeout } from 'node:timers/promises'
+           import { fileURLToPath } from 'node:url'
+           import { hot } from '@sonamu-kit/hmr-hook'
+           ${entry === "init" ? `await hot.init({ root: import.meta.filename, rootDirectory: import.meta.dirname, ...${JSON.stringify(config)} })` : ""}
+           const initial = (await import('./app.js')).default
+           // 기존 watcher의 초기 탐색 이후에 변경하여 제거 전 실패를 재현한다.
+           await setTimeout(300)
+           await writeFile(new URL('./app.js', import.meta.url), "export default 'after'")
+           const observed = []
+           // 관찰 구간 내내 외부 이벤트 없이는 같은 모듈을 유지해야 한다.
+           for (let attempt = 0; attempt < 20; attempt++) {
+             await setTimeout(50)
+             observed.push((await import('./app.js')).default)
+           }
+           const invalidated = await hot.invalidateFile(fileURLToPath(new URL('./app.js', import.meta.url)))
+           const final = (await import('./app.js')).default
+           process.send({ type: 'watch-result', initial, observed, invalidated, final })`,
+      );
+      const server = runProcess("server.js", {
+        cwd: fs.basePath,
+        nodeOptions: entry === "register" ? ["--import=@sonamu-kit/hmr-hook/register"] : [],
+      });
+      const result = await pEvent<
+        string,
+        {
+          type: string;
+          initial: string;
+          observed: string[];
+          invalidated: string[];
+          final: string;
+        }
+      >(server.child, "message", {
+        filter: (message) => message.type === "watch-result",
+        timeout: 4_000,
+      });
+      assert.equal(result.initial, "before");
+      assert.deepEqual([...new Set(result.observed)], ["before"]);
+      assert.deepEqual(result.invalidated, [join(fs.basePath, "app.js")]);
+      assert.equal(result.final, "after");
+    }).timeout(5_000);
+  }
 
-    await fs.createJson("package.json", { type: "module" });
-    await fs.create(
-      "server.js",
-      `import * as http from 'http'
-       import { hot } from 'hot-hook'
-       import { join } from 'node:path'
-
-       await hot.init({
-         root: import.meta.filename,
-       })
-
-       const server = http.createServer(async (request, response) => {
-         const app = await import('./app.js', { with: { hot: 'true' } })
-         await app.default(request, response)
-       })
-
-       server.listen(3333, () => {
-         console.log('Server is running')
-       })`,
-    );
-
-    await createHandlerFile({ path: "app.js", response: "Hello World!" });
-
-    const server = runProcess("server.js", { cwd: fs.basePath, env: { NODE_DEBUG: "hot-hook" } });
-    await server.waitForOutput("Server is running");
-
-    await supertest("http://localhost:3333").get("/").expect(200).expect("Hello World!");
-
-    await createHandlerFile({ path: "app.js", response: "Hello World! Updated" });
-    await setTimeout(100);
-    await supertest("http://localhost:3333").get("/").expect(200).expect("Hello World! Updated");
-
-    await createHandlerFile({ path: "app.js", response: "Hello World! Updated new" });
-    await setTimeout(100);
-    await supertest("http://localhost:3333")
-      .get("/")
-      .expect(200)
-      .expect("Hello World! Updated new");
-  });
-
-  test("send full reload message", async ({ fs, assert }) => {
-    await fakeInstall(fs.basePath);
-
-    await fs.createJson("package.json", { type: "module" });
-    await fs.create(
-      "server.js",
-      `import * as http from 'http'
-       import { hot } from 'hot-hook'
-       import { join } from 'node:path'
-
-       await hot.init({
-         root: import.meta.filename,
-       })
-
-       const server = http.createServer(async (request, response) => {
-         const app = await import('./app.js')
-         await app.default(request, response)
-       })
-
-       server.listen(3333, () => {
-         console.log('Server is running')
-       })`,
-    );
-
-    await createHandlerFile({ path: "app.js", response: "Hello World!" });
-
-    const server = runProcess("server.js", {
-      cwd: fs.basePath,
-      env: { NODE_DEBUG: "hot-hook" },
+  for (const scenario of [
+    {
+      title: "import 속성",
+      options: {},
+      attributes: ", { with: { hot: 'true' } }",
+      ignored: false,
+    },
+    {
+      title: "명시한 boundary",
+      options: { boundaries: ["./app.js"] },
+      attributes: "",
+      ignored: false,
+    },
+    {
+      title: "ignore 경로",
+      options: { boundaries: ["./app.js"], ignore: ["./app.js"] },
+      attributes: "",
+      ignored: true,
+    },
+    {
+      title: "기본 node_modules 제외",
+      options: {},
+      attributes: ", { with: { hot: 'true' } }",
+      ignored: true,
+    },
+  ]) {
+    test(`${scenario.title}의 수동 무효화와 import 캐시 정책을 유지한다`, async ({
+      fs,
+      assert,
+    }) => {
+      await fakeInstall(fs.basePath);
+      await fs.createJson("package.json", { type: "module" });
+      const app =
+        scenario.title === "기본 node_modules 제외" ? "node_modules/app/app.js" : "app.js";
+      if (app.startsWith("node_modules")) {
+        await fs.createJson("node_modules/app/package.json", { type: "module" });
+      }
+      await createHandlerFile({ path: app, response: "before" });
+      await fs.create(
+        "server.js",
+        `import * as http from 'node:http'
+         import { hot } from '@sonamu-kit/hmr-hook'
+         await hot.init({ root: import.meta.filename, rootDirectory: import.meta.dirname, ...${JSON.stringify(scenario.options)} })
+         ${manualInvalidationSource}
+         const server = http.createServer(async (request, response) => {
+           const app = await import('./${app}'${scenario.attributes})
+           app.default(request, response)
+         })
+         server.listen(3333, () => console.log('Server is running'))`,
+      );
+      const server = runProcess("server.js", { cwd: fs.basePath });
+      await server.waitForOutput("Server is running");
+      await supertest("http://localhost:3333").get("/").expect(200).expect("before");
+      await createHandlerFile({ path: app, response: "after" });
+      const result = await server.invalidateFile(join(fs.basePath, app));
+      assert.deepEqual(result.paths, [join(fs.basePath, app)]);
+      assert.deepEqual(result.messages, [{ type: "hmr-hook:invalidated", paths: result.paths }]);
+      await supertest("http://localhost:3333")
+        .get("/")
+        .expect(200)
+        .expect(scenario.ignored ? "before" : "after");
     });
-    await server.waitForOutput("Server is running");
+  }
 
-    await supertest("http://localhost:3333").get("/").expect(200).expect("Hello World!");
-    await createHandlerFile({ path: "app.js", response: "Hello World! Updated" });
-    await setTimeout(100);
-
-    const result = await pEvent(
+  test("ignore 파일에도 import.meta.hot을 주입한다", async ({ fs, assert }) => {
+    await fakeInstall(fs.basePath);
+    await fs.createJson("package.json", { type: "module" });
+    await fs.create("config/test.js", "export default Boolean(import.meta.hot)");
+    await fs.create(
+      "server.js",
+      `import { hot } from '@sonamu-kit/hmr-hook'
+       await hot.init({ root: import.meta.filename, rootDirectory: import.meta.dirname, ignore: ['config/**'] })
+       const app = await import('./config/test.js')
+       process.send({ type: 'hot-result', enabled: app.default })`,
+    );
+    const server = runProcess("server.js", { cwd: fs.basePath });
+    const result = await pEvent<string, { type: string; enabled: boolean }>(
       server.child,
       "message",
-      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
-      (message: any) =>
-        message?.type === "hmr-hook:full-reload" && message.path === join(fs.basePath, "app.js"),
+      {
+        filter: (message) => message.type === "hot-result",
+        timeout: 1_000,
+      },
     );
-    assert.isDefined(result);
+    assert.isTrue(result.enabled);
   });
 
-  test("ignore node_modules by default", async ({ fs }) => {
-    await fakeInstall(fs.basePath);
-
-    await fs.createJson("package.json", { type: "module" });
-    await fs.createJson("node_modules/app/package.json", { type: "module" });
-    await fs.create(
-      "server.js",
-      `import * as http from 'http'
-       import { hot } from 'hot-hook'
-       import { join } from 'node:path'
-
-       await hot.init({
-         root: import.meta.filename,
-       })
-
-       const server = http.createServer(async (request, response) => {
-         const app = await import('./node_modules/app/app.js', { with: { hot: 'true' } })
-         await app.default(request, response)
-       })
-
-       server.listen(3333, () => {
-         console.log('Server is running')
-       })`,
-    );
-
-    await createHandlerFile({ path: "node_modules/app/app.js", response: "Hello World!" });
-
-    const server = runProcess("server.js", {
-      cwd: fs.basePath,
-      env: { NODE_DEBUG: "hot-hook" },
+  for (const scenario of [
+    { title: "일반 모듈", boundaries: [], target: "app.js", staticImport: false, wrong: false },
+    {
+      title: "정적 import된 boundary",
+      boundaries: ["./app.js"],
+      target: "app.js",
+      staticImport: true,
+      wrong: true,
+    },
+    {
+      title: "정적 import된 부모 boundary",
+      boundaries: ["./app.js"],
+      target: "app2.js",
+      staticImport: true,
+      wrong: true,
+    },
+    { title: "restart 파일", boundaries: [], target: ".env", staticImport: false, wrong: false },
+  ]) {
+    test(`${scenario.title}의 수동 변경은 전체 재시작을 요청한다`, async ({ fs, assert }) => {
+      await fakeInstall(fs.basePath);
+      await fs.createJson("package.json", {
+        type: "module",
+        hotHook: { boundaries: scenario.boundaries },
+      });
+      await fs.create(".env", "HELLO=WORLD");
+      await fs.create("app.js", "import './app2.js'; export default 'before'");
+      await fs.create("app2.js", "export default 'before'");
+      await fs.create(
+        "server.js",
+        `${scenario.staticImport ? "import app from './app.js'" : "await import('./app.js')"}
+         ${manualInvalidationSource}
+         console.log('Server is running')`,
+      );
+      const server = runProcess("server.js", {
+        cwd: fs.basePath,
+        nodeOptions: ["--import=@sonamu-kit/hmr-hook/register"],
+      });
+      await server.waitForOutput("Server is running");
+      await fs.create(scenario.target, "export default 'after'");
+      const result = await server.invalidateFile(join(fs.basePath, scenario.target));
+      assert.deepEqual(result.paths, []);
+      const message = result.messages.find((message) => message.type === "hmr-hook:full-reload");
+      assert.isDefined(message);
+      assert.equal(message?.path, join(fs.basePath, scenario.target));
+      assert.equal(message?.shouldBeReloadable ?? false, scenario.wrong);
     });
-    await server.waitForOutput("Server is running");
+  }
 
-    await supertest("http://localhost:3333").get("/").expect(200).expect("Hello World!");
-    await setTimeout(100);
-
-    await createHandlerFile({ path: "node_modules/app/app.js", response: "Hello World! Updated" });
-    await supertest("http://localhost:3333").get("/").expect(200).expect("Hello World!");
-  });
-
-  test("even add import.meta.hot to ignored files", async ({ fs, assert }) => {
+  test("정적 import된 boundary는 엄격 모드에서 오류를 발생시킨다", async ({ fs, assert }) => {
     await fakeInstall(fs.basePath);
-
-    await fs.createJson("package.json", { type: "module" });
-    await fs.create(
-      "config/test.js",
-      `
-       if (import.meta.hot) {
-        process.send({ type: 'ok' })
-       }
-    `,
-    );
-    await fs.create(
-      "server.js",
-      `import * as http from 'http'
-       import { hot } from 'hot-hook'
-       import { join } from 'node:path'
-
-       await hot.init({
-         root: import.meta.filename,
-         ignore: ['config/**'],
-       })
-
-       await import('./config/test.js')
-
-       const server = http.createServer(async (request, response) => {
-         const app = await import('./config/test.js')
-         await app.default(request, response)
-       })
-
-       server.listen(3333, () => {
-         console.log('Server is running')
-       })`,
-    );
-
-    const server = runProcess("server.js", {
-      cwd: fs.basePath,
-      env: { NODE_DEBUG: "hot-hook" },
-    });
-
-    await server.waitForOutput("Server is running");
-    await setTimeout(100);
-
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
-    const result = await pEvent(server.child, "message", (message: any) => message?.type === "ok");
-    assert.isDefined(result);
-  });
-
-  test("send invalidated message when file is invalidated", async ({ fs, assert }) => {
-    await fakeInstall(fs.basePath);
-
-    await fs.createJson("package.json", { type: "module" });
-    await createHandlerFile({ path: "config/test.js", response: "Hello" });
-    await fs.create(
-      "server.js",
-      `import * as http from 'http'
-       import { hot } from 'hot-hook'
-       import { join } from 'node:path'
-
-       await hot.init({
-         root: import.meta.filename,
-       })
-
-       const server = http.createServer(async (request, response) => {
-         const app = await import('./config/test.js', { with: { hot: 'true' } })
-         await app.default(request, response)
-       })
-
-       server.listen(3333, () => {
-         console.log('Server is running')
-       })`,
-    );
-
-    const server = runProcess("server.js", {
-      cwd: fs.basePath,
-      env: { NODE_DEBUG: "hot-hook" },
-    });
-
-    await server.waitForOutput("Server is running");
-    await setTimeout(100);
-
-    await supertest("http://localhost:3333").get("/").expect(200).expect("Hello");
-
-    createHandlerFile({ path: "config/test.js", response: "Hello Updated" });
-
-    const result = await pEvent(
-      server.child,
-      "message",
-      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
-      (message: any) =>
-        message?.type === "hmr-hook:invalidated" &&
-        message.paths.includes(join(fs.basePath, "config/test.js")),
-    );
-
-    assert.isDefined(result);
-  });
-
-  test("Can define hardcoded boundaries", async ({ fs }) => {
-    await fakeInstall(fs.basePath);
-
-    await fs.createJson("package.json", { type: "module" });
-    await fs.create(
-      "server.js",
-      `import * as http from 'http'
-       import { hot } from 'hot-hook'
-       import { join } from 'node:path'
-
-       await hot.init({
-         root: import.meta.filename,
-         boundaries: ['./app.js']
-       })
-
-       const server = http.createServer(async (request, response) => {
-         const app = await import('./app.js')
-         await app.default(request, response)
-       })
-
-       server.listen(3333, () => {
-         console.log('Server is running')
-       })`,
-    );
-
-    await createHandlerFile({ path: "app.js", response: "Hello World!" });
-
-    const server = runProcess("server.js", { cwd: fs.basePath, env: { NODE_DEBUG: "hot-hook" } });
-    await server.waitForOutput("Server is running");
-
-    await supertest("http://localhost:3333").get("/").expect(200).expect("Hello World!");
-
-    await createHandlerFile({ path: "app.js", response: "Hello World! Updated" });
-    await setTimeout(100);
-    await supertest("http://localhost:3333").get("/").expect(200).expect("Hello World! Updated");
-
-    await createHandlerFile({ path: "app.js", response: "Hello World! Updated new" });
-    await setTimeout(100);
-    await supertest("http://localhost:3333")
-      .get("/")
-      .expect(200)
-      .expect("Hello World! Updated new");
-  });
-
-  test("full reload when a `restart` file changes", async ({ fs, assert }) => {
-    await fakeInstall(fs.basePath);
-
-    await fs.createJson("package.json", { type: "module" });
-    await fs.create(".env", "HELLO=WORLD");
-
-    await fs.create(
-      "server.js",
-      `import * as http from 'http'
-       import { hot } from 'hot-hook'
-       import { join } from 'node:path'
-
-       await hot.init({
-         root: import.meta.filename,
-       })
-
-       const server = http.createServer(async (request, response) => {
-          const HELLO = process.env.HELLO
-
-          response.writeHead(200, {'Content-Type': 'text/plain'})
-          response.end(HELLO)
-       })
-
-       server.listen(3333, () => {
-         console.log('Server is running')
-       })`,
-    );
-
-    const server = runProcess("server.js", {
-      cwd: fs.basePath,
-      env: { NODE_DEBUG: "hot-hook" },
-      nodeOptions: ["--env-file=.env"],
-    });
-
-    await server.waitForOutput("Server is running");
-
-    await supertest("http://localhost:3333").get("/").expect(200).expect("WORLD");
-
-    await setTimeout(100);
-    fs.create(".env", "HELLO=WORLD UPDATED");
-    const result = await pEvent(
-      server.child,
-      "message",
-      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
-      (message: any) => message?.type === "hmr-hook:full-reload",
-    );
-    assert.isDefined(result);
-  });
-
-  test("full reload if file should be reloadable but is not dynamically imported", async ({
-    fs,
-    assert,
-  }) => {
-    await fakeInstall(fs.basePath);
-
-    await fs.createJson("package.json", { type: "module", hotHook: { boundaries: ["./app.js"] } });
-    await fs.create(
-      "server.js",
-      `import * as http from 'http'
-       import { hot } from 'hot-hook'
-       import { join } from 'node:path'
-       import app from './app.js'
-
-       const server = http.createServer(async (request, response) => {
-         await app(request, response)
-       })
-
-       server.listen(3333, () => {
-         console.log('Server is running')
-       })`,
-    );
-
-    await createHandlerFile({ path: "app.js", response: "Hello World!" });
-
-    const server = runProcess("server.js", {
-      cwd: fs.basePath,
-      env: { NODE_DEBUG: "hot-hook" },
-      nodeOptions: ["--import=hot-hook/register"],
-    });
-
-    await server.waitForOutput("Server is running");
-    await supertest("http://localhost:3333").get("/").expect(200).expect("Hello World!");
-
-    await createHandlerFile({ path: "app.js", response: "Hello World! Updated" });
-    await setTimeout(100);
-
-    const result = await pEvent(
-      server.child,
-      "message",
-      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
-      (message: any) =>
-        message?.type === "hmr-hook:full-reload" && message.shouldBeReloadable === true,
-    );
-    assert.isDefined(result);
-  });
-
-  test("send shouldBeReloadable if parent boundary is not dynamically importd", async ({
-    fs,
-    assert,
-  }) => {
-    await fakeInstall(fs.basePath);
-
-    await fs.createJson("package.json", { type: "module", hotHook: { boundaries: ["./app.js"] } });
-    await fs.create(
-      "server.js",
-      `import * as http from 'http'
-       import { hot } from 'hot-hook'
-       import { join } from 'node:path'
-       import app from './app.js'
-
-       const server = http.createServer(async (request, response) => {
-         await app(request, response)
-       })
-
-       server.listen(3333, () => {
-         console.log('Server is running')
-       })`,
-    );
-
-    await fs.create(
-      "app.js",
-      `
-      import { test } from './app2.js'
-
-      export default function(request, response) {
-        response.writeHead(200, {'Content-Type': 'text/plain'})
-        response.end('Hello World!')
-      }`,
-    );
-    await fs.create(`app2.js`, `export function test() { return 'Hello World!' }`);
-
-    const server = runProcess("server.js", {
-      cwd: fs.basePath,
-      env: { NODE_DEBUG: "hot-hook" },
-      nodeOptions: ["--import=hot-hook/register"],
-    });
-
-    await server.waitForOutput("Server is running");
-    await supertest("http://localhost:3333").get("/").expect(200).expect("Hello World!");
-
-    await fs.create(`app2.js`, `export function test() { return 'Hello Test!' }`);
-
-    await setTimeout(100);
-
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
-    const result = await pEvent(server.child, "message", (message: any) => {
-      console.log(message);
-      return message?.type === "hmr-hook:full-reload" && message.shouldBeReloadable === true;
-    });
-    assert.isDefined(result);
-  });
-
-  test("throw error if file should be reloadable but is not dynamically imported and flag is set", async ({
-    fs,
-    assert,
-  }) => {
-    await fakeInstall(fs.basePath);
-
     await fs.createJson("package.json", {
       type: "module",
       hotHook: { boundaries: ["./app.js"], throwWhenBoundariesAreNotDynamicallyImported: true },
     });
-    await fs.create(
-      "server.js",
-      `import * as http from 'http'
-       import { hot } from 'hot-hook'
-       import { join } from 'node:path'
-       import app from './app.js'
-
-       const server = http.createServer(async (request, response) => {
-         await app(request, response)
-       })
-
-       server.listen(3333, () => {
-         console.log('Server is running')
-       })`,
-    );
-
-    await createHandlerFile({ path: "app.js", response: "Hello World!" });
-
+    await fs.create("server.js", "import app from './app.js'; console.log(app)");
+    await fs.create("app.js", "export default 'app'");
     const server = runProcess("server.js", {
       cwd: fs.basePath,
-      env: { NODE_DEBUG: "hot-hook" },
-      nodeOptions: ["--import=hot-hook/register"],
+      nodeOptions: ["--import=@sonamu-kit/hmr-hook/register"],
     });
-
-    // 린트 리팩토링: runProcess 직후이므로 child 항상 존재
-    if (!server.child) throw new Error("child not started");
     await assert.rejects(async () => await server.child);
   });
 });
