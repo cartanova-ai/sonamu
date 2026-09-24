@@ -1116,9 +1116,6 @@ importers:
 
   modules/hmr-hook:
     dependencies:
-      chokidar:
-        specifier: 'catalog:'
-        version: 4.0.3
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
