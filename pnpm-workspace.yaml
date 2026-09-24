@@ -129,7 +129,8 @@ catalog:
   "@types/react-syntax-highlighter": ^15.5.13
   "@types/supertest": ^6.0.3
   "@types/ws": ^8.18.1
-  "@typescript/native-preview": ^7.0.0-dev.20251225.1
+  # CLI는 TS 7, 기존 Compiler API 소비자는 아래 typescript alias로 TS 6을 사용한다.
+  "@typescript/native": npm:typescript@7.1.0-dev.20260831.1
   "@typescript/typescript6": 6.0.2
   "@uiw/react-json-view": 2.0.0-alpha.41
   "@vitejs/plugin-react": 6.0.2
@@ -229,7 +230,7 @@ catalog:
   ts-node: ^10.9.2
   tsdown: ^0.22.3
   tsx: ^4.21.0
-  typescript: 7.1.0-dev.20260831.1
+  typescript: npm:@typescript/typescript6@6.0.2
   unplugin-icons: 0.20.2
   uuid: ^13.0.0
   vaul: ^1.1.2

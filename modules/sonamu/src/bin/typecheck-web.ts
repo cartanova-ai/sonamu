@@ -29,8 +29,9 @@ if (references.length === 0) {
   throw new Error("tsconfig.json에 typecheck할 project reference가 없습니다.");
 }
 
+// Compiler API용 TS 6 alias와 분리하여 타입 검사는 네이티브 TS 7 CLI로 실행한다.
 const tscPath = path.join(
-  path.dirname(requireFromHere.resolve("typescript/package.json")),
+  path.dirname(requireFromHere.resolve("@typescript/native/package.json")),
   "bin/tsc",
 );
 for (const reference of references) {
