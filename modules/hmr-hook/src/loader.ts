@@ -255,7 +255,20 @@ export class HotHookLoader {
       if (this.#pathIgnoredMatcher?.match(actualSourcePath)) return result;
     }
 
-    result.source = this.#getImportMetaHotSource() + result.source;
+    const hotSource = this.#getImportMetaHotSource();
+    const source = "" + result.source;
+    if (source.startsWith("#!")) {
+      // shebang은 소스의 맨 앞에 있어야 하므로 첫 줄 종결자 뒤에 주입한다.
+      const lineEnding = /\r\n|[\n\r\u2028\u2029]/.exec(source);
+      if (lineEnding) {
+        const insertionIndex = lineEnding.index + lineEnding[0].length;
+        result.source = source.slice(0, insertionIndex) + hotSource + source.slice(insertionIndex);
+      } else {
+        result.source = `${source}\n${hotSource}`;
+      }
+    } else {
+      result.source = hotSource + source;
+    }
     return result;
   };
 
