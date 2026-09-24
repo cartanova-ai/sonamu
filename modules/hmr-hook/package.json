@@ -47,7 +47,6 @@
     "prepublishOnly": "pnpm lint && pnpm build"
   },
   "dependencies": {
-    "chokidar": "catalog:",
     "fast-glob": "catalog:",
     "parse-imports": "catalog:",
     "picomatch": "catalog:",

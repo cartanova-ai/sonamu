@@ -119,6 +119,7 @@
     "@sonamu-kit/tasks": "workspace:^",
     "@sonamu-kit/ts-loader": "workspace:^",
     "@types/ws": "catalog:",
+    "@typescript/native": "catalog:",
     "@typescript/typescript6": "catalog:",
     "bcrypt": "catalog:",
     "bentocache": "catalog:",

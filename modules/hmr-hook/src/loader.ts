@@ -4,8 +4,6 @@ import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type MessagePort } from "node:worker_threads";
 
-import { type FSWatcher, watch } from "chokidar";
-
 import debug from "./debug.js";
 import DependencyTree from "./dependency_tree.js";
 import { DynamicImportChecker } from "./dynamic_import_checker.js";
@@ -23,9 +21,7 @@ export class HotHookLoader {
   #projectRoot!: string;
   #reloadMatcher!: Matcher;
   #messagePort?: MessagePort;
-  #watcher!: FSWatcher;
   #pathIgnoredMatcher!: Matcher;
-  #pathIncludedMatcher!: Matcher;
   #dependencyTree: DependencyTree;
   #hardcodedBoundaryMatcher!: Matcher;
   #dynamicImportChecker!: DynamicImportChecker;
@@ -51,14 +47,7 @@ export class HotHookLoader {
     this.#projectRoot = this.#projectRoot ?? dirname(root);
     this.#reloadMatcher = new Matcher(this.#projectRoot, this.#options.restart || []);
     this.#pathIgnoredMatcher = new Matcher(this.#projectRoot, this.#options.ignore);
-    this.#pathIncludedMatcher = new Matcher(this.#projectRoot, this.#options.include || []);
     this.#hardcodedBoundaryMatcher = new Matcher(this.#projectRoot, this.#options.boundaries);
-
-    // 기본적으로 watcher를 생성하지 않음
-    // disableAutoWatch가 명시적으로 false인 경우에만 watcher 생성
-    if (this.#options.disableAutoWatch === false) {
-      this.#watcher = this.#createWatcher();
-    }
   }
 
   /**
@@ -134,13 +123,9 @@ export class HotHookLoader {
     debug("File change %s", { relativeFilePath, action });
     const filePath = pathResolve(relativeFilePath);
 
-    /**
-     * If the file is removed, we must remove it from the dependency tree
-     * and stop watching it.
-     */
+    // 삭제된 파일은 의존성 그래프에서도 제거한다.
     if (action === "unlink") {
       debug("File removed %s", filePath);
-      this.#watcher?.unwatch(filePath);
       this.#postMessage("hmr-hook:file-changed", {
         path: filePath,
         action: "unlink",
@@ -157,7 +142,6 @@ export class HotHookLoader {
     const fileExists = await this.#checkIfFileExists(filePath);
     if (!fileExists) {
       debug("File does not exist anymore %s", filePath);
-      this.#watcher?.unwatch(filePath);
       this.#dependencyTree.remove(filePath);
       return [];
     }
@@ -216,33 +200,6 @@ export class HotHookLoader {
   }
 
   /**
-   * Create the chokidar watcher instance.
-   */
-  #createWatcher() {
-    const watcher = watch(".", {
-      ignoreInitial: true,
-      cwd: this.#projectRoot,
-      ignored: (file, stats) => {
-        if (file === this.#projectRoot) return false;
-        if (!stats) return false;
-
-        if (this.#pathIgnoredMatcher.match(file)) return true;
-        if (this.#reloadMatcher.match(file)) return false;
-
-        if (stats.isDirectory()) return false;
-
-        return !this.#pathIncludedMatcher.match(file);
-      },
-    });
-
-    watcher.on("change", (path) => this.#onFileChange(path, "change"));
-    watcher.on("unlink", (path) => this.#onFileChange(path, "unlink"));
-    watcher.on("add", (path) => this.#onFileChange(path, "add"));
-
-    return watcher;
-  }
-
-  /**
    * Returns the code source for the import.meta.hot object.
    * We need to add this to every module since `import.meta.hot` is
    * scoped to each module.
@@ -291,7 +248,28 @@ export class HotHookLoader {
     const result = await nextLoad(url, context);
     if (result.format !== "module") return result;
 
-    result.source = this.#getImportMetaHotSource() + result.source;
+    if (parsedUrl.protocol === "file:") {
+      const sourcePath = fileURLToPath(parsedUrl);
+      const actualSourcePath = this.#resolvedSourcePaths.get(sourcePath) || sourcePath;
+      // resolve와 같은 실제 소스 경로 기준으로 제외 정책을 적용한다.
+      if (this.#pathIgnoredMatcher?.match(actualSourcePath)) return result;
+    }
+
+    const hotSource = this.#getImportMetaHotSource();
+    // 본문의 공백과 BOM은 보존하고 소스 맨 앞의 BOM 하나만 제거한다.
+    const source = ("" + result.source).replace(/^\uFEFF/, "");
+    if (source.startsWith("#!")) {
+      // shebang은 소스의 맨 앞에 있어야 하므로 첫 줄 종결자 뒤에 주입한다.
+      const lineEnding = /\r\n|[\n\r\u2028\u2029]/.exec(source);
+      if (lineEnding) {
+        const insertionIndex = lineEnding.index + lineEnding[0].length;
+        result.source = source.slice(0, insertionIndex) + hotSource + source.slice(insertionIndex);
+      } else {
+        result.source = `${source}\n${hotSource}`;
+      }
+    } else {
+      result.source = hotSource + source;
+    }
     return result;
   };
 
@@ -299,7 +277,6 @@ export class HotHookLoader {
    * The resolve hook
    * We use it for :
    * - Adding the hmr-hook query parameter to the URL ( to getting a fresh version )
-   * - And adding files to the watcher
    */
   resolve: ResolveHook = async (specifier, context, nextResolve) => {
     const parentUrl = context.parentURL ? new URL(context.parentURL) : undefined;
@@ -322,7 +299,7 @@ export class HotHookLoader {
     // 만약 result.url이 .js 파일을 가리키더라도, 이는 사실 .ts파일을 swc로 트랜스파일한 것일 수 있습니다.
     // 이 경우에는 result.importAttributes.ts에 실제 소스 파일(.ts) 경로를 제공합니다.
     //
-    // 여기에서는 실제 파일의 변경을 감지해야 하므로,
+    // 외부에서 전달하는 변경 경로와 의존성 그래프의 경로를 일치시키기 위해,
     // result.importAttributes.ts가 존재할 경우 이를 사용합니다.
     const actualSourcePath = result.importAttributes?.ts
       ? fileURLToPath(new URL(result.importAttributes.ts))
@@ -352,7 +329,9 @@ export class HotHookLoader {
     const actualParentPath = this.#resolvedSourcePaths.get(parentPath) || parentPath;
 
     const isHardcodedBoundary = this.#hardcodedBoundaryMatcher.match(actualSourcePath);
-    const reloadable = result.importAttributes?.hot === "true" ? true : isHardcodedBoundary;
+    // resolve 결과가 속성을 생략하면 입력 속성을 유지하는 Node.js 규칙을 따른다.
+    const importAttributes = result.importAttributes ?? context.importAttributes;
+    const reloadable = importAttributes?.hot === "true" ? true : isHardcodedBoundary;
 
     if (reloadable) {
       /**
@@ -400,9 +379,6 @@ export class HotHookLoader {
     if (this.#pathIgnoredMatcher.match(actualSourcePath)) {
       return result;
     }
-
-    // 워쳐는 이제 밖에 있기 때문에 주석 처리 하였습니다.
-    // this.#watcher.add(actualSourcePath)
 
     // 파일이 tree에 없는 경우 version 0으로 처리합니다.
     // 이런 경우는 parent가 tree에 없어서(예: node_modules의 knex)

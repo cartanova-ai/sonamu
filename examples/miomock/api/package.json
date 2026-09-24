@@ -51,7 +51,7 @@
     "@sheetkit/node": "catalog:",
     "@types/bcrypt": "catalog:",
     "@types/node": "catalog:",
-    "@typescript/native-preview": "catalog:",
+    "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "fastify": "catalog:",
     "node-sql-parser": "catalog:",
