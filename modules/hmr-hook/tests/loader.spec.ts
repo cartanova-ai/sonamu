@@ -325,7 +325,7 @@ test.group("Loader", () => {
       (message: any) => message?.type === "hot-hook:full-reload",
     );
     assert.isDefined(result);
-  }).disableTimeout();
+  });
 
   test("full reload if file should be reloadable but is not dynamically imported", async ({
     fs,
@@ -372,7 +372,7 @@ test.group("Loader", () => {
         message?.type === "hot-hook:full-reload" && message.shouldBeReloadable === true,
     );
     assert.isDefined(result);
-  }).disableTimeout();
+  });
 
   test("send shouldBeReloadable if parent boundary is not dynamically importd", async ({
     fs,
@@ -428,7 +428,7 @@ test.group("Loader", () => {
       return message?.type === "hot-hook:full-reload" && message.shouldBeReloadable === true;
     });
     assert.isDefined(result);
-  }).disableTimeout();
+  });
 
   test("throw error if file should be reloadable but is not dynamically imported and flag is set", async ({
     fs,
@@ -467,5 +467,5 @@ test.group("Loader", () => {
     // 린트 리팩토링: runProcess 직후이므로 child 항상 존재
     if (!server.child) throw new Error("child not started");
     await assert.rejects(async () => await server.child);
-  }).disableTimeout();
+  });
 });
