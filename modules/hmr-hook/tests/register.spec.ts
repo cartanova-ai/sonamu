@@ -85,7 +85,7 @@ test.group("Register", () => {
       "message",
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
       (message: any) =>
-        message?.type === "hot-hook:full-reload" && message.path === join(fs.basePath, "app.js"),
+        message?.type === "hmr-hook:full-reload" && message.path === join(fs.basePath, "app.js"),
     );
     assert.isDefined(result);
   });
@@ -179,7 +179,7 @@ test.group("Register", () => {
       "message",
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
       (message: any) =>
-        message?.type === "hot-hook:full-reload" && message.path.includes(".restart-file"),
+        message?.type === "hmr-hook:full-reload" && message.path.includes(".restart-file"),
     );
   });
 
@@ -221,7 +221,7 @@ test.group("Register", () => {
       server.child,
       "message",
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
-      (message: any) => message?.type === "hot-hook:full-reload" && message.path.includes(".env"),
+      (message: any) => message?.type === "hmr-hook:full-reload" && message.path.includes(".env"),
     );
   });
 
@@ -290,7 +290,7 @@ test.group("Register", () => {
       "message",
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
       (message: any) =>
-        message?.type === "hot-hook:file-changed" && message.path === join(fs.basePath, "app.js"),
+        message?.type === "hmr-hook:file-changed" && message.path === join(fs.basePath, "app.js"),
     );
 
     assert.isDefined(result);
@@ -315,7 +315,7 @@ test.group("Register", () => {
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
     const result = await pEvent(server.child, "message", (message: any) => {
       return (
-        message?.type === "hot-hook:file-changed" &&
+        message?.type === "hmr-hook:file-changed" &&
         message.path === join(fs.basePath, "app.js") &&
         message.action === "unlink"
       );
@@ -345,7 +345,7 @@ test.group("Register", () => {
       "message",
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- IPC message는 런타임에 타입이 결정됨
       (message: any) =>
-        message?.type === "hot-hook:file-changed" &&
+        message?.type === "hmr-hook:file-changed" &&
         message.path === join(fs.basePath, "app2.js") &&
         message.action === "add",
     );
