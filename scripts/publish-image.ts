@@ -47,6 +47,14 @@ async function deploy() {
       --file ${path.join(import.meta.dirname, "..", "images", "postgres", "Dockerfile")} \
       ${path.join(import.meta.dirname, "..", "images", "postgres")}
   `;
+
+  // 위에서 ECR에 올린거 고대로 복사해서 GHCR에도 올려요.
+  await $`
+    docker buildx imagetools create \
+      --tag ghcr.io/cartanova-ai/sonamu-postgres:v${version} \
+      --tag ghcr.io/cartanova-ai/sonamu-postgres:latest \
+      ${AWS_ECR_PUBLIC_REGISTRY_URL}:v${version}
+  `;
 }
 
 async function main() {

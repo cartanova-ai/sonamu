@@ -12,6 +12,7 @@ on:
 permissions: # 여기를 보세요: https://docs.npmjs.com/trusted-publishers#step-2-configure-your-cicd-workflow
   id-token: write # Required for OIDC
   contents: read
+  packages: write # GHCR에 업로드할 때 필요함.
 
 jobs:
   build-and-publish:
@@ -75,8 +76,18 @@ jobs:
       - name: Install dependencies
         run: mise exec -- pnpm install
 
-      # 빌드와는 별개로 우선 업데이트일 경우에만, ECR Public에 이미지를 배포합니다.
+      # GHCR에 이미지 올리기 위한 준비입니다.
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push' # PR로 트리거 안 되게 해용
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 빌드와는 별개로 우선 업데이트일 경우에만, ECR Public + GHCR에 이미지를 배포합니다.
       - name: Publish Image
+        if: github.event_name == 'push' # PR로 트리거 안 되게 해용
         run: mise run publish:image
 
       - name: Build
