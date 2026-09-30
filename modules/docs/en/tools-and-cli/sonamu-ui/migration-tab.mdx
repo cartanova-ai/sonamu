@@ -10,7 +10,7 @@ The Migration tab compares Entity definitions with database schemas, creates mig
 The **baseline DB** selector only includes connections where every migration is applied. Sonamu compares that database's schema with the Entity definitions and previews the changes and generated code.
 
 1. Select a baseline database.
-2. Use **Expand all** to review the generated code when needed.
+2. Expand generated code with the button beside a file, or use **Expand all** to review every file.
 3. Select **Generate migrations** to create the files.
 
 After files are generated, Pending state is refreshed for every database.
@@ -22,6 +22,7 @@ Rows are migration files and columns are database connections. Each cell shows `
 - Select an execution target by clicking its column header or cells.
 - Enable **Details** to show the host, database, remote marker, and per-column refresh action.
 - Select an **Error** badge to inspect the server error.
+- The first button beside a file expands its code on the page. The second opens the file in VS Code, Cursor, or Zed.
 
 ## Apply latest
 

@@ -5,7 +5,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Popover,
   PopoverContent,
@@ -30,6 +29,7 @@ import {
   type MigrationTarget,
 } from "sonamu";
 import CodeIcon from "~icons/lucide/code";
+import ExternalLinkIcon from "~icons/lucide/external-link";
 import GlobeIcon from "~icons/lucide/globe";
 import PlayIcon from "~icons/lucide/play";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
@@ -376,28 +376,38 @@ export function MigrationMatrix({
               </TableCell>
             </TableRow>
           ) : null}
-          {codes.map((code) => (
+          {codes.map((code, codeIndex) => (
             <Fragment key={code.name}>
               <TableRow>
                 <TableCell className="min-w-80 max-w-0 border-b font-mono">
                   {/* 파일명을 펼쳐도 DB 선택 열이 밀리지 않도록 너비를 유지합니다. */}
                   <div className="flex w-full items-start gap-1">
                     <MigrationFilename name={code.name} />
+                    <Button
+                      aria-label={SD(
+                        expandedCodes.includes(code.name)
+                          ? "migration.matrix.collapseCode"
+                          : "migration.matrix.expandCode",
+                      ).replace("{name}", code.name)}
+                      aria-expanded={expandedCodes.includes(code.name)}
+                      aria-controls={`migration-code-preview-${codeIndex}`}
+                      size="xs"
+                      variant="secondary"
+                      icon={<CodeIcon />}
+                      className="ml-1 shrink-0"
+                      onClick={() => void toggleCodePreview(code.name)}
+                    />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           aria-label={SD("migration.matrix.openCode").replace("{name}", code.name)}
                           size="xs"
                           variant="secondary"
-                          icon={<CodeIcon />}
-                          className="ml-1 shrink-0"
+                          icon={<ExternalLinkIcon />}
+                          className="shrink-0"
                         />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
-                        <DropdownMenuItem onClick={() => void toggleCodePreview(code.name)}>
-                          {SD("migration.matrix.previewHere")}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
                         <DropdownMenuLabel className="text-xs text-muted-foreground">
                           {SD("migration.matrix.openInEditor")}
                         </DropdownMenuLabel>
@@ -449,7 +459,11 @@ export function MigrationMatrix({
               </TableRow>
               {expandedCodes.includes(code.name) ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={connections.length + 1} className="max-w-0 py-2">
+                  <TableCell
+                    id={`migration-code-preview-${codeIndex}`}
+                    colSpan={connections.length + 1}
+                    className="max-w-0 py-2"
+                  >
                     {loadingCodes.includes(code.name) ? (
                       <Skeleton className="h-28 w-full" />
                     ) : codeErrors[code.name] !== undefined ? (

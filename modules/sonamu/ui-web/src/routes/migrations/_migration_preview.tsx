@@ -5,6 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   Select,
+  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -13,7 +14,7 @@ import {
   TableRow,
 } from "@sonamu-kit/react-components";
 import classNames from "classnames";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { type GenMigrationCode, type MigrationConnectionMeta, type MigrationTarget } from "sonamu";
 import CodeIcon from "~icons/lucide/code";
 import PlayIcon from "~icons/lucide/play";
@@ -43,8 +44,16 @@ export function MigrationPreview({
   onGenerate,
 }: MigrationPreviewProps) {
   const { SD } = useSonamuContext();
-  const [expanded, setExpanded] = useState(false);
+  const [expandedCodes, setExpandedCodes] = useState<string[]>([]);
   const [errorOpen, setErrorOpen] = useState(false);
+  const codeKeys = preparedCodes?.map((change, index) => `${change.title}-${index}`) ?? [];
+  const allExpanded = codeKeys.length > 0 && codeKeys.every((key) => expandedCodes.includes(key));
+
+  const toggleCode = (codeKey: string) => {
+    setExpandedCodes((current) =>
+      current.includes(codeKey) ? current.filter((key) => key !== codeKey) : [...current, codeKey],
+    );
+  };
 
   return (
     <section>
@@ -62,6 +71,8 @@ export function MigrationPreview({
                 if (connection !== undefined) onCompareConnKeyChange(connection.connKey);
               }}
             />
+          ) : loading ? (
+            <Skeleton className="h-9 min-w-0 flex-1 sm:w-[180px] sm:flex-none" />
           ) : (
             <span className="text-muted-foreground">{SD("migration.preview.noComparable")}</span>
           )}
@@ -71,12 +82,12 @@ export function MigrationPreview({
             size="sm"
             variant="secondary"
             icon={<CodeIcon />}
-            disabled={(preparedCodes?.length ?? 0) === 0}
-            aria-expanded={expanded}
+            disabled={loading || (preparedCodes?.length ?? 0) === 0}
+            aria-expanded={allExpanded}
             aria-controls="proposed-code-previews"
-            onClick={() => setExpanded((current) => !current)}
+            onClick={() => setExpandedCodes(allExpanded ? [] : codeKeys)}
           >
-            {expanded ? SD("migration.preview.collapseAll") : SD("migration.preview.expandAll")}
+            {allExpanded ? SD("migration.preview.collapseAll") : SD("migration.preview.expandAll")}
           </Button>
           <Button
             size="sm"
@@ -97,19 +108,33 @@ export function MigrationPreview({
           </Button>
         </span>
       </div>
-      <Table className="text-[0.9em]">
+      <Table className="text-[0.9em]" aria-busy={loading}>
         <TableHeader>
           <TableRow className="hover:bg-transparent bg-gray-100">
             <TableHead style={{ width: "90px" }}>{SD("common.type")}</TableHead>
             <TableHead style={{ width: "160px" }}>{SD("common.table")}</TableHead>
             <TableHead>{SD("migration.preview.fileToCreate")}</TableHead>
-            <TableHead style={{ width: "50%" }}>{SD("common.code")}</TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody id="proposed-code-previews">
-          {error !== null ? (
+        <TableBody id="proposed-code-previews" aria-busy={loading}>
+          {loading
+            ? Array.from({ length: 3 }, (_, index) => (
+                <TableRow key={index} className="hover:bg-transparent">
+                  <TableCell>
+                    <Skeleton className="h-6 w-16 rounded" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-full max-w-md" />
+                  </TableCell>
+                </TableRow>
+              ))
+            : null}
+          {!loading && error !== null ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-center text-muted-foreground">
+              <TableCell colSpan={3} className="text-center text-muted-foreground">
                 <div role="alert" className="flex items-center justify-center gap-2">
                   <span>{SD("migration.preview.errorTitle")}</span>
                   <Popover open={errorOpen} onOpenChange={setErrorOpen}>
@@ -143,39 +168,64 @@ export function MigrationPreview({
                 </div>
               </TableCell>
             </TableRow>
-          ) : (preparedCodes?.length ?? 0) === 0 ? (
+          ) : !loading && preparedCodes !== undefined && preparedCodes.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-center text-muted-foreground">
+              <TableCell colSpan={3} className="text-center text-muted-foreground">
                 {SD("migration.preview.noChanges")}
               </TableCell>
             </TableRow>
           ) : null}
-          {error === null
+          {!loading && error === null
             ? preparedCodes?.map((change, index) => (
-                <TableRow key={`${change.title}-${index}`}>
-                  <TableCell className="align-top py-3">
-                    <Badge
-                      variant="outline"
-                      className={classNames("w-16 justify-center", {
-                        "border-green-300 bg-green-100/60 text-green-800": change.type === "normal",
-                        "border-gray-300 bg-gray-100 text-gray-600": change.type === "foreign",
-                      })}
-                    >
-                      {change.type.toUpperCase()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-mono align-top py-3">{change.table}</TableCell>
-                  <TableCell className="font-mono align-top py-3">{change.title}</TableCell>
-                  <TableCell className="py-2">
-                    {expanded ? (
-                      <pre className="max-w-full overflow-x-auto whitespace-pre rounded-lg bg-green-50 p-4 font-mono text-sm leading-relaxed text-gray-900">
-                        <code>{change.formatted ?? ""}</code>
-                      </pre>
-                    ) : (
-                      <span className="text-muted-foreground/40">—</span>
-                    )}
-                  </TableCell>
-                </TableRow>
+                <Fragment key={`${change.title}-${index}`}>
+                  <TableRow>
+                    <TableCell className="align-top py-3">
+                      <Badge
+                        variant="outline"
+                        className={classNames("w-16 justify-center", {
+                          "border-green-300 bg-green-100/60 text-green-800":
+                            change.type === "normal",
+                          "border-gray-300 bg-gray-100 text-gray-600": change.type === "foreign",
+                        })}
+                      >
+                        {change.type.toUpperCase()}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono align-top py-3">{change.table}</TableCell>
+                    <TableCell className="font-mono py-2">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <span className="min-w-0 flex-1 break-all py-1">{change.title}</span>
+                        <Button
+                          size="xs"
+                          variant="secondary"
+                          icon={<CodeIcon />}
+                          className="shrink-0"
+                          aria-label={SD(
+                            expandedCodes.includes(`${change.title}-${index}`)
+                              ? "migration.preview.collapseCode"
+                              : "migration.preview.expandCode",
+                          ).replace("{name}", change.title)}
+                          aria-expanded={expandedCodes.includes(`${change.title}-${index}`)}
+                          aria-controls={`proposed-code-preview-${index}`}
+                          onClick={() => toggleCode(`${change.title}-${index}`)}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {expandedCodes.includes(`${change.title}-${index}`) ? (
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell
+                        id={`proposed-code-preview-${index}`}
+                        colSpan={3}
+                        className="max-w-0 py-2"
+                      >
+                        <pre className="overflow-x-auto whitespace-pre rounded-lg bg-green-50 p-4 font-mono text-sm leading-relaxed text-gray-900">
+                          <code>{change.formatted ?? ""}</code>
+                        </pre>
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </Fragment>
               ))
             : null}
         </TableBody>

@@ -74,6 +74,10 @@ function MigrationsIndex() {
     ? requestedCompareKey
     : eligibleCompareConnections[0]?.connKey;
   const preparedCodesQuery = SonamuUIService.useMigrationPreparedCodes(compareConnKey);
+  const comparisonLoading =
+    connectionsQuery.isFetching ||
+    (compareConnKey === undefined && statusQueries.some((query) => query.isFetching)) ||
+    preparedCodesQuery.isFetching;
   const selectedHasUnavailableConnection = selectedConnections.some((connKey) => {
     const index = connections.findIndex((connection) => connection.connKey === connKey);
     const query = statusQueries[index];
@@ -161,11 +165,12 @@ function MigrationsIndex() {
       <div className="block rounded-md border border-gray-200 bg-white p-4 shadow-sm">
         <div className="space-y-6 p-4">
           <MigrationPreview
+            key={compareConnKey}
             connections={eligibleCompareConnections}
             compareConnKey={compareConnKey}
             preparedCodes={preparedCodesQuery.data?.preparedCodes}
             error={preparedCodesQuery.error}
-            loading={preparedCodesQuery.isFetching}
+            loading={comparisonLoading}
             generating={generating}
             onCompareConnKeyChange={setRequestedCompareKey}
             onGenerate={() => void handleGenerate()}
