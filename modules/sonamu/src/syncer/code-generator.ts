@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { unique } from "radashi";
 
 import { Sonamu } from "../api/sonamu";
+import { formatCode } from "../code-formatting";
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
@@ -19,7 +20,6 @@ import {
 } from "../types/types";
 import { everyAsync, filterAsync } from "../utils/async-utils";
 import { isTest } from "../utils/controller";
-import { formatCode } from "../utils/formatter";
 import { wrapIf } from "../utils/lodash-able";
 import { type AbsolutePath } from "../utils/path-utils";
 import { trackWritten } from "./file-tracking";

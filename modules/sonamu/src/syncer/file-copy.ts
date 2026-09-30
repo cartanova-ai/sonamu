@@ -1,6 +1,6 @@
 import path, { dirname } from "node:path";
 
-import { formatCode } from "../utils/formatter";
+import { formatCode } from "../code-formatting";
 import { syncerFileExists, syncerFilesystem } from "./filesystem-dependencies";
 
 /**

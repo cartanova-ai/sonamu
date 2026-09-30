@@ -2,6 +2,7 @@ import equal from "fast-deep-equal";
 import { type Knex } from "knex";
 import { alphabetical, diff } from "radashi";
 
+import { formatCode } from "../code-formatting";
 import { EntityManager } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
 import {
@@ -13,7 +14,6 @@ import {
   type MigrationSet,
 } from "../types/types";
 import { isSearchTextProp } from "../types/types";
-import { formatCode } from "../utils/formatter";
 import { isStringValue } from "../utils/runtime-value";
 import { differenceWith, intersectionBy } from "../utils/utils";
 import {

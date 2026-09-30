@@ -7,7 +7,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { resolveOxlintBin } from "../formatter";
+import { resolveOxlintBin } from "../oxlint";
 
 const OxlintManifestSchema = z
   .union([
@@ -39,7 +39,7 @@ afterEach(async () => {
 
 describe("oxlint 실행 파일 해석 회귀", () => {
   it("설치된 패키지 manifest에서 실행 가능한 로컬 절대 경로를 반환한다", async () => {
-    const requireFromFormatter = createRequire(new URL("../formatter.ts", import.meta.url));
+    const requireFromFormatter = createRequire(new URL("../oxlint.ts", import.meta.url));
     const manifestPath = requireFromFormatter.resolve("oxlint/package.json");
     const manifest = OxlintManifestSchema.parse(JSON.parse(await readFile(manifestPath, "utf8")));
     const expectedBin = path.resolve(path.dirname(manifestPath), manifest.bin);

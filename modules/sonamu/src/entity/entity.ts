@@ -7,6 +7,7 @@ import { group, unique } from "radashi";
 import { z } from "zod";
 
 import { Sonamu } from "../api/sonamu";
+import { formatCode } from "../code-formatting";
 import {
   getEnumDefValues,
   getSubsetFields,
@@ -33,7 +34,6 @@ import {
   type SubsetQuery,
 } from "../types/types";
 import { importMembers } from "../utils/esm-utils";
-import { formatCode } from "../utils/formatter";
 import { exists } from "../utils/fs-utils";
 import { runtimePath } from "../utils/path-utils";
 import { isStringValue } from "../utils/runtime-value";

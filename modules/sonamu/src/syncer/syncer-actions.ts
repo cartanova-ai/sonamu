@@ -4,11 +4,11 @@ import path, { dirname } from "path";
 import chalk from "chalk";
 
 import { Sonamu } from "../api/sonamu";
+import { formatCode } from "../code-formatting";
 import { type EntityNamesRecord } from "../entity/entity-manager";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
 import { isTest } from "../utils/controller";
-import { formatCode } from "../utils/formatter";
 import { type AbsolutePath } from "../utils/path-utils";
 import { isObjectValue } from "../utils/runtime-value";
 import { generateTemplate } from "./code-generator";

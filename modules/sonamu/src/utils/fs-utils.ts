@@ -3,7 +3,7 @@ import { type PathLike } from "fs";
 import { access, readFile, stat, writeFile } from "fs/promises";
 import path, { dirname } from "path";
 
-import { formatCode } from "./formatter";
+import { formatCode } from "../code-formatting";
 
 /**
  * fs/promises에는 exists가 없어요. 대신 access가 있습니다.

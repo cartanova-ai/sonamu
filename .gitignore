@@ -64,8 +64,9 @@ Thumbs.db
 
 .claude
 
-# sonamu formatter 임시파일 (formatter.ts: process kill 등 예외 시 unlink 누락 보호)
+# sonamu formatter 임시파일 (code-formatting/oxlint.ts: process kill 등 예외 시 unlink 누락 보호)
 .sonamu-fmt-*.ts
+.sonamu-oxlint-*.ts
 
 # Temporary folders
 tmp/

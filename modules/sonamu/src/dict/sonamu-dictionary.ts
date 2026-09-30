@@ -6,9 +6,9 @@ import { Workbook } from "@sheetkit/node";
 import ts from "@typescript/typescript6";
 
 import { Sonamu } from "../api/sonamu";
+import { formatCode } from "../code-formatting";
 import { EntityManager } from "../entity/entity-manager";
 import { BadRequestException } from "../exceptions/so-exceptions";
-import { formatCode } from "../utils/formatter";
 import { SD } from "./sd";
 import {
   type DictEntry,
