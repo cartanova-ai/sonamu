@@ -75,6 +75,6 @@
     "ts-node": "catalog:",
     "tsdown": "catalog:",
     "tsx": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:ts-node-compat"
   }
 }

@@ -129,8 +129,7 @@ catalog:
   "@types/react-syntax-highlighter": ^15.5.13
   "@types/supertest": ^6.0.3
   "@types/ws": ^8.18.1
-  # CLI는 TS 7, 기존 Compiler API 소비자는 아래 typescript alias로 TS 6을 사용한다.
-  "@typescript/native": npm:typescript@7.1.0-dev.20260831.1
+  "@typescript/native-preview": ^7.0.0-dev.20251225.1
   "@typescript/typescript6": 6.0.2
   "@uiw/react-json-view": 2.0.0-alpha.41
   "@vitejs/plugin-react": 6.0.2
@@ -230,7 +229,7 @@ catalog:
   ts-node: ^10.9.2
   tsdown: ^0.22.3
   tsx: ^4.21.0
-  typescript: npm:@typescript/typescript6@6.0.2
+  typescript: 7.1.0-dev.20260831.1
   unplugin-icons: 0.20.2
   uuid: ^13.0.0
   vaul: ^1.1.2
@@ -247,6 +246,15 @@ catalog:
 # 릴리즈 이후 2일 이상 된 패키지만 기본적으로 사용
 minimumReleaseAge: 2880
 # 메인 툴체인에 대해선 적용 제외
+# ts-node는 typescript를 require해 JS Compiler API(ts.sys 등)를 쓰는데, 기본 catalog의
+# typescript(7.1 네이티브)에는 이 API가 없어 ts-node가 시작하자마자 죽는다.
+# ts-node는 typescript를 peer로 받으므로 의존하는 쪽의 typescript가 그대로 쓰인다.
+# 기본 catalog를 바꾸면 sonamu의 peer와 create-sonamu 템플릿으로 새어 나가므로,
+# ts-node를 devDependency로 쓰는 패키지만 이 catalog로 TS 6를 받는다.
+catalogs:
+  ts-node-compat:
+    typescript: npm:@typescript/typescript6@6.0.2
+
 minimumReleaseAgeExclude:
   - "@optique/*"
   - typescript
