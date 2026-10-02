@@ -1501,6 +1501,9 @@ importers:
       vite-tsconfig-paths:
         specifier: 'catalog:'
         version: 6.1.1(supports-color@10.2.2)(typescript@7.1.0-dev.20260831.1)(vite@8.0.16(@types/node@25.0.7)(esbuild@0.27.7)(jiti@2.7.0)(sass@1.97.1)(tsx@4.21.0))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@25.0.7)(@vitest/coverage-v8@4.1.9)(vite@8.0.16(@types/node@25.0.7)(esbuild@0.27.7)(jiti@2.7.0)(sass@1.97.1)(tsx@4.21.0))
 
   modules/react-sui:
     dependencies:
