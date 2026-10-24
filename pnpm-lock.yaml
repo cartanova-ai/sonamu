@@ -241,8 +241,8 @@ catalogs:
       specifier: ^1.4.1
       version: 1.4.1
     '@sheetkit/node':
-      specifier: ^0.5.1
-      version: 0.5.1
+      specifier: ^1.0.0
+      version: 1.0.0
     '@storybook/addon-a11y':
       specifier: ^10.6.2
       version: 10.6.2
@@ -854,7 +854,7 @@ importers:
         version: 1.2.3
       '@sheetkit/node':
         specifier: 'catalog:'
-        version: 0.5.1
+        version: 1.0.0
       '@types/bcrypt':
         specifier: 'catalog:'
         version: 6.0.0
@@ -1719,7 +1719,7 @@ importers:
         version: 2.4.2(@logtape/logtape@2.4.2)
       '@sheetkit/node':
         specifier: 'catalog:'
-        version: 0.5.1
+        version: 1.0.0
       '@sonamu-kit/hmr-hook':
         specifier: workspace:^
         version: link:../hmr-hook
@@ -5011,52 +5011,53 @@ packages:
       react: ^16.0.0 || ^17.0.0 || ^18.0.0
       react-dom: ^16.0.0 || ^17.0.0 || ^18.0.0
 
-  '@sheetkit/node-darwin-arm64@0.5.1':
-    resolution: {integrity: sha512-CVFDlQqvsXeS4kTsl4c+/hOfRbmioJJQvsmed+HYOtx8dRmH8YqHyOvY8oebQKF8ZAZalzTmeoY+T34nxuoT6Q==}
+  '@sheetkit/node-darwin-arm64@1.0.0':
+    resolution: {integrity: sha512-SB0p1JqANFB7abNjHH3PJyrwrMilNJpprC02Yy+oXsZCRHcuodNrXy3rIO/b8qltbPYFncNcc0Q44HC128KESA==}
     cpu: [arm64]
     os: [darwin]
 
-  '@sheetkit/node-darwin-x64@0.5.1':
-    resolution: {integrity: sha512-Z8/MRLnlqXEIPtm3bw2NcN7ULgUJpibaV7m2zdPq3fFNBkWDN+2M2Qx5J8Ny0XtMEX5/3iNi1i44Ql2Yah6/rg==}
+  '@sheetkit/node-darwin-x64@1.0.0':
+    resolution: {integrity: sha512-KEsopye8HxtFfDJ/UlU/wuVqGDLwjlCmeO2fTi0OGADBVixHHZQxWjYxsGSfCXZyutXtbign04DLP8ynqD9quA==}
     cpu: [x64]
     os: [darwin]
 
-  '@sheetkit/node-linux-arm64-gnu@0.5.1':
-    resolution: {integrity: sha512-Gwxp5+53ZgH//HD8x864qO0coSW8pnCLX5WA9++k4brLr0lQV7doZcgOinaaFdseqFkCsG5LP/rTz1Lp0upGZQ==}
+  '@sheetkit/node-linux-arm64-gnu@1.0.0':
+    resolution: {integrity: sha512-pobWkP0bG6LOV4MkJW1BdyOjdAcKDcYtV5QBX2HqVFolbE9X5mW9FpHRNLgYXnFfPW4Pdfu4rVowpS++80h9Lg==}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@sheetkit/node-linux-arm64-musl@0.5.1':
-    resolution: {integrity: sha512-IRO+N/okC6gouOvlHR7XaiWBGawuhrQf5oQoo8JQYth5fj/nXHPty6O4XqEYd2pfkWmXD30sk/v+T3wwJQfFeg==}
+  '@sheetkit/node-linux-arm64-musl@1.0.0':
+    resolution: {integrity: sha512-wsOpBCVk3b8989JS6bAhHcMTt08kqxrIDBKNJKDVu34a77wap6Nb4KZmh4Udr9ErSqizON7iuZ+KQvvzzozD/w==}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-  '@sheetkit/node-linux-x64-gnu@0.5.1':
-    resolution: {integrity: sha512-0YN+3IxMEqs70cH4BfjdbAs5V/a3UsoCREuz4SWHmMWKEMGBmwhp5yYlDbjkucnSWbNdWgeFqmFwqCiPdu3FzA==}
+  '@sheetkit/node-linux-x64-gnu@1.0.0':
+    resolution: {integrity: sha512-jrXF8oH7A+fnGZENiHYvs42POTvv7N7sJzhEILq+HUeI3s3glh4KYxQSA/Ts3jz9Iae3cTPwW62lVRqp0gSYCQ==}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@sheetkit/node-linux-x64-musl@0.5.1':
-    resolution: {integrity: sha512-AbzsY6/t9NmeymXIcojojDrIKO9KDwn0Z2OVfAuzZmWOTkijTdD26MtLSBZViPuTPJgHgntUnuTa4O2ji9DTLg==}
+  '@sheetkit/node-linux-x64-musl@1.0.0':
+    resolution: {integrity: sha512-eDWeWJZEe2XPv8dApizwjw8lONbtfRD2vHMx6ln6a+dQpJsYCWpHbv6IjmwxHPbu8gc5nHz2d68IYajU9ftQVQ==}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-  '@sheetkit/node-win32-arm64-msvc@0.5.1':
-    resolution: {integrity: sha512-/ZzkjQaQC5lffiUgXiLiGpu7zTgbpmmgql5mraXqZwLpdiGdpYDSnxAf/EfWcThc8P8P7VRp2nwuzUzLBPMUog==}
+  '@sheetkit/node-win32-arm64-msvc@1.0.0':
+    resolution: {integrity: sha512-C9MXNH48JESfa3D/pCly2QalyphK4J3yFKDZDqXQUfcvtYcUXrPCl+9uYYIZJHOZNtGm5H9XeJbN+NaCPgYusA==}
     cpu: [arm64]
     os: [win32]
 
-  '@sheetkit/node-win32-x64-msvc@0.5.1':
-    resolution: {integrity: sha512-v9+faNInkvY1HwiFlgrNpTtLna5PLDG3wIIUefDwhziYCSiinDqGPSd2DS8vhf/14KWCus9GBmQg+3A75ahWfg==}
+  '@sheetkit/node-win32-x64-msvc@1.0.0':
+    resolution: {integrity: sha512-to28K4OFTQlOzIoznKbMQMdlUjFL6aIjvZqMxUtp238zWcC8odf/le1KdIvdWLUKsvPhsz41cOc48pTUxNwMAg==}
     cpu: [x64]
     os: [win32]
 
-  '@sheetkit/node@0.5.1':
-    resolution: {integrity: sha512-lGPyFuzxGfpfvIh3gzLjFfhkWjB8lsHKKU4ZhWzW/tXPRbe+piV5SsTGlPj9b1doz04u1QV/BrXCnCfM+pniCA==}
+  '@sheetkit/node@1.0.0':
+    resolution: {integrity: sha512-5uQys9uB++5rHirV9Bw/mohvppWIOUy4WFScVaF9vYygpJel7SqQHr3pkL8N/AQ1hjDZHrGfnSMIgQjVXuutQg==}
+    engines: {node: '>=24'}
 
   '@simplewebauthn/browser@13.3.0':
     resolution: {integrity: sha512-BE/UWv6FOToAdVk0EokzkqQQDOWtNydYlY6+OrmiZ5SCNmb41VehttboTetUM3T/fr6EAFYVXjz4My2wg230rQ==}
@@ -13566,40 +13567,40 @@ snapshots:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
 
-  '@sheetkit/node-darwin-arm64@0.5.1':
+  '@sheetkit/node-darwin-arm64@1.0.0':
     optional: true
 
-  '@sheetkit/node-darwin-x64@0.5.1':
+  '@sheetkit/node-darwin-x64@1.0.0':
     optional: true
 
-  '@sheetkit/node-linux-arm64-gnu@0.5.1':
+  '@sheetkit/node-linux-arm64-gnu@1.0.0':
     optional: true
 
-  '@sheetkit/node-linux-arm64-musl@0.5.1':
+  '@sheetkit/node-linux-arm64-musl@1.0.0':
     optional: true
 
-  '@sheetkit/node-linux-x64-gnu@0.5.1':
+  '@sheetkit/node-linux-x64-gnu@1.0.0':
     optional: true
 
-  '@sheetkit/node-linux-x64-musl@0.5.1':
+  '@sheetkit/node-linux-x64-musl@1.0.0':
     optional: true
 
-  '@sheetkit/node-win32-arm64-msvc@0.5.1':
+  '@sheetkit/node-win32-arm64-msvc@1.0.0':
     optional: true
 
-  '@sheetkit/node-win32-x64-msvc@0.5.1':
+  '@sheetkit/node-win32-x64-msvc@1.0.0':
     optional: true
 
-  '@sheetkit/node@0.5.1':
+  '@sheetkit/node@1.0.0':
     optionalDependencies:
-      '@sheetkit/node-darwin-arm64': 0.5.1
-      '@sheetkit/node-darwin-x64': 0.5.1
-      '@sheetkit/node-linux-arm64-gnu': 0.5.1
-      '@sheetkit/node-linux-arm64-musl': 0.5.1
-      '@sheetkit/node-linux-x64-gnu': 0.5.1
-      '@sheetkit/node-linux-x64-musl': 0.5.1
-      '@sheetkit/node-win32-arm64-msvc': 0.5.1
-      '@sheetkit/node-win32-x64-msvc': 0.5.1
+      '@sheetkit/node-darwin-arm64': 1.0.0
+      '@sheetkit/node-darwin-x64': 1.0.0
+      '@sheetkit/node-linux-arm64-gnu': 1.0.0
+      '@sheetkit/node-linux-arm64-musl': 1.0.0
+      '@sheetkit/node-linux-x64-gnu': 1.0.0
+      '@sheetkit/node-linux-x64-musl': 1.0.0
+      '@sheetkit/node-win32-arm64-msvc': 1.0.0
+      '@sheetkit/node-win32-x64-msvc': 1.0.0
 
   '@simplewebauthn/browser@13.3.0': {}
 

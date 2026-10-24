@@ -99,7 +99,7 @@ catalog:
   "@radix-ui/react-toggle": ^1.2.1
   "@radix-ui/react-toggle-group": ^1.2.1
   "@radix-ui/react-tooltip": ^1.4.1
-  "@sheetkit/node": ^0.5.1
+  "@sheetkit/node": ^1.0.0
   "@storybook/addon-a11y": ^10.6.2
   "@storybook/addon-docs": ^10.6.2
   "@storybook/react-vite": ^10.6.2
@@ -245,7 +245,6 @@ catalog:
   vite-tsconfig-paths: ^6.1.1
   vitest: ^5.0.5
   voyageai: ^0.4.0
-  xlsx: ^0.18.5
   zod: ^4.6.7
   zod-compiler: 2.0.7
   zx: ^8.8.5
@@ -275,6 +274,8 @@ minimumReleaseAgeExclude:
   - vite*
   - vitest*
   - "@vitejs/*"
+  # SheetKit 1.0.0(2026-10-24 배포)을 SON-571에서 바로 쓰기 위해 scope 전체를 제외한다
+  - "@sheetkit/*"
   - tsdown
   - rolldown
   - "@rolldown/*"

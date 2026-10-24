@@ -2,13 +2,14 @@ import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 
-import { Workbook } from "@sheetkit/node";
+import { type JsRowCell, Workbook } from "@sheetkit/node";
 import ts from "@typescript/typescript6";
 
 import { Sonamu } from "../api/sonamu";
 import { formatCode } from "../code-formatting";
 import { EntityManager } from "../entity/entity-manager";
 import { BadRequestException } from "../exceptions/so-exceptions";
+import { isStringValue } from "../utils/runtime-value";
 import { SD } from "./sd";
 import {
   type DictEntry,
@@ -31,6 +32,29 @@ function colLetter(index: number): string {
     n = Math.floor(n / 26) - 1;
   }
   return result;
+}
+
+/**
+ * Excel 행 셀을 사전 값 문자열로 읽습니다.
+ *
+ * SheetKit 0.5.1과 같은 결과를 유지합니다.
+ * - 문자열 셀은 그 값을 그대로 씁니다.
+ * - 수식 셀은 수식 텍스트를 씁니다. SheetKit 1.0은 수식을 `value` 문자열로 주지만,
+ *   선언된 타입처럼 `formula` 객체로만 줄 때도 같은 텍스트를 쓰도록 맞춥니다.
+ * - 숫자·날짜·불리언 셀은 빈 문자열로 둡니다. 객체 값을 문자열로 바꾸면
+ *   "[object Object]" 같은 값이 사전에 들어가므로 변환하지 않습니다.
+ */
+function readCellText(cell: JsRowCell | undefined): string {
+  if (cell === undefined) {
+    return "";
+  }
+  if (isStringValue(cell.value)) {
+    return cell.value;
+  }
+  if (cell.valueType === "formula" && cell.formula !== undefined) {
+    return cell.formula.formula;
+  }
+  return "";
 }
 
 /**
@@ -757,9 +781,7 @@ export class SonamuDictionary {
     let headerRowNum = 0;
     for (const rowData of allRows) {
       const firstCell = rowData.cells.find((c) => c.column === "A");
-      const firstCellValue = String(firstCell?.value ?? "")
-        .trim()
-        .toLowerCase();
+      const firstCellValue = readCellText(firstCell).trim().toLowerCase();
       if (firstCellValue === "key") {
         headerRowNum = rowData.row;
         break;
@@ -775,7 +797,7 @@ export class SonamuDictionary {
     const colToHeader: Map<string, string> = new Map();
     if (headerRowData) {
       for (const cell of headerRowData.cells) {
-        colToHeader.set(cell.column, String(cell.value ?? ""));
+        colToHeader.set(cell.column, readCellText(cell));
       }
     }
 
@@ -787,7 +809,7 @@ export class SonamuDictionary {
       for (const cell of rowData.cells) {
         const headerName = colToHeader.get(cell.column);
         if (headerName) {
-          rowValues[headerName] = String(cell.value ?? "");
+          rowValues[headerName] = readCellText(cell);
         }
       }
 
