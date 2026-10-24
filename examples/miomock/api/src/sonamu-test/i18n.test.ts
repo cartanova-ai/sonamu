@@ -1,7 +1,7 @@
 import fs from "fs";
 
 /* oxlint-disable no-template-curly-in-string */ // template 테스트 시 사용
-import { Workbook } from "@sheetkit/node";
+import { type CellValue, Workbook } from "@sheetkit/node";
 import { Sonamu } from "sonamu";
 import { createFormat, josa, plural, sonamuDictionary } from "sonamu/dict";
 import { type DictEntry } from "sonamu/dict";
@@ -673,6 +673,80 @@ describe("i18n", () => {
   describe("exportToExcel / importFromExcel", () => {
     const HEADER_SCAN_MAX_ROWS = 20;
 
+    /**
+     * SheetKit 1.0의 셀 값을 비교용 문자열로 바꿉니다.
+     * 날짜는 ISO 문자열(없으면 serial), 수식은 수식 텍스트를 씁니다.
+     */
+    const cellText = (value: CellValue): string => {
+      if (value === null) return "";
+      if (value instanceof Object) {
+        if ("formula" in value) return value.formula;
+        return value.iso ?? String(value.serial);
+      }
+      return String(value);
+    };
+
+    /**
+     * importFromExcel을 실행하고 파일 쓰기 대신 사전 생성 입력을 locale별 key→value로 수집합니다.
+     */
+    const importAndCapture = async (buffer: Buffer) => {
+      const writeFileSyncSpy = vi.spyOn(fs, "writeFileSync").mockImplementation(() => {});
+      const updateEntityByKeySpy = vi
+        .spyOn(sonamuDictionary, "updateEntityByKey")
+        .mockResolvedValue(false);
+      const generateProjectDictSpy = vi.spyOn(sonamuDictionary, "generateProjectDict");
+      try {
+        const result = await sonamuDictionary.importFromExcel(buffer);
+        const entries = new Map(
+          generateProjectDictSpy.mock.calls.map(([locale, list]) => [
+            locale,
+            new Map(list.map((entry) => [entry.key, entry.value])),
+          ]),
+        );
+        const entityUpdates = new Map(updateEntityByKeySpy.mock.calls);
+        return { result, entries, entityUpdates };
+      } finally {
+        writeFileSyncSpy.mockRestore();
+        updateEntityByKeySpy.mockRestore();
+        generateProjectDictSpy.mockRestore();
+      }
+    };
+
+    /** 현재 project dict 파일의 key→value */
+    const currentProjectDict = (locale: string) =>
+      new Map(sonamuDictionary.loadProjectDict(locale).entries.map((e) => [e.key, e.value]));
+
+    /** 새 workbook의 첫 시트 이름을 반환합니다. 시트가 없으면 테스트를 실패시킵니다. */
+    const firstSheetName = (wb: Workbook): string => {
+      const [name] = wb.sheetNames;
+      if (name === undefined) {
+        throw new Error("workbook에 시트가 없습니다.");
+      }
+      return name;
+    };
+
+    /** 헤더(3행) 아래 데이터 행에서 조건에 맞는 첫 행을 찾습니다. */
+    const findDataRow = (
+      wb: Workbook,
+      sheet: string,
+      predicate: (values: Record<string, string>) => boolean,
+    ) => {
+      const rows = wb.getRows(sheet);
+      const header = rows.find((r) => r.row === 3);
+      const headerByColumn = new Map(header?.cells.map((c) => [c.column, c.value ?? ""]) ?? []);
+      const columnByHeader = new Map([...headerByColumn].map(([column, name]) => [name, column]));
+      for (const r of rows) {
+        if (r.row <= 3) continue;
+        const values: Record<string, string> = {};
+        for (const c of r.cells) {
+          const name = headerByColumn.get(c.column);
+          if (name) values[name] = c.value ?? "";
+        }
+        if (predicate(values)) return { row: r.row, values, columnByHeader };
+      }
+      return null;
+    };
+
     test("exportToExcel이 유효한 XLSX buffer를 반환한다", async () => {
       const result = await sonamuDictionary.exportToExcel();
 
@@ -684,6 +758,50 @@ describe("i18n", () => {
 
       const wb = Workbook.openBufferSync(result.buffer);
       expect(wb.sheetNames.length).toBeGreaterThan(0);
+    });
+
+    test("export 파일의 제목, 헤더, 데이터 행, 행 높이, 열 너비, 스타일이 정해진 형식을 따른다", async () => {
+      const { rows: dictRows, locales } = await sonamuDictionary.collectDictionary();
+      const { buffer } = await sonamuDictionary.exportToExcel();
+      const wb = Workbook.openBufferSync(buffer, { readMode: "eager" });
+
+      expect(wb.sheetNames).toEqual(["i18n"]);
+      const sheet = "i18n";
+      const rows = wb.getRows(sheet);
+
+      // 1행 제목, 2행 비어 있음, 3행 헤더, 4행부터 데이터
+      expect(cellText(wb.getCellValue(sheet, "A1"))).toContain("Dictionary");
+      expect(rows.some((r) => r.row === 2)).toBe(false);
+      const header = rows.find((r) => r.row === 3);
+      expect(header?.cells.map((c) => c.value)).toEqual(["key", "source", ...locales]);
+      const dataRows = rows.filter((r) => r.row >= 4);
+      expect(dataRows.length).toBe(dictRows.length);
+      expect(dataRows.map((r) => r.row)).toEqual(dictRows.map((_, i) => i + 4));
+      expect(dataRows[0]?.cells.find((c) => c.column === "A")?.value).toBe(dictRows[0]?.key);
+
+      expect(wb.getRowHeight(sheet, 1)).toBe(28);
+      expect(wb.getRowHeight(sheet, 3)).toBe(26);
+      expect(wb.getRowHeight(sheet, 4)).toBe(24);
+
+      // 열 너비는 최소 10, 최대 50에 여백 2를 더한 범위
+      for (let col = 0; col < locales.length + 2; col++) {
+        const width = wb.getColWidth(sheet, colLetter(col));
+        expect(width).toBeGreaterThanOrEqual(12);
+        expect(width).toBeLessThanOrEqual(52);
+      }
+
+      // 제목, 헤더, 데이터는 각각 하나의 스타일을 공유하고 서로 다르다
+      const titleStyle = wb.getCellStyle(sheet, "A1");
+      const headerStyles = new Set(
+        header?.cells.map((c) => wb.getCellStyle(sheet, `${c.column}3`)) ?? [],
+      );
+      const dataStyles = new Set(
+        dataRows.flatMap((r) => r.cells.map((c) => wb.getCellStyle(sheet, `${c.column}${r.row}`))),
+      );
+      expect(titleStyle).not.toBeNull();
+      expect(headerStyles.size).toBe(1);
+      expect(dataStyles.size).toBe(1);
+      expect(new Set([titleStyle, ...headerStyles, ...dataStyles]).size).toBe(3);
     });
 
     test("export 후 import round-trip에서 key, source, locale 값이 보존된다", async () => {
@@ -712,7 +830,7 @@ describe("i18n", () => {
       // Find header row by scanning column A
       let headerRowNum = 0;
       for (let r = 1; r <= HEADER_SCAN_MAX_ROWS; r++) {
-        const val = String(wb.getCellValue(sheet, `A${r}`) ?? "")
+        const val = cellText(wb.getCellValue(sheet, `A${r}`))
           .trim()
           .toLowerCase();
         if (val === "key") {
@@ -728,7 +846,7 @@ describe("i18n", () => {
       while (true) {
         const val = wb.getCellValue(sheet, `${colLetter(col)}${headerRowNum}`);
         if (val === null) break;
-        headers.push(String(val));
+        headers.push(cellText(val));
         col++;
       }
       expect(headers[0]).toBe("key");
@@ -738,7 +856,7 @@ describe("i18n", () => {
       // Check first data row
       const firstKey = wb.getCellValue(sheet, `A${headerRowNum + 1}`);
       expect(firstKey).toBeDefined();
-      const firstSource = String(wb.getCellValue(sheet, `B${headerRowNum + 1}`) ?? "");
+      const firstSource = cellText(wb.getCellValue(sheet, `B${headerRowNum + 1}`));
       expect(["entity", "project", "sonamu"]).toContain(firstSource);
     });
 
@@ -813,7 +931,7 @@ describe("i18n", () => {
       let headerRowNum = 0;
       for (let r = 1; r <= HEADER_SCAN_MAX_ROWS; r++) {
         if (
-          String(wb.getCellValue(sheet, `A${r}`) ?? "")
+          cellText(wb.getCellValue(sheet, `A${r}`))
             .trim()
             .toLowerCase() === "key"
         ) {
@@ -828,13 +946,13 @@ describe("i18n", () => {
       for (let r = headerRowNum + 1; ; r++) {
         const keyCell = wb.getCellValue(sheet, `A${r}`);
         if (keyCell === null) break;
-        const sourceCell = String(wb.getCellValue(sheet, `B${r}`) ?? "");
+        const sourceCell = cellText(wb.getCellValue(sheet, `B${r}`));
 
         for (let c = 2; c < 20; c++) {
-          const cellValue = String(wb.getCellValue(sheet, `${colLetter(c)}${r}`) ?? "");
+          const cellValue = cellText(wb.getCellValue(sheet, `${colLetter(c)}${r}`));
           if (cellValue.includes("=>") || cellValue.includes("(n)")) {
             foundFunctionEntry = true;
-            expect(String(keyCell)).toBeTruthy();
+            expect(cellText(keyCell)).toBeTruthy();
             expect(["entity", "project"]).toContain(sourceCell);
             break;
           }
@@ -863,6 +981,121 @@ describe("i18n", () => {
 
       writeFileSyncSpy.mockRestore();
       updateEntityByKeySpy.mockRestore();
+    });
+
+    test("export 파일을 그대로 import하면 project dict와 entity 값이 바뀌지 않는다", async () => {
+      const { supportedLocales } = Sonamu.config.i18n;
+      const entityLabels = new Map(
+        sonamuDictionary.extractEntityLabels().map((e) => [e.key, e.value]),
+      );
+      const { buffer } = await sonamuDictionary.exportToExcel();
+
+      const { result, entries, entityUpdates } = await importAndCapture(buffer);
+
+      expect(result.success).toBe(true);
+      for (const locale of supportedLocales) {
+        expect(entries.get(locale) ?? new Map()).toEqual(currentProjectDict(locale));
+      }
+      expect(entityUpdates.size).toBeGreaterThan(0);
+      for (const [key, value] of entityUpdates) {
+        expect(entityLabels.get(key)).toBe(value);
+      }
+    });
+
+    test("값 하나를 고친 파일을 import하면 그 값만 바뀐다", async () => {
+      const { buffer } = await sonamuDictionary.exportToExcel();
+      const wb = Workbook.openBufferSync(buffer, { readMode: "eager" });
+      const target = findDataRow(
+        wb,
+        "i18n",
+        (v) => v.source === "project" && Boolean(v.en) && !v.en?.includes("=>"),
+      );
+      const enColumn = target?.columnByHeader.get("en");
+      if (!target || !enColumn) {
+        throw new Error("en 값이 있는 project 행을 찾지 못했습니다.");
+      }
+      wb.setCellValue("i18n", `${enColumn}${target.row}`, "수정된 영어 값");
+
+      const { entries } = await importAndCapture(wb.writeBufferSync());
+
+      const expectedEn = currentProjectDict("en");
+      expectedEn.set(target.values.key ?? "", "수정된 영어 값");
+      expect(entries.get("en")).toEqual(expectedEn);
+      expect(entries.get("ko") ?? new Map()).toEqual(currentProjectDict("ko"));
+    });
+
+    test("날짜·숫자·불리언 셀은 빈 값으로, 수식 셀은 수식 텍스트로 읽는다", async () => {
+      const wb = new Workbook();
+      const sheet = firstSheetName(wb);
+      wb.setCellValue(sheet, "A1", "Sonamu Dictionary");
+      wb.setRowValues(sheet, 3, "A", ["key", "source", "ko", "en"]);
+      wb.setRowValues(sheet, 4, "A", ["cell.date", "project", "날짜"]);
+      wb.setCellValue(sheet, "D4", 45000);
+      wb.setCellStyle(sheet, "D4", wb.addStyle({ numFmtId: 14 }));
+      wb.setRowValues(sheet, 5, "A", ["cell.number", "project", "숫자"]);
+      wb.setCellValue(sheet, "D5", 42);
+      wb.setRowValues(sheet, 6, "A", ["cell.boolean", "project", "불리언"]);
+      wb.setCellValue(sheet, "D6", true);
+      wb.setRowValues(sheet, 7, "A", ["cell.formula", "project", "수식"]);
+      wb.setCellFormula(sheet, "D7", '"F"&"x"');
+      // 수식 결과를 캐시해 저장한다
+      wb.calculateAll();
+      const buffer = wb.writeBufferSync();
+
+      // 1.0은 날짜 서식이 있는 숫자 셀을 DateValue로 읽는다
+      expect(Workbook.openBufferSync(buffer).getCellValue(sheet, "D4")).toEqual({
+        type: "date",
+        serial: 45000,
+        iso: "2023-03-15",
+      });
+
+      const { result, entries } = await importAndCapture(buffer);
+
+      expect(result.success).toBe(true);
+      expect(entries.get("ko")).toEqual(
+        new Map([
+          ["cell.date", "날짜"],
+          ["cell.number", "숫자"],
+          ["cell.boolean", "불리언"],
+          ["cell.formula", "수식"],
+        ]),
+      );
+      expect(entries.get("en")).toEqual(new Map([["cell.formula", '"F"&"x"']]));
+      for (const localeEntries of entries.values()) {
+        for (const value of localeEntries.values()) {
+          expect(value).not.toContain("[object Object]");
+        }
+      }
+    });
+
+    test("빈 행·빈 열·먼 열이 있는 파일도 헤더 이름으로 값을 매핑한다", async () => {
+      const wb = new Workbook();
+      const sheet = firstSheetName(wb);
+      wb.setCellValue(sheet, "A1", "Sparse Dictionary");
+      // 헤더는 5행, C열은 비우고 D열부터 locale, AB열은 관계없는 열
+      wb.setCellValue(sheet, "A5", "key");
+      wb.setCellValue(sheet, "B5", "source");
+      wb.setCellValue(sheet, "D5", "ko");
+      wb.setCellValue(sheet, "E5", "en");
+      wb.setCellValue(sheet, "AB5", "note");
+      // 6행은 비우고, 7행과 10행에 데이터
+      wb.setRowValues(sheet, 7, "A", ["sparse.first", "project"]);
+      wb.setCellValue(sheet, "D7", "첫째");
+      wb.setCellValue(sheet, "E7", "First");
+      wb.setCellValue(sheet, "AB7", "무시");
+      wb.setRowValues(sheet, 10, "A", ["sparse.second", "project"]);
+      wb.setCellValue(sheet, "E10", "Second");
+
+      const { result, entries } = await importAndCapture(Buffer.from(wb.writeBufferSync()));
+
+      expect(result.success).toBe(true);
+      expect(entries.get("ko")).toEqual(new Map([["sparse.first", "첫째"]]));
+      expect(entries.get("en")).toEqual(
+        new Map([
+          ["sparse.first", "First"],
+          ["sparse.second", "Second"],
+        ]),
+      );
     });
   });
 });
