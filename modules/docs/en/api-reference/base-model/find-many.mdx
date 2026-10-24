@@ -748,9 +748,11 @@ async searchUsers(keyword: string) {
           wb.setCellValue(sheet, `B${rowNum}`, user.name);
           wb.setCellValue(sheet, `C${rowNum}`, user.email);
           wb.setCellValue(sheet, `D${rowNum}`, user.status);
-          wb.setCellValue(sheet, `E${rowNum}`, user.created_at);
+          // Cell values do not accept Date objects, so write an ISO string
+          wb.setCellValue(sheet, `E${rowNum}`, user.created_at.toISOString());
         });
 
+        // writeBuffer() runs in the background. Do not modify the workbook until it settles.
         const buffer = await wb.writeBuffer();
 
         return {

@@ -748,9 +748,11 @@ async searchUsers(keyword: string) {
           wb.setCellValue(sheet, `B${rowNum}`, user.name);
           wb.setCellValue(sheet, `C${rowNum}`, user.email);
           wb.setCellValue(sheet, `D${rowNum}`, user.status);
-          wb.setCellValue(sheet, `E${rowNum}`, user.created_at);
+          // Date 객체는 셀 값으로 받지 않으므로 ISO 문자열로 기록
+          wb.setCellValue(sheet, `E${rowNum}`, user.created_at.toISOString());
         });
 
+        // writeBuffer()는 백그라운드에서 실행됩니다. 끝날 때까지 workbook을 수정하지 마세요.
         const buffer = await wb.writeBuffer();
 
         return {
