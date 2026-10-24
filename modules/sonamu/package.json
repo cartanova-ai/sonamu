@@ -1,6 +1,6 @@
 {
   "name": "sonamu",
-  "version": "0.13.3",
+  "version": "0.13.4",
   "description": "Sonamu — TypeScript Fullstack API Framework",
   "keywords": [
     "framework",
@@ -203,5 +203,8 @@
     "ioredis": {
       "optional": true
     }
+  },
+  "engines": {
+    "node": ">=24"
   }
 }
