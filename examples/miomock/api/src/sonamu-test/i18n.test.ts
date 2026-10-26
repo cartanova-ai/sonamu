@@ -1043,10 +1043,17 @@ describe("i18n", () => {
       const buffer = wb.writeBufferSync();
 
       // 1.0은 날짜 서식이 있는 숫자 셀을 DateValue로 읽는다
-      expect(Workbook.openBufferSync(buffer).getCellValue(sheet, "D4")).toEqual({
+      const reopened = Workbook.openBufferSync(buffer);
+      expect(reopened.getCellValue(sheet, "D4")).toEqual({
         type: "date",
         serial: 45000,
         iso: "2023-03-15",
+      });
+      // 1.0.1부터 수식 셀은 수식 텍스트와 캐시된 결과를 담은 FormulaValue로 읽는다
+      expect(reopened.getCellValue(sheet, "D7")).toEqual({
+        type: "formula",
+        formula: '"F"&"x"',
+        result: { valueType: "string", value: "Fx" },
       });
 
       const { result, entries } = await importAndCapture(buffer);

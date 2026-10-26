@@ -99,7 +99,7 @@ catalog:
   "@radix-ui/react-toggle": ^1.2.1
   "@radix-ui/react-toggle-group": ^1.2.1
   "@radix-ui/react-tooltip": ^1.4.1
-  "@sheetkit/node": ^1.0.0
+  "@sheetkit/node": ^1.0.1
   "@storybook/addon-a11y": ^10.6.2
   "@storybook/addon-docs": ^10.6.2
   "@storybook/react-vite": ^10.6.2
@@ -274,7 +274,7 @@ minimumReleaseAgeExclude:
   - vite*
   - vitest*
   - "@vitejs/*"
-  # SheetKit 1.0.0(2026-10-24 배포)을 SON-571에서 바로 쓰기 위해 scope 전체를 제외한다
+  # SON-571: SheetKit 1.0.x를 배포 직후 받기 위해 scope 전체를 제외한다
   - "@sheetkit/*"
   - tsdown
   - rolldown
