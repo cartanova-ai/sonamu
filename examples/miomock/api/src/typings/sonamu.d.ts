@@ -13,4 +13,8 @@ declare module "sonamu" {
     // 새로운 커스텀 가드키를 추가하는 경우
     // CustomGuardKey: true
   }
+
+  export interface EntityCustom {
+    history?: boolean;
+  }
 }

@@ -48,6 +48,13 @@ describe("entityManager", () => {
     await EntityManager.reload();
   });
 
+  it("사용자 정의 속성을 읽고 직렬화할 때 보존한다", () => {
+    const entity = EntityManager.get("Company");
+
+    expect(entity.custom).toEqual({ history: true });
+    expect(entity.toJson().custom).toEqual({ history: true });
+  });
+
   describe("getEntityIdFromPath", () => {
     it("동일 디렉터리의 sub model 경로는 파일 basename 기준 entity id를 반환한다", () => {
       const cases = [
@@ -180,6 +187,15 @@ describe("entityManager", () => {
     describe("정상 케이스", () => {
       it("모든 필드가 있는 정상적인 entity", () => {
         const errors = EntityManager.schemaValidate(validBaseEntity);
+        expect(errors).toBeNull();
+      });
+
+      it("사용자 정의 속성", () => {
+        const errors = EntityManager.schemaValidate({
+          ...validBaseEntity,
+          custom: { history: true },
+        });
+
         expect(errors).toBeNull();
       });
 

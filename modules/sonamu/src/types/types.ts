@@ -515,11 +515,14 @@ export function getEnumDefValues(def: EnumDef): Record<string, string> {
   return isEnumDefWithCone(def) ? def.values : def;
 }
 
+export interface EntityCustom {}
+
 export type EntityJson = {
   id: string;
   parentId?: string;
   table: string;
   title?: string;
+  custom?: EntityCustom;
   cone?: Cone; // cone 메타데이터
   props: EntityProp[];
   indexes: EntityIndex[];
@@ -1629,12 +1632,15 @@ function validateSearchTextSources(
   });
 }
 
+const EntityCustomSchema: z.ZodType<EntityCustom> = z.looseObject({});
+
 const EntityJsonBaseSchema = z
   .object({
     id: z.string().describe("PascalCase로 된 Entity ID"),
     title: z.string().describe("Entity 이름"),
     table: z.string().describe("snake_case로 된 테이블명"),
     parentId: z.string().optional().describe("부모 Entity ID"),
+    custom: EntityCustomSchema.optional(),
     cone: ConeSchema.optional(),
     props: z.array(EntityPropSchema),
     indexes: z.array(EntityIndexSchema),

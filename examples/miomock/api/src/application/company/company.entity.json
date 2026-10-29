@@ -2,6 +2,9 @@
   "id": "Company",
   "table": "companies",
   "title": "COMPANY",
+  "custom": {
+    "history": true
+  },
   "cone": {
     "note": "회사 정보를 관리하는 엔티티. 회사명은 unique 제약조건이 있어 중복될 수 없습니다. 실제 존재할 법한 회사명을 생성하며, 한국 로케일에 맞는 회사명이나 글로벌 기업명을 사용할 수 있습니다.",
     "tags": ["company", "organization"]

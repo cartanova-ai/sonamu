@@ -24,6 +24,7 @@ import {
 } from "../types/types";
 import {
   type Cone,
+  type EntityCustom,
   type EntityIndex,
   type EntityJson,
   type EntityProp,
@@ -47,6 +48,7 @@ export class Entity {
   parentId?: string;
   table: string;
   title: string;
+  custom?: EntityCustom;
   cone?: Cone;
   names: {
     parentFs: string;
@@ -85,12 +87,24 @@ export class Entity {
     [subsetKey: string]: Cone;
   } = {};
 
-  constructor({ id, parentId, table, title, cone, props, indexes, subsets, enums }: EntityJson) {
+  constructor({
+    id,
+    parentId,
+    table,
+    title,
+    custom,
+    cone,
+    props,
+    indexes,
+    subsets,
+    enums,
+  }: EntityJson) {
     // id
     this.id = id;
     this.parentId = parentId;
     this.title = title ?? this.id;
     this.table = table ?? inflection.underscore(inflection.pluralize(id));
+    this.custom = custom;
     this.cone = cone;
 
     // props
@@ -928,6 +942,7 @@ export class Entity {
       parentId: this.parentId,
       table: this.table,
       title: this.title,
+      custom: this.custom,
       cone: this.cone,
       props: this.props,
       indexes: this.indexes,

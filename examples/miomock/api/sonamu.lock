@@ -41,7 +41,7 @@
   },
   {
     "path": "api/src/application/company/company.entity.json",
-    "checksum": "5135d9a42e8bd366462e1c52d7ace07757550600"
+    "checksum": "dd3cec857e83c10e111b81f4622c835fc6d90c2d"
   },
   {
     "path": "api/src/application/company/company.model.ts",

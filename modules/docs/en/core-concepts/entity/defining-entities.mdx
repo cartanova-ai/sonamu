@@ -127,6 +127,27 @@ Used when inheriting from another Entity.
 
 <Warning>Using parentId inherits all props from the parent Entity. Use carefully.</Warning>
 
+### custom
+
+Holds values your application wants to attach to each Entity. Sonamu only checks that it is an object and does not interpret its contents; saving the Entity from Sonamu UI keeps the value as is.
+
+```json
+{
+  "id": "Order",
+  "custom": { "audit": true }
+}
+```
+
+Read it in code with `EntityManager.get("Order").custom`. Type it by extending `EntityCustom` through declaration merging.
+
+```typescript
+declare module "sonamu" {
+  interface EntityCustom {
+    audit?: boolean;
+  }
+}
+```
+
 ### indexes
 
 Defines database indexes.

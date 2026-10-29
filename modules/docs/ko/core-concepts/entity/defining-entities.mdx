@@ -124,6 +124,27 @@ Entity의 속성(컬럼) 배열입니다. 각 속성은 타입과 옵션을 정�
 
 <Warning>parentId를 사용하면 부모 Entity의 모든 props를 상속받습니다. 신중하게 사용하세요.</Warning>
 
+### custom
+
+애플리케이션이 Entity마다 붙이고 싶은 값을 둡니다. Sonamu는 객체인지만 확인하고 내용은 해석하지 않으며, Sonamu UI로 Entity를 저장해도 값을 그대로 보존합니다.
+
+```json
+{
+  "id": "Order",
+  "custom": { "audit": true }
+}
+```
+
+코드에서는 `EntityManager.get("Order").custom`으로 읽습니다. 타입은 `EntityCustom`을 declaration merging으로 확장해 지정합니다.
+
+```typescript
+declare module "sonamu" {
+  interface EntityCustom {
+    audit?: boolean;
+  }
+}
+```
+
 ### indexes
 
 데이터베이스 인덱스를 정의합니다.
