@@ -56,6 +56,11 @@ export class Syncer {
     await SyncerActions.actionCopySharedToTargetsIfNotExists();
     await SyncerActions.actionGenerateSsrEntryServerIfNotExists();
 
+    // lock이 없으면 비교 기준이 없어 모든 파일이 변경으로 잡히므로, 생성물 drift를 판정할 수 없습니다.
+    const hasChecksumBaseline = await syncerFileExists(
+      path.join(Sonamu.apiRootPath, "sonamu.lock"),
+    );
+
     // 바뀐 것이 없으면 그냥 넘어가요.
     const changedFiles = await findChangedFilesUsingChecksums();
     if (changedFiles.length === 0) {
@@ -72,7 +77,7 @@ export class Syncer {
     await runWithGracefulShutdown(
       async () => {
         // 얘가 싱크 작업 수행하는 본체입니다.
-        await this.doSyncActions(changedFiles);
+        await this.doSyncActions(changedFiles, { skipDriftCheck: !hasChecksumBaseline });
         await this.reconcileHttpValidatorRegistry();
 
         // 싱크 액션이 끝나면 항상 체크섬을 다시 갱신합니다.
@@ -322,9 +327,13 @@ export class Syncer {
    * 변경된 파일들을 타입별로 분류하고 각 타입에 맞는 액션을 실행합니다.
    *
    * @param diffFilePaths - 변경된 파일들의 절대 경로 목록
+   * @param options.skipDriftCheck - true이면 처리되지 않은 생성물 변경을 drift로 경고하지 않습니다.
    * @returns diffTypes - 변경된 파일의 타입 목록 (entity, types, model 등)
    */
-  async doSyncActions(diffFilePaths: AbsolutePath[]): Promise<{ diffTypes: FileType[] }> {
+  async doSyncActions(
+    diffFilePaths: AbsolutePath[],
+    { skipDriftCheck = false }: { skipDriftCheck?: boolean } = {},
+  ): Promise<{ diffTypes: FileType[] }> {
     const diffGroups = this.calculateDiffGroups(diffFilePaths);
     const diffTypes =
       /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ Object.keys(
@@ -371,7 +380,7 @@ export class Syncer {
     // 위에서 처리 안 된 변경들이 있다?
     // 체크섬 관리 대상이긴 한데 위에서 핸들링이 안 된 것이라면 결국 생성물입니다.
     // 이 친구들이 변경된 것은 drift로 간주해도 마땅합니다.
-    if (unhandledChangesLeft()) {
+    if (!skipDriftCheck && unhandledChangesLeft()) {
       await this.handleDrifts(unhandledPaths());
     }
 

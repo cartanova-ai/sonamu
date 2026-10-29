@@ -168,4 +168,19 @@ describe("HTTP validator registry sync 정리", () => {
     await expect(findChangedFilesUsingChecksums()).resolves.toEqual([]);
     expect(warn.mock.calls.flat().join(" ")).toContain("queries.generated.ts");
   });
+
+  it("forceSync는 lock을 지운 뒤에도 생성물을 drift로 경고하지 않는다", async () => {
+    const { apiRootPath, syncer } = await createTestProject(false);
+    await writeFile(
+      path.join(apiRootPath, "src/application/queries.generated.ts"),
+      "// generated output\n",
+    );
+    await syncer.renewChecksums();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await syncer.forceSync();
+
+    expect(warn).not.toHaveBeenCalled();
+    await expect(findChangedFilesUsingChecksums()).resolves.toEqual([]);
+  });
 });
