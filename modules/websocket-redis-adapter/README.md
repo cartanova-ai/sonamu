@@ -11,7 +11,7 @@ pnpm add @sonamu-kit/websocket-redis-adapter redis
 | peer dependency | 범위 |
 | --- | --- |
 | `redis` | `^6` |
-| `sonamu` | `>=0.12.0` |
+| `sonamu` | `>=0.13.9` |
 
 `redis` v6은 Node.js 20 이상이 필요합니다.
 
@@ -115,6 +115,14 @@ Redis Cluster(`createCluster`)와 sharded pub/sub는 아직 지원하지 않습�
 격리는 어댑터 `prefix`로 합니다. 호출자 client에 `keyPrefix`가 있으면 어댑터 키 앞에 정확히 한 번 더 붙습니다(`app:` + `sonamu:ws:{node}:sessions`). `EVALSHA`의 `KEYS`와 `duplicate()` 연결도 같은 규칙을 따릅니다.
 
 pub/sub 채널에는 `keyPrefix`가 붙지 않습니다. **하나의 Redis를 여러 앱이 공유하면 앱마다 어댑터 `prefix`를 다르게 설정해야 합니다.** `keyPrefix`만 다르게 하면 키는 분리되지만 채널이 겹쳐 다른 앱의 envelope을 받습니다.
+
+## Control messages
+
+`<prefix>:node:<nodeId>` 채널의 envelope은 `kind`로 구분되는 union입니다. `publish`는 audience로 보내는 메시지이고, `leaveUser`는 `registry.leaveUser`가 다른 노드에 보내는 control 메시지입니다. `kind`가 없는 envelope은 `publish`로 취급합니다. 알 수 없는 `kind`나 스키마 오류 envelope은 버리며, 어댑터는 `subscribe(handler, { onRejected })`의 `onRejected` 콜백으로 알리고 core는 `ws.cluster.envelope.rejected` telemetry를 남깁니다.
+
+control envelope은 publish envelope과 같은 노드별 publish 큐와 같은 Redis 명령 연결을 쓰므로, 한 출발 노드에서 나간 순서(`leaveUser` 다음 `publishToRoom`)가 수신 노드에서도 유지됩니다.
+
+`leaveUser`는 pub/sub의 at-most-once 전달에 의존하므로, 그 시점에 구독이 끊긴 노드는 leave를 놓칩니다. `partial: false`는 publish 성공만 뜻하고 원격 노드의 적용을 보장하지 않습니다. 0.13.9 미만 노드는 control envelope을 스키마 검증으로 거부합니다.
 
 ## 실패 동작
 

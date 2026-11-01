@@ -286,10 +286,64 @@ Read APIs live on `Sonamu.websocketRuntime.registry`.
 
 Node-local reads return snapshot copies; changing a returned object (including its `rooms` set) does not affect the registry.
 
+`getRoomMembers` stays node-local, so it cannot see members on other nodes. To evict a specific user from a room, use `leaveUser`, not `getRoomMembers` + `leave`.
+
 `getRoomMemberCount` asks the presence store for the active member count across all nodes and never rejects. When the store call throws or rejects, it returns this node's count with `partial: true` and emits `ws.registry.read.failed` telemetry. The runtime does not put its own timeout on the call: the Redis adapter rejects when a call exceeds its `commandDeadlineMs`, which produces the fallback, but a custom store whose call never settles leaves the returned promise pending.
 
 ```typescript
 const { count, partial } = await Sonamu.websocketRuntime.registry.getRoomMemberCount("global", "chat");
+```
+
+## Removing a user from a room
+
+`leaveUser` removes a user from a room on every live node. It is available on both `Sonamu.websocketRuntime` and `Sonamu.websocketRuntime.registry`.
+
+```typescript
+type WebSocketLeaveUserResult = {
+  localLeftCount: number; // sessions removed on this node
+  targetNodeCount: number; // remote nodes attempted
+  partial: boolean;
+};
+
+const { localLeftCount, targetNodeCount, partial } =
+  await Sonamu.websocketRuntime.leaveUser(userId, "room-1", "chat");
+```
+
+Signature: `leaveUser(userId: WebSocketUserId, roomId: WebSocketRoomId, namespace?: string): Promise<WebSocketLeaveUserResult>`.
+
+- It removes every session bound to (`namespace`, `userId`) from `roomId`. An empty or omitted `namespace` means all namespaces. `userId` matches by type (`1` and `"1"` are different).
+- It does not close connections. The same session's other rooms and other users are untouched.
+- It is idempotent: no matching session is still a success.
+- Local sessions are removed synchronously before any remote work, so events published from this node after the call starts are not delivered to them. The returned promise waits for the local presence store mutations and the remote control publish.
+- It never rejects. Failures are reported as `partial: true` plus telemetry, like `getRoomMemberCount`.
+
+Remote targets are every live node when the presence store implements the optional `getLiveNodeIds()`. Otherwise the runtime uses `resolveRoute(WebSocketAudience.user(userId, namespace), nodeId).remoteNodeIds`. If that lookup or the publish fails, the remote part is skipped and the result is `partial: true`. `targetNodeCount` is the number of nodes attempted. When the store lacks `getLiveNodeIds`, the `resolveRoute` fallback targets only nodes with ACTIVE sessions of that user, so a registered-but-not-activated remote session is not removed.
+
+Telemetry:
+
+| Event | Emitted by |
+| --- | --- |
+| `ws.room.user_left` | Source node: `localLeftCount`, `targetNodeCount`, `partial` |
+| `ws.cluster.control.published` | Source node, after the control envelope is published |
+| `ws.cluster.control.received` | Receiving node, includes `localLeftCount` |
+| `ws.cluster.control.failed` | A control envelope failed. `stage` is `"route"` (node lookup failed) or `"publish"` (publish failed) |
+| `ws.cluster.envelope.rejected` | An envelope with an unknown `kind` or invalid schema was dropped |
+
+The existing `ws.cluster.envelope.ignored` reasons `selfSource` and `targetMismatch` also apply to control envelopes.
+
+### Limits
+
+- **At-most-once delivery.** Cluster messages use pub/sub. `partial: false` means the publish succeeded, not that remote nodes applied it. A node whose subscription is down at that moment misses the leave.
+- **Concurrent publishes.** Events published at the same time by another node B can reach node C before the leave is applied.
+- **Join race.** If the app checks permission and then calls `join` while a `leaveUser` from another node is applied in between, the join is applied last and the user stays in the room.
+
+Control envelopes use the same per-node publish queue and Redis command connection as publish envelopes, so one source node's order is preserved: `leaveUser` followed by `publishToRoom` from node A applies in that order on node C.
+
+Recommended pattern: commit the membership change to the database first, then call `leaveUser`. On subscribe, run `setUserId` → permission check → `join` → permission re-check → `leave` on failure. Optionally re-check periodically.
+
+```typescript
+await db.removeMember(roomId, userId);
+await Sonamu.websocketRuntime.leaveUser(userId, roomId, "chat");
 ```
 
 ## Runtime configuration
@@ -336,6 +390,7 @@ interface WebSocketPresenceStore {
   leave(sessionId: string, roomId: WebSocketRoomId): MaybePromise<void>;
   resolveRoute(audience: WebSocketAudience, nodeId: string): MaybePromise<WebSocketRoutingPlan>;
   getRoomMemberCount(roomId: WebSocketRoomId, namespace?: string): MaybePromise<number>;
+  getLiveNodeIds?(): MaybePromise<string[]>;
   shutdown?(): MaybePromise<void>;
 }
 
@@ -356,6 +411,7 @@ type WebSocketRoutingPlan = {
 - Each node calls the store only for its own sessions. Calls for one session are issued in call order, each after the previous one settles; `unregister` always comes after `register`.
 - `resolveRoute` splits an audience into the caller's local session IDs and deduplicated remote node IDs, excluding inactive sessions. `connections` audiences are routed from the node ID embedded in each session ID without calling the store.
 - `getRoomMemberCount` counts active members across the cluster.
+- `getLiveNodeIds` is optional and returns every live node ID. `leaveUser` targets those nodes; without it, the runtime falls back to `resolveRoute` for the user audience.
 - User IDs must match by type (`1` and `"1"` are different).
 - Return copies from read methods; callers must not be able to mutate store state.
 - Bound your own calls. The runtime treats a throw or rejection as a failure but applies no timeout, so a call that never settles keeps that session's later mutations, remote publish routing, and `getRoomMemberCount` waiting. Shutdown stops waiting for pending mutations and publishes after `drainTimeoutMs`.
@@ -372,17 +428,31 @@ interface WebSocketClusterBus {
   shutdown(): void | Promise<void>;
 }
 
-type WebSocketClusterEnvelope = {
-  id: string;
-  sourceNodeId: string;
-  targetNodeIds: string[];
-  audience: WebSocketAudience;
-  event: string;
-  frames: Record<string, string>; // route key → encoded frame
-  emittedAt: number;
-};
+type WebSocketClusterEnvelope =
+  | {
+      kind: "publish";
+      id: string;
+      sourceNodeId: string;
+      targetNodeIds: string[];
+      audience: WebSocketAudience;
+      event: string;
+      frames: Record<string, string>; // route key → encoded frame
+      emittedAt: number;
+    }
+  | {
+      kind: "leaveUser";
+      id: string;
+      sourceNodeId: string;
+      targetNodeIds: string[];
+      userId: WebSocketUserId;
+      roomId: WebSocketRoomId;
+      namespace?: string;
+      emittedAt: number;
+    };
 ```
 
+- Accept the whole union and forward `kind` unchanged. Receivers treat an envelope without `kind` as `publish`.
+- An envelope with an unknown `kind` or a schema failure is dropped, and the runtime emits `ws.cluster.envelope.rejected`. The Redis adapter reports it through the optional `subscribe(handler, { onRejected })` callback.
 - Deliver each envelope only to the nodes in `targetNodeIds`.
 - The envelope carries frames already validated and encoded by the origin node. The receiving node resolves the audience from its own memory and sends each connection the frame for its route byte for byte, without re-validating. A `z.date()` field therefore arrives as the same ISO string on every node.
 - `subscribe` may return the unsubscribe function directly or through a promise. The runtime calls it once on shutdown. If `subscribe` fails, the runtime keeps working in local-only mode and reports it through telemetry.
@@ -390,7 +460,7 @@ type WebSocketClusterEnvelope = {
 
 ## Multi-node with Redis
 
-`@sonamu-kit/websocket-redis-adapter` provides a Redis presence store and cluster bus. It requires `sonamu` 0.12.0 or later and the `redis` (node-redis) package `^6` as a peer dependency.
+`@sonamu-kit/websocket-redis-adapter` provides a Redis presence store and cluster bus. It requires `sonamu` 0.13.9 or later (adapter 0.13.9) and the `redis` (node-redis) package `^6` as a peer dependency.
 
 ```bash
 pnpm add @sonamu-kit/websocket-redis-adapter redis
@@ -444,6 +514,14 @@ Failure handling:
 - If the cluster bus subscription does not complete in time, `subscribe` rejects and the runtime reports `ws.cluster.subscribe.failed`. The adapter keeps the subscription request and completes it when the connection becomes ready, so this node starts receiving remote publishes again.
 
 <Warning>If several applications share one Redis, give each one its own `prefix`. A client `keyPrefix` applies to keys but not to pub/sub channels, so two applications with the same `prefix` would receive each other's cluster messages.</Warning>
+
+## Migrating to 0.13.9
+
+- **`leaveUser`**: `registry.leaveUser(userId, roomId, namespace?)` and `runtime.leaveUser(...)` remove a user from a room cluster-wide. See [Removing a user from a room](#removing-a-user-from-a-room).
+- **`WebSocketClusterEnvelope` is a union** on `kind` (`"publish"` or `"leaveUser"`). Custom cluster bus code must accept both and forward `kind`. An envelope without `kind` is treated as `publish`.
+- **Custom presence stores** may implement the optional `getLiveNodeIds()`. Without it, `leaveUser` targets the nodes returned by `resolveRoute` for the user audience.
+- **Adapter**: `@sonamu-kit/websocket-redis-adapter` 0.13.9 requires `sonamu` 0.13.9 or later.
+- **Mixed-version rolling deployment**: among pre-0.13.9 nodes, only those on the Redis adapter reject control envelopes at schema validation instead of misreading them as `publish`. Even so, a remote leave is not guaranteed until every node is upgraded. A pre-0.13.9 core behind a custom bus without validation may mishandle control envelopes, so upgrade all nodes before using `leaveUser` on custom buses. Enabling the adapter and upgrading in the same deployment avoids the mixed window.
 
 ## Migrating to 0.12
 
