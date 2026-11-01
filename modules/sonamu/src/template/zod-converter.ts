@@ -520,7 +520,12 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
     case "record": {
       const recordType =
         /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ zt as AnyZodRecord;
-      return `{ [ key: ${zodTypeToTsTypeDef(recordType.def.keyType)} ]: ${zodTypeToTsTypeDef(recordType.def.valueType)}}`;
+      const keyType = zodTypeToTsTypeDef(recordType.def.keyType);
+      const valueType = zodTypeToTsTypeDef(recordType.def.valueType);
+      if (recordType.def.partial) {
+        return `Partial<Record<${keyType}, ${valueType}>>`;
+      }
+      return `{ [ key: ${keyType} ]: ${valueType}}`;
     }
     case "literal":
       return Array.from(
@@ -657,7 +662,8 @@ export function zodTypeToZodCode(zt: z.ZodType, injectImportKeys: string[] = [])
         /* SAFETY: 선행 Zod 종류 분기와 템플릿 입력 계약이 이 값의 타입을 보장한다. */ (
           zt as AnyZodRecord
         ).def;
-      return `z.record(${zodTypeToZodCode(zRecordDef.keyType, injectImportKeys)}, ${zodTypeToZodCode(
+      const recordFn = zRecordDef.partial ? "partialRecord" : "record";
+      return `z.${recordFn}(${zodTypeToZodCode(zRecordDef.keyType, injectImportKeys)}, ${zodTypeToZodCode(
         zRecordDef.valueType,
         injectImportKeys,
       )})`;

@@ -95,6 +95,11 @@ describe("zod-converter", () => {
           z.record(z.string(), z.string()),
           "{ [ key: string ]: string}",
         ],
+        [
+          "partialRecord",
+          z.partialRecord(z.enum(["KRW", "USD"]), z.string()),
+          'Partial<Record<"KRW" | "USD", string>>',
+        ],
       ])("record with %s", (_desc, zodType, expected) => {
         const result = zodTypeToTsTypeDef(zodType);
         expect(result).toBe(expected);
@@ -416,6 +421,16 @@ describe("zod-converter", () => {
           "string key and string value",
           z.record(z.string(), z.string()),
           "z.record(z.string(), z.string())",
+        ],
+        [
+          "enum key",
+          z.record(z.enum(["KRW", "USD"]), z.string()),
+          'z.record(z.enum({KRW: "KRW", USD: "USD"}), z.string())',
+        ],
+        [
+          "partialRecord",
+          z.partialRecord(z.enum(["KRW", "USD"]), z.string()),
+          'z.partialRecord(z.enum({KRW: "KRW", USD: "USD"}), z.string())',
         ],
       ])("record with %s", (_desc, zodType, expected) => {
         const result = zodTypeToZodCode(zodType);
