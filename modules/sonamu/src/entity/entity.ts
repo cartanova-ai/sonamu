@@ -14,8 +14,10 @@ import {
   isBelongsToOneRelationProp,
   isEnumProp,
   isHasManyRelationProp,
+  isIntegerSingleProp,
   isInternalSubsetField,
   isManyToManyRelationProp,
+  isNumberSingleProp,
   isOneToOneRelationProp,
   isRelationProp,
   isVirtualCodeProp,
@@ -334,11 +336,10 @@ export class Entity {
       const loaderLines: string[] = [];
 
       for (const loader of nestedLoaders) {
-        const { toTable, toCol, through, fromTable } = loader.manyJoin;
+        const { toTable, toCol, through, fromTable, fromCol } = loader.manyJoin;
 
-        // fromTable의 Entity를 가져와서 PK 타입 확인
-        const fromEntity = EntityManager.getByTable(fromTable);
-        const fromIdsType = fromEntity.getPkArrayType();
+        // fromIds는 부모 행에서 꺼낸 fromCol 값이므로 그 칸의 타입을 따른다(fromColumn이 PK가 아닐 수 있음).
+        const fromIdsType = EntityManager.getByTable(fromTable).getColumnArrayType(fromCol);
 
         loaderLines.push(
           "{",
@@ -1394,5 +1395,26 @@ export class Entity {
   getPkArrayType(): string {
     const pkType = this.getPkType();
     return pkType === "integer" ? "number[]" : "string[]";
+  }
+
+  /**
+   * 컬럼 값 배열의 TS 타입을 반환합니다.
+   * HasMany 로더의 fromIds 타입으로 사용됩니다. 로더는 부모 행에서 fromColumn(기본 id) 값을 꺼냅니다.
+   */
+  getColumnArrayType(column: string): string {
+    if (column === "id") {
+      return this.getPkArrayType();
+    }
+    const prop =
+      this.propsDict[column] ??
+      this.props.find(
+        (p) =>
+          (isBelongsToOneRelationProp(p) || (isOneToOneRelationProp(p) && p.hasJoinColumn)) &&
+          `${p.name}_id` === column,
+      );
+    if (isRelationProp(prop)) {
+      return EntityManager.get(prop.with).getPkArrayType();
+    }
+    return isIntegerSingleProp(prop) || isNumberSingleProp(prop) ? "number[]" : "string[]";
   }
 }

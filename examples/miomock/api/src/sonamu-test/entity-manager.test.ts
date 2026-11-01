@@ -172,6 +172,61 @@ describe("entityManager", () => {
     });
   });
 
+  describe("Entity.getPuriLoaderQuery() fromIds 타입", () => {
+    // 목적: HasMany 로더가 fromIds를 부모 PK가 아니라 실제로 꺼내는 칸(fromColumn)의 타입으로 캐스팅하는지 검증
+
+    it("fromColumn이 PK가 아닌 string 칸이면 string[], 없으면 PK 타입", async () => {
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
+      await EntityManager.register({
+        id: "LoaderChild",
+        table: "loader_children",
+        title: "로더 자식",
+        props: [
+          { name: "id", type: "integer", desc: "ID" },
+          { name: "owner_ref", type: "string", desc: "주인 참조" },
+          { name: "loader_owner_id", type: "integer", desc: "주인 ID" },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson);
+      // SAFETY: 테스트가 검증하는 고정된 입력과 대상 타입이 일치한다.
+      await EntityManager.register({
+        id: "LoaderOwner",
+        table: "loader_owners",
+        title: "로더 주인",
+        props: [
+          { name: "id", type: "integer", desc: "ID" },
+          { name: "ref", type: "string", desc: "참조" },
+          {
+            name: "by_ref",
+            type: "relation",
+            desc: "ref로 잇는 자식",
+            relationType: "HasMany",
+            with: "LoaderChild",
+            joinColumn: "owner_ref",
+            fromColumn: "ref",
+          },
+          {
+            name: "by_id",
+            type: "relation",
+            desc: "id로 잇는 자식",
+            relationType: "HasMany",
+            with: "LoaderChild",
+            joinColumn: "loader_owner_id",
+          },
+        ],
+        indexes: [],
+        subsets: { A: ["id", "ref", "by_ref.id", "by_id.id"] },
+        enums: {},
+      } as EntityJson);
+
+      const code = EntityManager.get("LoaderOwner").getPuriLoaderQuery("A");
+      expect(code).toContain('.whereIn("loader_children.owner_ref", fromIds as string[])');
+      expect(code).toContain('.whereIn("loader_children.loader_owner_id", fromIds as number[])');
+    });
+  });
+
   describe("schemaValidate", () => {
     // 유효한 기본 EntityJson
     const validBaseEntity = {
