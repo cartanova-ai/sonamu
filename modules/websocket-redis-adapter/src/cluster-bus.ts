@@ -3,6 +3,7 @@ import {
   type WebSocketClusterBus,
   type WebSocketClusterEnvelope,
   type WebSocketClusterEnvelopeHandler,
+  type WebSocketClusterSubscribeOptions,
 } from "sonamu";
 import { z } from "zod";
 
@@ -39,15 +40,27 @@ const AudienceSchema: z.ZodType<WebSocketAudience> = z.lazy(() =>
   ]),
 );
 
-const ClusterEnvelopeSchema = z.object({
+const CommonEnvelopeSchema = z.object({
   id: z.string(),
   sourceNodeId: z.string(),
   targetNodeIds: z.array(z.string()),
-  audience: AudienceSchema,
-  event: z.string(),
-  frames: z.record(z.string(), z.string()),
   emittedAt: z.number(),
 });
+
+const ClusterEnvelopeSchema = z.union([
+  CommonEnvelopeSchema.extend({
+    kind: z.literal("publish").default("publish"),
+    audience: AudienceSchema,
+    event: z.string(),
+    frames: z.record(z.string(), z.string()),
+  }),
+  CommonEnvelopeSchema.extend({
+    kind: z.literal("leaveUser"),
+    userId: z.union([z.number(), z.string()]),
+    roomId: z.string(),
+    namespace: z.string().optional(),
+  }),
+]);
 
 const ClusterMessageSchema = z
   .string()
@@ -81,7 +94,10 @@ export class RedisWebSocketClusterBus implements WebSocketClusterBus {
   readonly nodeId: string;
   private readonly connection: RedisWebSocketConnection;
   private readonly channel: string;
-  private readonly handlers = new Set<WebSocketClusterEnvelopeHandler>();
+  private readonly handlers = new Map<
+    WebSocketClusterEnvelopeHandler,
+    WebSocketClusterSubscribeOptions
+  >();
   private subscribed = false;
   private subscribing: Promise<void> | undefined;
   // node-redis에 보냈지만 아직 끝나지 않은 SUBSCRIBE 수. 어댑터 deadline이 지나도 node-redis 쪽 구독은 늦게 끝날 수 있다
@@ -92,9 +108,14 @@ export class RedisWebSocketClusterBus implements WebSocketClusterBus {
   private readonly listener: RedisPubSubListener = (message) => {
     const envelope = parseClusterEnvelope(message.toString());
     if (!envelope) {
+      for (const options of this.handlers.values()) {
+        Promise.resolve()
+          .then(() => options.onRejected?.({ reason: "invalidEnvelope" }))
+          .catch(ignoreError);
+      }
       return;
     }
-    for (const handler of this.handlers) {
+    for (const handler of this.handlers.keys()) {
       // 핸들러 실패가 다른 핸들러나 구독 연결로 번지지 않게 한다
       Promise.resolve()
         .then(() => handler(envelope))
@@ -142,11 +163,14 @@ export class RedisWebSocketClusterBus implements WebSocketClusterBus {
    * 자기 노드 채널을 구독한다. 구독이 끝나면 resolve하고, readyTimeoutMs와 commandDeadlineMs 안에 끝나지 않으면 reject한다.
    * reject돼도 핸들러는 남아 있어 연결이 ready가 되면 구독이 이어진다(shutdown이나 해제 함수로 정리한다).
    */
-  async subscribe(handler: WebSocketClusterEnvelopeHandler): Promise<() => void> {
+  async subscribe(
+    handler: WebSocketClusterEnvelopeHandler,
+    options: WebSocketClusterSubscribeOptions = {},
+  ): Promise<() => void> {
     if (this.closed) {
       throw new Error("Redis WebSocket cluster bus is shut down.");
     }
-    this.handlers.add(handler);
+    this.handlers.set(handler, options);
     const unsubscribe = () => {
       this.handlers.delete(handler);
       if (this.handlers.size === 0) {

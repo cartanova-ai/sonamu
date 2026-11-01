@@ -48,6 +48,8 @@ export interface WebSocketPresenceStore {
   resolveRoute(audience: WebSocketAudience, nodeId: string): MaybePromise<WebSocketRoutingPlan>;
   // 클러스터 전체의 활성 방 인원수
   getRoomMemberCount(roomId: WebSocketRoomId, namespace?: string): MaybePromise<number>;
+  // 사용자 제어 메시지는 해당 사용자의 replica 유무와 무관하게 모든 live 노드에 전송한다
+  getLiveNodeIds?(): MaybePromise<string[]>;
   shutdown?(): MaybePromise<void>;
 }
 
@@ -98,6 +100,10 @@ export class InMemoryWebSocketPresenceStore implements WebSocketPresenceStore {
     }
 
     return { localSessionIds, remoteNodeIds: [...remoteNodeIds] };
+  }
+
+  getLiveNodeIds(): string[] {
+    return this.index.getLiveNodeIds();
   }
 
   getRoomMemberCount(roomId: WebSocketRoomId, namespace?: string): number {

@@ -34,6 +34,7 @@ function createEnvelope(
   targetNodeId: string,
 ): WebSocketClusterEnvelope {
   return {
+    kind: "publish",
     id,
     sourceNodeId,
     targetNodeIds: [targetNodeId],

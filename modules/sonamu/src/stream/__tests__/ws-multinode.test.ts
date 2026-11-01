@@ -114,7 +114,9 @@ describe("WebSocket 멀티 노드 전달", () => {
     expect(b2.socket.sentMessages).toEqual([]);
     expect(network.published).toHaveLength(1);
     expect(network.published[0].targetNodeIds).toEqual(["node-b"]);
-    expect(network.published[0].frames["/chat"]).toBe(a1.socket.sentMessages[0]);
+    expect(network.published[0].kind === "publish" && network.published[0].frames["/chat"]).toBe(
+      a1.socket.sentMessages[0],
+    );
     expect(nodeB.store.calls.slice(nodeBCallsBefore)).toEqual([]);
     expect(nodeA.store.callsOf("resolveRoute")).toEqual(["resolveRoute:node-a:room"]);
   });

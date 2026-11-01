@@ -647,6 +647,7 @@ describe("RedisWebSocketPresenceStore", () => {
 
         // duplicate()로 만든 pub/sub 연결로도 envelope이 오간다
         await adapterB.clusterBus.publish({
+          kind: "publish",
           id: "prefixed-envelope",
           sourceNodeId: nodeB,
           targetNodeIds: [nodeA],

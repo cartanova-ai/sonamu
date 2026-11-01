@@ -132,6 +132,14 @@ export class WebSocketPresenceIndex {
     return this.getBoundSessions(this.rooms, roomId, namespace).length;
   }
 
+  getLiveNodeIds(): string[] {
+    return [...new Set([...this.sessions.values()].map((session) => session.nodeId))];
+  }
+
+  getUserSessions(userId: WebSocketUserId, namespace?: string): WebSocketSessionPresence[] {
+    return this.getBoundSessions(this.users, userId, namespace, true).map(copyPresence);
+  }
+
   getStats(): WebSocketRegistryStats {
     const byNamespace: Record<string, number> = {};
     let totalConnections = 0;
@@ -199,6 +207,7 @@ export class WebSocketPresenceIndex {
     index: BindingIndex<Id>,
     id: Id,
     namespace?: string,
+    includeInactive = false,
   ): PresenceRecord[] {
     // namespace가 없으면(빈 문자열 포함) 모든 namespace의 바인딩을 본다
     const namespaces = namespace ? [index.get(namespace)] : [...index.values()];
@@ -213,7 +222,7 @@ export class WebSocketPresenceIndex {
         seen.add(sessionId);
 
         const record = this.sessions.get(sessionId);
-        if (record?.active) {
+        if (record && (record.active || includeInactive)) {
           records.push(record);
         }
       }

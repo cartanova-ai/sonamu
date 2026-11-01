@@ -70,6 +70,53 @@ describe("멀티 노드 전달 (Redis 공유)", () => {
     await redis?.stop();
   });
 
+  it("사용자 퇴장은 원격 방 바인딩만 제거하고 사용자 바인딩은 보존한다", async () => {
+    const prefix = uniqueName("leave-user");
+    const { nodeA, nodeB } = await startPair(prefix);
+    const target = await nodeB.connect();
+    const other = await nodeB.connect();
+    await target.connection.setUserId(1);
+    await other.connection.setUserId("1");
+    await target.connection.join("room");
+    await other.connection.join("room");
+    await eventually(async () => {
+      expect((await nodeA.runtime.registry.getRoomMemberCount("room")).count).toBe(2);
+    });
+    await expect(nodeA.runtime.leaveUser(1, "room", "chat")).resolves.toEqual({
+      localLeftCount: 0,
+      targetNodeCount: 1,
+      partial: false,
+    });
+    await nodeA.runtime.publishToRoom("room", "message", { seq: 1, text: "after" }, "chat");
+    await eventually(async () => {
+      expect(other.socket.sentMessages).toHaveLength(1);
+      expect((await nodeA.runtime.registry.getRoomMemberCount("room")).count).toBe(1);
+    });
+    expect(target.socket.sentMessages).toEqual([]);
+    await nodeA.runtime.publishToUser(1, "message", { seq: 2, text: "user" }, "chat");
+    await eventually(() => {
+      expect(target.socket.sentMessages).toHaveLength(1);
+    });
+    const userRoute = await nodeA.adapter.presenceStore.resolveRoute(
+      WebSocketAudience.user(1, "chat"),
+      nodeA.nodeId,
+    );
+    expect(userRoute.remoteNodeIds).toEqual([nodeB.nodeId]);
+  });
+
+  it("살아 있는 노드만 반환하고 heartbeat 기한이 지난 노드는 제외한다", async () => {
+    const prefix = uniqueName("live-nodes");
+    const { nodeA, nodeB } = await startPair(prefix);
+    await nodeA.connect();
+    await nodeB.connect();
+    await raw.zAdd(`${prefix}:nodes`, { score: Date.now() - 10_000, value: "expired" });
+    await eventually(async () => {
+      expect((await nodeA.adapter.presenceStore.getLiveNodeIds()).toSorted()).toEqual(
+        [nodeA.nodeId, nodeB.nodeId].toSorted(),
+      );
+    });
+  });
+
   it("어댑터를 spread한 runtime은 어댑터와 같은 nodeId를 쓴다", () => {
     const prefix = uniqueName("spread");
     const node = startNode(prefix);

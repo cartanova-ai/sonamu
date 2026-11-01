@@ -34,6 +34,14 @@ export type {
   WebSocketRoomId,
   WebSocketUserId,
 };
+export type WebSocketLeaveUserResult = {
+  localLeftCount: number;
+  // 발행 성공 여부와 무관하게 전송을 시도한 원격 노드 수
+  targetNodeCount: number;
+  // 로컬 store 반영, 노드 조회 또는 제어 메시지 발행이 실패했으면 true
+  partial: boolean;
+};
+
 export type WebSocketConnectionMeta = WebSocketSessionPresence;
 export type WebSocketRoomMemberCount = {
   count: number;
@@ -92,6 +100,18 @@ export class WebSocketRegistry {
       localConnections: this.localConnections,
       resolveLocalSessionIds: (audience) =>
         this.memory.queryAudience(audience).map((session) => session.sessionId),
+      leaveLocalUser: (userId, roomId, namespace) => this.leaveLocalUser(userId, roomId, namespace),
+      resolveControlNodeIds: async (userId, namespace) => {
+        const nodes = this.presenceStore.getLiveNodeIds
+          ? await this.presenceStore.getLiveNodeIds()
+          : (
+              await this.presenceStore.resolveRoute(
+                WebSocketAudience.user(userId, namespace),
+                this.nodeId,
+              )
+            ).remoteNodeIds;
+        return [...new Set(nodes)].filter((nodeId) => nodeId !== this.nodeId);
+      },
       audienceResolver: new WebSocketAudienceResolver({
         nodeId: this.nodeId,
         presenceStore: this.presenceStore,
@@ -298,6 +318,57 @@ export class WebSocketRegistry {
   }
 
   leave(connectionId: string, roomId: WebSocketRoomId): Promise<void> {
+    return this.leaveSession(connectionId, roomId);
+  }
+
+  /**
+   * 사용자의 모든 로컬 세션을 방에서 즉시 제거하고, live 노드에 같은 퇴장을 요청한다.
+   * namespace 생략 또는 빈 문자열은 전체 namespace를 뜻한다. 원격 적용 완료를 확인하는 응답은 기다리지 않는다.
+   */
+  leaveUser(
+    userId: WebSocketUserId,
+    roomId: WebSocketRoomId,
+    namespace?: string,
+  ): Promise<WebSocketLeaveUserResult> {
+    const local = this.leaveLocalUser(userId, roomId, namespace);
+    // 로컬 변경 직후 큐 자리를 확보해 뒤따르는 publish가 제어 메시지를 앞지르지 못하게 한다
+    const remote = this.deliveryEngine.publishLeaveUser(userId, roomId, namespace);
+    return Promise.all([local.completion, remote]).then(([localPartial, result]) => {
+      const summary = {
+        localLeftCount: local.localLeftCount,
+        targetNodeCount: result.targetNodeCount,
+        partial: localPartial || result.partial,
+      };
+      this.telemetryController.emit({
+        name: "ws.room.user_left",
+        level: "info",
+        detail: { userId, roomId, namespace, ...summary },
+      });
+      return summary;
+    });
+  }
+
+  private leaveLocalUser(userId: WebSocketUserId, roomId: WebSocketRoomId, namespace?: string) {
+    let partial = false;
+    const sessions = this.memory
+      .getUserSessions(userId, namespace)
+      .filter((session) => session.rooms.has(roomId));
+    const mutations = sessions.map((session) =>
+      this.leaveSession(session.sessionId, roomId, () => {
+        partial = true;
+      }),
+    );
+    return {
+      localLeftCount: sessions.length,
+      completion: Promise.all(mutations).then(() => partial),
+    };
+  }
+
+  private leaveSession(
+    connectionId: string,
+    roomId: WebSocketRoomId,
+    onFailed?: () => void,
+  ): Promise<void> {
     const meta = this.memory.getConnection(connectionId);
     if (!meta) {
       this.emitMutationSkipped(connectionId, { operation: "leave", roomId });
@@ -315,8 +386,11 @@ export class WebSocketRegistry {
       detail: { roomId },
       ...getConnectionTelemetryContext(connection),
     });
-    return this.enqueueStoreMutation(connectionId, "leave", () =>
-      this.presenceStore.leave(connectionId, roomId),
+    return this.enqueueStoreMutation(
+      connectionId,
+      "leave",
+      () => this.presenceStore.leave(connectionId, roomId),
+      onFailed,
     );
   }
 
@@ -430,6 +504,7 @@ export class WebSocketRegistry {
     sessionId: string,
     operation: StoreMutationOperation,
     call: () => MaybePromise<void>,
+    onFailed?: () => void,
   ): Promise<void> {
     const previous = this.mutationQueues.get(sessionId) ?? Promise.resolve();
     const next: Promise<void> = previous
@@ -437,6 +512,7 @@ export class WebSocketRegistry {
       .then(
         () => undefined,
         (cause: unknown) => {
+          onFailed?.();
           this.telemetryController.emit({
             name: "ws.registry.mutation.failed",
             level: "warn",

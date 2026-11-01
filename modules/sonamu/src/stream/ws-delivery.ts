@@ -6,7 +6,7 @@ import { runtimeTypeOf } from "../runtime-type";
 import { type WebSocketAudience } from "./ws-audience";
 import { type WebSocketAudienceResolver } from "./ws-audience-resolver";
 import { type WebSocketClusterBus, type WebSocketClusterEnvelope } from "./ws-cluster-bus";
-import { type WebSocketFrameConnection } from "./ws-core";
+import { type WebSocketUserId, type WebSocketFrameConnection } from "./ws-core";
 import { encodeWebSocketFrame, type WebSocketFrameEncoding } from "./ws-frame";
 import { type WebSocketLocalConnectionStore } from "./ws-local-connection-store";
 import {
@@ -53,6 +53,15 @@ export class WebSocketDeliveryEngine {
       localConnections: WebSocketLocalConnectionStore;
       // registry 메모리 기준으로 audience에 속한 로컬 활성 세션 ID를 반환한다
       resolveLocalSessionIds: (audience: WebSocketAudience) => string[];
+      leaveLocalUser: (
+        userId: WebSocketUserId,
+        roomId: string,
+        namespace?: string,
+      ) => {
+        localLeftCount: number;
+        completion: Promise<boolean>;
+      };
+      resolveControlNodeIds: (userId: WebSocketUserId, namespace?: string) => Promise<string[]>;
       audienceResolver: WebSocketAudienceResolver;
       clusterBus: WebSocketClusterBus;
       telemetryController?: WebSocketTelemetryController;
@@ -161,6 +170,59 @@ export class WebSocketDeliveryEngine {
     }
   }
 
+  publishLeaveUser(
+    userId: WebSocketUserId,
+    roomId: string,
+    namespace?: string,
+  ): Promise<{ targetNodeCount: number; partial: boolean }> {
+    const routing = Promise.resolve()
+      .then(() => this.options.resolveControlNodeIds(userId, namespace))
+      .catch((cause: unknown) => {
+        this.emitControlFailed("route", cause);
+        return undefined;
+      });
+    const task = this.publishQueue.then(async () => {
+      const targetNodeIds = await routing;
+      if (!targetNodeIds) {
+        return { targetNodeCount: 0, partial: true };
+      }
+      if (targetNodeIds.length === 0) {
+        return { targetNodeCount: 0, partial: false };
+      }
+      try {
+        await this.options.clusterBus.publish({
+          kind: "leaveUser",
+          id: randomUUID(),
+          sourceNodeId: this.options.nodeId,
+          targetNodeIds,
+          userId,
+          roomId,
+          namespace,
+          emittedAt: Date.now(),
+        });
+        this.telemetry.emit({
+          name: "ws.cluster.control.published",
+          level: "debug",
+          detail: { userId, roomId, namespace, targetNodeCount: targetNodeIds.length },
+        });
+        return { targetNodeCount: targetNodeIds.length, partial: false };
+      } catch (cause) {
+        this.emitControlFailed("publish", cause);
+        return { targetNodeCount: targetNodeIds.length, partial: true };
+      }
+    });
+    this.publishQueue = task.then(() => undefined);
+    return task;
+  }
+
+  private emitControlFailed(stage: "route" | "publish", cause: unknown): void {
+    this.telemetry.emit({
+      name: "ws.cluster.control.failed",
+      level: "warn",
+      detail: { stage, errorType: describeError(cause) },
+    });
+  }
+
   // 진행 중인 publish(원격 포함)와 구독 시도가 모두 끝나면 resolve한다
   async drainPublishes(): Promise<void> {
     await Promise.all([this.publishQueue, this.subscription]);
@@ -210,9 +272,20 @@ export class WebSocketDeliveryEngine {
   private subscribe(): Promise<Unsubscribe | undefined> {
     return Promise.resolve()
       .then(() =>
-        this.options.clusterBus.subscribe((envelope) => {
-          this.handleClusterEnvelope(envelope);
-        }),
+        this.options.clusterBus.subscribe(
+          (envelope) => {
+            this.handleClusterEnvelope(envelope);
+          },
+          {
+            onRejected: ({ reason }) => {
+              this.telemetry.emit({
+                name: "ws.cluster.envelope.rejected",
+                level: "warn",
+                detail: { reason },
+              });
+            },
+          },
+        ),
       )
       .then(
         (unsubscribe) => unsubscribe,
@@ -265,6 +338,7 @@ export class WebSocketDeliveryEngine {
     }
 
     const envelope: WebSocketClusterEnvelope = {
+      kind: "publish",
       id: randomUUID(),
       sourceNodeId: this.options.nodeId,
       targetNodeIds: remoteNodeIds,
@@ -317,11 +391,25 @@ export class WebSocketDeliveryEngine {
       return;
     }
 
+    // 구독자가 모르는 kind는 publish로 오인하지 않고 거절한다. kind가 없으면 구버전 publish다
+    const kind: unknown = envelope.kind;
+    if (kind !== undefined && kind !== "publish" && kind !== "leaveUser") {
+      this.telemetry.emit({
+        name: "ws.cluster.envelope.rejected",
+        level: "warn",
+        detail: { reason: "unknownKind" },
+      });
+      return;
+    }
+
     if (envelope.sourceNodeId === this.options.nodeId) {
       this.telemetry.emit({
         name: "ws.cluster.envelope.ignored",
         level: "debug",
-        detail: { reason: "selfSource", event: envelope.event },
+        detail: {
+          reason: "selfSource",
+          event: envelope.kind === "leaveUser" ? undefined : envelope.event,
+        },
       });
       return;
     }
@@ -333,7 +421,30 @@ export class WebSocketDeliveryEngine {
       this.telemetry.emit({
         name: "ws.cluster.envelope.ignored",
         level: "debug",
-        detail: { reason: "targetMismatch", event: envelope.event },
+        detail: {
+          reason: "targetMismatch",
+          event: envelope.kind === "leaveUser" ? undefined : envelope.event,
+        },
+      });
+      return;
+    }
+
+    if (envelope.kind === "leaveUser") {
+      const local = this.options.leaveLocalUser(
+        envelope.userId,
+        envelope.roomId,
+        envelope.namespace,
+      );
+      this.telemetry.emit({
+        name: "ws.cluster.control.received",
+        level: "debug",
+        detail: {
+          userId: envelope.userId,
+          roomId: envelope.roomId,
+          namespace: envelope.namespace,
+          sourceNodeId: envelope.sourceNodeId,
+          localLeftCount: local.localLeftCount,
+        },
       });
       return;
     }

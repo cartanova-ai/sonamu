@@ -43,6 +43,7 @@ function createEnvelope(input: {
   frames: Record<string, string>;
 }): WebSocketClusterEnvelope {
   return {
+    kind: "publish",
     id: input.id,
     sourceNodeId: input.sourceNodeId ?? "node-b",
     targetNodeIds: input.targetNodeIds ?? ["node-a"],

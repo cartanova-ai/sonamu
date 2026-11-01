@@ -1,6 +1,6 @@
 {
   "name": "@sonamu-kit/websocket-redis-adapter",
-  "version": "0.13.0",
+  "version": "0.13.9",
   "description": "Redis presence store and cluster bus for Sonamu multi-node WebSocket delivery",
   "license": "MIT",
   "author": "CartaNova <dev@cartanova.ai>",
@@ -50,7 +50,7 @@
   },
   "peerDependencies": {
     "redis": "catalog:",
-    "sonamu": ">=0.12.0"
+    "sonamu": ">=0.13.9"
   },
   "engines": {
     "node": ">=22.0.0"

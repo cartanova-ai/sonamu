@@ -16,6 +16,7 @@ import {
   type ManagedWebSocketConnection,
   WebSocketRegistry,
   type WebSocketRegistryOptions,
+  type WebSocketLeaveUserResult,
   type WebSocketRoomId,
   type WebSocketUserId,
 } from "./ws-registry";
@@ -200,6 +201,14 @@ export class WebSocketRuntime {
 
   activateConnection(connectionId: string): Promise<void> {
     return this.registry.activate(connectionId);
+  }
+
+  leaveUser(
+    userId: WebSocketUserId,
+    roomId: WebSocketRoomId,
+    namespace?: string,
+  ): Promise<WebSocketLeaveUserResult> {
+    return this.registry.leaveUser(userId, roomId, namespace);
   }
 
   broadcast<Data>(event: string, data: Data, namespace?: string): Promise<void> {

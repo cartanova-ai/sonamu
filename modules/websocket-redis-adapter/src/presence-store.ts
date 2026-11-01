@@ -261,6 +261,28 @@ export class RedisWebSocketPresenceStore implements WebSocketPresenceStore {
     });
   }
 
+  /** heartbeat 기한 안에 있는 노드 ID만 반환한다. */
+  async getLiveNodeIds(): Promise<string[]> {
+    if (this.closing) {
+      throw new Error("Redis presence store is shut down.");
+    }
+    this.start();
+    const wait = this.connection.whenUsable();
+    if (wait) {
+      await wait;
+    }
+    if (this.closing) {
+      throw new Error("Redis presence store is shut down.");
+    }
+    return this.connection.run((commands) =>
+      commands.zRangeByScore(
+        this.nodesKey,
+        Date.now() - this.connection.options.nodeTimeoutMs,
+        "+inf",
+      ),
+    );
+  }
+
   /**
    * nodeId 관점의 라우팅 계획. 원격 노드는 heartbeat가 nodeTimeoutMs 안인 노드 중 audience count가 있는 노드다.
    * 세션 목록은 읽지 않고, 노드별 count 조회를 한 번의 pipeline으로 보낸다.
@@ -427,27 +449,10 @@ export class RedisWebSocketPresenceStore implements WebSocketPresenceStore {
     leaves: CountLeaf[],
     excludeNodeId?: string,
   ): Promise<Map<string, number>> {
-    // shutdown 뒤에는 연결을 새로 시작하거나 ready 대기를 걸지 않는다
-    if (this.closing) {
-      throw new Error("Redis presence store is shut down.");
-    }
-    this.start();
-    const wait = this.connection.whenUsable();
-    if (wait) {
-      await wait;
-    }
-    // ready를 기다리는 사이 shutdown됐으면 조회를 보내지 않는다(런타임은 원격 없이 로컬만 쓴다)
-    if (this.closing) {
-      throw new Error("Redis presence store is shut down.");
-    }
+    const liveNodeIds = await this.getLiveNodeIds();
     const prefix = this.connection.options.prefix;
     const leavesJson = JSON.stringify(leaves);
     return this.connection.run(async (commands, token) => {
-      const liveNodeIds = await commands.zRangeByScore(
-        this.nodesKey,
-        Date.now() - this.connection.options.nodeTimeoutMs,
-        "+inf",
-      );
       const candidates = liveNodeIds.filter((candidate) => candidate !== excludeNodeId);
       // 같은 tick에 보내므로 node-redis가 한 번의 pipeline으로 묶어 보낸다
       const counts = await Promise.all(

@@ -20,6 +20,7 @@ function createEnvelope(input: {
   frames?: Record<string, string>;
 }): WebSocketClusterEnvelope {
   return {
+    kind: "publish",
     id: input.id,
     sourceNodeId: input.sourceNodeId,
     targetNodeIds: input.targetNodeIds,
@@ -73,6 +74,36 @@ describe("RedisWebSocketClusterBus", () => {
   afterAll(async () => {
     await raw?.close().catch(() => {});
     await redis?.stop();
+  });
+
+  it("잘못된 JSON과 알 수 없는 kind는 거절 콜백에만 전달한다", async () => {
+    const prefix = uniqueName("bus-rejected");
+    const nodeId = uniqueName("node");
+    const adapter = createAdapter(prefix, nodeId);
+    const received: WebSocketClusterEnvelope[] = [];
+    const rejected: string[] = [];
+    await adapter.clusterBus.subscribe(
+      (envelope) => {
+        received.push(envelope);
+      },
+      {
+        onRejected: ({ reason }) => {
+          rejected.push(reason);
+        },
+      },
+    );
+    await raw.publish(`${prefix}:node:${nodeId}`, "{");
+    await raw.publish(
+      `${prefix}:node:${nodeId}`,
+      JSON.stringify({
+        ...createEnvelope({ id: "unknown", sourceNodeId: "other", targetNodeIds: [nodeId] }),
+        kind: "unknown",
+      }),
+    );
+    await eventually(() => {
+      expect(rejected).toEqual(["invalidEnvelope", "invalidEnvelope"]);
+    });
+    expect(received).toEqual([]);
   });
 
   it("store와 bus는 어댑터 nodeId를 노출한다 (runtime의 nodeId 불일치 검사용)", () => {
@@ -129,7 +160,7 @@ describe("RedisWebSocketClusterBus", () => {
       expect(b.received).toHaveLength(1);
     });
     expect(b.received[0]).toEqual(envelope);
-    expect(b.received[0].frames["/chat"]).toBe(trickyFrame);
+    expect(b.received[0].kind === "publish" && b.received[0].frames["/chat"]).toBe(trickyFrame);
     // 다른 노드에 늦게 도착하지 않는지 잠시 확인한다
     await sleep(300);
     expect(a.received).toEqual([]);

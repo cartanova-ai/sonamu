@@ -138,6 +138,7 @@ type ScriptedMethod =
   | "clearUserId"
   | "join"
   | "leave"
+  | "getLiveNodeIds"
   | "resolveRoute"
   | "getRoomMemberCount"
   | "shutdown";
@@ -223,6 +224,11 @@ export class ScriptedPresenceStore {
     | Promise<{ localSessionIds: string[]; remoteNodeIds: string[] }> {
     this.calls.push(`resolveRoute:${nodeId}:${audience.type}`);
     return this.run("resolveRoute", () => this.inner.resolveRoute(audience, nodeId));
+  }
+
+  getLiveNodeIds(): string[] | Promise<string[]> {
+    this.calls.push("getLiveNodeIds");
+    return this.run("getLiveNodeIds", () => this.inner.getLiveNodeIds());
   }
 
   getRoomMemberCount(roomId: WebSocketRoomId, namespace?: string): number | Promise<number> {
