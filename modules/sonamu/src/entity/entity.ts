@@ -502,7 +502,12 @@ export class Entity {
           const relFields = groupedFields.map((field) => field.split(".").slice(1).join("."));
 
           // -One Relation에서 id 필드만 참조하는 경우 릴레이션 넘기지 않고 리턴
-          if (relFields.length === 1 && relFields[0] === "id") {
+          // 조인 컬럼 없는 역방향 OneToOne은 현재 테이블에 FK 컬럼이 없으므로 JOIN으로 처리
+          if (
+            relFields.length === 1 &&
+            relFields[0] === "id" &&
+            !(isOneToOneRelationProp(relation) && !relation.hasJoinColumn)
+          ) {
             if (prefix === "") {
               r.select = r.select.concat(`${this.table}.${groupKey}_id`);
             } else {
