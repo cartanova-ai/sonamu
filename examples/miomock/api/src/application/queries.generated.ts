@@ -26,7 +26,7 @@ import { DocumentListParams, DocumentSemanticParams } from "./document/document.
 import { EmployeeListParams } from "./employee/employee.types";
 import { FileListParams } from "./file/file.types";
 import { MilestoneListParams } from "./milestone/milestone.types";
-import { ProjectListParams } from "./project/project.types";
+import { ProjectListParams, ProjectIndexedSearchParams } from "./project/project.types";
 import {
   UserSubsetKey,
   TagSubsetKey,
@@ -120,6 +120,9 @@ export namespace ProjectService {
     rawParams?: LP,
   ): SSRQuery =>
     createSSRQuery("ProjectModel", "findMany", [subset, rawParams], ["Project", "getProjects"]);
+
+  export const searchIndexed = (params: ProjectIndexedSearchParams): SSRQuery =>
+    createSSRQuery("ProjectModel", "searchIndexed", [params], ["Project", "searchIndexed"]);
 }
 
 export namespace MilestoneService {

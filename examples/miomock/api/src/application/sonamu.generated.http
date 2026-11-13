@@ -286,6 +286,14 @@ Content-Type: application/json
 
 ###
 
+GET {{baseUrl}}/api/project/searchIndexed
+	?params[q]=Q
+	&params[size]=1
+	&params[cursor]=CURSOR
+Content-Type: application/json
+
+###
+
 GET {{baseUrl}}/api/milestone/findById
 	?subset=A
 	&id=0

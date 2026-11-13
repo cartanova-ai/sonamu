@@ -2,6 +2,7 @@ import path from "path";
 
 import { getConsoleSink } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
+import { SearchError } from "@sonamu-kit/opensearch";
 import {
   admin,
   CachePresets,
@@ -18,6 +19,12 @@ import { type LocalizedString } from "sonamu/dict";
 import { createUploadStaticHeaders, drivers } from "sonamu/storage";
 
 import { ForbiddenException } from "./exceptions/forbidden-exception";
+import {
+  SEARCH_HTTP_STATUS,
+  SearchDisabledException,
+  toSearchErrorResponse,
+} from "./search/errors";
+import { initializeSearchStore, startSearch, stopSearch } from "./search/startup";
 
 const host = "localhost";
 const port = 10280;
@@ -165,8 +172,9 @@ export default defineConfig({
         setHeaders: createUploadStaticHeaders({ uploadDir }),
       },
       sse: true,
-      custom: (_server) => {
-        // nothing yet
+      custom: (server) => {
+        // Fixes the search store identity before listen; see search/startup.ts.
+        server.addHook("onReady", initializeSearchStore);
       },
     },
 
@@ -299,13 +307,31 @@ export default defineConfig({
     },
 
     lifecycle: {
-      onStart: () => {
+      onStart: async () => {
         console.log(`🌲 Server listening on http://${host}:${port}`);
+        await startSearch();
       },
-      onShutdown: () => {
+      onShutdown: async () => {
         console.log("graceful shutdown");
+        await stopSearch();
       },
-      onError: (error, _request, reply) => {
+      onError: (error, request, reply) => {
+        if (error instanceof SearchError) {
+          const locale = request.headers["accept-language"]?.split(",")[0]?.trim() || "ko";
+          const response = toSearchErrorResponse(error, locale);
+          reply.status(response.status).send(response.body);
+          return;
+        }
+        if (error instanceof SearchDisabledException) {
+          reply.status(SEARCH_HTTP_STATUS.disabled).send({
+            name: error.name,
+            code: error.code,
+            reason: "search-disabled",
+            message: error.message,
+            retryable: false,
+          });
+          return;
+        }
         console.error(error);
         // 가드의 401/403처럼 Sonamu 예외는 자신의 상태 코드로 응답한다
         reply.status(isSoException(error) ? error.statusCode : 500).send({
