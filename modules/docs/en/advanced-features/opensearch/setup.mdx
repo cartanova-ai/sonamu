@@ -1,0 +1,296 @@
+---
+title: "Setup"
+description: "Installing the package, the schema migration, role grants, the client, store identity, and recommended values"
+---
+
+This page covers what you do once when you add the package to an application: install it, install the PostgreSQL schema, grant roles, create the OpenSearch client and the synchronization handle, and choose limits. Creating indexes is covered in [Index administration](/en/advanced-features/opensearch/index-administration).
+
+## Installation
+
+```bash
+pnpm add @sonamu-kit/opensearch @opensearch-project/opensearch knex
+```
+
+Installing the package changes nothing in Sonamu; it acts only when the application creates handles and calls them. `sonamu` is an optional peer dependency, needed only for the `/sonamu` entry point.
+
+### Entry points
+
+| Entry point | Contents | Needs `sonamu` |
+| --- | --- | --- |
+| `@sonamu-kit/opensearch` | Client, search definitions, query handles, error classes, message localization, recommended values | No |
+| `@sonamu-kit/opensearch/postgres` | Transactional synchronization, indexing worker | No |
+| `@sonamu-kit/opensearch/admin` | Schema installation, role grants, administrative handle | No |
+| `@sonamu-kit/opensearch/sonamu` | Sonamu transaction integration, projection scope, server lifecycle | Yes |
+| `@sonamu-kit/opensearch/testing` | Fakes and helpers for tests. Never selected automatically on a production path | No |
+
+## Installing the schema
+
+Install the package's tables by calling `installSearchSchema` from an application migration. Nothing else creates the schema, server start included. Write the migration by hand in Sonamu's Knex migration directory (`src/migrations`).
+
+```typescript title="migrations/20260101000000_install_search_schema.ts"
+import { installSearchSchema } from "@sonamu-kit/opensearch/admin";
+import { type Knex } from "knex";
+
+/** Role privileges are not part of the schema; grant them with grantSearchRoles (administration.ts). */
+export async function up(knex: Knex): Promise<void> {
+  await installSearchSchema(knex);
+}
+
+export async function down(): Promise<void> {
+  // Never dropped automatically: the index ledger and intents cannot be recovered.
+  throw new Error(
+    "sonamu_search 스키마는 자동으로 지우지 않습니다. 운영자가 직접 DROP SCHEMA sonamu_search CASCADE를 실행하세요.",
+  );
+}
+```
+
+`installSearchSchema`:
+
+- Uses the schema `sonamu_search` unless you pass another name as `{ schema }` in the second argument. `public`, `information_schema`, and names starting with `pg_` are rejected.
+- Is safe to run repeatedly. It skips versions already applied and applies every missing version in order in one call, so a migration written for version 1 installs the current version (2) on a fresh database.
+- Records this database's origin (system identifier, database OID, name) in the store, in the same transaction, on the call that applies version 2, a fresh installation included. The worker and remote administrative operations use this record to recognize copies. Running it again on a schema already at version 2 does not record the origin again; what this means for a copy made while the schema was at version 1 is in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks).
+- Changes nothing and throws `SearchSchemaVersionMismatch` if the installed schema is newer than the package, has a different checksum, or has a gap in its version history.
+- Runs inside a savepoint when the Knex it receives is a transaction (a Knex migration is), and on failure rolls back only the installation. That transaction must be READ COMMITTED.
+- Returns `{ schema, applied, current, storeId }`. `storeId` is the store identity described below.
+
+`checkSearchSchema(knex)` changes nothing; it only reads the installation status (`ok`, `missing`, `behind`, `ahead`, `checksum-mismatch`). Runtime handles do not run this check, so a missing schema shows up as `SearchSchemaMissing` when an actual statement fails.
+
+### Relation to Sonamu's migrator
+
+Sonamu's migrator compares only tables that have entities and reads only the `public` schema. `sonamu_search` has no entities and lives outside `public`, so the migrator never generates a migration for it. Do not create foreign keys between application tables and package tables.
+
+Test databases and fixtures:
+
+- Test databases are cloned from a template database, and fixture sync copies the whole database with `pg_dump`/`pg_restore --no-acl`. The package schema and its ledger rows travel with the copy; role grants (GRANT) do not.
+- A cloned database has the same `store_id` and target rows as its source, but a different origin. To run a worker or remote administrative operations on a clone, adopt it with `adoptCopiedStore` first; until then they stop with `SearchStoreMismatch` (`store-origin-changed`). The search integration tests in the [miomock walkthrough](/en/advanced-features/opensearch/miomock-walkthrough) do this.
+
+### Rolling back
+
+The example's `down` throws instead of dropping the schema, because the ledger's revisions and the pending intents cannot be recovered once they are gone. If the schema really has to go, an operator drops it by hand (`DROP SCHEMA sonamu_search CASCADE`, as the error message says), and every target is then rebuilt from scratch.
+
+## Roles and grants
+
+`applySearchGrants(knex, { roles })` grants least privilege on the package schema to four role groups.
+
+| Group | Used by | What it may do |
+| --- | --- | --- |
+| `capture` | The application that calls `markChanged` | Write the ledger and intents, lock the barrier row, read the target list |
+| `worker` | The indexing worker | Read the ledger and targets, delete intents, write runtime state and heartbeats, pause targets |
+| `query` | The application that searches | Read the read pointer and targets |
+| `admin` | Administrative commands | Manage targets, builds, the read pointer, and audit records |
+
+Every group also receives usage on the schema and read access to `schema_versions` and `store`. No group can create objects in the schema or change `schema_versions` or `store`.
+
+Rules of `applySearchGrants`:
+
+- Run it as the schema owner (the role that ran the migration). In PostgreSQL, a GRANT from a role that is not the owner completes without an error and grants nothing.
+- It only adds privileges and never revokes. To take a role out of a group, an operator runs `REVOKE` by hand.
+- It runs only when the installed schema matches the package version exactly, and it runs in one transaction. If a role does not exist, it throws `SearchConfigurationError` (SQLSTATE 42704) and changes nothing.
+- A role name may appear in one group only; the same role in two groups throws `SearchConfigurationError` with `details.reason` `duplicate-role`. `public` and roles starting with `pg_` are rejected (`reserved-role`).
+
+When one login role needs two groups, for example an API server that marks and searches, create a separate non-login role per group, pass those to `applySearchGrants`, and make the application's login role a member of both. Here `chat_app` is a login role created with the default INHERIT:
+
+```sql
+CREATE ROLE chat_search_capture NOLOGIN;
+CREATE ROLE chat_search_query NOLOGIN;
+GRANT chat_search_capture, chat_search_query TO chat_app;
+```
+
+The example grants the four groups to four such roles:
+
+```typescript title="search/administration.ts"
+/** A role may appear in one group only; grant a login role that needs two groups membership in both group roles instead. */
+export async function grantSearchRoles(adminKnex: Knex, schema?: string): Promise<void> {
+  const options: SearchGrantsOptions = {
+    roles: {
+      capture: ["chat_search_capture"],
+      worker: ["chat_search_worker"],
+      query: ["chat_search_query"],
+      admin: ["chat_search_admin"],
+    },
+  };
+  if (schema !== undefined) options.schema = schema;
+  await applySearchGrants(adminKnex, options);
+}
+```
+
+The integration tests run this example as is against a real database. The same test file checks that a login role that is a member of both the capture and the query role can run `markChanged` and the catalog read, and is still refused writes to the worker tables. To review the GRANT statements without running them, render them with `renderSearchGrantsSql(options)`.
+
+`applySearchGrants` does not touch privileges outside the package schema. The worker role separately needs `SELECT` on the application tables its projections read.
+
+## Client
+
+`createSearchClient` wraps an OpenSearch SDK client that the application creates. Query handles, the worker, and the administrative handle all take this wrapper. The same example module also creates the synchronization handle described in the next section.
+
+```typescript title="search/client.ts"
+import { Client } from "@opensearch-project/opensearch";
+import {
+  createSearchClient,
+  RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+  RECOMMENDED_QUERY_LIMITS,
+} from "@sonamu-kit/opensearch";
+import { createPostgresSynchronization } from "@sonamu-kit/opensearch/postgres";
+import {
+  createSonamuSearchQueries,
+  createSonamuSynchronization,
+  resolveSonamuPrimary,
+} from "@sonamu-kit/opensearch/sonamu";
+
+import { type ChatMessageDocument, chatMessagesSearch } from "./chat-messages.definition";
+
+// The application owns these handles; keep credentials and signing keys out of code.
+export const SEARCH_NAMESPACE = process.env.SEARCH_NAMESPACE ?? "chat-production";
+
+/** Shared by the query handle and the worker; the application closes it at shutdown. */
+export const searchClient = createSearchClient({
+  createClient: () => new Client({ node: process.env.OPENSEARCH_URL ?? "http://localhost:9200" }),
+  ownsClient: true,
+  requestTimeoutMs: RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+});
+
+export const searchSynchronization = createPostgresSynchronization({
+  getPrimaryDatabase: resolveSonamuPrimary,
+  namespace: SEARCH_NAMESPACE,
+});
+export const chatSearchSync = createSonamuSynchronization(searchSynchronization);
+```
+
+| Option | Meaning |
+| --- | --- |
+| `createClient` | Creates the SDK client. Called once on the first request, never at factory time |
+| `ownsClient` | When `true`, `close()` also closes the SDK client. Pass `false` for a client the application owns |
+| `requestTimeoutMs` | Time limit for one request the package sends |
+| `maxResponseBytes` | Upper bound for a response body after decompression. 16 MiB when omitted, at most 512 MiB. Exceeding it gives `response-too-large`. One response takes roughly twice this much memory |
+
+Configure authentication, such as AWS SigV4 signing, on the SDK client that `createClient` returns; the package only sends requests through that client's transport. Read credentials and signing keys from environment variables, not from code. `checkConnection()` checks the connection with `GET /` and, on failure, returns the error in its report instead of throwing.
+
+<Warning>
+The example's `client.ts` also builds the query handle (`createSonamuSearchQueries`). A query handle checks at construction that its cursor signing secret is at least 32 bytes, so if `SEARCH_CURSOR_SECRET` is missing or short, importing `client.ts` throws `SearchConfigurationError` in every process that imports it. That includes the example's administrative commands (`administration.ts`), which import it for `SEARCH_NAMESPACE`. Provide the secret wherever administrative commands, migration tooling, or scripts run, or move shared constants such as the namespace into a module that builds no query handle.
+</Warning>
+
+## Synchronization handle and store identity
+
+`createPostgresSynchronization` creates the handle that records intents inside domain transactions (`searchSynchronization` above). `createSonamuSynchronization` wraps it for Sonamu's transaction context (`chatSearchSync`).
+
+| Option | Meaning |
+| --- | --- |
+| `getPrimaryDatabase` | Returns the primary Knex. Called per operation; the handle never holds on to it. `markChanged` does not use it and only uses the transaction it receives |
+| `namespace` | Separates deployments that share one schema. `^[a-z0-9][a-z0-9-]{0,62}$` |
+| `schema` | Package schema name. `sonamu_search` by default |
+| `expectedStoreId` | The store identity this handle expects. When set, marks are accepted without `initialize()` |
+| `maxIdsPerCall` | Upper bound for document IDs in one `markChanged` call. 10,000 by default |
+| `instanceName` | The name of this environment (production, staging, a developer copy), set from environment configuration. If it differs from the name recorded in the store, the worker and remote administrative operations stop. `markChanged` and `initialize()` ignore it |
+
+In a Sonamu application, pass `resolveSonamuPrimary` as `getPrimaryDatabase`. It returns `DB.getDB("w")` and throws `SearchConfigurationError` if that is a transaction, as it is in Sonamu test mode while a test transaction is open.
+
+### Store identity and initialize()
+
+Installing the schema creates one store identity (`store_id`) in the `store` table. `markChanged` works only after the synchronization handle has pinned that identity. Before that, it throws `SearchConfigurationError` with `details.reason` `store-identity-uninitialized` and `retryable` `true`, and puts the transaction in a failed state, so the domain write does not commit.
+
+The identity is never inferred from the caller's transaction. Pin it in one of two ways:
+
+- `initialize()` reads `store_id` once from the configured primary and pins it. Calling it again is fine, concurrent calls share one read, and after a failure the next call reads again. Aborting the wait with `{ signal }` throws `SearchTimeout`.
+- The `expectedStoreId` option pins it from the start. Its value is the `storeId` that `installSearchSchema` returned. `initialize()` then only checks that the value it reads is the same, and throws `SearchStoreMismatch` if not.
+
+Pin the identity before the server accepts requests. Sonamu calls `server.lifecycle.onStart` **after** the server starts listening, so if you rely on `createSearchLifecycle`'s `onStart` to await `initialize()`, a write that arrives between listen and the end of initialization fails with the error above. Either await `initialize()` in a Fastify `onReady` hook, which finishes before listening starts and keeps the server from starting if it fails, or configure `expectedStoreId` in the deployment. The example's `startup.ts` provides both; use `createPinnedSearchSynchronization` instead of `searchSynchronization`, never both.
+
+```typescript title="search/startup.ts"
+/** Await before the server accepts requests (onReady, not onStart): marking fails until the store identity is fixed. */
+export async function initializeSearchStore(): Promise<void> {
+  await searchSynchronization.initialize();
+}
+
+/** Use this instead of searchSynchronization in client.ts, never both. */
+export function createPinnedSearchSynchronization(
+  expectedStoreId: string,
+): PostgresSynchronization {
+  return createPostgresSynchronization({
+    getPrimaryDatabase: resolveSonamuPrimary,
+    namespace: SEARCH_NAMESPACE,
+    expectedStoreId,
+  });
+}
+```
+
+An API process whose worker runs in another process registers the hook in `plugins.custom`:
+
+```typescript title="sonamu.api-only.config.ts"
+/** Fix the store identity in onReady, after database setup and before listen; the worker runs in standalone-worker.ts. */
+export default defineConfig({
+  api: { dir: "api", route: { prefix: "/api" } },
+  i18n: { defaultLocale: "ko", supportedLocales: ["ko", "en"] },
+  sync: { targets: ["web"] },
+  database: {},
+  server: {
+    apiConfig: {
+      contextProvider: (defaultContext) => defaultContext,
+      guardHandler: () => {},
+    },
+    plugins: {
+      custom: (server) => {
+        server.addHook("onReady", initializeSearchStore);
+      },
+    },
+    lifecycle: {
+      onShutdown: () => searchClient.close(),
+      onError: async (error, request, reply) => {
+        if (!(error instanceof SearchError)) throw error;
+        const response = toSearchErrorResponse(error, request.headers["accept-language"] ?? "en");
+        await reply.status(response.status).send(response.body);
+      },
+    },
+  },
+});
+```
+
+With `createSearchLifecycle`, add the same hook to close the gap right after listen; `initialize()` reads only once however often it is called. A process that only runs the worker never marks, so it needs no identity ([Indexing worker](/en/advanced-features/opensearch/worker)).
+
+Once pinned, the identity is checked on every `markChanged`: the database of the transaction it receives must carry the same identity, and a transaction from another database is refused with `SearchStoreMismatch` (`store-mismatch`). This keeps intents out of a database the worker does not read. When a copy is adopted and its store identity changes, processes that pinned the old identity are refused the same way, so restart them. Marking does not check the origin (copy detection), so marking continues on a copy that has not been adopted.
+
+## Recommended values
+
+Required options have no defaults. Instead, the root entry point exports recommended values as constants. Spread a constant and override only what you need.
+
+| Constant | Value | Used for | Reason |
+| --- | --- | --- | --- |
+| `RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS` | 30 s | `requestTimeoutMs` of `createSearchClient` | Time limit for one OpenSearch request the package sends |
+| `RECOMMENDED_WORKER_LIMITS` | Table below | `limits` of `createIndexer` | Worker limits. Each field's unit and the relationships `createIndexer` checks are under "Limits" in [Indexing worker](/en/advanced-features/opensearch/worker) |
+| `RECOMMENDED_WORKER_POLL_INTERVAL_MS` | 1 s | `pollIntervalMs` of `start()` | Pause before the next drain when there is no work. The lower bound of the delay between marking and indexing |
+| `RECOMMENDED_WORKER_STOP_DEADLINE_MS` | 30 s | `stopDeadlineMs` of the lifecycle | Deadline for stopping the worker on shutdown and hot reload: time for one in-flight bulk to finish. It equals Kubernetes' default termination grace period (30 s), so give the deployment a longer grace period |
+| `RECOMMENDED_READ_LIFETIMES` | Search 30 s, cursor 10 min, PIT 2 min | Part of `RECOMMENDED_ADMIN_LIFETIMES` and `RECOMMENDED_QUERY_LIMITS` | A search is what one user request can wait for, a cursor is how long a person pages through results, and a PIT only needs to live between pages |
+| `RECOMMENDED_RETIREMENT_SAFETY_MARGIN_MS` | 5 min | `retirementSafetyMarginMs` in `RECOMMENDED_ADMIN_LIFETIMES` | Uncertainty in the database clock and processing delays. An old index can be deleted only after cursor lifetime + search lifetime + this margin have passed since confirmed deselection |
+| `RECOMMENDED_ADMIN_LIFETIMES` | Read lifetimes + safety margin | `lifetimes` of the administrative handle | Recorded once in `read_heads` when the first target is created |
+| `RECOMMENDED_ADMIN_TIMEOUTS` | Lock 5 s, statement 30 s, idle in transaction 1 min, admin lease 5 min | `timeouts` of the administrative handle | Domain writes queue behind an administrative operation that waits on a lock, so it fails fast and retries |
+| `RECOMMENDED_CUTOVER` | Backlog 1,000, sample 200 | `cutover` of the administrative handle | Dual writes continue after cutover, so the remaining backlog reaches the new target. The sample compares documents in the new index with projection results |
+| `RECOMMENDED_QUERY_LIMITS` | Page 100, search 10 s + read lifetimes | `limits` of the query handle | A page size whose permission re-check fits into one primary query |
+
+Values of `RECOMMENDED_WORKER_LIMITS` and their reasons:
+
+| Field | Value | Reason |
+| --- | --- | --- |
+| `maxDocumentsPerClaim` | 500 | Documents projected in one snapshot. One source read finishes within the time limit |
+| `maxBulkBytes` | 5 MiB | The low end of the bulk size OpenSearch recommends (5–15 MB) |
+| `maxConcurrentBulkRequests` | 2 | Keeps one worker from monopolizing the cluster's bulk thread pool |
+| `projectionTimeoutMs`, `requestTimeoutMs` | 30 s | Both shorter than the lease, so two workers never handle the same document at once even when heartbeats stop |
+| `leaseDurationMs`, `heartbeatIntervalMs` | 2 min, 20 s | A few missed heartbeats leave the lease intact, and a dead worker's lease is reclaimed after 2 minutes |
+| `maxRetryAttempts`, `maxRetryAgeMs` | 10, 1 h | Document failures counted against one revision up to this point lead to quarantine |
+| `maxIsolationCallsPerBatch` | 32 | More than the 19 calls needed to find one bad document in a claim of 500 |
+| `retryBaseDelayMs`, `retryMaxDelayMs` | 1 s, 5 min | The exponential backoff range for document retries and cooldowns |
+| `maxInFlightBytes` | 16 MiB | Serialized document bytes the worker holds at once. At least (2 concurrent bulks + 1) × 5 MiB = 15 MiB, so the next request can be packed while two bulks are in flight |
+| `statementTimeoutMs` | 5 s | Upper bound for one worker SQL statement. Normally a few milliseconds; when blocked by a table lock it is cancelled after this time and treated as an infrastructure failure |
+| `fenceRenewIntervalMs` | 30 s | Renewal interval of the target fences. Each active target costs one small remote write and two statements per interval across all workers; with 100 targets, about 3.3 per second. Shorter narrows the equal-epoch twin window and raises the write rate. At least 1,000 and at least `requestTimeoutMs` |
+
+An application that writes out its own complete limits object must include `maxInFlightBytes`, `statementTimeoutMs`, and `fenceRenewIntervalMs`; all three are required.
+
+The values interlock. The relationships `createIndexer` checks are in the limits table of [Indexing worker](/en/advanced-features/opensearch/worker); the ones you must keep yourself when you change a value (`workerBounds`, read lifetimes, the admin lease, the stop deadline) are under "Relationships between values" in [Operations](/en/advanced-features/opensearch/operations).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Search definitions" icon="code" href="/en/advanced-features/opensearch/definitions">
+    Projections, mappings, fingerprints
+  </Card>
+  <Card title="Transactional indexing" icon="database" href="/en/advanced-features/opensearch/transactional-indexing">
+    Marking changes together with domain writes
+  </Card>
+</CardGroup>

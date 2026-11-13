@@ -1,0 +1,316 @@
+---
+title: "Transactional Indexing"
+description: "Marking changes with markChanged inside domain transactions, and handling failures, ordering, and deletes"
+---
+
+Every write path that changes indexed data calls `markChanged` in the same transaction as the write. The mark is recorded in PostgreSQL only, as part of that transaction: if it cannot be recorded, the write does not commit either. The worker later projects the marked documents again and indexes them. A mark records which document changed, not what changed, so however often a document is marked, the worker indexes its state at the time it projects.
+
+## Calling markChanged
+
+### From a Sonamu model
+
+The handle created by `createSonamuSynchronization` has two methods:
+
+- `markChangedIn(trx, logicalKey, ids)` takes the `PuriTransactionWrapper` that a `transaction()` callback receives.
+- `markChanged(logicalKey, ids)` uses the Sonamu `"w"` transaction that is currently open (inside an `@transactional` method or `puri.transaction()`). It never opens a transaction; without an open one it throws `SearchInvalidTransaction`.
+
+```typescript title="application/chat-message.model.ts"
+/** Mark in the same transaction as the domain write; on 40001 or 40P01 retry the whole transaction. */
+class ChatMessageModelClass extends BaseModelClass {
+  modelName = "ChatMessage";
+
+  async send(roomId: string, authorId: string, body: string): Promise<string> {
+    return this.getPuri("w").transaction(async (trx) => {
+      const [row] = await trx
+        .trx("messages")
+        .insert({ room_id: roomId, author_id: authorId, body })
+        .returning<{ id: string }[]>("id");
+      await chatSearchSync.markChangedIn(trx, CHAT_MESSAGES_KEY, [String(row.id)]);
+      return String(row.id);
+    });
+  }
+
+  async edit(messageId: string, body: string): Promise<void> {
+    await this.getPuri("w").transaction(async (trx) => {
+      await trx
+        .trx("messages")
+        .where({ id: messageId })
+        .update({ body, updated_at: trx.trx.raw("clock_timestamp()") });
+      await chatSearchSync.markChangedIn(trx, CHAT_MESSAGES_KEY, [messageId]);
+    });
+  }
+```
+
+Inside an `@transactional` method, or a method it calls, use `markChanged` without a transaction argument; if an outer `@transactional` is open, its transaction is used. The example below moves messages to another room, which changes their `room_id`, and marks the moved messages once, sorted.
+
+```typescript title="application/chat-room.model.ts"
+import { BaseModelClass, transactional } from "sonamu";
+import { z } from "zod";
+
+import { CHAT_MESSAGES_KEY } from "../search/chat-messages.definition";
+import { chatSearchSync } from "../search/client";
+
+const idRowSchema = z.object({ id: z.union([z.string(), z.number()]).transform(String) });
+
+/** markChanged needs an open @transactional transaction and refuses with SearchInvalidTransaction without one. */
+class ChatRoomModelClass extends BaseModelClass {
+  modelName = "ChatRoom";
+
+  /** Moving messages changes their room_id, so they must be marked. */
+  @transactional()
+  async moveMessages(fromRoomId: string, toRoomId: string): Promise<number> {
+    const db = this.getPuri("w").knex;
+    const rows = z
+      .array(idRowSchema)
+      .parse(
+        await db("messages").where({ room_id: fromRoomId }).update({ room_id: toRoomId }, ["id"]),
+      );
+    const ids = rows.map((row) => row.id).toSorted();
+    if (ids.length > 0) await chatSearchSync.markChanged(CHAT_MESSAGES_KEY, ids);
+    return ids.length;
+  }
+}
+
+export const ChatRoomModel = new ChatRoomModelClass();
+```
+
+Code that does not use Sonamu passes a Knex transaction to `markChanged(trx, logicalKey, ids)` on the handle from `createPostgresSynchronization`. Either way, statements run only in the transaction passed in; no other connection is used and no transaction is opened.
+
+One call does the following:
+
+1. It checks that the handle is a live transaction. If not, it throws `SearchInvalidTransaction` without sending any statement.
+2. It checks that the store identity is set, then checks the logical key and the document IDs. A document ID must be a non-empty string with no NUL and no unpaired surrogate, at most 512 UTF-8 bytes, and not the reserved fence document ID `__sonamu_fence__`. One call takes at most 10,000 IDs by default.
+3. It takes a shared lock on the barrier row of that logical key and checks that the row carries the pinned store identity. Administrative operations such as target registration order themselves against this lock.
+4. It reads the capture mode and the registered write targets. If capture is suspended, it writes nothing and returns `"suspended"`.
+5. It raises each document's ledger revision by one, records an intent for every registered write target, and returns `"recorded"`.
+
+IDs are deduplicated and processed in UTF-8 byte order. Marking the same document in several calls within one transaction raises its revision once per call, and its intents merge into one.
+
+<Warning>
+A logical key enters the catalog when an administrative command records its first target. Before that, `markChanged` throws `SearchNotConfigured`; once the target is recorded but not yet registered, it throws `SearchNoWriteTarget`. Either way the domain transaction does not commit. Deploy code that marks a key only after its first target is registered ([Index administration](/en/advanced-features/opensearch/index-administration)).
+</Warning>
+
+### Nested transactions and savepoints
+
+- A nested `@transactional` method reuses the outer transaction. It is not a separate rollback boundary, so marks made inside commit or roll back with the outer transaction.
+- A manually nested `transaction()` opens a savepoint. If the savepoint rolls back, the marks made inside it go with it.
+- If the root transaction rolls back, nothing remains in the ledger or in the intents.
+
+## Fail-closed behavior
+
+`markChanged` never lets a domain change commit without its intent. When a package precondition fails, it puts the transaction it received (or the savepoint) into a failed state and then throws a typed error. It does this by running a division by zero, which makes PostgreSQL abort the transaction.
+
+Precondition failures:
+
+| Error class | `details.reason` | Cause | `retryable` |
+| --- | --- | --- | --- |
+| `SearchConfigurationError` | `store-identity-uninitialized` | Store identity not set yet | true |
+| `SearchNotConfigured` | `logical-key-not-registered` | No target was ever created for the logical key | false |
+| `SearchNoWriteTarget` | `no-write-target` | Capture is active but there is no write target | false |
+| `SearchStoreMismatch` | `store-mismatch` | The transaction belongs to the database of another store. This is also the error after the database was adopted with `adoptCopiedStore` once this process had pinned its identity; every call is refused until the process restarts | false |
+| `SearchInvalidDocumentId` | `reserved-document-id` for the fence document ID, `invalid-mark-input` for a non-string ID, none otherwise | An ID that is empty, contains NUL or an unpaired surrogate, exceeds 512 bytes, is not a string, or is `__sonamu_fence__` | false |
+| `SearchConfigurationError` | `invalid-logical-key`, `invalid-mark-input`, `too-many-ids` | A malformed logical key, a logical key that is not a string, more IDs than allowed per call | false |
+| `SearchRevisionOverflow` | `revision-overflow` | A revision would exceed `Number.MAX_SAFE_INTEGER` | false |
+
+A failed SQL statement has already aborted the transaction, so `markChanged` translates the error and throws it:
+
+| SQLSTATE | Error class | `details.reason` | `retryable` |
+| --- | --- | --- | --- |
+| 40001, 40P01 | `SearchUnavailable` | `serialization-failure`, `deadlock` | true |
+| 55P03, 57014 | `SearchTimeout` | `lock-timeout`, `statement-canceled` | true |
+| 08xxx, 53xxx, 58xxx, 57P01–57P05, dropped connection | `SearchUnavailable` | `connection` | true |
+| 42P01, 3F000 | `SearchSchemaMissing` | `undefined-table`, `undefined-schema` | false |
+| 42501 | `SearchConfigurationError` | `insufficient-privilege` | false |
+| 25006, 25P02 | `SearchInvalidTransaction` | `read-only-transaction`, `failed-transaction` | false |
+| 23514 (revision constraint) | `SearchRevisionOverflow` | `check-violation` | false |
+
+When there is no live transaction to fail, the call throws `SearchInvalidTransaction` without sending any statement: `not-a-transaction` and `completed-transaction` from the PostgreSQL handle, and `no-active-transaction` and `not-a-transaction-wrapper` from the Sonamu handle.
+
+### When the error is swallowed
+
+Do not swallow exceptions from `markChanged`; let them propagate out of the transaction. If you catch the exception, ignore it, and let the callback return normally, Knex sends `COMMIT` and finishes without an error, but PostgreSQL rolls back the aborted transaction. The caller believes the write succeeded while nothing was stored.
+
+When the call happens inside a savepoint:
+
+- If the exception propagates out of the savepoint callback, only that savepoint rolls back and the outer transaction stays usable.
+- If the exception is swallowed inside the savepoint, releasing the savepoint fails (SQLSTATE 25P02), and the outer transaction keeps no domain change either.
+
+## Ordering across several calls
+
+One call sorts and locks its own IDs, but the order of several calls within one transaction is up to the caller, and two transactions that mark the same documents in different orders can deadlock. To avoid that:
+
+- Collect the documents a transaction changes and call **once** per logical key.
+- When marking several logical keys, call them in ascending byte order of the key.
+
+With these rules, overlapping transactions wait for each other and do not deadlock. If they are broken, PostgreSQL ends one side with SQLSTATE 40P01, and the package throws `SearchUnavailable` with `retryable` `true` and `details.reason` `deadlock`. Rerun that entire transaction from the start; resending the same statement does not work, because the transaction is already aborted.
+
+The helper below reruns a transaction on a serialization failure or a deadlock, after a short random wait so the two sides do not collide again. It decides by structure, never by message: an error the package translated has the code `SEARCH_UNAVAILABLE`, is `retryable`, and has `details.reason` `serialization-failure` or `deadlock`; a driver error thrown by an application statement in the same transaction has the SQLSTATE `40001` or `40P01` as its `code`. Anything else is rethrown. A dropped connection carries the same `SEARCH_UNAVAILABLE` code (`details.reason` `connection`), but whether it committed is unknown, so it is not rerun. `run` must open the transaction itself: called inside a transaction that is already open, the outer transaction has already failed.
+
+```typescript title="application/transaction-retry.ts"
+import { setTimeout as sleep } from "node:timers/promises";
+
+import { SearchError } from "@sonamu-kit/opensearch";
+import { z } from "zod";
+
+/** run must open the transaction itself; a dropped connection is never retried because its commit is unknown. */
+export const MAX_TRANSACTION_ATTEMPTS = 3;
+
+const CONFLICT_REASONS = new Set(["serialization-failure", "deadlock"]);
+const driverConflictSchema = z.looseObject({ code: z.enum(["40001", "40P01"]) });
+
+export function isTransactionConflict<Thrown>(error: Thrown): boolean {
+  if (error instanceof SearchError) {
+    return (
+      error.code === "SEARCH_UNAVAILABLE" &&
+      error.retryable &&
+      CONFLICT_REASONS.has(String(error.details?.reason))
+    );
+  }
+  return driverConflictSchema.safeParse(error).success;
+}
+
+export async function withTransactionRetry<T>(
+  run: () => Promise<T>,
+  maxAttempts: number = MAX_TRANSACTION_ATTEMPTS,
+): Promise<T> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await run();
+    } catch (error) {
+      if (attempt >= maxAttempts || !isTransactionConflict(error)) throw error;
+      await sleep(Math.random() * 50 * attempt);
+    }
+  }
+}
+```
+
+```typescript title="application/chat-message.model.ts"
+  async editWithRetry(messageId: string, body: string): Promise<void> {
+    await withTransactionRetry(() => this.edit(messageId, body));
+  }
+```
+
+### REPEATABLE READ and SERIALIZABLE
+
+A domain write that overlaps an administrator registering a new target ends one of two ways. A READ COMMITTED transaction makes the registration wait if it locked first, and records intents for the new target too if it locked later. A REPEATABLE READ or SERIALIZABLE transaction cannot commit with a snapshot taken before the registration, so it fails with SQLSTATE 40001: a retryable `SearchUnavailable` with `details.reason` `serialization-failure`. Rerunning the whole transaction records intents for both targets.
+
+The worker's housekeeping (leases, acknowledgements, releases) never updates intent rows, so it does not fail REPEATABLE READ domain transactions with 40001.
+
+## Deletes and tombstones
+
+Mark deletes too. When the worker runs the projection, the row is gone from the source, so `deleted` comes back, and the worker indexes a tombstone with a higher revision that carries only `sonamu_meta` and no body.
+
+```typescript title="application/chat-message.model.ts"
+  /** Deletes must be marked too; the worker indexes a tombstone for a missing row. */
+  async remove(messageId: string): Promise<void> {
+    await this.getPuri("w").transaction(async (trx) => {
+      await trx.trx("messages").where({ id: messageId }).delete();
+      await chatSearchSync.markChangedIn(trx, CHAT_MESSAGES_KEY, [messageId]);
+    });
+  }
+```
+
+The worker never sends a delete request to OpenSearch. The tombstone keeps holding the external version, so an old request sent before the delete and arriving late is rejected by the engine and cannot bring the content back. The ledger row stays too; if a record is created again with the same ID, it is indexed again with a higher revision. Searches exclude tombstones automatically.
+
+## Changes the database makes itself
+
+Rows changed by foreign-key `ON DELETE CASCADE`, `SET NULL`, `SET DEFAULT`, `ON UPDATE CASCADE`, or by triggers are seen by no model method, so nobody marks them. When such a change affects indexed documents, read the affected IDs in the same transaction **before** changing the parent, then mark them. In the example, deleting a room deletes its messages by CASCADE:
+
+```typescript title="application/chat-message.model.ts"
+  /** CASCADE deletes are not marked for you: collect the ids first and mark them sorted in one call to avoid deadlocks. */
+  async removeRoom(roomId: string): Promise<void> {
+    await this.getPuri("w").transaction(async (trx) => {
+      const rows = await trx
+        .trx("messages")
+        .where({ room_id: roomId })
+        .select<{ id: string }[]>("id");
+      await trx.trx("rooms").where({ id: roomId }).delete();
+      const ids = rows.map((row) => String(row.id)).toSorted();
+      if (ids.length > 0) await chatSearchSync.markChangedIn(trx, CHAT_MESSAGES_KEY, ids);
+    });
+  }
+```
+
+- `SET NULL` works the same way. If the projection puts the referencing column into the document, collect the IDs of the referencing rows before deleting the parent and mark them.
+- If the projection reads other tables (for example a room name inside a message document), changes to those tables must also mark every affected document.
+- The foreign-key actions on tables that reference indexed tables, or on tables a projection reads, are listed in `pg_constraint` under `confdeltype` and `confupdtype`. For every action other than `NO ACTION` or `RESTRICT`, check that it is covered as above.
+
+Changes made outside the application (SQL run by hand, a restored backup) are not marked. Use the administrative handle to mark the documents again or rebuild the target ([Index administration](/en/advanced-features/opensearch/index-administration)).
+
+## When capture is suspended
+
+When an administrator suspends capture, `markChanged` writes neither ledger rows nor intents and returns `"suspended"`. This result is not an error and does not fail the transaction, so domain writes commit as usual and write paths need no special handling.
+
+Changes made during suspension never reach the index, so query handles reject searches with `SearchRebuildRequired` until a new target is built and cut over. The package never suspends capture on its own because of an error; only an administrative command suspends it.
+
+## Error handling
+
+Branch on the error class, `code`, `retryable`, and `details.reason`, never on the message text, which changes with the locale. `retryable` `true` means the same call can succeed later without changing code or configuration; on a write path, the same call means rerunning the whole transaction. The errors `markChanged` throws are listed under Fail-closed behavior above.
+
+`details` holds only stable codes such as `sqlstate` and `reason`. Messages and `details` never contain document bodies, search bodies, or credentials, and messages from the driver or OpenSearch are never passed through.
+
+The example below turns search errors into HTTP responses; which status each error class gets is explained in [Searching](/en/advanced-features/opensearch/searching).
+
+```typescript title="search/errors.ts"
+// Branch on the error class, code, retryable and details.reason, never on the message.
+export interface SearchErrorResponse {
+  status: number;
+  body: { code: string; message: string; retryable: boolean };
+}
+
+export function toSearchErrorResponse(error: SearchError, locale: string): SearchErrorResponse {
+  const body = { code: error.code, message: error.localize(locale), retryable: error.retryable };
+  if (error instanceof SearchQueryInvalid || error instanceof SearchCursorExpired) {
+    return { status: 400, body };
+  }
+  // Searching inside a transaction is a server bug.
+  if (error instanceof SearchInTransactionError) return { status: 500, body };
+  return { status: error.retryable ? 503 : 500, body };
+}
+```
+
+## Localizing messages
+
+An error's `message` is rendered in the package locale at the time the error is created. The default is English (`en`); English and Korean catalogs are built in.
+
+- `setSearchLocale(locale)` sets the locale for the whole process. An explicit value always wins. A malformed locale throws `SearchConfigurationError`.
+- In a Sonamu project, the first operation of a `/sonamu` handle (`markChanged`, `markChangedIn`, a search, the lifecycle's `onStart`, a `defineSonamuSearch` projection) applies Sonamu's `i18n.defaultLocale` once. It switches only if a catalog exists for that tag or its base language; otherwise it stays on English and raises no error. If `setSearchLocale` was already called, nothing changes.
+- `registerSearchMessages(locale, messages)` registers messages for another language. Registering only some keys is fine; missing keys fall back to the built-in catalog of the same language, then to English. The default locale is applied once per process, so to make that language the default, register it before the first operation.
+- `error.localize(locale)` renders the message again when the language differs per request. Lookup goes exact tag, then base language, then English; at each step a registered catalog wins over a built-in one.
+
+The example registers Japanese messages once at startup. With Sonamu's `i18n.defaultLocale` set to `ja`, Japanese becomes the default.
+
+```typescript title="search/errors.ts"
+/** Call once at startup; missing keys fall back to English. */
+export function registerJapaneseSearchMessages(): void {
+  registerSearchMessages("ja", {
+    "error.notReady": "検索インデックスはまだ準備できていません。",
+    "error.rebuildRequired": "検索インデックスの再構築が必要です。",
+    "error.cursorExpired": "検索カーソルの有効期限が切れました。もう一度検索してください。",
+  });
+}
+```
+
+```typescript title="sonamu.config.ts"
+import { SearchError, setSearchLocale } from "@sonamu-kit/opensearch";
+import { createSearchCliPlugin } from "@sonamu-kit/opensearch/sonamu";
+import { defineConfig } from "sonamu";
+
+import { registerJapaneseSearchMessages, toSearchErrorResponse } from "./search/errors";
+import { searchLifecycle } from "./search/worker";
+
+registerJapaneseSearchMessages();
+// An explicit setSearchLocale overrides Sonamu's i18n.defaultLocale.
+if (process.env.SEARCH_LOCALE !== undefined) setSearchLocale(process.env.SEARCH_LOCALE);
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Indexing worker" icon="gears" href="/en/advanced-features/opensearch/worker">
+    How marked documents get indexed
+  </Card>
+  <Card title="Search definitions" icon="code" href="/en/advanced-features/opensearch/definitions">
+    The projection contract and document validation
+  </Card>
+</CardGroup>

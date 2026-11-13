@@ -1,0 +1,174 @@
+---
+title: "운영"
+description: "감시와 경보, 권장 설정값과 관계 규칙, OpenSearch와 PostgreSQL 권한, 지원 버전, 메시지 언어, 알려진 한계"
+---
+
+이 페이지는 운영 환경에서 무엇을 지켜보고, 어떤 값을 쓰고, 어떤 권한을 주고, 패키지가 무엇을 보장하지 않는지 다룹니다. 경보와 분기에는 안정된 필드만 쓰세요. 오류의 클래스, `code`, `details.reason`, 이벤트의 `type`과 `outcome`, 상태 값, 보고서의 수가 그렇습니다. 메시지 문장은 바뀔 수 있고 locale에 따라 다릅니다.
+
+## 감시와 경보
+
+| 신호 | 어디서 | 경보 기준과 대응 |
+| --- | --- | --- |
+| 워커 상태 | `state` 이벤트, `status().state` | `degraded`가 몇 분 넘게 이어지면 경보. 원인은 `state` 이벤트의 `reason`과 `status().lastError.code`로 봅니다 |
+| drain 결과 | `drain` 이벤트의 `outcome` | `cooldown`이 이어지면 인프라 장애. `busy`는 오류가 아닙니다 |
+| 거부된 drain | `error` 이벤트의 `code`, `reason` | `SEARCH_STORE_MISMATCH`면 바로 경보하고 [복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)의 복사본 절차를 따릅니다 |
+| 저장소 결속 | `inspect().binding` | 세 값 중 하나라도 `false`면 경보. 워커와 원격 관리 작업이 멈춰 있습니다 |
+| 대상 fence | `target-fence-lost` 이벤트, `status().fenceLostTargets`, `inspect`의 대상 `fence` | 상실이 하나라도 있으면 바로 경보하고 [복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)의 fence 절차를 따릅니다. 활성 대상의 `fence.renewedAgeMs`가 갱신 간격의 몇 배로 커지면 워커가 돌지 않거나 갱신이 실패하고 있습니다 |
+| 대상별 대기 | `inspect()`의 대상 `backlog`(`pending`, `leased`, `delayed`, `quarantined`, `oldestPendingAgeMs`) | `oldestPendingAgeMs`가 평소보다 크거나 `quarantined`가 늘면 경보. 기본 bounded 모드는 자주 읽어도 됩니다 |
+| 일시 정지된 대상 | `target-paused` 이벤트, `status().pausedTargets`, `inspect`의 `pauseReason` | 하나라도 있으면 경보 |
+| 처리하지 못하는 대상 | `status().unsupportedTargets`, 보고서의 `unsupportedTargets` | 배포 중이 아닌데 비어 있지 않으면 경보. 워커의 정의나 패키지 버전이 대상과 맞지 않습니다 |
+| 격리 | `quarantined` 이벤트, 보고서의 `quarantined` | 늘어나면 경보하고 [복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)의 격리 절차를 따릅니다. 격리된 의도는 모든 claim을 느리게 합니다 |
+| 해시 버전 불일치 | `hash-version-mismatch` 이벤트 | 업그레이드 중이 아니면 경보. 그 문서는 다시 표시하거나 대상을 재구축할 때까지 대기로 남습니다 |
+| 회수된 임대 | `lease-reclaimed` 이벤트의 `count` | 자주 생기면 워커가 죽거나 임대보다 오래 멈춥니다 |
+| 워커 heartbeat | `inspect`의 `workers[].heartbeatAgeMs` | heartbeat 간격보다 한참 오래된 행. 24시간 넘게 갱신되지 않은 행은 목록에서 빠집니다 |
+| 결과를 모르는 생성 | `inspect`의 `remoteCreateState`가 `ambiguous`나 `in_flight` | 관리 작업이 끝났는데 남아 있으면 경보 |
+| 정지 보고 | `stop()` 결과의 `abandonedDrains` | 0이 아니면 기한 안에 끝나지 않은 drain을 두고 떠났다는 뜻입니다 |
+| 검색 오류 | 검색 API의 오류 클래스와 `details.reason` | `SearchRebuildRequired`, `SearchDefinitionMismatch`, `SearchCatalogUnavailable`의 비율 |
+
+drain 보고서의 필드, 모든 이벤트, 상태 게이지를 갱신하는 이벤트 리스너 예제는 [색인 워커](/ko/advanced-features/opensearch/worker)에 있습니다. 대기 수치는 OpenSearch 클라이언트 없이 만든 관리 핸들로도 읽을 수 있으므로, 모니터링에 관리자 OpenSearch 자격 증명을 주지 않아도 됩니다.
+
+## 권장 설정값
+
+권장 상수와 그 값, 쓰는 곳, 값을 고른 근거는 [설치와 설정](/ko/advanced-features/opensearch/setup)의 "권장 설정값"에 있습니다. 필수 옵션을 선택 사항으로 바꾸지는 않으므로, 펼쳐 쓰고 필요한 값만 덮어씁니다.
+
+### 값 사이의 관계
+
+워커 한도 사이의 관계는 `createIndexer`가 검사하고, 어기면 `SearchConfigurationError`로 거부합니다. 규칙과 `details.reason` 값은 [색인 워커](/ko/advanced-features/opensearch/worker)의 한도 표에 있고, 힙 증가 상한(권장값으로 약 65 MiB)과 drain 시간 상한(권장값으로 245초)도 그곳에 있습니다.
+
+다음 관계는 검사하지 않지만 지켜야 합니다.
+
+- 관리 핸들의 `workerBounds`는 실제 워커 한도와 같아야 합니다. 은퇴가 alias를 뗀 뒤 기다리는 시간이 이 값으로 정해지므로, 워커가 더 긴 임대나 요청 제한 시간을 쓰면 늦은 bulk가 기다림이 끝난 뒤에 도착할 수 있습니다. 워커 한도를 덮어쓰면 `workerBoundsFrom(덮어쓴 한도)`로 다시 만드세요.
+- 검색 핸들의 수명은 `read_heads`에 기록된 최대치보다 길 수 없으므로(검색할 때 `lifetime-exceeds-catalog`) 양쪽에 같은 `RECOMMENDED_READ_LIFETIMES`를 쓰세요. 기록된 값은 `changeReadLifetimes`로 올릴 수 있지만, 은퇴 유예를 줄이는 쪽으로는 낮출 수 없습니다.
+- 클라이언트의 `requestTimeoutMs`를 늘리면 `adminLeaseMs`도 늘려야 합니다. 원격 요청 하나는 `(adminLeaseMs − 4 × statementTimeoutMs) / 3`을 넘을 수 없습니다.
+- 워커 정지 기한은 오케스트레이터의 종료 유예보다 짧아야 하고, `stop()`은 기한보다 `3 × statementTimeoutMs`까지 더 걸릴 수 있습니다.
+
+### 무엇을 조정하나
+
+| 증상 | 조정 |
+| --- | --- |
+| 원본 읽기가 projection 제한 시간에 걸림 | `maxDocumentsPerClaim`을 줄이고 격리 호출 수 규칙을 다시 확인합니다 |
+| 워커 문장이 `SearchTimeout`으로 끝남 | 마이그레이션 같은 테이블 잠금이 원인인지 봅니다. 평소 문장은 수 밀리초입니다 |
+| bulk가 크기 때문에 거부됨 | `maxBulkBytes`를 줄입니다. 엔진의 `http.max_content_length`보다 한참 작게 둡니다 |
+| 워커 프로세스의 메모리가 큼 | `maxInFlightBytes`와 `maxBulkBytes`를 줄입니다. `maxInFlightBytes`는 `maxBulkBytes` 이상이어야 합니다 |
+| 클러스터의 bulk 스레드 풀이 붐빔 | `maxConcurrentBulkRequests`나 워커 수를 줄입니다 |
+| 표시에서 색인까지가 느림 | `pollIntervalMs`를 줄이거나 워커를 늘립니다. 여러 워커는 임대로 일을 나눠 가집니다 |
+| 죽은 워커의 문서가 늦게 회수됨 | `leaseDurationMs`를 줄이되 heartbeat와 제한 시간 규칙을 맞추고, `workerBounds`를 다시 만듭니다 |
+| cutover가 대기 때문에 막힘 | 워커가 따라잡을 때까지 기다리거나 `maxPendingDocuments`를 늘립니다. 남은 대기는 이중 쓰기로 새 대상에 도착합니다 |
+
+## OpenSearch 권한
+
+아래는 보안 플러그인을 켠 엔진에서 패키지의 세 핸들에 주는 최소 권한 역할입니다. 인덱스와 alias 이름은 모두 `snm-`으로 시작합니다. 통합 테스트는 각 핸들의 실제 작업 전부를 이 역할로 실행하고, 권한을 하나씩 빼서 그 권한이 필요한 패키지 요청이 403이 되는지 확인합니다. OpenSearch 3.5.0과 3.9.0에서 확인했습니다.
+
+```json
+PUT _plugins/_security/api/roles/sonamu_admin
+{
+  "cluster_permissions": [
+    "cluster:monitor/nodes/info",
+    "cluster:monitor/nodes/stats",
+    "cluster:monitor/state",
+    "indices:data/read/mget",
+    "indices:data/write/bulk"
+  ],
+  "index_permissions": [
+    {
+      "index_patterns": ["snm-*"],
+      "allowed_actions": [
+        "indices:admin/create",
+        "indices:admin/delete",
+        "indices:admin/aliases",
+        "indices:admin/aliases/get",
+        "indices:admin/mappings/get",
+        "indices:admin/refresh*",
+        "indices:monitor/stats",
+        "indices:data/read/mget*",
+        "indices:data/write/bulk*",
+        "indices:data/write/index",
+        "indices:data/read/search*",
+        "indices:data/read/point_in_time/create",
+        "indices:data/read/point_in_time/delete"
+      ]
+    }
+  ]
+}
+
+PUT _plugins/_security/api/roles/sonamu_worker
+{
+  "cluster_permissions": ["indices:data/write/bulk", "indices:data/read/mget"],
+  "index_permissions": [
+    {
+      "index_patterns": ["snm-*"],
+      "allowed_actions": [
+        "indices:data/write/bulk*",
+        "indices:data/write/index",
+        "indices:data/read/mget*"
+      ]
+    }
+  ]
+}
+
+PUT _plugins/_security/api/roles/sonamu_query
+{
+  "cluster_permissions": [],
+  "index_permissions": [
+    {
+      "index_patterns": ["snm-*"],
+      "allowed_actions": [
+        "indices:data/read/search*",
+        "indices:data/read/point_in_time/create",
+        "indices:data/read/point_in_time/delete"
+      ]
+    }
+  ]
+}
+```
+
+| 역할 | 쓰는 핸들 | 하는 일 |
+| --- | --- | --- |
+| `sonamu_admin` | 관리 핸들 | 대상 생성(인덱스와 쓰기 alias), 원격 식별 확인(`_mapping`, `_alias`), 플러그인 확인(`_cat/nodes`, `_cat/plugins`), cutover 표본 검증(`_refresh`, `_mget`), 일시 정지된 대상의 검증 스캔(`_stats`, `_refresh`, PIT 생성과 검색과 삭제), 은퇴(alias 제거, 인덱스 삭제), `confirmStoreOwnership`의 fence 인수(`/_mget`, 쓰기 alias로의 bulk). 쓰는 문서는 fence 문서 하나뿐입니다 |
+| `sonamu_worker` | 워커 | 쓰기 alias로의 bulk(fence 항목과 갱신 포함)와, 충돌 확인과 fence 확인의 `_mget`. 인덱스를 만들거나 검색하지 않습니다. fence에는 이 밖의 권한이 필요 없습니다 |
+| `sonamu_query` | 검색 핸들 | 검색과 커서의 PIT 생성과 삭제. 쓰지 않습니다 |
+
+관리 역할의 bulk와 문서 쓰기 권한은 `confirmStoreOwnership`이 fence를 되찾는 데만 쓰이고, 이 권한이 없으면 fence를 되찾을 수 없습니다. 클러스터 수준의 `indices:data/read/mget`과 `indices:data/write/bulk`(관리, 워커)는 3.9.0부터 필요합니다. 3.9.0에서는 빼면 403이고, 3.5.0에서는 빼도 허용됩니다. 지원 범위 전체에서 쓸 수 있도록 역할에 넣어 두세요. 워커 역할에는 인덱스 생성 권한이 없으므로, 은퇴로 alias가 사라진 뒤 늦게 도착한 bulk는 `require_alias`가 없어도 인덱스를 만들지 못합니다.
+
+AWS OpenSearch Service 같은 관리형 서비스의 권한 모델과 IAM 정책은 테스트하지 않았습니다.
+
+## PostgreSQL 역할과 지원 버전
+
+PostgreSQL 쪽 권한은 네 묶음(표시, 워커, 검색, 관리)이고 `applySearchGrants`가 부여합니다. 묶음과 멤버십 예제는 [설치와 설정](/ko/advanced-features/opensearch/setup)에 있습니다. 관리 역할은 마이그레이션과 관리 명령에만 쓰고 런타임 프로세스에는 주지 마세요. 역할이 `pg_control_system()`을 부를 수 없어도 동작하지만, 그때 저장소 결속 확인은 시스템 식별자 없이 데이터베이스 OID와 이름만 비교합니다.
+
+| 구성 요소 | 지원 범위 | 테스트 |
+| --- | --- | --- |
+| PostgreSQL | 18 | 통합 테스트가 서버의 메이저 버전이 18인지 확인합니다. 다른 버전은 검증하지 않습니다 |
+| OpenSearch | 3.5.0 이상 4.0.0 미만 | 기본 이미지는 `opensearchproject/opensearch:3.5.0`이고, `SONAMU_OPENSEARCH_TEST_IMAGE`로 다른 이미지(예: 3.9.0)를 지정해 같은 테스트를 돌릴 수 있습니다. 실행 중인 엔진이 범위 안인지 테스트가 확인합니다 |
+| `@opensearch-project/opensearch` | 3.9.0 이상 4.0.0 미만 | 통합 테스트가 설치된 SDK가 범위 안인지 확인하고, 타입 테스트가 하한 버전(3.9.0)의 타입으로 따로 컴파일합니다 |
+
+## 메시지 언어
+
+메시지 언어를 정하는 방법(`setSearchLocale`, `registerSearchMessages`, `error.localize`)과 대체 순서는 [트랜잭션 색인](/ko/advanced-features/opensearch/transactional-indexing)의 "메시지 지역화"에 있습니다.
+
+## 알려진 한계
+
+| 한계 | 내용 |
+| --- | --- |
+| 적어도 한 번 전달 | 같은 리비전이 두 번 보내질 수 있습니다. 외부 버전과 충돌 검증이 결과를 맞추지만, 엔진에는 같은 문서가 두 번 도착합니다 |
+| 중단된 drain의 재전송 | 정지 기한이 지나 bulk를 보낸 뒤 중단된 drain의 문서는 결과를 모르는 채 남고(`abandoned`), 임대가 끝난 뒤 다시 보내집니다. 두 번째 전송은 409를 받고, 충돌 검증이 같은 리비전과 해시를 확인해 중복(`superseded`)으로 셉니다 |
+| 원장과 tombstone 정리 없음 | 패키지는 원장 행을 지우지 않고, 삭제된 문서의 tombstone도 인덱스에서 지우지 않습니다. 둘 다 계속 늘어납니다 |
+| claim 비용 | 한 머신의 Docker에서 잰 값입니다. 500건 claim 하나가 대기 20만 건과 100만 건에서 모두 약 25 ms였습니다. 첫 claim 가능한 의도 앞에 런타임 상태(격리, 임대 중, 지연)를 가진 의도가 1,000건 있을 때마다 약 1.5 ms가 더해졌으므로, 쌓인 격리는 모든 claim을 느리게 합니다. 대량 적재 직후 첫 `ANALYZE` 전에는 플래너가 행 수를 몰라 실행 계획이 대기 크기에 비례할 수 있습니다. 이때도 순차 스캔과 디스크 정렬은 없습니다 |
+| 혼자 남은 느린 문서 | projection 시간 초과는 같은 호출의 다른 문서가 끝난 것처럼 데이터베이스가 응답한다는 증거가 있을 때만 문서 탓으로 셉니다. 대기에 느린 문서 하나만 남으면 그 증거가 없어, 예산을 쓰지 않고 반납되며 데이터베이스 cooldown을 일으킵니다. 워커마다 cooldown 한 번에 한 번씩 그 문서를 시도하고, 그 문서는 격리되지 않으며, 워커는 `degraded`를 오갑니다. 다른 문서가 함께 claim되면 문서 탓으로 세어 결국 격리됩니다 |
+| 큰 문서의 drain 시간 | 문서 하나가 아주 크면 drain 시간 상한(권장값으로 245초)을 그 문서의 처리 시간만큼 넘을 수 있습니다 |
+| 물리 복사본 | base backup, 스냅샷 복원, 시점 복구, replica 승격으로 만든 데이터베이스는 원점 확인을 통과합니다. 대상 fence는 두 쪽이 같은 인덱스에 보낼 때만 감지하고 막지는 않습니다. fence가 놓치는 경우는 [복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)의 "감지하지 못하는 것"에 있습니다 |
+| fence의 거짓 상실 | 비동기 replica로 장애 조치하면서 마지막 갱신 커밋을 잃으면 fence를 `behind`로 잃고 `confirmStoreOwnership`이 필요합니다. 테스트로 재현하지 않았습니다 |
+| 옛 스냅샷으로 복원된 인덱스 | 계속 보내는 프로세스가 있으면 fence 문서가 남아 있는 옛 스냅샷 복원을 알아채지 못합니다. 프로세스가 fence를 읽을 때(처음 보낼 때, 갱신 간격보다 오래 보내지 않은 뒤)에만 `regressed`로 감지합니다 |
+| fence 갱신의 원격 쓰기 | 할 일이 없어도 워커들은 대상마다 갱신 간격에 한 번 OpenSearch에 씁니다. OpenSearch가 멈춰 있으면 빈 drain만 도는 워커도 cooldown과 `degraded`가 됩니다 |
+| 버전 1에서 만든 복사본 | 스키마가 버전 1일 때 만든 복사본을 따로 버전 2로 올리면 복사본이 자기 원점을 기록하므로 감지되지 않습니다([복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)) |
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="복구 절차" icon="life-ring" href="/ko/advanced-features/opensearch/recovery-runbooks">
+    복사된 데이터베이스, 격리, 일시 정지, 결과를 모르는 생성, 원본 복원
+  </Card>
+  <Card title="miomock 둘러보기" icon="route" href="/ko/advanced-features/opensearch/miomock-walkthrough">
+    실제 Sonamu 애플리케이션의 통합
+  </Card>
+</CardGroup>

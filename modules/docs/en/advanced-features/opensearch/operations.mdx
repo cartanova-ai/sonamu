@@ -1,0 +1,174 @@
+---
+title: "Operations"
+description: "Monitoring and alerts, recommended values and their relationships, OpenSearch and PostgreSQL permissions, supported versions, message language, known limits"
+---
+
+This page covers what to watch in production, which values to use, which permissions to grant, and what the package does not guarantee. Alert and branch only on stable fields: the error class, `code`, `details.reason`, the event `type` and `outcome`, state values, and report counts. Message text can change and depends on the locale.
+
+## Monitoring and alerts
+
+| Signal | Where | Alert threshold and response |
+| --- | --- | --- |
+| Worker state | `state` events, `status().state` | Alert when `degraded` lasts more than a few minutes. The `state` event's `reason` and `status().lastError.code` give the cause |
+| Drain outcome | `outcome` of `drain` events | A run of `cooldown` means an infrastructure outage. `busy` is not an error |
+| Refused drains | `code` and `reason` of `error` events | Alert at once on `SEARCH_STORE_MISMATCH` and follow the copy procedure in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks) |
+| Store binding | `inspect().binding` | Alert if any of the three values is `false`. The worker and remote administrative operations are stopped |
+| Target fence | `target-fence-lost` events, `status().fenceLostTargets`, the target `fence` in `inspect` | Alert at once on any loss and follow the fence runbook in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks). If `fence.renewedAgeMs` of an active target grows to several renewal intervals, no worker is running or renewal is failing |
+| Backlog per target | The target `backlog` in `inspect()` (`pending`, `leased`, `delayed`, `quarantined`, `oldestPendingAgeMs`) | Alert when `oldestPendingAgeMs` is higher than usual or `quarantined` grows. The default bounded mode is safe to read often |
+| Paused targets | `target-paused` events, `status().pausedTargets`, `pauseReason` in `inspect` | Alert on any |
+| Targets the worker cannot handle | `status().unsupportedTargets`, `unsupportedTargets` in reports | Alert when not empty outside a deployment. The worker's definitions or package version do not match the target |
+| Quarantine | `quarantined` events, `quarantined` in reports | Alert when it grows and follow the quarantine runbook in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks). Quarantined intents slow every claim |
+| Hash version mismatch | `hash-version-mismatch` events | Alert outside an upgrade. The document stays pending until it is marked again or the target is rebuilt |
+| Reclaimed leases | `count` of `lease-reclaimed` events | If frequent, workers die or stall longer than their lease |
+| Worker heartbeats | `workers[].heartbeatAgeMs` in `inspect` | Rows much older than the heartbeat interval. Rows not refreshed for 24 hours drop out of the list |
+| Ambiguous creates | `remoteCreateState` `ambiguous` or `in_flight` in `inspect` | Alert if it remains after the administrative operation has ended |
+| Stop report | `abandonedDrains` in the result of `stop()` | Nonzero means drains that did not end within the deadline were left behind |
+| Search errors | Error class and `details.reason` in the search API | Rates of `SearchRebuildRequired`, `SearchDefinitionMismatch`, `SearchCatalogUnavailable` |
+
+The drain report fields, every event, and an event listener with state gauges are in [Indexing worker](/en/advanced-features/opensearch/worker). Backlog figures can be read with an administrative handle created without an OpenSearch client, so monitoring needs no administrator OpenSearch credentials.
+
+## Recommended values
+
+The recommended constants, their values, where each is used, and why each value was chosen are under "Recommended values" in [Setup](/en/advanced-features/opensearch/setup). They do not make required options optional: spread them and override only what you need.
+
+### Relationships between values
+
+`createIndexer` checks the relationships among the worker limits and rejects a violation with `SearchConfigurationError`; the rules and their `details.reason` values are in the limits table of [Indexing worker](/en/advanced-features/opensearch/worker), together with the heap bound (about 65 MiB on the recommended values) and the drain time bound (245 s on the recommended values).
+
+These relationships are not checked, but must hold:
+
+- The administrative handle's `workerBounds` must equal the actual worker limits. They set how long retirement waits after removing the alias, so a worker with a longer lease or request time limit can deliver a late bulk after the wait. If you override worker limits, rebuild them with `workerBoundsFrom(overridden limits)`.
+- A query handle's lifetimes cannot exceed the maximums recorded in `read_heads` (`lifetime-exceeds-catalog` at search time), so use the same `RECOMMENDED_READ_LIFETIMES` on both sides. The recorded values can be raised with `changeReadLifetimes`, but not lowered in a way that shortens the retirement grace.
+- If you raise the client's `requestTimeoutMs`, raise `adminLeaseMs` too. One remote request cannot exceed `(adminLeaseMs − 4 × statementTimeoutMs) / 3`.
+- The worker stop deadline must be shorter than the orchestrator's termination grace period, and `stop()` can take up to `3 × statementTimeoutMs` beyond the deadline.
+
+### What to tune
+
+| Symptom | Adjustment |
+| --- | --- |
+| Source reads hit the projection time limit | Lower `maxDocumentsPerClaim`, then check the isolation call rule again |
+| Worker statements end with `SearchTimeout` | Check for a table lock, from a migration for example. Statements normally take a few milliseconds |
+| Bulks are rejected for size | Lower `maxBulkBytes`. Keep it well below the engine's `http.max_content_length` |
+| The worker process uses too much memory | Lower `maxInFlightBytes` and `maxBulkBytes`. `maxInFlightBytes` must stay at least `maxBulkBytes` |
+| The cluster's bulk thread pool is busy | Lower `maxConcurrentBulkRequests` or the number of workers |
+| Marking-to-indexing is slow | Lower `pollIntervalMs` or add workers. Several workers share the work through leases |
+| Documents of dead workers are reclaimed late | Lower `leaseDurationMs`, keep the heartbeat and time limit rules, and rebuild `workerBounds` |
+| Cutover is blocked by the backlog | Wait for the worker to catch up, or raise `maxPendingDocuments`. The remaining backlog reaches the new target through dual writes |
+
+## OpenSearch permissions
+
+These are the least-privilege roles for the package's three handles on an engine with the security plugin enabled. Every index and alias name starts with `snm-`. The integration tests run every real operation of each handle under these roles, then remove each permission in turn and check that the package request needing it is denied with 403. This was checked on OpenSearch 3.5.0 and 3.9.0.
+
+```json
+PUT _plugins/_security/api/roles/sonamu_admin
+{
+  "cluster_permissions": [
+    "cluster:monitor/nodes/info",
+    "cluster:monitor/nodes/stats",
+    "cluster:monitor/state",
+    "indices:data/read/mget",
+    "indices:data/write/bulk"
+  ],
+  "index_permissions": [
+    {
+      "index_patterns": ["snm-*"],
+      "allowed_actions": [
+        "indices:admin/create",
+        "indices:admin/delete",
+        "indices:admin/aliases",
+        "indices:admin/aliases/get",
+        "indices:admin/mappings/get",
+        "indices:admin/refresh*",
+        "indices:monitor/stats",
+        "indices:data/read/mget*",
+        "indices:data/write/bulk*",
+        "indices:data/write/index",
+        "indices:data/read/search*",
+        "indices:data/read/point_in_time/create",
+        "indices:data/read/point_in_time/delete"
+      ]
+    }
+  ]
+}
+
+PUT _plugins/_security/api/roles/sonamu_worker
+{
+  "cluster_permissions": ["indices:data/write/bulk", "indices:data/read/mget"],
+  "index_permissions": [
+    {
+      "index_patterns": ["snm-*"],
+      "allowed_actions": [
+        "indices:data/write/bulk*",
+        "indices:data/write/index",
+        "indices:data/read/mget*"
+      ]
+    }
+  ]
+}
+
+PUT _plugins/_security/api/roles/sonamu_query
+{
+  "cluster_permissions": [],
+  "index_permissions": [
+    {
+      "index_patterns": ["snm-*"],
+      "allowed_actions": [
+        "indices:data/read/search*",
+        "indices:data/read/point_in_time/create",
+        "indices:data/read/point_in_time/delete"
+      ]
+    }
+  ]
+}
+```
+
+| Role | Used by | What it does |
+| --- | --- | --- |
+| `sonamu_admin` | Administrative handle | Target creation (index and write alias), remote identity checks (`_mapping`, `_alias`), the plugin check (`_cat/nodes`, `_cat/plugins`), cutover sample verification (`_refresh`, `_mget`), the paused-target verification scan (`_stats`, `_refresh`, PIT create, search, and delete), retirement (alias removal, index deletion), and the fence takeover of `confirmStoreOwnership` (`/_mget`, a bulk to the write alias). The only document it writes is the fence document |
+| `sonamu_worker` | Worker | Bulks to the write alias (fence actions and renewals included) and the `_mget` of conflict and fence checks. It never creates indexes or searches. The fence needs no permission beyond these |
+| `sonamu_query` | Query handle | Search, and PIT create and delete for cursors. It never writes |
+
+The admin role's bulk and document-write permissions are used only by `confirmStoreOwnership` to take fences back; without them it cannot. The cluster-level `indices:data/read/mget` and `indices:data/write/bulk` (admin, worker) are required from 3.9.0: on 3.9.0 removing them gives 403, while 3.5.0 allows the requests without them. Keep them in the roles so the roles work across the supported range. The worker role has no permission to create indexes, so a late bulk arriving after retirement removed the alias cannot create one even without `require_alias`.
+
+The permission models and IAM policies of managed services such as AWS OpenSearch Service are untested.
+
+## PostgreSQL roles and supported versions
+
+PostgreSQL permissions come in four groups (capture, worker, query, admin), granted by `applySearchGrants`; the groups and a membership example are in [Setup](/en/advanced-features/opensearch/setup). Use the admin role only for migrations and administrative commands, never for runtime processes. A role that may not call `pg_control_system()` still works, but the store binding check then compares only the database OID and name, without the system identifier.
+
+| Component | Supported | Tests |
+| --- | --- | --- |
+| PostgreSQL | 18 | The integration tests check that the server's major version is 18. Other versions are not verified |
+| OpenSearch | 3.5.0 or later, below 4.0.0 | The default image is `opensearchproject/opensearch:3.5.0`; set `SONAMU_OPENSEARCH_TEST_IMAGE` to another image (for example 3.9.0) to run the same tests. The tests check that the running engine is in range |
+| `@opensearch-project/opensearch` | 3.9.0 or later, below 4.0.0 | The integration tests check that the installed SDK is in range, and a type test compiles separately against the floor version's (3.9.0) types |
+
+## Message language
+
+How to set the message language (`setSearchLocale`, `registerSearchMessages`, `error.localize`) and how lookup falls back are under "Localizing messages" in [Transactional indexing](/en/advanced-features/opensearch/transactional-indexing).
+
+## Known limits
+
+| Limit | Details |
+| --- | --- |
+| At-least-once delivery | The same revision can be sent twice. External versioning and conflict verification reconcile the result, but the engine receives the same document twice |
+| Resend after an aborted drain | When the stop deadline aborts a drain after its bulk was sent, its documents are left with an unknown outcome (`abandoned`) and are sent again after their lease ends. The second send gets 409, and conflict verification confirms the same revision and hash and counts it as a duplicate (`superseded`) |
+| No cleanup of ledger rows or tombstones | The package never deletes ledger rows and never removes the tombstones of deleted documents from the index. Both keep growing |
+| Claim cost | Measured on one machine, in Docker: one claim of 500 intents took about 25 ms at both 200,000 and 1,000,000 pending intents. Each 1,000 intents with runtime state (quarantined, leased, delayed) ahead of the first claimable one added about 1.5 ms, so a pile of quarantined intents slows every claim. Right after a bulk load, before the first `ANALYZE`, the planner does not know the row counts and the plan can be linear in the backlog, still without a sequential scan or an on-disk sort |
+| A lone slow document | A projection timeout counts against the document only with evidence that the database is responding, such as another document in the same call finishing. If a single slow document is all that is pending, there is no such evidence: it is released without budget and triggers a database cooldown. Each worker tries it once per cooldown, the document is never quarantined, and the worker moves in and out of `degraded`. Once another document is claimed with it, the timeout counts against the document and it is eventually quarantined |
+| Drain time with a large document | One very large document can push a drain past its time bound (245 s on the recommended values) by its own processing time |
+| Physical copies | A database made by base backup, snapshot restore, point-in-time recovery, or replica promotion passes the origin check; the target fence detects it only when both sides send to the same index, and does not block it. What the fence misses is listed under "What is not detected" in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks) |
+| False fence loss | A failover to an asynchronous replica that loses the last renewal commit loses the fence as `behind` and needs `confirmStoreOwnership`. No test reproduces it |
+| Index restored from an older snapshot | While some process keeps sending, a restore from an older snapshot that still holds the fence document goes unnoticed. It is detected as `regressed` only when a process reads the fence: on its first send, or after not sending for longer than the renewal interval |
+| Remote writes for fence renewal | Even with no work, the workers write to OpenSearch once per target per renewal interval. While OpenSearch is down, a worker running only empty drains still goes into cooldown and `degraded` |
+| Copies made at version 1 | A copy made while the schema was at version 1 and upgraded to version 2 on its own records its own origin and is not detected ([Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks)) |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Recovery runbooks" icon="life-ring" href="/en/advanced-features/opensearch/recovery-runbooks">
+    Copied databases, quarantine, paused targets, ambiguous creates, source restores
+  </Card>
+  <Card title="miomock walkthrough" icon="route" href="/en/advanced-features/opensearch/miomock-walkthrough">
+    The integration in a real Sonamu application
+  </Card>
+</CardGroup>
