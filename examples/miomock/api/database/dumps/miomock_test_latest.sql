@@ -2,9 +2,9 @@
 -- PostgreSQL database dump
 --
 
-\restrict mqXwgqDyRJRXlSHgzJZ8dPyiZfPqDfFsasEoAtjSSWXwl5zaxNNvIifX3dzjx2p
+\restrict UXVfgsxQha1A7HFJYQnDvRPiVnAvhm8hdmxPGRuhX4ceDpjXPH1KxhMIJajL3ce
 
--- Dumped from database version 18.4 (Debian 18.4-1.pgdg12+1)
+-- Dumped from database version 18.6 (Debian 18.6-1.pgdg12+2)
 -- Dumped by pg_dump version 18.6
 
 SET statement_timeout = 0;
@@ -18,6 +18,13 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: sonamu_search; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA sonamu_search;
+
 
 --
 -- Name: pgroonga; Type: EXTENSION; Schema: -; Owner: -
@@ -697,6 +704,321 @@ CREATE TABLE public.verifications (
 
 
 --
+-- Name: admin_controls; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.admin_controls (
+    namespace text NOT NULL,
+    definition text NOT NULL,
+    operation_id text,
+    operation_kind text,
+    actor text,
+    lease_token uuid,
+    lease_expires_at timestamp with time zone,
+    acquired_at timestamp with time zone,
+    heartbeat_at timestamp with time zone,
+    CONSTRAINT admin_controls_check CHECK (((lease_token IS NULL) = (lease_expires_at IS NULL)))
+);
+
+
+--
+-- Name: admin_operations; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.admin_operations (
+    operation_seq bigint NOT NULL,
+    operation_id text NOT NULL,
+    namespace text NOT NULL,
+    definition text NOT NULL,
+    kind text NOT NULL,
+    actor text NOT NULL,
+    reason text NOT NULL,
+    target_id uuid,
+    build_id uuid,
+    outcome text NOT NULL,
+    detail jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT admin_operations_detail_check CHECK ((octet_length((detail)::text) <= 8192)),
+    CONSTRAINT admin_operations_outcome_check CHECK ((outcome = ANY (ARRAY['started'::text, 'succeeded'::text, 'failed'::text])))
+);
+
+
+--
+-- Name: admin_operations_operation_seq_seq; Type: SEQUENCE; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE sonamu_search.admin_operations ALTER COLUMN operation_seq ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME sonamu_search.admin_operations_operation_seq_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: builds; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.builds (
+    build_id uuid NOT NULL,
+    namespace text NOT NULL,
+    definition text NOT NULL,
+    kind text NOT NULL,
+    new_target_id uuid NOT NULL,
+    old_target_id uuid,
+    expected_read_target_id uuid,
+    expected_read_generation bigint NOT NULL,
+    capture_epoch integer NOT NULL,
+    phase text NOT NULL,
+    scan_boundary text,
+    scan_cursor text,
+    scan_pages bigint DEFAULT 0 NOT NULL,
+    scan_documents bigint DEFAULT 0 NOT NULL,
+    scan_completed_at timestamp with time zone,
+    operation_id text NOT NULL,
+    failure jsonb,
+    created_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    updated_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    cutover_at timestamp with time zone,
+    rolled_back_at timestamp with time zone,
+    closed_at timestamp with time zone,
+    CONSTRAINT builds_failure_check CHECK (((failure IS NULL) OR (octet_length((failure)::text) <= 2048))),
+    CONSTRAINT builds_kind_check CHECK ((kind = ANY (ARRAY['initial'::text, 'rebuild'::text, 'resume'::text]))),
+    CONSTRAINT builds_phase_check CHECK ((phase = ANY (ARRAY['planned'::text, 'created'::text, 'backfilling'::text, 'catching_up'::text, 'serving'::text, 'failed'::text, 'retired'::text])))
+);
+
+
+--
+-- Name: deliveries; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.deliveries (
+    target_id uuid NOT NULL,
+    document_id text NOT NULL COLLATE pg_catalog."C",
+    intent_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    desired_revision bigint NOT NULL,
+    enqueued_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    updated_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT deliveries_desired_revision_check CHECK (((desired_revision >= 1) AND (desired_revision <= '9007199254740991'::bigint)))
+)
+WITH (fillfactor='80', autovacuum_vacuum_scale_factor='0.01', autovacuum_vacuum_threshold='5000', autovacuum_analyze_scale_factor='0.005', autovacuum_analyze_threshold='1000');
+
+
+--
+-- Name: delivery_runtime; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.delivery_runtime (
+    target_id uuid NOT NULL,
+    document_id text NOT NULL COLLATE pg_catalog."C",
+    intent_id uuid NOT NULL,
+    claimed_revision bigint DEFAULT 0 NOT NULL,
+    applied_revision bigint DEFAULT 0 NOT NULL,
+    failure_revision bigint DEFAULT 0 NOT NULL,
+    attempts integer DEFAULT 0 NOT NULL,
+    retry_age_ms bigint DEFAULT 0 NOT NULL,
+    first_attempt_at timestamp with time zone,
+    quarantined_revision bigint,
+    lease_token uuid,
+    lease_expires_at timestamp with time zone,
+    claim_started_at timestamp with time zone,
+    available_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    available_revision bigint DEFAULT 0 NOT NULL,
+    last_error jsonb,
+    updated_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT delivery_runtime_applied_revision_check CHECK ((applied_revision >= 0)),
+    CONSTRAINT delivery_runtime_attempts_check CHECK ((attempts >= 0)),
+    CONSTRAINT delivery_runtime_check CHECK (((lease_token IS NULL) = (lease_expires_at IS NULL))),
+    CONSTRAINT delivery_runtime_last_error_check CHECK (((last_error IS NULL) OR (octet_length((last_error)::text) <= 2048))),
+    CONSTRAINT delivery_runtime_retry_age_ms_check CHECK ((retry_age_ms >= 0))
+)
+WITH (autovacuum_vacuum_scale_factor='0.01', autovacuum_vacuum_threshold='5000', autovacuum_analyze_scale_factor='0.005', autovacuum_analyze_threshold='1000');
+
+
+--
+-- Name: documents; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.documents (
+    namespace text NOT NULL,
+    definition text NOT NULL,
+    document_id text NOT NULL COLLATE pg_catalog."C",
+    revision bigint NOT NULL,
+    updated_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT documents_document_id_check CHECK (((octet_length(document_id) >= 1) AND (octet_length(document_id) <= 512))),
+    CONSTRAINT documents_revision_safe_integer CHECK (((revision >= 1) AND (revision <= '9007199254740991'::bigint)))
+)
+WITH (fillfactor='80');
+
+
+--
+-- Name: indexes; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.indexes (
+    namespace text NOT NULL,
+    definition text NOT NULL,
+    store_id uuid NOT NULL,
+    generation bigint DEFAULT 1 NOT NULL,
+    capture_mode text DEFAULT 'active'::text NOT NULL,
+    capture_epoch integer DEFAULT 1 NOT NULL,
+    lock_marker boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    updated_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT indexes_capture_epoch_check CHECK ((capture_epoch >= 1)),
+    CONSTRAINT indexes_capture_mode_check CHECK ((capture_mode = ANY (ARRAY['active'::text, 'suspended'::text]))),
+    CONSTRAINT indexes_definition_check CHECK ((definition ~ '^[a-z0-9][a-z0-9-]{0,62}$'::text)),
+    CONSTRAINT indexes_generation_check CHECK ((generation >= 1)),
+    CONSTRAINT indexes_namespace_check CHECK ((namespace ~ '^[a-z0-9][a-z0-9-]{0,62}$'::text))
+)
+WITH (fillfactor='50');
+
+
+--
+-- Name: read_heads; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.read_heads (
+    namespace text NOT NULL,
+    definition text NOT NULL,
+    target_id uuid,
+    generation bigint DEFAULT 0 NOT NULL,
+    rebuild_required boolean DEFAULT false NOT NULL,
+    max_search_lifetime_ms bigint NOT NULL,
+    max_cursor_lifetime_ms bigint NOT NULL,
+    max_pit_keep_alive_ms bigint NOT NULL,
+    retirement_safety_margin_ms bigint NOT NULL,
+    updated_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT read_heads_generation_check CHECK ((generation >= 0)),
+    CONSTRAINT read_heads_max_cursor_lifetime_ms_check CHECK ((max_cursor_lifetime_ms > 0)),
+    CONSTRAINT read_heads_max_pit_keep_alive_ms_check CHECK ((max_pit_keep_alive_ms > 0)),
+    CONSTRAINT read_heads_max_search_lifetime_ms_check CHECK ((max_search_lifetime_ms > 0)),
+    CONSTRAINT read_heads_retirement_safety_margin_ms_check CHECK ((retirement_safety_margin_ms > 0))
+);
+
+
+--
+-- Name: schema_versions; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.schema_versions (
+    version integer NOT NULL,
+    name text NOT NULL,
+    checksum text NOT NULL,
+    package_version text NOT NULL,
+    applied_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT schema_versions_version_check CHECK ((version >= 1))
+);
+
+
+--
+-- Name: store; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.store (
+    singleton boolean DEFAULT true NOT NULL,
+    store_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    created_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    origin_system_identifier text,
+    origin_database_oid bigint,
+    origin_database_name text,
+    origin_recorded_at timestamp with time zone,
+    instance_name text,
+    CONSTRAINT store_instance_name_check CHECK (((instance_name IS NULL) OR ((octet_length(instance_name) >= 1) AND (octet_length(instance_name) <= 128)))),
+    CONSTRAINT store_singleton_check CHECK (singleton)
+);
+
+
+--
+-- Name: target_fences; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.target_fences (
+    target_id uuid NOT NULL,
+    epoch bigint DEFAULT 0 NOT NULL,
+    nonce uuid,
+    pending_epoch bigint,
+    pending_nonce uuid,
+    pending_at timestamp with time zone,
+    renewed_at timestamp with time zone,
+    lost_at timestamp with time zone,
+    lost_detail jsonb,
+    CONSTRAINT target_fences_check CHECK ((((pending_epoch IS NULL) = (pending_nonce IS NULL)) AND ((pending_epoch IS NULL) = (pending_at IS NULL)))),
+    CONSTRAINT target_fences_check1 CHECK (((pending_epoch IS NULL) OR (pending_epoch = (epoch + 1)))),
+    CONSTRAINT target_fences_epoch_check CHECK (((epoch >= 0) AND (epoch <= '9007199254740990'::bigint))),
+    CONSTRAINT target_fences_lost_detail_check CHECK (((lost_detail IS NULL) OR (octet_length((lost_detail)::text) <= 1024)))
+);
+
+
+--
+-- Name: targets; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.targets (
+    target_id uuid NOT NULL,
+    namespace text NOT NULL,
+    definition text NOT NULL,
+    physical_index text NOT NULL,
+    write_alias text NOT NULL,
+    fingerprint text NOT NULL,
+    hash_version text NOT NULL,
+    capture_epoch integer NOT NULL,
+    state text NOT NULL,
+    write_enabled boolean DEFAULT false NOT NULL,
+    pause_reason jsonb,
+    create_operation_id text NOT NULL,
+    remote_create_state text DEFAULT 'not_started'::text NOT NULL,
+    remote_create_token uuid,
+    remote_create_attempts integer DEFAULT 0 NOT NULL,
+    remote_create_started_at timestamp with time zone,
+    remote_create_finished_at timestamp with time zone,
+    verify_cursor text,
+    verify_started_at timestamp with time zone,
+    verify_completed_at timestamp with time zone,
+    verify_checked bigint DEFAULT 0 NOT NULL,
+    verify_violations bigint DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    registered_at timestamp with time zone,
+    selected_at timestamp with time zone,
+    deselected_at timestamp with time zone,
+    deselect_confirmed_at timestamp with time zone,
+    paused_at timestamp with time zone,
+    resumed_at timestamp with time zone,
+    retiring_at timestamp with time zone,
+    alias_removed_at timestamp with time zone,
+    index_deleted_at timestamp with time zone,
+    retired_at timestamp with time zone,
+    detached_at timestamp with time zone,
+    CONSTRAINT targets_capture_epoch_check CHECK ((capture_epoch >= 1)),
+    CONSTRAINT targets_check CHECK ((physical_index <> write_alias)),
+    CONSTRAINT targets_check1 CHECK (((NOT write_enabled) OR (state = ANY (ARRAY['active'::text, 'paused'::text])))),
+    CONSTRAINT targets_check2 CHECK (((state <> ALL (ARRAY['active'::text, 'paused'::text])) OR (remote_create_state = 'verified'::text))),
+    CONSTRAINT targets_pause_reason_check CHECK (((pause_reason IS NULL) OR (octet_length((pause_reason)::text) <= 4096))),
+    CONSTRAINT targets_remote_create_attempts_check CHECK ((remote_create_attempts >= 0)),
+    CONSTRAINT targets_remote_create_state_check CHECK ((remote_create_state = ANY (ARRAY['not_started'::text, 'in_flight'::text, 'verified'::text, 'ambiguous'::text, 'abandoned'::text]))),
+    CONSTRAINT targets_state_check CHECK ((state = ANY (ARRAY['creating'::text, 'active'::text, 'paused'::text, 'retiring'::text, 'retired'::text, 'failed'::text, 'detached'::text])))
+);
+
+
+--
+-- Name: worker_heartbeats; Type: TABLE; Schema: sonamu_search; Owner: -
+--
+
+CREATE TABLE sonamu_search.worker_heartbeats (
+    worker_id uuid NOT NULL,
+    namespace text NOT NULL,
+    capabilities text[] NOT NULL,
+    state text NOT NULL,
+    started_at timestamp with time zone NOT NULL,
+    heartbeat_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    last_report jsonb,
+    CONSTRAINT worker_heartbeats_last_report_check CHECK (((last_report IS NULL) OR (octet_length((last_report)::text) <= 4096)))
+);
+
+
+--
 -- Name: audit_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -941,6 +1263,8 @@ INSERT INTO public.knex_migrations VALUES (89, '20260410140734_create__audit_eve
 INSERT INTO public.knex_migrations VALUES (90, '20260414130146_alter_sessions_add1_alter3.ts', 17, '2026-04-14 13:43:33.236+09');
 INSERT INTO public.knex_migrations VALUES (91, '20260414130147_alter_users_add3_alter6.ts', 17, '2026-04-14 13:43:33.237+09');
 INSERT INTO public.knex_migrations VALUES (92, '20261023115028_alter_two_factors_add3.ts', 18, '2026-10-23 12:13:22.563+09');
+INSERT INTO public.knex_migrations VALUES (93, '20261112205310_install_search_schema.ts', 19, '2026-11-12 21:03:50.367+09');
+INSERT INTO public.knex_migrations VALUES (94, '20261113024500_upgrade_search_schema_v2.ts', 20, '2026-11-13 03:16:43.937+09');
 
 
 --
@@ -2080,6 +2404,87 @@ INSERT INTO public.users VALUES ('1', '2024-01-01 01:00:00+09', 'kim@tech.com', 
 
 
 --
+-- Data for Name: admin_controls; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+
+
+--
+-- Data for Name: admin_operations; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+
+
+--
+-- Data for Name: builds; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+
+
+--
+-- Data for Name: deliveries; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+
+
+--
+-- Data for Name: delivery_runtime; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+
+
+--
+-- Data for Name: documents; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+
+
+--
+-- Data for Name: indexes; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+
+
+--
+-- Data for Name: read_heads; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+
+
+--
+-- Data for Name: schema_versions; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+INSERT INTO sonamu_search.schema_versions VALUES (1, 'initial', 'e76b33079ec9ced3239beca7ce85b157136e5ce5eba83b0bf700265fb555fd4c', '0.13.9', '2026-11-12 21:03:50.365103+09');
+INSERT INTO sonamu_search.schema_versions VALUES (2, 'store-binding', '6ff737eb98a1f140ea4e857ded51680741b33affd40e0beb1436e2cfded10992', '0.13.9', '2026-11-13 03:16:43.932672+09');
+
+
+--
+-- Data for Name: store; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+INSERT INTO sonamu_search.store VALUES (true, '43f2297f-8b73-4e30-ac72-aadb78eda266', '2026-11-12 21:03:50.345842+09', '7707251406223978538', 23592, 'miomock_fixture', '2026-11-13 03:16:43.937167+09', NULL);
+
+
+--
+-- Data for Name: target_fences; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+
+
+--
+-- Data for Name: targets; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+
+
+--
+-- Data for Name: worker_heartbeats; Type: TABLE DATA; Schema: sonamu_search; Owner: -
+--
+
+
+
+--
 -- Name: audit_events_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -2132,7 +2537,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, true);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 92, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 94, true);
 
 
 --
@@ -2189,6 +2594,13 @@ SELECT pg_catalog.setval('public.tags_id_seq', 8, true);
 --
 
 SELECT pg_catalog.setval('public.users_id_seq', 12, true);
+
+
+--
+-- Name: admin_operations_operation_seq_seq; Type: SEQUENCE SET; Schema: sonamu_search; Owner: -
+--
+
+SELECT pg_catalog.setval('sonamu_search.admin_operations_operation_seq_seq', 1, false);
 
 
 --
@@ -2400,6 +2812,126 @@ ALTER TABLE ONLY public.verifications
 
 
 --
+-- Name: admin_controls admin_controls_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.admin_controls
+    ADD CONSTRAINT admin_controls_pkey PRIMARY KEY (namespace, definition);
+
+
+--
+-- Name: admin_operations admin_operations_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.admin_operations
+    ADD CONSTRAINT admin_operations_pkey PRIMARY KEY (operation_seq);
+
+
+--
+-- Name: builds builds_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.builds
+    ADD CONSTRAINT builds_pkey PRIMARY KEY (build_id);
+
+
+--
+-- Name: deliveries deliveries_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.deliveries
+    ADD CONSTRAINT deliveries_pkey PRIMARY KEY (target_id, document_id);
+
+
+--
+-- Name: delivery_runtime delivery_runtime_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.delivery_runtime
+    ADD CONSTRAINT delivery_runtime_pkey PRIMARY KEY (target_id, document_id, intent_id);
+
+
+--
+-- Name: documents documents_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.documents
+    ADD CONSTRAINT documents_pkey PRIMARY KEY (namespace, definition, document_id);
+
+
+--
+-- Name: indexes indexes_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.indexes
+    ADD CONSTRAINT indexes_pkey PRIMARY KEY (namespace, definition);
+
+
+--
+-- Name: read_heads read_heads_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.read_heads
+    ADD CONSTRAINT read_heads_pkey PRIMARY KEY (namespace, definition);
+
+
+--
+-- Name: schema_versions schema_versions_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.schema_versions
+    ADD CONSTRAINT schema_versions_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: store store_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.store
+    ADD CONSTRAINT store_pkey PRIMARY KEY (singleton);
+
+
+--
+-- Name: target_fences target_fences_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.target_fences
+    ADD CONSTRAINT target_fences_pkey PRIMARY KEY (target_id);
+
+
+--
+-- Name: targets targets_physical_index_key; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.targets
+    ADD CONSTRAINT targets_physical_index_key UNIQUE (physical_index);
+
+
+--
+-- Name: targets targets_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.targets
+    ADD CONSTRAINT targets_pkey PRIMARY KEY (target_id);
+
+
+--
+-- Name: targets targets_write_alias_key; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.targets
+    ADD CONSTRAINT targets_write_alias_key UNIQUE (write_alias);
+
+
+--
+-- Name: worker_heartbeats worker_heartbeats_pkey; Type: CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.worker_heartbeats
+    ADD CONSTRAINT worker_heartbeats_pkey PRIMARY KEY (worker_id);
+
+
+--
 -- Name: accounts_user_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2547,6 +3079,76 @@ CREATE INDEX verifications_identifier_idx ON public.verifications USING btree (i
 
 
 --
+-- Name: admin_operations_index_idx; Type: INDEX; Schema: sonamu_search; Owner: -
+--
+
+CREATE INDEX admin_operations_index_idx ON sonamu_search.admin_operations USING btree (namespace, definition, operation_seq DESC);
+
+
+--
+-- Name: admin_operations_operation_idx; Type: INDEX; Schema: sonamu_search; Owner: -
+--
+
+CREATE INDEX admin_operations_operation_idx ON sonamu_search.admin_operations USING btree (operation_id);
+
+
+--
+-- Name: builds_one_open_idx; Type: INDEX; Schema: sonamu_search; Owner: -
+--
+
+CREATE UNIQUE INDEX builds_one_open_idx ON sonamu_search.builds USING btree (namespace, definition) WHERE (phase = ANY (ARRAY['planned'::text, 'created'::text, 'backfilling'::text, 'catching_up'::text, 'serving'::text]));
+
+
+--
+-- Name: deliveries_scan_idx; Type: INDEX; Schema: sonamu_search; Owner: -
+--
+
+CREATE INDEX deliveries_scan_idx ON sonamu_search.deliveries USING btree (target_id, enqueued_at, document_id);
+
+
+--
+-- Name: delivery_runtime_expiry_idx; Type: INDEX; Schema: sonamu_search; Owner: -
+--
+
+CREATE INDEX delivery_runtime_expiry_idx ON sonamu_search.delivery_runtime USING btree (target_id, lease_expires_at) WHERE (lease_expires_at IS NOT NULL);
+
+
+--
+-- Name: delivery_runtime_lease_idx; Type: INDEX; Schema: sonamu_search; Owner: -
+--
+
+CREATE INDEX delivery_runtime_lease_idx ON sonamu_search.delivery_runtime USING btree (lease_token) WHERE (lease_token IS NOT NULL);
+
+
+--
+-- Name: delivery_runtime_quarantine_idx; Type: INDEX; Schema: sonamu_search; Owner: -
+--
+
+CREATE INDEX delivery_runtime_quarantine_idx ON sonamu_search.delivery_runtime USING btree (target_id, document_id) WHERE (quarantined_revision IS NOT NULL);
+
+
+--
+-- Name: targets_index_idx; Type: INDEX; Schema: sonamu_search; Owner: -
+--
+
+CREATE INDEX targets_index_idx ON sonamu_search.targets USING btree (namespace, definition, capture_epoch);
+
+
+--
+-- Name: targets_writable_idx; Type: INDEX; Schema: sonamu_search; Owner: -
+--
+
+CREATE INDEX targets_writable_idx ON sonamu_search.targets USING btree (namespace, definition, capture_epoch) WHERE write_enabled;
+
+
+--
+-- Name: worker_heartbeats_namespace_idx; Type: INDEX; Schema: sonamu_search; Owner: -
+--
+
+CREATE INDEX worker_heartbeats_namespace_idx ON sonamu_search.worker_heartbeats USING btree (namespace, heartbeat_at);
+
+
+--
 -- Name: accounts accounts_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2651,8 +3253,64 @@ ALTER TABLE ONLY public.two_factors
 
 
 --
+-- Name: admin_controls admin_controls_namespace_definition_fkey; Type: FK CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.admin_controls
+    ADD CONSTRAINT admin_controls_namespace_definition_fkey FOREIGN KEY (namespace, definition) REFERENCES sonamu_search.indexes(namespace, definition) ON DELETE RESTRICT;
+
+
+--
+-- Name: builds builds_namespace_definition_fkey; Type: FK CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.builds
+    ADD CONSTRAINT builds_namespace_definition_fkey FOREIGN KEY (namespace, definition) REFERENCES sonamu_search.indexes(namespace, definition) ON DELETE RESTRICT;
+
+
+--
+-- Name: builds builds_new_target_id_fkey; Type: FK CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.builds
+    ADD CONSTRAINT builds_new_target_id_fkey FOREIGN KEY (new_target_id) REFERENCES sonamu_search.targets(target_id);
+
+
+--
+-- Name: builds builds_old_target_id_fkey; Type: FK CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.builds
+    ADD CONSTRAINT builds_old_target_id_fkey FOREIGN KEY (old_target_id) REFERENCES sonamu_search.targets(target_id);
+
+
+--
+-- Name: read_heads read_heads_namespace_definition_fkey; Type: FK CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.read_heads
+    ADD CONSTRAINT read_heads_namespace_definition_fkey FOREIGN KEY (namespace, definition) REFERENCES sonamu_search.indexes(namespace, definition) ON DELETE RESTRICT;
+
+
+--
+-- Name: read_heads read_heads_target_id_fkey; Type: FK CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.read_heads
+    ADD CONSTRAINT read_heads_target_id_fkey FOREIGN KEY (target_id) REFERENCES sonamu_search.targets(target_id);
+
+
+--
+-- Name: targets targets_namespace_definition_fkey; Type: FK CONSTRAINT; Schema: sonamu_search; Owner: -
+--
+
+ALTER TABLE ONLY sonamu_search.targets
+    ADD CONSTRAINT targets_namespace_definition_fkey FOREIGN KEY (namespace, definition) REFERENCES sonamu_search.indexes(namespace, definition) ON DELETE RESTRICT;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict mqXwgqDyRJRXlSHgzJZ8dPyiZfPqDfFsasEoAtjSSWXwl5zaxNNvIifX3dzjx2p
+\unrestrict UXVfgsxQha1A7HFJYQnDvRPiVnAvhm8hdmxPGRuhX4ceDpjXPH1KxhMIJajL3ce
 

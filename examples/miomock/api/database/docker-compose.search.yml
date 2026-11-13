@@ -1,0 +1,14 @@
+# Optional OpenSearch for the search integration: docker compose -f docker-compose.search.yml up -d
+name: miomock-search
+services:
+  opensearch:
+    image: ${MIOMOCK_OPENSEARCH_IMAGE:-opensearchproject/opensearch:3.5.0}
+    container_name: miomock-opensearch
+    environment:
+      discovery.type: single-node
+      # Local development only: never disable the security plugin in production.
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"

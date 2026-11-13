@@ -13,6 +13,7 @@ import {
 import { type ListResult } from "sonamu";
 
 import { SD } from "../../i18n/sd.generated";
+import { markProjectsChanged } from "../../search/synchronization";
 import { AuditLogModel } from "../audit-log/audit-log.model";
 import { type ProjectSubsetKey, type ProjectSubsetMapping } from "../sonamu.generated";
 import { projectLoaderQueries, projectSubsetQueries } from "../sonamu.generated.sso";
@@ -174,6 +175,8 @@ class ProjectModelClass extends BaseModelClass<
 
       await trx.table("project_tags").whereIn("project_id", ids).whereNotIn("id", ptIds).delete();
 
+      await markProjectsChanged(trx, ids);
+
       // audit log
       await Promise.all(
         ids.map((id, i) =>
@@ -202,6 +205,7 @@ class ProjectModelClass extends BaseModelClass<
 
     // transaction
     await wdb.transaction(async (trx) => {
+      await markProjectsChanged(trx, ids);
       return trx.table("projects").whereIn("projects.id", ids).delete();
     });
 

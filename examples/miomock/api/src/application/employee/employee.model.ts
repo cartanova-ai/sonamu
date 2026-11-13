@@ -2,6 +2,7 @@ import { api, asArray, BadRequestException, BaseModelClass, NotFoundException } 
 import { type ListResult } from "sonamu";
 
 import { SD } from "../../i18n/sd.generated";
+import { markProjectsChanged } from "../../search/synchronization";
 import { AuditLogModel } from "../audit-log/audit-log.model";
 import { type EmployeeSubsetKey, type EmployeeSubsetMapping } from "../sonamu.generated";
 import { employeeLoaderQueries, employeeSubsetQueries } from "../sonamu.generated.sso";
@@ -230,7 +231,16 @@ class EmployeeModelClass extends BaseModelClass<
 
     // transaction
     await wdb.transaction(async (trx) => {
-      return trx.table("employees").whereIn("employees.id", ids).delete();
+      // ON DELETE CASCADE removes the memberships unmarked: read the affected projects first.
+      const memberships = await trx
+        .table("projects__employees")
+        .whereIn("projects__employees.employee_id", ids)
+        .select({ project_id: "projects__employees.project_id" });
+      await trx.table("employees").whereIn("employees.id", ids).delete();
+      await markProjectsChanged(
+        trx,
+        memberships.map((row) => row.project_id),
+      );
     });
 
     // audit log

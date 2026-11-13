@@ -806,6 +806,9 @@ importers:
       '@logtape/redaction':
         specifier: 'catalog:'
         version: 2.4.2(@logtape/logtape@2.4.2)
+      '@opensearch-project/opensearch':
+        specifier: 'catalog:'
+        version: 3.9.0(supports-color@11.0.0)
       '@oxc-project/runtime':
         specifier: 'catalog:'
         version: 0.155.0
@@ -815,6 +818,9 @@ importers:
       '@sonamu-kit/cli':
         specifier: workspace:^
         version: link:../../../modules/cli
+      '@sonamu-kit/opensearch':
+        specifier: workspace:*
+        version: link:../../../modules/opensearch
       ai:
         specifier: 'catalog:'
         version: 7.0.145(zod@4.6.7)
@@ -879,6 +885,9 @@ importers:
       node-sql-parser:
         specifier: 'catalog:'
         version: 5.4.0
+      testcontainers:
+        specifier: 'catalog:'
+        version: 12.2.1(supports-color@11.0.0)
       ts-node:
         specifier: 'catalog:'
         version: 10.9.2(@swc/core@1.15.7(@swc/helpers@0.5.18))(@types/node@26.6.5)(@typescript/typescript6@6.0.2)

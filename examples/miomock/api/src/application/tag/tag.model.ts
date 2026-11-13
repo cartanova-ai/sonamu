@@ -13,6 +13,7 @@ import {
 import { type ListResult } from "sonamu";
 
 import { SD } from "../../i18n/sd.generated";
+import { markProjectsChanged } from "../../search/synchronization";
 import { AuditLogModel } from "../audit-log/audit-log.model";
 import { type TagSubsetKey, type TagSubsetMapping } from "../sonamu.generated";
 import { tagLoaderQueries, tagSubsetQueries } from "../sonamu.generated.sso";
@@ -125,6 +126,16 @@ class TagModelClass extends BaseModelClass<
     return wdb.transaction(async (trx) => {
       const ids = await trx.ubUpsert("tags");
 
+      // A renamed tag changes the document of every project using it.
+      const usages = await trx
+        .table("project_tags")
+        .whereIn("project_tags.tag_id", ids)
+        .select({ project_id: "project_tags.project_id" });
+      await markProjectsChanged(
+        trx,
+        usages.map((row) => row.project_id),
+      );
+
       // audit log
       await Promise.all(
         ids.map((id, i) =>
@@ -153,7 +164,16 @@ class TagModelClass extends BaseModelClass<
 
     // transaction
     await wdb.transaction(async (trx) => {
-      return trx.table("tags").whereIn("tags.id", ids).delete();
+      // ON DELETE CASCADE removes the project_tags rows unmarked: read the affected projects first.
+      const usages = await trx
+        .table("project_tags")
+        .whereIn("project_tags.tag_id", ids)
+        .select({ project_id: "project_tags.project_id" });
+      await trx.table("tags").whereIn("tags.id", ids).delete();
+      await markProjectsChanged(
+        trx,
+        usages.map((row) => row.project_id),
+      );
     });
 
     // audit log
