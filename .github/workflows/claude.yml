@@ -68,6 +68,24 @@ jobs:
       - name: Miomock unit test
         run: scripts/miomock-unit-test.sh
 
+      - name: Miomock search test
+        run: scripts/miomock-search-test.sh
+
       # Tasks 관련 통합 테스트를 실행합니다.
       - name: Task Queue integration test
         run: scripts/task-queue-integration-test.sh
+
+      - name: OpenSearch docs parity check
+        run: mise exec -- node modules/opensearch/scripts/check-docs-parity.mjs
+
+      # 3.5.0 is the oldest supported engine. The ghcr.io mirror is already pulled by the service container.
+      - name: OpenSearch integration test (3.5.0)
+        env:
+          SONAMU_OPENSEARCH_TEST_POSTGRES_IMAGE: ghcr.io/cartanova-ai/sonamu-postgres:latest
+        run: scripts/opensearch-integration-test.sh
+
+      - name: OpenSearch integration test (3.9.0)
+        env:
+          SONAMU_OPENSEARCH_TEST_IMAGE: opensearchproject/opensearch:3.9.0
+          SONAMU_OPENSEARCH_TEST_POSTGRES_IMAGE: ghcr.io/cartanova-ai/sonamu-postgres:latest
+        run: scripts/opensearch-integration-test.sh
