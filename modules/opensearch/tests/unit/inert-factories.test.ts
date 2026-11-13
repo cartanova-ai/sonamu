@@ -59,6 +59,7 @@ describe("비활성 팩토리", () => {
       "renderSearchSchemaSql",
     ]);
     expect(Object.keys(entries[3]).toSorted()).toEqual([
+      "createSearchCliPlugin",
       "createSearchLifecycle",
       "createSonamuSearchQueries",
       "createSonamuSynchronization",
@@ -386,5 +387,22 @@ describe("Sonamu 쿼리 핸들 팩토리", () => {
     expect(fake.requests()).toEqual([]);
     expect(addedResources(before)).toEqual(new Map());
     getDB.mockRestore();
+  });
+});
+
+describe("검색 CLI 플러그인 팩토리", () => {
+  it("createSearchCliPlugin은 load를 부르지 않고 연결과 타이머를 만들지 않는다", async () => {
+    const sonamuEntry = await import("../../src/sonamu/index");
+    const before = countActiveResources();
+
+    const load = vi.fn(() => {
+      throw new Error("a factory must not load the setup");
+    });
+    const plugin = sonamuEntry.createSearchCliPlugin({ load });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(plugin.commands.length).toBeGreaterThan(0);
+    expect(load).not.toHaveBeenCalled();
+    expect(addedResources(before)).toEqual(new Map());
   });
 });

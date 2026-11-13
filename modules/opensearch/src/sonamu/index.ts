@@ -1,4 +1,10 @@
 export { resolveSonamuPrimary } from "./primary";
+export {
+  createSearchCliPlugin,
+  type SearchCliEvent,
+  type SearchCliPluginOptions,
+  type SearchCliSetup,
+} from "./cli-plugin";
 export { defineSonamuSearch, withProjectionScope } from "./projection-scope";
 export {
   createSonamuSearchQueries,

@@ -501,4 +501,59 @@ export const searchMessagesEn = {
     `The fence of target ${params.targetId} could not be read; nothing was changed. Retry when OpenSearch responds.`,
   "fence.takeoverContended": (params: { targetId: string; attempts: number }) =>
     `The fence of target ${params.targetId} kept moving during ${params.attempts} takeover attempts; another database is still writing to it. Stop it first.`,
+  "cli.command.inspect":
+    "Show a logical key's targets, read head, open build, workers and store binding.",
+  "cli.command.init":
+    "Create, register and serve the first target, or open a rebuild for the current definition.",
+  "cli.command.backfill": "Run the build's source scan to the end.",
+  "cli.command.cutover":
+    "Show the build's cutover blockers, then move the read pointer to its new target.",
+  "cli.command.rollback": "Point the serving build back to its old target.",
+  "cli.command.retireOld": "Retire targets that left reads; refused while their read grace lasts.",
+  "cli.command.suspend":
+    "Suspend capture; search stays unavailable until a resumed build is cut over.",
+  "cli.command.resume": "Resume capture with a new epoch; then run backfill and cutover.",
+  "cli.command.verify": "Compare a paused target's indexed versions with the ledger.",
+  "cli.command.resumeTarget": "Turn a verified paused target active again.",
+  "cli.command.reconcile":
+    "Resolve an in-flight or ambiguous create attempt; approve only when no other create attempt runs.",
+  "cli.command.remark": "Mark documents again so they are indexed with new revisions.",
+  "cli.command.retryQuarantined": "Make quarantined documents deliverable again.",
+  "cli.command.drain": "Run the indexing worker until nothing is pending (development).",
+  "cli.command.adoptStore":
+    "Declare this database a copy of another store: new store ID, capture suspended, inherited targets detached.",
+  "cli.command.confirmOwnership":
+    "Declare this database the recorded store itself (restored in place, renamed, moved server) and record its origin again.",
+  "cli.argument.logicalKey": "Logical key; optional when only one is defined.",
+  "cli.option.build": "Build ID; defaults to the open build.",
+  "cli.option.target": "Target ID.",
+  "cli.option.retireTarget": "Target ID; defaults to every target that left reads.",
+  "cli.option.limit": "Rows per page.",
+  "cli.option.ids": "Document ID; repeat the flag for more.",
+  "cli.option.scan": "Scan the source or the ledger.",
+  "cli.option.after": "Scan after this cursor.",
+  "cli.option.through": "Scan through this cursor.",
+  "cli.option.maxRounds": "Stop after this many drains.",
+  "cli.option.operationId": "Audit operation ID; generated when omitted.",
+  "cli.option.actor": "Audit actor; defaults to the operating-system user.",
+  "cli.option.reason": "Audit reason.",
+  "cli.invalidOptions": (params: { path: string }) =>
+    `Invalid search CLI plugin option at ${params.path}.`,
+  "cli.invalidSetup": (params: { path: string }) =>
+    `The search CLI setup returned by load is invalid at ${params.path}.`,
+  "cli.invalidInput": (params: { name: string }) => `Invalid value for ${params.name}.`,
+  "cli.logicalKeyRequired": (params: { keys: string }) =>
+    `Pass the logical key: one of ${params.keys}.`,
+  "cli.logicalKeyUnknown": (params: { logicalKey: string; keys: string }) =>
+    `Logical key ${quoted(params.logicalKey)} is not defined; use one of ${params.keys}.`,
+  "cli.remarkScopeRequired": "Pass --ids or --scan.",
+  "cli.noOpenBuild": (params: { logicalKey: string }) =>
+    `Logical key ${quoted(params.logicalKey)} has no open build; pass --build or run init first.`,
+  "cli.verificationViolations": (params: { targetId: string; violations: number }) =>
+    `Verification of target ${params.targetId} found ${params.violations} violations.`,
+  "cli.workerCooldown": (params: { cooldownRemainingMs: number }) =>
+    `The worker is cooling down after an infrastructure failure; retry in ${params.cooldownRemainingMs} ms.`,
+  "cli.drainRefused": (params: { code: string }) => `The worker refused to drain (${params.code}).`,
+  "cli.storeMismatchHint":
+    "If this database is a copy or restore of another database, run 'sonamu search adopt-store'; if it is the same store (renamed, restored in place, moved server), run 'sonamu search confirm-ownership'.",
 } as const;

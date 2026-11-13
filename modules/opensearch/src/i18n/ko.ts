@@ -444,4 +444,54 @@ export const searchMessagesKo: SearchMessageCatalog = {
     `대상 ${params.targetId}의 fence를 읽지 못해 아무것도 바꾸지 않았습니다. OpenSearch가 응답하면 다시 시도하세요.`,
   "fence.takeoverContended": (params) =>
     `대상 ${params.targetId}의 fence가 인수 시도 ${params.attempts}번 동안 계속 움직였습니다. 다른 데이터베이스가 아직 쓰고 있습니다. 먼저 멈추세요.`,
+  "cli.command.inspect":
+    "logical key의 대상, 읽기 헤드, 열린 빌드, 워커, 저장소 결속을 보여 줍니다.",
+  "cli.command.init": "첫 대상을 만들고 등록해 읽기에 올리거나, 현재 정의로 재구성 빌드를 엽니다.",
+  "cli.command.backfill": "빌드의 원본 스캔을 끝까지 진행합니다.",
+  "cli.command.cutover":
+    "빌드의 cutover 차단 사유를 보여 준 뒤 읽기 포인터를 새 대상으로 옮깁니다.",
+  "cli.command.rollback": "serving 빌드를 옛 대상으로 되돌립니다.",
+  "cli.command.retireOld": "읽기에서 빠진 대상을 은퇴시킵니다. 읽기 유예 중이면 거부됩니다.",
+  "cli.command.suspend": "캡처를 중단합니다. 재개한 빌드를 cutover할 때까지 검색을 쓸 수 없습니다.",
+  "cli.command.resume": "새 epoch로 캡처를 재개합니다. 그다음 backfill과 cutover를 실행하세요.",
+  "cli.command.verify": "정지된 대상의 색인 버전을 원장과 비교합니다.",
+  "cli.command.resumeTarget": "검증을 마친 정지 대상을 다시 활성화합니다.",
+  "cli.command.reconcile":
+    "in_flight나 ambiguous 생성 시도를 정리합니다. 다른 생성 시도가 돌지 않을 때만 승인하세요.",
+  "cli.command.remark": "문서를 다시 표시해 새 리비전으로 색인되게 합니다.",
+  "cli.command.retryQuarantined": "격리된 문서를 다시 전달 가능하게 만듭니다.",
+  "cli.command.drain": "대기 중인 문서가 없을 때까지 색인 워커를 실행합니다 (개발용).",
+  "cli.command.adoptStore":
+    "이 데이터베이스를 다른 저장소의 복사본으로 선언합니다: 새 store ID, 캡처 중단, 물려받은 대상 분리.",
+  "cli.command.confirmOwnership":
+    "이 데이터베이스가 기록된 저장소 그 자체임을 선언하고(제자리 복원, 이름 변경, 서버 이전) 원점을 다시 기록합니다.",
+  "cli.argument.logicalKey": "logical key. 하나만 정의돼 있으면 생략할 수 있습니다.",
+  "cli.option.build": "빌드 ID. 생략하면 열린 빌드입니다.",
+  "cli.option.target": "대상 ID.",
+  "cli.option.retireTarget": "대상 ID. 생략하면 읽기에서 빠진 모든 대상입니다.",
+  "cli.option.limit": "페이지당 행 수.",
+  "cli.option.ids": "문서 ID. 여러 개면 플래그를 반복하세요.",
+  "cli.option.scan": "원본이나 원장을 스캔합니다.",
+  "cli.option.after": "이 커서 다음부터 스캔합니다.",
+  "cli.option.through": "이 커서까지 스캔합니다.",
+  "cli.option.maxRounds": "이 횟수만큼 drain한 뒤 멈춥니다.",
+  "cli.option.operationId": "감사 operation ID. 생략하면 만들어집니다.",
+  "cli.option.actor": "감사 actor. 생략하면 운영체제 사용자입니다.",
+  "cli.option.reason": "감사 사유.",
+  "cli.invalidOptions": (params) => `검색 CLI 플러그인 옵션 ${params.path}이 잘못됐습니다.`,
+  "cli.invalidSetup": (params) => `load가 돌려준 검색 CLI 설정의 ${params.path}이 잘못됐습니다.`,
+  "cli.invalidInput": (params) => `${params.name}의 값이 잘못됐습니다.`,
+  "cli.logicalKeyRequired": (params) => `logical key를 지정하세요: ${params.keys} 중 하나입니다.`,
+  "cli.logicalKeyUnknown": (params) =>
+    `logical key ${quoted(params.logicalKey)}는 정의돼 있지 않습니다. ${params.keys} 중 하나를 쓰세요.`,
+  "cli.remarkScopeRequired": "--ids나 --scan을 지정하세요.",
+  "cli.noOpenBuild": (params) =>
+    `logical key ${quoted(params.logicalKey)}에 열린 빌드가 없습니다. --build를 지정하거나 먼저 init을 실행하세요.`,
+  "cli.verificationViolations": (params) =>
+    `대상 ${params.targetId}의 검증에서 위반 ${params.violations}건을 찾았습니다.`,
+  "cli.workerCooldown": (params) =>
+    `워커가 인프라 장애 뒤 냉각 중입니다. ${params.cooldownRemainingMs}ms 뒤에 다시 시도하세요.`,
+  "cli.drainRefused": (params) => `워커가 drain을 거부했습니다 (${params.code}).`,
+  "cli.storeMismatchHint":
+    "이 데이터베이스가 다른 데이터베이스의 복사본이나 복원본이면 'sonamu search adopt-store'를, 같은 저장소이면(이름 변경, 제자리 복원, 서버 이전) 'sonamu search confirm-ownership'을 실행하세요.",
 };
