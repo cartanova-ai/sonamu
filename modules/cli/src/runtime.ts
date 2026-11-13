@@ -11,13 +11,18 @@ import {
 } from "@optique/core";
 import { createLoggingConfig, loggingOptions, type LoggingOptionsResult } from "@optique/logtape";
 import { zod } from "@optique/zod";
+import { type SonamuCliCommand, type SonamuCliPlugin } from "sonamu";
 import { z } from "zod";
 
 import { COMMAND_LIFECYCLE_POLICIES } from "./lifecycle.js";
 import { createCliOutput, runWithAmbientOutputIsolation, type CliError } from "./output.js";
 import {
+  BUILTIN_TOP_LEVEL_COMMANDS,
+  collectPluginCommands,
   createSonamuProgram,
   parseSonamuArgs,
+  pluginCommandInput,
+  RESERVED_COMMAND_WORDS,
   SONAMU_COMMAND_CANDIDATES,
   SonamuUsageError,
   type ParsedSonamuArgs,
@@ -111,6 +116,8 @@ export interface RunSonamuCliOptions {
   readonly handlers?: CliHandlers;
   readonly candidateProvider?: CliCandidateProvider;
   readonly defaultCandidateProviderFactory?: () => CliCandidateProvider;
+  /** Replaces loading `cli.plugins` from the project's built sonamu.config. */
+  readonly loadPlugins?: () => Promise<readonly SonamuCliPlugin[]>;
 }
 
 export interface RunSonamuCliResult {
@@ -342,6 +349,11 @@ const COMMAND_HINTS = new Map<string, string>([
   ["migrate rollback", "Roll back applied database migrations"],
 ]);
 
+/** Node leaves isTTY undefined, not false, on a stream that is not a terminal. */
+function isTerminal(stream: { readonly isTTY?: boolean }): boolean {
+  return stream.isTTY === true;
+}
+
 export function createDefaultInteraction(
   options: {
     readonly prompt?: CliPrompt;
@@ -359,8 +371,8 @@ export function createDefaultInteraction(
   };
   const interaction: CliInteraction = {
     enabled: true,
-    stdinIsTTY: options.stdinIsTTY ?? process.stdin.isTTY,
-    stdoutIsTTY: options.stdoutIsTTY ?? process.stdout.isTTY,
+    stdinIsTTY: options.stdinIsTTY ?? isTerminal(process.stdin),
+    stdoutIsTTY: options.stdoutIsTTY ?? isTerminal(process.stdout),
     prompt,
     discovery: {
       async command(input, candidates) {
@@ -526,6 +538,53 @@ async function defaultHandlers(): Promise<CliHandlers> {
   return registry.CLI_HANDLERS;
 }
 
+async function defaultLoadPlugins(): Promise<readonly SonamuCliPlugin[]> {
+  const moduleName = "sonamu/tooling";
+  const loaded = await import(moduleName);
+  if (loaded.loadCliPlugins === undefined) {
+    throw new Error("the installed sonamu does not support CLI plugins; upgrade sonamu.");
+  }
+  return loaded.loadCliPlugins();
+}
+
+type PluginLoad =
+  | {
+      readonly ok: true;
+      readonly commands: ReadonlyMap<string, SonamuCliCommand>;
+      readonly pluginNames: readonly string[];
+    }
+  | { readonly ok: false; readonly reason: string };
+
+async function loadPluginCommands(
+  load: () => Promise<readonly SonamuCliPlugin[]>,
+): Promise<PluginLoad> {
+  try {
+    const plugins = await load();
+    return {
+      ok: true,
+      commands: collectPluginCommands(plugins),
+      pluginNames: plugins.map((plugin) => plugin.name),
+    };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return { ok: false, reason: reason.split("\n")[0] };
+  }
+}
+
+function pluginLoadNotice(reason: string): string {
+  return `Plugin commands could not be loaded: ${reason}\n`;
+}
+
+/** The first command word, or undefined when the arguments start with an option (root level). */
+function commandWord(commandArgs: readonly string[]): string | undefined {
+  const [first] = commandArgs;
+  return first === undefined || first.startsWith("-") ? undefined : first;
+}
+
+function mayBePluginWord(word: string): boolean {
+  return !BUILTIN_TOP_LEVEL_COMMANDS.has(word) && !RESERVED_COMMAND_WORDS.has(word);
+}
+
 async function takeGlobalFlags(args: readonly string[]) {
   let json = false;
   let nonInteractive = false;
@@ -615,9 +674,10 @@ async function renderMeta(
   version: string,
   stdout: (chunk: string) => void,
   stderr: (chunk: string) => void,
+  pluginCommands: ReadonlyMap<string, SonamuCliCommand>,
 ): Promise<number> {
   const { runAsync } = await import("@optique/run");
-  const program = createSonamuProgram({ version });
+  const program = createSonamuProgram({ version, pluginCommands });
   try {
     await runAsync(
       { parser: program.parser, metadata: { name: "sonamu", version } },
@@ -782,6 +842,7 @@ export async function applyDiscovery(
   rawArgs: readonly string[],
   interaction: CliInteraction,
   nonInteractive: boolean,
+  pluginCommandPaths: readonly (readonly string[])[] = [],
 ): Promise<string[]> {
   const args = [...rawArgs];
   const discovery = interaction.discovery;
@@ -795,7 +856,10 @@ export async function applyDiscovery(
     return args;
   }
 
-  const candidatePaths = SONAMU_COMMAND_CANDIDATES.map((candidate) => candidate.split(" "));
+  const candidatePaths = [
+    ...SONAMU_COMMAND_CANDIDATES.map((candidate) => candidate.split(" ")),
+    ...pluginCommandPaths,
+  ];
   const topLevelCommands = new Set(candidatePaths.map(([topLevel]) => topLevel));
   let selectedPrefix: string | undefined;
 
@@ -832,6 +896,8 @@ export async function applyDiscovery(
     }
   }
 
+  // Value corrections below know only built-in option domains.
+  if (pluginCommandPaths.some(([topLevel]) => topLevel === args[0])) return args;
   const valueChoices = {
     "--strategy": ["recent", "sample", "random"],
     "--locale": ["ko", "en"],
@@ -1109,16 +1175,32 @@ function productionMigrationNeedsReason(parsed: ParsedSonamuArgs): boolean {
   return missingForceReason(parsed);
 }
 
-function requiresMutationApproval(parsed: ParsedSonamuArgs): boolean {
-  if (
-    SAFE_DRY_RUN_COMMANDS.has(parsed.command) &&
-    parsed.options.dryRun === true &&
-    parsed.options.execute === false
-  ) {
+// Plugin commands declare their mutation policy; built-ins come from the tables above.
+function requiresMutationApproval(
+  parsed: ParsedSonamuArgs,
+  pluginCommand: SonamuCliCommand | undefined,
+): boolean {
+  const safeDryRun =
+    pluginCommand === undefined
+      ? SAFE_DRY_RUN_COMMANDS.has(parsed.command)
+      : pluginCommand.mutation?.dryRun === true;
+  const mutation =
+    pluginCommand === undefined
+      ? MUTATION_COMMANDS.has(parsed.command)
+      : pluginCommand.mutation !== undefined;
+  if (safeDryRun && parsed.options.dryRun === true && parsed.options.execute === false) {
     return false;
   }
-  if (MUTATION_COMMANDS.has(parsed.command)) return true;
+  if (mutation) return true;
   return false;
+}
+
+function unknownPluginWordError(error: Error, word: string, load: PluginLoad): Error {
+  if (!(error instanceof SonamuUsageError) || error.code !== "UNKNOWN_COMMAND") return error;
+  const hint = load.ok
+    ? `"${word}" is not a built-in command, and no CLI plugin provides it.`
+    : `"${word}" is not a built-in command, and plugin commands could not be loaded: ${load.reason}`;
+  return new SonamuUsageError(error.code, error.message, hint);
 }
 
 export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<RunSonamuCliResult> {
@@ -1132,9 +1214,36 @@ export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<R
   };
   const setExitCode =
     options.exit?.setExitCode ?? ((exitCode: number) => (process.exitCode = exitCode));
+  const loadPlugins = options.loadPlugins ?? defaultLoadPlugins;
 
   if (isMetaCommand(args)) {
-    const exitCode = await renderMeta(args, version, destination.stdout, destination.stderr);
+    const boundary = args.indexOf("--");
+    const metaArgs = boundary === -1 ? args : args.slice(0, boundary);
+    const word = commandWord(
+      await takeGlobalFlags(metaArgs).then(
+        ({ commandArgs }) => commandArgs,
+        () => metaArgs,
+      ),
+    );
+    // Root help and completion list plugins but must keep working when they cannot be loaded.
+    const loadsPlugins =
+      word === undefined
+        ? metaArgs.includes("--help")
+        : word === "completion" || mayBePluginWord(word);
+    let pluginCommands: ReadonlyMap<string, SonamuCliCommand> = new Map();
+    if (loadsPlugins) {
+      const loaded = await loadPluginCommands(loadPlugins);
+      if (loaded.ok) pluginCommands = loaded.commands;
+      // A shell runs completion on every Tab; a notice there would land in the user's prompt.
+      else if (word !== "completion") destination.stderr(pluginLoadNotice(loaded.reason));
+    }
+    const exitCode = await renderMeta(
+      args,
+      version,
+      destination.stdout,
+      destination.stderr,
+      pluginCommands,
+    );
     setExitCode(exitCode);
     return { exitCode };
   }
@@ -1168,8 +1277,24 @@ export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<R
       baseInteraction.stdoutIsTTY,
   };
   const commandForError = globals.commandArgs[0] ?? "sonamu";
+  const word = commandWord(globals.commandArgs);
+  const canPickCommand =
+    canPrompt(interaction, globals.nonInteractive) && interaction.discovery?.command !== undefined;
+  // Built-in commands never load the project config for plugins.
+  const pluginLoad =
+    (word !== undefined && mayBePluginWord(word)) ||
+    (globals.commandArgs.length === 0 && canPickCommand)
+      ? await runWithAmbientOutputIsolation(globals.json, () => loadPluginCommands(loadPlugins))
+      : undefined;
+  const pluginCommands: ReadonlyMap<string, SonamuCliCommand> = pluginLoad?.ok
+    ? pluginLoad.commands
+    : new Map();
+  if (pluginLoad?.ok === false && canPickCommand) {
+    destination.stderr(pluginLoadNotice(pluginLoad.reason));
+  }
 
   let parsed: ParsedSonamuArgs;
+  let pluginCommand: SonamuCliCommand | undefined;
   try {
     if (
       globals.commandArgs.length === 0 &&
@@ -1189,6 +1314,7 @@ export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<R
       globals.commandArgs,
       interaction,
       globals.nonInteractive,
+      [...pluginCommands.values()].map((declared) => declared.path),
     );
     const usesInteractiveEntityDiscovery =
       entityCommand(discoveredArgs) !== undefined &&
@@ -1207,13 +1333,25 @@ export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<R
       candidateProvider,
     );
     if (filled.error) throw Object.assign(new Error(filled.error.message), filled.error);
-    parsed = await parseSonamuArgs(createSonamuProgram({ version }), filled.args ?? discoveredArgs);
-    if (candidateProvider === undefined) {
+    parsed = await parseSonamuArgs(
+      createSonamuProgram({ version, pluginCommands }),
+      filled.args ?? discoveredArgs,
+    );
+    pluginCommand = pluginCommands.get(parsed.command);
+    if (candidateProvider === undefined && pluginCommand === undefined) {
       parsed = await refineParsedEntity(parsed, interaction, globals.nonInteractive);
     }
     validateParsedInput(parsed);
   } catch (error) {
-    const normalized = normalizeError(error instanceof Error ? error : new Error(String(error)));
+    let failure = error instanceof Error ? error : new Error(String(error));
+    if (
+      pluginLoad !== undefined &&
+      word !== undefined &&
+      ![...pluginCommands.values()].some((declared) => declared.path[0] === word)
+    ) {
+      failure = unknownPluginWordError(failure, word, pluginLoad);
+    }
+    const normalized = normalizeError(failure);
     output.error(commandForError, normalized);
     setExitCode(normalized.exitCode);
     return { exitCode: normalized.exitCode, error: normalized };
@@ -1234,7 +1372,7 @@ export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<R
   }
 
   const canConfirmInteractively = canPrompt(interaction, globals.nonInteractive);
-  const mutationRequiresApproval = requiresMutationApproval(parsed);
+  const mutationRequiresApproval = requiresMutationApproval(parsed, pluginCommand);
   if (
     mutationRequiresApproval &&
     (productionMigrationNeedsReason(parsed) ||
@@ -1264,7 +1402,7 @@ export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<R
   }
 
   try {
-    const resources = lifecycleResources(parsed.command);
+    const resources = pluginCommand === undefined ? lifecycleResources(parsed.command) : ["sonamu"];
     const execution = await runWithAmbientOutputIsolation(globals.json, async () => {
       const loggingSession = await createCliLoggingSession(
         globals.logging,
@@ -1285,28 +1423,37 @@ export async function runSonamuCli(options: RunSonamuCliOptions = {}): Promise<R
           }
           await loggingSession?.ensureConfigured();
 
-          // 지연 tooling 로딩도 Sonamu 초기화 이후, 해제 이전에만 수행합니다.
-          const handlers = options.handlers ?? (await defaultHandlers());
-          const handler = handlers[parsed.command];
-          if (handler === undefined) {
-            throw Object.assign(new Error(`No handler is registered for ${parsed.command}.`), {
-              code: "HANDLER_NOT_FOUND",
+          let data: HandlerResult;
+          if (pluginCommand === undefined) {
+            // 지연 tooling 로딩도 Sonamu 초기화 이후, 해제 이전에만 수행합니다.
+            const handlers = options.handlers ?? (await defaultHandlers());
+            const handler = handlers[parsed.command];
+            if (handler === undefined) {
+              throw Object.assign(new Error(`No handler is registered for ${parsed.command}.`), {
+                code: "HANDLER_NOT_FOUND",
+              });
+            }
+
+            const input = commandInput(parsed);
+            if (!interaction.enabled && NON_INTERACTIVE_INPUT_COMMANDS.has(parsed.command)) {
+              input.nonInteractive = true;
+            }
+            data = await handler(input, {
+              command: parsed.command,
+              interaction,
+              output,
+            });
+          } else {
+            data = await pluginCommand.run(pluginCommandInput(parsed, pluginCommand), {
+              command: parsed.command,
+              json: globals.json,
+              interactive: canConfirmInteractively,
             });
           }
-
-          const input = commandInput(parsed);
-          if (!interaction.enabled && NON_INTERACTIVE_INPUT_COMMANDS.has(parsed.command)) {
-            input.nonInteractive = true;
-          }
-          const data = await handler(input, {
-            command: parsed.command,
-            interaction,
-            output,
-          });
           let exitCode = 0;
           if (isAsyncIterable(data)) {
             for await (const event of data) output.event(event);
-          } else {
+          } else if (pluginCommand === undefined) {
             const childResult = z.object({ exitCode: z.number().int() }).safeParse(data);
             exitCode = childResult.success ? childResult.data.exitCode : 0;
             if (exitCode !== 0) {
