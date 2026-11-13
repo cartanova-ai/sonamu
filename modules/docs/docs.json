@@ -351,6 +351,21 @@
                 ]
               },
               {
+                "group": "OpenSearch 검색",
+                "pages": [
+                  "ko/advanced-features/opensearch/overview",
+                  "ko/advanced-features/opensearch/setup",
+                  "ko/advanced-features/opensearch/definitions",
+                  "ko/advanced-features/opensearch/transactional-indexing",
+                  "ko/advanced-features/opensearch/worker",
+                  "ko/advanced-features/opensearch/searching",
+                  "ko/advanced-features/opensearch/index-administration",
+                  "ko/advanced-features/opensearch/recovery-runbooks",
+                  "ko/advanced-features/opensearch/operations",
+                  "ko/advanced-features/opensearch/miomock-walkthrough"
+                ]
+              },
+              {
                 "group": "Workflow",
                 "pages": [
                   "ko/advanced-features/workflows/workflow-decorator",
@@ -905,6 +920,21 @@
                   "en/advanced-features/vector-search/chunking",
                   "en/advanced-features/vector-search/vector-search",
                   "en/advanced-features/vector-search/hybrid-search"
+                ]
+              },
+              {
+                "group": "OpenSearch Search",
+                "pages": [
+                  "en/advanced-features/opensearch/overview",
+                  "en/advanced-features/opensearch/setup",
+                  "en/advanced-features/opensearch/definitions",
+                  "en/advanced-features/opensearch/transactional-indexing",
+                  "en/advanced-features/opensearch/worker",
+                  "en/advanced-features/opensearch/searching",
+                  "en/advanced-features/opensearch/index-administration",
+                  "en/advanced-features/opensearch/recovery-runbooks",
+                  "en/advanced-features/opensearch/operations",
+                  "en/advanced-features/opensearch/miomock-walkthrough"
                 ]
               },
               {

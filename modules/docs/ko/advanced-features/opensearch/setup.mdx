@@ -1,0 +1,296 @@
+---
+title: "설치와 설정"
+description: "패키지 설치, 스키마 마이그레이션, 역할 권한, 클라이언트, 저장소 식별자, 권장 설정값"
+---
+
+이 페이지는 애플리케이션에 패키지를 처음 붙일 때 한 번 하는 일을 다룹니다. 패키지를 설치하고, PostgreSQL 스키마를 설치하고, 역할에 권한을 주고, OpenSearch 클라이언트와 동기화 핸들을 만들고, 한도 값을 정합니다. 인덱스 생성은 [인덱스 관리](/ko/advanced-features/opensearch/index-administration)에서 다룹니다.
+
+## 설치
+
+```bash
+pnpm add @sonamu-kit/opensearch @opensearch-project/opensearch knex
+```
+
+설치해도 Sonamu의 동작은 바뀌지 않습니다. 패키지는 애플리케이션이 핸들을 만들어 호출할 때만 동작합니다. `sonamu`는 선택 peer 의존성이며 `/sonamu` 진입점을 쓸 때만 필요합니다.
+
+### 진입점
+
+| 진입점 | 내용 | `sonamu` 필요 |
+| --- | --- | --- |
+| `@sonamu-kit/opensearch` | 클라이언트, 검색 정의, 검색 핸들, 오류 클래스, 메시지 지역화, 권장 설정값 | 아니요 |
+| `@sonamu-kit/opensearch/postgres` | 트랜잭션 동기화, 색인 워커 | 아니요 |
+| `@sonamu-kit/opensearch/admin` | 스키마 설치, 역할 권한, 관리 핸들 | 아니요 |
+| `@sonamu-kit/opensearch/sonamu` | Sonamu 트랜잭션 연동, projection 스코프, 서버 수명 주기 | 예 |
+| `@sonamu-kit/opensearch/testing` | 테스트용 fake와 도우미. 운영 경로에서 자동으로 선택되지 않습니다 | 아니요 |
+
+## 스키마 설치
+
+패키지의 테이블은 애플리케이션 마이그레이션에서 `installSearchSchema`를 호출해 설치합니다. 서버 시작을 포함해 다른 어떤 것도 스키마를 만들지 않습니다. 마이그레이션 파일은 Sonamu의 Knex 마이그레이션 디렉터리(`src/migrations`)에 직접 작성합니다.
+
+```typescript title="migrations/20260101000000_install_search_schema.ts"
+import { installSearchSchema } from "@sonamu-kit/opensearch/admin";
+import { type Knex } from "knex";
+
+/** Role privileges are not part of the schema; grant them with grantSearchRoles (administration.ts). */
+export async function up(knex: Knex): Promise<void> {
+  await installSearchSchema(knex);
+}
+
+export async function down(): Promise<void> {
+  // Never dropped automatically: the index ledger and intents cannot be recovered.
+  throw new Error(
+    "sonamu_search 스키마는 자동으로 지우지 않습니다. 운영자가 직접 DROP SCHEMA sonamu_search CASCADE를 실행하세요.",
+  );
+}
+```
+
+`installSearchSchema`의 동작:
+
+- 두 번째 인자 `{ schema }`로 다른 이름을 주지 않으면 `sonamu_search` 스키마를 씁니다. `public`, `information_schema`, `pg_`로 시작하는 이름은 거부합니다.
+- 여러 번 실행해도 됩니다. 이미 적용된 버전은 건너뛰고, 빠진 버전을 한 번의 호출로 모두 차례로 적용합니다. 그래서 버전 1 때 작성한 마이그레이션도 새 데이터베이스에는 지금 버전(2)을 설치합니다.
+- 버전 2를 적용하는 호출(새 설치 포함)은 같은 트랜잭션에서 이 데이터베이스의 원점(시스템 식별자, 데이터베이스 OID, 이름)을 저장소에 기록합니다. 워커와 원격 관리 작업은 이 기록으로 복사본을 알아봅니다. 이미 버전 2인 스키마에서 다시 실행하면 원점을 다시 기록하지 않습니다. 스키마가 버전 1일 때 만든 복사본에 이것이 무엇을 뜻하는지는 [복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)에 있습니다.
+- 설치된 스키마가 패키지보다 새 버전이거나, 체크섬이 다르거나, 버전 기록에 구멍이 있으면 아무것도 바꾸지 않고 `SearchSchemaVersionMismatch`를 던집니다.
+- 넘겨받은 Knex가 트랜잭션이면(Knex 마이그레이션이 그렇습니다) 그 안의 savepoint에서 실행하고, 실패하면 이 설치만 되돌립니다. 그 트랜잭션은 READ COMMITTED여야 합니다.
+- `{ schema, applied, current, storeId }`를 돌려줍니다. `storeId`는 아래에서 설명하는 저장소 식별자입니다.
+
+`checkSearchSchema(knex)`는 아무것도 바꾸지 않고 설치 상태(`ok`, `missing`, `behind`, `ahead`, `checksum-mismatch`)만 읽습니다. 런타임 핸들은 이 확인을 하지 않으므로, 스키마가 없으면 실제 문장이 실패하는 시점에 `SearchSchemaMissing`이 납니다.
+
+### Sonamu 마이그레이터와의 관계
+
+Sonamu 마이그레이터는 엔티티가 있는 테이블만 비교하고 `public` 스키마만 읽습니다. `sonamu_search`는 엔티티가 없고 `public` 밖에 있으므로 마이그레이터가 이 스키마의 마이그레이션을 만들지 않습니다. 애플리케이션 테이블과 패키지 테이블 사이에 외래 키를 만들지 마세요.
+
+테스트 데이터베이스와 fixture:
+
+- 테스트 데이터베이스는 템플릿 데이터베이스를 복제해 만들고, fixture 동기화는 데이터베이스 전체를 `pg_dump`/`pg_restore --no-acl`로 옮깁니다. 패키지 스키마와 원장 행은 함께 옮겨지지만 역할 권한(GRANT)은 옮겨지지 않습니다.
+- 복제한 데이터베이스는 원본과 같은 `store_id`와 대상 행을 가지지만 원점은 다릅니다. 복제본에서 워커나 원격 관리 작업을 돌리려면 먼저 `adoptCopiedStore`로 채택해야 하고, 그 전에는 `SearchStoreMismatch`(`store-origin-changed`)로 멈춥니다. [miomock 둘러보기](/ko/advanced-features/opensearch/miomock-walkthrough)의 검색 통합 테스트가 이렇게 합니다.
+
+### 되돌리기
+
+예제의 `down`은 스키마를 지우지 않고 예외를 던집니다. 원장의 리비전과 대기 중인 의도는 한 번 지우면 되살릴 수 없기 때문입니다. 스키마를 정말 지워야 하면 운영자가 직접 지우고(오류 메시지대로 `DROP SCHEMA sonamu_search CASCADE`), 이후 모든 대상을 처음부터 재구축합니다.
+
+## 역할과 권한
+
+`applySearchGrants(knex, { roles })`는 네 가지 역할 묶음에 패키지 스키마의 최소 권한을 줍니다.
+
+| 묶음 | 쓰는 프로세스 | 할 수 있는 일 |
+| --- | --- | --- |
+| `capture` | `markChanged`를 호출하는 애플리케이션 | 원장과 의도에 쓰기, 장벽 행 잠금, 대상 목록 읽기 |
+| `worker` | 색인 워커 | 원장과 대상 읽기, 의도 삭제, 런타임 상태와 heartbeat 쓰기, 대상 일시 정지 |
+| `query` | 검색하는 애플리케이션 | 읽기 포인터와 대상 읽기 |
+| `admin` | 관리 명령 | 대상, 빌드, 읽기 포인터, 감사 기록 관리 |
+
+모든 묶음은 스키마 사용 권한과 `schema_versions`, `store` 읽기 권한을 함께 받습니다. 어느 묶음도 스키마에 객체를 만들거나 `schema_versions`와 `store`를 바꿀 수 없습니다.
+
+`applySearchGrants`의 규칙:
+
+- 스키마 소유자(마이그레이션을 실행한 역할)로 실행하세요. PostgreSQL에서 소유자가 아닌 역할의 GRANT는 오류 없이 끝나지만 아무 권한도 주지 못합니다.
+- 권한을 더하기만 하고 회수하지 않습니다. 역할을 묶음에서 빼려면 운영자가 직접 `REVOKE`합니다.
+- 설치된 스키마가 패키지 버전과 정확히 맞을 때만, 한 트랜잭션으로 실행합니다. 없는 역할이 있으면 `SearchConfigurationError`(SQLSTATE 42704)를 던지고 아무것도 바꾸지 않습니다.
+- 한 역할 이름은 한 묶음에만 둘 수 있습니다. 두 묶음에 같은 역할을 넣으면 `details.reason`이 `duplicate-role`인 `SearchConfigurationError`입니다. `public`과 `pg_`로 시작하는 역할은 거부합니다(`reserved-role`).
+
+표시와 검색을 함께 하는 API 서버처럼 한 로그인 역할에 두 묶음의 권한이 필요하면, 묶음마다 로그인하지 않는 역할을 따로 만들어 `applySearchGrants`에 넘기고, 애플리케이션의 로그인 역할을 그 두 역할의 멤버로 만듭니다. 아래에서 `chat_app`은 기본값인 INHERIT로 만든 로그인 역할입니다.
+
+```sql
+CREATE ROLE chat_search_capture NOLOGIN;
+CREATE ROLE chat_search_query NOLOGIN;
+GRANT chat_search_capture, chat_search_query TO chat_app;
+```
+
+예제는 네 묶음을 이런 역할 네 개에 줍니다.
+
+```typescript title="search/administration.ts"
+/** A role may appear in one group only; grant a login role that needs two groups membership in both group roles instead. */
+export async function grantSearchRoles(adminKnex: Knex, schema?: string): Promise<void> {
+  const options: SearchGrantsOptions = {
+    roles: {
+      capture: ["chat_search_capture"],
+      worker: ["chat_search_worker"],
+      query: ["chat_search_query"],
+      admin: ["chat_search_admin"],
+    },
+  };
+  if (schema !== undefined) options.schema = schema;
+  await applySearchGrants(adminKnex, options);
+}
+```
+
+통합 테스트가 이 예제를 실제 데이터베이스에서 그대로 실행합니다. 같은 테스트 파일은 capture 역할과 query 역할의 멤버인 로그인 역할이 `markChanged`와 카탈로그 읽기를 할 수 있고, 워커 테이블 쓰기는 여전히 거부된다는 것도 확인합니다. GRANT 문장을 실행하지 않고 검토하려면 `renderSearchGrantsSql(options)`로 만들어 보세요.
+
+`applySearchGrants`는 패키지 스키마 밖의 권한을 다루지 않습니다. 워커 역할에는 projection이 읽는 애플리케이션 테이블의 `SELECT` 권한을 따로 주어야 합니다.
+
+## 클라이언트
+
+`createSearchClient`는 애플리케이션이 만든 OpenSearch SDK 클라이언트를 감쌉니다. 검색 핸들, 워커, 관리 핸들 모두 이 래퍼를 받습니다. 예제의 같은 모듈에서 다음 절의 동기화 핸들도 만듭니다.
+
+```typescript title="search/client.ts"
+import { Client } from "@opensearch-project/opensearch";
+import {
+  createSearchClient,
+  RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+  RECOMMENDED_QUERY_LIMITS,
+} from "@sonamu-kit/opensearch";
+import { createPostgresSynchronization } from "@sonamu-kit/opensearch/postgres";
+import {
+  createSonamuSearchQueries,
+  createSonamuSynchronization,
+  resolveSonamuPrimary,
+} from "@sonamu-kit/opensearch/sonamu";
+
+import { type ChatMessageDocument, chatMessagesSearch } from "./chat-messages.definition";
+
+// The application owns these handles; keep credentials and signing keys out of code.
+export const SEARCH_NAMESPACE = process.env.SEARCH_NAMESPACE ?? "chat-production";
+
+/** Shared by the query handle and the worker; the application closes it at shutdown. */
+export const searchClient = createSearchClient({
+  createClient: () => new Client({ node: process.env.OPENSEARCH_URL ?? "http://localhost:9200" }),
+  ownsClient: true,
+  requestTimeoutMs: RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+});
+
+export const searchSynchronization = createPostgresSynchronization({
+  getPrimaryDatabase: resolveSonamuPrimary,
+  namespace: SEARCH_NAMESPACE,
+});
+export const chatSearchSync = createSonamuSynchronization(searchSynchronization);
+```
+
+| 옵션 | 뜻 |
+| --- | --- |
+| `createClient` | SDK 클라이언트를 만드는 함수. 첫 요청에서 한 번 호출되고, 팩토리 시점에는 호출되지 않습니다 |
+| `ownsClient` | `true`면 `close()`가 SDK 클라이언트도 닫습니다. 애플리케이션이 소유한 클라이언트를 넘길 때는 `false` |
+| `requestTimeoutMs` | 패키지가 보내는 요청 하나의 제한 시간 |
+| `maxResponseBytes` | 압축 해제 뒤 응답 본문의 상한. 생략하면 16 MiB이고 최대 512 MiB입니다. 넘으면 `response-too-large`입니다. 응답 하나는 이 값의 대략 2배 메모리를 씁니다 |
+
+인증(예: AWS SigV4 서명)은 `createClient`가 돌려주는 SDK 클라이언트에 설정합니다. 패키지는 그 클라이언트의 transport로 요청을 보낼 뿐입니다. 자격 증명과 서명 키는 코드에 두지 말고 환경 변수에서 읽으세요. `checkConnection()`은 `GET /`으로 연결을 확인하고, 실패하면 던지지 않고 보고서에 오류를 담아 돌려줍니다.
+
+<Warning>
+예제의 `client.ts`는 검색 핸들(`createSonamuSearchQueries`)도 만듭니다. 검색 핸들은 만들 때 커서 서명 키가 32바이트 이상인지 검사하므로, `SEARCH_CURSOR_SECRET`이 없거나 짧으면 `client.ts`를 import하는 모든 프로세스에서 import 순간 `SearchConfigurationError`가 납니다. `SEARCH_NAMESPACE` 때문에 이 모듈을 import하는 예제의 관리 명령(`administration.ts`)도 마찬가지입니다. 관리 명령, 마이그레이션 도구, 스크립트를 돌리는 환경에도 서명 키를 넣거나, namespace 같은 공용 상수를 검색 핸들을 만들지 않는 모듈로 옮기세요.
+</Warning>
+
+## 동기화 핸들과 저장소 식별자
+
+`createPostgresSynchronization`은 도메인 트랜잭션 안에서 의도를 기록하는 핸들을 만듭니다(위의 `searchSynchronization`). `createSonamuSynchronization`은 이 핸들을 Sonamu 트랜잭션 컨텍스트에 맞게 감쌉니다(`chatSearchSync`).
+
+| 옵션 | 뜻 |
+| --- | --- |
+| `getPrimaryDatabase` | primary Knex를 돌려주는 함수. 연산마다 호출하고 핸들이 붙잡아 두지 않습니다. `markChanged`는 이 함수를 쓰지 않고 넘겨받은 트랜잭션만 씁니다 |
+| `namespace` | 같은 스키마를 쓰는 배포를 구분하는 이름. `^[a-z0-9][a-z0-9-]{0,62}$` |
+| `schema` | 패키지 스키마 이름. 기본 `sonamu_search` |
+| `expectedStoreId` | 이 핸들이 기대하는 저장소 식별자. 주면 `initialize()` 없이도 표시를 받습니다 |
+| `maxIdsPerCall` | `markChanged` 호출 하나의 문서 ID 상한. 기본 10,000 |
+| `instanceName` | 이 환경의 이름(운영, 스테이징, 개발자 복사본). 환경 설정에서 넣습니다. 저장소에 기록된 이름과 다르면 워커와 원격 관리 작업이 멈춥니다. `markChanged`와 `initialize()`는 이 값을 보지 않습니다 |
+
+Sonamu 애플리케이션에서는 `getPrimaryDatabase`로 `resolveSonamuPrimary`를 넘깁니다. 이 함수는 `DB.getDB("w")`를 돌려주고, 그것이 트랜잭션이면(Sonamu test 모드에서 테스트 트랜잭션이 열려 있을 때) `SearchConfigurationError`를 던집니다.
+
+### 저장소 식별자와 initialize()
+
+스키마를 설치하면 `store` 테이블에 저장소 식별자(`store_id`)가 하나 생깁니다. `markChanged`는 동기화 핸들이 이 식별자를 고정한 뒤에만 동작합니다. 그 전에 호출하면 `details.reason`이 `store-identity-uninitialized`이고 `retryable`이 `true`인 `SearchConfigurationError`를 던지고 트랜잭션을 실패 상태로 만들므로, 도메인 쓰기가 커밋되지 않습니다.
+
+식별자는 호출자의 트랜잭션에서 추론하지 않습니다. 다음 둘 중 하나로 고정합니다.
+
+- `initialize()`: 설정된 primary에서 `store_id`를 한 번 읽어 고정합니다. 여러 번 불러도 되고, 동시에 부르면 한 번의 읽기를 함께 기다리며, 실패하면 다음 호출이 다시 읽습니다. `{ signal }`로 기다림을 중단하면 `SearchTimeout`입니다.
+- `expectedStoreId` 옵션: 처음부터 고정합니다. 값은 `installSearchSchema`가 돌려준 `storeId`입니다. 이때 `initialize()`는 읽은 값이 같은지만 확인하고, 다르면 `SearchStoreMismatch`를 던집니다.
+
+식별자는 서버가 요청을 받기 전에 고정하세요. Sonamu는 서버가 listen을 시작한 **뒤에** `server.lifecycle.onStart`를 부르므로, `createSearchLifecycle`의 `onStart`에서 `initialize()`를 기다리게 두면 listen과 초기화 완료 사이에 들어온 쓰기가 위 오류로 실패합니다. Fastify `onReady` 훅에서 `initialize()`를 기다리거나(`onReady`는 listen 전에 끝나고, 실패하면 서버가 시작하지 않습니다), `expectedStoreId`를 배포 설정으로 넣습니다. 예제의 `startup.ts`는 두 방법을 모두 보여 줍니다. `createPinnedSearchSynchronization`은 `searchSynchronization` 대신 쓰고, 둘을 함께 쓰지 마세요.
+
+```typescript title="search/startup.ts"
+/** Await before the server accepts requests (onReady, not onStart): marking fails until the store identity is fixed. */
+export async function initializeSearchStore(): Promise<void> {
+  await searchSynchronization.initialize();
+}
+
+/** Use this instead of searchSynchronization in client.ts, never both. */
+export function createPinnedSearchSynchronization(
+  expectedStoreId: string,
+): PostgresSynchronization {
+  return createPostgresSynchronization({
+    getPrimaryDatabase: resolveSonamuPrimary,
+    namespace: SEARCH_NAMESPACE,
+    expectedStoreId,
+  });
+}
+```
+
+워커를 다른 프로세스에서 돌리는 API 프로세스는 `plugins.custom`에서 훅을 등록합니다.
+
+```typescript title="sonamu.api-only.config.ts"
+/** Fix the store identity in onReady, after database setup and before listen; the worker runs in standalone-worker.ts. */
+export default defineConfig({
+  api: { dir: "api", route: { prefix: "/api" } },
+  i18n: { defaultLocale: "ko", supportedLocales: ["ko", "en"] },
+  sync: { targets: ["web"] },
+  database: {},
+  server: {
+    apiConfig: {
+      contextProvider: (defaultContext) => defaultContext,
+      guardHandler: () => {},
+    },
+    plugins: {
+      custom: (server) => {
+        server.addHook("onReady", initializeSearchStore);
+      },
+    },
+    lifecycle: {
+      onShutdown: () => searchClient.close(),
+      onError: async (error, request, reply) => {
+        if (!(error instanceof SearchError)) throw error;
+        const response = toSearchErrorResponse(error, request.headers["accept-language"] ?? "en");
+        await reply.status(response.status).send(response.body);
+      },
+    },
+  },
+});
+```
+
+`createSearchLifecycle`을 쓸 때도 같은 훅을 두면 listen 직후의 틈이 없어집니다. `initialize()`는 여러 번 불러도 한 번만 읽습니다. 워커만 돌리는 프로세스는 표시를 하지 않으므로 식별자가 필요 없습니다([색인 워커](/ko/advanced-features/opensearch/worker)).
+
+고정한 식별자는 `markChanged`마다 확인합니다. 넘겨받은 트랜잭션의 데이터베이스가 같은 식별자를 가져야 하며, 다른 데이터베이스의 트랜잭션은 `SearchStoreMismatch`(`store-mismatch`)로 거부합니다. 워커가 읽지 않는 데이터베이스에 의도가 기록되지 않게 하기 위해서입니다. 복사본을 채택해 저장소 식별자가 바뀌면, 그 전에 옛 식별자를 고정한 프로세스의 표시도 같은 이유로 거부되므로 프로세스를 다시 시작하세요. 표시는 원점을 확인(복사본 감지)하지 않으므로, 채택하지 않은 복사본에서도 표시는 계속됩니다.
+
+## 권장 설정값
+
+필수 옵션에는 기본값이 없습니다. 대신 루트 진입점이 권장값을 상수로 내보냅니다. 상수를 펼쳐 쓰고 필요한 값만 덮어쓰세요.
+
+| 상수 | 값 | 쓰는 곳 | 근거 |
+| --- | --- | --- | --- |
+| `RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS` | 30초 | `createSearchClient`의 `requestTimeoutMs` | 패키지가 보내는 OpenSearch 요청 하나의 제한 시간 |
+| `RECOMMENDED_WORKER_LIMITS` | 아래 표 | `createIndexer`의 `limits` | 워커 한도. 필드별 단위와 `createIndexer`가 검사하는 관계는 [색인 워커](/ko/advanced-features/opensearch/worker)의 "한도"에 있습니다 |
+| `RECOMMENDED_WORKER_POLL_INTERVAL_MS` | 1초 | `start()`의 `pollIntervalMs` | 할 일이 없을 때 다음 drain까지 쉬는 시간. 표시에서 색인까지 지연의 하한입니다 |
+| `RECOMMENDED_WORKER_STOP_DEADLINE_MS` | 30초 | lifecycle의 `stopDeadlineMs` | 종료와 핫 리로드 때 워커 정지 기한. 진행 중인 bulk 하나가 끝날 시간입니다. Kubernetes의 기본 종료 유예(30초)와 같으므로, 배포의 종료 유예는 이보다 길게 두세요 |
+| `RECOMMENDED_READ_LIFETIMES` | 검색 30초, 커서 10분, PIT 2분 | `RECOMMENDED_ADMIN_LIFETIMES`와 `RECOMMENDED_QUERY_LIMITS`의 일부 | 검색 하나는 사용자 요청 하나가 기다릴 시간, 커서는 사람이 결과를 넘겨 볼 시간이고, PIT는 페이지 사이에만 살아 있으면 됩니다 |
+| `RECOMMENDED_RETIREMENT_SAFETY_MARGIN_MS` | 5분 | `RECOMMENDED_ADMIN_LIFETIMES`의 `retirementSafetyMarginMs` | 데이터베이스 시계와 처리 지연의 불확실성. 옛 인덱스는 확정 해제 뒤 커서 수명 + 검색 수명 + 이 여유가 지나야 지울 수 있습니다 |
+| `RECOMMENDED_ADMIN_LIFETIMES` | 읽기 수명 + 안전 여유 | 관리 핸들의 `lifetimes` | 처음 대상을 만들 때 `read_heads`에 한 번 기록됩니다 |
+| `RECOMMENDED_ADMIN_TIMEOUTS` | 잠금 5초, 문장 30초, 유휴 트랜잭션 1분, 관리 임대 5분 | 관리 핸들의 `timeouts` | 관리 작업이 잠금을 기다리는 동안 그 뒤로 도메인 쓰기가 줄을 서므로, 짧게 실패하고 다시 시도합니다 |
+| `RECOMMENDED_CUTOVER` | 대기 1,000건, 표본 200건 | 관리 핸들의 `cutover` | cutover 뒤에도 이중 쓰기가 계속되므로 남은 대기는 새 대상에 도착합니다. 표본은 새 인덱스의 문서를 projection 결과와 비교합니다 |
+| `RECOMMENDED_QUERY_LIMITS` | 페이지 100건, 검색 10초 + 읽기 수명 | 검색 핸들의 `limits` | 페이지 하나의 권한 재확인을 primary 조회 한 번으로 끝낼 수 있는 크기입니다 |
+
+`RECOMMENDED_WORKER_LIMITS`의 값과 근거:
+
+| 필드 | 값 | 근거 |
+| --- | --- | --- |
+| `maxDocumentsPerClaim` | 500 | 한 스냅샷에서 projection하는 문서 수. 원본 읽기 한 번이 제한 시간 안에 끝나는 크기 |
+| `maxBulkBytes` | 5 MiB | OpenSearch가 권하는 bulk 크기(5–15 MB)의 아래쪽 |
+| `maxConcurrentBulkRequests` | 2 | 워커 하나가 클러스터의 bulk 스레드 풀을 독점하지 않게 합니다 |
+| `projectionTimeoutMs`, `requestTimeoutMs` | 30초 | 둘 다 임대보다 짧아야 heartbeat가 멈춰도 두 워커가 같은 문서를 동시에 다루지 않습니다 |
+| `leaseDurationMs`, `heartbeatIntervalMs` | 2분, 20초 | heartbeat를 몇 번 놓쳐도 임대가 남고, 죽은 워커의 임대는 2분 뒤 회수됩니다 |
+| `maxRetryAttempts`, `maxRetryAgeMs` | 10회, 1시간 | 같은 리비전의 문서 단위 실패가 이만큼 쌓이면 격리합니다 |
+| `maxIsolationCallsPerBatch` | 32 | 500건 claim 안의 나쁜 문서 하나를 찾는 데 필요한 19회보다 큽니다 |
+| `retryBaseDelayMs`, `retryMaxDelayMs` | 1초, 5분 | 문서 재시도와 cooldown의 지수 backoff 범위 |
+| `maxInFlightBytes` | 16 MiB | 워커가 한 번에 붙잡는 직렬화된 문서 바이트. (동시 bulk 2 + 1) × 5 MiB = 15 MiB 이상이라 bulk 두 개를 보내는 동안 다음 요청을 묶을 수 있습니다 |
+| `statementTimeoutMs` | 5초 | 워커 SQL 문장 하나의 상한. 평소에는 수 밀리초이고, 테이블 잠금에 막히면 이 시간 뒤 취소되어 인프라 실패로 다뤄집니다 |
+| `fenceRenewIntervalMs` | 30초 | 대상 fence의 갱신 간격. 활성 대상마다 간격에 한 번(모든 워커를 합쳐) 작은 원격 쓰기 하나와 문장 둘이 들고, 대상 100개면 초당 약 3.3건입니다. 짧을수록 같은 epoch 쌍둥이의 창이 좁아지고 쓰기가 늘어납니다. 1,000 이상이고 `requestTimeoutMs` 이상이어야 합니다 |
+
+한도 객체를 직접 다 적는 애플리케이션은 `maxInFlightBytes`, `statementTimeoutMs`, `fenceRenewIntervalMs`를 빠뜨리지 마세요. 셋 다 필수입니다.
+
+권장값은 서로 맞물려 있습니다. `createIndexer`가 검사하는 관계는 [색인 워커](/ko/advanced-features/opensearch/worker)의 한도 표에 있고, 값을 바꿀 때 직접 지켜야 하는 관계(`workerBounds`, 읽기 수명, 관리 임대, 정지 기한)는 [운영](/ko/advanced-features/opensearch/operations)의 "값 사이의 관계"에 있습니다.
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="검색 정의" icon="code" href="/ko/advanced-features/opensearch/definitions">
+    projection, 매핑, fingerprint
+  </Card>
+  <Card title="트랜잭션 색인" icon="database" href="/ko/advanced-features/opensearch/transactional-indexing">
+    도메인 쓰기와 함께 변경 표시하기
+  </Card>
+</CardGroup>

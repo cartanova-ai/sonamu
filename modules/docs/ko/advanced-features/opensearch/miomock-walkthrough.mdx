@@ -1,0 +1,542 @@
+---
+title: "miomock 둘러보기"
+description: "예제 애플리케이션 miomock에서 프로젝트 검색을 붙인 실제 코드를 개발자가 따라가는 순서대로 살펴봅니다"
+---
+
+`examples/miomock`은 이 저장소의 예제 Sonamu 애플리케이션입니다. 프로젝트를 OpenSearch로 검색하며, 그 통합에는 애플리케이션에 필요한 조각이 모두 들어 있습니다. 마이그레이션, 켜기 스위치, 검색 정의, 모델의 표시, 저장소 식별자 초기화, 워커 lifecycle, 권한을 다시 확인하는 검색 API, 상태 코드로 화면을 나누는 웹 페이지, 관리 CLI, 두 가지 테스트 설정입니다. 이 페이지는 그 조각들을 개발자가 붙이는 순서대로 보여 줍니다. 코드 블록은 발췌이므로 전체는 제목의 파일을 열어 보세요.
+
+## 의존성과 마이그레이션
+
+`examples/miomock/api/package.json`은 `@sonamu-kit/opensearch`(작업 공간 패키지)와 `@opensearch-project/opensearch`를 의존성으로 둡니다. 패키지 스키마는 마이그레이션 두 개가 같은 함수로 설치합니다. `20261112205310_install_search_schema.ts`와 `20261113024500_upgrade_search_schema_v2.ts`가 모두 `installSearchSchema(knex)`를 부릅니다.
+
+```typescript title="api/src/migrations/20261113024500_upgrade_search_schema_v2.ts"
+// installSearchSchema applies only missing versions: this upgrades version 1 databases and is a no-op on new ones.
+export async function up(knex: Knex): Promise<void> {
+  await installSearchSchema(knex);
+}
+
+// Never reverted automatically: without the origin record and fences, copied databases go unnoticed.
+export async function down(_knex: Knex): Promise<void> {
+  throw new Error(
+    "sonamu_search 스키마 버전 2는 자동으로 되돌리지 않습니다. 패키지는 버전 1 스키마로 동작하지 않으므로, 되돌리려면 이전 패키지 버전으로 돌아간 뒤 스키마를 직접 정리하세요.",
+  );
+}
+```
+
+`installSearchSchema`는 빠진 버전만 적용합니다. 새 데이터베이스에서는 첫 마이그레이션이 이미 버전 2까지 설치하므로 두 번째는 아무것도 하지 않고, 버전 1인 데이터베이스에서는 두 번째가 버전 2를 적용합니다. 이 스키마에는 엔티티가 없으므로 Sonamu 마이그레이터가 비교하지 않고 `sonamu.lock`에도 들어가지 않습니다. 두 마이그레이션의 `down`은 예외를 던지므로, rollback이 원장, 대상 기록, 원점 기록을 지우는 일은 없습니다.
+
+## 켜기 스위치와 설정
+
+검색은 환경 변수로 켜는 선택 기능입니다. 스위치 모듈은 아무것도 import하지 않으므로 `sonamu.config.ts`가 패키지를 로드하지 않고 스위치를 읽을 수 있습니다.
+
+```typescript title="api/src/search/switch.ts"
+// Imports nothing, so sonamu.config.ts can read the switch without loading the package.
+
+export function isSearchEnabled(): boolean {
+  return process.env.MIOMOCK_SEARCH_ENABLED === "true";
+}
+
+/** Ignored while search is disabled. */
+export function isSearchWorkerEnabled(): boolean {
+  return process.env.MIOMOCK_SEARCH_WORKER === "true";
+}
+```
+
+| 변수 | 뜻 |
+| --- | --- |
+| `MIOMOCK_SEARCH_ENABLED` | `true`일 때만 검색 통합이 동작합니다. 꺼져 있으면 어떤 패키지 문장도 실행하지 않습니다 |
+| `MIOMOCK_SEARCH_WORKER` | `true`면 이 프로세스가 색인 워커를 돌립니다 |
+| `OPENSEARCH_URL` | 검색이 켜져 있으면 필수입니다 |
+| `MIOMOCK_SEARCH_CURSOR_SECRET` | 커서 서명 키(base64, 32바이트 이상). 없으면 프로세스마다 임의 키를 쓰므로 커서가 재시작 뒤에 살아남지 않고, production에서는 시작을 거부합니다 |
+| `MIOMOCK_SEARCH_INSTANCE_NAME` | 환경 이름. 저장소에 기록된 이름과 다르면 원격 작업이 멈춥니다 |
+| `MIOMOCK_SEARCH_CURSOR_LIFETIME_MS` | 커서 수명을 권장값(10분)보다 줄일 때 씁니다 |
+| `MIOMOCK_SEARCH_WORKER_STAGE_TIMEOUT_MS` | 워커의 `projectionTimeoutMs`와 `requestTimeoutMs`를 함께 바꿉니다. 검색 통합 테스트가 줄여 씁니다 |
+
+동기화 핸들은 Sonamu의 쓰기 DB를 primary로 쓰고, namespace는 `miomock`입니다. `resolveSonamuPrimary`는 `DB.getDB("w")`를 돌려주며, 그것이 트랜잭션이면 거부합니다.
+
+```typescript title="api/src/search/index.ts"
+/** Must differ per environment; processes configured with another name than the recorded one stop remote work. */
+export function searchInstanceName(): string | undefined {
+  const name = process.env.MIOMOCK_SEARCH_INSTANCE_NAME;
+  return name === undefined || name === "" ? undefined : name;
+}
+
+export function createMiomockSynchronization(): PostgresSynchronization {
+  return createPostgresSynchronization({
+    getPrimaryDatabase: resolveSonamuPrimary,
+    namespace: SEARCH_NAMESPACE,
+    instanceName: searchInstanceName(),
+  });
+}
+```
+
+검색 런타임(검색 핸들과 lifecycle)은 모듈을 평가할 때 만들지만, import는 결코 던지지 않습니다. 설정 오류는 보관했다가 처음 쓸 때, 즉 검색이나 시작 때 던집니다. `sonamu sync`처럼 모델을 import하는 도구가 실패하지 않게 하려는 것입니다([설치와 설정](/ko/advanced-features/opensearch/setup)의 import 경고 참고).
+
+## 검색 정의
+
+정의는 `defineSonamuSearch`로 만들고 logical key는 `projects`입니다. 문서에는 이름, 설명, 상태, 태그 이름, 마일스톤 이름, 멤버 직원 ID가 들어가고, 워커는 projection 결과를 이 스키마로 검증합니다.
+
+```typescript title="api/src/search/projects.definition.ts"
+export const ProjectSearchDocument = z.object({
+  name: z.string(),
+  description: z.string().nullable(),
+  status: ProjectStatus,
+  tag_names: z.array(z.string()),
+  milestone_names: z.array(z.string()),
+  member_employee_ids: z.array(z.number().int()),
+});
+export type ProjectSearchDocument = z.infer<typeof ProjectSearchDocument>;
+```
+
+`materialize`는 모델의 `findMany`와 마일스톤 조회를 워커의 스냅샷에서 실행하고, 더 이상 없는 프로젝트는 tombstone(`{ state: "deleted" }`)으로 돌려줍니다.
+
+```typescript title="api/src/search/projects.definition.ts"
+      const result = new Map<string, Projection<ProjectSearchDocument>>();
+      for (const id of ids) {
+        const row = rows.find((project) => String(project.id) === id);
+        if (row === undefined) {
+          result.set(id, { state: "deleted" });
+          continue;
+        }
+        result.set(id, {
+          state: "present",
+          document: {
+            name: row.name,
+            description: row.description,
+            status: row.status,
+            tag_names: row.tags.map((tag) => tag.name).sort(),
+            milestone_names: milestones
+              .filter((milestone) => milestone.project_id === row.id)
+              .map((milestone) => milestone.name),
+            member_employee_ids: row.employee.map((employee) => employee.id).sort((a, b) => a - b),
+          },
+        });
+      }
+      return result;
+```
+
+`member_employee_ids`는 검색 필터에만 쓰입니다. 권한은 검색 뒤에 primary에서 다시 확인하므로, 이 값이 늦어도 보이면 안 되는 프로젝트가 응답에 들어가지 않습니다. 문서가 바뀌면 `projectionVersion`을 올리고, 옛 버전은 그 대상을 은퇴시킬 때까지 `PREVIOUS_PROJECTION_VERSIONS`에 남겨 재구축 중에도 워커와 검색이 옛 대상을 다루게 합니다.
+
+## 표시
+
+모델은 도메인 트랜잭션 안에서 바뀐 프로젝트 ID를 모아, 영향받은 ID를 모두 담아 한 번 표시합니다. 검색이 꺼져 있으면 아무 문장도 실행하지 않습니다. 검색이 켜져 있는데 등록된 대상이 아직 없으면 표시가 트랜잭션을 실패시킵니다.
+
+```typescript title="api/src/search/synchronization.ts"
+/** Call once per transaction with every affected id; with search on and no target yet, it fails the transaction. */
+export async function markProjectsChanged(
+  trx: PuriTransactionWrapper,
+  ids: readonly number[],
+): Promise<void> {
+  const handles = getSearchHandles();
+  if (handles === undefined || ids.length === 0) {
+    return;
+  }
+  // Idempotent; reads on its own pool connection, outside trx.
+  await handles.synchronization.initialize();
+  const documentIds = [...new Set(ids)].map(String).sort();
+  await handles.sonamu.markChangedIn(trx, PROJECTS_SEARCH_KEY, documentIds);
+}
+```
+
+`initialize()`는 멱등이며, 트랜잭션 밖의 별도 풀 연결에서 읽습니다.
+
+프로젝트 문서를 바꾸는 경로와 표시 방법은 다음과 같습니다. 외래 키의 CASCADE로 지워지는 행은 데이터베이스가 표시 없이 지우므로, 모델이 같은 트랜잭션에서 영향받는 프로젝트를 먼저 읽고 표시합니다.
+
+| 변경 | 위치 | 표시 |
+| --- | --- | --- |
+| 프로젝트 저장(이름, 설명, 상태, 멤버, 태그) | `ProjectModel.save` | upsert 뒤 같은 트랜잭션에서 저장한 ID를 표시 |
+| 프로젝트 삭제 | `ProjectModel.del` | 삭제 전에 표시하고 워커가 tombstone을 색인. `projects__employees`, `project_tags`, `milestones`의 CASCADE는 같은 프로젝트의 tombstone이 덮습니다 |
+| 마일스톤 저장(이름, 다른 프로젝트로 이동) | `MilestoneModel.save` | upsert 전에 읽은 이전 부모와 새 부모를 표시 |
+| 마일스톤 삭제 | `MilestoneModel.del` | 삭제 전에 부모를 읽고, 삭제 뒤 표시 |
+| 마일스톤 완료와 완료 취소 | `MilestoneModel.complete`, `uncomplete` | 표시하지 않음. `completed_at`은 문서에 없습니다 |
+| 태그 저장(이름 변경) | `TagModel.save` | 그 태그를 쓰는 프로젝트를 `project_tags`에서 읽어 표시 |
+| 태그 삭제 | `TagModel.del` | `project_tags`가 CASCADE로 지워지므로 영향받는 프로젝트를 먼저 읽고, 삭제 뒤 표시 |
+| 직원 삭제 | `EmployeeModel.del` | `projects__employees`가 CASCADE로 지워지므로 멤버십을 먼저 읽고, 삭제 뒤 표시 |
+| 직원 저장 | `EmployeeModel.save` | 표시하지 않음. 저장은 멤버십을 바꾸지 않습니다 |
+| 사용자 삭제 | `UserModel.del` | 표시하지 않음. 삭제는 `deleted_at`만 채우는 soft delete이고, 검색이 그 값을 primary에서 읽어 권한을 거릅니다 |
+
+직원 삭제는 CASCADE를 다루는 경로의 예입니다.
+
+```typescript title="api/src/application/employee/employee.model.ts"
+    await wdb.transaction(async (trx) => {
+      // ON DELETE CASCADE removes the memberships unmarked: read the affected projects first.
+      const memberships = await trx
+        .table("projects__employees")
+        .whereIn("projects__employees.employee_id", ids)
+        .select({ project_id: "projects__employees.project_id" });
+      await trx.table("employees").whereIn("employees.id", ids).delete();
+      await markProjectsChanged(
+        trx,
+        memberships.map((row) => row.project_id),
+      );
+    });
+```
+
+## 저장소 식별자 초기화
+
+Sonamu는 서버가 listen을 시작한 뒤에야 `lifecycle.onStart`를 부르므로, 그 사이에 들어온 쓰기는 `store-identity-uninitialized`로 실패합니다. 그래서 예제는 listen 전에 실행되는 Fastify `onReady` 훅에서 저장소 식별자를 확정합니다. 초기화가 실패하면(스키마 없음, 다른 데이터베이스, 잘못된 설정) 서버는 요청을 받기 전에 시작에 실패합니다. 런타임은 지연 import하므로, 검색이 꺼져 있으면 아무것도 로드하지 않고 `sonamu.config.ts`가 모델을 끌어오지도 않습니다.
+
+```typescript title="api/src/search/startup.ts"
+export async function initializeSearchStore(): Promise<void> {
+  if (!isSearchEnabled()) {
+    return;
+  }
+  const [{ getSearchRuntime }, { getSearchHandles }] = await Promise.all([
+    import("./runtime"),
+    import("./index"),
+  ]);
+  // Throws a configuration error kept from module evaluation.
+  getSearchRuntime();
+  await getSearchHandles()?.synchronization.initialize();
+}
+```
+
+```typescript title="api/src/sonamu.config.ts"
+      custom: (server) => {
+        // Fixes the search store identity before listen; see search/startup.ts.
+        server.addHook("onReady", initializeSearchStore);
+      },
+```
+
+`markProjectsChanged`도 표시 전에 `initialize()`를 부릅니다. 식별자가 한 번 확정되면 다시 읽지 않습니다.
+
+## lifecycle과 워커
+
+`sonamu.config.ts`의 `lifecycle.onStart`와 `onShutdown`이 검색을 시작하고 멈춥니다. 검색 런타임은 `miomock-search`라는 이름의 `createSearchLifecycle`을 만들고, 워커는 `MIOMOCK_SEARCH_WORKER`로 켭니다. 워커는 전용 클라이언트를 쓰며, lifecycle이 세대마다 그 클라이언트를 만들고 그 세대의 워커가 멈출 때 닫습니다.
+
+```typescript title="api/src/search/runtime.ts"
+  const lifecycle = createSearchLifecycle({
+    name: SEARCH_LIFECYCLE_NAME,
+    synchronization: handles.synchronization,
+    worker: {
+      enabled: isSearchWorkerEnabled(),
+      client: miomockSearchClientOptions(handles.url),
+      definitions: projectsSearchDefinitions,
+      limits: searchWorkerLimits(),
+      pollIntervalMs: RECOMMENDED_WORKER_POLL_INTERVAL_MS,
+      onEvent: logWorkerEvent,
+    },
+    stopDeadlineMs: RECOMMENDED_WORKER_STOP_DEADLINE_MS,
+  });
+```
+
+런타임 모듈은 `project.model.ts`가 import하므로 개발 서버의 HMR로 모델과 함께 다시 평가됩니다. 같은 이름의 lifecycle이 이전 세대의 워커를 멈추고 새 정의로 새 워커를 시작하므로, 워커는 언제나 하나입니다.
+
+이벤트 리스너는 무언가를 색인하거나 격리한 drain, 전부 색인하지 못한 drain(경고), cooldown, 격리된 문서, 일시 정지된 대상, 해시 불일치, 회수된 임대, 대상 fence 상실, 거부된 drain(`error`), 상태 변화를 로그로 남깁니다. 빈 drain은 남기지 않습니다. fence 상실과 저장소 불일치는 오류로 남기며, 주석이 운영자가 실행할 명령을 알려 줍니다. 이쪽이 원래 저장소면 `sonamu search confirm-ownership`, 복사본이면 `adopt-store`입니다.
+
+```typescript title="api/src/search/runtime.ts"
+    case "target-fence-lost":
+      // Another database took the fence: run `sonamu search confirm-ownership` here, or adopt-store on the copy.
+      console.error("[search] target fence lost", {
+        targetId: event.targetId,
+        class: event.class,
+        localEpoch: event.localEpoch,
+        remoteEpoch: event.remoteEpoch,
+      });
+      return;
+    case "error":
+      // On SEARCH_STORE_MISMATCH nothing is sent until an operator runs `sonamu search adopt-store` or confirm-ownership.
+      console.error("[search] drain refused", { code: event.code, reason: event.reason ?? null });
+      return;
+```
+
+## 검색 API
+
+`ProjectModel.searchIndexed`가 검색 API입니다. 검색이 꺼져 있으면 `SearchDisabledException`, 로그인하지 않았으면 `UnauthorizedException`을 던지고, 아니면 호출자로서 검색합니다.
+
+```typescript title="api/src/application/project/project.model.ts"
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+  async searchIndexed(params: ProjectIndexedSearchParams): Promise<ProjectIndexedSearchResult> {
+    const runtime = getSearchRuntime();
+    if (runtime === undefined) {
+      throw new SearchDisabledException();
+    }
+    const { user } = Sonamu.getContext();
+    if (!user) {
+      throw new UnauthorizedException(SD("error.unauthorized"));
+    }
+    const { result } = await searchProjectsAs(
+      { queries: runtime.queries, db: DB.getDB("w") },
+      user.id,
+      params,
+    );
+    return result;
+  }
+}
+```
+
+프로젝트는 그 프로젝트의 멤버 직원인 사용자와 role이 `admin`인 사용자에게 보입니다. 삭제되었거나 차단된 사용자, 직원 레코드가 없는 일반 사용자에게는 아무것도 보이지 않습니다. 색인은 멤버십, 삭제, 수정보다 늦을 수 있으므로, 검색은 패키지 예제와 같은 순서를 따르고 트랜잭션 밖에서 실행해야 합니다.
+
+```typescript title="api/src/search/project-search.ts"
+  // Read the scope from the primary right before searching.
+  const scope = await readProjectSearchScope(db, userId);
+
+  const body = searchBody(params.q, scope, params.size ?? 20);
+  const candidates =
+    params.cursor === undefined
+      ? await queries.search({ body, paginate: {} })
+      : await queries.search({ body, cursor: params.cursor });
+
+  // Re-read the scope: it may have changed while the search ran.
+  const ids = candidates.hits
+    .map((hit) => toProjectId(hit.id))
+    .filter((id): id is number => id !== undefined);
+  const currentScope = await readProjectSearchScope(db, userId);
+  const visible = await readVisibleProjects(db, currentScope, ids);
+```
+
+1. 호출자가 지금 볼 수 있는 범위를 검색 직전에 primary에서 읽습니다.
+2. 그 범위를 `terms` 필터로 걸어 검색합니다. 멤버가 아니면 빈 목록을 보내 아무것도 맞지 않게 하고, admin만 필터가 없습니다.
+3. 검색하는 동안 범위가 바뀌었을 수 있으므로 범위를 다시 읽고, 돌아온 ID를 primary의 지금 행과 멤버십으로 확인합니다.
+4. 색인의 내용이 아니라 데이터베이스의 현재 행을 검색 순서대로 돌려주고, 색인된 텍스트가 지금 텍스트와 다르면 그 필드의 하이라이트를 버립니다.
+
+하이라이트는 HTML 태그 대신 사용 영역 문자(`HIGHLIGHT_START`, `HIGHLIGHT_END`)로 감쌉니다. 조각 안의 사용자 텍스트는 이스케이프되지 않으므로, 화면은 조각을 절대 HTML로 그리면 안 됩니다.
+
+```typescript title="api/src/search/project-search.ts"
+    // Private-use markers instead of HTML tags: the fragments are not escaped, so they must never be rendered as HTML.
+    highlight: {
+      pre_tags: [HIGHLIGHT_START],
+      post_tags: [HIGHLIGHT_END],
+      fields: { "doc.name": {}, "doc.description": {} },
+    },
+```
+
+### 오류와 HTTP 상태
+
+검색 오류는 `sonamu.config.ts`의 `lifecycle.onError`가 상태 코드와, 요청 locale로 렌더링한 메시지로 바꿉니다.
+
+```typescript title="api/src/search/errors.ts"
+/** The generated web client drops code and reason, so the screen branches on these; keep web/src/routes/admin/projects/search.tsx in sync. */
+export const SEARCH_HTTP_STATUS = {
+  invalidQuery: 400,
+  unauthorized: 401,
+  /** No readable index yet or a rebuild is required: only an operator can fix it. */
+  notReady: 409,
+  cursorExpired: 410,
+  internal: 500,
+  disabled: 501,
+  unavailable: 503,
+} as const;
+```
+
+| 상태 | 오류 | 호출자에게 주는 뜻 |
+| --- | --- | --- |
+| 400 | `SearchQueryInvalid` | 검색어가 잘못됐거나 요청이 한도를 벗어남 |
+| 401 | 로그인하지 않음 | 로그인해야 함 |
+| 409 | `SearchNotReady`, `SearchNotConfigured`, `SearchRebuildRequired`, `SearchDefinitionMismatch` | 읽을 인덱스가 아직 없거나(첫 cutover 전) 재구축이 필요함. 검색어를 고쳐도 소용없고 운영자가 색인을 준비해야 함 |
+| 410 | `SearchCursorExpired` | 다음 페이지 커서가 만료됐거나 맞지 않음. 검색을 처음부터 다시 시작 |
+| 500 | `SearchInTransactionError` | 서버 코드의 버그 |
+| 501 | 이 서버에서 검색이 꺼져 있음 | `MIOMOCK_SEARCH_ENABLED`가 꺼져 있음 |
+| 503 | 그 밖의 검색 오류(카탈로그나 엔진 장애) | 일시 장애. 잠시 뒤 다시 시도 |
+
+응답 본문에는 `code`, `reason`(문자열인 reason만 내보내고 `details`의 나머지는 서버에 남깁니다), `retryable`도 들어갑니다. 하지만 생성된 웹 클라이언트(`SonamuError`)는 본문의 `code`와 `reason`을 버리고 상태 코드와 메시지만 남깁니다. 그래서 웹 화면은 상태 코드로 분기하고, API와 화면의 상태 코드 표는 함께 바꿔야 합니다.
+
+## 웹 페이지
+
+`web/src/routes/admin/projects/search.tsx`가 검색 화면입니다(`/admin/projects/search`). 상태 코드를 화면 상태로 바꿉니다.
+
+```tsx title="web/src/routes/admin/projects/search.tsx"
+function failureKindOf(status: number): FailureKind {
+  switch (status) {
+    case 400:
+      return "invalidQuery";
+    case 401:
+      return "signInRequired";
+    case 409:
+      return "notReady";
+    case 410:
+      return "cursorExpired";
+    case 501:
+      return "disabled";
+    case 503:
+      return "unavailable";
+    default:
+      return "unexpected";
+  }
+}
+```
+
+화면의 상태는 세션 확인 중, 로그인 필요, 검색어 없음, 결과 없음, 결과 목록과 "더 보기"이고, 실패는 종류마다 다른 안내를 보입니다. 만료된 커서에는 다음 쪽을 더 볼 수 없으니 처음부터 다시 검색하라고 안내합니다. 결과가 바뀌었다고 말하지 않는 것은, 커서가 결과가 바뀌지 않아도 수명이 다하면 만료되기 때문입니다. 만료된 커서와 예상하지 못한 오류는 검색을 처음부터 다시 하고, 일시 장애는 다시 시도를 제안합니다. 서버가 보낸 지역화된 메시지는 준비되지 않은 색인(409)과 일시 장애(503)에서만 보조 설명으로 보입니다. 다음 페이지를 가져오다 실패하면 지금까지 받은 결과는 그대로 두고 그 아래에 안내를 보입니다. 하이라이트 조각은 표시 문자로 잘라 텍스트로 그립니다.
+
+```tsx title="web/src/routes/admin/projects/search.tsx"
+function Highlighted({ fragment }: { fragment: string }) {
+  const [head, ...rest] = fragment.split(PROJECT_SEARCH_HIGHLIGHT_START);
+  return (
+    <>
+      {head}
+      {rest.map((part, index) => {
+        const [marked, tail] = part.split(PROJECT_SEARCH_HIGHLIGHT_END);
+        return (
+          <span key={index}>
+            <mark className="bg-yellow-200 rounded-sm px-0.5">{marked}</mark>
+            {tail}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+```
+
+## 관리 CLI
+
+관리 명령은 패키지의 `sonamu search` 명령입니다. 명령 목록과 승인 규칙, 출력, 종료 코드는 [인덱스 관리](/ko/advanced-features/opensearch/index-administration)에 있습니다. `sonamu.config.ts`는 플러그인을 등록하고, 검색 명령을 실행할 때만 설정 모듈을 import합니다.
+
+```typescript title="api/src/sonamu.config.ts"
+  cli: {
+    plugins: [
+      // Imported only when a search command runs, so this config never loads the search modules.
+      createSearchCliPlugin({
+        load: async () => (await import("./search/cli-setup")).loadSearchCliSetup(),
+      }),
+    ],
+  },
+```
+
+```typescript title="api/src/search/cli-setup.ts"
+/** Loaded by sonamu.config.ts only when a `sonamu search` command runs; works regardless of MIOMOCK_SEARCH_ENABLED. */
+export function loadSearchCliSetup(): SearchCliSetup {
+  return {
+    definitions: projectsSearchDefinitions,
+    synchronization: createMiomockSynchronization(),
+    // Read per command, so PostgreSQL-only commands still run without OPENSEARCH_URL.
+    client: () => miomockSearchClientOptions(requireOpenSearchUrl()),
+    admin: MIOMOCK_SEARCH_ADMIN_SETTINGS,
+    workerLimits: searchWorkerLimits(),
+  };
+}
+```
+
+이 설정은 `MIOMOCK_SEARCH_ENABLED`와 상관없이 동작합니다. `OPENSEARCH_URL`은 OpenSearch가 필요한 명령에서만 읽으므로, `inspect`, `backfill`, `suspend`, `remark`, `retry-quarantined`, `adopt-store`와 `cutover`의 dry run은 URL 없이 실행됩니다. `admin` 값은 `search/admin.ts`의 `MIOMOCK_SEARCH_ADMIN_SETTINGS`이고 애플리케이션의 관리 핸들(`createMiomockSearchAdmin`)도 같은 값을 씁니다. 워커 한도는 워커와 같은 `searchWorkerLimits()`에서 가져옵니다.
+
+CLI는 빌드된 코드를 실행하므로, 첫 명령 전과 검색 코드를 바꿀 때마다 API를 빌드하세요. 명령은 모두 `examples/miomock/api`에서 실행하고, OpenSearch가 필요한 명령에는 `OPENSEARCH_URL`(로컬 컨테이너면 `http://localhost:9200`)을 줍니다. 터미널이 아니면 상태를 바꾸는 명령에 `--execute --confirm`이 필요하고, 터미널에서는 CLI가 대신 묻습니다. `init`과 `cutover`는 `--execute` 없이 실행하면 dry run만 출력합니다.
+
+```bash
+mise exec -- pnpm build
+```
+
+첫 대상(계획, 생성, 등록, backfill, cutover)과 그 상태:
+
+```bash
+mise exec -- pnpm sonamu search init --execute --confirm
+mise exec -- pnpm sonamu search inspect
+```
+
+정의를 바꾼 뒤(재구축 빌드를 열고, 채우고, 차단 코드를 확인하고, cutover한 뒤 유예가 지나면 옛 대상을 은퇴):
+
+```bash
+mise exec -- pnpm build
+mise exec -- pnpm sonamu search init --execute --confirm
+mise exec -- pnpm sonamu search backfill --execute --confirm
+mise exec -- pnpm sonamu search cutover
+mise exec -- pnpm sonamu search cutover --execute --confirm
+mise exec -- pnpm sonamu search retire-old --execute --confirm
+```
+
+원본 복원(캡처 중단, 새 epoch로 재개, 채우고 cutover):
+
+```bash
+mise exec -- pnpm sonamu search suspend --execute --confirm
+mise exec -- pnpm sonamu search resume --execute --confirm
+mise exec -- pnpm sonamu search backfill --execute --confirm
+mise exec -- pnpm sonamu search cutover --execute --confirm
+```
+
+일시 정지된 대상(검증 스캔, 재개):
+
+```bash
+mise exec -- pnpm sonamu search verify --target <target-id> --execute --confirm
+mise exec -- pnpm sonamu search resume-target --target <target-id> --execute --confirm
+```
+
+복사한 데이터베이스는 채택하고, 같은 저장소는 소유를 확인합니다.
+
+```bash
+mise exec -- pnpm sonamu search adopt-store --execute --confirm
+mise exec -- pnpm sonamu search confirm-ownership --execute --confirm
+```
+
+- `init`은 대상이 없는 key면 계획, 생성, 등록을 하고 첫 빌드를 backfill한 뒤 cutover합니다. 대상이 있는 key면 지금 정의로 재구축 빌드를 열고(같은 fingerprint의 열린 빌드가 있으면 그것을 돌려주고) 다음 단계(`backfill`, `cutover`, `retire-old`)를 출력합니다. `--execute`가 없으면 대상이 없는 key의 계획과 열린 빌드를 출력할 뿐 아무것도 바꾸지 않습니다.
+- `cutover`는 `--execute`가 없으면 차단 코드를 출력하고, `--execute`가 있으면 차단 코드가 남아 있는 동안 패키지가 거부합니다. `drain`은 개발용으로, drain이 할 일을 찾지 못할 때까지 워커 drain을 돌립니다.
+- `adopt-store`는 다음 단계(`restart-processes`, `resume`, `backfill`, `cutover`)와 떼어 낸 대상의 수를 출력합니다. 프로세스를 다시 시작한 뒤 `resume`, `backfill`, `cutover`로 새 대상을 만듭니다.
+- 저장소 결속이 맞지 않아 명령이 거부되면, 실패 출력의 `hint`가 두 명령을 모두 알려 줍니다. 이 데이터베이스가 다른 데이터베이스의 복사본이나 복원본이면 `sonamu search adopt-store`, 같은 저장소(이름 변경, 제자리 복원, 서버 이전)면 `sonamu search confirm-ownership`입니다.
+
+## 테스트
+
+기본 테스트(`mise exec -- pnpm --filter miomock-api test`)는 `*.search.test.ts`를 빼고, 검색을 끈 채 돕니다. Sonamu의 트랜잭션 테스트 픽스처 안에서는 관리형 검색을 쓸 수 없기 때문입니다. `search-disabled.test.ts`는 검색이 꺼져 있을 때 프로젝트 저장이 패키지 문장을 하나도 실행하지 않고 서버 시작과 종료가 연결, 문장, 타이머를 만들지 않는지, 그리고 검색을 켰는데 `OPENSEARCH_URL`이 없으면 모듈 import는 성공하고 시작이 실패하는지 확인합니다. `errors.test.ts`는 오류 클래스별 HTTP 상태를 확인합니다.
+
+검색 통합 테스트는 `*.search.test.ts` 파일이고, `mise exec -- pnpm --filter miomock-api test:search`로 따로 실행합니다. 설정이 자체 OpenSearch 컨테이너를 띄우므로 Docker가 필요하고, `miomock_test` 데이터베이스가 있는 로컬 PostgreSQL도 필요합니다. 워커가 커밋된 행을 다른 연결로 읽어야 하므로 이 테스트는 Sonamu의 테스트 트랜잭션과 test 모드를 쓰지 않습니다. 파일들은 데이터베이스와 인덱스 하나를 같이 쓰고, 파일 이름 순서대로 하나씩 실행됩니다.
+
+```typescript title="api/vitest.search.config.ts"
+    setupFiles: ["./src/search/testing/setup-env.ts"],
+    env: {
+      NODE_ENV: "development",
+      SONAMU_DB_NAME: SEARCH_IT_DATABASE,
+      MIOMOCK_SEARCH_ENABLED: "true",
+      MIOMOCK_SEARCH_WORKER: "true",
+      // Shortens INDEXING_WAIT_MS (testing/helpers.ts) to 41 s.
+      MIOMOCK_SEARCH_WORKER_STAGE_TIMEOUT_MS: "10000",
+    },
+    pool: "forks",
+    maxWorkers: 1,
+```
+
+global setup(`src/search/testing/global-setup.ignore.ts`)은 다음을 합니다.
+
+1. OpenSearch 컨테이너를 띄웁니다(`MIOMOCK_OPENSEARCH_IMAGE`, 기본 `opensearchproject/opensearch:3.5.0`).
+2. `CREATE DATABASE … TEMPLATE … STRATEGY FILE_COPY`로 `miomock_test`를 `miomock_search_it`에 복제하고 패키지 스키마를 설치합니다. PostgreSQL 15 이상의 기본값(`WAL_LOG`)은 PGroonga 인덱스 파일을 복사하지 않아 나중에 `projects`에 쓰기가 실패하므로 `FILE_COPY`가 필요합니다.
+3. 그 데이터베이스를 `adoptCopiedStore`로 채택한 뒤 첫 대상을 계획하고 등록합니다. 복제본은 원본의 저장소 식별자를 물려받고 원본과 함께 존재하므로 복사본입니다. 채택하지 않으면 워커와 관리 작업이 멈추고, 대신 소유를 확인하면 두 데이터베이스가 같은 인덱스를 자기 것이라고 주장하게 됩니다. 첫 빌드는 열린 채로 남고, 테스트가 그 빌드를 backfill하고 cutover합니다.
+4. 그 데이터베이스를 다시 `miomock_search_it_copy`로 복제하고, 저장소 결속 테스트를 위해 채택하지 않은 채 둡니다. teardown은 복제한 데이터베이스들(테스트가 복사본을 옮긴 이름 `miomock_search_it_copy_moved` 포함)을 지우고 컨테이너를 멈춥니다.
+
+두 CLI 테스트 파일은 CLI의 실제 진입점(`node_modules/@sonamu-kit/cli/bin/sonamu.js`)으로 `sonamu search`를 별도 프로세스에서 실행하므로, 테스트 프로세스의 워커는 계속 돕니다. `src/search/testing/cli.ts`가 `--json --non-interactive`를 붙이고, 승인이 필요한 명령에는 `--execute --confirm`을 붙입니다. `VITEST=true`도 설정하는데, 이때 CLI는 빌드 대신 TypeScript 로더로 `src/sonamu.config.ts`를 읽으므로 이 테스트에는 `pnpm build`가 필요 없습니다.
+
+| 파일 | 다루는 것 |
+| --- | --- |
+| `project-search.search.test.ts` | 커밋된 프로젝트 저장이 색인되어 검색 API로 돌아오고, 롤백된 저장은 원장 행과 의도를 남기지 않음. 문서를 바꾸는 경로(마일스톤 저장과 삭제, 태그 이름 변경과 삭제, 직원 삭제). 권한 재확인(멤버가 아닌 사용자, 색인이 따라오기 전에 멤버에서 빠진 사용자, tombstone 전의 삭제된 프로젝트, 색인 뒤 바뀐 이름, 로그인하지 않은 요청). 패키지 커서로 페이지 넘기기 |
+| `resume-target-cli.search.test.ts` | `revision_divergence`로 일시 정지된 대상(패키지 밖에서 원장보다 높은 버전으로 쓴 문서). 처음에는 `verify`가 `verification-not-quiesced`(`retryable`)로, `resume-target`도 거부됨. `remark --ids`를 두 번 실행해 원장을 그 버전 위로 올리고, 진행 중인 쓰기가 끝난 뒤 `verify`가 위반 없이 끝나며 `resume-target`이 대상을 다시 `active`로 만듦 |
+| `store-binding.search.test.ts` | 채택하지 않은 복사본에서 표시는 커밋되고, 워커와 `backfill`은 `store-origin-changed`와 `adopt-store`, `confirm-ownership`을 알려 주는 hint로 거부되며, `inspect`는 결속을 보여 줌. 승인 없는 `adopt-store`는 종료 코드 3(`CONFIRMATION_REQUIRED`)으로 끝나고, 승인하면 복사본을 채택해 `resume`, `backfill`, `cutover`로 자기 대상을 만듦. 이름이 바뀐 데이터베이스는 거부되고, 승인 없는 `confirm-ownership`은 종료 코드 3으로 끝나며, 승인하면 같은 `store_id`로 저장소를 다시 열고 그 뒤 `drain`이 성공함 |
+
+워커의 단계 제한 시간을 10초로 줄이므로, 색인을 기다리는 상한(`testing/helpers.ts`의 `INDEXING_WAIT_MS`)은 1초 + 2 × (10초 + 10초) = 41초입니다. 커밋 시점에 이미 돌던 drain, 폴링 간격 하나, 표시를 가져가는 drain을 합한 값이고, 2분 임대의 절반보다 짧습니다.
+
+## 로컬에서 실행하기
+
+명령은 모두 `examples/miomock/api`에서 실행합니다.
+
+PostgreSQL과 OpenSearch를 띄웁니다. 이 OpenSearch는 보안 플러그인을 끈 로컬 개발 전용입니다.
+
+```bash
+docker compose -f database/docker-compose.yml up -d
+docker compose -f database/docker-compose.search.yml up -d
+```
+
+프로젝트를 빌드한 다음, 패키지 스키마를 포함한 마이그레이션을 실행합니다. CLI는 빌드된 프로젝트를 읽으므로 `sonamu migrate`와 `sonamu search` 명령 모두 빌드가 먼저 필요합니다.
+
+```bash
+mise exec -- pnpm build
+mise exec -- pnpm sonamu migrate run --execute --confirm
+```
+
+첫 대상을 만들고 cutover합니다.
+
+```bash
+OPENSEARCH_URL=http://localhost:9200 mise exec -- pnpm sonamu search init --execute --confirm
+```
+
+검색과 워커를 켜고 서버를 실행합니다.
+
+```bash
+MIOMOCK_SEARCH_ENABLED=true MIOMOCK_SEARCH_WORKER=true OPENSEARCH_URL=http://localhost:9200 mise exec -- pnpm dev
+```
+
+순서가 중요합니다. 검색을 켠 서버의 표시는 실패 닫힘이라, 등록된 대상이 없으면 프로젝트 저장 트랜잭션이 커밋되지 않습니다(`SearchNotConfigured`나 `SearchNoWriteTarget`). 그러니 검색을 켜기 전에 `init`으로 첫 대상을 만드세요. 프로젝트가 1,000건(`RECOMMENDED_CUTOVER`의 `maxPendingDocuments`)보다 많으면 `init`의 cutover가 대기 때문에 거부될 수 있습니다. 그때는 `sonamu search drain --execute --confirm`으로 대기를 비우거나 워커를 켠 서버를 띄운 뒤 `sonamu search cutover --execute --confirm`을 실행합니다. 서버가 뜨면 웹 앱에 로그인해 `/admin/projects/search`를 엽니다.
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="개요" icon="book" href="/ko/advanced-features/opensearch/overview">
+    보장하는 것과 구성 요소
+  </Card>
+  <Card title="인덱스 관리" icon="layer-group" href="/ko/advanced-features/opensearch/index-administration">
+    CLI가 부르는 관리 작업의 규칙
+  </Card>
+</CardGroup>

@@ -1,0 +1,300 @@
+---
+title: "검색"
+description: "검색 핸들, 본문 허용 목록, 후보와 권한 재확인, 커서와 PIT, 검색 오류"
+---
+
+검색은 PostgreSQL 카탈로그의 읽기 포인터가 가리키는 대상 하나에서만 일어납니다. 검색 핸들은 매 검색마다 카탈로그를 읽고, 허용된 본문만 OpenSearch에 보내고, 결과를 **후보**로 돌려줍니다. 후보를 클라이언트에 그대로 응답하면 안 됩니다. "결과는 후보입니다"에서 보듯 primary에서 먼저 다시 확인하세요.
+
+## 검색 핸들 만들기
+
+Sonamu 애플리케이션은 `@sonamu-kit/opensearch/sonamu`의 `createSonamuSearchQueries`로 핸들을 만듭니다.
+
+```typescript title="search/client.ts"
+/** At least 32 bytes; when rotating, put the new key first and the old one after it. */
+function cursorSigningSecret(): Uint8Array {
+  return Buffer.from(process.env.SEARCH_CURSOR_SECRET ?? "", "base64");
+}
+
+/** Never call inside a transaction: it refuses with SearchInTransactionError. */
+export const chatMessageQueries = createSonamuSearchQueries<ChatMessageDocument>({
+  client: searchClient,
+  catalog: { namespace: SEARCH_NAMESPACE },
+  logicalKey: chatMessagesSearch.key,
+  supportedFingerprints: [chatMessagesSearch.fingerprint],
+  limits: RECOMMENDED_QUERY_LIMITS,
+  cursor: { signingKeys: [{ id: "k1", secret: cursorSigningSecret() }] },
+  // Do not load the body from the index; it is read again from the primary.
+  policy: { sourceIncludes: ["updated_at"] },
+});
+```
+
+| 옵션 | 뜻 |
+| --- | --- |
+| `client` | `createSearchClient`로 만든 클라이언트 |
+| `catalog` | 카탈로그 위치 `{ namespace, schema? }`. Sonamu 형태는 매 검색마다 `DB.getDB("w")`의 풀에서 카탈로그를 읽습니다. 카탈로그 reader를 직접 줄 수도 있습니다 |
+| `logicalKey` | 검색할 정의의 logical key |
+| `supportedFingerprints` | 이 프로세스가 읽을 수 있는 정의의 fingerprint. 1~64개 |
+| `limits` | 페이지 크기 상한, 검색 하나의 제한 시간, 읽기 수명, 그리고 선택 사항인 `maxResponseBytes`(클라이언트 값보다 낮출 때만 의미가 있음)와 `maxQueryBodyBytes`(검색 본문 크기, 기본 1 MiB, 최대 16 MiB). 권장값은 `RECOMMENDED_QUERY_LIMITS` |
+| `cursor` | 커서 서명 키 목록(1~16개). 없으면 페이지 넘기기를 쓸 수 없습니다 |
+| `policy` | `sourceIncludes`(후보에 실을 수 있는 `doc` 필드), `allowTrackTotalHits` |
+
+팩토리는 옵션만 검사하고 연결이나 카탈로그 조회를 만들지 않습니다. 잘못된 옵션은 만들 때 바로 `SearchConfigurationError`입니다. `limits.timeoutMs`가 `maxSearchLifetimeMs`보다 길거나, 서명 키가 32바이트보다 짧거나, 키 ID가 겹치면 거부합니다. 예제처럼 모듈을 불러올 때 핸들을 만들면 그 모듈을 import하는 모든 프로세스에 서명 키가 있어야 합니다([설치와 설정](/ko/advanced-features/opensearch/setup)).
+
+Sonamu를 쓰지 않는 코드는 루트 진입점의 `createSearchQueries`에 `@sonamu-kit/opensearch/postgres`의 `createPostgresCatalogReader`로 만든 reader를 넘깁니다. 이 형태는 다른 프레임워크의 트랜잭션을 알아채지 못하므로, 트랜잭션 안에서 부르지 않는 것은 호출자의 책임입니다.
+
+### 트랜잭션 안에서는 검색하지 않습니다
+
+`createSonamuSearchQueries`의 `search`와 `closeCursor`는 활성 Sonamu 트랜잭션(`@transactional`, `puri.transaction()`, `DB.runWithTransactionScope`) 안에서 부르면 어떤 I/O보다 먼저 `SearchInTransactionError`(`details.reason` `ambient-transaction`)로 거부합니다. 이유는 둘입니다.
+
+- 카탈로그 조회는 주변 트랜잭션을 쓰지 않고 풀에서 연결을 하나 더 잡습니다. 트랜잭션이 연결 하나를 쥔 채 검색하면 풀이 바닥날 수 있습니다.
+- 호출자는 카탈로그가 자기 트랜잭션의 스냅샷으로 읽힌다고 오해할 수 있습니다. 카탈로그는 언제나 커밋된 최신 포인터를 읽습니다.
+
+데이터베이스 작업을 끝낸 뒤 트랜잭션 밖에서 검색하세요. Sonamu test 모드에서 테스트 트랜잭션이 열려 있으면 `DB.getDB("w")`가 그 트랜잭션을 돌려주므로 카탈로그 조회가 `SearchConfigurationError`(`primary-is-transaction`)로 실패합니다. 관리형 검색은 Sonamu의 트랜잭션 테스트 픽스처 안에서 쓸 수 없습니다.
+
+## 검색 본문
+
+`search({ body })`의 본문은 OpenSearch DSL이지만 최상위 키는 다음만 받습니다.
+
+| 키 | 처리 |
+| --- | --- |
+| `query` | 그대로 보내되 `bool.must`로 감싸고, tombstone을 빼는 필터(`sonamu_meta.deleted: false`)를 `bool.filter`에 붙입니다. 없으면 `match_all`입니다 |
+| `sort` | 그대로 보냅니다. 페이지를 넘기려면 필요합니다 |
+| `size` | 생략하면 10입니다. `maxPageSize`보다 크면 거부하지 않고 줄입니다 |
+| `search_after` | 직접 넘길 수 있지만 커서와 함께 쓸 수 없습니다 |
+| `_source` | `true`, 필드 이름, 필드 이름 배열만 받고, 필드는 `policy.sourceIncludes` 안에 있어야 합니다. 객체 형식과 와일드카드는 받지 않습니다 |
+| `highlight` | 그대로 보냅니다. 아래 경고를 보세요 |
+| `track_total_hits` | `policy.allowTrackTotalHits`가 `true`일 때만 반영하고, 아니면 `false`로 고정합니다 |
+
+본문의 JSON 크기가 `maxQueryBodyBytes`를 넘으면 복사하기 전에 `SearchQueryInvalid`(`body-too-large`)입니다. 그 밖의 키(`aggs`, `suggest`, `pit`, `post_filter`, `from`, `index` 등)는 `SearchQueryInvalid`(`unsupported-body-key`)입니다. 필드 경로는 `doc.`을 붙여 씁니다. 응답에는 언제나 `sonamu_meta.revision`이 들어가고, `doc` 필드는 요청했고 정책이 허용한 것만 들어갑니다.
+
+<Warning>
+`query`, `sort`, `highlight`의 내용은 검사하지 않고 그대로 보냅니다. 패키지는 이 절을 신뢰된 서버 코드가 만든 값으로 봅니다. 클라이언트가 보낸 JSON을 이 자리에 그대로 넣지 말고, 검색어 같은 값만 받아 서버에서 쿼리를 만드세요.
+</Warning>
+
+호출자는 인덱스를 고를 수 없습니다. 핸들에는 인덱스 옵션이 없고, 본문의 `index`와 `pit` 키는 거부됩니다. 새 검색은 언제나 카탈로그의 읽기 포인터에서, 이어지는 검색은 커서가 고정한 대상에서만 읽습니다. 그래서 검색이 은퇴 중인 인덱스나 다른 namespace의 인덱스를 읽을 수 없고, 은퇴는 커서와 검색 수명만 지나면 옛 인덱스를 읽는 검색이 남지 않는다고 확신할 수 있습니다. 카탈로그를 읽지 못하면 캐시된 포인터로 대신하지 않고 `SearchCatalogUnavailable`로 실패합니다.
+
+### 하이라이트 그리기
+
+<Warning>
+하이라이트 조각에는 사용자가 쓴 텍스트가 들어 있고, OpenSearch는 그 텍스트를 이스케이프하지 않습니다. 기본 태그(`<em>`)가 든 조각을 HTML로 그리면 XSS 구멍이 됩니다. 조각을 HTML로 해석하지 마세요. 안전한 방법은 `pre_tags`와 `post_tags`를 사용 영역 문자(예: U+E000, U+E001)처럼 사용자 텍스트에 나올 일이 없는 문자로 바꾸고, 화면에서 그 문자로 잘라 일치 구간과 나머지를 모두 텍스트로 그리는 것입니다.
+</Warning>
+
+예제의 도우미는 검색 본문에 넣을 `highlight` 절을 만들고 조각을 텍스트 구간으로 자릅니다. 화면은 구간마다 텍스트 노드를 만들고, `innerHTML`이나 `dangerouslySetInnerHTML`을 쓰지 않습니다. 이 방식으로 그리는 화면은 [miomock 둘러보기](/ko/advanced-features/opensearch/miomock-walkthrough)에 있습니다.
+
+```typescript title="search/highlight.ts"
+// Highlight fragments are not escaped: never render them as HTML; split on these private-use markers instead.
+
+export const HIGHLIGHT_START = "\uE000";
+export const HIGHLIGHT_END = "\uE001";
+
+export function highlightClause(fields: readonly string[]) {
+  return {
+    pre_tags: [HIGHLIGHT_START],
+    post_tags: [HIGHLIGHT_END],
+    fields: Object.fromEntries(fields.map((field) => [field, {}])),
+  };
+}
+
+export interface HighlightSegment {
+  readonly text: string;
+  readonly highlighted: boolean;
+}
+
+/** Render each segment as a text node, never through innerHTML or dangerouslySetInnerHTML. */
+export function splitHighlight(fragment: string): HighlightSegment[] {
+  const segments: HighlightSegment[] = [];
+  const [head = "", ...rest] = fragment.split(HIGHLIGHT_START);
+  if (head !== "") segments.push({ text: head, highlighted: false });
+  for (const part of rest) {
+    const [marked = "", ...tail] = part.split(HIGHLIGHT_END);
+    if (marked !== "") segments.push({ text: marked, highlighted: true });
+    const after = tail.join("");
+    if (after !== "") segments.push({ text: after, highlighted: false });
+  }
+  return segments;
+}
+```
+
+## 결과는 후보입니다
+
+`search`는 `{ target, hits, total?, timedOut, nextCursor? }`를 돌려줍니다. 후보 하나는 `id`, 색인된 `revision`, `score`, 그리고 요청했다면 `sort`, `source`(허용된 `doc` 필드만), `highlight`를 담습니다. `total`은 `track_total_hits`가 허용됐을 때만 있습니다.
+
+색인은 늦을 수 있으므로 후보는 권한이 확인된 레코드가 아닙니다. 응답하기 전에 후보 ID로 primary에서 현재 레코드와 권한을 다시 확인하세요. 예제는 채팅 메시지를 다음과 같이 검색합니다.
+
+```typescript title="application/chat-message.search.ts"
+async function readableRoomIds(db: Knex, userId: string): Promise<string[]> {
+  const rows = z
+    .array(roomRowSchema)
+    .parse(await db("room_members").where({ user_id: userId }).select("room_id"));
+  return rows.map((row) => row.room_id);
+}
+
+export async function searchChatMessages(
+  dependencies: ChatSearchDependencies,
+  rawInput: ChatSearchInput,
+): Promise<ChatSearchHit[]> {
+  const input = chatSearchInputSchema.parse(rawInput);
+  const { db, queries } = dependencies;
+
+  // Read the authorization scope from the primary right before searching.
+  const roomIds = await readableRoomIds(db, input.userId);
+
+  // Send the terms filter even when empty; dropping it makes every room a candidate.
+  const candidates = await queries.search({
+    body: {
+      query: {
+        bool: {
+          must: [{ match: { "doc.body": input.text } }],
+          filter: [{ terms: { "doc.room_id": roomIds } }],
+        },
+      },
+      highlight: { fields: { "doc.body": {} } },
+      _source: ["updated_at"],
+      size: input.size,
+    },
+  });
+  if (candidates.hits.length === 0) return [];
+
+  // The index may lag: re-check every candidate against current membership and existence.
+  const ids = candidates.hits.map((hit) => hit.id);
+  const current = z
+    .array(messageRowSchema)
+    .parse(
+      await db("messages as m")
+        .join("room_members as rm", "rm.room_id", "m.room_id")
+        .where("rm.user_id", input.userId)
+        .whereIn("m.id", ids)
+        .select("m.id", "m.room_id", "m.author_id", "m.body", "m.updated_at"),
+    );
+  const byId = new Map(current.map((row) => [row.id, row]));
+
+  // Drop highlights of bodies edited after indexing; they show text that no longer exists.
+  const hits: ChatSearchHit[] = [];
+  for (const candidate of candidates.hits) {
+    const row = byId.get(candidate.id);
+    if (row === undefined) continue;
+    const indexedVersion = candidate.source?.updated_at;
+    const fresh = indexedVersion === row.updated_at.toISOString();
+    hits.push({
+      id: row.id,
+      roomId: row.room_id,
+      authorId: row.author_id,
+      body: row.body,
+      highlights: fresh ? (candidate.highlight?.["doc.body"] ?? []) : [],
+    });
+  }
+  return hits;
+}
+```
+
+1. 호출자가 지금 읽을 수 있는 방을 primary에서 읽습니다.
+2. 그 방들로 필터를 걸어 검색합니다. 읽을 수 있는 방이 없어도 필터를 빼지 않고 빈 목록을 보냅니다.
+3. 후보 ID를 지금의 권한과 상태로 다시 조회합니다.
+4. 색인의 내용이 아니라 현재 레코드를 검색 순서대로 돌려줍니다.
+
+이 예제는 기본 하이라이트 태그를 요청하므로 `highlights`는 HTML이 아니라 텍스트로 그려야 합니다. 안전하게 자를 수 있는 표식이 필요하면 위의 `highlightClause`를 쓰세요.
+
+이 흐름이 막는 경우는 다음과 같고, 통합 테스트가 각각을 확인합니다.
+
+| 색인이 늦은 경우 | 결과 |
+| --- | --- |
+| 메시지를 지웠지만 tombstone이 아직 색인되지 않음 | 3단계에서 행이 없으므로 빠집니다 |
+| 사용자가 방을 나갔지만 색인에는 그 방의 후보가 남음 | 3단계의 멤버십 조인에서 빠집니다 |
+| 색인 뒤 본문이 수정됨 | 현재 본문을 돌려주고, 색인된 `updated_at`이 다르므로 하이라이트를 버립니다 |
+| 읽을 수 있는 방이 하나도 없음 | 빈 `terms` 필터로 빈 결과가 납니다. 필터를 빼면 모든 방이 후보가 됩니다 |
+
+## 커서와 PIT
+
+여러 페이지를 넘기려면 `paginate`를 주고, 다음 페이지에서 같은 본문과 `cursor`를 넘깁니다.
+
+- `paginate`에는 본문의 `sort`와 서명 키가 필요합니다. 없으면 `SearchQueryInvalid`(`paginate-requires-sort`)나 `SearchConfigurationError`(`cursors-not-configured`)입니다.
+- `nextCursor`는 페이지가 가득 찼고 커서 수명이 남았을 때만 나옵니다.
+- 커서는 같은 검색에서만 이어집니다. `size`와 `search_after`를 뺀 본문의 해시가 커서에 들어 있어, 본문이 다르면 `SearchCursorExpired`(`query-mismatch`)입니다. 커서와 `search_after`를 함께 줄 수 없습니다.
+- `paginate: { pit: true }`면 대상의 물리 인덱스에 point in time을 열어 페이지 사이의 결과를 고정합니다. `keep_alive`는 `maxPitKeepAliveMs`와 커서의 남은 수명 중 짧은 쪽이고 페이지마다 다시 정해집니다. PIT은 페이지마다 연장되지만 커서의 만료 시각을 넘지는 않습니다. 다음 커서를 돌려주지 않으면 패키지가 PIT을 닫고, 중간에 그만둘 때는 `closeCursor(cursor)`로 일찍 닫을 수 있습니다.
+- PIT 없이(`paginate: {}`) 이어지는 페이지는 평범한 `search_after` 검색입니다. 페이지 사이에 색인이 바뀌면 결과가 그만큼 움직일 수 있고, 커서가 이어지는 시간을 제한하는 것은 발급 때 고정되고 데이터베이스 시각으로 확인하는 서명된 만료 시각뿐입니다.
+
+### 커서의 내용과 수명
+
+커서에는 대상 ID, fingerprint, 쿼리 해시, 발급 시각, 만료 시각, 마지막 후보의 정렬 값, PIT ID, 지금까지 읽은 수, 읽기 세대가 들어 있습니다. 내용은 base64url JSON이고 HMAC-SHA256으로 **서명만** 되어 있습니다. 암호화되지 않으므로 클라이언트가 내용을 읽을 수 있습니다. 정렬 값은 마지막 후보의 색인된 값이므로, 클라이언트에게 보여 주면 안 되는 필드로 정렬하지 마세요.
+
+서명은 목록의 첫 키로 하고 검증은 모든 키로 합니다. 키를 바꿀 때는 새 키를 맨 앞에, 옛 키를 그 뒤에 둔 채 배포하고, 옛 키로 서명한 커서가 모두 만료될 때까지(`maxCursorLifetimeMs`) 기다린 뒤 옛 키를 뺍니다. 목록에 없는 키로 서명한 커서는 `SearchCursorExpired`(`unknown-key`)입니다.
+
+만료 시각은 발급 시각에 `maxCursorLifetimeMs`를 더한 값으로 발급 때 고정되고 연장되지 않습니다. 시각은 데이터베이스 시계로 잽니다. 핸들의 수명(`limits`)은 관리 핸들이 `read_heads`에 기록한 최대치를 넘을 수 없고, 넘으면 검색할 때 `SearchConfigurationError`(`lifetime-exceeds-catalog`)로 실패합니다.
+
+커서는 다음 경우에 무효가 됩니다. 모두 `SearchCursorExpired`이고, 클라이언트는 새 검색을 시작해야 합니다.
+
+| `details.reason` | 원인 |
+| --- | --- |
+| `expired` | 만료 시각이 지남 |
+| `capture-epoch-invalidated` | 커서를 발급한 뒤 캡처가 중단됨. 재개 빌드로 cutover해도 되살아나지 않습니다 |
+| `target-not-readable`, `target-missing` | 커서가 고정한 대상이 은퇴 중이거나 은퇴했거나 없음 |
+| `fingerprint-mismatch`, `logical-key-mismatch` | 대상이 커서와 다름 |
+| `query-mismatch` | 본문이 다름 |
+| `bad-signature`, `unknown-key`, `malformed`, `invalid-payload`, `cursor-too-large` | 위조, 손상, 모르는 키, 너무 긴 커서 |
+| `pit-closed` | PIT이 닫히거나 만료됨 |
+
+캡처가 중단돼 있는 동안 이어지는 검색은 `SearchRebuildRequired`입니다. 반대로 cutover는 커서를 무효로 만들지 않습니다. cutover 전에 발급한 커서는 옛 대상에서 끝까지 이어지고, 은퇴는 그 커서의 수명이 지날 때까지 옛 인덱스를 지우지 않습니다. 엔진의 `point_in_time.max_keep_alive`를 넘는 PIT 요청은 `SearchQueryInvalid`(`pit-request-rejected`)입니다.
+
+## 검색할 수 없는 상태
+
+| 오류 | `details.reason` | 뜻 | `retryable` |
+| --- | --- | --- | --- |
+| `SearchNotConfigured` | `logical-key-not-in-catalog` | 이 namespace의 카탈로그에 logical key가 없음 | false |
+| `SearchNotReady` | `no-read-target` | 첫 cutover 전이라 읽기 대상이 없음 | true |
+| `SearchRebuildRequired` | `rebuild-required`, `capture-epoch-invalidated` | 캡처가 중단됐거나 읽기 대상이 무효가 된 epoch에 속함. 재개 빌드로 cutover할 때까지 이어집니다 | false |
+| `SearchDefinitionMismatch` | `unsupported-fingerprint` | 읽기 대상의 fingerprint가 `supportedFingerprints`에 없음 | false |
+| `SearchDefinitionMismatch` | `unsupported-hash-version` | 읽기 대상의 해시 버전이 이 패키지 버전과 다름 | false |
+| `SearchTargetUnavailable` | `target-not-readable`, `index-not-found` | 읽기 대상이 읽을 수 없는 상태이거나 물리 인덱스가 없음 | false |
+
+`SearchDefinitionMismatch`는 엔진에 아무 요청도 보내지 않고 납니다. 새 정의로 전환하기 전에 검색 프로세스를 먼저 배포했거나, 옛 정의만 아는 프로세스가 남아 있을 때 생깁니다. 전환 기간에는 `supportedFingerprints`에 옛 fingerprint와 새 fingerprint를 함께 두세요. 일시 정지된 대상은 계속 읽을 수 있습니다. 색인만 멈춰 있으므로 결과가 오래됐을 수 있습니다.
+
+## 오류와 HTTP 응답
+
+검색 오류는 클래스와 `retryable`로 HTTP 상태를 정하고, 메시지는 요청의 locale로 다시 렌더링합니다.
+
+```typescript title="search/errors.ts"
+// Branch on the error class, code, retryable and details.reason, never on the message.
+export interface SearchErrorResponse {
+  status: number;
+  body: { code: string; message: string; retryable: boolean };
+}
+
+export function toSearchErrorResponse(error: SearchError, locale: string): SearchErrorResponse {
+  const body = { code: error.code, message: error.localize(locale), retryable: error.retryable };
+  if (error instanceof SearchQueryInvalid || error instanceof SearchCursorExpired) {
+    return { status: 400, body };
+  }
+  // Searching inside a transaction is a server bug.
+  if (error instanceof SearchInTransactionError) return { status: 500, body };
+  return { status: error.retryable ? 503 : 500, body };
+}
+```
+
+```typescript title="sonamu.config.ts"
+    lifecycle: {
+      onStart: () => searchLifecycle.onStart(),
+      onShutdown: () => searchLifecycle.onShutdown(),
+      onError: async (error, request, reply) => {
+        if (!(error instanceof SearchError)) throw error;
+        const locale = request.headers["accept-language"]?.split(",")[0] ?? "en";
+        const response = toSearchErrorResponse(error, locale);
+        await reply.status(response.status).send(response.body);
+      },
+    },
+```
+
+- 잘못된 본문(`SearchQueryInvalid`)과 무효가 된 커서(`SearchCursorExpired`)는 클라이언트가 고칠 수 있으므로 400입니다. 커서 오류를 받은 클라이언트는 새 검색을 시작합니다.
+- 트랜잭션 안의 검색(`SearchInTransactionError`)은 서버 코드의 결함이므로 500입니다.
+- 나머지는 `retryable`이면 503, 아니면 500입니다. 검색만 쓸 수 없을 뿐 다른 API는 영향을 받지 않습니다. 검색 하나는 `timeoutMs`와 `maxSearchLifetimeMs` 중 짧은 시간 안에 끝나야 하고, 넘으면 `SearchTimeout`(`search-deadline`)입니다.
+- `error.localize(locale)`는 요청마다 다른 언어로 메시지를 만듭니다. 분기는 메시지가 아니라 언제나 클래스, `code`, `details.reason`으로 하세요.
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="인덱스 관리" icon="layer-group" href="/ko/advanced-features/opensearch/index-administration">
+    대상 생성, 재구축, cutover, 은퇴
+  </Card>
+  <Card title="운영" icon="chart-line" href="/ko/advanced-features/opensearch/operations">
+    감시, 설정값 조정, 권한, 알려진 한계
+  </Card>
+</CardGroup>

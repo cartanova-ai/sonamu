@@ -1,0 +1,316 @@
+---
+title: "트랜잭션 색인"
+description: "도메인 트랜잭션 안에서 markChanged로 변경을 표시하고, 실패와 순서와 삭제를 다루는 방법"
+---
+
+색인할 데이터를 바꾸는 모든 쓰기 경로는 쓰기와 같은 트랜잭션에서 `markChanged`를 호출합니다. 표시는 그 트랜잭션의 일부로 PostgreSQL에만 기록되므로, 표시를 기록하지 못하면 쓰기도 커밋되지 않습니다. 워커는 나중에 표시된 문서를 다시 projection해 색인합니다. 표시는 무엇이 바뀌었는지가 아니라 어느 문서가 바뀌었는지만 기록하므로, 같은 문서를 몇 번 표시하든 워커는 projection하는 시점의 상태를 색인합니다.
+
+## markChanged 호출하기
+
+### Sonamu 모델에서
+
+`createSonamuSynchronization`이 만든 핸들에는 두 메서드가 있습니다.
+
+- `markChangedIn(trx, logicalKey, ids)`: `transaction()` 콜백이 받은 `PuriTransactionWrapper`를 받습니다.
+- `markChanged(logicalKey, ids)`: 지금 열려 있는 Sonamu `"w"` 트랜잭션을 씁니다(`@transactional` 메서드나 `puri.transaction()` 안). 트랜잭션을 새로 열지 않으며, 열린 트랜잭션이 없으면 `SearchInvalidTransaction`을 던집니다.
+
+```typescript title="application/chat-message.model.ts"
+/** Mark in the same transaction as the domain write; on 40001 or 40P01 retry the whole transaction. */
+class ChatMessageModelClass extends BaseModelClass {
+  modelName = "ChatMessage";
+
+  async send(roomId: string, authorId: string, body: string): Promise<string> {
+    return this.getPuri("w").transaction(async (trx) => {
+      const [row] = await trx
+        .trx("messages")
+        .insert({ room_id: roomId, author_id: authorId, body })
+        .returning<{ id: string }[]>("id");
+      await chatSearchSync.markChangedIn(trx, CHAT_MESSAGES_KEY, [String(row.id)]);
+      return String(row.id);
+    });
+  }
+
+  async edit(messageId: string, body: string): Promise<void> {
+    await this.getPuri("w").transaction(async (trx) => {
+      await trx
+        .trx("messages")
+        .where({ id: messageId })
+        .update({ body, updated_at: trx.trx.raw("clock_timestamp()") });
+      await chatSearchSync.markChangedIn(trx, CHAT_MESSAGES_KEY, [messageId]);
+    });
+  }
+```
+
+`@transactional` 메서드나 그 안에서 부른 메서드에서는 트랜잭션을 넘기지 않는 `markChanged`를 씁니다. 바깥에 `@transactional`이 있으면 그 트랜잭션이 쓰입니다. 아래 예는 메시지를 다른 방으로 옮겨 `room_id`를 바꾸고, 옮긴 메시지를 한 번에 정렬해 표시합니다.
+
+```typescript title="application/chat-room.model.ts"
+import { BaseModelClass, transactional } from "sonamu";
+import { z } from "zod";
+
+import { CHAT_MESSAGES_KEY } from "../search/chat-messages.definition";
+import { chatSearchSync } from "../search/client";
+
+const idRowSchema = z.object({ id: z.union([z.string(), z.number()]).transform(String) });
+
+/** markChanged needs an open @transactional transaction and refuses with SearchInvalidTransaction without one. */
+class ChatRoomModelClass extends BaseModelClass {
+  modelName = "ChatRoom";
+
+  /** Moving messages changes their room_id, so they must be marked. */
+  @transactional()
+  async moveMessages(fromRoomId: string, toRoomId: string): Promise<number> {
+    const db = this.getPuri("w").knex;
+    const rows = z
+      .array(idRowSchema)
+      .parse(
+        await db("messages").where({ room_id: fromRoomId }).update({ room_id: toRoomId }, ["id"]),
+      );
+    const ids = rows.map((row) => row.id).toSorted();
+    if (ids.length > 0) await chatSearchSync.markChanged(CHAT_MESSAGES_KEY, ids);
+    return ids.length;
+  }
+}
+
+export const ChatRoomModel = new ChatRoomModelClass();
+```
+
+Sonamu를 쓰지 않는 코드는 `createPostgresSynchronization`이 만든 핸들의 `markChanged(trx, logicalKey, ids)`에 Knex 트랜잭션을 넘깁니다. 어느 쪽이든 넘겨받은 트랜잭션에서만 문장을 실행하고, 다른 연결을 쓰거나 트랜잭션을 새로 열지 않습니다.
+
+한 번의 호출은 다음을 합니다.
+
+1. 핸들이 살아 있는 트랜잭션인지 확인합니다. 아니면 어떤 문장도 보내지 않고 `SearchInvalidTransaction`을 던집니다.
+2. 저장소 식별자가 정해졌는지 확인한 뒤 logical key와 문서 ID를 검사합니다. 문서 ID는 비어 있지 않은 문자열이어야 하고, NUL과 짝이 없는 서로게이트가 없고, UTF-8로 512바이트 이하이며, 예약된 fence 문서 ID `__sonamu_fence__`가 아니어야 합니다. 호출 하나의 ID는 기본 10,000개까지입니다.
+3. 그 logical key의 장벽 행을 공유 잠금으로 잡고, 그 행의 저장소 식별자가 고정한 식별자와 같은지 확인합니다. 대상 등록 같은 관리 작업이 이 잠금으로 순서를 맞춥니다.
+4. 캡처 모드와 등록된 쓰기 대상을 읽습니다. 캡처가 중단됐으면 아무것도 쓰지 않고 `"suspended"`를 돌려줍니다.
+5. 문서마다 원장 리비전을 1 올리고, 등록된 모든 쓰기 대상에 의도를 기록한 뒤 `"recorded"`를 돌려줍니다.
+
+ID는 중복을 없애고 UTF-8 바이트 순으로 처리합니다. 한 트랜잭션에서 같은 문서를 여러 호출로 표시하면 리비전은 호출마다 오르고, 의도는 하나로 합쳐집니다.
+
+<Warning>
+logical key는 관리 명령이 그 키의 첫 대상을 기록할 때 카탈로그에 생깁니다. 그 전에는 `markChanged`가 `SearchNotConfigured`를 던지고, 대상이 기록됐지만 아직 등록되지 않았으면 `SearchNoWriteTarget`을 던집니다. 두 경우 모두 도메인 트랜잭션은 커밋되지 않습니다. 이 키를 표시하는 코드는 첫 대상을 등록한 뒤에 배포하세요([인덱스 관리](/ko/advanced-features/opensearch/index-administration)).
+</Warning>
+
+### 중첩 트랜잭션과 savepoint
+
+- 중첩된 `@transactional` 메서드는 바깥 트랜잭션을 그대로 씁니다. 따로 롤백되는 경계가 아니므로, 안쪽에서 한 표시는 바깥과 함께 커밋되거나 롤백됩니다.
+- 수동으로 중첩한 `transaction()`은 savepoint를 엽니다. savepoint가 롤백되면 그 안에서 한 표시도 함께 사라집니다.
+- 루트 트랜잭션이 롤백되면 원장과 의도에 아무것도 남지 않습니다.
+
+## 실패 닫힘
+
+`markChanged`는 의도 없이 도메인 변경이 커밋되게 두지 않습니다. 패키지 전제 조건이 맞지 않으면 넘겨받은 트랜잭션(또는 savepoint)을 실패 상태로 만든 뒤 타입 오류를 던집니다. 0으로 나누는 문장을 실행해 PostgreSQL이 트랜잭션을 중단하게 하는 방식입니다.
+
+전제 조건 실패:
+
+| 오류 클래스 | `details.reason` | 원인 | `retryable` |
+| --- | --- | --- | --- |
+| `SearchConfigurationError` | `store-identity-uninitialized` | 저장소 식별자가 정해지기 전 | true |
+| `SearchNotConfigured` | `logical-key-not-registered` | 대상을 만든 적 없는 logical key | false |
+| `SearchNoWriteTarget` | `no-write-target` | 캡처는 켜져 있는데 쓰기 대상이 없음 | false |
+| `SearchStoreMismatch` | `store-mismatch` | 트랜잭션이 다른 저장소의 데이터베이스에 있음. 이 프로세스가 식별자를 고정한 뒤 데이터베이스가 `adoptCopiedStore`로 채택됐을 때도 이것이고, 프로세스를 다시 시작할 때까지 모든 호출이 거부됩니다 | false |
+| `SearchInvalidDocumentId` | fence 문서 ID는 `reserved-document-id`, 문자열이 아닌 ID는 `invalid-mark-input`, 그 밖에는 없음 | 비었거나, NUL이나 짝 없는 서로게이트를 담았거나, 512바이트를 넘거나, 문자열이 아니거나, `__sonamu_fence__`인 ID | false |
+| `SearchConfigurationError` | `invalid-logical-key`, `invalid-mark-input`, `too-many-ids` | 형식이 틀린 logical key, 문자열이 아닌 logical key, 호출당 ID 상한 초과 | false |
+| `SearchRevisionOverflow` | `revision-overflow` | 리비전이 `Number.MAX_SAFE_INTEGER`를 넘으려 함 | false |
+
+SQL 문장이 실패하면 PostgreSQL이 이미 트랜잭션을 중단했으므로, `markChanged`는 오류를 바꿔 던지기만 합니다.
+
+| SQLSTATE | 오류 클래스 | `details.reason` | `retryable` |
+| --- | --- | --- | --- |
+| 40001, 40P01 | `SearchUnavailable` | `serialization-failure`, `deadlock` | true |
+| 55P03, 57014 | `SearchTimeout` | `lock-timeout`, `statement-canceled` | true |
+| 08xxx, 53xxx, 58xxx, 57P01–57P05, 연결 끊김 | `SearchUnavailable` | `connection` | true |
+| 42P01, 3F000 | `SearchSchemaMissing` | `undefined-table`, `undefined-schema` | false |
+| 42501 | `SearchConfigurationError` | `insufficient-privilege` | false |
+| 25006, 25P02 | `SearchInvalidTransaction` | `read-only-transaction`, `failed-transaction` | false |
+| 23514 (리비전 제약) | `SearchRevisionOverflow` | `check-violation` | false |
+
+실패시킬 살아 있는 트랜잭션이 없으면 아무 문장도 보내지 않고 `SearchInvalidTransaction`을 던집니다. PostgreSQL 핸들에서는 `not-a-transaction`과 `completed-transaction`, Sonamu 핸들에서는 `no-active-transaction`과 `not-a-transaction-wrapper`입니다.
+
+### 오류를 삼켰을 때
+
+`markChanged`의 예외는 삼키지 말고 트랜잭션 밖으로 전파하세요. 예외를 잡아 무시한 채 콜백을 정상 종료하면 Knex는 `COMMIT`을 보내고 오류 없이 끝나지만, PostgreSQL은 중단된 트랜잭션을 롤백합니다. 호출자는 쓰기가 성공했다고 믿지만 아무것도 저장되지 않습니다.
+
+savepoint 안에서 호출한 경우:
+
+- 예외가 savepoint 콜백 밖으로 전파되면 그 savepoint만 롤백되고, 바깥 트랜잭션은 계속 쓸 수 있습니다.
+- savepoint 안에서 예외를 삼키면 savepoint 해제가 실패하고(SQLSTATE 25P02), 바깥 트랜잭션도 도메인 변경을 남기지 못합니다.
+
+## 여러 번 호출할 때의 순서
+
+호출 하나는 자기 ID를 정렬해 잠그지만, 한 트랜잭션 안의 여러 호출 순서는 호출자가 정하므로 두 트랜잭션이 같은 문서들을 서로 다른 순서로 표시하면 교착 상태가 생길 수 있습니다. 이를 피하려면:
+
+- 한 트랜잭션에서 바뀌는 문서를 모아 logical key마다 **한 번** 호출합니다.
+- 여러 logical key를 표시하면 key를 바이트 오름차순으로 호출합니다.
+
+이 규칙을 지키면 겹치는 트랜잭션은 서로 기다릴 뿐 교착하지 않습니다. 어기면 PostgreSQL이 한쪽을 SQLSTATE 40P01로 끊고, 패키지는 `retryable`이 `true`이고 `details.reason`이 `deadlock`인 `SearchUnavailable`을 던집니다. 그 트랜잭션 전체를 처음부터 다시 실행하세요. 트랜잭션은 이미 중단됐으므로 같은 문장만 다시 보내서는 소용이 없습니다.
+
+아래 도우미는 직렬화 실패나 교착일 때 트랜잭션을 다시 실행하고, 두 쪽이 같은 순간에 다시 부딪히지 않도록 짧게 무작위로 기다립니다. 판단은 메시지가 아니라 구조로 합니다. 패키지가 바꿔 던진 오류는 code가 `SEARCH_UNAVAILABLE`이고 `retryable`이며 `details.reason`이 `serialization-failure`나 `deadlock`입니다. 같은 트랜잭션의 애플리케이션 문장이 던진 드라이버 오류는 `code`(SQLSTATE)가 `40001`이나 `40P01`입니다. 그 밖의 오류는 그대로 다시 던집니다. 같은 `SEARCH_UNAVAILABLE` 코드라도 연결 끊김(`details.reason` `connection`)은 커밋됐는지 알 수 없으므로 다시 실행하지 않습니다. `run`은 트랜잭션을 직접 여는 함수여야 합니다. 이미 열린 트랜잭션 안에서 부르면 바깥 트랜잭션은 이미 실패한 상태입니다.
+
+```typescript title="application/transaction-retry.ts"
+import { setTimeout as sleep } from "node:timers/promises";
+
+import { SearchError } from "@sonamu-kit/opensearch";
+import { z } from "zod";
+
+/** run must open the transaction itself; a dropped connection is never retried because its commit is unknown. */
+export const MAX_TRANSACTION_ATTEMPTS = 3;
+
+const CONFLICT_REASONS = new Set(["serialization-failure", "deadlock"]);
+const driverConflictSchema = z.looseObject({ code: z.enum(["40001", "40P01"]) });
+
+export function isTransactionConflict<Thrown>(error: Thrown): boolean {
+  if (error instanceof SearchError) {
+    return (
+      error.code === "SEARCH_UNAVAILABLE" &&
+      error.retryable &&
+      CONFLICT_REASONS.has(String(error.details?.reason))
+    );
+  }
+  return driverConflictSchema.safeParse(error).success;
+}
+
+export async function withTransactionRetry<T>(
+  run: () => Promise<T>,
+  maxAttempts: number = MAX_TRANSACTION_ATTEMPTS,
+): Promise<T> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await run();
+    } catch (error) {
+      if (attempt >= maxAttempts || !isTransactionConflict(error)) throw error;
+      await sleep(Math.random() * 50 * attempt);
+    }
+  }
+}
+```
+
+```typescript title="application/chat-message.model.ts"
+  async editWithRetry(messageId: string, body: string): Promise<void> {
+    await withTransactionRetry(() => this.edit(messageId, body));
+  }
+```
+
+### REPEATABLE READ와 SERIALIZABLE
+
+관리자가 새 대상을 등록하는 동안 겹친 도메인 쓰기는 두 가지 중 하나로 끝납니다. READ COMMITTED 트랜잭션은 등록보다 먼저 잠갔으면 등록을 기다리게 하고, 나중에 잠갔으면 새 대상에도 의도를 기록합니다. REPEATABLE READ나 SERIALIZABLE 트랜잭션은 등록 전에 잡은 스냅샷으로 커밋할 수 없으므로 SQLSTATE 40001로 실패합니다. 이 오류는 `details.reason`이 `serialization-failure`인 재시도 가능한 `SearchUnavailable`이며, 트랜잭션 전체를 다시 실행하면 두 대상 모두에 의도가 기록됩니다.
+
+워커의 임대, 확인, 반납 같은 정리 작업은 의도 행을 갱신하지 않으므로 REPEATABLE READ 도메인 트랜잭션을 40001로 실패시키지 않습니다.
+
+## 삭제와 tombstone
+
+삭제도 표시하세요. 워커가 projection을 실행하면 원본에 행이 없으므로 `deleted`가 돌아오고, 워커는 본문 없이 `sonamu_meta`만 담은 tombstone을 더 높은 리비전으로 색인합니다.
+
+```typescript title="application/chat-message.model.ts"
+  /** Deletes must be marked too; the worker indexes a tombstone for a missing row. */
+  async remove(messageId: string): Promise<void> {
+    await this.getPuri("w").transaction(async (trx) => {
+      await trx.trx("messages").where({ id: messageId }).delete();
+      await chatSearchSync.markChangedIn(trx, CHAT_MESSAGES_KEY, [messageId]);
+    });
+  }
+```
+
+워커는 OpenSearch에 삭제 요청을 보내지 않습니다. tombstone이 외부 버전을 계속 쥐고 있으므로, 삭제 전에 보낸 옛 요청이 늦게 도착해도 엔진이 거부해 내용이 되살아나지 않습니다. 원장 행도 남으며, 같은 ID로 레코드를 다시 만들면 더 높은 리비전으로 다시 색인됩니다. 검색은 tombstone을 자동으로 제외합니다.
+
+## 데이터베이스가 직접 하는 변경
+
+외래 키의 `ON DELETE CASCADE`, `SET NULL`, `SET DEFAULT`, `ON UPDATE CASCADE`나 트리거가 바꾼 행은 어떤 모델 메서드도 보지 못하므로 아무도 표시하지 않습니다. 이런 변경이 색인된 문서에 영향을 주면, 같은 트랜잭션에서 부모를 바꾸기 **전에** 영향받을 ID를 읽어 두었다가 표시하세요. 예제에서는 방을 지우면 그 방의 메시지가 CASCADE로 지워집니다.
+
+```typescript title="application/chat-message.model.ts"
+  /** CASCADE deletes are not marked for you: collect the ids first and mark them sorted in one call to avoid deadlocks. */
+  async removeRoom(roomId: string): Promise<void> {
+    await this.getPuri("w").transaction(async (trx) => {
+      const rows = await trx
+        .trx("messages")
+        .where({ room_id: roomId })
+        .select<{ id: string }[]>("id");
+      await trx.trx("rooms").where({ id: roomId }).delete();
+      const ids = rows.map((row) => String(row.id)).toSorted();
+      if (ids.length > 0) await chatSearchSync.markChangedIn(trx, CHAT_MESSAGES_KEY, ids);
+    });
+  }
+```
+
+- `SET NULL`도 같습니다. projection이 참조 열을 문서에 담는다면, 부모를 지우기 전에 참조하는 행의 ID를 모아 표시합니다.
+- projection이 다른 테이블을 읽는다면(예: 메시지 문서에 방 이름을 담음) 그 테이블의 변경도 영향받는 문서를 모두 표시해야 합니다.
+- 색인되는 테이블을 참조하거나 projection이 읽는 테이블에 걸린 외래 키 동작은 `pg_constraint`의 `confdeltype`, `confupdtype`에서 확인할 수 있습니다. `NO ACTION`이나 `RESTRICT`가 아닌 동작마다 위처럼 처리했는지 점검하세요.
+
+애플리케이션 밖에서 일어난 변경(직접 실행한 SQL, 백업 복원)은 표시되지 않습니다. 이때는 관리 핸들로 문서를 다시 표시하거나 대상을 재구축합니다([인덱스 관리](/ko/advanced-features/opensearch/index-administration)).
+
+## 캡처가 중단됐을 때
+
+관리자가 캡처를 중단하면 `markChanged`는 원장과 의도를 쓰지 않고 `"suspended"`를 돌려줍니다. 이 결과는 오류가 아니며 트랜잭션을 실패시키지 않으므로, 도메인 쓰기는 평소처럼 커밋되고 쓰기 경로에서 따로 처리할 것은 없습니다.
+
+중단된 동안의 변경은 색인에 반영되지 않으므로, 검색 핸들은 새 대상을 만들어 cutover할 때까지 `SearchRebuildRequired`로 검색을 거부합니다. 패키지가 오류 때문에 스스로 캡처를 중단하는 일은 없으며, 중단은 관리 명령으로만 일어납니다.
+
+## 오류 처리
+
+분기는 오류 클래스, `code`, `retryable`, `details.reason`으로 하고, locale에 따라 바뀌는 메시지 문자열로 하지 마세요. `retryable`이 `true`라는 것은 코드나 설정을 바꾸지 않고 같은 호출을 나중에 다시 하면 성공할 수 있다는 뜻입니다. 쓰기 경로에서는 트랜잭션 전체를 다시 실행하는 것이 같은 호출입니다. `markChanged`가 던지는 오류는 위의 실패 닫힘 절에 정리되어 있습니다.
+
+`details`에는 `sqlstate`와 `reason` 같은 안정된 코드만 들어갑니다. 메시지와 `details`에는 문서 본문, 검색 본문, 자격 증명이 들어가지 않고, 드라이버나 OpenSearch의 메시지도 그대로 옮기지 않습니다.
+
+아래 예는 검색 오류를 HTTP 응답으로 바꿉니다. 오류 클래스마다 어떤 상태 코드를 주는지는 [검색](/ko/advanced-features/opensearch/searching)에 있습니다.
+
+```typescript title="search/errors.ts"
+// Branch on the error class, code, retryable and details.reason, never on the message.
+export interface SearchErrorResponse {
+  status: number;
+  body: { code: string; message: string; retryable: boolean };
+}
+
+export function toSearchErrorResponse(error: SearchError, locale: string): SearchErrorResponse {
+  const body = { code: error.code, message: error.localize(locale), retryable: error.retryable };
+  if (error instanceof SearchQueryInvalid || error instanceof SearchCursorExpired) {
+    return { status: 400, body };
+  }
+  // Searching inside a transaction is a server bug.
+  if (error instanceof SearchInTransactionError) return { status: 500, body };
+  return { status: error.retryable ? 503 : 500, body };
+}
+```
+
+## 메시지 지역화
+
+오류의 `message`는 오류를 만든 시점의 패키지 locale로 렌더링됩니다. 기본은 영어(`en`)이고, 영어와 한국어 카탈로그가 들어 있습니다.
+
+- `setSearchLocale(locale)`: 프로세스 전체의 locale을 정합니다. 명시한 값이 언제나 우선합니다. 형식이 틀린 locale은 `SearchConfigurationError`입니다.
+- Sonamu 프로젝트에서는 `/sonamu` 핸들의 첫 연산(`markChanged`, `markChangedIn`, 검색, lifecycle의 `onStart`, `defineSonamuSearch`의 projection)에서 Sonamu의 `i18n.defaultLocale`을 한 번 적용합니다. 그 태그나 기본 언어의 카탈로그가 있을 때만 바꾸고, 없으면 영어에 머물며 오류를 내지 않습니다. 이미 `setSearchLocale`을 불렀으면 바꾸지 않습니다.
+- `registerSearchMessages(locale, messages)`: 다른 언어의 메시지를 등록합니다. 일부 키만 등록해도 되고, 빠진 키는 같은 언어의 내장 카탈로그, 그다음 영어로 대체됩니다. 기본 locale 적용은 프로세스당 한 번이므로, 그 언어를 기본으로 쓰려면 첫 연산 전에 등록하세요.
+- `error.localize(locale)`: 요청마다 언어가 다를 때 메시지를 다시 렌더링합니다. 조회 순서는 정확한 태그, 기본 언어, 영어이고, 각 단계에서 등록한 카탈로그가 내장 카탈로그보다 우선합니다.
+
+예제는 서버 시작 시 일본어 메시지를 한 번 등록합니다. Sonamu의 `i18n.defaultLocale`이 `ja`이면 일본어가 기본이 됩니다.
+
+```typescript title="search/errors.ts"
+/** Call once at startup; missing keys fall back to English. */
+export function registerJapaneseSearchMessages(): void {
+  registerSearchMessages("ja", {
+    "error.notReady": "検索インデックスはまだ準備できていません。",
+    "error.rebuildRequired": "検索インデックスの再構築が必要です。",
+    "error.cursorExpired": "検索カーソルの有効期限が切れました。もう一度検索してください。",
+  });
+}
+```
+
+```typescript title="sonamu.config.ts"
+import { SearchError, setSearchLocale } from "@sonamu-kit/opensearch";
+import { createSearchCliPlugin } from "@sonamu-kit/opensearch/sonamu";
+import { defineConfig } from "sonamu";
+
+import { registerJapaneseSearchMessages, toSearchErrorResponse } from "./search/errors";
+import { searchLifecycle } from "./search/worker";
+
+registerJapaneseSearchMessages();
+// An explicit setSearchLocale overrides Sonamu's i18n.defaultLocale.
+if (process.env.SEARCH_LOCALE !== undefined) setSearchLocale(process.env.SEARCH_LOCALE);
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="색인 워커" icon="gears" href="/ko/advanced-features/opensearch/worker">
+    표시한 문서가 색인되는 과정
+  </Card>
+  <Card title="검색 정의" icon="code" href="/ko/advanced-features/opensearch/definitions">
+    projection 계약과 문서 검증
+  </Card>
+</CardGroup>

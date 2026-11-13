@@ -1,0 +1,300 @@
+---
+title: "Searching"
+description: "Query handles, the body allowlist, candidates and the authorization re-check, cursors and PIT, search errors"
+---
+
+A search reads only the one target that the read pointer in the PostgreSQL catalog points to. The query handle reads the catalog on every search, sends only allowed bodies to OpenSearch, and returns the results as **candidates**. Never return candidates to a client as they are: re-check them against the primary first, as shown under "Results are candidates".
+
+## Creating a query handle
+
+A Sonamu application creates the handle with `createSonamuSearchQueries` from `@sonamu-kit/opensearch/sonamu`.
+
+```typescript title="search/client.ts"
+/** At least 32 bytes; when rotating, put the new key first and the old one after it. */
+function cursorSigningSecret(): Uint8Array {
+  return Buffer.from(process.env.SEARCH_CURSOR_SECRET ?? "", "base64");
+}
+
+/** Never call inside a transaction: it refuses with SearchInTransactionError. */
+export const chatMessageQueries = createSonamuSearchQueries<ChatMessageDocument>({
+  client: searchClient,
+  catalog: { namespace: SEARCH_NAMESPACE },
+  logicalKey: chatMessagesSearch.key,
+  supportedFingerprints: [chatMessagesSearch.fingerprint],
+  limits: RECOMMENDED_QUERY_LIMITS,
+  cursor: { signingKeys: [{ id: "k1", secret: cursorSigningSecret() }] },
+  // Do not load the body from the index; it is read again from the primary.
+  policy: { sourceIncludes: ["updated_at"] },
+});
+```
+
+| Option | Meaning |
+| --- | --- |
+| `client` | A client created by `createSearchClient` |
+| `catalog` | The catalog location `{ namespace, schema? }`. The Sonamu form reads the catalog from the `DB.getDB("w")` pool on every search. You can pass a catalog reader instead |
+| `logicalKey` | The logical key of the definition to search |
+| `supportedFingerprints` | Fingerprints of the definitions this process can read. 1 to 64 |
+| `limits` | The page size cap, the time limit of one search, the read lifetimes, and the optional `maxResponseBytes` (meaningful only below the client's value) and `maxQueryBodyBytes` (search body size, default 1 MiB, at most 16 MiB). The recommended values are `RECOMMENDED_QUERY_LIMITS` |
+| `cursor` | Cursor signing keys (1 to 16). Without them, pagination is unavailable |
+| `policy` | `sourceIncludes` (the `doc` fields candidates may carry), `allowTrackTotalHits` |
+
+The factory only validates options; it creates no connection and reads no catalog. Invalid options fail at once with `SearchConfigurationError`: `limits.timeoutMs` longer than `maxSearchLifetimeMs`, a signing key shorter than 32 bytes, or duplicate key IDs. If the handle is created at module load, as in the example, every process that imports that module needs the signing key ([Setup](/en/advanced-features/opensearch/setup)).
+
+Code that does not use Sonamu passes a reader made by `createPostgresCatalogReader` from `@sonamu-kit/opensearch/postgres` to `createSearchQueries` from the root entry point. That form cannot detect another framework's transactions, so keeping calls outside transactions is the caller's job.
+
+### No searching inside a transaction
+
+Called inside an active Sonamu transaction (`@transactional`, `puri.transaction()`, `DB.runWithTransactionScope`), `search` and `closeCursor` of `createSonamuSearchQueries` reject with `SearchInTransactionError` (`details.reason` `ambient-transaction`) before any I/O, for two reasons:
+
+- The catalog lookup takes a second connection from the pool instead of using the surrounding transaction. Searching while a transaction holds a connection can exhaust the pool.
+- The caller might assume the catalog is read in the transaction's snapshot. It always reads the latest committed pointer.
+
+Finish the database work, then search outside the transaction. In Sonamu test mode, while a test transaction is open `DB.getDB("w")` returns that transaction, so the catalog lookup fails with `SearchConfigurationError` (`primary-is-transaction`). Managed search cannot be used inside Sonamu's transactional test fixtures.
+
+## The search body
+
+The body of `search({ body })` is OpenSearch DSL, but only these top-level keys are accepted:
+
+| Key | Handling |
+| --- | --- |
+| `query` | Sent as is, wrapped in `bool.must`, with a filter excluding tombstones (`sonamu_meta.deleted: false`) added to `bool.filter`. `match_all` when absent |
+| `sort` | Sent as is. Required for pagination |
+| `size` | 10 when omitted. A value above `maxPageSize` is reduced, not rejected |
+| `search_after` | Can be passed directly, but not together with a cursor |
+| `_source` | Only `true`, a field name, or an array of field names, all within `policy.sourceIncludes`. No object form or wildcards |
+| `highlight` | Sent as is. See the warning below |
+| `track_total_hits` | Honored only when `policy.allowTrackTotalHits` is `true`; otherwise fixed to `false` |
+
+A body whose JSON exceeds `maxQueryBodyBytes` is rejected with `SearchQueryInvalid` (`body-too-large`) before it is copied. Any other key (`aggs`, `suggest`, `pit`, `post_filter`, `from`, `index`, and so on) is `SearchQueryInvalid` (`unsupported-body-key`). Field paths take the `doc.` prefix. Responses always include `sonamu_meta.revision`, and only the `doc` fields that were requested and that the policy allows.
+
+<Warning>
+The contents of `query`, `sort`, and `highlight` are sent unchecked; the package treats them as values built by trusted server code. Never put JSON from the client into them. Accept values such as the search text and build the query on the server.
+</Warning>
+
+The caller cannot choose the index: the handle has no index option, and the body's `index` and `pit` keys are rejected. A new search always reads from the catalog's read pointer, and a continued search only from the target its cursor pinned. A search therefore cannot read a retiring index or another namespace's index, and retirement can be sure no search still reads the old index once cursor and search lifetimes have passed. If the catalog cannot be read, the search fails with `SearchCatalogUnavailable` instead of falling back to a cached pointer.
+
+### Rendering highlights
+
+<Warning>
+Highlight fragments contain user-written text, and OpenSearch does not escape it. Rendering fragments with the default tags (`<em>`) as HTML opens an XSS hole. Never interpret a fragment as HTML. The safe way is to replace `pre_tags` and `post_tags` with characters that never occur in user text, such as the private-use characters U+E000 and U+E001, split the fragment on them on screen, and render both the matches and the rest as text.
+</Warning>
+
+The example's helper builds the `highlight` clause for the search body and splits a fragment into text segments. The screen creates one text node per segment and never uses `innerHTML` or `dangerouslySetInnerHTML`. [miomock walkthrough](/en/advanced-features/opensearch/miomock-walkthrough) has a screen that works this way.
+
+```typescript title="search/highlight.ts"
+// Highlight fragments are not escaped: never render them as HTML; split on these private-use markers instead.
+
+export const HIGHLIGHT_START = "\uE000";
+export const HIGHLIGHT_END = "\uE001";
+
+export function highlightClause(fields: readonly string[]) {
+  return {
+    pre_tags: [HIGHLIGHT_START],
+    post_tags: [HIGHLIGHT_END],
+    fields: Object.fromEntries(fields.map((field) => [field, {}])),
+  };
+}
+
+export interface HighlightSegment {
+  readonly text: string;
+  readonly highlighted: boolean;
+}
+
+/** Render each segment as a text node, never through innerHTML or dangerouslySetInnerHTML. */
+export function splitHighlight(fragment: string): HighlightSegment[] {
+  const segments: HighlightSegment[] = [];
+  const [head = "", ...rest] = fragment.split(HIGHLIGHT_START);
+  if (head !== "") segments.push({ text: head, highlighted: false });
+  for (const part of rest) {
+    const [marked = "", ...tail] = part.split(HIGHLIGHT_END);
+    if (marked !== "") segments.push({ text: marked, highlighted: true });
+    const after = tail.join("");
+    if (after !== "") segments.push({ text: after, highlighted: false });
+  }
+  return segments;
+}
+```
+
+## Results are candidates
+
+`search` returns `{ target, hits, total?, timedOut, nextCursor? }`. Each candidate holds `id`, the indexed `revision`, `score`, and, if requested, `sort`, `source` (allowed `doc` fields only), and `highlight`. `total` is present only when `track_total_hits` is allowed.
+
+Because the index can lag, a candidate is not an authorized record. Before responding, re-check the current record and its permissions on the primary using the candidate IDs. The example searches chat messages like this:
+
+```typescript title="application/chat-message.search.ts"
+async function readableRoomIds(db: Knex, userId: string): Promise<string[]> {
+  const rows = z
+    .array(roomRowSchema)
+    .parse(await db("room_members").where({ user_id: userId }).select("room_id"));
+  return rows.map((row) => row.room_id);
+}
+
+export async function searchChatMessages(
+  dependencies: ChatSearchDependencies,
+  rawInput: ChatSearchInput,
+): Promise<ChatSearchHit[]> {
+  const input = chatSearchInputSchema.parse(rawInput);
+  const { db, queries } = dependencies;
+
+  // Read the authorization scope from the primary right before searching.
+  const roomIds = await readableRoomIds(db, input.userId);
+
+  // Send the terms filter even when empty; dropping it makes every room a candidate.
+  const candidates = await queries.search({
+    body: {
+      query: {
+        bool: {
+          must: [{ match: { "doc.body": input.text } }],
+          filter: [{ terms: { "doc.room_id": roomIds } }],
+        },
+      },
+      highlight: { fields: { "doc.body": {} } },
+      _source: ["updated_at"],
+      size: input.size,
+    },
+  });
+  if (candidates.hits.length === 0) return [];
+
+  // The index may lag: re-check every candidate against current membership and existence.
+  const ids = candidates.hits.map((hit) => hit.id);
+  const current = z
+    .array(messageRowSchema)
+    .parse(
+      await db("messages as m")
+        .join("room_members as rm", "rm.room_id", "m.room_id")
+        .where("rm.user_id", input.userId)
+        .whereIn("m.id", ids)
+        .select("m.id", "m.room_id", "m.author_id", "m.body", "m.updated_at"),
+    );
+  const byId = new Map(current.map((row) => [row.id, row]));
+
+  // Drop highlights of bodies edited after indexing; they show text that no longer exists.
+  const hits: ChatSearchHit[] = [];
+  for (const candidate of candidates.hits) {
+    const row = byId.get(candidate.id);
+    if (row === undefined) continue;
+    const indexedVersion = candidate.source?.updated_at;
+    const fresh = indexedVersion === row.updated_at.toISOString();
+    hits.push({
+      id: row.id,
+      roomId: row.room_id,
+      authorId: row.author_id,
+      body: row.body,
+      highlights: fresh ? (candidate.highlight?.["doc.body"] ?? []) : [],
+    });
+  }
+  return hits;
+}
+```
+
+1. Read the rooms the caller can read now, from the primary.
+2. Search with a filter on those rooms. Even when there are none, send the empty list rather than dropping the filter.
+3. Look the candidate IDs up again against current permissions and state.
+4. Return the current records, not the indexed content, in search order.
+
+This example requests the default highlight tags, so its `highlights` must be rendered as text, never as HTML; use `highlightClause` above to get markers that can be split safely.
+
+The integration tests check each case this flow guards against:
+
+| When the index lags | Result |
+| --- | --- |
+| A message was deleted but its tombstone is not indexed yet | Dropped at step 3, where the row is missing |
+| The user left a room, but the index still holds candidates from it | Dropped by the membership join at step 3 |
+| The body was edited after indexing | The current body is returned, and the highlight is dropped because the indexed `updated_at` differs |
+| The user can read no rooms | The empty `terms` filter gives an empty result. Without the filter, every room would be a candidate |
+
+## Cursors and PIT
+
+To page through results, pass `paginate`, then pass the same body and the `cursor` on the next page.
+
+- `paginate` needs a `sort` in the body and signing keys. Without them the search fails with `SearchQueryInvalid` (`paginate-requires-sort`) or `SearchConfigurationError` (`cursors-not-configured`).
+- `nextCursor` is returned only when the page is full and the cursor has lifetime left.
+- A cursor continues only the same search. It carries a hash of the body without `size` and `search_after`, so a different body gives `SearchCursorExpired` (`query-mismatch`). A cursor and `search_after` cannot be combined.
+- `paginate: { pit: true }` opens a point in time on the target's physical index to keep results fixed across pages. `keep_alive` is the shorter of `maxPitKeepAliveMs` and the cursor's remaining lifetime, set again on each page. The PIT is extended on each page but never past the cursor's expiry. When no next cursor is returned, the package closes the PIT; to stop early, close it with `closeCursor(cursor)`.
+- Without a PIT (`paginate: {}`), a continued page is a plain `search_after` search. If the index changes between pages, results can shift accordingly, and the only limit on how long the cursor continues is the signed expiry, fixed at issue and checked against database time.
+
+### Cursor contents and lifetime
+
+A cursor holds the target ID, the fingerprint, the query hash, the issue time, the expiry, the sort values of the last candidate, the PIT ID, the number read so far, and the read generation. It is base64url JSON and only **signed**, with HMAC-SHA256, not encrypted, so the client can read it. The sort values are the last candidate's indexed values, so do not sort on fields the client must not see.
+
+The first key in the list signs; every key verifies. To rotate keys, deploy with the new key first and the old one after it, wait until every cursor signed with the old key has expired (`maxCursorLifetimeMs`), then remove the old key. A cursor signed with a key not in the list is `SearchCursorExpired` (`unknown-key`).
+
+The expiry is the issue time plus `maxCursorLifetimeMs`, fixed at issue and never extended. Time is measured on the database clock. A handle's lifetimes (`limits`) cannot exceed the maximums the administrative handle recorded in `read_heads`; if they do, the search fails with `SearchConfigurationError` (`lifetime-exceeds-catalog`).
+
+A cursor becomes invalid in these cases. All are `SearchCursorExpired`, and the client must start a new search:
+
+| `details.reason` | Cause |
+| --- | --- |
+| `expired` | The expiry has passed |
+| `capture-epoch-invalidated` | Capture was suspended after the cursor was issued. Cutting over to a resume build does not revive it |
+| `target-not-readable`, `target-missing` | The target the cursor pinned is retiring, retired, or missing |
+| `fingerprint-mismatch`, `logical-key-mismatch` | The target differs from the cursor |
+| `query-mismatch` | The body differs |
+| `bad-signature`, `unknown-key`, `malformed`, `invalid-payload`, `cursor-too-large` | Forged, damaged, unknown key, or too long |
+| `pit-closed` | The PIT was closed or expired |
+
+While capture is suspended, a continued search is `SearchRebuildRequired`. A cutover, on the other hand, does not invalidate cursors: a cursor issued before the cutover continues on the old target to the end, and retirement does not delete the old index until that cursor's lifetime has passed. A PIT request beyond the engine's `point_in_time.max_keep_alive` is `SearchQueryInvalid` (`pit-request-rejected`).
+
+## When search is unavailable
+
+| Error | `details.reason` | Meaning | `retryable` |
+| --- | --- | --- | --- |
+| `SearchNotConfigured` | `logical-key-not-in-catalog` | The logical key is not in this namespace's catalog | false |
+| `SearchNotReady` | `no-read-target` | No read target yet, before the first cutover | true |
+| `SearchRebuildRequired` | `rebuild-required`, `capture-epoch-invalidated` | Capture is suspended, or the read target belongs to an invalidated epoch. Lasts until the cutover to a resume build | false |
+| `SearchDefinitionMismatch` | `unsupported-fingerprint` | The read target's fingerprint is not in `supportedFingerprints` | false |
+| `SearchDefinitionMismatch` | `unsupported-hash-version` | The read target's hash version differs from this package version | false |
+| `SearchTargetUnavailable` | `target-not-readable`, `index-not-found` | The read target is not readable, or its physical index is missing | false |
+
+`SearchDefinitionMismatch` is raised without any request to the engine. It occurs when search processes are deployed before the switch to a new definition, or when a process that knows only the old definition remains. During the transition, list both the old and the new fingerprint in `supportedFingerprints`. A paused target can still be read; only its indexing has stopped, so results may be stale.
+
+## Errors and HTTP responses
+
+Map a search error to an HTTP status by its class and `retryable`, and render the message again in the request's locale.
+
+```typescript title="search/errors.ts"
+// Branch on the error class, code, retryable and details.reason, never on the message.
+export interface SearchErrorResponse {
+  status: number;
+  body: { code: string; message: string; retryable: boolean };
+}
+
+export function toSearchErrorResponse(error: SearchError, locale: string): SearchErrorResponse {
+  const body = { code: error.code, message: error.localize(locale), retryable: error.retryable };
+  if (error instanceof SearchQueryInvalid || error instanceof SearchCursorExpired) {
+    return { status: 400, body };
+  }
+  // Searching inside a transaction is a server bug.
+  if (error instanceof SearchInTransactionError) return { status: 500, body };
+  return { status: error.retryable ? 503 : 500, body };
+}
+```
+
+```typescript title="sonamu.config.ts"
+    lifecycle: {
+      onStart: () => searchLifecycle.onStart(),
+      onShutdown: () => searchLifecycle.onShutdown(),
+      onError: async (error, request, reply) => {
+        if (!(error instanceof SearchError)) throw error;
+        const locale = request.headers["accept-language"]?.split(",")[0] ?? "en";
+        const response = toSearchErrorResponse(error, locale);
+        await reply.status(response.status).send(response.body);
+      },
+    },
+```
+
+- An invalid body (`SearchQueryInvalid`) and an invalidated cursor (`SearchCursorExpired`) are 400, because the client can fix them. A client that gets a cursor error starts a new search.
+- A search inside a transaction (`SearchInTransactionError`) is a defect in server code, so 500.
+- Everything else is 503 if `retryable`, otherwise 500. Only search is unavailable; other APIs are unaffected. One search must finish within the shorter of `timeoutMs` and `maxSearchLifetimeMs`; past that it fails with `SearchTimeout` (`search-deadline`).
+- `error.localize(locale)` renders the message in a different language per request. Always branch on the class, `code`, and `details.reason`, never on the message.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Index administration" icon="layer-group" href="/en/advanced-features/opensearch/index-administration">
+    Creating targets, rebuilding, cutover, retirement
+  </Card>
+  <Card title="Operations" icon="chart-line" href="/en/advanced-features/opensearch/operations">
+    Monitoring, tuning, permissions, known limits
+  </Card>
+</CardGroup>

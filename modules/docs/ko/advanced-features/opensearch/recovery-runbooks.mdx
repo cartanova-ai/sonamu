@@ -1,0 +1,503 @@
+---
+title: "복구 절차"
+description: "복사하거나 복원한 데이터베이스, fence를 잃은 대상, 격리된 문서, 일시 정지된 대상, 결과를 모르는 생성, 표시를 빠뜨린 변경, 원본 복원, 해시 버전 업그레이드"
+---
+
+각 절차는 전제 조건과 되돌릴 수 없는 결과를 먼저 밝히고, 번호를 매긴 단계로 이어집니다. 단계마다 성공을 확인하는 방법과 실패했을 때 할 일을 적었습니다. 예제의 함수는 `modules/opensearch/examples/search/administration.ts`에 있습니다. 관리 명령은 [인덱스 관리](/ko/advanced-features/opensearch/index-administration)의 관리 핸들과 임대 규칙을 따릅니다. `SearchAdminBusy`나 `SearchAdminLeaseLost`로 거부된 단계는 그대로 다시 실행하면 됩니다. `sonamu search` 명령이 있는 단계에는 `CLI:`로 그 명령을 적었습니다. 명령, 승인 플래그, 출력은 [인덱스 관리](/ko/advanced-features/opensearch/index-administration)의 "CLI로 관리 명령 실행하기"에 있습니다. 예시는 logical key를 생략했으므로, key가 여럿인 애플리케이션은 key를 붙여야 합니다. `pnpm sonamu search inspect`는 `inspect()`와 저장소 결속을 함께 출력합니다.
+
+## 복사하거나 복원한 데이터베이스
+
+저장소(`sonamu_search` 스키마)는 설치될 때 자기가 사는 데이터베이스의 원점을 기록합니다. 시스템 식별자(역할이 읽을 수 있을 때), 데이터베이스 OID, 이름입니다. 대상을 만들 때는 저장소 식별자를 인덱스 `_meta`에 찍습니다. 워커와 원격 요청을 보내는 모든 관리 작업은 시작할 때 지금 연결된 데이터베이스가 그 원점인지 확인하고, 아니면 원격 요청 없이 `SearchStoreMismatch`로 멈춥니다.
+
+| `details.reason` | 뜻 |
+| --- | --- |
+| `store-origin-changed` | 지금 데이터베이스가 기록된 원점이 아님 |
+| `store-instance-mismatch` | 설정된 `instanceName`이 저장소에 기록된 이름과 다름 |
+| `store-origin-unrecorded` | 저장소에 원점이 기록돼 있지 않음 |
+
+표시(`markChanged`), `initialize()`, 검색은 이 확인을 하지 않으므로 멈추지 않습니다. 확인되지 않은 복사본에서 표시는 계속 의도를 쌓고, 검색은 복사된 읽기 포인터가 가리키는 인덱스를 읽습니다. 복사본이 원본의 클러스터를 보고 있다면 그것은 원본의 인덱스입니다. 워커에서는 `error` 이벤트(`code` `SEARCH_STORE_MISMATCH`, `reason`)와 `degraded` 상태로 드러나고, 설정 오류와 같은 간격(`retryMaxDelayMs`)으로 다시 시도합니다. 관리 핸들의 `inspect().binding`도 같은 상태를 보여 줍니다.
+
+### 무엇이 감지되는가
+
+| 데이터베이스를 만든 방법 | 결과 | 운영자의 조치 |
+| --- | --- | --- |
+| `CREATE DATABASE … TEMPLATE` 복사 | `store-origin-changed` | 복사본에서 `adoptCopiedStore` |
+| 덤프를 새 데이터베이스(같은 서버나 다른 클러스터)에 복원 | `store-origin-changed` | 복사본에서 `adoptCopiedStore` |
+| 같은 이름으로 지우고 다시 만들어 그 자리에 복원 | `store-origin-changed`(거짓 양성) | `confirmStoreOwnership` |
+| 같은 데이터로 프로세스만 다시 시작 | 맞음 | 없음 |
+| 물리 복사(base backup, 스냅샷 복원, 시점 복구, replica 승격) | 원점 확인은 통과합니다. 두 쪽 워커가 같은 인덱스에 보내면 대상 fence가 감지합니다(`target-fence-lost`). **막지는 않습니다** | 아래 "fence를 잃은 대상" |
+| 비동기 replica로 장애 조치하면서 마지막 fence 갱신 커밋을 잃음 | fence 상실 `behind`(거짓 양성) | `confirmStoreOwnership` |
+
+물리 복사는 시스템 식별자, OID, 이름을 모두 그대로 가져가므로 원점 기록으로는 원본과 구별되지 않습니다. 그 경우는 대상 fence가 다룹니다. 대상 인덱스마다 있는 예약 문서의 버전을 소유한 저장소가 올리고, 다른 쪽이 fence를 움직인 것을 본 저장소는 그 대상에 보내지 않습니다. fence는 감지할 뿐 막지 않으므로, 진 쪽이 감지 전과 감지 직후에 보낸 쓰기는 인덱스에 남습니다. fence의 동작과 진 쪽이 더 쓰는 범위는 [색인 워커](/ko/advanced-features/opensearch/worker)의 "대상 fence"에 있습니다. 가장 안전한 방법은 여전히 물리 복사본을 원본의 OpenSearch 클러스터에 연결하지 않는 것입니다.
+
+비동기 replica로 장애 조치하면서 마지막 갱신 커밋을 잃으면, 원격 fence가 이 데이터베이스가 기록한 적 없는 nonce로 한 epoch 앞서 있으므로 `behind`로 잃습니다. 이 경우는 프로토콜에서 따라 나오는 결과이며 테스트로 재현하지 않습니다. 역할이 `pg_control_system()`을 부를 수 없으면 OID와 이름만 비교합니다(`details.systemIdentifierReadable`이 `false`).
+
+스키마의 버전 이력에서 두 가지 결과가 따라 나옵니다.
+
+- `installSearchSchema`는 빠진 버전을 한 번의 호출로 모두 적용합니다([설치와 설정](/ko/advanced-features/opensearch/setup)).
+- 버전 1에서 올리는 호출은 그 순간의 데이터베이스를 원점으로 기록합니다. 그래서 버전 1일 때 만든 복사본을 따로 올리면 복사본이 자기 원점을 기록하고, 그 뒤로는 복사본으로 감지되지 않습니다. 그런 복사본은 올린 직후 `adoptCopiedStore`를 실행하세요. 이미 버전 2인 스키마에 설치를 다시 실행해도 원점은 다시 기록되지 않습니다.
+
+### 복사본을 자기 저장소로 만들기
+
+스테이징이나 개발자 복사본처럼 원본과 따로 살아갈 데이터베이스는 애플리케이션 프로세스를 하나라도 시작하기 전에 채택합니다.
+
+시작하기 전에 알아 둘 것:
+
+- 채택은 되돌릴 수 없습니다. 이 데이터베이스에 새 저장소 식별자를 주고, 물려받은 대상을 모두 `detached`로 바꿉니다. 떼어 낸 대상은 원본의 것입니다. 이 데이터베이스에서는 은퇴(`target-detached`)를 포함해 어떤 작업도 적용되지 않으므로 원본에서 관리하세요.
+- 채택부터 4단계가 끝날 때까지 이 데이터베이스의 검색은 `SearchRebuildRequired`입니다. 채택이 캡처를 중단하고 읽기 포인터를 떼기 때문입니다.
+- 채택은 이 데이터베이스에서 진행 중이던 다른 관리 작업의 임대를 빼앗고, 그 작업의 다음 기록은 아무것도 커밋하지 않습니다. namespace가 아니라 저장소 전체에 적용됩니다.
+
+```typescript title="search/administration.ts"
+/** Run on a copied database before any application process starts on it; restart processes that initialized earlier. */
+export async function adoptCopiedDatabase(
+  admin: SearchAdmin,
+  audit: AdminContext,
+): Promise<readonly { targetId: string; physicalIndex: string }[]> {
+  const adopted = await admin.adoptCopiedStore({ confirmCopy: true }, audit);
+  await restoreFromSource(admin, audit);
+  return adopted.detachedTargets;
+}
+```
+
+1. 복사본을 쓰는 서버와 워커를 모두 멈춥니다.
+
+   확인: `inspect().workers`에 최근 heartbeat가 있는 워커가 없습니다. 남아 있으면 찾아서 멈춘 뒤 진행합니다.
+
+2. `adoptCopiedStore({ confirmCopy: true }, audit)`를 실행합니다. 한 트랜잭션에서 저장소 식별자를 새로 만들고, 원점을 다시 기록하고, 모든 인덱스의 캡처를 중단하고, 읽기 포인터를 떼고, 물려받은 대상을 `detached`로 바꾸고, 열린 빌드를 실패로 닫습니다. 원격 요청은 하나도 보내지 않으므로 원본의 인덱스는 그대로입니다.
+
+   CLI: `pnpm sonamu search adopt-store --execute --confirm`
+
+   확인: `inspect().binding`의 `storeId`가 새 값이고, 결과의 `detachedTargets`에 물려받은 대상이 있습니다. 호출이 실패하면 다시 실행합니다. 같은 `operationId`로 다시 부르면 아무것도 바꾸지 않고 같은 결과를 돌려줍니다.
+
+3. 프로세스를 다시 시작합니다. 채택 전에 `initialize()`했거나 `expectedStoreId`로 옛 식별자를 고정한 프로세스는 다시 시작할 때까지 모든 `markChanged`가 `SearchStoreMismatch`(`store-mismatch`)로 거부되어 도메인 트랜잭션이 커밋되지 않습니다. `initialize()`를 다시 불러도 고정값은 바뀌지 않습니다. `expectedStoreId`를 쓰면 새 식별자로 바꾼 뒤 시작합니다.
+
+   확인: 도메인 쓰기가 커밋됩니다. `store-mismatch`로 실패하면 옛 식별자를 가진 프로세스가 남아 있는 것이므로 다시 시작합니다.
+
+4. 아래 "원본 데이터베이스 복원"과 같은 흐름(캡처 재개, backfill, cutover)으로 이 데이터베이스의 인덱스를 만듭니다. 예제는 `restoreFromSource`를 부릅니다.
+
+   CLI: `pnpm sonamu search resume --execute --confirm`를 실행한 뒤 같은 플래그로 `pnpm sonamu search backfill --execute --confirm`, `pnpm sonamu search cutover --execute --confirm`를 실행합니다.
+
+   확인: `inspect().binding`의 세 값이 모두 `true`이고, `storeId`가 바뀌었고, 새 대상으로 검색이 됩니다. cutover가 거부되면 차단 코드의 뜻은 [인덱스 관리](/ko/advanced-features/opensearch/index-administration)에 있습니다.
+
+채택 전에 복사본이 원본의 클러스터를 보고 있었다면, 그때까지 복사본에서 표시된 변경은 복사본의 원장에만 있고 새 대상의 backfill로 반영됩니다.
+
+### 같은 저장소임을 확인하기
+
+이 데이터베이스가 기록된 저장소 그 자체인데 원점이 맞지 않을 때 씁니다. 같은 이름으로 지우고 다시 만들어 복원했거나, 다른 서버로 옮기고 옛 서버를 폐기한 경우입니다. 소유를 확인하면 원격 작업이 다시 열립니다.
+
+시작하기 전에: 이 저장소를 쓰는 다른 데이터베이스가 없어야 합니다. 복사본에서 이 절차를 실행하면 복사본이 원본의 인덱스를 쓰고 지울 수 있게 됩니다. 같은 저장소의 `store-origin-unrecorded`도 이 절차로 원점을 기록합니다.
+
+```typescript title="search/administration.ts"
+/** Never run on a copy: it would let the copy write and delete the original's indexes. */
+export async function confirmSameStore(admin: SearchAdmin, audit: AdminContext): Promise<void> {
+  const { binding } = await admin.inspect(chatMessagesSearch.key);
+  if (binding.originMatches && binding.instanceMatches) return;
+  await admin.confirmStoreOwnership({ confirmSoleOwner: true }, audit);
+}
+```
+
+1. 이 저장소를 쓰는 다른 데이터베이스가 없는지 확인합니다.
+
+   확인: 같은 OpenSearch 클러스터를 보던 다른 데이터베이스가 모두 멈췄거나 채택됐습니다. 확신할 수 없으면 여기서 멈추고, 이 데이터베이스가 복사본이라면 대신 채택합니다.
+
+2. `confirmStoreOwnership({ confirmSoleOwner: true }, audit)`를 실행합니다. 모든 관리 임대를 얻은 뒤 원점(과 `instanceName`)을 다시 기록하고, 저장소 식별자와 대상은 그대로 둡니다. 이어서 원격 인덱스가 있을 수 있는 대상(`creating`, `active`, `paused`, `retiring`)마다 fence를 원격보다 한 epoch 올려 되찾고, 결과의 `fencedTargets`에 새 epoch를 돌려줍니다.
+
+   CLI: `pnpm sonamu search confirm-ownership --execute --confirm`
+
+   확인: 호출이 돌아옵니다. `search-client-not-configured`로 거부되면 아무것도 바뀌지 않았습니다. 그런 대상이 있고 이 작업은 OpenSearch에 쓰므로, OpenSearch 클라이언트가 있는 관리 핸들로 실행합니다. `SearchAdminBusy`로 거부되면 다른 관리 작업의 임대가 살아 있고 아무것도 바뀌지 않았으므로 잠시 뒤 다시 실행합니다.
+
+3. 결과를 확인합니다. `inspect().binding`의 세 값이 모두 `true`이고, 워커의 다음 drain이 `error` 대신 `drain` 이벤트를 냅니다.
+
+### 환경 이름
+
+동기화 핸들의 `instanceName`에는 환경마다 다른 이름(운영, 스테이징, 개발자 복사본)을 환경 설정으로 넣을 수 있습니다. `adoptCopiedStore`와 `confirmStoreOwnership`이 이 이름을 저장소에 기록하고, 그 뒤 다른 이름으로 설정된 프로세스는 `store-instance-mismatch`로 원격 작업을 멈춥니다. 어느 한쪽에 이름이 없으면 비교하지 않습니다. 작업에 넘긴 `instanceName`이 핸들에 설정된 이름과 다르면 작업이 거부됩니다. 코드에 고정한 이름은 모든 환경에서 같으므로 아무것도 막지 못합니다.
+
+## fence를 잃은 대상
+
+이 데이터베이스가 대상의 fence를 잃었습니다. 이 데이터베이스와 바이트까지 같은 다른 데이터베이스(물리 복사본)가 같은 OpenSearch 인덱스에 쓰고 있거나, 인덱스가 다시 만들어지거나 옛 스냅샷으로 복원됐거나, 장애 조치에서 마지막 갱신을 잃은 경우입니다. 도메인 쓰기와 표시는 계속되고, 검색은 그 인덱스의 마지막 상태를 돌려줍니다. 워커는 그 대상에 보내지 않고 다른 대상은 계속 색인합니다.
+
+| 상실 종류 | 흔한 원인 |
+| --- | --- |
+| `behind` | 다른 데이터베이스(복사본)가 fence를 전진시킴, 이 데이터베이스가 뒤로 돌아감, 비동기 장애 조치에서 마지막 갱신 커밋을 잃음 |
+| `regressed` | 인덱스가 같은 이름으로 다시 만들어짐, 옛 스냅샷으로 복원됨 |
+| `foreign` | 다른 데이터베이스가 같은 epoch로 전진함 |
+
+시작하기 전에: 5단계에서 fence를 되찾기 전에 어느 데이터베이스가 정당한 소유자인지 정하고(2단계), 다른 데이터베이스의 프로세스를 멈춰야 합니다(3단계). 그 프로세스들이 도는 동안 되찾으면 두 데이터베이스가 서로 fence를 빼앗기를 반복합니다.
+
+1. 상실을 알아봅니다. 워커의 `target-fence-lost` 이벤트(`targetId`, `class`, `localEpoch`, `remoteEpoch`), `status().fenceLostTargets`, `inspect`의 대상 `fence.lost`와 `fence.lostDetail`을 봅니다. 그 대상에 대한 cutover, rollback, `resumeTarget`, `retireTarget`은 `SearchStoreMismatch`(`target-fence-lost`)로 거부됩니다.
+
+   확인: 대상 ID와 상실 종류를 알았습니다. `inspect().binding`의 세 값이 모두 `true`인데 fence를 잃었다면, 상대는 원점 확인으로 구별되지 않는 데이터베이스입니다.
+
+2. 어느 데이터베이스가 정당한 소유자인지 정합니다. 복사본이 먼저 전진하면 운영 데이터베이스가 지므로, 진 쪽이 복사본이라고 가정하지 마세요.
+3. 같은 OpenSearch 클러스터를 쓰는 다른 데이터베이스의 프로세스를 모두 찾아 멈춥니다.
+
+   확인: 그 데이터베이스의 `inspect().workers`에 최근 heartbeat가 있는 워커가 없습니다.
+
+4. 복사본에서 `adoptCopiedStore`를 실행하거나, 복사본을 다른 클러스터로 옮깁니다. 채택했다면 복사본의 프로세스는 모두 다시 시작해야 합니다(위 "복사본을 자기 저장소로 만들기").
+
+   CLI(복사본에서): `pnpm sonamu search adopt-store --execute --confirm`
+
+   확인: 복사본의 `inspect().binding`에 새 `storeId`가 보입니다.
+
+5. 정당한 소유자에서 `confirmStoreOwnership`으로 fence를 되찾습니다. 원격 인덱스가 있을 수 있는 대상마다 fence를 원격보다 한 epoch 올리므로, OpenSearch 클라이언트가 있는 관리 핸들이 필요합니다. 예제는 잃은 fence가 없으면 아무것도 하지 않고 빈 목록을 돌려줍니다.
+
+   CLI: `pnpm sonamu search confirm-ownership --execute --confirm`. 예제와 달리 이 명령은 잃은 fence가 없어도 fence를 되찾습니다.
+
+   확인: `fencedTargets`에 잃었던 대상마다 새 epoch가 있고, 워커가 다음 drain에서 그 대상에 다시 보냅니다. `SearchAdminPreconditionFailed`(`fence-takeover-contended`)로 거부되면 세 번의 시도 모두 다른 쪽이 fence를 움직인 것입니다. 아직 쓰는 쪽이 있으므로 3단계로 돌아갑니다. 재시도할 수 있는 `SearchUnavailable`(`fence-unreadable`: 원격을 읽지 못함, `fence-takeover-unknown`: 쓰기 결과를 모름)로 실패하면 같은 입력으로 다시 부릅니다. 되찾기를 이어서 진행합니다.
+
+```typescript title="search/administration.ts"
+/** Stop every process of the other database and adopt it there first, or the two keep taking the fence from each other. */
+export async function reclaimLostFences(
+  admin: SearchAdmin,
+  audit: AdminContext,
+): Promise<readonly { targetId: string; epoch: number }[]> {
+  if ((await lostFences(admin)).length === 0) return [];
+  const confirmed = await admin.confirmStoreOwnership({ confirmSoleOwner: true }, audit);
+  return confirmed.fencedTargets;
+}
+```
+
+6. 다른 데이터베이스가 이 인덱스에 쓴 적이 있거나(`behind`, `foreign`) 인덱스가 내용을 잃었으면(`regressed`), 그 logical key를 재구축합니다(`beginRebuild` → backfill → `cutover` → `retireTarget`). 복사본이 쓴 버전이 이 원장보다 앞서 있을 수 있으므로 `remark`로는 부족할 수 있습니다.
+
+   CLI: `pnpm sonamu search init --execute --confirm`로 재구축 빌드를 열고, `pnpm sonamu search backfill --execute --confirm`, `pnpm sonamu search cutover --execute --confirm`를 실행한 뒤 유예가 지나면 `pnpm sonamu search retire-old --execute --confirm`를 실행합니다.
+
+   확인: 읽기 포인터가 새 대상을 가리킵니다.
+
+7. 결과를 확인합니다. `inspect`에서 모든 대상의 `fence.lost`와 `pending`이 `false`이고, `renewedAgeMs`가 갱신 간격보다 작고, 대기가 줄어야 합니다. 새 `target-fence-lost` 이벤트가 없어야 합니다.
+
+### 감지하지 못하는 것
+
+- 같은 epoch의 쌍둥이(같은 epoch에서 시작한 물리 복사본과 원본)는 어느 한쪽이 전진할 때까지 둘 다 씁니다. 그 창은 나중에 보내기 시작한 쪽 기준으로 많아야 약 1.25 × `fenceRenewIntervalMs` + drain 하나이고, 먼저 전진한 쪽이 인덱스를 갖습니다. 그쪽이 복사본일 수 있습니다.
+- 두 쪽 모두 워커가 돌지 않는 동안에는 아무것도 감지하지 않습니다. fence를 움직이는 것은 워커의 갱신뿐이라 epoch가 같은 채로 남기 때문입니다.
+- 그 창 안에서 쌍둥이가 실행한 파괴적인 관리 작업(예: `retireTarget`)은 fence 확인을 통과합니다. `instanceName`이 다르거나 채택된 복사본은 그 전에 다른 확인으로 거부되지만, 설정까지 같은 쌍둥이는 거부되지 않습니다.
+- 확인을 마친 진 쪽이 상실을 처리하기 전에 이미 보낸 bulk는 쓰입니다(워커마다 많아야 `maxConcurrentBulkRequests`개).
+- 계속 보내는 프로세스가 있는 동안 인덱스가 fence 문서를 담은 옛 스냅샷으로 복원되면, 다음 bulk의 fence 항목이 fence를 다시 올려 놓아 상실을 알아채지 못하고, 그 스냅샷에서 사라진 문서도 알아채지 못합니다. fence 문서까지 없는 경우(인덱스를 다시 만든 경우)는 `regressed`로 감지합니다.
+- 비동기 replica로 장애 조치하면서 마지막 갱신 커밋을 잃으면 거짓 상실(`behind`)이 납니다. `confirmStoreOwnership`으로 되찾습니다.
+- 운영자가 복사본에서 `confirmStoreOwnership`을 실행하는 것, 채택하지 않은 복사본의 검색, 패키지 밖에서 인덱스에 쓰는 것은 막지 않습니다.
+
+## 격리된 문서
+
+문서의 그 리비전이 재시도 예산을 다 썼거나, 문서 탓의 오류로 바로 격리된 경우입니다.
+
+시작하기 전에: 다시 보내기 전에 원인을 고쳐야 합니다(2단계). 그대로 보내면 다시 격리됩니다.
+
+1. 격리된 문서를 찾습니다. 워커의 `quarantined` 이벤트(`targetId`, `documentId`, `revision`, `errorClass`)와 drain 보고서의 `quarantined`를 봅니다. `inspect`의 대상 `backlog.quarantined`에 격리된 수가 보이고, 원인은 `delivery_runtime.last_error`에 안정된 코드로 남습니다.
+
+   확인: 대상 ID, 문서 ID, 원인을 알았습니다.
+
+2. 원인을 고칩니다. 매핑이 문서를 거부했으면 정의를 고치고 재구축합니다. projection의 결함이면 수정을 배포하고, projection의 의미가 바뀌었으면 `projectionVersion`을 올려 재구축합니다. 원본 데이터가 문제면 데이터를 고칩니다.
+3. 문서를 다시 보냅니다. 같은 리비전을 새 예산으로 다시 보내려면 `retryQuarantined`를 씁니다. 범위는 대상 하나이고 `documentIds`와 `limit`으로 좁힐 수 있으며, 의도, 원장, 다른 문서는 바꾸지 않습니다.
+
+   CLI: `pnpm sonamu search retry-quarantined --target <target-id> --execute --confirm`. 문서를 좁히려면 `--ids <document-id>`를 문서마다 반복합니다.
+
+```typescript title="search/administration.ts"
+/** Fix the cause (mapping, source data) before releasing quarantined documents. */
+export async function retryQuarantinedDocuments(
+  admin: SearchAdmin,
+  targetId: string,
+  audit: AdminContext,
+): Promise<number> {
+  let released = 0;
+  for (;;) {
+    const report = await admin.retryQuarantined({ targetId, limit: 1_000 }, audit);
+    released += report.released;
+    if (report.released < 1_000) return released;
+  }
+}
+```
+
+   또는 문서를 다시 표시합니다(`markChanged`나 ID `remark`). 새 리비전은 새 예산으로 전달됩니다.
+
+   확인: 다음 drain에서 그 문서가 `indexed`로 세어지고 새 격리 이벤트가 없습니다. 다시 격리되면 원인이 고쳐지지 않은 것이므로 2단계로 돌아갑니다.
+
+4. 결과를 확인합니다. 대상의 `backlog.quarantined`가 0이 되어야 합니다. 빌드 중이라면 cutover 전에 0이어야 합니다. 격리된 의도가 많이 쌓이면 모든 claim이 느려지므로 오래 두지 마세요.
+
+## revision_divergence로 일시 정지된 대상
+
+워커가 버전 충돌을 확인하다가 색인과 원장이 어긋난 것을 찾았습니다. 색인된 버전이 원장보다 앞서 있거나, 보낸 리비전보다 뒤에 있거나, 문서가 다른 인덱스에 있는 경우입니다. 원장이 뒤로 갔거나(데이터베이스 복원) 패키지 밖의 무언가가 인덱스에 썼다는 뜻입니다. 대상은 계속 의도를 받고 검색에서도 읽히지만 색인은 멈춥니다.
+
+시작하기 전에: 데이터베이스를 복원했다면 많은 문서가 원장보다 앞서 있어 이 절차로는 고칠 수 없습니다. 아래 "원본 데이터베이스 복원"을 따르세요. 다른 데이터베이스가 같은 인덱스에 쓰고 있다면 먼저 그것을 끊습니다.
+
+1. `inspect(logicalKey)`로 대상의 `pauseReason`을 봅니다.
+
+   확인: `class`가 `revision_divergence`이고, `documents`에 최대 20개 문서의 `{ id, indexed, ledger }`가 있습니다.
+
+2. 위의 전제 조건에 비추어 원인을 찾습니다.
+3. 소수의 문서라면 `remark`로 그 문서의 원장 리비전을 올립니다. `remark`는 호출마다 리비전을 하나 올리므로, 색인된 버전이 여전히 원장보다 높은 문서는 계속 위반으로 남습니다.
+
+   CLI: `pnpm sonamu search remark --ids <document-id> --execute --confirm`. 실행할 때마다 리비전이 하나 오릅니다.
+
+4. 검증 스캔을 끝까지 실행합니다. 스캔은 색인된 모든 문서의 버전을 지금의 원장과 비교합니다.
+
+   CLI: `pnpm sonamu search verify --target <target-id> --execute --confirm`
+
+   확인: 마지막 페이지가 `done`이고 `violations`가 0입니다. 위반이 남으면 예제가 그 문서들을 돌려줍니다. 3단계로 돌아가거나, 너무 많으면 재구축합니다. `verification-not-quiesced`나 `verification-raced-writes`로 거부되면 아래 규칙을 보세요.
+
+5. `resumeTarget`으로 대상을 재개합니다. 예제는 4단계와 5단계를 함께 실행합니다.
+
+   CLI: `pnpm sonamu search resume-target --target <target-id> --execute --confirm`
+
+```typescript title="search/administration.ts"
+/** Remove the pause cause first; revision_divergence resumes only after a verification scan with no violation. */
+export async function verifyAndResumeTarget(
+  admin: SearchAdmin,
+  targetId: string,
+  audit: AdminContext,
+): Promise<readonly { id: string; indexed: number; ledger: number | null }[]> {
+  const inspection = await admin.inspect(chatMessagesSearch.key);
+  const target = inspection.targets.find((candidate) => candidate.targetId === targetId);
+  if (target?.pauseReason?.class === "revision_divergence") {
+    const violations: { id: string; indexed: number; ledger: number | null }[] = [];
+    for (;;) {
+      const progress = await admin.runTargetVerificationPage(targetId, { limit: 1_000 });
+      violations.push(...progress.sample);
+      if (progress.done) {
+        if (progress.violations > 0) return violations;
+        break;
+      }
+    }
+  }
+  await admin.resumeTarget(targetId, audit);
+  return [];
+}
+```
+
+   확인: `inspect`에서 대상이 `active`이고, 워커 `status()`의 `pausedTargets`에서 빠지고, 대기가 줄어야 합니다. `resumeTarget`이 거부하면 그 이유는 아래에 있습니다.
+
+검증과 재개의 규칙:
+
+- 스캔은 일시 정지 전의 임대와 요청이 끝났다고 볼 수 있을 때 시작합니다. 그 전에는 `verification-not-quiesced`(`retryable`)로 거부하므로 잠시 뒤 다시 부릅니다.
+- 스캔은 시작할 때 샤드마다 마지막 연산 번호를 기록합니다. `_refresh` 뒤 point in time 하나를 열어 그 시점의 문서를 샤드 안 순서로 한 번씩 읽습니다. 앞 페이지를 다시 훑지 않으므로 비용은 문서 수에 비례합니다. 한 대의 머신에서 OpenSearch 3.5.0으로 잰 결과, 문서 20만 건에 451 ms가 걸렸습니다.
+- 마지막 페이지에서 연산 번호가 바뀌어 있으면 스캔 중에 인덱스에 쓰기가 있었던 것입니다. 스캔을 처음으로 되돌리고 `verification-raced-writes`(`retryable`)로 거부합니다. 인덱스에 쓰는 쪽을 멈춘 뒤 스캔을 다시 실행하세요.
+- 진행 상태는 데이터베이스에 남으므로 다른 프로세스나 다른 핸들에서 이어서 실행할 수 있습니다. PIT가 만료됐으면 같은 호출 안에서 처음부터 다시 시작합니다. 호출 사이 간격이 길면 PIT가 만료되므로 페이지를 이어서 부르세요.
+- 샤드 실패나 시간 초과로 결과가 부분적이면 스캔은 실패로 끝나고, PIT나 `_shard_doc` 정렬을 막은 클러스터에서도 실패합니다.
+- `resumeTarget`은 대상 상태와 epoch, 원격 식별자(`_meta`, 쓰기 alias)를 확인하고, `revision_divergence`라면 일시 정지 이후에 시작해 끝까지 간 깨끗한 스캔을 요구합니다. 거부 코드는 `target-not-paused`(아무것도 바꾸지 않았다는 메시지와 함께), `target-epoch-invalid`, `verification-incomplete`, `verification-stale`(스캔이 일시 정지보다 오래됨), `verification-violations`입니다.
+- 위반이 남으면 재개할 수 없습니다. 그때 남은 방법은 재구축입니다.
+
+## write_alias_missing으로 일시 정지된 대상
+
+bulk가 쓰기 alias에서 `index_not_found_exception`(404)을 받았습니다. 패키지 밖에서 alias나 인덱스가 지워진 경우입니다. 패키지는 둘 다 다시 만들지 않습니다. 은퇴했거나 다른 것일 수 있는 이름을 패키지가 되살리지 않기 위해서입니다.
+
+시작하기 전에: alias는 패키지가 아니라 운영자가 되살리므로, 관리자 권한이 있는 자신의 OpenSearch 도구가 필요합니다.
+
+1. `inspect`로 대상의 `pauseReason.class`가 `write_alias_missing`인지 확인하고, 물리 인덱스와 쓰기 alias 이름을 적어 둡니다.
+2. 물리 인덱스가 남아 있고 그 `_meta`가 이 대상을 가리키는지 확인합니다. 인덱스가 사라졌다면 5단계로 갑니다.
+3. 자신의 OpenSearch 도구로 쓰기 alias를 그 인덱스 하나만 가리키게, 그 인덱스를 쓰기 인덱스로 다시 만듭니다. 예제의 `operatorClient`는 관리자 권한의 SDK 클라이언트이고, 그 한 요청이 운영자 도구를 대신합니다.
+4. `resumeTarget`을 부릅니다. 이 원인에는 검증 스캔이 필요 없습니다. `resumeTarget`은 `_meta`가 맞고 alias가 정확히 이 인덱스 하나를 쓰기 인덱스로 가리키는 것을 확인한 뒤에만 재개합니다.
+
+   CLI: `pnpm sonamu search resume-target --target <target-id> --execute --confirm`
+
+```typescript title="search/administration.ts"
+/** The package never recreates a write alias; the operator restores it with their own OpenSearch tooling, then resumes. */
+export async function restoreWriteAliasAndResume(
+  admin: SearchAdmin,
+  operatorClient: Client,
+  targetId: string,
+  audit: AdminContext,
+): Promise<TargetHandle> {
+  const inspection = await admin.inspect(chatMessagesSearch.key);
+  const target = inspection.targets.find((candidate) => candidate.targetId === targetId);
+  if (target?.state !== "paused" || target.pauseReason?.class !== "write_alias_missing") {
+    throw new Error(`write_alias_missing으로 정지된 대상이 아닙니다: ${targetId}`);
+  }
+  // Operator step outside the package: point the write alias at this target's physical index.
+  await operatorClient.indices.updateAliases({
+    body: {
+      actions: [
+        { add: { index: target.physicalIndex, alias: target.writeAlias, is_write_index: true } },
+      ],
+    },
+  });
+  return admin.resumeTarget(targetId, audit);
+}
+```
+
+   확인: 대상이 `active`이고 대기가 줄어야 합니다. alias가 없거나 다른 인덱스를 가리키면 `resumeTarget`은 `SearchTargetUnavailable`로 거부하고 아무것도 바꾸지 않습니다. alias를 고친 뒤 다시 부릅니다.
+
+5. 인덱스가 사라졌다면 색인된 내용을 잃은 것입니다. 재구축으로 새 대상을 만들어 cutover하고, 일시 정지된 대상은 은퇴시킵니다.
+
+## 결과를 모르는 생성
+
+인덱스 생성 요청이 제한 시간이나 연결 끊김으로 결과를 모른 채 끝났거나, 생성자가 시도를 기록한 뒤 멈췄습니다. 상태와 규칙은 [인덱스 관리](/ko/advanced-features/opensearch/index-administration)의 "원격 생성 상태"에 있습니다.
+
+시작하기 전에: `abandoned`로 끝난 대상 식별자는 다시 쓸 수 없습니다. 조정은 남은 인덱스를 지우지 않으며, 지울지는 운영자가 정합니다(5단계).
+
+1. `inspect`에서 대상의 `remoteCreateState`가 `ambiguous`나 `in_flight`인지, `remoteCreateStartedAt`이 언제인지 확인합니다. 이 상태가 풀릴 때까지 이 식별자의 등록, 재생성, 은퇴, 같은 logical key의 다음 생성은 모두 거부됩니다.
+2. 그 식별자를 만들던 프로세스가 멈췄고, 보낸 요청이 더는 도착할 수 없다는 것을 확인합니다. 프로세스가 끝났고 요청 하나의 제한 시간이 지났는지 봅니다.
+3. `reconcileCreate(targetId, { confirmQuiescent: true }, audit)`를 실행합니다. 원격을 읽기만 합니다.
+
+   CLI: `pnpm sonamu search reconcile --target <target-id> --execute --confirm`. 승인이 `confirmQuiescent`를 대신하므로 2단계를 마친 뒤에만 승인하세요.
+
+   확인: 결과의 `remoteCreateState`가 `verified`(인덱스, 쓰기 alias, 일치하는 `_meta`가 있음)나 `abandoned`입니다. `confirmQuiescent`가 없으면 `quiescence-not-confirmed`로 거부합니다.
+
+4. 대상을 등록합니다. `verified`면 같은 계획의 `executeCreate`가 원격 명령 없이 등록을 마칩니다. `abandoned`면 새 계획으로 다시 만듭니다.
+
+```typescript title="search/administration.ts"
+/** Stop every process creating with this plan before passing confirmQuiescent; an abandoned target id is never reused. */
+export async function reconcileAmbiguousCreate(
+  admin: SearchAdmin,
+  plan: CreatePlan,
+  audit: AdminContext,
+): Promise<TargetHandle> {
+  const reconciled = await admin.reconcileCreate(plan.targetId, { confirmQuiescent: true }, audit);
+  if (reconciled.remoteCreateState === "verified") return admin.executeCreate(plan, audit);
+  const fresh = await createFirstTarget(admin, audit);
+  if ("ambiguous" in fresh)
+    throw new Error(`새 생성도 결과를 모릅니다: ${fresh.ambiguous.targetId}`);
+  return fresh;
+}
+```
+
+   `resumeCaptureForRebuild`가 남긴 식별자는 그 함수를 그대로 다시 부르면 등록됩니다. `beginRebuild`는 부를 때마다 새 대상 ID로 계획을 만들므로 같은 식별자를 이어 가지 않습니다.
+
+   확인: `inspect`에서 대상이 `verified`로 등록됐거나, `abandoned`로 닫히고 새 대상이 등록됐습니다.
+
+5. `abandoned`로 끝났다면 버린 이름으로 남은 인덱스가 있는지 확인하고, 필요 없으면 자신의 도구로 지웁니다.
+
+## 표시를 빠뜨린 변경
+
+외래 키의 CASCADE나 SET NULL, 직접 실행한 SQL처럼 `markChanged`를 거치지 않은 변경은 `remark`로 다시 표시합니다. `remark`는 고른 문서를 도메인 쓰기와 같은 문장으로 표시해 새 원장 리비전을 줍니다. 그 리비전은 색인된 어떤 버전보다 크므로 OpenSearch에서 이깁니다.
+
+| 범위 | 무엇을 찾는가 | 못 찾는 것 |
+| --- | --- | --- |
+| `{ ids }` | 준 ID 그대로. 영향받은 ID를 알 때(예: SET NULL로 작성자가 지워진 메시지) | 모르는 ID |
+| `{ scan: "source" }` | 정의의 `scanSourceIds`가 보는 원본의 모든 행. 표시 없이 들어간 행도 찾습니다 | CASCADE로 지워진 행. 원본에 없으므로 보이지 않습니다 |
+| `{ scan: "ledger" }` | 한 번이라도 표시된 모든 문서. 원본에서 사라진 문서도 원장에는 남아 있어 워커가 tombstone을 색인합니다 | 한 번도 표시되지 않은 행 |
+
+시작하기 전에: 캡처가 켜져 있어야 합니다. 중단돼 있으면 `remark`는 `"suspended"`를 돌려주고 아무것도 바꾸지 않습니다.
+
+1. 범위를 고릅니다. 지워진 행을 찾으려면 원장 스캔, 표시 없이 들어간 행을 찾으려면 source 스캔입니다.
+2. 페이지를 끝까지 실행합니다. 원장 스캔은 `through` 상한까지만 훑으므로 쓰기가 계속돼도 끝납니다. 예제는 다시 표시한 문서 수를 돌려줍니다.
+
+   CLI: `pnpm sonamu search remark --scan ledger --through <document-id> --execute --confirm`. source 스캔이면 `--scan source`입니다. 명령이 모든 페이지를 실행하고 페이지마다 출력합니다.
+
+```typescript title="search/administration.ts"
+/** Use after unmarked changes (FK CASCADE, manual SQL); the ledger scan also reaches rows deleted from the source. */
+export async function remarkLedgerRange(
+  admin: SearchAdmin,
+  range: { after?: string; through: string },
+  audit: AdminContext,
+): Promise<number> {
+  let after = range.after;
+  let marked = 0;
+  for (;;) {
+    const scope: DocumentScope = {
+      logicalKey: chatMessagesSearch.key,
+      scan: "ledger",
+      through: range.through,
+      limit: 1_000,
+    };
+    if (after !== undefined) scope.after = after;
+    const report = await admin.remark(scope, audit);
+    marked += report.marked;
+    if (report.next === undefined) return marked;
+    after = report.next;
+  }
+}
+```
+
+   확인: 마지막 페이지에 `next`가 없습니다. 페이지가 실패하면 마지막으로 받은 `next`부터 이어 갑니다.
+
+3. 결과를 확인합니다. 워커의 drain 보고서에 다시 표시한 수만큼 처리가 늘고, 지워진 문서가 검색에서 사라져야 합니다.
+
+규칙: 한 호출은 최대 10,000건을 처리하고, `signal`로 쓰기 전에 취소할 수 있습니다. 페이지마다 관리 임대를 얻고 반납합니다. 같은 문서를 표시하는 도메인 트랜잭션과는 원장 행 잠금으로 순서가 정해집니다. READ COMMITTED 쓰기는 기다렸다가 그 위에 리비전을 더하고, 스냅샷이 앞선 REPEATABLE READ 쓰기는 40001로 실패하므로 다시 실행해야 합니다. 이 작업은 OpenSearch 클라이언트 없이 만든 관리 핸들로도 실행할 수 있습니다.
+
+## 원본 데이터베이스 복원
+
+PITR이나 덤프로 원본 데이터베이스를 그 자리에서 되돌리면 원장, 의도, 대상, 읽기 포인터도 함께 뒤로 갑니다. 색인은 그대로 앞서 있으므로 원장을 믿을 수 없습니다. 고치는 방법은 캡처를 중단하고 새 epoch로 재구축하는 것뿐입니다.
+
+시작하기 전에 알아 둘 것:
+
+- 복원으로 원점이 바뀌었다면(같은 이름으로 다시 만든 경우) 먼저 위의 "같은 저장소임을 확인하기"를 실행하세요. 원격 작업이 멈춰 있으면 재개와 cutover를 할 수 없습니다.
+- 1단계는 되돌릴 수 없습니다. 기존 대상과 빌드는 모두 영원히 무효가 되고, 그 전에 발급한 커서는 다시 살아나지 않습니다.
+- 1단계부터 4단계까지 검색은 `SearchRebuildRequired`이고, 옛 대상을 서빙하지 않습니다. 도메인 쓰기는 내내 정상입니다.
+
+```typescript title="search/administration.ts"
+/** After restoring the source database: suspend capture first, then resume into a new build and cut over. */
+export async function restoreFromSource(admin: SearchAdmin, audit: AdminContext): Promise<void> {
+  await admin.suspendCapture(chatMessagesSearch.key, audit);
+  const build = await admin.resumeCaptureForRebuild(chatMessagesSearch.key, audit);
+  await backfill(admin, build);
+  await admin.cutover(build.buildId, audit);
+}
+```
+
+1. 복원 직후 `suspendCapture`를 부릅니다. 그 뒤의 쓰기는 의도를 남기지 않습니다.
+
+   CLI: `pnpm sonamu search suspend --execute --confirm`
+
+   확인: `markChanged`가 `"suspended"`를 돌려주고 검색이 `SearchRebuildRequired`를 받습니다.
+
+2. `resumeCaptureForRebuild`로 새 epoch의 새 대상을 만들고 캡처를 다시 켭니다.
+
+   CLI: `pnpm sonamu search resume --execute --confirm`
+
+   확인: 빌드가 돌아옵니다. `capture-not-suspended`로 거부되면 1단계가 적용되지 않은 것입니다. 생성 결과를 모르면 위의 "결과를 모르는 생성"을 따릅니다. `resumeCaptureForRebuild`를 다시 부르면 같은 식별자가 등록됩니다.
+
+3. backfill을 끝까지 실행하고, 워커가 대기를 비우게 합니다.
+
+   CLI: `pnpm sonamu search backfill --execute --confirm`
+
+   확인: `inspectBuild`의 `eligibleForCutover`가 `true`입니다.
+
+4. `cutover`를 실행합니다. 차단 코드가 남아 있으면 거부되므로 먼저 `inspectBuild`로 확인합니다.
+
+   CLI: `--execute` 없는 `pnpm sonamu search cutover`는 차단 코드를 출력할 뿐 아무것도 바꾸지 않고, `pnpm sonamu search cutover --execute --confirm`가 cutover합니다.
+
+   확인: 검색이 다시 성공합니다.
+
+5. 유예가 지난 뒤 옛 epoch의 대상을 은퇴시킵니다.
+
+   CLI: `pnpm sonamu search retire-old --execute --confirm`
+
+   확인: `inspect`에서 그 대상들이 `retired`입니다. `retirement-grace-pending`으로 거부되면 `details.earliestAtMs`에 다시 실행합니다.
+
+6. 결과를 확인합니다. 검색이 새 대상에서 복원된 내용을 돌려주고, `inspect`에서 읽기 포인터가 새 대상을 가리키며 `rebuildRequired`가 `false`입니다.
+
+중단 전에 발급한 커서는 중단 동안 `SearchRebuildRequired`, cutover 뒤에는 `SearchCursorExpired`(`capture-epoch-invalidated`)를 받습니다.
+
+## 해시 버전 업그레이드
+
+정규 JSON 규칙을 바꾼 패키지 버전은 새 해시 버전 이름을 씁니다. 지금 패키지의 해시 버전은 `sonamu-c14n-v1` 하나입니다. 해시 버전은 fingerprint 입력이므로 모든 정의의 fingerprint가 바뀌고, 업그레이드는 재구축입니다.
+
+시작하기 전에 알아 둘 것:
+
+- 검색 핸들은 자기 패키지와 같은 해시 버전의 대상만 읽습니다. 그래서 cutover(3단계)와 검색 프로세스 교체(4단계) 사이에는 한쪽 버전의 검색이 `SearchDefinitionMismatch`(`unsupported-hash-version`)를 받습니다. 이 틈을 503으로 처리할 계획을 세우세요.
+- 옛 대상으로 rollback하려면 그 정의를 가진 관리 핸들, 즉 옛 패키지 버전의 관리 핸들이 필요합니다. 옛 대상을 은퇴시키면(5단계) 이 선택지는 사라집니다.
+
+1. 새 버전의 워커를 옛 워커와 함께 배포합니다. 워커는 `(key, fingerprint, 해시 버전)`이 맞는 대상만 가져가므로 옛 워커는 옛 대상을, 새 워커는 새 대상을 처리합니다. 모르는 대상은 건드리지 않고 `unsupportedTargets`로 보고합니다.
+2. 새 버전의 관리 핸들로 새 fingerprint의 빌드를 열고 backfill합니다.
+
+   CLI(새 버전에서): `pnpm sonamu search init --execute --confirm`, 그다음 `pnpm sonamu search backfill --execute --confirm`
+
+   확인: `inspectBuild`에서 빌드가 `catching_up`입니다.
+
+3. 새 대상의 대기가 줄면 `cutover`를 실행합니다.
+
+   CLI: `pnpm sonamu search cutover --execute --confirm`
+
+   확인: 읽기 포인터가 새 대상을 가리킵니다. cutover가 거부되면 차단 코드를 봅니다.
+
+4. 검색 프로세스를 새 버전으로 바꿉니다.
+
+   확인: 검색이 더 이상 `unsupported-hash-version`을 받지 않습니다.
+
+5. 유예가 지난 뒤 옛 대상을 은퇴시키고 옛 워커를 멈춥니다.
+
+   CLI: `pnpm sonamu search retire-old --execute --confirm`
+
+6. 결과를 확인합니다. 워커 보고서의 `unsupportedTargets`가 비고, `hash-version-mismatch` 이벤트가 없어야 합니다.
+
+같은 리비전이 다른 해시 버전으로 이미 색인된 문서는 격리되지 않습니다. 예산 없이 반납되며 `hash-version-mismatch` 이벤트를 내고, 다시 표시하거나 재구축할 때까지 대기로 남습니다.
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="운영" icon="chart-line" href="/ko/advanced-features/opensearch/operations">
+    감시, 설정값 조정, 권한, 알려진 한계
+  </Card>
+  <Card title="인덱스 관리" icon="layer-group" href="/ko/advanced-features/opensearch/index-administration">
+    관리 핸들과 각 작업의 규칙
+  </Card>
+</CardGroup>
+
