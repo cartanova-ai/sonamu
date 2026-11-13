@@ -262,3 +262,24 @@ describe("examples/search/administration.ts", () => {
     expect([...report]).toEqual([["t1", { pending: 3, exact: true }]]);
   });
 });
+
+describe("examples/sonamu.config.ts", () => {
+  it("검색 CLI 플러그인을 등록하고, 명령이 돌 때에야 설정 모듈을 불러 그 정의의 key로 판단한다", async () => {
+    const config = await (await import("../../examples/sonamu.config")).default;
+    const plugin = config.cli?.plugins?.find((candidate) => candidate.name === "search");
+    const inspect = plugin?.commands.find((command) => command.path.join(" ") === "search inspect");
+    if (inspect === undefined) throw new Error("search inspect가 등록되지 않았습니다.");
+    // An undefined key is refused before any database access, after load built the setup.
+    await expect(
+      Promise.resolve(
+        inspect.run(
+          { arguments: { logicalKey: "other" }, options: {}, dryRun: false },
+          { command: "search.inspect", json: true, interactive: false },
+        ),
+      ),
+    ).rejects.toMatchObject({
+      code: "SEARCH_NOT_CONFIGURED",
+      details: { reason: "logical-key-unknown", keys: chatMessagesSearch.key },
+    });
+  });
+});

@@ -1,5 +1,5 @@
 import { type Knex } from "knex";
-import { type PuriTransactionWrapper, type SonamuConfig } from "sonamu";
+import { type PuriTransactionWrapper, type SonamuCliPlugin, type SonamuConfig } from "sonamu";
 import { describe, expectTypeOf, it } from "vitest";
 
 import type * as Root from "../../src";
@@ -44,6 +44,7 @@ declare const limits: WorkerLimits;
 type SonamuLifecycleHooks = NonNullable<SonamuConfig["server"]["lifecycle"]>;
 
 type SonamuValueExports =
+  | "createSearchCliPlugin"
   | "createSearchLifecycle"
   | "createSonamuSearchQueries"
   | "createSonamuSynchronization"
@@ -54,7 +55,7 @@ type SonamuValueExports =
   | "withProjectionScope";
 
 describe("./sonamu 진입점", () => {
-  it("값 export는 정해진 여덟 개다", () => {
+  it("값 export는 정해진 아홉 개다", () => {
     expectTypeOf<keyof typeof SonamuEntry>().toEqualTypeOf<SonamuValueExports>();
   });
 
@@ -190,5 +191,11 @@ describe("./sonamu 진입점", () => {
       ),
     ).toEqualTypeOf<Promise<string>>();
     expectTypeOf(container.disposeAll).toEqualTypeOf<() => Promise<void>>();
+  });
+
+  it("검색 CLI 플러그인은 sonamu.config.ts의 cli.plugins 원소다", () => {
+    type ConfiguredPlugin = NonNullable<NonNullable<SonamuConfig["cli"]>["plugins"]>[number];
+    expectTypeOf(SonamuEntry.createSearchCliPlugin).returns.toEqualTypeOf<SonamuCliPlugin>();
+    expectTypeOf<SonamuCliPlugin>().toEqualTypeOf<ConfiguredPlugin>();
   });
 });
