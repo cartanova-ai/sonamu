@@ -138,6 +138,9 @@ catalogs:
     '@logtape/redaction':
       specifier: 2.4.2
       version: 2.4.2
+    '@opensearch-project/opensearch':
+      specifier: ^3.9.0
+      version: 3.9.0
     '@optique/clack':
       specifier: 1.3.6
       version: 1.3.6
@@ -243,6 +246,9 @@ catalogs:
     '@sheetkit/node':
       specifier: ^1.0.1
       version: 1.0.1
+    '@standard-schema/spec':
+      specifier: ^1.1.0
+      version: 1.1.0
     '@storybook/addon-a11y':
       specifier: ^10.6.2
       version: 10.6.2
@@ -1301,6 +1307,55 @@ importers:
       typescript:
         specifier: catalog:ts-node-compat
         version: '@typescript/typescript6@6.0.2'
+
+  modules/opensearch:
+    dependencies:
+      '@standard-schema/spec':
+        specifier: 'catalog:'
+        version: 1.1.0
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@opensearch-project/opensearch':
+        specifier: 'catalog:'
+        version: 3.9.0(supports-color@11.0.0)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.5
+      '@types/pg':
+        specifier: 'catalog:'
+        version: 8.23.1
+      knex:
+        specifier: 'catalog:'
+        version: 3.3.0(pg-native@3.9.1)(pg@8.23.1(pg-native@3.9.1))(supports-color@11.0.0)
+      opensearch-sdk-floor:
+        specifier: npm:@opensearch-project/opensearch@3.9.0
+        version: '@opensearch-project/opensearch@3.9.0(supports-color@11.0.0)'
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.74.0
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.89.0(oxlint-tsgolint@7.0.2004)
+      pg:
+        specifier: 'catalog:'
+        version: 8.23.1(pg-native@3.9.1)
+      sonamu:
+        specifier: workspace:*
+        version: link:../sonamu
+      testcontainers:
+        specifier: 'catalog:'
+        version: 12.2.1(supports-color@11.0.0)
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.23.1(@volar/typescript@2.4.28(typescript@7.1.0-dev.20260831.1))(oxc-resolver@11.21.2)(tsx@4.23.15)(typescript@7.1.0-dev.20260831.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.1.0-dev.20260831.1
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.0)(@types/node@26.6.5)(@vitest/coverage-v8@5.0.5)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.105.2)(tsx@4.23.15)(yaml@2.9.1))
 
   modules/react-components:
     dependencies:
@@ -3267,6 +3322,10 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
+  '@opensearch-project/opensearch@3.9.0':
+    resolution: {integrity: sha512-ksIEi0wyIjVncfRwaxt5v6H4qL1aQO2eE3MxKyXGCLnR70YTSCDp+JGhdx2LpyMjtCFvr71DWtYQg9SK3pcNnA==}
+    engines: {node: '>=14', yarn: ^1.22.10}
+
   '@opentelemetry/api@1.9.0':
     resolution: {integrity: sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==}
     engines: {node: '>=8.0.0'}
@@ -5080,6 +5139,9 @@ packages:
   '@smithy/core@3.36.0':
     resolution: {integrity: sha512-3hJiwG1F5t1SoXqp/yOCmYXziyx7ZVqF63S5W6YU201e/qwVaHPex+E/3vvyY9a3ORq/b+BydeNZpP2saQ9X2g==}
     engines: {node: '>=18.0.0'}
+    deprecated: |-
+      Deprecated due to a bug in custom logger data redaction. Upgrade to the latest version. If you used a custom logger with this
+        version, review your logs and rotate any credentials or other secrets. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.5.2':
     resolution: {integrity: sha512-A9uSdn72ozbRUSit0eib0TW7nXuNPlaeM0zcGkJ+nE6tFcSDbnmtwoxbTCFBukVQcszDAyvsd7+rTduPTXpygg==}
@@ -6274,6 +6336,9 @@ packages:
 
   avvio@9.3.1:
     resolution: {integrity: sha512-QyTKW61/qlba+cUQBm/sT9X8lri4UdomqSDwCnrnj1IvLVDRRiXRkz4CgBRWB+/cmfC7SK5WQc8T1vSdGvaUcQ==}
+
+  aws4@1.13.2:
+    resolution: {integrity: sha512-lHe62zvbTB5eEABUVi/AwVh0ZKY9rMMDhmm+eeyuuUQbQ3+J+fONVQOZyj+DdrvD4BY33uYniyRJ4UJIaSKAfw==}
 
   axe-core@4.11.1:
     resolution: {integrity: sha512-BASOg+YwO2C+346x3LZOeoovTIoTrRqEsqMa6fmfAV0P+U9mFr9NsyOEpiYvFjbc64NMrSswhV50WdXzdb/Z5A==}
@@ -8064,6 +8129,10 @@ packages:
   json-stable-stringify-without-jsonify@1.0.1:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
 
+  json11@2.0.2:
+    resolution: {integrity: sha512-HIrd50UPYmP6sqLuLbFVm75g16o0oZrVfxrsY0EEys22klz8mRoWlX9KAEDOSOR9Q34rcxsyC8oDveGrCz5uLQ==}
+    hasBin: true
+
   json5@2.2.3:
     resolution: {integrity: sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==}
     engines: {node: '>=6'}
@@ -8980,9 +9049,6 @@ packages:
     peerDependencies:
       pg: '>=8.0'
 
-  pg-protocol@1.10.3:
-    resolution: {integrity: sha512-6DIBgBQaTKDJyxnXaLiLR8wBpQQcGWuAESkRBX/t6OwA8YsqP+iVSiond2EDy6Y/dsGk8rh/jtax3js5NeV7JQ==}
-
   pg-protocol@1.16.1:
     resolution: {integrity: sha512-p9VOFMiHB/ZbJATetbg+99PxssTVSQRnyuPSQ67mN1+1KBOjZaZ83ZQzltnxPhJwSsC3nwVjJ10DVJlerbFzLg==}
 
@@ -9542,6 +9608,9 @@ packages:
   scss@0.2.4:
     resolution: {integrity: sha512-4u8V87F+Q/upVhUmhPnB4C1R11xojkRkWjExL2v0CX2EXTg18VrKd+9JWoeyCp2VEMdSpJsyAvVU+rVjogh51A==}
     engines: {node: '>= 0.2.0'}
+
+  secure-json-parse@2.7.0:
+    resolution: {integrity: sha512-6aU+Rwsezw7VR8/nyvKTx8QpWH9FrcYiXXlqC4z5d5XQBDRqtbfsRjnwGyqbi3gddNtWHuEk9OANUotL26qKUw==}
 
   secure-json-parse@4.1.0:
     resolution: {integrity: sha512-l4KnYfEyqYJxDwlNVyRfO2E4NTHfMKAWdUuA8J0yve2Dz/E/PdBepY03RvyJpssIpRFwJoCD55wA+mEDs6ByWA==}
@@ -12110,6 +12179,16 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
+  '@opensearch-project/opensearch@3.9.0(supports-color@11.0.0)':
+    dependencies:
+      aws4: 1.13.2
+      debug: 4.4.3(supports-color@11.0.0)
+      json11: 2.0.2
+      ms: 2.1.3
+      secure-json-parse: 2.7.0
+    transitivePeerDependencies:
+      - supports-color
+
   '@opentelemetry/api@1.9.0':
     optional: true
 
@@ -14249,7 +14328,7 @@ snapshots:
   '@types/pg@8.23.1':
     dependencies:
       '@types/node': 26.6.5
-      pg-protocol: 1.10.3
+      pg-protocol: 1.16.1
       pg-types: 2.2.0
 
   '@types/picomatch@4.0.3': {}
@@ -14803,6 +14882,8 @@ snapshots:
     dependencies:
       '@fastify/error': 4.2.0
       fastq: 1.20.1
+
+  aws4@1.13.2: {}
 
   axe-core@4.11.1: {}
 
@@ -16606,6 +16687,8 @@ snapshots:
 
   json-stable-stringify-without-jsonify@1.0.1: {}
 
+  json11@2.0.2: {}
+
   json5@2.2.3: {}
 
   jsonc-parser@3.3.1: {}
@@ -17654,8 +17737,6 @@ snapshots:
     dependencies:
       pg: 8.23.1(pg-native@3.9.1)
 
-  pg-protocol@1.10.3: {}
-
   pg-protocol@1.16.1: {}
 
   pg-types@2.2.0:
@@ -18317,6 +18398,8 @@ snapshots:
   scss@0.2.4:
     dependencies:
       ometa: 0.2.2
+
+  secure-json-parse@2.7.0: {}
 
   secure-json-parse@4.1.0: {}
 

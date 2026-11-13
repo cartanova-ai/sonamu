@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "experimentalDecorators": true,
+    "paths": {
+      "@sonamu-kit/opensearch": ["./src/index.ts"],
+      "@sonamu-kit/opensearch/*": ["./src/*/index.ts"]
+    }
+  },
+  "include": ["src", "tests", "examples"],
+  "exclude": ["node_modules", "dist"]
+}
