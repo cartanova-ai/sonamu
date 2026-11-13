@@ -3,6 +3,7 @@ import path from "path";
 import { getConsoleSink } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
 import { SearchError } from "@sonamu-kit/opensearch";
+import { createSearchCliPlugin } from "@sonamu-kit/opensearch/sonamu";
 import {
   admin,
   CachePresets,
@@ -310,4 +311,12 @@ export default defineConfig({
 
   externalEditor: "Zed",
 
+  cli: {
+    plugins: [
+      // Imported only when a search command runs, so this config never loads the search modules.
+      createSearchCliPlugin({
+        load: async () => (await import("./search/cli-setup")).loadSearchCliSetup(),
+      }),
+    ],
+  },
 });
