@@ -9,6 +9,7 @@ import {
 import { type ListResult } from "sonamu";
 
 import { SD } from "../../i18n/sd.generated";
+import { markProjectsChanged } from "../../search/synchronization";
 import { ProjectModel } from "../project/project.model";
 import { type MilestoneSubsetKey, type MilestoneSubsetMapping } from "../sonamu.generated";
 import { milestoneLoaderQueries, milestoneSubsetQueries } from "../sonamu.generated.sso";
@@ -138,8 +139,23 @@ class MilestoneModelClass extends BaseModelClass<
       wdb.ubRegister("milestones", sp);
     });
 
+    const existingIds = spa.flatMap((sp) => (sp.id === undefined ? [] : [sp.id]));
+
     return wdb.transaction(async (trx) => {
-      return trx.ubUpsert("milestones");
+      // Moving a milestone changes its previous parent too, so read it before the upsert.
+      const previousParents =
+        existingIds.length === 0
+          ? []
+          : await trx
+              .table("milestones")
+              .whereIn("milestones.id", existingIds)
+              .select({ project_id: "milestones.project_id" });
+      const ids = await trx.ubUpsert("milestones");
+      await markProjectsChanged(trx, [
+        ...previousParents.map((row) => row.project_id),
+        ...spa.map((sp) => sp.project_id),
+      ]);
+      return ids;
     });
   }
 
@@ -148,7 +164,15 @@ class MilestoneModelClass extends BaseModelClass<
     const wdb = this.getPuri("w");
 
     await wdb.transaction(async (trx) => {
-      return trx.table("milestones").whereIn("milestones.id", ids).delete();
+      const parents = await trx
+        .table("milestones")
+        .whereIn("milestones.id", ids)
+        .select({ project_id: "milestones.project_id" });
+      await trx.table("milestones").whereIn("milestones.id", ids).delete();
+      await markProjectsChanged(
+        trx,
+        parents.map((row) => row.project_id),
+      );
     });
 
     return ids.length;
@@ -160,6 +184,7 @@ class MilestoneModelClass extends BaseModelClass<
 
     await this.findById("A", id);
 
+    // Not marked: completed_at is not part of the project document (same for uncomplete).
     await wdb.transaction(async (trx) => {
       await trx.table("milestones").where("id", id).update({ completed_at: new Date() });
     });
