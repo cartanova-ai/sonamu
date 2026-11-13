@@ -6,6 +6,7 @@ import {
   flag,
   formatMessage,
   integer,
+  isNonEmptyString,
   map,
   message,
   multiple,
@@ -17,12 +18,22 @@ import {
   passThrough,
   string,
   suggestAsync,
+  text,
   withDefault,
+  type Message,
+  type NonEmptyString,
   type Parser,
   type ValueParser,
 } from "@optique/core";
 import { loggingOptions } from "@optique/logtape";
 import { zod } from "@optique/zod";
+import {
+  type SonamuCliArgument,
+  type SonamuCliCommand,
+  type SonamuCliCommandInput,
+  type SonamuCliOption,
+  type SonamuCliPlugin,
+} from "sonamu";
 import { z } from "zod";
 
 export type SonamuCommandArguments = Record<
@@ -31,7 +42,13 @@ export type SonamuCommandArguments = Record<
 >;
 export type SonamuCommandOptions = Record<
   string,
-  string | number | boolean | readonly string[] | Readonly<Record<string, string>> | undefined
+  | string
+  | number
+  | boolean
+  | readonly string[]
+  | readonly number[]
+  | Readonly<Record<string, string>>
+  | undefined
 >;
 
 export interface ParsedSonamuArgs {
@@ -161,6 +178,12 @@ export const SONAMU_COMMAND_CANDIDATES = [
   "skills sync",
 ] as const;
 
+export const BUILTIN_TOP_LEVEL_COMMANDS: ReadonlySet<string> = new Set(
+  SONAMU_COMMAND_CANDIDATES.map((candidate) => candidate.split(" ")[0]),
+);
+// Optique's meta commands; a plugin must not claim them.
+export const RESERVED_COMMAND_WORDS: ReadonlySet<string> = new Set(["completion", "help"]);
+
 const unknownOption = (invalidOption: string, suggestions: readonly string[]) =>
   message`[UNKNOWN_OPTION] ${invalidOption} ${suggestions.join(",")}`;
 const optionErrors = {
@@ -254,8 +277,10 @@ function mutationMode() {
 function branch(
   name: string,
   parser: Parser<"sync", ParsedSonamuArgs, unknown>,
+  description?: Message,
 ): Parser<"sync", ParsedSonamuArgs, unknown> {
   return command(name, parser, {
+    description,
     errors: {
       notMatched: (_expected, actual) => message`Unknown command: ${actual ?? ""}`,
     },
@@ -790,7 +815,241 @@ function skillsParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
   return branch("skills", branch("sync", leaf("skills.sync")));
 }
 
-function rootParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
+// Flags the CLI parses itself; a plugin option spelled like one would never reach the plugin.
+const RESERVED_OPTION_KEYS = new Set([
+  "execute",
+  "confirm",
+  "dryRun",
+  "json",
+  "nonInteractive",
+  "verbose",
+  "logOutput",
+  "logFormat",
+  "help",
+  "version",
+]);
+
+/** A plugin command the CLI cannot add without shadowing or breaking its own grammar. */
+export class SonamuCliPluginConflictError extends Error {
+  readonly code = "INVALID_CLI_PLUGIN";
+
+  constructor(
+    readonly plugin: string,
+    readonly commandPath: string,
+    readonly rule: string,
+  ) {
+    super(`CLI plugin "${plugin}" command "${commandPath}": ${rule}`);
+    this.name = "SonamuCliPluginConflictError";
+  }
+}
+
+export function pluginCommandId(path: readonly string[]): string {
+  return path.join(".");
+}
+
+function optionFlag(key: string): `--${string}` {
+  return `--${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
+}
+
+function metavarOf(key: string): NonEmptyString {
+  const metavar = key.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase();
+  return isNonEmptyString(metavar) ? metavar : "VALUE";
+}
+
+function describe(description: string | undefined): Message | undefined {
+  return description === undefined ? undefined : message`${text(description)}`;
+}
+
+type FieldParser = Parser<"sync", unknown, unknown>;
+
+function argumentField<Value>(
+  value: ValueParser<"sync", Value>,
+  declared: SonamuCliArgument,
+): FieldParser {
+  const parser = argument(value, {
+    description: describe(declared.description),
+    errors: argumentErrors,
+  });
+  if (declared.variadic === true) {
+    return multiple(parser, { min: declared.required === false ? 0 : 1 });
+  }
+  return declared.required === false ? optional(parser) : parser;
+}
+
+function pluginArgumentParser(declared: SonamuCliArgument): FieldParser {
+  const metavar = metavarOf(declared.name);
+  return declared.type === "integer"
+    ? argumentField(integer({ metavar }), declared)
+    : argumentField(string({ metavar }), declared);
+}
+
+function optionField<Value>(
+  value: ValueParser<"sync", Value>,
+  key: string,
+  declared: SonamuCliOption,
+): FieldParser {
+  const parser = option(optionFlag(key), value, {
+    description: describe(declared.description),
+    errors: optionErrors,
+  });
+  if (declared.multiple === true) {
+    return multiple(parser, { min: declared.required === true ? 1 : 0 });
+  }
+  return declared.required === true ? parser : optional(parser);
+}
+
+function pluginOptionParser(key: string, declared: SonamuCliOption): FieldParser {
+  const metavar = metavarOf(key);
+  if (declared.type === "boolean") {
+    const description = describe(declared.description);
+    return withDefault(flag(optionFlag(key), { description, errors: flagErrors }), false);
+  }
+  if (declared.type === "integer") return optionField(integer({ metavar }), key, declared);
+  if (declared.choices === undefined) return optionField(string({ metavar }), key, declared);
+  return optionField(choice(declared.choices, { metavar }), key, declared);
+}
+
+const pluginArgumentValue = z.union([
+  z.string(),
+  z.number(),
+  z.array(z.string()),
+  z.array(z.number()),
+]);
+const pluginOptionValue = z.union([pluginArgumentValue, z.boolean()]).optional();
+const mutationModeValue = z.object({ dryRun: z.boolean(), execute: z.boolean() });
+
+function pluginCommandParser(
+  declared: SonamuCliCommand,
+): Parser<"sync", ParsedSonamuArgs, unknown> {
+  const commandName = pluginCommandId(declared.path);
+  // Prefixed keys keep an argument and an option of the same name apart.
+  const fields: Record<string, FieldParser> = {};
+  for (const declaredArgument of declared.arguments ?? []) {
+    fields[`argument:${declaredArgument.name}`] = pluginArgumentParser(declaredArgument);
+  }
+  for (const [key, declaredOption] of Object.entries(declared.options ?? {})) {
+    fields[`option:${key}`] = pluginOptionParser(key, declaredOption);
+  }
+  if (declared.mutation !== undefined) {
+    if (declared.mutation.dryRun) fields.mode = mutationMode();
+    else fields.execute = withDefault(flag("--execute", { errors: flagErrors }), false);
+    fields.confirm = withDefault(flag("--confirm", { errors: flagErrors }), false);
+  }
+  if (Object.keys(fields).length === 0) return leaf(commandName);
+
+  return map(object(fields), (values) => {
+    const parsedArguments: SonamuCommandArguments = {};
+    const options: SonamuCommandOptions = {};
+    for (const declaredArgument of declared.arguments ?? []) {
+      const value = values[`argument:${declaredArgument.name}`];
+      if (value !== undefined)
+        parsedArguments[declaredArgument.name] = pluginArgumentValue.parse(value);
+    }
+    for (const key of Object.keys(declared.options ?? {})) {
+      options[key] = pluginOptionValue.parse(values[`option:${key}`]);
+    }
+    if (values.mode !== undefined) Object.assign(options, mutationModeValue.parse(values.mode));
+    if (values.execute !== undefined) options.execute = z.boolean().parse(values.execute);
+    if (values.confirm !== undefined) options.confirm = z.boolean().parse(values.confirm);
+    return result(commandName, parsedArguments, options);
+  });
+}
+
+interface PluginCommandNode {
+  readonly children: Map<string, PluginCommandNode>;
+  command?: SonamuCliCommand;
+}
+
+function pluginNodeParser(
+  word: string,
+  node: PluginCommandNode,
+): Parser<"sync", ParsedSonamuArgs, unknown> {
+  if (node.command !== undefined) {
+    return branch(word, pluginCommandParser(node.command), describe(node.command.description));
+  }
+  const [first, second, ...rest] = [...node.children].map(([child, childNode]) =>
+    pluginNodeParser(child, childNode),
+  );
+  return branch(word, second === undefined ? first : alternatives([first, second, ...rest]));
+}
+
+function assertPluginFits(plugin: SonamuCliPlugin, declared: SonamuCliCommand): void {
+  const [topLevel] = declared.path;
+  const conflict = (rule: string) =>
+    new SonamuCliPluginConflictError(plugin.name, declared.path.join(" "), rule);
+  if (BUILTIN_TOP_LEVEL_COMMANDS.has(topLevel)) {
+    throw conflict(`"${topLevel}" is a built-in command`);
+  }
+  if (RESERVED_COMMAND_WORDS.has(topLevel)) throw conflict(`"${topLevel}" is reserved by the CLI`);
+  for (const key of Object.keys(declared.options ?? {})) {
+    if (RESERVED_OPTION_KEYS.has(key)) {
+      throw conflict(`option "${optionFlag(key)}" is reserved by the CLI`);
+    }
+  }
+}
+
+/** Plugin commands by command id; throws when a plugin collides with the CLI's own grammar. */
+export function collectPluginCommands(
+  plugins: readonly SonamuCliPlugin[],
+): ReadonlyMap<string, SonamuCliCommand> {
+  const commands = new Map<string, SonamuCliCommand>();
+  for (const plugin of plugins) {
+    for (const declared of plugin.commands) {
+      assertPluginFits(plugin, declared);
+      commands.set(pluginCommandId(declared.path), declared);
+    }
+  }
+  return commands;
+}
+
+// A repeatable option or variadic argument that was not given parses to [], which a plugin would
+// read as "given, with no values".
+function absentWhenEmpty<Value>(value: Value): Value | undefined {
+  return Array.isArray(value) && value.length === 0 ? undefined : value;
+}
+
+/** The input a plugin's `run` receives: only its declared arguments and options. */
+export function pluginCommandInput(
+  parsed: ParsedSonamuArgs,
+  declared: SonamuCliCommand,
+): SonamuCliCommandInput {
+  return {
+    arguments: Object.fromEntries(
+      (declared.arguments ?? []).map(({ name }) => [name, absentWhenEmpty(parsed.arguments[name])]),
+    ),
+    options: Object.fromEntries(
+      Object.keys(declared.options ?? {}).map((key) => [
+        key,
+        absentWhenEmpty(pluginOptionValue.parse(parsed.options[key])),
+      ]),
+    ),
+    dryRun:
+      declared.mutation?.dryRun === true &&
+      parsed.options.dryRun === true &&
+      parsed.options.execute !== true,
+  };
+}
+
+function pluginParsers(
+  commands: ReadonlyMap<string, SonamuCliCommand>,
+): Parser<"sync", ParsedSonamuArgs, unknown>[] {
+  const root = new Map<string, PluginCommandNode>();
+  for (const declared of commands.values()) {
+    let level = root;
+    let node: PluginCommandNode | undefined;
+    for (const word of declared.path) {
+      node = level.get(word) ?? { children: new Map() };
+      level.set(word, node);
+      level = node.children;
+    }
+    if (node !== undefined) node.command = declared;
+  }
+  return [...root].map(([word, node]) => pluginNodeParser(word, node));
+}
+
+function rootParser(
+  plugins: readonly Parser<"sync", ParsedSonamuArgs, unknown>[],
+): Parser<"sync", ParsedSonamuArgs, unknown> {
   const sync = map(
     object({ force: withDefault(flag("--force", { errors: flagErrors }), false) }),
     (options) => result("sync", {}, options),
@@ -812,6 +1071,7 @@ function rootParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
     cddParser(),
     authParser(),
     skillsParser(),
+    ...plugins,
   ]);
 }
 
@@ -832,10 +1092,13 @@ function asAsyncParser<Value, State>(
   };
 }
 
-export function createSonamuProgram(options: { readonly version: string }): SonamuProgram {
+export function createSonamuProgram(options: {
+  readonly version: string;
+  readonly pluginCommands?: ReadonlyMap<string, SonamuCliCommand>;
+}): SonamuProgram {
   const parser = map(
     object({
-      command: rootParser(),
+      command: rootParser(pluginParsers(options.pluginCommands ?? new Map())),
       logging: loggingOptions({ level: "verbosity", formatter: "--log-format" }),
     }),
     ({ command: parsedCommand }) => parsedCommand,
