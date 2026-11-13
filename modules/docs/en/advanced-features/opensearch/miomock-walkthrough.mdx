@@ -1,0 +1,542 @@
+---
+title: "miomock Walkthrough"
+description: "A tour of the project search integration in the miomock example application, in the order a developer adds each piece"
+---
+
+`examples/miomock` is this repository's example Sonamu application. It searches projects with OpenSearch, and its integration has every piece an application needs: migrations, an opt-in switch, a search definition, marking in the models, store identity initialization, the worker lifecycle, a search API that re-checks permissions, a web page that branches on status codes, an administrative CLI, and two test setups. This page shows them in the order a developer adds them. Code blocks are excerpts; open the file named in the title for the whole thing.
+
+## Dependencies and migrations
+
+`examples/miomock/api/package.json` depends on `@sonamu-kit/opensearch` (the workspace package) and `@opensearch-project/opensearch`. Two migrations install the package schema with the same function: `20261112205310_install_search_schema.ts` and `20261113024500_upgrade_search_schema_v2.ts` both call `installSearchSchema(knex)`.
+
+```typescript title="api/src/migrations/20261113024500_upgrade_search_schema_v2.ts"
+// installSearchSchema applies only missing versions: this upgrades version 1 databases and is a no-op on new ones.
+export async function up(knex: Knex): Promise<void> {
+  await installSearchSchema(knex);
+}
+
+// Never reverted automatically: without the origin record and fences, copied databases go unnoticed.
+export async function down(_knex: Knex): Promise<void> {
+  throw new Error(
+    "sonamu_search 스키마 버전 2는 자동으로 되돌리지 않습니다. 패키지는 버전 1 스키마로 동작하지 않으므로, 되돌리려면 이전 패키지 버전으로 돌아간 뒤 스키마를 직접 정리하세요.",
+  );
+}
+```
+
+`installSearchSchema` applies only the versions that are missing. On a fresh database the first migration already installs up to version 2 and the second does nothing; on a database at version 1 the second applies version 2. The schema has no entities, so the Sonamu migrator never diffs it and `sonamu.lock` does not list it. The `down` of both migrations throws, so a rollback never deletes the ledger, the target records or the origin record.
+
+## The switch and configuration
+
+Search is an opt-in feature switched by environment variables. The switch module imports nothing, so `sonamu.config.ts` can read it without loading the package.
+
+```typescript title="api/src/search/switch.ts"
+// Imports nothing, so sonamu.config.ts can read the switch without loading the package.
+
+export function isSearchEnabled(): boolean {
+  return process.env.MIOMOCK_SEARCH_ENABLED === "true";
+}
+
+/** Ignored while search is disabled. */
+export function isSearchWorkerEnabled(): boolean {
+  return process.env.MIOMOCK_SEARCH_WORKER === "true";
+}
+```
+
+| Variable | Meaning |
+| --- | --- |
+| `MIOMOCK_SEARCH_ENABLED` | The integration runs only when `true`. Otherwise no package statement runs at all |
+| `MIOMOCK_SEARCH_WORKER` | When `true`, this process runs the indexing worker |
+| `OPENSEARCH_URL` | Required when search is enabled |
+| `MIOMOCK_SEARCH_CURSOR_SECRET` | The cursor signing secret (base64, at least 32 bytes). Without it, each process uses a random key, so cursors do not survive a restart; production refuses to start without it |
+| `MIOMOCK_SEARCH_INSTANCE_NAME` | The environment name. If it differs from the name recorded in the store, remote operations stop |
+| `MIOMOCK_SEARCH_CURSOR_LIFETIME_MS` | Shortens the cursor lifetime below the recommended 10 minutes |
+| `MIOMOCK_SEARCH_WORKER_STAGE_TIMEOUT_MS` | Changes the worker's `projectionTimeoutMs` and `requestTimeoutMs` together. The search integration tests lower it |
+
+The synchronization handle uses Sonamu's write database as the primary, with the namespace `miomock`. `resolveSonamuPrimary` returns `DB.getDB("w")` and refuses it when it is a transaction.
+
+```typescript title="api/src/search/index.ts"
+/** Must differ per environment; processes configured with another name than the recorded one stop remote work. */
+export function searchInstanceName(): string | undefined {
+  const name = process.env.MIOMOCK_SEARCH_INSTANCE_NAME;
+  return name === undefined || name === "" ? undefined : name;
+}
+
+export function createMiomockSynchronization(): PostgresSynchronization {
+  return createPostgresSynchronization({
+    getPrimaryDatabase: resolveSonamuPrimary,
+    namespace: SEARCH_NAMESPACE,
+    instanceName: searchInstanceName(),
+  });
+}
+```
+
+The search runtime (query handle and lifecycle) is built when its module is evaluated, but importing it never throws: a configuration error is kept and thrown on first use, at search or start time. This keeps tools such as `sonamu sync`, which import the models, from failing (see the import warning in [Setup](/en/advanced-features/opensearch/setup)).
+
+## The search definition
+
+The definition is built with `defineSonamuSearch` under the logical key `projects`. The document holds the name, description, status, tag names, milestone names and member employee IDs; the worker validates each projection against this schema.
+
+```typescript title="api/src/search/projects.definition.ts"
+export const ProjectSearchDocument = z.object({
+  name: z.string(),
+  description: z.string().nullable(),
+  status: ProjectStatus,
+  tag_names: z.array(z.string()),
+  milestone_names: z.array(z.string()),
+  member_employee_ids: z.array(z.number().int()),
+});
+export type ProjectSearchDocument = z.infer<typeof ProjectSearchDocument>;
+```
+
+`materialize` runs the model's `findMany` and a milestone query in the worker's snapshot, and returns a tombstone (`{ state: "deleted" }`) for a project that no longer exists.
+
+```typescript title="api/src/search/projects.definition.ts"
+      const result = new Map<string, Projection<ProjectSearchDocument>>();
+      for (const id of ids) {
+        const row = rows.find((project) => String(project.id) === id);
+        if (row === undefined) {
+          result.set(id, { state: "deleted" });
+          continue;
+        }
+        result.set(id, {
+          state: "present",
+          document: {
+            name: row.name,
+            description: row.description,
+            status: row.status,
+            tag_names: row.tags.map((tag) => tag.name).sort(),
+            milestone_names: milestones
+              .filter((milestone) => milestone.project_id === row.id)
+              .map((milestone) => milestone.name),
+            member_employee_ids: row.employee.map((employee) => employee.id).sort((a, b) => a - b),
+          },
+        });
+      }
+      return result;
+```
+
+`member_employee_ids` is used only as a search filter. Permissions are re-checked on the primary after the search, so a stale value never lets a project the caller must not see into the response. When the document changes, raise `projectionVersion` and keep the old version in `PREVIOUS_PROJECTION_VERSIONS` until its target is retired, so the worker and search still handle the old target during the rebuild.
+
+## Marking
+
+The models collect the changed project IDs inside the domain transaction and mark them once, with every affected ID. With search disabled, no statement runs. With search enabled and no target registered yet, marking fails the transaction.
+
+```typescript title="api/src/search/synchronization.ts"
+/** Call once per transaction with every affected id; with search on and no target yet, it fails the transaction. */
+export async function markProjectsChanged(
+  trx: PuriTransactionWrapper,
+  ids: readonly number[],
+): Promise<void> {
+  const handles = getSearchHandles();
+  if (handles === undefined || ids.length === 0) {
+    return;
+  }
+  // Idempotent; reads on its own pool connection, outside trx.
+  await handles.synchronization.initialize();
+  const documentIds = [...new Set(ids)].map(String).sort();
+  await handles.sonamu.markChangedIn(trx, PROJECTS_SEARCH_KEY, documentIds);
+}
+```
+
+`initialize()` is idempotent and reads on its own pool connection, outside the transaction.
+
+These are the paths that change a project document and how each is marked. Rows deleted by a foreign key CASCADE are deleted by the database without marking, so the model reads the affected projects first, in the same transaction, and marks them.
+
+| Change | Where | Marking |
+| --- | --- | --- |
+| Saving a project (name, description, status, members, tags) | `ProjectModel.save` | Marks the saved IDs after the upserts, in the same transaction |
+| Deleting a project | `ProjectModel.del` | Marks before the delete, and the worker indexes a tombstone. The CASCADE into `projects__employees`, `project_tags`, and `milestones` is covered by that project's tombstone |
+| Saving a milestone (name, moving to another project) | `MilestoneModel.save` | Marks the previous parents, read before the upsert, and the new parents |
+| Deleting a milestone | `MilestoneModel.del` | Reads the parents before the delete and marks them after it |
+| Completing and uncompleting a milestone | `MilestoneModel.complete`, `uncomplete` | Not marked. `completed_at` is not in the document |
+| Saving a tag (renaming) | `TagModel.save` | Marks the projects that use the tag, read from `project_tags` |
+| Deleting a tag | `TagModel.del` | `project_tags` rows go by CASCADE, so it reads the affected projects first and marks them after the delete |
+| Deleting an employee | `EmployeeModel.del` | `projects__employees` rows go by CASCADE, so it reads the memberships first and marks after the delete |
+| Saving an employee | `EmployeeModel.save` | Not marked. Saving does not change memberships |
+| Deleting a user | `UserModel.del` | Not marked. The delete is a soft delete that only sets `deleted_at`, and search reads that value on the primary when it filters permissions |
+
+Deleting an employee shows how a path handles a CASCADE:
+
+```typescript title="api/src/application/employee/employee.model.ts"
+    await wdb.transaction(async (trx) => {
+      // ON DELETE CASCADE removes the memberships unmarked: read the affected projects first.
+      const memberships = await trx
+        .table("projects__employees")
+        .whereIn("projects__employees.employee_id", ids)
+        .select({ project_id: "projects__employees.project_id" });
+      await trx.table("employees").whereIn("employees.id", ids).delete();
+      await markProjectsChanged(
+        trx,
+        memberships.map((row) => row.project_id),
+      );
+    });
+```
+
+## Initializing the store identity
+
+Sonamu calls `lifecycle.onStart` only after the server starts listening, so a write arriving in between would fail with `store-identity-uninitialized`. The example therefore pins the store identity in a Fastify `onReady` hook, which runs before listen. If initialization fails (no schema, another database, a wrong setting), the server fails to start before it accepts a request. The runtime is imported lazily, so with search disabled nothing is loaded and `sonamu.config.ts` does not pull in the models.
+
+```typescript title="api/src/search/startup.ts"
+export async function initializeSearchStore(): Promise<void> {
+  if (!isSearchEnabled()) {
+    return;
+  }
+  const [{ getSearchRuntime }, { getSearchHandles }] = await Promise.all([
+    import("./runtime"),
+    import("./index"),
+  ]);
+  // Throws a configuration error kept from module evaluation.
+  getSearchRuntime();
+  await getSearchHandles()?.synchronization.initialize();
+}
+```
+
+```typescript title="api/src/sonamu.config.ts"
+      custom: (server) => {
+        // Fixes the search store identity before listen; see search/startup.ts.
+        server.addHook("onReady", initializeSearchStore);
+      },
+```
+
+`markProjectsChanged` also calls `initialize()` before marking; once the identity is pinned, it reads nothing again.
+
+## The lifecycle and the worker
+
+`lifecycle.onStart` and `onShutdown` in `sonamu.config.ts` start and stop search. The search runtime creates a `createSearchLifecycle` named `miomock-search`, and `MIOMOCK_SEARCH_WORKER` turns its worker on. The worker gets its own client, which the lifecycle creates for each generation and closes when that generation's worker stops.
+
+```typescript title="api/src/search/runtime.ts"
+  const lifecycle = createSearchLifecycle({
+    name: SEARCH_LIFECYCLE_NAME,
+    synchronization: handles.synchronization,
+    worker: {
+      enabled: isSearchWorkerEnabled(),
+      client: miomockSearchClientOptions(handles.url),
+      definitions: projectsSearchDefinitions,
+      limits: searchWorkerLimits(),
+      pollIntervalMs: RECOMMENDED_WORKER_POLL_INTERVAL_MS,
+      onEvent: logWorkerEvent,
+    },
+    stopDeadlineMs: RECOMMENDED_WORKER_STOP_DEADLINE_MS,
+  });
+```
+
+`project.model.ts` imports the runtime module, so the development server's HMR re-evaluates it with the model. The lifecycle with the same name stops the previous generation's worker and starts a new one with the new definitions, so there is always one worker.
+
+The event listener logs drains that indexed or quarantined something, drains that did not index everything (as a warning), cooldowns, quarantined documents, paused targets, hash mismatches, reclaimed leases, lost target fences, refused drains (`error`), and state changes. Empty drains are not logged. A lost fence and a store mismatch are logged as errors, with a comment that tells the operator what to run: `sonamu search confirm-ownership` if this is the original store, `adopt-store` on a copy.
+
+```typescript title="api/src/search/runtime.ts"
+    case "target-fence-lost":
+      // Another database took the fence: run `sonamu search confirm-ownership` here, or adopt-store on the copy.
+      console.error("[search] target fence lost", {
+        targetId: event.targetId,
+        class: event.class,
+        localEpoch: event.localEpoch,
+        remoteEpoch: event.remoteEpoch,
+      });
+      return;
+    case "error":
+      // On SEARCH_STORE_MISMATCH nothing is sent until an operator runs `sonamu search adopt-store` or confirm-ownership.
+      console.error("[search] drain refused", { code: event.code, reason: event.reason ?? null });
+      return;
+```
+
+## The search API
+
+`ProjectModel.searchIndexed` is the search API. It throws `SearchDisabledException` when search is disabled and `UnauthorizedException` when the caller is not signed in; otherwise it searches as the caller.
+
+```typescript title="api/src/application/project/project.model.ts"
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+  async searchIndexed(params: ProjectIndexedSearchParams): Promise<ProjectIndexedSearchResult> {
+    const runtime = getSearchRuntime();
+    if (runtime === undefined) {
+      throw new SearchDisabledException();
+    }
+    const { user } = Sonamu.getContext();
+    if (!user) {
+      throw new UnauthorizedException(SD("error.unauthorized"));
+    }
+    const { result } = await searchProjectsAs(
+      { queries: runtime.queries, db: DB.getDB("w") },
+      user.id,
+      params,
+    );
+    return result;
+  }
+}
+```
+
+A project is visible to users who are member employees of that project and to users whose role is `admin`. Deleted or banned users, and ordinary users with no employee record, see nothing. The index may lag behind memberships, deletes and edits, so the search follows the same order as the package example and must run outside a transaction.
+
+```typescript title="api/src/search/project-search.ts"
+  // Read the scope from the primary right before searching.
+  const scope = await readProjectSearchScope(db, userId);
+
+  const body = searchBody(params.q, scope, params.size ?? 20);
+  const candidates =
+    params.cursor === undefined
+      ? await queries.search({ body, paginate: {} })
+      : await queries.search({ body, cursor: params.cursor });
+
+  // Re-read the scope: it may have changed while the search ran.
+  const ids = candidates.hits
+    .map((hit) => toProjectId(hit.id))
+    .filter((id): id is number => id !== undefined);
+  const currentScope = await readProjectSearchScope(db, userId);
+  const visible = await readVisibleProjects(db, currentScope, ids);
+```
+
+1. Read the scope the caller may see now from the primary, just before the search.
+2. Search with that scope as a `terms` filter. A non-member sends an empty list so nothing matches; only an admin has no filter.
+3. Read the scope again, since it may have changed during the search, and check the returned IDs against the current rows and memberships on the primary.
+4. Return the current database rows, not the indexed content, in search order, and drop a field's highlight if the indexed text differs from the current text.
+
+Highlights are wrapped in private-use characters (`HIGHLIGHT_START`, `HIGHLIGHT_END`) instead of HTML tags. User text inside a fragment is not escaped, so the page must never render a fragment as HTML.
+
+```typescript title="api/src/search/project-search.ts"
+    // Private-use markers instead of HTML tags: the fragments are not escaped, so they must never be rendered as HTML.
+    highlight: {
+      pre_tags: [HIGHLIGHT_START],
+      post_tags: [HIGHLIGHT_END],
+      fields: { "doc.name": {}, "doc.description": {} },
+    },
+```
+
+### Errors and HTTP status
+
+`lifecycle.onError` in `sonamu.config.ts` turns search errors into a status code and a message rendered in the request's locale.
+
+```typescript title="api/src/search/errors.ts"
+/** The generated web client drops code and reason, so the screen branches on these; keep web/src/routes/admin/projects/search.tsx in sync. */
+export const SEARCH_HTTP_STATUS = {
+  invalidQuery: 400,
+  unauthorized: 401,
+  /** No readable index yet or a rebuild is required: only an operator can fix it. */
+  notReady: 409,
+  cursorExpired: 410,
+  internal: 500,
+  disabled: 501,
+  unavailable: 503,
+} as const;
+```
+
+| Status | Error | Meaning for the caller |
+| --- | --- | --- |
+| 400 | `SearchQueryInvalid` | The query is invalid or the request is outside the limits |
+| 401 | Not signed in | Sign in |
+| 409 | `SearchNotReady`, `SearchNotConfigured`, `SearchRebuildRequired`, `SearchDefinitionMismatch` | No readable index yet (before the first cutover) or a rebuild is required. Changing the query does not help; an operator has to prepare the index |
+| 410 | `SearchCursorExpired` | The next-page cursor expired or does not match. Start the search again |
+| 500 | `SearchInTransactionError` | A bug in the server code |
+| 501 | Search is disabled on this server | `MIOMOCK_SEARCH_ENABLED` is off |
+| 503 | Other search errors (catalog or engine outages) | A temporary outage. Try again later |
+
+The response body also carries `code`, `reason` (only a string reason; the rest of `details` stays on the server) and `retryable`, but the generated web client (`SonamuError`) drops the body's `code` and `reason` and keeps only the status and the message. The web page therefore branches on the status code, and the API's and the page's status tables must change together.
+
+## The web page
+
+`web/src/routes/admin/projects/search.tsx` is the search page (`/admin/projects/search`). It maps status codes to page states.
+
+```tsx title="web/src/routes/admin/projects/search.tsx"
+function failureKindOf(status: number): FailureKind {
+  switch (status) {
+    case 400:
+      return "invalidQuery";
+    case 401:
+      return "signInRequired";
+    case 409:
+      return "notReady";
+    case 410:
+      return "cursorExpired";
+    case 501:
+      return "disabled";
+    case 503:
+      return "unavailable";
+    default:
+      return "unexpected";
+  }
+}
+```
+
+The page states are checking the session, sign-in required, no query, no results, and a result list with "load more"; each failure kind shows its own message. For an expired cursor the page says the next page is no longer available and asks the user to start again. It does not claim the results changed, because a cursor also expires at the end of its lifetime when nothing changed. An expired cursor and an unexpected error restart the search, and a temporary outage offers a retry. Only for an index that is not ready (409) and a temporary outage (503) does the page show the server's localized message as a detail. If fetching the next page fails, the results so far stay and the message appears below them. Highlight fragments are split on the marker characters and rendered as text.
+
+```tsx title="web/src/routes/admin/projects/search.tsx"
+function Highlighted({ fragment }: { fragment: string }) {
+  const [head, ...rest] = fragment.split(PROJECT_SEARCH_HIGHLIGHT_START);
+  return (
+    <>
+      {head}
+      {rest.map((part, index) => {
+        const [marked, tail] = part.split(PROJECT_SEARCH_HIGHLIGHT_END);
+        return (
+          <span key={index}>
+            <mark className="bg-yellow-200 rounded-sm px-0.5">{marked}</mark>
+            {tail}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+```
+
+## The administrative CLI
+
+The administrative commands are the package's `sonamu search` commands; [Index administration](/en/advanced-features/opensearch/index-administration) lists them with their approval rule, output and exit codes. `sonamu.config.ts` registers the plugin and imports the setup module only when a search command runs:
+
+```typescript title="api/src/sonamu.config.ts"
+  cli: {
+    plugins: [
+      // Imported only when a search command runs, so this config never loads the search modules.
+      createSearchCliPlugin({
+        load: async () => (await import("./search/cli-setup")).loadSearchCliSetup(),
+      }),
+    ],
+  },
+```
+
+```typescript title="api/src/search/cli-setup.ts"
+/** Loaded by sonamu.config.ts only when a `sonamu search` command runs; works regardless of MIOMOCK_SEARCH_ENABLED. */
+export function loadSearchCliSetup(): SearchCliSetup {
+  return {
+    definitions: projectsSearchDefinitions,
+    synchronization: createMiomockSynchronization(),
+    // Read per command, so PostgreSQL-only commands still run without OPENSEARCH_URL.
+    client: () => miomockSearchClientOptions(requireOpenSearchUrl()),
+    admin: MIOMOCK_SEARCH_ADMIN_SETTINGS,
+    workerLimits: searchWorkerLimits(),
+  };
+}
+```
+
+The setup works regardless of `MIOMOCK_SEARCH_ENABLED`. It reads `OPENSEARCH_URL` only when a command needs OpenSearch, so `inspect`, `backfill`, `suspend`, `remark`, `retry-quarantined`, `adopt-store` and the `cutover` dry run run without it. The `admin` values are `MIOMOCK_SEARCH_ADMIN_SETTINGS` from `search/admin.ts`, which the application's own administrative handle (`createMiomockSearchAdmin`) also uses, and the worker limits come from `searchWorkerLimits()`, as the worker's do.
+
+The CLI runs the built code, so build the API before the first command and again after every change to the search code. Run every command from `examples/miomock/api`, with `OPENSEARCH_URL` set for the commands that need OpenSearch (`http://localhost:9200` for the local container). Without a terminal, a command that changes state needs `--execute --confirm`; on a terminal the CLI asks instead. `init` and `cutover` without `--execute` only print a dry run.
+
+```bash
+mise exec -- pnpm build
+```
+
+The first target (plan, create, register, backfill, cutover), then its state:
+
+```bash
+mise exec -- pnpm sonamu search init --execute --confirm
+mise exec -- pnpm sonamu search inspect
+```
+
+After a definition change (open a rebuild build, fill it, check the blockers, cut over, and retire the old target once the grace period has passed):
+
+```bash
+mise exec -- pnpm build
+mise exec -- pnpm sonamu search init --execute --confirm
+mise exec -- pnpm sonamu search backfill --execute --confirm
+mise exec -- pnpm sonamu search cutover
+mise exec -- pnpm sonamu search cutover --execute --confirm
+mise exec -- pnpm sonamu search retire-old --execute --confirm
+```
+
+A source restore (suspend capture, resume with a new epoch, fill, cut over):
+
+```bash
+mise exec -- pnpm sonamu search suspend --execute --confirm
+mise exec -- pnpm sonamu search resume --execute --confirm
+mise exec -- pnpm sonamu search backfill --execute --confirm
+mise exec -- pnpm sonamu search cutover --execute --confirm
+```
+
+A paused target (verification scan, resume):
+
+```bash
+mise exec -- pnpm sonamu search verify --target <target-id> --execute --confirm
+mise exec -- pnpm sonamu search resume-target --target <target-id> --execute --confirm
+```
+
+Adopt a copied database, or confirm ownership of the same store:
+
+```bash
+mise exec -- pnpm sonamu search adopt-store --execute --confirm
+mise exec -- pnpm sonamu search confirm-ownership --execute --confirm
+```
+
+- `init` on a key without a target plans, creates and registers one, then backfills the first build and cuts it over. On a key with a target it opens a rebuild build for the current definition (or returns the open build with the same fingerprint) and prints the next steps (`backfill`, `cutover`, `retire-old`). Without `--execute` it prints the plan for a key without a target and the open build, and changes nothing.
+- `cutover` without `--execute` prints the blockers; with it, the package refuses while any remain. `drain` is for development and runs worker drains until one finds nothing to do.
+- `adopt-store` prints its next steps (`restart-processes`, `resume`, `backfill`, `cutover`) and the number of detached targets. Restart the processes, then create the new target with `resume`, `backfill` and `cutover`.
+- When a command is refused because the store binding does not match, the failure's `hint` names both commands: `sonamu search adopt-store` if this database is a copy or restore of another one, `sonamu search confirm-ownership` if it is the same store (renamed, restored in place, moved to another server).
+
+## Tests
+
+The default test suite (`mise exec -- pnpm --filter miomock-api test`) excludes `*.search.test.ts` and runs with search disabled, because managed search cannot be used inside Sonamu's transactional test fixture. `search-disabled.test.ts` checks that, with search disabled, saving a project runs no package statement and server start and shutdown create no connection, statement or timer, and that with search enabled but no `OPENSEARCH_URL`, importing the modules succeeds and start fails. `errors.test.ts` checks the HTTP status of each error class.
+
+The search integration tests are the `*.search.test.ts` files, run separately with `mise exec -- pnpm --filter miomock-api test:search`. They need Docker, because the setup starts its own OpenSearch container, and the local PostgreSQL with the `miomock_test` database. The worker reads committed rows over other connections, so these tests use neither Sonamu's test transaction nor test mode. The files share one database and index and run one at a time, in file name order.
+
+```typescript title="api/vitest.search.config.ts"
+    setupFiles: ["./src/search/testing/setup-env.ts"],
+    env: {
+      NODE_ENV: "development",
+      SONAMU_DB_NAME: SEARCH_IT_DATABASE,
+      MIOMOCK_SEARCH_ENABLED: "true",
+      MIOMOCK_SEARCH_WORKER: "true",
+      // Shortens INDEXING_WAIT_MS (testing/helpers.ts) to 41 s.
+      MIOMOCK_SEARCH_WORKER_STAGE_TIMEOUT_MS: "10000",
+    },
+    pool: "forks",
+    maxWorkers: 1,
+```
+
+The global setup (`src/search/testing/global-setup.ignore.ts`) does the following:
+
+1. Starts an OpenSearch container (`MIOMOCK_OPENSEARCH_IMAGE`, `opensearchproject/opensearch:3.5.0` by default).
+2. Clones `miomock_test` into `miomock_search_it` with `CREATE DATABASE … TEMPLATE … STRATEGY FILE_COPY` and installs the package schema. `FILE_COPY` is needed because the PostgreSQL 15+ default (`WAL_LOG`) does not copy PGroonga index files, and later writes to `projects` would fail.
+3. Adopts that database with `adoptCopiedStore`, then plans and registers the first target. The clone inherits the source's store identity and coexists with the source, so it is a copy: without adoption the worker and administrative operations would stop, and confirming ownership instead would make two databases claim the same index. The first build stays open; the tests backfill it and cut it over.
+4. Clones that database again into `miomock_search_it_copy` and leaves it unadopted for the store binding tests. Teardown drops the cloned databases (including the name `miomock_search_it_copy_moved`, which a test renames the copy to) and stops the container.
+
+The two CLI test files run `sonamu search` through the CLI's real entry point (`node_modules/@sonamu-kit/cli/bin/sonamu.js`) in a separate process, so the worker in the test process keeps running. `src/search/testing/cli.ts` adds `--json --non-interactive`, and `--execute --confirm` where a command needs approval. It also sets `VITEST=true`, which makes the CLI read `src/sonamu.config.ts` through the TypeScript loader instead of the build, so these tests need no `pnpm build`.
+
+| File | What it covers |
+| --- | --- |
+| `project-search.search.test.ts` | A committed project save is indexed and returned by the search API, and a rolled-back save leaves no ledger row or intent; each path that changes a document (milestone save and delete, tag rename and delete, employee delete); the permission re-check (non-members, members removed before the index catches up, deleted projects before their tombstone, names changed after indexing, requests without sign-in); paging with the package cursor |
+| `resume-target-cli.search.test.ts` | A target paused for `revision_divergence` (a document written outside the package at a version above the ledger): `verify` first refuses with `verification-not-quiesced` (`retryable`) and `resume-target` refuses; two `remark --ids` runs raise the ledger above that version, and after quiescence `verify` ends with no violation and `resume-target` makes the target `active` again |
+| `store-binding.search.test.ts` | On an unadopted copy, marking commits while the worker and `backfill` are refused with `store-origin-changed` and a hint naming `adopt-store` and `confirm-ownership`, and `inspect` reports the binding; `adopt-store` without approval exits with code 3 (`CONFIRMATION_REQUIRED`), and with approval it adopts the copy, which then creates its own target with `resume`, `backfill` and `cutover`; a renamed database is refused, `confirm-ownership` without approval exits with code 3, and with approval it reopens the store with the same `store_id`, after which `drain` succeeds |
+
+The worker's stage time limits are lowered to 10 seconds, so the wait for indexing (`INDEXING_WAIT_MS` in `testing/helpers.ts`) is bounded by 1 s + 2 × (10 s + 10 s) = 41 s: the drain already running at commit, one poll interval, and the drain that takes the mark. That is less than half of the 2-minute lease.
+
+## Running it locally
+
+Run every command from `examples/miomock/api`.
+
+Start PostgreSQL and OpenSearch. This OpenSearch runs with the security plugin disabled and is for local development only:
+
+```bash
+docker compose -f database/docker-compose.yml up -d
+docker compose -f database/docker-compose.search.yml up -d
+```
+
+Build the project, then run the migrations, which include the package schema. The CLI reads the built project, so both `sonamu migrate` and the `sonamu search` commands need the build:
+
+```bash
+mise exec -- pnpm build
+mise exec -- pnpm sonamu migrate run --execute --confirm
+```
+
+Create the first target and cut over:
+
+```bash
+OPENSEARCH_URL=http://localhost:9200 mise exec -- pnpm sonamu search init --execute --confirm
+```
+
+Start the server with search and the worker enabled:
+
+```bash
+MIOMOCK_SEARCH_ENABLED=true MIOMOCK_SEARCH_WORKER=true OPENSEARCH_URL=http://localhost:9200 mise exec -- pnpm dev
+```
+
+The order matters. Marking on a server with search enabled fails closed: without a registered target, a project save transaction does not commit (`SearchNotConfigured` or `SearchNoWriteTarget`). Create the first target with `init` before you enable search. With more than 1,000 projects (`maxPendingDocuments` in `RECOMMENDED_CUTOVER`), `init`'s cutover can be refused because of the backlog; then drain it with `sonamu search drain --execute --confirm`, or start the server with the worker, and run `sonamu search cutover --execute --confirm`. Once the server is up, sign in to the web app and open `/admin/projects/search`.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Overview" icon="book" href="/en/advanced-features/opensearch/overview">
+    Guarantees and moving parts
+  </Card>
+  <Card title="Index administration" icon="layer-group" href="/en/advanced-features/opensearch/index-administration">
+    The rules of the administrative operations the CLI calls
+  </Card>
+</CardGroup>

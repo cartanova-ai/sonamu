@@ -1,0 +1,275 @@
+---
+title: "Search Definitions"
+description: "Defining the projection, document schema, and mappings with defineSearch, and how the fingerprint is derived"
+---
+
+A search definition decides, for one logical key, which search document a source row becomes and with which index settings and mappings that document is stored. The worker builds documents with the definition's projection; the administrative handle creates indexes from its settings and mappings.
+
+## defineSearch
+
+The example indexes chat messages. It starts with the logical key and the document schema. `updated_at` is in the document so that search results can be compared with the current row when they are hydrated from the primary.
+
+```typescript title="search/chat-messages.definition.ts"
+import { defineSearch, type DocumentId, type Projection } from "@sonamu-kit/opensearch";
+import { z } from "zod";
+
+/** Read only through context.trx; room membership stays out of the document and is re-checked after search. */
+export const CHAT_MESSAGES_KEY = "chat-messages";
+
+export const chatMessageDocumentSchema = z.object({
+  room_id: z.string(),
+  author_id: z.string().nullable(),
+  body: z.string(),
+  updated_at: z.string(),
+});
+export type ChatMessageDocument = z.infer<typeof chatMessageDocumentSchema>;
+```
+
+The definition itself is created with `defineSearch`:
+
+```typescript title="search/chat-messages.definition.ts"
+// pg returns bigint columns as strings.
+const idColumn = z.union([z.string(), z.number()]).transform(String);
+const messageRowSchema = z.object({
+  id: idColumn,
+  room_id: idColumn,
+  author_id: idColumn.nullable(),
+  body: z.string(),
+  updated_at: z.date(),
+});
+const DECIMAL_ID = /^[1-9][0-9]{0,18}$/;
+
+export const chatMessagesSearch = defineSearch<ChatMessageDocument>({
+  key: CHAT_MESSAGES_KEY,
+  // Bump whenever the projection's meaning changes, so a rebuild picks it up.
+  projectionVersion: "1",
+  schema: chatMessageDocumentSchema,
+  settings: { index: { number_of_shards: 1 } },
+  mappings: {
+    properties: {
+      room_id: { type: "keyword" },
+      author_id: { type: "keyword" },
+      body: { type: "text" },
+      updated_at: { type: "date" },
+    },
+  },
+  requiredPlugins: [],
+```
+
+| Field | Meaning |
+| --- | --- |
+| `key` | Logical key. `^[a-z0-9][a-z0-9-]{0,62}$`. `markChanged` and administrative commands look the definition up by this name |
+| `projectionVersion` | A string you raise when the meaning of the projection changes. 1 to 256 characters, no surrounding whitespace or control characters |
+| `schema` | The document schema. Anything implementing Standard Schema v1 works (zod and others) |
+| `settings` | Index settings JSON. Analyzers go here |
+| `mappings` | Mappings for document fields. Only `{ properties, dynamic? }` is accepted |
+| `requiredPlugins` | OpenSearch plugin names this definition needs. No duplicates |
+| `materialize` | Turns a list of document IDs into projection results |
+| `captureScanBoundary`, `scanSourceIds` | Walk source IDs when a new target is filled from the source (backfill). Used in [Index administration](/en/advanced-features/opensearch/index-administration) |
+
+`defineSearch` checks its input, computes the fingerprint, and returns a frozen definition. Unknown keys, a `materialize` that is not a function, mappings that break the rules, or settings that are not JSON throw `SearchConfigurationError` with the cause in `details.reason`. `settings` and `mappings` are stored as checked, deeply frozen copies, so changing the original objects afterwards has no effect on the definition.
+
+### defineSonamuSearch
+
+Use `defineSonamuSearch` from `@sonamu-kit/opensearch/sonamu` when a projection should reuse model methods. It takes the same input as `defineSearch` and produces the same fingerprint, but runs `materialize`, `captureScanBoundary`, and `scanSourceIds` inside `withProjectionScope`. That scope registers the worker's snapshot transaction as Sonamu's `"w"` and `"r"` transaction, so inside the projection `getPuri("w")`, `getPuri("r")`, subset queries, and `@transactional` methods that reuse an existing transaction all read the same snapshot. In the example, the scan functions reuse the `defineSearch` form's implementations, which read only the snapshot.
+
+```typescript title="application/chat-message.sonamu-search.ts"
+/** Same fingerprint as chatMessagesSearch: register only one of the two, and never read through DB.getDB() or another Knex here. */
+export const chatMessagesSonamuSearch = defineSonamuSearch<ChatMessageDocument>({
+  key: CHAT_MESSAGES_KEY,
+  projectionVersion: "1",
+  schema: chatMessageDocumentSchema,
+  settings: { index: { number_of_shards: 1 } },
+  mappings: {
+    properties: {
+      room_id: { type: "keyword" },
+      author_id: { type: "keyword" },
+      body: { type: "text" },
+      updated_at: { type: "date" },
+    },
+  },
+  requiredPlugins: [],
+
+  async materialize(_context, ids) {
+    const rows = await ChatMessageModel.findForSearch(ids);
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return new Map(
+      ids.map((id): [DocumentId, Projection<ChatMessageDocument>] => {
+        const row = byId.get(id);
+        if (row === undefined) return [id, { state: "deleted" }];
+        return [
+          id,
+          {
+            state: "present",
+            document: {
+              room_id: row.room_id,
+              author_id: row.author_id,
+              body: row.body,
+              updated_at: row.updated_at.toISOString(),
+            },
+          },
+        ];
+      }),
+    );
+  },
+
+  captureScanBoundary: (context) => chatMessagesSearch.captureScanBoundary(context),
+  scanSourceIds: (context, page) => chatMessagesSearch.scanSourceIds(context, page),
+});
+```
+
+The model method that `materialize` calls reads through `getPuri("r")`, which inside this scope is the worker's snapshot transaction:
+
+```typescript title="application/chat-message.model.ts"
+  /** Called from defineSonamuSearch, where getPuri("r") is the worker's snapshot transaction. */
+  async findForSearch(ids: readonly string[]): Promise<ChatMessageSearchRow[]> {
+    const lookup = ids.filter((id) => DECIMAL_ID.test(id));
+    return z
+      .array(searchRowSchema)
+      .parse(
+        await this.getPuri("r")
+          .knex("messages")
+          .select("id", "room_id", "author_id", "body", "updated_at")
+          .whereIn("id", lookup),
+      );
+  }
+```
+
+Both forms have the same fingerprint, so put only one of them in the `definitions` of the worker and the administrative handle; `createIndexer` rejects the same `(key, fingerprint)` given twice. The model methods of `defineSonamuSearch` need Sonamu's database configuration, so a separate worker process that does not start Sonamu uses the `defineSearch` form.
+
+Some paths bypass the scope: `getDB()`, named presets, and separately created Knex instances read newer data on a new connection. Do not use them in a projection.
+
+## Projection contract
+
+`materialize(context, ids)` returns a `Map` with exactly one result per requested ID. The example looks up only decimal IDs, since no other ID can exist in the source, and returns every ID without a row as deleted.
+
+```typescript title="search/chat-messages.definition.ts"
+  async materialize(context, ids) {
+    const lookup = ids.filter((id) => DECIMAL_ID.test(id));
+    const rows = z
+      .array(messageRowSchema)
+      .parse(
+        await context
+          .trx("messages")
+          .select("id", "room_id", "author_id", "body", "updated_at")
+          .whereIn("id", lookup),
+      );
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    // Return exactly one result per requested id; a missing row is deleted.
+    return new Map(
+      ids.map((id): [DocumentId, Projection<ChatMessageDocument>] => {
+        const row = byId.get(id);
+        if (row === undefined) return [id, { state: "deleted" }];
+        return [
+          id,
+          {
+            state: "present",
+            document: {
+              room_id: row.room_id,
+              author_id: row.author_id,
+              body: row.body,
+              updated_at: row.updated_at.toISOString(),
+            },
+          },
+        ];
+      }),
+    );
+  },
+```
+
+- A record that exists in the source is `{ state: "present", document }`; a missing record is `{ state: "deleted" }`. A deleted record must come back as `deleted` so the worker indexes a tombstone.
+- If the `Map` contains an ID that was not requested, or the result is not a `Map`, none of that call's results are used.
+- If a requested ID is missing or one result has the wrong shape (for example `deleted` carrying a `document`), only that document fails.
+- If the projection throws, the worker splits the IDs in halves and reruns them to find the document that causes the failure, and quarantines only that document. Database outages such as a dropped connection are not counted against documents. The full classification is in [Indexing worker](/en/advanced-features/opensearch/worker).
+
+### What a projection may read
+
+Read only through `context.trx`, a read-only REPEATABLE READ transaction the worker opened on the primary. The worker reads the ledger revision in the same snapshot before running the projection, so the indexed body and the external version attached to it come from the same moment. Reading from another connection or an external service breaks that correspondence and can index content that does not match the revision.
+
+The snapshot has these constraints:
+
+- Its first statement checks the isolation level, read-only mode, and whether it runs on a replica. On a replica or a mismatch, the drain fails with `SearchConfigurationError`.
+- Statement, lock, and idle-in-transaction timeouts are set to `projectionTimeoutMs`.
+- Writes fail (SQLSTATE 25006), and that document is quarantined.
+- If the projection swallowed an SQL error and the transaction aborted, or sent `COMMIT` or `ROLLBACK` and replaced the snapshot, the worker notices before using the results and discards that call's results.
+
+`context` also carries `signal`, `deadlineAt` (epoch ms), `namespace`, and `logicalKey`. `signal` is aborted when the time limit passes; check it in long-running work. In tests, `traceProjectionConnections` from `@sonamu-kit/opensearch/testing` finds projections that use connections outside the snapshot.
+
+## Envelope and reserved fields
+
+The worker wraps each projection result in an envelope before indexing it.
+
+| Document | Indexed body |
+| --- | --- |
+| present | `{ sonamu_meta: { deleted: false, revision, hash_version, projection_hash }, doc: <document> }` |
+| deleted (tombstone) | `{ sonamu_meta: { deleted: true, revision, hash_version, projection_hash } }` |
+
+The application document sits under `doc`, so search bodies refer to fields with the `doc.` prefix, as in `doc.body`. A tombstone keeps nothing of the old body.
+
+A document may not have `sonamu_meta` or a name starting with `_` at its top level. In a projection result, such a field quarantines the document with `reserved_field`; in mappings, `defineSearch` rejects it with `reserved_property`.
+
+### Mapping restrictions
+
+`mappings` accepts only `properties` and `dynamic` at its top level. Top-level-only keys such as `_source`, `_routing`, `_meta`, and `dynamic_templates` cannot move under `doc`, so they are rejected with `unsupported_mapping_key`.
+
+The package assembles the index mapping from:
+
+- Top-level `dynamic: "strict"`, and `_meta.sonamu` identifying the target
+- A strict `sonamu_meta` object
+- A `doc` object holding the definition's `properties`. When `dynamic` is not given it is `"strict"`
+
+So OpenSearch rejects a document with a field that is not in the mappings (`strict_dynamic_mapping_exception`), and the worker quarantines that revision. Keep the document schema and the mapped fields in step. If unmapped fields must be accepted, set `dynamic` explicitly; an explicit `dynamic` is part of the fingerprint.
+
+## Canonical JSON and the projection hash
+
+The worker processes a `present` document in this order:
+
+1. It validates the document with the definition's `schema`. Every later step uses **the value the schema returns**, not the original object.
+2. It checks that this value is representable as JSON as is, and makes a copy detached from the input.
+3. It checks for reserved top-level fields.
+4. It computes `projection_hash` as the SHA-256 of the canonical JSON string, and sends the same copy as `doc`.
+5. If a single envelope exceeds `maxBulkBytes`, it quarantines the document (`oversized`).
+
+The hash and the indexed body come from the same copy, so changing the object the projection returned has no effect on either. Canonical JSON (`sonamu-c14n-v1`) sorts object keys by UTF-16 code units, keeps array order, adds no whitespace, and writes `-0` as `0`. It does no Unicode normalization, so NFC and NFD are different values. The state is part of the hash input: `present` hashes `{"document":...,"state":"present"}` and `deleted` hashes `{"state":"deleted"}`.
+
+| Kind | Values |
+| --- | --- |
+| Accepted | Well-formed UTF-16 strings, finite numbers, booleans, `null`, arrays, plain objects (prototype `Object.prototype` or `null`) |
+| Rejected | `undefined`, `function`, `symbol`, `bigint`, `non_finite_number` (NaN, ±Infinity), `unsupported_object` (Date, Map, Set, class instances, boxed primitives), `symbol_key`, `reserved_key` (a `__proto__` key), `ill_formed_string` (unpaired surrogates), `accessor_property` (getters and setters), `cycle`, `too_deep` (deeper than 512) |
+| Silently omitted | Non-enumerable properties, array properties that are not indexes, and keys the schema drops (zod's `z.object` drops keys it does not define) |
+
+On rejection the worker quarantines that revision and records one of these reasons:
+
+| `reason` | Cause |
+| --- | --- |
+| `schema_invalid` | Schema validation failed. Only the issue paths and codes are recorded, never the messages |
+| `non_json_document` | One of the rejections above. `violation` and `path` are recorded with it |
+| `document_not_object` | `document` is not an object |
+| `invalid_projection` | The result is neither the `present` nor the `deleted` shape |
+| `reserved_field` | A reserved top-level field |
+| `oversized` | The envelope exceeds `maxBulkBytes` |
+
+The schema's output must therefore be JSON. A schema that returns dates as `Date` objects, for example, is rejected with `unsupported_object`; the example turns `updated_at` into a string with `toISOString()`. In tests, `canonicalizeJson` and `computeProjectionHash` from the root entry point apply the same rules.
+
+## Fingerprint
+
+`defineSearch` computes a SHA-256 fingerprint from the canonical JSON of `key`, `projectionVersion`, the hash version, the envelope version, `settings`, `mappings`, the sorted `requiredPlugins`, and the input structure version. `schema` and the functions are not part of it, so whenever you change the meaning of the projection function or the schema, raise `projectionVersion`. Otherwise one target with one fingerprint ends up holding documents built by both the old and the new rules.
+
+A definition with a new fingerprint becomes a new target, because:
+
+- The package never changes the settings or mappings of an existing index; it only reads mappings.
+- The documents in an existing target were built by the old projection. Overwriting with the new definition would leave every unmarked document in its old state.
+- The worker processes only targets for which it has a definition with a matching `(key, fingerprint, hash version)`, leaves the others untouched, and reports them as `unsupportedTargets`. A query handle reads only targets whose fingerprint is in its `supportedFingerprints`.
+
+Changing a definition therefore means deploying the new definition, creating a target with the new fingerprint, filling it from the source, and moving the read pointer. Meanwhile `markChanged` records intents for every registered write target, so the old and new targets both stay current. Workers with different sets of definitions can run at the same time; each takes only its own targets. The procedure is in [Index administration](/en/advanced-features/opensearch/index-administration).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Transactional indexing" icon="database" href="/en/advanced-features/opensearch/transactional-indexing">
+    Marking changes together with domain writes
+  </Card>
+  <Card title="Indexing worker" icon="gears" href="/en/advanced-features/opensearch/worker">
+    How projections run and how outcomes are classified
+  </Card>
+</CardGroup>

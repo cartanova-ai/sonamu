@@ -1,0 +1,628 @@
+---
+title: "Indexing Worker"
+description: "Running the worker, its limits, the drain report, events and status, what it does not do, and how a drain classifies, retries, and fences"
+---
+
+The worker claims marked documents, runs their projections, and sends the results to OpenSearch in bulk. It can run inside the Sonamu server, in a separate process, or from a scheduled workflow, and several workers can run at once: leases keep two workers from handling the same document at the same time.
+
+## Running a worker
+
+### Creating an indexer
+
+Every way of running the worker starts from `createIndexer` in `@sonamu-kit/opensearch/postgres`.
+
+```typescript title="search/drain.workflow.ts"
+// Create one indexer per module and reuse it, so overlapping runs return "busy" instead of doubling the load.
+const MAX_DRAINS_PER_RUN = 20;
+
+const drainClient = createSearchClient({
+  createClient: () => new Client({ node: process.env.OPENSEARCH_URL ?? "http://localhost:9200" }),
+  ownsClient: true,
+  requestTimeoutMs: RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+});
+const drainIndexer = createIndexer({
+  client: drainClient,
+  synchronization: searchSynchronization,
+  definitions: [chatMessagesSearch],
+  limits: RECOMMENDED_WORKER_LIMITS,
+});
+```
+
+| Option | Meaning |
+| --- | --- |
+| `client` | A client created by `createSearchClient`. Objects created any other way are rejected |
+| `synchronization` | The synchronization handle. The worker takes the namespace, the schema, and `getPrimaryDatabase` from it |
+| `definitions` | The definitions this worker processes. Two definitions with the same `(key, fingerprint)` are rejected |
+| `limits` | Worker limits. Every field is required; see "Limits" below |
+| `workerId` | Identifier (uuid) of the heartbeat row. Generated when omitted |
+| `onEvent` | Event listener. See "Report, events, and status" below |
+
+`getPrimaryDatabase` must return a Knex instance, not a transaction. The worker opens read-only snapshots from that pool, and Knex ignores the isolation level and the read-only option on a nested transaction. If it returns a transaction, the drain fails with `SearchConfigurationError`.
+
+`createIndexer` opens no connection and starts no timer; work begins when you call `drainOnce()` or `start()`. One indexer runs one drain at a time. While its `start()` loop is draining or another `drainOnce()` has not finished, an overlapping `drainOnce()` returns at once, without I/O, a report whose `outcome` is `busy`. The limits (concurrent bulks, `maxInFlightBytes`, claim size) apply per drain, so several indexers in one process multiply them.
+
+### start and stop
+
+`start({ pollIntervalMs, signal })` starts the resident loop and returns a handle at once. An indexer has one loop; calling `start` again returns the same handle.
+
+- After a full claim the loop goes straight to the next drain. Otherwise it waits for the longer of `pollIntervalMs` and the remaining cooldown.
+- After a failed drain the state becomes `degraded` and the loop waits a backoff before retrying. Configuration errors, a missing schema, and a store binding mismatch do not heal until an operator fixes them, so for those it waits `retryMaxDelayMs`.
+
+`stop({ deadlineMs })` does the following, in order:
+
+1. Sets the state to `stopping`. From then on `drainOnce()` is rejected with `SearchStopping` without any I/O.
+2. Waits up to the deadline for in-flight drains to finish.
+3. At the deadline, aborts them. Documents not yet sent are released without budget; documents sent with an unknown outcome are left unrecorded until their lease expires. A drain still running `3 × statementTimeoutMs` after the abort is not waited for.
+4. Deletes the heartbeat row and closes the client wrapper. If `ownsClient` is `true`, the SDK client is closed too.
+
+It returns `{ drained, abortedInFlight, abandonedDrains, clientClosed, elapsedMs }`. `abandonedDrains` counts the drains it stopped waiting for; their documents' leases expire or are released. `stop()` therefore returns within the deadline plus `3 × statementTimeoutMs`. A second `stop` returns the same promise, and aborting the `signal` passed to `start` equals `stop({ deadlineMs: 0 })`.
+
+Documents not finished by the deadline are not lost: another worker processes them after their lease ends. If the orchestrator kills the process before the deadline, though, the cleanup steps never run. The recommended 30-second deadline equals Kubernetes' default termination grace period, so set `terminationGracePeriodSeconds` longer than that.
+
+### In a Sonamu server
+
+`createSearchLifecycle` from `@sonamu-kit/opensearch/sonamu` starts and stops the worker and closes clients along the Sonamu server's lifecycle.
+
+```typescript title="search/worker.ts"
+// Keep the name stable: HMR replaces the lifecycle of the same name, so only one loop runs.
+const LIFECYCLE_NAME = "chat-search";
+
+export const searchLifecycle = createSearchLifecycle({
+  name: LIFECYCLE_NAME,
+  synchronization: searchSynchronization,
+  worker: {
+    enabled: process.env.SEARCH_WORKER === "1",
+    // Worker-only client: the lifecycle creates and closes it.
+    client: {
+      createClient: () =>
+        new Client({ node: process.env.OPENSEARCH_URL ?? "http://localhost:9200" }),
+      ownsClient: true,
+      requestTimeoutMs: RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+    },
+    definitions: [chatMessagesSearch],
+    limits: RECOMMENDED_WORKER_LIMITS,
+    pollIntervalMs: RECOMMENDED_WORKER_POLL_INTERVAL_MS,
+  },
+  // onShutdown does not close these; the application closes them at process exit (shutdownSearch).
+  clients: [searchClient],
+  stopDeadlineMs: RECOMMENDED_WORKER_STOP_DEADLINE_MS,
+});
+
+export async function shutdownSearch(): Promise<void> {
+  await searchLifecycle.onShutdown();
+  await searchClient.close();
+}
+```
+
+Call `onStart` and `onShutdown` from `server.lifecycle` in `sonamu.config.ts`.
+
+```typescript title="sonamu.config.ts"
+  server: {
+    // Authenticate and authorize here; chat-message.search.ts re-checks authorization of each search hit.
+    apiConfig: {
+      contextProvider: (defaultContext) => defaultContext,
+      guardHandler: () => {},
+    },
+    lifecycle: {
+      onStart: () => searchLifecycle.onStart(),
+      onShutdown: () => searchLifecycle.onShutdown(),
+      onError: async (error, request, reply) => {
+        if (!(error instanceof SearchError)) throw error;
+        const locale = request.headers["accept-language"]?.split(",")[0] ?? "en";
+        const response = toSearchErrorResponse(error, locale);
+        await reply.status(response.status).send(response.body);
+      },
+    },
+  },
+```
+
+- Sonamu calls listen, starts the workflow workers, then calls `onStart`. On shutdown it calls `onShutdown`, cleans up workflows, then calls `Sonamu.destroy`. Paths that call `Sonamu.destroy()` themselves, such as CLIs and tests, must call `onShutdown()` first.
+- `onStart` applies Sonamu's default locale, awaits `synchronization.initialize()`, and starts the worker if `worker.enabled` is `true`. It runs after listen and does not guarantee readiness. To cover writes that arrive in between, also use the `onReady` hook or `expectedStoreId` from [Setup](/en/advanced-features/opensearch/setup). Until search is ready, search APIs get `SearchNotReady` or `SearchUnavailable`; other APIs are unaffected.
+- Whether a process runs the worker is set with `worker.enabled`, never inferred. With `false`, `onStart` only initializes the synchronization; the example runs the worker only where `SEARCH_WORKER=1`. Keep it `false` in Sonamu test mode.
+- The lifecycle creates the worker's own client from the `worker.client` options and closes it when that worker stops. To share one SDK client with the query handles, give `worker.client` a `createClient` that returns the shared client and `ownsClient: false`. The query handles' `SearchClient` wrapper itself cannot be handed to the worker: when the worker stops it closes the wrapper, and later searches get `SearchStopping`.
+- The lifecycle closes a wrapper passed in `clients` when a hot-reload replacement does not pass it again. `onShutdown` stops the running worker (closing the worker's client) and closes only retired generations' wrappers. It leaves the latest generation's wrappers open, because that generation's query handles still hold them and use them again if `onStart` runs after `onShutdown` in the same process (tests, a development server restart). At process exit the application closes them after `onShutdown`, as `shutdownSearch` does.
+- A lifecycle can be stopped and started again in one process.
+- `getSearchLifecycleStatus(name)` reads a lifecycle's status by name without creating a slot, a connection, or a timer, so a health check does not have to import the lifecycle module. The example below builds a health-check value from it, including the targets whose fence was lost; its `state` is `absent` when this process never created a lifecycle of that name.
+
+```typescript title="search/worker.ts"
+export interface SearchHealth {
+  readonly ready: boolean;
+  readonly state: SearchLifecycleStatus["state"] | "absent";
+  /** Not empty means an operator must act. */
+  readonly fenceLostTargets: readonly string[];
+}
+
+export function searchHealth(): SearchHealth {
+  const status = getSearchLifecycleStatus(LIFECYCLE_NAME);
+  if (status === undefined) return { ready: false, state: "absent", fenceLostTargets: [] };
+  return {
+    ready: status.state === "running",
+    state: status.state,
+    fenceLostTargets: status.worker?.fenceLostTargets ?? [],
+  };
+}
+```
+
+#### Hot reload
+
+Lifecycles with the same `name` share one process-wide slot. When the development server re-evaluates the module that creates the lifecycle, the new lifecycle stops the previous worker within `stopDeadlineMs` (deleting its heartbeat row, releasing its leases, closing its client) and then starts its own. The slot never holds more than one worker, and if the definitions changed, the new worker uses the new ones. `sonamu.config.ts` is not re-evaluated, so Sonamu keeps calling the first generation's `onStart` and `onShutdown`; both act on the whole slot, so that is correct. Nothing depends on `import.meta.hot.dispose`.
+
+#### When initialization fails
+
+If `initialize()` fails with a retryable error, such as a failed database connection, `onStart` does not reject. It sets the state to `degraded`, retries with a delay growing from 1 to 30 seconds (change it with `initializeRetry`), and starts the worker anyway. Meanwhile `markChanged` fails with `store-identity-uninitialized`, so domain transactions do not commit. Once initialization succeeds, the state becomes `running`.
+
+For errors that retrying cannot fix, such as configuration errors, a missing schema, or a store mismatch, `onStart` rejects with that error and the state is `failed`. The lifecycle's `status()` and `getSearchLifecycleStatus(name)` show the state, the generation number, whether initialization finished, the worker status, the report of the last stopped worker, and the last error.
+
+### In a separate process
+
+The worker can run in a process other than the API server. That process does not start Sonamu: it creates the client, the synchronization handle, and the indexer itself, calls `start()`, and on a termination signal awaits `stop()` before exiting. It connects to the database with the worker role, and its namespace must match the API processes. Without Sonamu, its definitions must be `defineSearch` definitions that read only through the snapshot (`context.trx`); the model methods of `defineSonamuSearch` need Sonamu's database configuration.
+
+```typescript title="search/standalone-worker.ts"
+/** Use defineSearch definitions here (no Sonamu), and set the orchestrator's termination grace longer than the stop deadline. */
+export async function runStandaloneWorker(
+  log: SearchLogger,
+  metrics: SearchMetrics,
+): Promise<void> {
+  const knex = knexFactory({
+    client: "pg",
+    connection: process.env.SEARCH_WORKER_DATABASE_URL,
+    pool: { min: 0, max: 4 },
+  });
+  const synchronization = createPostgresSynchronization({
+    getPrimaryDatabase: () => knex,
+    // Must match the API process namespace (client.ts).
+    namespace: process.env.SEARCH_NAMESPACE ?? "chat-production",
+  });
+  const indexer = createIndexer({
+    client: createSearchClient({
+      createClient: () =>
+        new Client({ node: process.env.OPENSEARCH_URL ?? "http://localhost:9200" }),
+      ownsClient: true,
+      requestTimeoutMs: RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+    }),
+    synchronization,
+    definitions: [chatMessagesSearch],
+    limits: RECOMMENDED_WORKER_LIMITS,
+    onEvent: createWorkerEventListener(log, metrics),
+  });
+
+  // Fail before starting the loop if the primary or the search schema is unreachable.
+  await synchronization.initialize();
+  const handle = indexer.start({ pollIntervalMs: RECOMMENDED_WORKER_POLL_INTERVAL_MS });
+  const stateTimer = setInterval(() => reportWorkerState(metrics, handle.status().state), 10_000);
+
+  await new Promise<void>((resolve) => {
+    process.once("SIGTERM", () => resolve());
+    process.once("SIGINT", () => resolve());
+  });
+
+  clearInterval(stateTimer);
+  // stop also closes the client wrapper; do not close it again.
+  const report = await handle.stop({ deadlineMs: RECOMMENDED_WORKER_STOP_DEADLINE_MS });
+  log.info("search worker stopped", {
+    drained: String(report.drained),
+    abortedInFlight: report.abortedInFlight,
+    abandonedDrains: report.abandonedDrains,
+    elapsedMs: report.elapsedMs,
+  });
+  await knex.destroy();
+}
+```
+
+- `synchronization.initialize()` before `start()` checks that the primary and the search schema are reachable; if it fails, the process ends without starting the loop.
+- On SIGTERM or SIGINT the process stops the worker with `RECOMMENDED_WORKER_STOP_DEADLINE_MS` as described under "start and stop", so set the orchestrator's termination grace period longer than that. `stop()` also closes the client wrapper.
+
+The entry point (`node standalone-worker.main.js`) passes in the application's logger and metrics.
+
+```typescript title="search/standalone-worker.main.ts"
+import { runStandaloneWorker } from "./standalone-worker";
+
+const fields = (message: string, values: Record<string, string | number>) =>
+  JSON.stringify({ message, ...values });
+
+await runStandaloneWorker(
+  {
+    info: (message, values) => console.info(fields(message, values)),
+    warn: (message, values) => console.warn(fields(message, values)),
+    error: (message, values) => console.error(fields(message, values)),
+  },
+  { increment: () => {}, gauge: () => {} },
+);
+```
+
+### From a scheduled workflow
+
+Instead of a resident loop, a scheduled workflow can drain the backlog. It uses `drainIndexer` and `MAX_DRAINS_PER_RUN` from the indexer example above.
+
+```typescript title="search/drain.workflow.ts"
+export const searchDrainWorkflow = workflow(
+  { name: "search_drain", schedules: [{ expression: "* * * * *" }] },
+  async ({ step }) => {
+    await step
+      .define({ name: "drain" }, async () => {
+        let indexed = 0;
+        for (let round = 0; round < MAX_DRAINS_PER_RUN; round += 1) {
+          const report = await drainIndexer.drainOnce();
+          indexed += report.indexed;
+          if (report.outcome === "busy" || report.claimed === 0 || report.cooldownRemainingMs > 0) {
+            break;
+          }
+        }
+        return { indexed };
+      })
+      .run();
+  },
+);
+```
+
+- The module creates one indexer and every run reuses it. The factories do not connect, so creating them at module level is fine, and the workflow does not depend on handles created in `onStart`, which may run later.
+- If the previous run is still draining, the next run's `drainOnce()` gets `busy` and the run ends. Overlapping runs therefore never double the claims, snapshots, or bulks, and the limits hold for the whole process.
+- A run drains at most `MAX_DRAINS_PER_RUN` times and ends early when nothing was claimed or a cooldown is active. In this form the heartbeat row exists only during `drainOnce()`.
+- Tasks may repeat a run. Leases prevent concurrent processing of the same document, and external versions keep an old revision from overwriting a newer one.
+- It can run alongside a resident worker.
+
+## Limits
+
+Every field is required. Spread `RECOMMENDED_WORKER_LIMITS` and override only what you need; an object with a missing field is rejected with `invalid-worker-limits`. `createIndexer` checks the relationships in the last column and throws `SearchConfigurationError` with the `details.reason` shown.
+
+| Field | Unit | Recommended | What it bounds | Must satisfy (`details.reason`) |
+| --- | --- | --- | --- | --- |
+| `maxDocumentsPerClaim` | intents | 500 | Intents claimed per drain | See `maxIsolationCallsPerBatch` |
+| `maxBulkBytes` | bytes | 5 MiB | Serialized NDJSON bytes of one bulk request. A document whose envelope alone exceeds it is quarantined | See `maxInFlightBytes` |
+| `maxConcurrentBulkRequests` | requests | 2 | Bulk requests in flight at once | |
+| `maxInFlightBytes` | bytes | 16 MiB | Serialized document bytes the worker holds at once: requests being sent or waiting their turn, plus items being packed. Also sets how many snapshots (chunks) one claim is split into | `≥ maxBulkBytes` (`in-flight-below-bulk`) |
+| `projectionTimeoutMs` | ms | 30,000 | One projection call and one document validation. Also the snapshot's statement, lock, and idle-in-transaction limits | `< leaseDurationMs` (`timeout-exceeds-lease`) |
+| `requestTimeoutMs` | ms | 30,000 | One bulk request. If the client's `requestTimeoutMs` is shorter, that applies | `< leaseDurationMs` (`timeout-exceeds-lease`) |
+| `statementTimeoutMs` | ms | 5,000 | One worker SQL statement (claim, heartbeat, settlement) | |
+| `leaseDurationMs` | ms | 120,000 | Lease length. Documents held by a dead worker are claimed by others after this time | `> requestTimeoutMs + heartbeatIntervalMs` (`lease-too-short-for-drain`) |
+| `heartbeatIntervalMs` | ms | 20,000 | Interval of lease extension and the worker heartbeat | `× 2 ≤ leaseDurationMs` (`heartbeat-exceeds-half-lease`) |
+| `maxRetryAttempts` | attempts | 10 | Counted failures of one revision before it is quarantined | |
+| `maxRetryAgeMs` | ms | 3,600,000 (1 h) | Processing time plus scheduled delays of one revision before it is quarantined | `> retryBaseDelayMs` (`retry-age-below-base-delay`) |
+| `maxIsolationCallsPerBatch` | calls | 32 | Projection calls per batch, the first one included. Each group may also split and resend a rejected bulk this value − 1 times | `≥ 1 + 2 × ceil(log2(maxDocumentsPerClaim))` (`isolation-budget-too-small`) |
+| `retryBaseDelayMs` | ms | 1,000 | Lower end of the backoff for document retries, cooldowns, and the loop's wait after a failed drain | `≤ retryMaxDelayMs` (`retry-delay-inverted`) |
+| `retryMaxDelayMs` | ms | 300,000 (5 min) | Upper end of the same backoff | |
+| `fenceRenewIntervalMs` | ms | 30,000 | Renewal interval of the target fences. A target not verified or sent to for longer than this is read again before the next send | At least 1,000; `≥ requestTimeoutMs` (`fence-interval-below-request-timeout`) |
+
+Why each relationship holds:
+
+- `heartbeat-exceeds-half-lease`: the lease must survive one missed heartbeat.
+- `timeout-exceeds-lease`: a stage that uses its whole time limit must still end within one lease, so no other worker takes the same documents while heartbeats are stalled.
+- `lease-too-short-for-drain`: the worker sends a bulk only when the request can finish before the documents' lease ends, so the lease must leave room for one request between heartbeats.
+- `retry-age-below-base-delay`: otherwise the delay of the first retry alone exhausts the budget.
+- `isolation-budget-too-small`: with fewer calls, one bad document in a full claim may never be found, and its neighbors in the same half can be released forever.
+- `in-flight-below-bulk`: with less, the worker cannot hold one large document.
+- `fence-interval-below-request-timeout`: one fence advance, a single remote write, must fit within the renewal interval.
+
+If you override the lease or the request time limit, rebuild the administrative handle's `workerBounds` from the same limits ([Operations](/en/advanced-features/opensearch/operations)).
+
+### Memory and time bounds
+
+While one claim is processed, JavaScript heap growth stays roughly within this bound, where C is `maxConcurrentBulkRequests`:
+
+> `2 × maxInFlightBytes + (3 + C) × maxBulkBytes + 8 MiB`
+
+The first term covers the held bytes and the objects the projector returned for a chunk; the second covers joining request bodies and the working copies of one document. On the recommended values it is about 65 MiB. An integration test compares heap growth on a claim of large documents with this bound. Buffer memory lives outside the heap and is not included.
+
+One drain ends within this time, where P is `projectionTimeoutMs`, R is `requestTimeoutMs`, and S is `statementTimeoutMs`:
+
+> `leaseDurationMs + max(P + S, R + 3S) + 16S`
+
+Once a lease length has passed since the claim started, the worker starts no new projection, document validation, bulk send, or conflict check, and releases the remaining documents. The rest of the formula covers the one piece of work already started at that point and the settlement statements. On the recommended values it is 4 min 5 s (245 s). One very large document can exceed it by its own processing time.
+
+## Report, events, and status
+
+### Drain report
+
+The `DrainReport` that `drainOnce()` returns holds only numbers and stable codes and is not localized.
+
+| Field | Meaning |
+| --- | --- |
+| `outcome` | How the drain ended: `processed` (at least one document processed), `empty` (targets existed but nothing was claimed), `no-targets` (nothing to claim from), `cooldown`, `cancelled` (stopped before the claim), `busy` (another drain of the same indexer was running, so nothing was done and every count is 0) |
+| `claimed` | Documents claimed this time. The sum of the eight counts below |
+| `indexed` | Confirmed successes |
+| `superseded` | Verified duplicates and attempts already overtaken |
+| `retried` | Retries scheduled against the budget |
+| `quarantined` | Quarantined documents |
+| `released` | Released without budget. Includes rows whose lease was released at once because a transaction re-marking the same document was open at acknowledgement |
+| `leaseLost` | Rows whose lease was lost before writing (another worker reclaimed them or the intent was deleted) |
+| `skippedLocked` | Rows not written because another package transaction (an administrative operation, for example) held their runtime state. They are processed again after the lease ends |
+| `abandoned` | Rows with an unknown outcome after cancellation. Nothing is written; the lease is left to expire |
+| `unsupportedTargets` | IDs of targets left alone because no definition matched |
+| `cooldownRemainingMs` | If nonzero, nothing was claimed this time because of a cooldown |
+| `elapsedMs` | Time taken |
+
+### Events
+
+`onEvent` receives these events. Every drain attempt produces exactly one `drain` or `error` event. Events carry codes and identifiers only, never document content, and exceptions thrown by the listener are ignored. The last column says when a person has to act; alert thresholds are in [Operations](/en/advanced-features/opensearch/operations).
+
+| `type` | Content | Needs a person |
+| --- | --- | --- |
+| `drain` | A drain ended. `outcome`, `report` | No. A run of `cooldown` outcomes means an infrastructure outage |
+| `error` | A drain was refused or failed. `code`, and `reason` when the error has a stable `details.reason` | `SEARCH_STORE_MISMATCH`: yes, at once ([Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks)). Configuration errors and a missing schema: yes, they do not heal on their own. Other codes: when the worker stays `degraded` |
+| `state` | A state change of a worker run by `start()`. `previous`, `state`, `reason` (`started`, `drain-failed`, `infrastructure-cooldown`, `recovered`, `stop-requested`, `stopped`) | When `degraded` lasts more than a few minutes |
+| `target-paused` | A target was paused. `targetId`, `reason` | Yes. The target stays paused until an administrator resumes it |
+| `quarantined` | A document was quarantined. `targetId`, `documentId`, `revision`, `errorClass` | Yes. Fix the cause, then resend the document ([Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks)) |
+| `hash-mismatch` | The hash differs for the same revision, and that revision is quarantined. `targetId`, `documentId`, `revision` | Yes. The projection is not deterministic, or it changed without a `projectionVersion` bump |
+| `hash-version-mismatch` | The same revision is indexed under another hash version. `targetId`, `documentId`, `revision` | Yes, outside an upgrade: workers of different package versions are running, and the document stays pending until it is marked again or the target is rebuilt |
+| `lease-reclaimed` | Rows whose lease was lost. `count` | If frequent: workers die or stall longer than their lease |
+| `target-fence-lost` | This database lost a target's fence. `targetId`, `class` (`behind`, `regressed`, `foreign`), `localEpoch`, `remoteEpoch`. Once per process, target, and loss | Yes, at once. See "Target fence" below and [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks) |
+
+The listener below turns events into logs and counters. Counter labels use only fields with a bounded set of values, such as `outcome`, `code`, and `reason`; `targetId` and `documentId` go to logs only. When the store binding does not match, the `error` event's `code` is `SEARCH_STORE_MISMATCH` and its `reason` says why.
+
+```typescript title="search/worker-events.ts"
+export function createWorkerEventListener(
+  log: SearchLogger,
+  metrics: SearchMetrics,
+): (event: IndexerEvent) => void {
+  return (event) => {
+    switch (event.type) {
+      case "drain": {
+        const { report } = event;
+        metrics.increment("search_worker_drains", 1, { outcome: event.outcome });
+        metrics.increment("search_worker_indexed", report.indexed);
+        metrics.increment("search_worker_retried", report.retried);
+        metrics.increment("search_worker_quarantined", report.quarantined);
+        if (event.outcome === "cooldown") {
+          log.warn("search worker cooling down", { cooldownMs: report.cooldownRemainingMs });
+        }
+        return;
+      }
+      case "state":
+        reportWorkerState(metrics, event.state);
+        if (event.state === "degraded") {
+          log.warn("search worker degraded", { previous: event.previous, reason: event.reason });
+        } else {
+          log.info("search worker state changed", {
+            previous: event.previous,
+            state: event.state,
+            reason: event.reason,
+          });
+        }
+        return;
+      case "quarantined":
+        // Fix the cause, then release the document with the admin tooling.
+        metrics.increment("search_worker_quarantined_documents", 1, {
+          errorClass: event.errorClass,
+        });
+        log.error("search document quarantined", {
+          targetId: event.targetId,
+          documentId: event.documentId,
+          revision: event.revision,
+          errorClass: event.errorClass,
+        });
+        return;
+      case "target-paused":
+        metrics.increment("search_worker_target_paused", 1, { reason: event.reason });
+        log.error("search target paused", { targetId: event.targetId, reason: event.reason });
+        return;
+      case "hash-mismatch":
+        // The projection is not deterministic, or changed without a projectionVersion bump.
+        metrics.increment("search_worker_hash_mismatch", 1);
+        log.error("search projection hash mismatch", {
+          targetId: event.targetId,
+          documentId: event.documentId,
+          revision: event.revision,
+        });
+        return;
+      case "hash-version-mismatch":
+        // Workers of different package versions are running; this does not resolve itself until versions match.
+        metrics.increment("search_worker_hash_version_mismatch", 1);
+        log.warn("search hash version mismatch", {
+          targetId: event.targetId,
+          documentId: event.documentId,
+          revision: event.revision,
+        });
+        return;
+      case "lease-reclaimed":
+        metrics.increment("search_worker_lease_reclaimed", event.count);
+        log.warn("search leases reclaimed", { count: event.count });
+        return;
+      case "target-fence-lost":
+        // Another database writes to this index; stop it, then run reclaimLostFences or adoptCopiedDatabase (administration.ts).
+        metrics.increment("search_worker_target_fence_lost", 1, { class: event.class });
+        log.error("search target fence lost", {
+          targetId: event.targetId,
+          class: event.class,
+          localEpoch: event.localEpoch,
+          remoteEpoch: event.remoteEpoch,
+        });
+        return;
+      case "error":
+        if (event.code === "SEARCH_STORE_MISMATCH") {
+          // Run adoptCopiedStore on a copy, or confirmStoreOwnership on the same store (administration.ts).
+          metrics.increment("search_worker_store_mismatch", 1, {
+            reason: event.reason ?? "unknown",
+          });
+          log.error("search store binding mismatch", { reason: event.reason ?? "unknown" });
+          return;
+        }
+        metrics.increment("search_worker_drain_errors", 1, { code: event.code });
+        log.error("search drain failed", { code: event.code });
+        return;
+      default:
+        event satisfies never;
+    }
+  };
+}
+```
+
+### Status
+
+A worker handle's `status()` shows the state (`idle`, `running`, `degraded`, `stopping`, `stopped`), the last report, the last error (`code`, `key`, `params`, and a `message` rendered in the package locale when `status()` is read), the number of consecutive failures, paused targets, targets whose fence was lost (`fenceLostTargets`), and targets it does not handle (`unsupportedTargets`). A non-empty `unsupportedTargets` means the deployed workers' definitions do not match the registered targets.
+
+The state becomes `degraded` after a failed drain or when a client or database cooldown starts. It stays `degraded` after the cooldown has passed until a request in that scope succeeds once. A drain that claimed nothing is no evidence of recovery, so an idle worker stays `degraded` until its next successful bulk or snapshot. Every change arrives as a `state` event, so there is no need to poll `status()`; the listener above updates these gauges on each one.
+
+```typescript title="search/worker-events.ts"
+export function reportWorkerState(metrics: SearchMetrics, state: WorkerState): void {
+  metrics.gauge("search_worker_degraded", state === "degraded" ? 1 : 0);
+  metrics.gauge("search_worker_running", state === "running" || state === "degraded" ? 1 : 0);
+}
+```
+
+### Heartbeat rows
+
+Each worker keeps one row in `worker_heartbeats` and refreshes it every `heartbeatIntervalMs`. The administrative handle's `inspect` shows these rows.
+
+- The row of a worker run by `start()` is deleted by `stop()`.
+- The row of a caller that only calls `drainOnce()` without `start()` (a scheduled workflow, an administrative CLI) exists only for that call.
+- The row of a killed worker drops out of `inspect` once it has not been refreshed for 24 hours, and is deleted the next time a live worker writes its heartbeat.
+- A worker that drains less often than every 24 hours disappears from `inspect` between drains and reappears with its next heartbeat.
+
+## What the worker does not do
+
+- **It does not mark documents**, so it needs no store identity.
+- **It does not create indexes.** Bulk requests go only to the write alias, with `require_alias=true`. If the alias is missing, OpenSearch rejects the request with 404 instead of creating an index, and the worker pauses the target. The worker needs no permission to create indexes.
+- **It does not resume paused targets or resend quarantined documents.** Both wait for an administrator ([Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks)).
+- **It does not spend retry budget on outages.** Problems of the cluster, the network, credentials, or a whole target are released without budget, and time spent waiting out an outage is not counted (see "Retry budget and cooldown").
+- **It does not take a 409 as success.** It verifies the conflict against the index and the ledger first (see "Version conflicts (409)").
+- **It does not store cooldowns.** They live only in the process; an indexer's `start()` loop and a direct `drainOnce()` see the same cooldown.
+- **It does not throw when it loses a target fence**, and the fence does not block writes. It stops sending to that target and keeps indexing the others (see "Target fence").
+- **It does not decide anything from heartbeat rows.** No statement blocks or decides on them: retirement looks at the leases on intents, and cutover at the backlog count.
+- **It does not clean up.** Ledger rows and the tombstones of deleted documents are never deleted ([known limits](/en/advanced-features/opensearch/operations)).
+
+## What one drain does
+
+`drainOnce({ signal })` works through these steps and returns a report.
+
+1. **Gate**: if the worker is stopping, it fails with `SearchStopping`. If another drain of the same indexer is running, it returns a `busy` report; during a client or database cooldown it reads nothing and returns a `cooldown` report.
+2. **Targets and store binding**: it reads the active targets with writes enabled and, in the same statement, checks that this database is the one the store was recorded in. If the binding does not match, it writes and sends nothing and ends with `SearchStoreMismatch` ([Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks)). It does not claim for targets whose fence was lost, skips targets in cooldown, and leaves alone targets with no matching `(key, fingerprint, hash version)` definition, reporting them in `unsupportedTargets`. A drain that ends here for lack of work still renews fences that are due.
+3. **Claim**: it takes up to `maxDocumentsPerClaim` intents with a lease token. Every later write is checked against this token, so a worker that lost its lease cannot change someone else's rows. Intents are ordered by the later of their arrival and their last claim, so documents re-marked over and over on one target cannot starve another target's documents.
+4. **Lease extension**: it extends the lease every `heartbeatIntervalMs`.
+5. **Per-target processing**: for each target it reads the ledger revisions in a primary snapshot and runs the projection, splitting a large claim into several snapshots (chunks) to fit `maxInFlightBytes`. It checks the fence, packs the results into NDJSON requests of at most `maxBulkBytes`, checks before each request that the target is still writable, and sends to the write alias with external versions and a fence action in front. It classifies the response per document and records each as done, retry, release, or quarantine.
+
+Each worker SQL statement must finish within `statementTimeoutMs`. Past that, the server cancels it and the worker treats it as an infrastructure failure (`SearchTimeout`) without using retry budget, so a worker does not queue behind a migration's table lock.
+
+### When acknowledgement overlaps a new mark
+
+When the worker records an outcome (a success acknowledgement, a counted failure, a release), it neither waits on nor skips an intent row that a domain transaction holds. If a transaction re-marking the same document is open at the moment of acknowledgement, the worker releases that revision's lease at once and counts it under `released`. The next claim picks up the new revision as soon as that transaction commits, so editing a document right after it is indexed adds no wait for a lease to expire. Lease extension does not skip such rows either. `skippedLocked` counts only rows whose runtime state another package transaction, such as an administrative operation, holds.
+
+### Claim cost
+
+A claim reads intents without runtime state in index order and claimable intents with runtime state separately, then merges them; it neither scans nor sorts the whole backlog. The integration tests check, at 200,000 intents, that the plan has no sequential scan of `deliveries` and that its sorts are bounded by the candidate count. They do not measure time. Measured timings, and how quarantined intents slow every claim, are under known limits in [Operations](/en/advanced-features/opensearch/operations).
+
+### From marking to indexing
+
+A commit is usually indexed within the poll interval plus about a second. For a healthy worker with no backlog the ceiling is `pollIntervalMs + 2 × (projectionTimeoutMs + requestTimeoutMs)`: one drain already running at commit, one pause, and the drain that picks the mark up. On the recommended values this ceiling is longer than the lease, so treat it as a ceiling, not an expectation.
+
+## Outcomes
+
+Each document ends in one of the outcomes below. What decides it is **what failed**, not the HTTP status. Problems of the cluster, the network, credentials, or a whole target are not the document's fault and use no budget; only a problem specific to this revision of this document uses budget or leads to quarantine. A response the worker cannot interpret counts as neither success nor the document's fault, and the document is released without budget.
+
+| Outcome | When | Report field |
+| --- | --- | --- |
+| Success | Item 200, 201 | `indexed` |
+| Verified duplicate | After a 409, verification shows the same revision with the same content already indexed, or a newer revision indexed | `superseded` |
+| Counted retry | Item 5xx (except 503), a projection timeout with evidence that the database responds, a schema validation timeout | `retried` |
+| Uncounted release | Request-level failures (connection, timeout, 429, 5xx), item 429 and 503, cluster state errors, 401 and 403, configuration errors, database outages, a projection timeout without evidence, cancellation, a target that became unwritable, an exhausted isolation budget, a 409 that cannot be verified, a hash version mismatch, a newer revision waiting | `released` |
+| Quarantine | Item 400 mapping rejection, item 413, other item 4xx, a projection that throws, fails in SQL, or tries to write, a document that fails validation, a hash mismatch at the same revision, the document found in a bulk rejected as a whole, a stored document ID longer than 512 bytes (`invalid_id`, checked before sending), an exhausted retry budget | `quarantined` |
+| Target pause | Missing write alias (404 `index_not_found_exception`), index and ledger disagree | Documents are `released` |
+
+- **Quarantine** stops only that revision of that document. A quarantined intent is not claimed again; marking the same document again delivers the new revision with a fresh budget. Resending after fixing the cause is in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks).
+- **Target pause** stops the whole target until an administrator checks the cause and resumes it ([Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks)). A retiring or retired target never goes back to paused.
+- **A bulk rejected as a whole** (request 400, 413) wrote nothing, so the worker splits the request in halves and resends them to find the document that causes it. When a single-document request is rejected, that document is quarantined. Each group may split and resend up to `maxIsolationCallsPerBatch - 1` times; documents not settled within that are released without budget, and the next drain continues the search.
+- `invalid_id` arises only for an ID that reached the ledger without `markChanged`, such as a manual write; `markChanged` refuses such IDs up front.
+
+### Version conflicts (409)
+
+OpenSearch rejects with 409 when the same revision is sent twice or a newer revision arrived first. The worker does not take a 409 as success: it reads the document's `sonamu_meta` from the physical index, reads the ledger again, and compares. With M the revision it sent, V the indexed revision, and L the current ledger revision:
+
+- `V = M` with the same hash version, hash, and deleted flag is a verified duplicate.
+- `M < V ≤ L` means a newer revision is already indexed, so the delivery is recorded as done.
+- `V = M` with a different hash means the projection produced different content for the same revision. That revision is quarantined and a `hash-mismatch` event is emitted.
+- `V = M` with a different hash version means a worker from a package version with different canonicalization rules indexed that revision first. The document is released without budget instead of quarantined, and a `hash-version-mismatch` event is emitted. It does not settle on its own and stays pending until it is marked again (a higher revision) or the target is rebuilt.
+- `V > L`, `V < M`, or the document sitting in another index means the index and the ledger disagree, so the target is paused (`revision_divergence`).
+- If the reads fail or the document is missing, the worker does not decide and releases the document without budget.
+
+## Retry budget and cooldown
+
+### Retry budget
+
+The budget is counted per intent row and **per attempted revision**.
+
+- A counted failure raises `attempts` by one and adds to `retry_age_ms` the time that processing took plus the delay before the next attempt. The delay is `retryBaseDelayMs × 2^attempts`, capped at `retryMaxDelayMs`, then randomly reduced by up to half.
+- When `attempts` reaches `maxRetryAttempts` or `retry_age_ms` reaches `maxRetryAgeMs`, the revision is quarantined and its failure record gets `exhausted`.
+- A newer revision does not inherit the failure count of an older one; it starts from zero.
+- An uncounted release neither raises nor clears `attempts` and `retry_age_ms`.
+
+`retry_age_ms` is not the time since the first attempt but the sum of actual processing time and scheduled delays. A long outage therefore does not drain the budget: outage-shaped failures are releases that raise no count, and time spent waiting during an outage is not added to `retry_age_ms`. A first attempt long ago does not by itself lead to quarantine.
+
+### Cooldown
+
+Infrastructure-shaped failures start a cooldown for a scope: request-level failures for the whole client, item-level failures for that target, and projection-side outages for the database. No work in that scope is claimed during the cooldown. Its length is `retryBaseDelayMs × 2^consecutive failures` (at most `retryMaxDelayMs`) with a random reduction; 401 and 403 start at `retryMaxDelayMs`. A successful response in the same scope clears it.
+
+A release never carries this worker's cooldown over to the document. The releasing worker does not take the document again right away because of its own cooldown, but other workers can take it at once unless the release left a shared delay on the runtime row. That delay depends on the cause:
+
+| Release cause | Shared delay |
+| --- | --- |
+| Request-level failure (connection, timeout, request 5xx and 429, 401, 403, configuration) | None. This worker's client cooldown (target cooldown for 401 and 403) holds back only this worker |
+| Database-shaped projection failure (connection, timeout), drain deadline | None. This worker's database cooldown holds it back |
+| Item-level 429, 503, missing shard (these come with a target cooldown), request-splitting budget exhausted | One base backoff (`retryBaseDelayMs` × 0.5 to 1). Every worker would see the same failure, so they do not take turns hammering it |
+| Hash version mismatch | One base backoff |
+| Unverifiable 409, or a 409 left unverified for lack of time | None |
+| Cancellation, target no longer writable | None |
+| The target's fence was lost | None. No retry budget is used, and the target is no longer claimed |
+| The fence could not be verified in this drain | None. This worker's target cooldown delays its next claim |
+
+### Slow documents
+
+One projection call must finish within `projectionTimeoutMs`. When it times out, the worker splits the IDs in halves and reruns each half in a new snapshot. A document that times out on its own uses budget only if one of these holds:
+
+- Another document in the same call finished its projection.
+- Another projection completed on the same primary after this document's previous timeout.
+
+Without such evidence the worker assumes the database is slow: it releases the document without budget and starts a database cooldown (`SearchTimeout`, `details.reason` `projection-timeout-unproven`). If two or more halves split at one step all time out without evidence, splitting stops there. A document that is always slow therefore uses up its budget and is eventually quarantined while other work shows the database is healthy, and no document is quarantined when the whole database is slow. When a single slow document is all that is pending, no evidence appears and each worker tries it once per database cooldown ([known limits](/en/advanced-features/opensearch/operations)).
+
+## Target fence
+
+The store binding check recognizes a template copy or a dump restored elsewhere, but not a physical copy (base backup, snapshot restore, point-in-time recovery, replica promotion), which is byte-identical to its source, recorded origin included. The target fence covers that case. Each target's index holds one reserved document (`__sonamu_fence__`) whose OpenSearch version is the fence epoch. This database records the epoch it owns in `target_fences`, and the workers advance the epoch every `fenceRenewIntervalMs`. A store that finds the fence moved by someone else stops sending to that target.
+
+<Warning>
+The fence detects; it does not block. OpenSearch processes the actions of a bulk independently, so a bulk whose fence action is rejected still writes the documents after it. The fence bounds how long a second database keeps writing to the same index, and tells the losing side.
+</Warning>
+
+How it works:
+
+- Every bulk to a target starts with a fence action that writes the committed `(epoch, nonce)` with `external_gte`. The action is at most 245 bytes, reserved in advance from `maxBulkBytes` and `maxInFlightBytes`. If the fence item in the response is 200, nothing changed. If it is 409, the remote is ahead, and the worker reads the fence again and compares (an advance by another worker of the same database is not a loss). If it is 201, the fence document was missing, so the index was recreated, and the target is lost as `regressed`.
+- Before a process first sends to its targets, it reads the fences of the targets that need checking with one `POST /_mget`. A target this process has neither verified nor sent to for longer than `fenceRenewIntervalMs` is read again before the next send.
+- Renewal: when a target's fence is due (interval × (1 + j), with j fixed per process in [0, 0.25)), one worker among all workers of this database takes the renewal in PostgreSQL, writes epoch + 1 to OpenSearch, and commits. Renewal runs on drains with no work too, and covers targets with no work and targets this worker cannot project. That is how an idle production database still defeats a copy that starts later.
+- A target with no fence on either side (an index created while the schema was at version 1, or a new target) starts at epoch 1 before its first send. An advance whose response was lost is completed with the same nonce, so anyone may resend it safely.
+
+| Loss class | Meaning |
+| --- | --- |
+| `behind` | The remote epoch is greater than this database's record. Another database advanced the fence, or this database went back in time |
+| `regressed` | The remote epoch is smaller, or the fence document is missing. The index was recreated or restored from an older snapshot |
+| `foreign` | The same epoch with a different nonce. Another database advanced to the same epoch |
+
+When a fence is lost, the worker records the loss in `target_fences`, emits a `target-fence-lost` event once per process per target per loss, and adds the target to `status().fenceLostTargets`. It releases the target's claimed documents without retry budget or delay and stops claiming and renewing that target; other targets keep indexing. This lasts until `confirmStoreOwnership` runs on the rightful owner or `adoptCopiedStore` on the copy ([Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks)).
+
+### How much the losing side still writes
+
+| Situation | Loser | What the loser writes |
+| --- | --- | --- |
+| A process is about to send for the first time and the remote epoch is already ahead | That process's database | Nothing. The fence read comes before the first bulk |
+| The other side advances while a verified database is sending | The verified side | The bulks it had already sent before handling its first fence 409: at most `maxConcurrentBulkRequests` per worker (each at most `maxBulkBytes`), times W if W workers were sending to that target |
+| Equal-epoch twins (a physical copy started at the same epoch as its source) | The side that does not advance first. **If the copy advances first, the production database loses** | Both write until one advances: at most about 1.25 × `fenceRenewIntervalMs` plus one drain after the later one started (about 37.5 s plus one drain on the recommended values), then as in the row above |
+
+A process that is not sending learns of the loss at its next renewal or when it reads the fence again before its next send, whichever comes first.
+
+### Cost
+
+| Situation | What it adds |
+| --- | --- |
+| An empty drain while no renewal is due | Nothing. No statement and no request |
+| A drain sending to verified targets | One fence action in each bulk. No statement or request |
+| A process's first send to its targets | One `/_mget` for all targets that need checking |
+| Renewal | Per target per interval, across all workers: one OpenSearch write and two statements by the renewing worker. With 100 targets and a 30-second interval, about 3.3 per second |
+
+The integration tests count the requests and fence statements for the first three rows. The renewal cost does not depend on the number of workers, but it means the workers of a database write to OpenSearch once per target per renewal interval even with no work. While OpenSearch is down, that write is a request-level failure that enters the client cooldown, so a worker running only empty drains also goes into cooldown and the `degraded` state.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Searching" icon="magnifying-glass" href="/en/advanced-features/opensearch/searching">
+    Query handles, cursors, permission re-checks
+  </Card>
+  <Card title="Recovery runbooks" icon="life-ring" href="/en/advanced-features/opensearch/recovery-runbooks">
+    Handling paused targets and quarantined documents
+  </Card>
+</CardGroup>

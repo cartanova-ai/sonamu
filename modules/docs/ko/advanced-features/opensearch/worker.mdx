@@ -1,0 +1,628 @@
+---
+title: "색인 워커"
+description: "워커 실행, 한도, drain 보고서와 이벤트와 상태, 워커가 하지 않는 일, drain의 결과 분류와 재시도와 fence"
+---
+
+워커는 표시된 문서를 claim해 projection을 실행하고 결과를 OpenSearch에 bulk로 보냅니다. Sonamu 서버 안에서, 별도 프로세스에서, 또는 예약 workflow에서 돌릴 수 있고, 여러 워커가 동시에 돌아도 됩니다. 같은 문서를 두 워커가 동시에 다루지 않는 것은 임대가 보장합니다.
+
+## 워커 실행하기
+
+### indexer 만들기
+
+워커를 어떻게 돌리든 출발점은 `@sonamu-kit/opensearch/postgres`의 `createIndexer`입니다.
+
+```typescript title="search/drain.workflow.ts"
+// Create one indexer per module and reuse it, so overlapping runs return "busy" instead of doubling the load.
+const MAX_DRAINS_PER_RUN = 20;
+
+const drainClient = createSearchClient({
+  createClient: () => new Client({ node: process.env.OPENSEARCH_URL ?? "http://localhost:9200" }),
+  ownsClient: true,
+  requestTimeoutMs: RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+});
+const drainIndexer = createIndexer({
+  client: drainClient,
+  synchronization: searchSynchronization,
+  definitions: [chatMessagesSearch],
+  limits: RECOMMENDED_WORKER_LIMITS,
+});
+```
+
+| 옵션 | 뜻 |
+| --- | --- |
+| `client` | `createSearchClient`로 만든 클라이언트. 다른 방법으로 만든 객체는 거부합니다 |
+| `synchronization` | 동기화 핸들. 워커는 여기서 namespace, 스키마, `getPrimaryDatabase`를 가져옵니다 |
+| `definitions` | 이 워커가 처리할 정의. `(key, fingerprint)`가 같은 정의가 두 번 있으면 거부합니다 |
+| `limits` | 워커 한도. 모든 필드가 필수입니다. 아래 "한도"를 보세요 |
+| `workerId` | heartbeat 행의 식별자(uuid). 생략하면 새로 만듭니다 |
+| `onEvent` | 이벤트 리스너. 아래 "보고서, 이벤트, 상태"를 보세요 |
+
+`getPrimaryDatabase`는 트랜잭션이 아닌 Knex 인스턴스를 돌려줘야 합니다. 워커는 그 풀에서 읽기 전용 스냅샷을 여는데, Knex는 중첩 트랜잭션에서 격리 수준과 읽기 전용 옵션을 무시합니다. 트랜잭션이 돌아오면 drain이 `SearchConfigurationError`로 실패합니다.
+
+`createIndexer`는 연결이나 타이머를 만들지 않습니다. 일은 `drainOnce()`나 `start()`를 부를 때 시작합니다. indexer 하나는 한 번에 drain 하나만 돌립니다. `start()` 루프가 drain하는 중이거나 다른 `drainOnce()`가 끝나지 않았으면, 겹친 `drainOnce()`는 아무 I/O 없이 `outcome`이 `busy`인 보고서를 바로 돌려줍니다. 한도(동시 bulk 수, `maxInFlightBytes`, claim 크기)는 drain 하나에 대한 것이므로, 한 프로세스에 indexer를 여러 개 만들면 그 수만큼 곱해집니다.
+
+### start와 stop
+
+`start({ pollIntervalMs, signal })`은 상주 루프를 시작하고 핸들을 바로 돌려줍니다. indexer마다 루프는 하나이고, `start`를 다시 부르면 같은 핸들을 돌려줍니다.
+
+- 가득 찬 claim을 처리했으면 쉬지 않고 다음 drain으로 갑니다. 아니면 `pollIntervalMs`와 남은 cooldown 중 긴 쪽만큼 쉽니다.
+- drain이 실패하면 상태가 `degraded`가 되고 backoff만큼 쉰 뒤 다시 시도합니다. 설정 오류, 스키마 없음, 저장소 결속 불일치는 운영자가 고치기 전에는 낫지 않으므로 이때는 `retryMaxDelayMs`만큼 쉽니다.
+
+`stop({ deadlineMs })`은 다음 순서로 진행합니다.
+
+1. 상태를 `stopping`으로 바꿉니다. 이후 `drainOnce()`는 아무 I/O 없이 `SearchStopping`으로 거부됩니다.
+2. 진행 중인 drain이 기한 안에 끝나기를 기다립니다.
+3. 기한이 지나면 drain을 중단합니다. 아직 보내지 않은 문서는 예산 없이 반납하고, 보낸 뒤 결과를 모르는 문서는 기록하지 않고 임대가 끝나게 둡니다. 중단한 뒤 `3 × statementTimeoutMs`가 지나도 끝나지 않는 drain은 기다리지 않습니다.
+4. heartbeat 행을 지우고 클라이언트 래퍼를 닫습니다. `ownsClient`가 `true`면 SDK 클라이언트도 닫힙니다.
+
+결과는 `{ drained, abortedInFlight, abandonedDrains, clientClosed, elapsedMs }`입니다. `abandonedDrains`는 기다리지 않고 남겨 둔 drain 수이고, 그 문서들의 임대는 만료되거나 반납됩니다. 그래서 `stop()`은 기한에 `3 × statementTimeoutMs`를 더한 시간 안에 돌아옵니다. 두 번째 `stop`은 같은 promise를 돌려주고, `start`에 넘긴 `signal`이 중단되면 `stop({ deadlineMs: 0 })`과 같습니다.
+
+기한 안에 끝나지 않은 문서는 임대가 끝난 뒤 다른 워커가 처리하므로 잃지 않습니다. 다만 오케스트레이터가 기한 전에 프로세스를 죽이면 정리 단계가 실행되지 않습니다. 권장 기한 30초는 Kubernetes의 기본 종료 유예와 같으므로 `terminationGracePeriodSeconds`는 이보다 길게 두세요.
+
+### Sonamu 서버에서
+
+`@sonamu-kit/opensearch/sonamu`의 `createSearchLifecycle`은 Sonamu 서버의 수명 주기에 맞춰 워커를 시작하고 멈추며 클라이언트를 닫습니다.
+
+```typescript title="search/worker.ts"
+// Keep the name stable: HMR replaces the lifecycle of the same name, so only one loop runs.
+const LIFECYCLE_NAME = "chat-search";
+
+export const searchLifecycle = createSearchLifecycle({
+  name: LIFECYCLE_NAME,
+  synchronization: searchSynchronization,
+  worker: {
+    enabled: process.env.SEARCH_WORKER === "1",
+    // Worker-only client: the lifecycle creates and closes it.
+    client: {
+      createClient: () =>
+        new Client({ node: process.env.OPENSEARCH_URL ?? "http://localhost:9200" }),
+      ownsClient: true,
+      requestTimeoutMs: RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+    },
+    definitions: [chatMessagesSearch],
+    limits: RECOMMENDED_WORKER_LIMITS,
+    pollIntervalMs: RECOMMENDED_WORKER_POLL_INTERVAL_MS,
+  },
+  // onShutdown does not close these; the application closes them at process exit (shutdownSearch).
+  clients: [searchClient],
+  stopDeadlineMs: RECOMMENDED_WORKER_STOP_DEADLINE_MS,
+});
+
+export async function shutdownSearch(): Promise<void> {
+  await searchLifecycle.onShutdown();
+  await searchClient.close();
+}
+```
+
+`sonamu.config.ts`의 `server.lifecycle`에서 `onStart`와 `onShutdown`을 부릅니다.
+
+```typescript title="sonamu.config.ts"
+  server: {
+    // Authenticate and authorize here; chat-message.search.ts re-checks authorization of each search hit.
+    apiConfig: {
+      contextProvider: (defaultContext) => defaultContext,
+      guardHandler: () => {},
+    },
+    lifecycle: {
+      onStart: () => searchLifecycle.onStart(),
+      onShutdown: () => searchLifecycle.onShutdown(),
+      onError: async (error, request, reply) => {
+        if (!(error instanceof SearchError)) throw error;
+        const locale = request.headers["accept-language"]?.split(",")[0] ?? "en";
+        const response = toSearchErrorResponse(error, locale);
+        await reply.status(response.status).send(response.body);
+      },
+    },
+  },
+```
+
+- Sonamu는 listen, workflow 워커 시작, `onStart` 순서로 부르고, 종료할 때는 `onShutdown`, workflow 정리, `Sonamu.destroy` 순서로 부릅니다. CLI나 테스트처럼 `Sonamu.destroy()`를 직접 부르는 경로는 그 전에 `onShutdown()`을 부르세요.
+- `onStart`는 Sonamu 기본 locale을 적용하고, `synchronization.initialize()`를 기다린 뒤, `worker.enabled`가 `true`면 워커를 시작합니다. 이 함수는 listen 뒤에 불리고 준비 완료를 보장하지 않습니다. 그 사이에 들어온 쓰기까지 막으려면 [설치와 설정](/ko/advanced-features/opensearch/setup)의 `onReady` 훅이나 `expectedStoreId`를 함께 쓰세요. 준비되기 전까지 검색 API는 `SearchNotReady`나 `SearchUnavailable`을 받고, 다른 API는 영향을 받지 않습니다.
+- 워커를 돌릴지는 추론하지 않고 `worker.enabled`로 정합니다. `false`면 `onStart`는 동기화만 초기화합니다. 예제는 `SEARCH_WORKER=1`인 프로세스에서만 워커를 돌립니다. Sonamu test 모드에서는 `false`로 두세요.
+- 워커 전용 클라이언트는 lifecycle이 `worker.client` 옵션으로 만들고, 그 워커가 멈출 때 닫습니다. 검색 핸들과 SDK 클라이언트 하나를 나눠 쓰려면 `worker.client`에 공유 클라이언트를 돌려주는 `createClient`와 `ownsClient: false`를 줍니다. 검색 핸들의 `SearchClient` 래퍼 자체는 워커에 넘길 수 없습니다. 워커가 멈추면서 래퍼를 닫아 그 뒤 검색이 `SearchStopping`이 되기 때문입니다.
+- `clients`에 넘긴 래퍼는 HMR 교체에서 새 세대가 다시 넘기지 않으면 lifecycle이 닫습니다. `onShutdown`은 실행 중인 워커를 멈추고(워커 클라이언트도 닫힘) 은퇴한 세대의 래퍼만 닫습니다. 최신 세대가 넘긴 래퍼는 닫지 않습니다. 그 세대의 검색 핸들이 아직 쥐고 있어서, 같은 프로세스에서 `onShutdown` 뒤에 `onStart`를 다시 부르면(테스트, 개발 서버 재시작) 다시 쓰이기 때문입니다. 프로세스를 끝낼 때는 `shutdownSearch`처럼 애플리케이션이 `onShutdown` 뒤에 직접 닫습니다.
+- lifecycle은 한 프로세스에서 멈췄다가 다시 시작할 수 있습니다.
+- `getSearchLifecycleStatus(name)`은 이름으로 lifecycle의 상태를 읽고, 슬롯이나 연결이나 타이머를 만들지 않습니다. 그래서 상태 점검 코드가 lifecycle 모듈을 import하지 않아도 됩니다. 아래 예제는 이것으로 상태 점검 값을 만들고 fence를 잃은 대상도 함께 내보냅니다. 이 프로세스에서 그 이름의 lifecycle을 만든 적이 없으면 `state`가 `absent`입니다.
+
+```typescript title="search/worker.ts"
+export interface SearchHealth {
+  readonly ready: boolean;
+  readonly state: SearchLifecycleStatus["state"] | "absent";
+  /** Not empty means an operator must act. */
+  readonly fenceLostTargets: readonly string[];
+}
+
+export function searchHealth(): SearchHealth {
+  const status = getSearchLifecycleStatus(LIFECYCLE_NAME);
+  if (status === undefined) return { ready: false, state: "absent", fenceLostTargets: [] };
+  return {
+    ready: status.state === "running",
+    state: status.state,
+    fenceLostTargets: status.worker?.fenceLostTargets ?? [],
+  };
+}
+```
+
+#### 핫 리로드
+
+같은 `name`의 lifecycle은 프로세스 전역 슬롯 하나를 나눠 씁니다. 개발 서버가 lifecycle을 만드는 모듈을 다시 평가하면, 새 lifecycle이 이전 워커를 `stopDeadlineMs` 안에 멈추고(heartbeat 행 삭제, 임대 반납, 워커 클라이언트 닫기) 새 워커를 시작합니다. 슬롯의 워커는 언제나 하나이고, 정의가 바뀌었으면 새 워커가 새 정의를 씁니다. `sonamu.config.ts`는 다시 평가되지 않으므로 Sonamu는 첫 세대의 `onStart`와 `onShutdown`을 계속 부르지만, 두 메서드가 슬롯 전체를 다루므로 문제가 없습니다. `import.meta.hot.dispose`에는 의존하지 않습니다.
+
+#### 초기화가 실패했을 때
+
+`initialize()`가 데이터베이스 연결 실패처럼 재시도할 수 있는 오류로 실패하면 `onStart`는 거부하지 않습니다. 상태를 `degraded`로 두고 1초에서 30초까지 늘려 가며 다시 시도하며(`initializeRetry`로 바꿀 수 있습니다), 워커는 그대로 시작합니다. 그동안 `markChanged`는 `store-identity-uninitialized`로 실패해 도메인 트랜잭션이 커밋되지 않습니다. 초기화에 성공하면 상태가 `running`이 됩니다.
+
+설정 오류, 스키마 없음, 저장소 불일치처럼 재시도해도 소용없는 오류면 `onStart`가 그 오류로 거부하고 상태는 `failed`입니다. lifecycle의 `status()`나 `getSearchLifecycleStatus(name)`로 상태, 세대 번호, 초기화 여부, 워커 상태, 마지막으로 멈춘 워커의 보고, 마지막 오류를 볼 수 있습니다.
+
+### 별도 프로세스에서
+
+워커를 API 서버와 다른 프로세스에서 돌릴 수 있습니다. 그 프로세스는 Sonamu를 띄우지 않고 클라이언트, 동기화 핸들, indexer를 직접 만들어 `start()`를 부르고, 종료 신호를 받으면 `stop()`을 기다린 뒤 끝납니다. 데이터베이스에는 worker 역할로 접속하고, namespace는 API 프로세스와 같아야 합니다. Sonamu가 없으므로 정의는 스냅샷(`context.trx`)으로만 읽는 `defineSearch` 정의여야 합니다. `defineSonamuSearch`의 모델 메서드는 Sonamu의 데이터베이스 설정이 필요합니다.
+
+```typescript title="search/standalone-worker.ts"
+/** Use defineSearch definitions here (no Sonamu), and set the orchestrator's termination grace longer than the stop deadline. */
+export async function runStandaloneWorker(
+  log: SearchLogger,
+  metrics: SearchMetrics,
+): Promise<void> {
+  const knex = knexFactory({
+    client: "pg",
+    connection: process.env.SEARCH_WORKER_DATABASE_URL,
+    pool: { min: 0, max: 4 },
+  });
+  const synchronization = createPostgresSynchronization({
+    getPrimaryDatabase: () => knex,
+    // Must match the API process namespace (client.ts).
+    namespace: process.env.SEARCH_NAMESPACE ?? "chat-production",
+  });
+  const indexer = createIndexer({
+    client: createSearchClient({
+      createClient: () =>
+        new Client({ node: process.env.OPENSEARCH_URL ?? "http://localhost:9200" }),
+      ownsClient: true,
+      requestTimeoutMs: RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+    }),
+    synchronization,
+    definitions: [chatMessagesSearch],
+    limits: RECOMMENDED_WORKER_LIMITS,
+    onEvent: createWorkerEventListener(log, metrics),
+  });
+
+  // Fail before starting the loop if the primary or the search schema is unreachable.
+  await synchronization.initialize();
+  const handle = indexer.start({ pollIntervalMs: RECOMMENDED_WORKER_POLL_INTERVAL_MS });
+  const stateTimer = setInterval(() => reportWorkerState(metrics, handle.status().state), 10_000);
+
+  await new Promise<void>((resolve) => {
+    process.once("SIGTERM", () => resolve());
+    process.once("SIGINT", () => resolve());
+  });
+
+  clearInterval(stateTimer);
+  // stop also closes the client wrapper; do not close it again.
+  const report = await handle.stop({ deadlineMs: RECOMMENDED_WORKER_STOP_DEADLINE_MS });
+  log.info("search worker stopped", {
+    drained: String(report.drained),
+    abortedInFlight: report.abortedInFlight,
+    abandonedDrains: report.abandonedDrains,
+    elapsedMs: report.elapsedMs,
+  });
+  await knex.destroy();
+}
+```
+
+- `start()` 전의 `synchronization.initialize()`는 primary와 검색 스키마에 닿는지 확인합니다. 실패하면 루프를 만들지 않고 프로세스가 끝납니다.
+- SIGTERM이나 SIGINT를 받으면 "start와 stop"에서 설명한 대로 `RECOMMENDED_WORKER_STOP_DEADLINE_MS`를 기한으로 워커를 멈추므로, 오케스트레이터의 종료 유예는 이보다 길게 두세요. `stop()`이 클라이언트 래퍼도 닫습니다.
+
+진입점(`node standalone-worker.main.js`)은 애플리케이션의 로그와 지표 구현을 넘깁니다.
+
+```typescript title="search/standalone-worker.main.ts"
+import { runStandaloneWorker } from "./standalone-worker";
+
+const fields = (message: string, values: Record<string, string | number>) =>
+  JSON.stringify({ message, ...values });
+
+await runStandaloneWorker(
+  {
+    info: (message, values) => console.info(fields(message, values)),
+    warn: (message, values) => console.warn(fields(message, values)),
+    error: (message, values) => console.error(fields(message, values)),
+  },
+  { increment: () => {}, gauge: () => {} },
+);
+```
+
+### 예약 workflow에서
+
+상주 루프 대신 예약 workflow에서 대기를 비울 수도 있습니다. 위 indexer 예제의 `drainIndexer`와 `MAX_DRAINS_PER_RUN`을 씁니다.
+
+```typescript title="search/drain.workflow.ts"
+export const searchDrainWorkflow = workflow(
+  { name: "search_drain", schedules: [{ expression: "* * * * *" }] },
+  async ({ step }) => {
+    await step
+      .define({ name: "drain" }, async () => {
+        let indexed = 0;
+        for (let round = 0; round < MAX_DRAINS_PER_RUN; round += 1) {
+          const report = await drainIndexer.drainOnce();
+          indexed += report.indexed;
+          if (report.outcome === "busy" || report.claimed === 0 || report.cooldownRemainingMs > 0) {
+            break;
+          }
+        }
+        return { indexed };
+      })
+      .run();
+  },
+);
+```
+
+- indexer는 모듈에 하나만 만들고 실행마다 다시 씁니다. 팩토리는 연결하지 않으므로 모듈에서 만들어도 되고, workflow가 `onStart`보다 먼저 시작돼도 `onStart`에서 만든 핸들에 기대지 않습니다.
+- 이전 실행이 아직 drain하는 중이면 다음 실행의 `drainOnce()`는 `busy`를 받고 그 실행을 끝냅니다. 그래서 실행이 겹쳐도 claim, 스냅샷, bulk가 두 배가 되지 않고 한도가 프로세스 전체에 대해 지켜집니다.
+- 한 실행은 많아야 `MAX_DRAINS_PER_RUN`번 drain하고, claim한 것이 없거나 cooldown 중이면 일찍 끝납니다. 이 형태의 heartbeat 행은 `drainOnce()` 동안만 있습니다.
+- Tasks가 실행을 반복해도 됩니다. 임대가 같은 문서의 동시 처리를 막고, 외부 버전이 옛 리비전의 덮어쓰기를 막습니다.
+- 상주 워커와 함께 돌려도 됩니다.
+
+## 한도
+
+모든 필드가 필수입니다. `RECOMMENDED_WORKER_LIMITS`를 펼치고 필요한 값만 덮어쓰세요. 빠진 필드가 있으면 `invalid-worker-limits`로 거부됩니다. `createIndexer`는 마지막 열의 관계를 검사하고, 어기면 표의 `details.reason`과 함께 `SearchConfigurationError`를 던집니다.
+
+| 필드 | 단위 | 권장값 | 묶는 것 | 지켜야 할 관계(`details.reason`) |
+| --- | --- | --- | --- | --- |
+| `maxDocumentsPerClaim` | 의도 수 | 500 | drain 한 번에 claim하는 의도 수 | `maxIsolationCallsPerBatch` 참고 |
+| `maxBulkBytes` | 바이트 | 5 MiB | bulk 요청 하나의 직렬화된 NDJSON 바이트. envelope 하나가 이것을 넘으면 그 문서를 격리합니다 | `maxInFlightBytes` 참고 |
+| `maxConcurrentBulkRequests` | 요청 수 | 2 | 동시에 보내는 bulk 요청 수 | |
+| `maxInFlightBytes` | 바이트 | 16 MiB | 워커가 한 번에 붙잡는 직렬화된 문서 바이트(보내는 중이거나 차례를 기다리는 요청과 묶는 중인 항목). claim 하나를 몇 개의 스냅샷(chunk)으로 나눌지도 정합니다 | `≥ maxBulkBytes` (`in-flight-below-bulk`) |
+| `projectionTimeoutMs` | ms | 30,000 | projection 호출 하나와 문서 검증 하나. 스냅샷의 문장, 잠금, 유휴 트랜잭션 제한에도 쓰입니다 | `< leaseDurationMs` (`timeout-exceeds-lease`) |
+| `requestTimeoutMs` | ms | 30,000 | bulk 요청 하나. 클라이언트의 `requestTimeoutMs`가 더 짧으면 그쪽을 씁니다 | `< leaseDurationMs` (`timeout-exceeds-lease`) |
+| `statementTimeoutMs` | ms | 5,000 | 워커의 SQL 문장 하나(claim, heartbeat, 정산) | |
+| `leaseDurationMs` | ms | 120,000 | 임대 길이. 죽은 워커가 쥔 문서는 이 시간이 지나면 다른 워커가 가져갑니다 | `> requestTimeoutMs + heartbeatIntervalMs` (`lease-too-short-for-drain`) |
+| `heartbeatIntervalMs` | ms | 20,000 | 임대 연장과 워커 heartbeat의 주기 | `× 2 ≤ leaseDurationMs` (`heartbeat-exceeds-half-lease`) |
+| `maxRetryAttempts` | 횟수 | 10 | 한 리비전이 격리되기 전까지 예산을 쓰는 실패 수 | |
+| `maxRetryAgeMs` | ms | 3,600,000 (1시간) | 한 리비전이 격리되기 전까지의 처리 시간과 예약한 지연의 합 | `> retryBaseDelayMs` (`retry-age-below-base-delay`) |
+| `maxIsolationCallsPerBatch` | 호출 수 | 32 | 한 배치의 projection 호출 수(첫 호출 포함). 그룹마다 거부된 bulk를 나눠 보내는 횟수는 이 값 − 1입니다 | `≥ 1 + 2 × ceil(log2(maxDocumentsPerClaim))` (`isolation-budget-too-small`) |
+| `retryBaseDelayMs` | ms | 1,000 | 문서 재시도, cooldown, 실패한 drain 뒤 루프 대기에 쓰는 backoff의 하한 | `≤ retryMaxDelayMs` (`retry-delay-inverted`) |
+| `retryMaxDelayMs` | ms | 300,000 (5분) | 같은 backoff의 상한 | |
+| `fenceRenewIntervalMs` | ms | 30,000 | 대상 fence의 갱신 간격. 이보다 오래 확인하지도 보내지도 않은 대상은 다음 전송 전에 fence를 다시 읽습니다 | 1,000 이상, `≥ requestTimeoutMs` (`fence-interval-below-request-timeout`) |
+
+각 관계가 필요한 이유:
+
+- `heartbeat-exceeds-half-lease`: heartbeat를 한 번 놓쳐도 임대가 남아야 합니다.
+- `timeout-exceeds-lease`: 제한 시간을 다 쓴 단계도 임대 하나 안에 끝나야, heartbeat가 멈춘 동안 다른 워커가 같은 문서를 가져가지 않습니다.
+- `lease-too-short-for-drain`: 워커는 요청이 문서의 임대가 끝나기 전에 끝날 수 있을 때만 bulk를 보내므로, heartbeat 사이에도 요청 하나가 들어갈 임대가 남아야 합니다.
+- `retry-age-below-base-delay`: 그렇지 않으면 첫 재시도의 지연만으로 예산이 끝납니다.
+- `isolation-budget-too-small`: 이보다 작으면 가득 찬 claim 안의 나쁜 문서 하나를 끝내 찾지 못하고, 같은 절반에 든 이웃 문서가 계속 반납될 수 있습니다.
+- `in-flight-below-bulk`: 이보다 작으면 큰 문서 하나를 붙잡을 수 없습니다.
+- `fence-interval-below-request-timeout`: fence 전진 한 번(원격 쓰기 하나)이 갱신 간격 안에 끝나야 합니다.
+
+임대나 요청 제한 시간을 덮어쓰면 관리 핸들의 `workerBounds`도 같은 한도로 다시 만드세요([운영](/ko/advanced-features/opensearch/operations)).
+
+### 메모리와 시간의 상한
+
+claim 하나를 처리하는 동안 JavaScript 힙이 늘어나는 양은 대략 다음 식 안에 있습니다. C는 `maxConcurrentBulkRequests`입니다.
+
+> `2 × maxInFlightBytes + (3 + C) × maxBulkBytes + 8 MiB`
+
+앞 항은 붙잡은 바이트와 projector가 chunk로 돌려준 객체, 둘째 항은 요청 본문 합치기와 문서 하나의 처리 사본입니다. 권장값으로 약 65 MiB입니다. 통합 테스트가 큰 문서의 claim에서 힙 증가를 이 식과 비교합니다. Buffer 메모리는 힙 밖이라 이 식에 들어가지 않습니다.
+
+drain 한 번은 다음 시간 안에 끝납니다. P는 `projectionTimeoutMs`, R은 `requestTimeoutMs`, S는 `statementTimeoutMs`입니다.
+
+> `leaseDurationMs + max(P + S, R + 3S) + 16S`
+
+claim을 시작한 뒤 임대 길이만큼 지나면 워커는 새 projection, 문서 검증, bulk 전송, 충돌 확인을 시작하지 않고 남은 문서를 반납합니다. 식의 나머지는 그때 이미 시작한 일 하나와 정산 문장들입니다. 권장값으로 4분 5초(245초)입니다. 문서 하나가 아주 크면 그 문서의 처리 시간만큼 이 상한을 넘을 수 있습니다.
+
+## 보고서, 이벤트, 상태
+
+### drain 보고서
+
+`drainOnce()`가 돌려주는 `DrainReport`는 숫자와 안정된 코드만 담고 지역화하지 않습니다.
+
+| 필드 | 뜻 |
+| --- | --- |
+| `outcome` | drain이 어떻게 끝났는지. `processed`(하나 이상 처리), `empty`(대상은 있었지만 claim된 것이 없음), `no-targets`(claim할 대상이 없음), `cooldown`, `cancelled`(claim 전에 중단), `busy`(같은 indexer의 다른 drain이 진행 중이라 아무것도 하지 않음, 나머지 수는 모두 0) |
+| `claimed` | 이번에 claim한 문서 수. 아래 여덟 수의 합입니다 |
+| `indexed` | 성공으로 확인한 수 |
+| `superseded` | 검증된 중복과 이미 지난 시도 |
+| `retried` | 예산을 쓰는 재시도로 예약한 수 |
+| `quarantined` | 격리한 수 |
+| `released` | 예산 없이 반납한 수. 확인하는 순간 같은 문서를 다시 표시하는 트랜잭션이 열려 있어 임대를 바로 푼 행도 여기에 셉니다 |
+| `leaseLost` | 기록 전에 임대를 잃은 행(다른 워커가 다시 가져갔거나 의도가 지워짐) |
+| `skippedLocked` | 다른 패키지 트랜잭션(관리 작업 등)이 런타임 행을 잡고 있어 기록하지 못한 행. 임대가 끝나면 다시 처리됩니다 |
+| `abandoned` | 취소되어 결과를 모르는 행. 아무것도 기록하지 않고 임대가 끝나기를 기다립니다 |
+| `unsupportedTargets` | 맞는 정의가 없어 건드리지 않은 대상 ID |
+| `cooldownRemainingMs` | 0이 아니면 cooldown 때문에 이번에는 아무것도 claim하지 않았습니다 |
+| `elapsedMs` | 걸린 시간 |
+
+### 이벤트
+
+`onEvent`는 다음 이벤트를 받습니다. drain 시도마다 `drain` 또는 `error` 중 정확히 하나가 옵니다. 이벤트에는 코드와 식별자만 들어가고 문서 내용은 없으며, 리스너가 던진 예외는 무시됩니다. 마지막 열은 사람이 나서야 하는 경우이고, 경보 기준은 [운영](/ko/advanced-features/opensearch/operations)에 있습니다.
+
+| `type` | 내용 | 사람이 나설 때 |
+| --- | --- | --- |
+| `drain` | drain 하나가 끝남. `outcome`, `report` | 없음. `cooldown`이 이어지면 인프라 장애입니다 |
+| `error` | drain이 거부되거나 실패함. `code`, 그리고 오류에 안정된 `details.reason`이 있으면 `reason` | `SEARCH_STORE_MISMATCH`면 바로([복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)). 설정 오류와 스키마 없음도 저절로 낫지 않으므로 바로. 그 밖의 코드는 워커가 `degraded`에 머물 때 |
+| `state` | `start()`로 돈 워커의 상태 변화. `previous`, `state`, `reason`(`started`, `drain-failed`, `infrastructure-cooldown`, `recovered`, `stop-requested`, `stopped`) | `degraded`가 몇 분 넘게 이어질 때 |
+| `target-paused` | 대상을 일시 정지함. `targetId`, `reason` | 언제나. 관리자가 재개할 때까지 그 대상은 멈춰 있습니다 |
+| `quarantined` | 문서를 격리함. `targetId`, `documentId`, `revision`, `errorClass` | 언제나. 원인을 고친 뒤 문서를 다시 보냅니다([복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)) |
+| `hash-mismatch` | 같은 리비전의 해시가 달라 그 리비전을 격리함. `targetId`, `documentId`, `revision` | 언제나. projection이 결정적이지 않거나 `projectionVersion`을 올리지 않고 바뀌었습니다 |
+| `hash-version-mismatch` | 같은 리비전이 다른 해시 버전으로 색인돼 있음. `targetId`, `documentId`, `revision` | 업그레이드 중이 아니면. 다른 패키지 버전의 워커가 함께 돌고 있고, 그 문서는 다시 표시하거나 대상을 재구축할 때까지 대기로 남습니다 |
+| `lease-reclaimed` | 임대를 잃은 행. `count` | 자주 생길 때. 워커가 죽거나 임대보다 오래 멈춥니다 |
+| `target-fence-lost` | 이 데이터베이스가 대상의 fence를 잃음. `targetId`, `class`(`behind`, `regressed`, `foreign`), `localEpoch`, `remoteEpoch`. 프로세스마다 대상마다 상실마다 한 번 | 바로. 아래 "대상 fence"와 [복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)를 보세요 |
+
+아래 리스너는 이벤트를 로그와 카운터로 바꿉니다. 카운터 라벨에는 `outcome`, `code`, `reason`처럼 값의 종류가 정해진 필드만 쓰고, `targetId`와 `documentId`는 로그에만 남깁니다. 저장소 결속이 맞지 않으면 `error` 이벤트의 `code`가 `SEARCH_STORE_MISMATCH`이고 `reason`이 그 이유입니다.
+
+```typescript title="search/worker-events.ts"
+export function createWorkerEventListener(
+  log: SearchLogger,
+  metrics: SearchMetrics,
+): (event: IndexerEvent) => void {
+  return (event) => {
+    switch (event.type) {
+      case "drain": {
+        const { report } = event;
+        metrics.increment("search_worker_drains", 1, { outcome: event.outcome });
+        metrics.increment("search_worker_indexed", report.indexed);
+        metrics.increment("search_worker_retried", report.retried);
+        metrics.increment("search_worker_quarantined", report.quarantined);
+        if (event.outcome === "cooldown") {
+          log.warn("search worker cooling down", { cooldownMs: report.cooldownRemainingMs });
+        }
+        return;
+      }
+      case "state":
+        reportWorkerState(metrics, event.state);
+        if (event.state === "degraded") {
+          log.warn("search worker degraded", { previous: event.previous, reason: event.reason });
+        } else {
+          log.info("search worker state changed", {
+            previous: event.previous,
+            state: event.state,
+            reason: event.reason,
+          });
+        }
+        return;
+      case "quarantined":
+        // Fix the cause, then release the document with the admin tooling.
+        metrics.increment("search_worker_quarantined_documents", 1, {
+          errorClass: event.errorClass,
+        });
+        log.error("search document quarantined", {
+          targetId: event.targetId,
+          documentId: event.documentId,
+          revision: event.revision,
+          errorClass: event.errorClass,
+        });
+        return;
+      case "target-paused":
+        metrics.increment("search_worker_target_paused", 1, { reason: event.reason });
+        log.error("search target paused", { targetId: event.targetId, reason: event.reason });
+        return;
+      case "hash-mismatch":
+        // The projection is not deterministic, or changed without a projectionVersion bump.
+        metrics.increment("search_worker_hash_mismatch", 1);
+        log.error("search projection hash mismatch", {
+          targetId: event.targetId,
+          documentId: event.documentId,
+          revision: event.revision,
+        });
+        return;
+      case "hash-version-mismatch":
+        // Workers of different package versions are running; this does not resolve itself until versions match.
+        metrics.increment("search_worker_hash_version_mismatch", 1);
+        log.warn("search hash version mismatch", {
+          targetId: event.targetId,
+          documentId: event.documentId,
+          revision: event.revision,
+        });
+        return;
+      case "lease-reclaimed":
+        metrics.increment("search_worker_lease_reclaimed", event.count);
+        log.warn("search leases reclaimed", { count: event.count });
+        return;
+      case "target-fence-lost":
+        // Another database writes to this index; stop it, then run reclaimLostFences or adoptCopiedDatabase (administration.ts).
+        metrics.increment("search_worker_target_fence_lost", 1, { class: event.class });
+        log.error("search target fence lost", {
+          targetId: event.targetId,
+          class: event.class,
+          localEpoch: event.localEpoch,
+          remoteEpoch: event.remoteEpoch,
+        });
+        return;
+      case "error":
+        if (event.code === "SEARCH_STORE_MISMATCH") {
+          // Run adoptCopiedStore on a copy, or confirmStoreOwnership on the same store (administration.ts).
+          metrics.increment("search_worker_store_mismatch", 1, {
+            reason: event.reason ?? "unknown",
+          });
+          log.error("search store binding mismatch", { reason: event.reason ?? "unknown" });
+          return;
+        }
+        metrics.increment("search_worker_drain_errors", 1, { code: event.code });
+        log.error("search drain failed", { code: event.code });
+        return;
+      default:
+        event satisfies never;
+    }
+  };
+}
+```
+
+### 상태
+
+워커 핸들의 `status()`는 상태(`idle`, `running`, `degraded`, `stopping`, `stopped`), 마지막 보고서, 마지막 오류(`code`, `key`, `params`, `status()`를 읽는 시점의 패키지 locale로 만든 `message`), 연속 실패 수, 일시 정지된 대상, fence를 잃은 대상(`fenceLostTargets`), 처리하지 않는 대상(`unsupportedTargets`)을 보여 줍니다. `unsupportedTargets`가 비어 있지 않으면 배포된 워커의 정의와 등록된 대상이 맞지 않는 것입니다.
+
+drain이 실패하거나 클라이언트나 데이터베이스 cooldown이 걸리면 상태가 `degraded`가 됩니다. cooldown 시간이 지나도 그 범위의 요청이 한 번 성공할 때까지는 `degraded`로 남습니다. 아무것도 claim하지 못한 drain은 회복의 증거가 아니므로, 할 일이 없는 워커는 다음 bulk나 스냅샷이 성공할 때까지 `degraded`입니다. 상태가 바뀔 때마다 `state` 이벤트가 오므로 `status()`를 주기적으로 읽을 필요는 없습니다. 위 리스너는 `state` 이벤트마다 아래 게이지를 갱신합니다.
+
+```typescript title="search/worker-events.ts"
+export function reportWorkerState(metrics: SearchMetrics, state: WorkerState): void {
+  metrics.gauge("search_worker_degraded", state === "degraded" ? 1 : 0);
+  metrics.gauge("search_worker_running", state === "running" || state === "degraded" ? 1 : 0);
+}
+```
+
+### heartbeat 행
+
+워커는 `worker_heartbeats`에 워커당 한 행을 두고 `heartbeatIntervalMs`마다 갱신합니다. 관리 핸들의 `inspect`가 이 행을 보여 줍니다.
+
+- `start()`로 도는 워커의 행은 `stop()`이 지웁니다.
+- `start()` 없이 `drainOnce()`만 부르는 호출자(예약 workflow, 관리 CLI)의 행은 그 호출 동안만 있습니다.
+- 강제 종료된 워커의 행은 24시간 동안 갱신되지 않으면 `inspect`에서 빠지고, 살아 있는 워커가 다음에 heartbeat를 쓸 때 지워집니다.
+- 24시간보다 드물게 drain하는 워커는 drain 사이에 `inspect`에서 사라졌다가 다음 heartbeat에서 다시 나타납니다.
+
+## 워커가 하지 않는 일
+
+- **문서를 표시하지 않습니다.** 그래서 저장소 식별자가 필요 없습니다.
+- **인덱스를 만들지 않습니다.** bulk 요청은 `require_alias=true`로 쓰기 alias에만 보냅니다. alias가 없으면 OpenSearch가 인덱스를 자동으로 만들지 않고 404로 거부하며, 워커는 그 대상을 일시 정지합니다. 워커에는 인덱스를 만들 권한이 필요 없습니다.
+- **일시 정지된 대상을 재개하거나 격리된 문서를 다시 보내지 않습니다.** 둘 다 관리자를 기다립니다([복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)).
+- **장애에 재시도 예산을 쓰지 않습니다.** 클러스터, 네트워크, 자격 증명, 대상 전체의 문제는 예산 없이 반납하고, 장애 동안 기다린 시간도 세지 않습니다(아래 "재시도 예산과 cooldown").
+- **409를 그대로 성공으로 치지 않습니다.** 인덱스와 원장으로 먼저 확인합니다(아래 "버전 충돌(409) 확인").
+- **cooldown을 저장하지 않습니다.** cooldown은 프로세스 안에만 있고, 같은 indexer의 `start()` 루프와 직접 부른 `drainOnce()`가 같은 cooldown을 봅니다.
+- **대상 fence를 잃어도 던지지 않고, fence는 쓰기를 막지 않습니다.** 그 대상에 보내기를 멈추고 다른 대상은 계속 색인합니다(아래 "대상 fence").
+- **heartbeat 행으로 아무것도 결정하지 않습니다.** 이 행으로 무언가를 막거나 결정하는 문장은 없습니다. 은퇴는 의도의 임대를, cutover는 대기 수를 봅니다.
+- **정리하지 않습니다.** 원장 행과 삭제된 문서의 tombstone은 지워지지 않습니다([알려진 한계](/ko/advanced-features/opensearch/operations)).
+
+## 한 번의 drain
+
+`drainOnce({ signal })`는 다음 순서로 한 번 처리하고 보고서를 돌려줍니다.
+
+1. **관문**: 워커가 멈추는 중이면 `SearchStopping`으로 실패합니다. 같은 indexer의 다른 drain이 진행 중이면 `busy` 보고서를, 클라이언트나 데이터베이스 cooldown 중이면 아무것도 읽지 않고 `cooldown` 보고서를 돌려줍니다.
+2. **대상 목록과 저장소 결속**: 쓰기가 켜진 활성 대상을 읽고, 같은 문장에서 이 데이터베이스가 저장소가 기록된 그 데이터베이스인지 확인합니다. 결속이 맞지 않으면 아무것도 쓰거나 보내지 않고 `SearchStoreMismatch`로 끝납니다([복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)). fence를 잃은 대상은 claim하지 않고, cooldown 중인 대상은 건너뛰며, `(key, fingerprint, 해시 버전)`이 맞는 정의가 없는 대상은 건드리지 않고 `unsupportedTargets`로 보고합니다. 할 일이 없어 여기서 끝나는 drain도 갱신할 때가 된 fence는 갱신합니다.
+3. **claim**: 최대 `maxDocumentsPerClaim`건의 의도를 임대 토큰과 함께 claim합니다. 이후 모든 기록은 이 토큰으로 확인하므로, 임대를 잃은 워커는 남의 행을 바꾸지 못합니다. 순서는 의도가 들어온 시각과 마지막으로 가져간 시각 중 늦은 쪽입니다. 그래서 한 대상에서 계속 다시 표시되는 문서가 다른 대상의 문서를 밀어내지 못합니다.
+4. **임대 연장**: `heartbeatIntervalMs`마다 임대를 연장합니다.
+5. **대상별 처리**: 대상마다 primary 스냅샷에서 원장 리비전을 읽고 projection을 실행합니다. claim이 크면 `maxInFlightBytes`에 맞춰 여러 스냅샷(chunk)으로 나눕니다. fence를 확인한 뒤 결과를 `maxBulkBytes` 이하의 NDJSON 요청으로 묶고, 요청마다 대상이 여전히 쓸 수 있는지 확인한 다음, 맨 앞에 fence 항목을 붙여 쓰기 alias로 외부 버전과 함께 보냅니다. 응답을 문서마다 분류해 완료, 재시도, 반납, 격리로 기록합니다.
+
+워커의 SQL 문장 하나는 `statementTimeoutMs` 안에 끝나야 합니다. 넘으면 서버에서 취소하고 인프라 실패(`SearchTimeout`)로 다루며 재시도 예산을 쓰지 않습니다. 그래서 워커가 마이그레이션의 테이블 잠금 뒤에 줄을 서지 않습니다.
+
+### 확인과 표시가 겹칠 때
+
+워커는 결과를 기록할 때(성공 확인, 예산을 쓰는 실패, 반납) 도메인 트랜잭션이 잡고 있는 의도 행을 기다리지도 건너뛰지도 않습니다. 성공을 확인하는 순간 같은 문서를 다시 표시하는 트랜잭션이 열려 있으면, 그 리비전의 임대를 바로 반납하고 `released`로 셉니다. 새 리비전은 그 트랜잭션이 커밋되는 대로 다음 claim이 가져가므로, 색인 직후에 문서를 다시 고쳐도 임대가 끝나기를 기다리지 않습니다. 임대 연장도 이런 행을 건너뛰지 않습니다. `skippedLocked`는 관리 작업 같은 다른 패키지 트랜잭션이 런타임 행을 잡고 있는 경우만 셉니다.
+
+### claim 비용
+
+claim은 런타임 상태가 없는 의도를 인덱스 순서로, 런타임 상태가 있는 claim 가능한 의도를 따로 읽어 합칩니다. 대기 전체를 순차 스캔하거나 정렬하지 않습니다. 통합 테스트는 의도 20만 건에서 실행 계획에 `deliveries` 순차 스캔이 없고 정렬이 후보 수로 묶이는지 확인합니다. 시간은 재지 않습니다. 잰 시간과, 격리된 의도가 모든 claim을 느리게 하는 정도는 [운영](/ko/advanced-features/opensearch/operations)의 알려진 한계에 있습니다.
+
+### 표시에서 색인까지
+
+평소에는 커밋부터 색인까지 poll 간격에 약 1초를 더한 정도입니다. 대기가 없는 건강한 워커의 상한은 `pollIntervalMs + 2 × (projectionTimeoutMs + requestTimeoutMs)`입니다. 커밋 때 이미 진행 중이던 drain 하나, 쉬는 시간 한 번, 그 표시를 가져가는 drain 하나입니다. 권장값으로는 이 상한이 임대보다 길므로 기대치가 아니라 상한으로만 보세요.
+
+## 결과 분류
+
+문서마다 다음 중 하나로 끝납니다. 기준은 HTTP 상태가 아니라 **무엇이 실패했는가**입니다. 클러스터, 네트워크, 자격 증명, 대상 전체의 문제는 문서 탓이 아니므로 예산을 쓰지 않고, 이 문서의 이 리비전에 고유한 문제만 예산을 쓰거나 격리합니다. 해석할 수 없는 응답은 성공으로도 문서 탓으로도 보지 않고 예산 없이 반납합니다.
+
+| 결과 | 언제 | 보고서 필드 |
+| --- | --- | --- |
+| 성공 | 항목 200, 201 | `indexed` |
+| 검증된 중복 | 409 뒤 확인해 보니 같은 리비전이 같은 내용으로 이미 색인됨, 또는 더 새 리비전이 이미 색인됨 | `superseded` |
+| 예산을 쓰는 재시도 | 항목 5xx(503 제외), 데이터베이스가 응답한다는 증거가 있는 projection 시간 초과, 스키마 검증 시간 초과 | `retried` |
+| 예산 없는 반납 | 요청 단위 실패(연결, 시간 초과, 429, 5xx), 항목 429와 503, 클러스터 상태 오류, 401과 403, 설정 오류, 데이터베이스 장애, 증거 없는 projection 시간 초과, 취소, 쓸 수 없게 된 대상, 격리 예산 소진, 확인할 수 없는 409, 해시 버전 불일치, 더 새 리비전이 기다리는 경우 | `released` |
+| 격리 | 항목 400 매핑 거부, 항목 413, 그 밖의 항목 4xx, projection 예외나 SQL 오류나 쓰기 시도, 문서 검증 실패, 같은 리비전의 해시 불일치, 요청 전체가 거부된 bulk에서 찾아낸 문서, 원장에 남은 512바이트 초과 문서 ID(`invalid_id`, 보내기 전에 확인), 재시도 예산 소진 | `quarantined` |
+| 대상 일시 정지 | 쓰기 alias 없음(404 `index_not_found_exception`), 색인과 원장이 어긋남 | 문서는 `released` |
+
+- **격리**는 그 문서의 그 리비전만 멈춥니다. 격리된 의도는 다시 가져가지 않고, 같은 문서를 다시 표시하면 새 리비전이 새 예산으로 전달됩니다. 원인을 고친 뒤 다시 보내는 방법은 [복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)에 있습니다.
+- **대상 일시 정지**는 관리자가 원인을 확인하고 재개할 때까지 대상 전체를 멈춥니다([복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)). 은퇴 중이거나 은퇴한 대상은 일시 정지 상태로 돌아가지 않습니다.
+- **요청 전체가 거부된 bulk**(요청 400, 413)는 아무것도 쓰이지 않은 것이므로, 워커가 요청을 반으로 나눠 다시 보내며 원인 문서를 찾습니다. 문서 하나짜리 요청이 거부되면 그 문서를 격리합니다. 나눠 보내는 횟수는 그룹마다 `maxIsolationCallsPerBatch - 1`까지이고, 그 안에 끝나지 않은 문서는 예산 없이 반납되어 다음 drain이 이어서 찾습니다.
+- `invalid_id`는 수작업처럼 `markChanged`를 거치지 않고 원장에 들어간 ID에만 생깁니다. `markChanged`는 그런 ID를 처음부터 거부합니다.
+
+### 버전 충돌(409) 확인
+
+같은 리비전을 두 번 보내거나 더 새 리비전이 먼저 도착하면 OpenSearch가 409로 거부합니다. 워커는 409를 그대로 성공으로 치지 않고, 물리 인덱스에서 그 문서의 `sonamu_meta`를 읽고 원장을 새로 읽어 비교합니다. 보낸 리비전을 M, 색인된 리비전을 V, 지금의 원장 리비전을 L이라 하면 다음과 같습니다.
+
+- `V = M`이고 해시 버전, 해시, 삭제 여부가 같으면 검증된 중복입니다.
+- `M < V ≤ L`이면 더 새 리비전이 이미 색인된 것이므로 완료로 기록합니다.
+- `V = M`인데 해시가 다르면 같은 리비전의 projection이 다른 내용을 만든 것입니다. 그 리비전을 격리하고 `hash-mismatch` 이벤트를 냅니다.
+- `V = M`인데 해시 버전이 다르면 정규화 규칙이 다른 패키지 버전의 워커가 그 리비전을 먼저 색인한 것입니다. 격리하지 않고 예산 없이 반납하며 `hash-version-mismatch` 이벤트를 냅니다. 이 문서는 저절로 끝나지 않고, 다시 표시해 더 높은 리비전을 만들거나 대상을 재구축할 때까지 대기로 남습니다.
+- `V > L`, `V < M`, 또는 문서가 다른 인덱스에 있으면 색인과 원장이 어긋난 것이므로 대상을 일시 정지합니다(`revision_divergence`).
+- 읽기에 실패하거나 문서가 없으면 판단하지 않고 예산 없이 반납합니다.
+
+## 재시도 예산과 cooldown
+
+### 재시도 예산
+
+예산은 의도 행마다, 그리고 **시도한 리비전마다** 셉니다.
+
+- 예산을 쓰는 실패가 나면 `attempts`가 1 오르고, `retry_age_ms`에 그 처리에 걸린 시간과 다음 시도까지의 지연이 더해집니다. 지연은 `retryBaseDelayMs × 2^attempts`를 `retryMaxDelayMs`로 자르고 무작위로 절반까지 줄인 값입니다.
+- `attempts`가 `maxRetryAttempts`에 닿거나 `retry_age_ms`가 `maxRetryAgeMs`에 닿으면 그 리비전을 격리하고 실패 기록에 `exhausted`를 남깁니다.
+- 더 새 리비전은 이전 리비전의 실패 수를 물려받지 않고 0부터 셉니다.
+- 예산 없는 반납은 `attempts`와 `retry_age_ms`를 늘리지도 지우지도 않습니다.
+
+`retry_age_ms`는 첫 시도부터 흐른 시간이 아니라 실제로 처리한 시간과 예약한 지연의 합입니다. 그래서 장애가 길어도 예산이 줄지 않습니다. 장애 형태의 실패는 횟수를 늘리지 않는 반납이고, 장애 동안 기다린 시간은 `retry_age_ms`에 들어가지 않습니다. 오래전에 첫 시도를 했다는 사실만으로는 격리되지 않습니다.
+
+### cooldown
+
+인프라 형태의 실패는 범위별 cooldown을 겁니다. 요청 단위 실패는 클라이언트 전체, 항목 단위 실패는 그 대상, projection 쪽 장애는 데이터베이스가 범위입니다. cooldown 동안 그 범위의 일은 claim하지 않습니다. 길이는 `retryBaseDelayMs × 2^연속 실패 수`(최대 `retryMaxDelayMs`)에 무작위 감소를 적용한 값이고, 401과 403은 처음부터 `retryMaxDelayMs`입니다. 같은 범위에서 성공한 응답이 오면 지워집니다.
+
+반납은 이 워커의 cooldown을 문서에 옮기지 않습니다. 반납한 워커는 자기 cooldown 때문에 그 문서를 곧바로 다시 가져가지 않지만, 다른 워커는 반납이 공유 런타임 행에 지연을 남기지 않은 한 바로 가져갈 수 있습니다. 그 지연은 원인에 따라 다릅니다.
+
+| 반납 원인 | 공유 지연 |
+| --- | --- |
+| 요청 단위 실패(연결, 시간 초과, 요청 5xx와 429, 401, 403, 설정 오류) | 없음. 이 워커의 클라이언트 cooldown(401, 403은 대상 cooldown)이 이 워커만 막습니다 |
+| 데이터베이스 형태의 projection 실패(연결, 시간 초과), drain 기한 | 없음. 이 워커의 데이터베이스 cooldown이 막습니다 |
+| 항목 단위 429, 503, 샤드 없음(대상 cooldown과 함께 옴), 요청 분할 예산 소진 | 기본 backoff 한 번(`retryBaseDelayMs` × 0.5~1). 모든 워커가 같은 실패를 볼 것이므로 번갈아 두드리지 않게 합니다 |
+| 해시 버전 불일치 | 기본 backoff 한 번 |
+| 확인할 수 없는 409, 시간이 없어 확인하지 못한 409 | 없음 |
+| 취소, 쓸 수 없게 된 대상 | 없음 |
+| 대상의 fence를 잃음 | 없음. 재시도 예산도 쓰지 않고, 그 대상은 더 claim하지 않습니다 |
+| 이번 drain에서 fence를 확인하지 못함 | 없음. 이 워커의 대상 cooldown이 다음 claim을 늦춥니다 |
+
+### 느린 문서
+
+projection 호출 하나는 `projectionTimeoutMs` 안에 끝나야 합니다. 시간이 초과되면 워커는 ID를 반으로 나눠 각 절반을 새 스냅샷에서 다시 실행합니다. 혼자 남아 시간 초과된 문서는 다음 중 하나일 때만 예산을 씁니다.
+
+- 같은 호출의 다른 문서가 projection을 끝까지 마쳤다.
+- 이 문서가 지난번 시간 초과된 뒤, 같은 primary에서 다른 projection이 완료됐다.
+
+이런 증거가 없으면 데이터베이스가 느린 것으로 보고 예산 없이 반납하며 데이터베이스 cooldown을 겁니다(`SearchTimeout`, `details.reason` `projection-timeout-unproven`). 한 단계에서 나눈 절반이 둘 이상 모두 증거 없이 시간 초과되면 거기서 나누기를 멈춥니다. 그래서 늘 느린 문서 하나는 다른 일이 데이터베이스가 정상임을 보여 주는 동안 예산을 써서 결국 격리되고, 데이터베이스 전체가 느릴 때는 아무 문서도 격리되지 않습니다. 대기에 느린 문서 하나만 남으면 증거가 생기지 않으므로, 워커마다 데이터베이스 cooldown 한 번에 한 번씩 그 문서를 시도합니다([알려진 한계](/ko/advanced-features/opensearch/operations)).
+
+## 대상 fence
+
+저장소 결속 확인은 템플릿 복사본이나 다른 곳에 복원한 덤프를 알아보지만, 물리 복사본(base backup, 스냅샷 복원, 시점 복구, replica 승격)은 기록된 원점까지 원본과 바이트가 같아 알아보지 못합니다. 대상 fence는 이 경우를 위한 것입니다. 대상의 인덱스마다 예약된 문서 하나(`__sonamu_fence__`)가 있고, 그 문서의 OpenSearch 버전이 fence epoch입니다. 이 데이터베이스는 자기가 가진 epoch를 `target_fences`에 기록하고, 워커가 `fenceRenewIntervalMs`마다 epoch를 올립니다. 다른 누군가가 fence를 움직인 것을 본 저장소는 그 대상에 더 보내지 않습니다.
+
+<Warning>
+fence는 감지기이고 관문이 아닙니다. OpenSearch는 bulk의 항목을 서로 독립적으로 처리하므로, fence 항목이 거부된 bulk도 그 뒤의 문서는 씁니다. fence는 두 번째 데이터베이스가 같은 인덱스에 쓰는 시간을 묶고, 진 쪽에 그 사실을 알립니다.
+</Warning>
+
+동작은 다음과 같습니다.
+
+- 대상에 보내는 모든 bulk는 확정된 `(epoch, nonce)`를 `external_gte`로 쓰는 fence 항목으로 시작합니다. 항목은 많아야 245바이트이고, 그 자리를 `maxBulkBytes`와 `maxInFlightBytes`에서 미리 뺍니다. 응답의 fence 항목이 200이면 그대로입니다. 409면 원격이 앞서 있으므로 워커가 fence를 다시 읽어 비교합니다(같은 데이터베이스의 다른 워커가 전진한 것은 상실이 아닙니다). 201이면 fence 문서가 없었던 것이므로 인덱스가 다시 만들어진 것으로 보고 `regressed`로 그 대상을 잃습니다.
+- 프로세스가 대상들에 처음 보내기 전에, 확인이 필요한 대상의 fence를 `POST /_mget` 한 번으로 읽습니다. 이 프로세스가 `fenceRenewIntervalMs`보다 오래 확인하지도 보내지도 않은 대상은 다음 전송 전에 다시 읽습니다.
+- 갱신: 대상의 fence가 갱신할 때가 되면(간격 × (1 + j), j는 프로세스마다 [0, 0.25)에서 한 번 정함) 이 데이터베이스의 모든 워커 중 하나만 PostgreSQL에서 갱신을 맡아 OpenSearch에 epoch + 1을 쓰고 확정합니다. 할 일이 없는 drain에서도, 일이 없는 대상과 이 워커가 projection할 수 없는 대상까지 갱신합니다. 그래서 한가한 운영 데이터베이스도 나중에 시작한 복사본을 이깁니다.
+- 양쪽 모두 fence가 없는 대상(스키마 버전 1에서 만든 인덱스나 새 대상)은 첫 전송 전에 epoch 1로 시작합니다. 응답을 잃은 전진은 같은 nonce로 마무리되므로, 누가 다시 보내도 안전합니다.
+
+| 상실 종류 | 뜻 |
+| --- | --- |
+| `behind` | 원격 epoch가 이 데이터베이스의 기록보다 큼. 다른 데이터베이스가 fence를 전진시켰거나, 이 데이터베이스가 뒤로 돌아갔습니다 |
+| `regressed` | 원격 epoch가 더 작거나 fence 문서가 없음. 인덱스가 다시 만들어졌거나 옛 스냅샷으로 복원됐습니다 |
+| `foreign` | 같은 epoch에 다른 nonce. 다른 데이터베이스가 같은 epoch로 전진했습니다 |
+
+fence를 잃으면 워커는 그 상실을 `target_fences`에 기록하고, `target-fence-lost` 이벤트를 프로세스마다 대상마다 상실마다 한 번 내고, 그 대상을 `status().fenceLostTargets`에 올립니다. 그 대상의 claim한 문서는 재시도 예산과 지연 없이 반납하고, 그 대상은 더 claim하지도 갱신하지도 않습니다. 다른 대상은 계속 색인합니다. 정당한 소유자에서 `confirmStoreOwnership`, 복사본에서 `adoptCopiedStore`를 실행하기 전까지 이 상태가 이어집니다([복구 절차](/ko/advanced-features/opensearch/recovery-runbooks)).
+
+### 진 쪽이 더 쓰는 범위
+
+| 상황 | 진 쪽 | 진 쪽이 쓰는 것 |
+| --- | --- | --- |
+| 원격 epoch가 이미 앞선 상태에서 프로세스가 처음 보내려 함 | 그 프로세스의 데이터베이스 | 없음. 첫 bulk보다 fence 읽기가 먼저입니다 |
+| 확인을 마친 데이터베이스가 보내는 중에 다른 쪽이 전진함 | 확인을 마친 쪽 | 첫 fence 409를 처리하기 전에 이미 보낸 bulk. 워커마다 많아야 `maxConcurrentBulkRequests`개(각각 많아야 `maxBulkBytes`)이고, 그 대상에 W개 워커가 보내고 있었으면 그 W배입니다 |
+| 같은 epoch의 쌍둥이(원본과 같은 epoch에서 시작한 물리 복사본) | 먼저 전진하지 못한 쪽. **복사본이 먼저 전진하면 운영 데이터베이스가 집니다** | 둘 중 하나가 전진할 때까지 둘 다 씁니다. 나중에 시작한 쪽 기준으로 많아야 약 1.25 × `fenceRenewIntervalMs` + drain 하나(권장값으로 약 37.5초 + drain 하나)이고, 그 뒤는 위 줄과 같습니다 |
+
+보내지 않는 프로세스는 다음 갱신이나 다음 전송 전의 다시 읽기 중 먼저 오는 쪽에서 상실을 알게 됩니다.
+
+### 비용
+
+| 상황 | 더하는 것 |
+| --- | --- |
+| 갱신할 때가 아닌 빈 drain | 없음. 문장도 요청도 더하지 않습니다 |
+| 확인을 마친 대상에 보내는 drain | bulk마다 fence 항목 하나. 문장과 요청은 더하지 않습니다 |
+| 프로세스가 대상들에 처음 보낼 때 | 확인이 필요한 대상 전체에 `/_mget` 하나 |
+| 갱신 | 대상마다 간격마다, 모든 워커를 합쳐 OpenSearch 쓰기 하나와 맡은 워커의 문장 둘. 대상 100개, 간격 30초면 초당 약 3.3건입니다 |
+
+앞의 세 줄은 통합 테스트가 요청과 fence 문장 수를 세어 확인합니다. 갱신 비용은 워커 수와 상관없지만, 그 때문에 할 일이 없어도 이 데이터베이스의 워커들은 대상마다 갱신 간격에 한 번 OpenSearch에 씁니다. OpenSearch가 멈춰 있으면 그 쓰기가 요청 단위 실패가 되어 클라이언트 cooldown에 들어가므로, 빈 drain만 도는 워커도 cooldown과 `degraded` 상태가 됩니다.
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="검색" icon="magnifying-glass" href="/ko/advanced-features/opensearch/searching">
+    검색 핸들, 커서, 권한 재확인
+  </Card>
+  <Card title="복구 절차" icon="life-ring" href="/ko/advanced-features/opensearch/recovery-runbooks">
+    일시 정지된 대상과 격리된 문서 다루기
+  </Card>
+</CardGroup>

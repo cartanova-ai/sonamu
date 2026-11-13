@@ -1,0 +1,503 @@
+---
+title: "Recovery Runbooks"
+description: "Copied and restored databases, a lost target fence, quarantined documents, paused targets, ambiguous creates, changes that bypassed marking, source restores, hash version upgrades"
+---
+
+Each procedure states its preconditions and irreversible effects first, then numbered steps; each step says how to check that it worked and what to do if it did not. The example functions are in `modules/opensearch/examples/search/administration.ts`. Administrative commands follow the handle and lease rules in [Index administration](/en/advanced-features/opensearch/index-administration): a step refused with `SearchAdminBusy` or `SearchAdminLeaseLost` can be run again as is. A step that has a `sonamu search` command shows it as `CLI:`. The commands, their approval flags and their output are under "Running administration from the CLI" in [Index administration](/en/advanced-features/opensearch/index-administration); the examples omit the logical key, which an application with several keys must add. `pnpm sonamu search inspect` prints `inspect()` together with the store binding.
+
+## Copied and restored databases
+
+When the store (the `sonamu_search` schema) is installed, it records the origin of the database it lives in: the system identifier (when the role can read it), the database OID, and the name. When a target is created, the store identity is stamped into the index `_meta`. The worker and every administrative operation that sends remote requests check at the start that they are connected to that origin. If not, they stop with `SearchStoreMismatch` before any remote request.
+
+| `details.reason` | Meaning |
+| --- | --- |
+| `store-origin-changed` | The current database is not the recorded origin |
+| `store-instance-mismatch` | The configured `instanceName` differs from the name recorded in the store |
+| `store-origin-unrecorded` | The store has no recorded origin |
+
+Marking (`markChanged`), `initialize()` and search do not run this check, so they do not stop. On an unconfirmed copy, marking keeps piling up intents, and search reads the index named by the copied read pointer; if the copy points at the source's cluster, that is the source's index. The worker shows the mismatch as an `error` event (`code` `SEARCH_STORE_MISMATCH`, `reason`) and the `degraded` state, and retries at the configuration-error interval (`retryMaxDelayMs`). The administrative handle's `inspect().binding` shows the same state.
+
+### What is detected
+
+| How the database was made | Result | Operator action |
+| --- | --- | --- |
+| `CREATE DATABASE … TEMPLATE` copy | `store-origin-changed` | `adoptCopiedStore` on the copy |
+| Dump restored into a new database (same server or another cluster) | `store-origin-changed` | `adoptCopiedStore` on the copy |
+| Dropped, recreated under the same name, and restored in place | `store-origin-changed` (a false positive) | `confirmStoreOwnership` |
+| Same data, processes restarted | Matches | None |
+| Physical copy (base backup, snapshot restore, point-in-time recovery, replica promotion) | Passes the origin check. When workers on both sides send to the same index, the target fence detects it (`target-fence-lost`). **It does not block it** | "A lost target fence" below |
+| Failover to an asynchronous replica that lost the last fence renewal commit | Fence loss, `behind` (a false positive) | `confirmStoreOwnership` |
+
+A physical copy carries the system identifier, OID and name unchanged, so the recorded origin cannot tell it from the source. The target fence covers that case: the owning store advances the version of a reserved document in each target's index, and a store that finds the fence moved by someone else stops sending to that target. The fence detects but does not block, so writes the losing side sent before and right after detection stay in the index. How the fence works and how much the losing side still writes are under "Target fence" in [Indexing worker](/en/advanced-features/opensearch/worker). The safest course is still never to point a physical copy at the source's OpenSearch cluster.
+
+A failover to an asynchronous replica that loses the last renewal commit leaves the remote fence one epoch ahead, with a nonce this database never recorded, so the fence is lost as `behind`. This follows from the protocol; no test reproduces it. If the role may not call `pg_control_system()`, only the OID and the name are compared (`details.systemIdentifierReadable` is `false`).
+
+Two consequences of the schema's version history:
+
+- `installSearchSchema` applies every missing version in one call ([Setup](/en/advanced-features/opensearch/setup)).
+- The call that upgrades from version 1 records the database it runs in as the origin. A copy made while the schema was at version 1 and upgraded on its own therefore records its own origin and is not detected as a copy afterwards. Run `adoptCopiedStore` on such a copy right after upgrading it. Running the installation again on a schema already at version 2 does not record the origin again.
+
+### Adopting a copy as its own store
+
+Adopt a database that will live apart from its source, such as a staging or developer copy, before any application process starts on it.
+
+Before you start:
+
+- Adoption cannot be undone. It gives this database a new store identity and marks every target it inherited `detached`. Detached targets belong to the source: no operation applies to them in this database, retirement included (`target-detached`), so manage them from the source.
+- From adoption until step 4 finishes, search on this database returns `SearchRebuildRequired`: adoption suspends capture and detaches the read pointer.
+- Adoption takes the lease from any administrative operation in progress on this database; that operation's next write commits nothing. It applies to the whole store, not to one namespace.
+
+```typescript title="search/administration.ts"
+/** Run on a copied database before any application process starts on it; restart processes that initialized earlier. */
+export async function adoptCopiedDatabase(
+  admin: SearchAdmin,
+  audit: AdminContext,
+): Promise<readonly { targetId: string; physicalIndex: string }[]> {
+  const adopted = await admin.adoptCopiedStore({ confirmCopy: true }, audit);
+  await restoreFromSource(admin, audit);
+  return adopted.detachedTargets;
+}
+```
+
+1. Stop every server and worker that uses the copy.
+
+   Check: `inspect().workers` lists no worker with a recent heartbeat. If one remains, find and stop it before going on.
+
+2. Run `adoptCopiedStore({ confirmCopy: true }, audit)`. In one transaction it creates a new store identity, records the origin again, suspends capture for every index, detaches the read pointer, marks the inherited targets `detached`, and closes open builds as failed. It sends no remote request, so the source's indexes are untouched.
+
+   CLI: `pnpm sonamu search adopt-store --execute --confirm`
+
+   Check: `inspect().binding` shows a new `storeId`, and the result's `detachedTargets` lists the inherited targets. If the call fails, run it again; called again with the same `operationId`, it changes nothing and returns the same result.
+
+3. Start the processes again. A process that called `initialize()` before the adoption, or pinned the old identity with `expectedStoreId`, has every `markChanged` refused with `SearchStoreMismatch` (`store-mismatch`) until it restarts, so its domain transactions do not commit. Calling `initialize()` again does not change the pinned value. With `expectedStoreId`, set the new identity before starting.
+
+   Check: domain writes commit. If they fail with `store-mismatch`, a process still holds the old identity; restart it.
+
+4. Create this database's own index with the same flow as "Source database restore" below (resume capture, backfill, cut over); the example calls `restoreFromSource`.
+
+   CLI: `pnpm sonamu search resume --execute --confirm`, then `pnpm sonamu search backfill --execute --confirm` and `pnpm sonamu search cutover --execute --confirm`.
+
+   Check: all three values in `inspect().binding` are `true`, `storeId` has changed, and search works on the new target. If cutover refuses, its blockers are explained in [Index administration](/en/advanced-features/opensearch/index-administration).
+
+If the copy pointed at the source's cluster before adoption, changes marked on the copy until then exist only in the copy's ledger, and the new target receives them through its backfill.
+
+### Confirming that this is the same store
+
+Use this when this database is the recorded store itself but its origin no longer matches: for example after it was dropped, recreated and restored under the same name, or moved to another server whose old server was retired. Confirming ownership reopens remote operations.
+
+Before you start: no other database may use this store. Running this on a copy lets the copy write to and delete the source's indexes. For `store-origin-unrecorded` on the same store, this procedure records the origin.
+
+```typescript title="search/administration.ts"
+/** Never run on a copy: it would let the copy write and delete the original's indexes. */
+export async function confirmSameStore(admin: SearchAdmin, audit: AdminContext): Promise<void> {
+  const { binding } = await admin.inspect(chatMessagesSearch.key);
+  if (binding.originMatches && binding.instanceMatches) return;
+  await admin.confirmStoreOwnership({ confirmSoleOwner: true }, audit);
+}
+```
+
+1. Confirm that no other database uses this store.
+
+   Check: every other database that pointed at the same OpenSearch cluster is stopped or adopted. If you cannot confirm it, stop here; if this database is a copy, adopt it instead.
+
+2. Run `confirmStoreOwnership({ confirmSoleOwner: true }, audit)`. It acquires every admin lease, records the origin (and `instanceName`) again, and leaves the store identity and targets as they are. Then, for each target that may have a remote index (`creating`, `active`, `paused`, `retiring`), it takes the fence back one epoch above the remote and returns the new epochs in `fencedTargets`.
+
+   CLI: `pnpm sonamu search confirm-ownership --execute --confirm`
+
+   Check: the call returns. If it refuses with `search-client-not-configured`, nothing changed: such targets exist and the operation writes to OpenSearch, so run it from an administrative handle with an OpenSearch client. If it refuses with `SearchAdminBusy`, another administrative operation's lease is alive and nothing changed; run it again later.
+
+3. Check the result: all three values in `inspect().binding` are `true`, and the worker's next drain emits a `drain` event instead of `error`.
+
+### Environment names
+
+The synchronization handle's `instanceName` can carry a different name per environment (production, staging, a developer copy), set from environment configuration. `adoptCopiedStore` and `confirmStoreOwnership` record the name in the store; after that, a process configured with a different name stops remote work with `store-instance-mismatch`. If either side has no name, no comparison is made. If the `instanceName` passed to an operation differs from the one configured on the handle, the operation is refused. A name fixed in code is the same in every environment and guards nothing.
+
+## A lost target fence
+
+This database lost a target's fence. Another database byte-identical to this one (a physical copy) is writing to the same OpenSearch index, or the index was recreated or restored from an older snapshot, or a failover lost the last renewal. Domain writes and marking continue, and search returns the last state of that index. The worker sends nothing to that target and keeps indexing the others.
+
+| Loss class | Common causes |
+| --- | --- |
+| `behind` | Another database (a copy) advanced the fence, this database went back in time, or an asynchronous failover lost the last renewal commit |
+| `regressed` | The index was recreated under the same name, or restored from an older snapshot |
+| `foreign` | Another database advanced to the same epoch |
+
+Before you start: decide which database is the rightful owner (step 2) and stop the other database's processes (step 3) before you take the fence back in step 5. Taking it back while they run starts a tug of war in which the two databases keep taking the fence from each other.
+
+1. Recognize the loss. Look at the worker's `target-fence-lost` events (`targetId`, `class`, `localEpoch`, `remoteEpoch`), `status().fenceLostTargets`, and `fence.lost` and `fence.lostDetail` of the target in `inspect`. Cutover, rollback, `resumeTarget` and `retireTarget` on that target refuse with `SearchStoreMismatch` (`target-fence-lost`).
+
+   Check: you have the target ID and the loss class. If all three values in `inspect().binding` are `true` and a fence is still lost, the other database is one the origin check cannot tell apart.
+
+2. Decide which database is the rightful owner. If the copy advanced first, the production database is the one that lost, so do not assume the losing side is the copy.
+3. Find and stop every process of the other database that uses the same OpenSearch cluster.
+
+   Check: the other database's `inspect().workers` lists no worker with a recent heartbeat.
+
+4. On the copy, run `adoptCopiedStore`, or move the copy to another cluster. After adoption, every process of the copy must be restarted ("Adopting a copy as its own store" above).
+
+   CLI, on the copy: `pnpm sonamu search adopt-store --execute --confirm`
+
+   Check: on the copy, `inspect().binding` shows a new `storeId`.
+
+5. On the rightful owner, take the fences back with `confirmStoreOwnership`. It raises the fence of each target that may have a remote index to one epoch above the remote, so it needs an administrative handle with an OpenSearch client. The example does nothing and returns an empty list when no fence is lost.
+
+   CLI: `pnpm sonamu search confirm-ownership --execute --confirm`. Unlike the example, the command takes the fences back even when none is lost.
+
+   Check: `fencedTargets` lists each lost target with its new epoch, and workers send to it again on their next drain. If it refuses with `SearchAdminPreconditionFailed` (`fence-takeover-contended`), the other side moved the fence in all three attempts: something still writes, so go back to step 3. If it fails with a retryable `SearchUnavailable` (`fence-unreadable`: the remote could not be read; `fence-takeover-unknown`: the write's outcome is unknown), call it again with the same input; it continues the takeover.
+
+```typescript title="search/administration.ts"
+/** Stop every process of the other database and adopt it there first, or the two keep taking the fence from each other. */
+export async function reclaimLostFences(
+  admin: SearchAdmin,
+  audit: AdminContext,
+): Promise<readonly { targetId: string; epoch: number }[]> {
+  if ((await lostFences(admin)).length === 0) return [];
+  const confirmed = await admin.confirmStoreOwnership({ confirmSoleOwner: true }, audit);
+  return confirmed.fencedTargets;
+}
+```
+
+6. If the other database ever wrote to this index (`behind`, `foreign`) or the index lost content (`regressed`), rebuild the logical key (`beginRebuild` → backfill → `cutover` → `retireTarget`). The copy's versions may be ahead of this ledger, so `remark` may not be enough.
+
+   CLI: `pnpm sonamu search init --execute --confirm` opens the rebuild build; then `pnpm sonamu search backfill --execute --confirm`, `pnpm sonamu search cutover --execute --confirm`, and `pnpm sonamu search retire-old --execute --confirm` after the grace period.
+
+   Check: the read pointer names the new target.
+
+7. Check the result: in `inspect`, every target has `fence.lost` `false` and `pending` `false`, `renewedAgeMs` is below the renewal interval, and the backlog shrinks. No new `target-fence-lost` events appear.
+
+### What is not detected
+
+- Equal-epoch twins (a physical copy and its source starting from the same epoch) both write until one advances. The window is at most about 1.25 × `fenceRenewIntervalMs` plus one drain after the later one starts sending, and whichever advances first keeps the index. That can be the copy.
+- While neither side has a running worker, nothing is detected. Only a worker's renewal moves the fence, so the epochs stay equal.
+- A destructive administrative step a twin runs inside that window (for example `retireTarget`) passes the fence check. A copy with a different `instanceName`, or an adopted copy, is refused earlier by the other checks; a twin with identical configuration is not.
+- Bulks a verified loser had already sent before handling the loss are written (at most `maxConcurrentBulkRequests` per worker).
+- If the index is restored from an older snapshot that contains the fence document while some process keeps sending, the fence action of the next bulk raises the fence again and the loss goes unnoticed, along with the documents missing from that snapshot. When the fence document is missing too (the index was recreated), the loss is detected as `regressed`.
+- A failover to an asynchronous replica that loses the last renewal commit produces a false loss (`behind`). Take the fence back with `confirmStoreOwnership`.
+- An operator running `confirmStoreOwnership` on the copy, searches on an unadopted copy, and writes to the index from outside the package are not prevented.
+
+## Quarantined documents
+
+A revision of a document exhausted its retry budget, or was quarantined at once for a document-caused error.
+
+Before you start: fix the cause (step 2) before you send again; otherwise the document is quarantined again.
+
+1. Find the quarantined documents. Look at the worker's `quarantined` events (`targetId`, `documentId`, `revision`, `errorClass`) and `quarantined` in drain reports. `backlog.quarantined` of the target in `inspect` shows the count, and `delivery_runtime.last_error` keeps the cause as a stable code.
+
+   Check: you have the target ID, the document IDs, and the cause.
+
+2. Fix the cause. If the mapping rejected the document, fix the definition and rebuild. If the projection is at fault, deploy the fix; if the projection's meaning changed, raise `projectionVersion` and rebuild. If the source data is the problem, fix the data.
+3. Send the documents again. To resend the same revision with a fresh budget, use `retryQuarantined`: its scope is one target, narrowed by `documentIds` and `limit`, and it changes no intents, ledger rows or other documents.
+
+   CLI: `pnpm sonamu search retry-quarantined --target <target-id> --execute --confirm`, narrowed with `--ids <document-id>` (repeat the flag per document).
+
+```typescript title="search/administration.ts"
+/** Fix the cause (mapping, source data) before releasing quarantined documents. */
+export async function retryQuarantinedDocuments(
+  admin: SearchAdmin,
+  targetId: string,
+  audit: AdminContext,
+): Promise<number> {
+  let released = 0;
+  for (;;) {
+    const report = await admin.retryQuarantined({ targetId, limit: 1_000 }, audit);
+    released += report.released;
+    if (report.released < 1_000) return released;
+  }
+}
+```
+
+   Alternatively, mark the document again (`markChanged`, or `remark` by ID); the new revision is delivered with a fresh budget.
+
+   Check: in the next drain the document counts as `indexed` and no new quarantine event appears. If it is quarantined again, the cause is not fixed; go back to step 2.
+
+4. Check the result: the target's `backlog.quarantined` reaches 0. During a build it must reach 0 before cutover. A large pile of quarantined intents slows every claim, so do not leave them for long.
+
+## A target paused for revision_divergence
+
+While checking a version conflict, the worker found the index and the ledger out of step: an indexed version ahead of the ledger, behind the revision sent, or the document in another index. Either the ledger went backwards (a database restore) or something outside the package wrote into the index. The target keeps receiving intents and stays readable, but indexing stops.
+
+Before you start: if the database was restored, many documents are ahead of the ledger and this procedure cannot fix it; follow "Source database restore" below. If another database writes to the same index, cut it off first.
+
+1. Read the target's `pauseReason` with `inspect(logicalKey)`.
+
+   Check: its `class` is `revision_divergence`, and `documents` lists `{ id, indexed, ledger }` for up to 20 documents.
+
+2. Find the cause, using the precondition above.
+3. For a few documents, raise their ledger revision with `remark`. Each `remark` call raises the revision by one, so a document whose indexed version is still above the ledger remains a violation.
+
+   CLI: `pnpm sonamu search remark --ids <document-id> --execute --confirm`; each run raises the revision by one.
+
+4. Run the verification scan to the end. The scan compares the version of every indexed document with the current ledger.
+
+   CLI: `pnpm sonamu search verify --target <target-id> --execute --confirm`
+
+   Check: the last page reports `done` with `violations` 0. If violations remain, the example returns them; go back to step 3, or rebuild if there are too many. If the scan refuses with `verification-not-quiesced` or `verification-raced-writes`, see the rules below.
+
+5. Resume the target with `resumeTarget`. The example runs steps 4 and 5 together.
+
+   CLI: `pnpm sonamu search resume-target --target <target-id> --execute --confirm`
+
+```typescript title="search/administration.ts"
+/** Remove the pause cause first; revision_divergence resumes only after a verification scan with no violation. */
+export async function verifyAndResumeTarget(
+  admin: SearchAdmin,
+  targetId: string,
+  audit: AdminContext,
+): Promise<readonly { id: string; indexed: number; ledger: number | null }[]> {
+  const inspection = await admin.inspect(chatMessagesSearch.key);
+  const target = inspection.targets.find((candidate) => candidate.targetId === targetId);
+  if (target?.pauseReason?.class === "revision_divergence") {
+    const violations: { id: string; indexed: number; ledger: number | null }[] = [];
+    for (;;) {
+      const progress = await admin.runTargetVerificationPage(targetId, { limit: 1_000 });
+      violations.push(...progress.sample);
+      if (progress.done) {
+        if (progress.violations > 0) return violations;
+        break;
+      }
+    }
+  }
+  await admin.resumeTarget(targetId, audit);
+  return [];
+}
+```
+
+   Check: in `inspect` the target is `active`, it disappears from `pausedTargets` in the worker's `status()`, and its backlog shrinks. If `resumeTarget` refuses, the reasons are listed below.
+
+Verification and resume rules:
+
+- The scan starts once the leases and requests from before the pause can be considered finished. Until then it refuses with `verification-not-quiesced` (`retryable`); call it again a little later.
+- At the start the scan records each shard's last operation number. After `_refresh` it opens one point in time and reads the documents of that moment once each, in shard order. It never rescans earlier pages, so its cost is linear in the number of documents: on OpenSearch 3.5.0, measured on one machine, 200,000 documents took 451 ms.
+- If the operation numbers have changed by the last page, the index was written during the scan. The scan is reset to the start and refused with `verification-raced-writes` (`retryable`). Stop whatever writes to the index, then run the scan again.
+- Progress is kept in the database, so another process or another handle can continue the scan. If the PIT has expired, the scan starts over within the same call. Long gaps between calls let the PIT expire, so call the pages back to back.
+- A partial result from shard failures or a timeout ends the scan as failed, and so does a cluster that disallows PIT or sorting on `_shard_doc`.
+- `resumeTarget` checks the target's state and epoch and its remote identity (`_meta`, write alias), and for `revision_divergence` requires a clean scan that started after the pause and ran to the end. Its refusals are `target-not-paused` (with a message saying nothing was changed), `target-epoch-invalid`, `verification-incomplete`, `verification-stale` (the scan is older than the pause), and `verification-violations`.
+- If violations remain, the target cannot be resumed. The remaining option is a rebuild.
+
+## A target paused for write_alias_missing
+
+A bulk got `index_not_found_exception` (404) from the write alias: the alias or the index was deleted outside the package. The package recreates neither, so that it never revives a name that may be retired or belong to something else.
+
+Before you start: you need your own OpenSearch tooling with administrator rights, because the operator, not the package, restores the alias.
+
+1. With `inspect`, confirm that the target's `pauseReason.class` is `write_alias_missing`, and note its physical index and write alias names.
+2. Check whether the physical index still exists and its `_meta` names this target. If the index is gone, go to step 5.
+3. With your own OpenSearch tooling, recreate the write alias pointing at that index alone, as its write index. In the example, `operatorClient` is an SDK client with administrator rights, and its single request stands for that tooling.
+4. Call `resumeTarget`. This cause needs no verification scan; `resumeTarget` resumes only after confirming that `_meta` matches and the alias points at exactly this one index as its write index.
+
+   CLI: `pnpm sonamu search resume-target --target <target-id> --execute --confirm`
+
+```typescript title="search/administration.ts"
+/** The package never recreates a write alias; the operator restores it with their own OpenSearch tooling, then resumes. */
+export async function restoreWriteAliasAndResume(
+  admin: SearchAdmin,
+  operatorClient: Client,
+  targetId: string,
+  audit: AdminContext,
+): Promise<TargetHandle> {
+  const inspection = await admin.inspect(chatMessagesSearch.key);
+  const target = inspection.targets.find((candidate) => candidate.targetId === targetId);
+  if (target?.state !== "paused" || target.pauseReason?.class !== "write_alias_missing") {
+    throw new Error(`write_alias_missing으로 정지된 대상이 아닙니다: ${targetId}`);
+  }
+  // Operator step outside the package: point the write alias at this target's physical index.
+  await operatorClient.indices.updateAliases({
+    body: {
+      actions: [
+        { add: { index: target.physicalIndex, alias: target.writeAlias, is_write_index: true } },
+      ],
+    },
+  });
+  return admin.resumeTarget(targetId, audit);
+}
+```
+
+   Check: the target is `active` and its backlog shrinks. If the alias is missing or points elsewhere, `resumeTarget` refuses with `SearchTargetUnavailable` and changes nothing; fix the alias and call it again.
+
+5. If the index is gone, the indexed content is lost. Create a new target by rebuilding, cut over, and retire the paused target.
+
+## An ambiguous create
+
+An index creation request ended without a known outcome, from a timeout or a dropped connection, or the creator stopped after recording its attempt. The states and rules are under "Remote create state" in [Index administration](/en/advanced-features/opensearch/index-administration).
+
+Before you start: a target identity that ends `abandoned` can never be used again, and reconciliation never deletes a leftover index; deleting it is your decision (step 5).
+
+1. In `inspect`, check that the target's `remoteCreateState` is `ambiguous` or `in_flight`, and when `remoteCreateStartedAt` was. Registration, re-creation and retirement of this identity, and the next creation for the logical key, are all refused until it is resolved.
+2. Confirm that the process that was creating this identity has stopped and that its requests can no longer arrive: the process has exited and one request time limit has passed.
+3. Run `reconcileCreate(targetId, { confirmQuiescent: true }, audit)`. It only reads the remote side.
+
+   CLI: `pnpm sonamu search reconcile --target <target-id> --execute --confirm`. The approval stands for `confirmQuiescent`, so approve only after step 2.
+
+   Check: `remoteCreateState` in the result is `verified` (the index, the write alias and a matching `_meta` exist) or `abandoned`. Without `confirmQuiescent` it refuses with `quiescence-not-confirmed`.
+
+4. Register the target. If `verified`, `executeCreate` with the same plan finishes the registration without a remote command. If `abandoned`, create again with a new plan.
+
+```typescript title="search/administration.ts"
+/** Stop every process creating with this plan before passing confirmQuiescent; an abandoned target id is never reused. */
+export async function reconcileAmbiguousCreate(
+  admin: SearchAdmin,
+  plan: CreatePlan,
+  audit: AdminContext,
+): Promise<TargetHandle> {
+  const reconciled = await admin.reconcileCreate(plan.targetId, { confirmQuiescent: true }, audit);
+  if (reconciled.remoteCreateState === "verified") return admin.executeCreate(plan, audit);
+  const fresh = await createFirstTarget(admin, audit);
+  if ("ambiguous" in fresh)
+    throw new Error(`새 생성도 결과를 모릅니다: ${fresh.ambiguous.targetId}`);
+  return fresh;
+}
+```
+
+   An identity left by `resumeCaptureForRebuild` is registered by calling that function again as is. `beginRebuild` builds a plan with a new target ID on every call, so it does not continue the same identity.
+
+   Check: `inspect` shows the target registered as `verified`, or closed as `abandoned` with a new target registered.
+
+5. If it ended `abandoned`, check for a leftover index under the abandoned name and delete it with your own tooling if you do not need it.
+
+## Changes that bypassed marking
+
+Mark again with `remark` any change that did not go through `markChanged`, such as a foreign key CASCADE or SET NULL, or hand-run SQL. `remark` marks the chosen documents with the same statements as a domain write and gives them a new ledger revision, which is higher than any indexed version and so wins in OpenSearch.
+
+| Scope | What it finds | What it misses |
+| --- | --- | --- |
+| `{ ids }` | Exactly the given IDs. For when you know the affected IDs (for example messages whose author was set to NULL) | IDs you do not know |
+| `{ scan: "source" }` | Every source row that the definition's `scanSourceIds` sees, including rows inserted without marking | Rows deleted by CASCADE: they are no longer in the source, so it cannot see them |
+| `{ scan: "ledger" }` | Every document ever marked. A document gone from the source is still in the ledger, so the worker indexes its tombstone | Rows that were never marked |
+
+Before you start: capture must be on. While it is suspended, `remark` returns `"suspended"` and changes nothing.
+
+1. Choose the scope: a ledger scan to find deleted rows, a source scan to find rows inserted without marking.
+2. Run the pages to the end. A ledger scan only goes up to its `through` bound, so it finishes even while writes continue. The example returns the number of documents marked.
+
+   CLI: `pnpm sonamu search remark --scan ledger --through <document-id> --execute --confirm`, or `--scan source` for a source scan. The command runs every page and prints each one.
+
+```typescript title="search/administration.ts"
+/** Use after unmarked changes (FK CASCADE, manual SQL); the ledger scan also reaches rows deleted from the source. */
+export async function remarkLedgerRange(
+  admin: SearchAdmin,
+  range: { after?: string; through: string },
+  audit: AdminContext,
+): Promise<number> {
+  let after = range.after;
+  let marked = 0;
+  for (;;) {
+    const scope: DocumentScope = {
+      logicalKey: chatMessagesSearch.key,
+      scan: "ledger",
+      through: range.through,
+      limit: 1_000,
+    };
+    if (after !== undefined) scope.after = after;
+    const report = await admin.remark(scope, audit);
+    marked += report.marked;
+    if (report.next === undefined) return marked;
+    after = report.next;
+  }
+}
+```
+
+   Check: the last page has no `next`. If a page fails, continue from the last `next` you received.
+
+3. Check the result: the worker's drain reports grow by the number of documents marked again, and deleted documents disappear from search.
+
+Rules: one call handles at most 10,000 documents and can be cancelled before it writes with `signal`. Each page acquires and releases the admin lease. A call is ordered against domain transactions marking the same document by the ledger row lock: a READ COMMITTED write waits and adds a revision on top, and a REPEATABLE READ write whose snapshot is older fails with 40001 and must be rerun. An administrative handle created without an OpenSearch client can run this operation.
+
+## Source database restore
+
+Restoring the source database in place by PITR or a dump moves the ledger, intents, targets and read pointer back too. The index stays ahead, so the ledger cannot be trusted. The only fix is to suspend capture and rebuild in a new epoch.
+
+Before you start:
+
+- If the restore changed the origin (the database was recreated under the same name), first run "Confirming that this is the same store" above. While remote operations are stopped, resume and cutover cannot run.
+- Step 1 cannot be undone: all existing targets and builds become invalid for good, and cursors issued before it never come back.
+- From step 1 until step 4, search returns `SearchRebuildRequired`; the old target is not served. Domain writes work normally throughout.
+
+```typescript title="search/administration.ts"
+/** After restoring the source database: suspend capture first, then resume into a new build and cut over. */
+export async function restoreFromSource(admin: SearchAdmin, audit: AdminContext): Promise<void> {
+  await admin.suspendCapture(chatMessagesSearch.key, audit);
+  const build = await admin.resumeCaptureForRebuild(chatMessagesSearch.key, audit);
+  await backfill(admin, build);
+  await admin.cutover(build.buildId, audit);
+}
+```
+
+1. Call `suspendCapture` right after the restore. Later writes leave no intents.
+
+   CLI: `pnpm sonamu search suspend --execute --confirm`
+
+   Check: `markChanged` returns `"suspended"` and searches return `SearchRebuildRequired`.
+
+2. Create a new target in a new epoch and turn capture back on with `resumeCaptureForRebuild`.
+
+   CLI: `pnpm sonamu search resume --execute --confirm`
+
+   Check: it returns a build. If it refuses with `capture-not-suspended`, step 1 did not take effect. If the create's outcome is unknown, follow "An ambiguous create" above; calling `resumeCaptureForRebuild` again registers the same identity.
+
+3. Run the backfill to the end and let the worker drain the backlog.
+
+   CLI: `pnpm sonamu search backfill --execute --confirm`
+
+   Check: `inspectBuild` shows `eligibleForCutover` `true`.
+
+4. Run `cutover`. It refuses while blockers remain, so check them with `inspectBuild` first.
+
+   CLI: `pnpm sonamu search cutover` without `--execute` prints the blockers and changes nothing; `pnpm sonamu search cutover --execute --confirm` cuts over.
+
+   Check: searches succeed again.
+
+5. After the grace period, retire the old-epoch targets.
+
+   CLI: `pnpm sonamu search retire-old --execute --confirm`
+
+   Check: `inspect` shows them `retired`. If retirement refuses with `retirement-grace-pending`, run it again at `details.earliestAtMs`.
+
+6. Check the result: search returns the restored content from the new target, and in `inspect` the read pointer names the new target with `rebuildRequired` `false`.
+
+Cursors issued before the suspension get `SearchRebuildRequired` during the suspension and `SearchCursorExpired` (`capture-epoch-invalidated`) after the cutover.
+
+## Hash version upgrade
+
+A package version that changes the canonical JSON rules uses a new hash version name. The current package has one hash version, `sonamu-c14n-v1`. The hash version is a fingerprint input, so every definition's fingerprint changes and the upgrade is a rebuild.
+
+Before you start:
+
+- Between the cutover (step 3) and moving search processes to the new version (step 4), searches from one of the versions get `SearchDefinitionMismatch` (`unsupported-hash-version`), because a query handle reads only targets with its own package's hash version. Plan to serve that window as 503.
+- Rolling back to the old target needs an administrative handle that holds its definition, that is, one from the old package version. Retiring the old target (step 5) ends that option.
+
+1. Deploy workers of the new version alongside the old workers. A worker claims only targets whose `(key, fingerprint, hash version)` it matches, so old workers handle the old target and new workers the new one. A worker leaves targets it does not know alone and reports them in `unsupportedTargets`.
+2. With the new version's administrative handle, open a build for the new fingerprint and backfill it.
+
+   CLI, from the new version: `pnpm sonamu search init --execute --confirm`, then `pnpm sonamu search backfill --execute --confirm`.
+
+   Check: `inspectBuild` shows the build `catching_up`.
+
+3. Once the new target's backlog is small, run `cutover`.
+
+   CLI: `pnpm sonamu search cutover --execute --confirm`
+
+   Check: the read pointer names the new target. If cutover refuses, see its blockers.
+
+4. Move search processes to the new version.
+
+   Check: searches no longer get `unsupported-hash-version`.
+
+5. After the grace period, retire the old target and stop the old workers.
+
+   CLI: `pnpm sonamu search retire-old --execute --confirm`
+
+6. Check the result: `unsupportedTargets` in worker reports is empty and no `hash-version-mismatch` events appear.
+
+A document already indexed at the same revision under another hash version is not quarantined: it is released without budget with a `hash-version-mismatch` event, and stays pending until it is marked again or the target is rebuilt.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Operations" icon="chart-line" href="/en/advanced-features/opensearch/operations">
+    Monitoring, tuning, permissions, known limits
+  </Card>
+  <Card title="Index administration" icon="layer-group" href="/en/advanced-features/opensearch/index-administration">
+    The administrative handle and the rules of each operation
+  </Card>
+</CardGroup>
+

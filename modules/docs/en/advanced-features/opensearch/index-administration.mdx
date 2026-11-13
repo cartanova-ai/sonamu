@@ -1,0 +1,525 @@
+---
+title: "Index Administration"
+description: "The administrative handle, the admin lease, the sonamu search commands, creating the first target, rebuilds and cutover, the read pointer, read lifetimes, retirement, suspending and resuming capture, remote create state, inspecting state"
+---
+
+Creating indexes, rebuilding them after a definition change, moving the read pointer and deleting old indexes are administrative commands that an operator runs explicitly. Neither server start nor the worker runs them. This page covers the operations of the administrative handle that `createSearchAdmin` creates, in the order you use them, and the `sonamu search` commands that run them from a shell. Procedures for recovering a target and for copied or restored databases are in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks).
+
+## The administrative handle
+
+Create the handle with `createSearchAdmin` from `@sonamu-kit/opensearch/admin`, using administrator credentials: the PostgreSQL admin role, and an OpenSearch user that can create and delete indexes. Do not give these credentials to runtime processes.
+
+```typescript title="search/administration.ts"
+/** Build the admin handle with admin credentials only, and run its commands explicitly from operator tooling. */
+export function createChatSearchAdmin(adminDatabase: () => Knex): SearchAdmin {
+  return createSearchAdmin({
+    ...adminOptions(adminDatabase),
+    client: createSearchClient({
+      createClient: () =>
+        new Client({ node: process.env.OPENSEARCH_ADMIN_URL ?? "http://localhost:9200" }),
+      ownsClient: true,
+      requestTimeoutMs: RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+    }),
+  });
+}
+
+/** Without OpenSearch credentials only POSTGRES_ONLY_ADMIN_OPERATIONS work; the rest refuse with search-client-not-configured. */
+export function createChatSearchMonitor(adminDatabase: () => Knex): SearchAdmin {
+  return createSearchAdmin(adminOptions(adminDatabase));
+}
+
+function adminOptions(adminDatabase: () => Knex): SearchAdminOptions {
+  return {
+    synchronization: createPostgresSynchronization({
+      getPrimaryDatabase: adminDatabase,
+      namespace: SEARCH_NAMESPACE,
+      // Set a distinct name per environment from its configuration; a name fixed in code protects nothing.
+      instanceName: process.env.SEARCH_INSTANCE_NAME,
+    }),
+    definitions: [chatMessagesSearch],
+    lifetimes: RECOMMENDED_ADMIN_LIFETIMES,
+    timeouts: RECOMMENDED_ADMIN_TIMEOUTS,
+    cutover: RECOMMENDED_CUTOVER,
+    // Derive from the limits the workers actually use; retirement waits for in-flight writes by these bounds.
+    workerBounds: workerBoundsFrom(RECOMMENDED_WORKER_LIMITS),
+  };
+}
+```
+
+Set `instanceName` from each environment's configuration (production, staging, a developer copy). A name fixed in code is the same in every environment and protects nothing; what the name does is described under "Environment names" in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks).
+
+| Option | Meaning | Recommended |
+| --- | --- | --- |
+| `client` | A client with administrator credentials. May be omitted (below) | |
+| `synchronization` | The synchronization handle that fixes the namespace, schema, primary, and `instanceName` | |
+| `definitions` | The definitions to manage. Cutover and rollback need the definitions of both targets here | |
+| `lifetimes` | Read lifetime maximums and the retirement safety margin. Recorded in `read_heads` when the first target is created | `RECOMMENDED_ADMIN_LIFETIMES` |
+| `timeouts` | Lock, statement, and idle-in-transaction time limits, and the admin lease length | `RECOMMENDED_ADMIN_TIMEOUTS` |
+| `cutover` | The largest backlog that still allows cutover (`maxPendingDocuments`) and the verification sample size (`sampleSize`) | `RECOMMENDED_CUTOVER` |
+| `workerBounds` | The worker's `leaseDurationMs` and `requestTimeoutMs`, taken from the limits the workers actually use. They set how long retirement waits | `workerBoundsFrom(worker limits)` |
+
+The handle never closes the client it was given; whoever created the client closes it.
+
+Without `client`, the handle runs only operations that send nothing to OpenSearch: those listed in the exported `POSTGRES_ONLY_ADMIN_OPERATIONS` (`inspect`, `inspectBuild`, `runBackfillPage`, `suspendCapture`, `remark`, `retryQuarantined`, `adoptCopiedStore`, `changeReadLifetimes`), and `planCreate` for a definition without `requiredPlugins`. Every other operation refuses with `SearchAdminPreconditionFailed` (`search-client-not-configured`) before it reads or writes anything. `confirmStoreOwnership` is not in the list because it writes to OpenSearch to take target fences back; without a client it runs only while no target that may have a remote index (`creating`, `active`, `paused`, `retiring`) exists. Use a handle without a client for tools that need no OpenSearch credentials, such as monitoring or repairing marks. `createChatSearchMonitor` above is one.
+
+The worker and every operation that sends remote requests first check the store binding. If this database is not the one the store was recorded in, or `instanceName` differs from the recorded name, they refuse with `SearchStoreMismatch` and send nothing. Cutover and rollback (for the target they move to), `resumeTarget` and `retireTarget` also check that this database still holds the target's fence. If it was lost, they change nothing and refuse with `SearchStoreMismatch` (`target-fence-lost`, with `targetId`, `class`, `localEpoch` and `remoteEpoch` in `details`). If the fence cannot be read, the error is a retryable `SearchUnavailable` (`fence-unreadable`). Marking, `initialize()` and search are not blocked. What to do on a copy or after an in-place restore is in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks).
+
+Methods that change state take an audit context `{ operationId, actor, reason }` and record start, success and failure in `admin_operations`. Do not put secrets in it.
+
+```typescript title="search/administration.ts"
+export function auditContext(actor: string, reason: string): AdminContext {
+  return { operationId: `chat-search-${Date.now()}`, actor, reason };
+}
+```
+
+## The admin lease
+
+Only one administrative operation runs on a logical key at a time. An operation acquires the lease when it starts, extends it while it runs, and releases it at the end whether it succeeds or fails. Calling again with the same `operationId` reuses the same lease.
+
+- `SearchAdminBusy` (`retryable`): another operation holds the lease (`lease-held`), or a lock or statement did not finish within its time limit. Run the operation again a little later.
+- `SearchAdminLeaseLost` (`retryable`): the lease expired or passed to another operation midway, and none of the operation's later database writes took effect. Run the same operation again; it continues where it stopped.
+- If an administrative process dies, another operation can take the lease only after `adminLeaseMs` has passed.
+
+The lease fences database writes but cannot undo a remote command already sent. Operations that send remote requests (target creation, create reconciliation, resuming capture, cutover and rollback, retirement, and verifying and resuming a paused target) therefore cap each request's time limit so that it fits inside the lease:
+
+> Time limit of one request = (`adminLeaseMs` − 4 × `statementTimeoutMs`) / 3
+
+If this value is below one second, the operation refuses with `SearchConfigurationError` (`admin-lease-too-short`) before it sends or writes anything. With the recommended values it is (5 min − 4 × 30 s) / 3 = 1 minute; the client's `requestTimeoutMs` (30 s) is shorter, so that applies.
+
+## Running administration from the CLI
+
+`@sonamu-kit/opensearch/sonamu` ships the administrative operations as `sonamu search` commands, a plugin for the `sonamu` CLI. Each command builds an administrative handle from a setup your application provides, runs one or more `SearchAdmin` operations, and prints the result. Use the commands for operator work from a shell. Call `SearchAdmin` from code when you need a step the commands do not offer (such as `changeReadLifetimes`, or `planCreate` and `executeCreate` run separately) or your own checks between steps. The lease, refusals and procedures on this page and in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks) apply to both. How the CLI loads plugins is described under "CLI plugins" in the [CLI reference](/en/tools-and-cli/sonamu-cli/reference).
+
+### Registering the plugin
+
+Add the plugin to `cli.plugins` in `sonamu.config.ts`, and build the setup in a separate module:
+
+```typescript title="sonamu.config.ts"
+  cli: {
+    // Loaded lazily, so evaluating this config never imports the search setup.
+    plugins: [
+      createSearchCliPlugin({
+        load: async () => (await import("./search/cli-setup")).chatSearchCliSetup(),
+      }),
+    ],
+  },
+```
+
+```typescript title="search/cli-setup.ts"
+/** Imported by sonamu.config.ts only when a `sonamu search` command runs. */
+export function chatSearchCliSetup(): SearchCliSetup {
+  return {
+    // During a rebuild, list the new definition first and keep the old one until its target is retired.
+    definitions: [chatMessagesSearch],
+    synchronization: searchSynchronization,
+    // Admin credentials; the plugin creates a client per command and closes it.
+    client: () => ({
+      createClient: () =>
+        new Client({ node: process.env.OPENSEARCH_ADMIN_URL ?? "http://localhost:9200" }),
+      ownsClient: true,
+      requestTimeoutMs: RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+    }),
+    // The same values as the application's admin handle and query handles.
+    admin: {
+      lifetimes: RECOMMENDED_ADMIN_LIFETIMES,
+      timeouts: RECOMMENDED_ADMIN_TIMEOUTS,
+      cutover: RECOMMENDED_CUTOVER,
+    },
+    // The worker's limits (examples/search/worker.ts); retirement waits by them.
+    workerLimits: RECOMMENDED_WORKER_LIMITS,
+  };
+}
+```
+
+`load` runs inside each command, after `Sonamu.init`. Import the setup module lazily, as above, so that evaluating `sonamu.config.ts` loads no search module. `createSearchCliPlugin` checks its options when the config is evaluated (`invalid-cli-options`); the setup is checked each time a command runs, and a malformed one fails with `SearchConfigurationError` (`invalid-cli-setup`, with the offending field in `details.path`).
+
+| Setup field | Purpose |
+| --- | --- |
+| `definitions` | Every definition still served, the current one of each logical key first: the list the worker gets. During a rebuild, keep the old definition until its target is retired. The logical keys of these definitions are the ones the commands accept |
+| `synchronization` | The application's synchronization handle (namespace, schema, `instanceName`). The plugin never closes it |
+| `client` | Optional. A function returning the options of a client with administrator credentials. Only the commands marked in the table below call it; the plugin creates one client per command and closes it when the command ends. If `client` is omitted, a command whose operation needs OpenSearch refuses with `search-client-not-configured`. If the function throws (for example on a missing URL), every marked command fails with that error and the others still run |
+| `admin` | `lifetimes`, `timeouts` and `cutover`: the same values as the application's administrative handle. `lifetimes` are recorded with the first target |
+| `workerLimits` | The worker's actual limits. The handle's `workerBounds` come from them, so retirement waits for in-flight writes correctly, and `drain` runs a worker with them |
+
+The CLI runs the built code: it reads the plugin from `dist/sonamu.config.js`, and `load` imports the built setup module. Run `sonamu build` after you register the plugin and after every change to the setup or a definition; otherwise `init` plans from the old definition. Without a build, `search` is an unknown command (exit code 2), and the error says the plugin commands could not be loaded and why.
+
+### Commands
+
+`pnpm sonamu search <command> [logicalKey] [options]`. Options take a value as `--option value`; `--ids` repeats, one ID per flag (`--ids 3 --ids 7`).
+
+| Command | Arguments and options | Changes state | Calls `client` | `SearchAdmin` operations |
+| --- | --- | --- | --- | --- |
+| `inspect` | `[logicalKey]` | No | No | `inspect`, and the store binding even for an unregistered key |
+| `init` | `[logicalKey] [--limit N]` | Yes; a dry run without `--execute` | Yes, also for the dry run | For an unregistered key, `planCreate` and `executeCreate`; then `beginRebuild`. For a first build it continues with `runBackfillPage` to the end, `inspectBuild` and `cutover`; for a rebuild it stops and prints the next steps (`backfill`, `cutover`, `retire-old`). The dry run reads `inspect` and, for an unregistered key, `planCreate` |
+| `backfill` | `[logicalKey] [--build ID] [--limit N]` | Yes | No | `runBackfillPage` until `done` |
+| `cutover` | `[logicalKey] [--build ID]` | Yes; a dry run without `--execute` | Yes, except for the dry run | `inspectBuild`, then `cutover`. The dry run stops after `inspectBuild` |
+| `rollback` | `[logicalKey] [--build ID]` | Yes | Yes | `rollback` |
+| `retire-old` | `[logicalKey] [--target ID]` | Yes | Yes | `retireTarget` for the given target, or for every target that is not the read target, not retired, and has a deselection time, stopping at the first refusal |
+| `suspend` | `[logicalKey]` | Yes | No | `suspendCapture` |
+| `resume` | `[logicalKey]` | Yes | Yes | `resumeCaptureForRebuild`; prints the next steps (`backfill`, `cutover`) |
+| `verify` | `--target ID [--limit N]` | Yes (records scan progress) | Yes | `runTargetVerificationPage` until `done`; remaining violations end it with `verification-violations` |
+| `resume-target` | `--target ID` | Yes | Yes | `resumeTarget` |
+| `reconcile` | `--target ID` | Yes | Yes | `reconcileCreate` with `confirmQuiescent: true` |
+| `remark` | `[logicalKey]` with `--ids ID`, or `--scan source` or `--scan ledger` with `[--after X] [--through X]`; `[--limit N]` | Yes | No | `remark`: one call for `--ids`, otherwise page by page until the scan has no `next` |
+| `retry-quarantined` | `--target ID [--ids ID] [--limit N]` | Yes | No | `retryQuarantined`: one call for `--ids`, otherwise page by page until a page releases fewer than `--limit` |
+| `drain` | `[--max-rounds N]` | Yes | Yes | None: runs a worker with `workerLimits` until a drain finds nothing to do, the worker enters a cooldown, or `--max-rounds` drains (default 100) have run. For development |
+| `adopt-store` | | Yes | No | `adoptCopiedStore` with `confirmCopy: true`, then the store binding; prints the next steps (`restart-processes`, `resume`, `backfill`, `cutover`) |
+| `confirm-ownership` | | Yes | Yes | `confirmStoreOwnership` with `confirmSoleOwner: true`, then the store binding |
+
+`--limit` is the page size and defaults to 500. `--build` defaults to the logical key's open build; without one the command refuses with `no-open-build`. Every command that changes state also takes `--operation-id`, `--actor` and `--reason` for the audit context. By default each operation gets a new operation ID (`sonamu-search-<command>-<UUID>`), the actor is `cli:` followed by the operating system user, and the reason is `sonamu search <command>`.
+
+**Approval.** A command that changes state runs only after approval. On a terminal the CLI asks before it runs; `--confirm` skips the question. Without a terminal, or with `--non-interactive`, it needs `--execute --confirm` and otherwise exits with code 3 (`CONFIRMATION_REQUIRED`) before anything runs. `init` and `cutover` are the exceptions: without `--execute` they run as a dry run, which needs no approval and changes nothing. For `reconcile`, `adopt-store` and `confirm-ownership`, the approval stands for the operator confirmation the operation requires (`confirmQuiescent`, `confirmCopy`, `confirmSoleOwner`), so check the precondition in the runbook before you approve.
+
+**Logical key.** When the setup's definitions have one logical key, the argument may be omitted. With several, a command that takes it refuses without it (`logical-key-required`, with the keys in `details.keys`), and a key without a definition is refused with `logical-key-unknown`. Both exit with code 2.
+
+### Output and failures
+
+A command with one result prints it when it finishes: formatted for people, or as `{"ok":true,"command":"search.inspect","data":…}` with `--json`. `init` (when executed), `backfill`, `retire-old`, `verify`, `remark`, `retry-quarantined` and `drain` stream instead: each step is one JSON line such as `{"event":"backfill.page","data":…}`, written as it happens, with or without `--json`, and no final result line follows. The events are `init.plan`, `init.created`, `init.build`, `init.next`, `backfill.page`, `cutover.check`, `cutover.done`, `retire.none`, `retire.start`, `retire.done`, `verify.page`, `remark.page`, `remark.done`, `retry.page`, `retry.done`, `drain.round`, `drain.<worker event>` and `drain.stopped`.
+
+With `--json`, a failure is one line on stdout: `{"ok":false,"command":…,"error":{"code","message","hint","details"},"exitCode":…}`. Without it, the message and the hint go to stderr. `code` is the package's error code (for example `SEARCH_ADMIN_PRECONDITION_FAILED`), `details.reason` is the refusal reason this page lists, and `details.retryable` says whether running the command again can succeed. Detail keys that look like credentials are dropped. A `SearchStoreMismatch` carries a hint that names `sonamu search adopt-store` for a copy or restore and `sonamu search confirm-ownership` for the same store; both are in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks). When a streaming command fails, the steps already reported have taken effect, and running it again continues where it stopped.
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | Done |
+| `1` | An operation refused or failed |
+| `2` | A usage error: unknown command or option, an invalid value (`invalid-cli-input`), `logical-key-required`, `logical-key-unknown`, or `remark` without `--ids` or `--scan` (`remark-scope-required`) |
+| `3` | `CONFIRMATION_REQUIRED`: a state change without approval |
+| `130` | The operator declined at the prompt |
+
+## Creating the first target
+
+The first target and a rebuild after a definition change follow the same flow: open a build, fill it from the source, let the worker drain the backlog, and cut over.
+
+<Warning>
+Deploy code that marks this key only after its first target is registered; until then marking fails and the domain transaction does not commit ([Transactional indexing](/en/advanced-features/opensearch/transactional-indexing)).
+</Warning>
+
+```typescript title="search/administration.ts"
+export async function backfill(admin: SearchAdmin, build: BuildHandle): Promise<void> {
+  for (;;) {
+    const progress = await admin.runBackfillPage(build.buildId, { limit: 1_000 });
+    if (progress.done) return;
+  }
+}
+
+export async function buildAndCutover(
+  admin: SearchAdmin,
+  audit: AdminContext,
+): Promise<BuildHandle> {
+  const build = await admin.beginRebuild(
+    { logicalKey: chatMessagesSearch.key, fingerprint: chatMessagesSearch.fingerprint },
+    audit,
+  );
+  await backfill(admin, build);
+  const inspection = await admin.inspectBuild(build.buildId);
+  if (!inspection.eligibleForCutover) {
+    throw new Error(`cutover 차단: ${inspection.blockers.join(", ")}`);
+  }
+  await admin.cutover(build.buildId, audit);
+  return build;
+}
+```
+
+Before you start, the package schema must be installed and the administrative handle must hold the definition.
+
+1. Open the build with `beginRebuild({ logicalKey, fingerprint }, audit)`. With no read target it creates the target and opens a first build (`initial`); with one it opens a rebuild (`rebuild`). If an open build with the same fingerprint exists, it writes nothing and returns that build, so running the same call continues a flow that stopped midway.
+
+   Check: `inspect().openBuild` shows the build. If the call refuses with `remote-create-ambiguous`, the create's outcome is unknown; follow "An ambiguous create" in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks).
+
+2. Call `runBackfillPage(buildId, { limit })` until it returns `done`.
+
+   Check: `inspectBuild(buildId).phase` is `catching_up`. If a call fails, call it again; it continues from the recorded page cursor.
+
+3. Let the worker drain the new target's backlog.
+
+   Check: `inspectBuild(buildId).eligibleForCutover` is `true`. If not, `blockers` names the reasons; see the table under "Rebuild and cutover".
+
+4. Run `cutover(buildId, audit)`.
+
+   Check: `inspect().readHead.targetId` names the new target. If it refuses, nothing changed: fix the cause in `details.blockers` and run it again.
+
+A first build has nothing to roll back to and closes with its cutover.
+
+To create the target separately and inspect each step, use the two lower-level operations that `beginRebuild` runs internally:
+
+```typescript title="search/administration.ts"
+/** Review the plan before executing it; an ambiguous create blocks its target id until reconcileCreate. */
+export async function createFirstTarget(
+  admin: SearchAdmin,
+  audit: AdminContext,
+): Promise<TargetHandle | { ambiguous: CreatePlan }> {
+  // Required when the handle holds two definitions for the key, as during a rebuild.
+  const plan = await admin.planCreate(chatMessagesSearch.key, {
+    fingerprint: chatMessagesSearch.fingerprint,
+  });
+  if (plan.missingPlugins.length > 0 || plan.warnings.length > 0) {
+    throw new Error(
+      `생성 계획을 확인하세요: ${[...plan.missingPlugins, ...plan.warnings].join(", ")}`,
+    );
+  }
+  try {
+    return await admin.executeCreate(plan, audit);
+  } catch (error) {
+    if (error instanceof SearchAdminPreconditionFailed) {
+      if (ambiguousCreateSchema.safeParse(error.details).success) return { ambiguous: plan };
+    }
+    throw error;
+  }
+}
+```
+
+1. Run `planCreate(logicalKey, { fingerprint })`. It creates and records nothing and returns a plan: the new target ID, the physical index and write alias names, the settings and mappings to send, `missingPlugins`, and warnings (`capture-suspended`, `index-has-live-target`, `plugins-missing`). When the handle holds more than one definition for the key, as during a rebuild, `fingerprint` picks one; with a single definition it may be omitted.
+
+   Check: `missingPlugins` and `warnings` are empty. If not, stop and resolve them; the example throws before creating anything.
+
+2. Run `executeCreate(plan, audit)`. If a plugin is missing, it refuses with `plugins-missing` and does nothing. Otherwise it records the target intent and the create attempt, creates the index and its write alias in one request (the index `_meta` carries the store identity), reads the mapping and alias back to verify them, registers the target, and opens the first build.
+
+   Check: it returns a target handle. Calling it again with the same plan only checks the remote side of the registered target and returns the same handle; it does not create again. If it refuses with `remote-create-ambiguous` (lost response, 5xx), the target ID stays blocked until `reconcileCreate`; see "Remote create state" below.
+
+## Rebuild and cutover
+
+To rebuild after a definition change, give the administrative handle both the old and the new definition and follow the steps in "Creating the first target": `beginRebuild` opens a `rebuild` build. A build moves through `created` → `backfilling` → `catching_up` → `serving`.
+
+- **Backfill**: the first call to `runBackfillPage(buildId, { limit })` records the scan boundary from the definition's `captureScanBoundary`. Each later call reads one page from `scanSourceIds`, creates ledger rows at revision 1 for IDs that have none, and reserves intents on the new target at the current ledger revision. After the last page the build becomes `catching_up`. Each call acquires and releases the lease and writes only after comparing the page cursor, so a page is never applied twice and you can stop and continue at any point.
+- **Dual writes**: from the moment the new target is registered, `markChanged` records intents for both the old and the new target. Writes during the backfill, and IDs created after the scan boundary, reach the new target too.
+- **Catching up**: the worker drains the new target's backlog. `inspectBuild(buildId)` shows progress and the cutover blockers without taking locks.
+
+| Blocker | Meaning |
+| --- | --- |
+| `capture-suspended` | Capture is suspended |
+| `phase-not-catching-up` | The build is not in the catching-up phase yet |
+| `scan-incomplete` | Backfill has not finished |
+| `capture-epoch-mismatch` | The build does not belong to the current epoch |
+| `new-target-not-writable` | The new target is not an active, writable target |
+| `read-head-moved` | The read pointer moved elsewhere after the build was opened |
+| `quarantined-documents` | The new target has quarantined documents |
+| `pending-above-limit` | The backlog exceeds `maxPendingDocuments` |
+
+The backlog and quarantine checks count only what the decision needs: the backlog count stops at `maxPendingDocuments` + 1 rows, and quarantine is an existence check. Their cost does not grow with the backlog.
+
+`cutover(buildId, audit)` checks the following in order. If any check fails, it changes nothing and refuses with `SearchAdminPreconditionFailed` (`details.reason` is the first blocker, `details.blockers` lists all of them).
+
+1. Remote check: the new target's index exists, its `_meta` names this target and this store, and the write alias points at it. Nothing missing is recreated. Then the new target's fence is checked.
+2. Sample verification: it picks `sampleSize` IDs from the ledger, projects them in one snapshot, and compares revision, deleted flag and hash with the documents in the new index. Documents still pending on the new target pass. Any violation gives `verification-failed`.
+3. It checks the blockers in the table again in one transaction, and moves the read pointer and the build phase in the same transaction.
+
+`eligibleForCutover` reflects only the conditions PostgreSQL can check, so the outcome of checks 1 and 2 is known only when cutover runs. A rebuild stays `serving` after cutover and can be rolled back until the old target is retired.
+
+### Rollback
+
+```typescript title="search/administration.ts"
+export async function rollbackBuild(admin: SearchAdmin, build: BuildHandle, audit: AdminContext) {
+  return admin.rollback(build.buildId, audit);
+}
+```
+
+`rollback(buildId, audit)` moves the read pointer of a `serving` build back to the old target. It refuses unless the old target is still writable and in the same epoch, its definition is in the administrative handle, and the read pointer has not moved elsewhere since the cutover. Check that `inspect().readHead.targetId` names the old target afterwards. Dual writes continue, so you can `cutover` again; cutover → rollback → cutover may repeat. Retiring the old target ends the chance to roll back.
+
+## The read pointer
+
+The read pointer is one row per logical key in the `read_heads` table. It holds the target to read now, a generation number, whether a rebuild is required, and the read lifetime maximums. Every new search reads this row, and a cursor stays pinned to the target it was issued on. A search started before a cutover commits finishes on the old target; a search started after the commit reads the new one. Because the pointer lives in PostgreSQL, cutover and rollback happen in one transaction and no OpenSearch alias changes.
+
+## Read lifetimes
+
+The read lifetime maximums (`maxSearchLifetimeMs`, `maxCursorLifetimeMs`, `maxPitKeepAliveMs`) and the retirement safety margin are recorded in `read_heads` when the first target is created. `lifetimes` given to an administrative handle after that are not used. Read the recorded values with `inspect().lifetimes`, and change them only with `changeReadLifetimes(logicalKey, lifetimes, audit)`, which takes all four values.
+
+```typescript title="search/administration.ts"
+/** Raise the recorded maximum before giving query handles a longer cursor lifetime; lowering it is refused. */
+export async function raiseCursorLifetime(
+  admin: SearchAdmin,
+  maxCursorLifetimeMs: number,
+  audit: AdminContext,
+): Promise<ReadLifetimeChange> {
+  const recorded = (await admin.inspect(chatMessagesSearch.key)).lifetimes;
+  if (recorded === null) throw new Error("이 key에는 아직 대상이 없습니다.");
+  const next: ReadLifetimes = { ...recorded, maxCursorLifetimeMs };
+  return admin.changeReadLifetimes(chatMessagesSearch.key, next, audit);
+}
+```
+
+- Raising any value, and lowering `maxPitKeepAliveMs`, take effect at once. Raise the recorded value before you give a query handle a longer lifetime: a query handle whose lifetime exceeds the recorded value fails its searches with `lifetime-exceeds-catalog`.
+- Lowering the search lifetime, the cursor lifetime or the safety margin is refused with `SearchAdminPreconditionFailed` (`read-lifetime-decrease-unsupported`), and nothing changes. The retirement grace is their sum, and cursors issued under a longer value may still be alive.
+- To shorten the effective cursor lifetime, lower it in the query handle's settings. A setting below the recorded value is always allowed; the only cost of a high recorded value is how long retirement waits.
+
+The audit record keeps the previous and the new values. If the values are unchanged, nothing is written.
+
+## Retirement
+
+`retireTarget(targetId, audit)` deletes a target that nobody reads any more. Deleting the physical index cannot be undone: after retirement the build can no longer be rolled back, and the target's names are never created again. Retirement starts only after the read grace period has passed:
+
+> Grace = `maxCursorLifetimeMs` + `maxSearchLifetimeMs` + `retirementSafetyMarginMs`
+
+The three values are the ones recorded in `read_heads`. The grace counts from the confirmed deselection time, which is recorded **after** the cutover or rollback commits. If no confirmed time exists yet, retirement records it first and refuses. A target that was never a read target has no grace period. With the recommended values the grace is 10 min + 30 s + 5 min = 15 min 30 s.
+
+```typescript title="search/administration.ts"
+/** Returns null once retired, or the earliest retry time in epoch milliseconds while the read grace period lasts. */
+export async function retireWhenAllowed(
+  admin: SearchAdmin,
+  targetId: string,
+  audit: AdminContext,
+): Promise<number | null> {
+  try {
+    await admin.retireTarget(targetId, audit);
+    return null;
+  } catch (error) {
+    if (error instanceof SearchAdminPreconditionFailed) {
+      const pending = gracePendingSchema.safeParse(error.details);
+      if (pending.success) return pending.data.earliestAtMs;
+    }
+    throw error;
+  }
+}
+```
+
+1. Run `retireTarget(targetId, audit)`.
+
+   Check: the call returns and `inspect()` shows the target as `retired`. If it refuses with `retirement-grace-pending`, run it again at `details.earliestAtMs` (the example returns that time). For the other refusals, see the table below. If it fails midway, the same call continues where it stopped.
+
+What retirement does, in order:
+
+1. It checks the confirmed deselection time, the target's fence and the refusals, closes the `serving` build whose old target this is, and turns off writes for the target.
+2. It checks that the index's `_meta` names this target and this store.
+3. It removes the write alias. A bulk arriving later is rejected by `require_alias` and cannot create an index.
+4. It waits until `leaseDurationMs + requestTimeoutMs` (`workerBounds`) has passed since the alias was removed and no lease is alive. With the recommended values that is 2 min 30 s.
+5. It checks `_meta` and the fence again, then deletes the physical index. The fence document goes with the index.
+6. It deletes the remaining intents and runtime rows in batches and marks the target `retired`, deleting its fence row in the same transaction. A long cleanup extends the admin lease between batches.
+
+If the alias or the index is already gone, the engine's 404 counts as success and retirement continues. For an index created before schema version 2, whose `_meta` has no store identity, only the target is checked.
+
+| Refusal | Meaning | `retryable` |
+| --- | --- | --- |
+| `target-serving` | It is the current read target | false |
+| `retirement-grace-pending` | Grace remains. `details.earliestAtMs` is the earliest time | true |
+| `remote-create-unresolved` | The outcome of a create attempt is still unknown | false |
+| `target-in-open-build` | It is the new target of an open build | false |
+| `target-not-retirable` | Its state does not allow retirement | false |
+| `target-detached` | Detached when a copy was adopted. It belongs to the source; manage it there | false |
+| `retirement-in-flight` | Leases remained past the bound while waiting | true |
+| `retirement-residue` | Intents or runtime rows remained at the final cleanup | true |
+| `remote-index-foreign` | The index's `_meta` does not match this target. It is not deleted | false |
+
+If the store identity in the index `_meta` differs from this store, retirement refuses with `SearchStoreMismatch` (`remote-store-mismatch`) and touches neither the alias nor the index.
+
+## Suspending capture and resuming for a rebuild
+
+Suspending capture trades search availability for a rebuild. Use it when the ledger cannot be trusted, for example after the source database was restored. The procedure, with its example, is "Source database restore" in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks).
+
+`suspendCapture(logicalKey, audit)` has these effects:
+
+- `markChanged` returns `"suspended"` and leaves no intents. Domain writes keep committing.
+- The read pointer becomes rebuild-required, so searches get `SearchRebuildRequired`.
+- All existing targets and open builds become the old epoch and are never used again: the worker does not claim them, they cannot be cut over or rolled back, and cursors issued before are invalid for good.
+- If capture is already suspended, nothing changes.
+
+`resumeCaptureForRebuild(logicalKey, audit)` creates a new target in a new epoch and turns capture back on in the commit that registers that target. If capture is not suspended, it refuses without a remote command (`capture-not-suspended`). Searches return only after you backfill the returned build and cut it over, and that build cannot be rolled back.
+
+The costs: search is unavailable from the suspension until the resume build is cut over, and the whole source has to be filled again. Changes made during the suspension leave no intents, but the backfill reads the current source, so the new target includes them. Retire the old-epoch targets afterwards.
+
+## Remote create state
+
+An index creation request can end without a known outcome. The package records the outcome per target as a state and never recreates or deletes anything on its own. The procedure for an unknown outcome is "An ambiguous create" in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks).
+
+| State | Meaning |
+| --- | --- |
+| `not_started` | No remote command sent, or the engine cleanly refused (for example 429) and the same plan can be retried |
+| `in_flight` | The attempt was recorded but its outcome was not (the creator stopped) |
+| `verified` | The index, its write alias, and its `_meta` were confirmed |
+| `ambiguous` | The outcome of the request is unknown (timeout, dropped connection, 5xx, uninterpretable response) |
+| `abandoned` | The engine refused the creation, or reconciliation gave the identity up. Never retried |
+
+- For an identity in `in_flight` or `ambiguous`, registration, re-creation, retirement, and the next creation for the logical key are all refused without a remote command (`remote-create-ambiguous`, `remote-create-unresolved`).
+- Only `reconcileCreate(targetId, { confirmQuiescent: true }, audit)` resolves it. Call it only after confirming that the process and requests that were creating this identity can no longer arrive; `confirmQuiescent` records that you confirmed this. Without it the call refuses with `quiescence-not-confirmed`.
+- Reconciliation only reads the remote side and creates or deletes nothing. If the index, the write alias and a matching `_meta` all exist, the result is `verified`; otherwise it is `abandoned`. `abandoned` changes only PostgreSQL: the remote index is neither adopted nor deleted, and the operator decides whether to delete a leftover index.
+- After `verified`, `executeCreate` with the same plan finishes the registration without a remote command. After `abandoned`, the identity can never be used again; start over with a new plan.
+- If an index with the same name exists with a different `_meta`, the create refuses with `remote-index-conflict` and neither adopts nor deletes it. If a registered target's index or alias has vanished, the error is `SearchTargetUnavailable` and nothing is recreated.
+- A creator that lost its lease or attempt token cannot record a late success, and it does not delete anything to compensate.
+
+## Inspecting state
+
+`inspect(logicalKey, options)` reads one logical key's PostgreSQL state without locks or a lease. It does not check remote indexes (a target's `remote` is always `null`).
+
+| Field | Content |
+| --- | --- |
+| `registered` | Whether the key is registered. A key with no recorded target intent gives `false` instead of an error; then only `binding` and `workers` are meaningful |
+| `captureMode`, `captureEpoch`, `generation` | Capture state |
+| `readHead` | The read target, generation, and `rebuildRequired` |
+| `lifetimes` | The recorded read lifetime maximums and safety margin. `null` when there is no read pointer yet |
+| `targets` | Per target: state, whether writable, remote create state, pause reason, deselection times, verification scan progress, `backlog`, `fence` |
+| `openBuild` | The open build (the same content as `inspectBuild`) |
+| `workers` | Workers that announced they handle this key (worker ID, fingerprints, heartbeat age) |
+| `binding` | The store binding: `storeId`, `originRecorded`, `originMatches`, `instanceMatches`. If any is `false`, the worker and remote administrative operations stop. The value belongs to the whole store, not the key |
+
+A target's `backlog` holds `pending` (intents not quarantined), `quarantined`, `leased` (live leases), `delayed` (waiting for a retry), `intents`, `oldestPendingAgeMs`, and `exact` and `limit`, which say whether the counts are exact. The default is bounded mode: each count reads at most 10,000 rows, so frequent reads do no work proportional to the backlog. When `exact` is `false`, a count means "at least this many". Change the bound with `{ countLimit }` (1 to 1,000,000). Retired, failed and detached targets have a `null` `backlog`.
+
+```typescript title="search/administration.ts"
+/** Safe to poll: each count reads at most countLimit rows, and a count with exact false is a lower bound. */
+export async function backlogByTarget(admin: SearchAdmin): Promise<Map<string, TargetLag>> {
+  const inspection = await admin.inspect(chatMessagesSearch.key, { countLimit: 10_000 });
+  const report = new Map<string, TargetLag>();
+  for (const target of inspection.targets) {
+    if (target.backlog !== null) report.set(target.targetId, target.backlog);
+  }
+  return report;
+}
+```
+
+Exact counts cost time proportional to the backlog. Read them rarely, for example in a once-a-day report, never on a monitoring interval.
+
+```typescript title="search/administration.ts"
+/** Costs time proportional to the backlog: never call it on a monitoring interval. */
+export async function exactBacklogByTarget(
+  admin: Pick<SearchAdmin, "inspect">,
+): Promise<Map<string, TargetLag>> {
+  const inspection = await admin.inspect(chatMessagesSearch.key, { counts: "exact" });
+  const report = new Map<string, TargetLag>();
+  for (const target of inspection.targets) {
+    if (target.backlog !== null) report.set(target.targetId, target.backlog);
+  }
+  return report;
+}
+```
+
+A target's `fence` is the fence this database recorded. `inspect` reads it from PostgreSQL only, not from the remote side.
+
+| Field | Content |
+| --- | --- |
+| `epoch` | The epoch this database holds. 0 for a target with no fence row (before its first send, or an index created at schema version 1) |
+| `pending` | An advance (or takeover) is being written to the remote side or has an unknown outcome |
+| `renewedAgeMs` | Time since the last renewal (database clock). `null` if never renewed |
+| `lost` | This database lost the fence. Nothing is sent to that target |
+| `lostDetail` | `{ class, localEpoch, remoteEpoch }` or `null` |
+
+The worker's `target-fence-lost` event and `status().fenceLostTargets` report the same losses. If every `binding` value is `true` and a fence is still lost, another database byte-identical to this one (a physical copy, such as one made with `pg_basebackup`) is writing to the same OpenSearch index, or the index went back in time. The procedure is "A lost target fence" in [Recovery runbooks](/en/advanced-features/opensearch/recovery-runbooks).
+
+```typescript title="search/administration.ts"
+export async function lostFences(
+  admin: SearchAdmin,
+): Promise<
+  readonly { targetId: string; class: string; localEpoch: number; remoteEpoch: number }[]
+> {
+  const inspection = await admin.inspect(chatMessagesSearch.key);
+  return inspection.targets.flatMap((target) =>
+    target.fence.lost
+      ? [
+          {
+            targetId: target.targetId,
+            class: target.fence.lostDetail?.class ?? "foreign",
+            localEpoch: target.fence.lostDetail?.localEpoch ?? 0,
+            remoteEpoch: target.fence.lostDetail?.remoteEpoch ?? 0,
+          },
+        ]
+      : [],
+  );
+}
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Recovery runbooks" icon="life-ring" href="/en/advanced-features/opensearch/recovery-runbooks">
+    Copied databases, quarantine, paused targets, ambiguous creates, source restores
+  </Card>
+  <Card title="Operations" icon="chart-line" href="/en/advanced-features/opensearch/operations">
+    Monitoring, tuning, permissions, known limits
+  </Card>
+</CardGroup>
