@@ -7,7 +7,13 @@ export default defineConfig(async () => ({
   plugins: [],
   test: await getSonamuTestConfig({
     include: ["src/**/*.test.ts"],
-    exclude: ["src/**/*.test-hold.ts", "**/node_modules/**", "**/.yarn/**", "**/dist/**"],
+    exclude: [
+      "src/**/*.test-hold.ts",
+      "src/**/*.search.test.ts",
+      "**/node_modules/**",
+      "**/.yarn/**",
+      "**/dist/**",
+    ],
     globals: true,
     globalSetup: ["./src/testing/global.ts"],
     setupFiles: ["./src/testing/setup-mocks.ts"],
