@@ -239,6 +239,76 @@ pnpm sonamu migrate rollback --help
 pnpm sonamu fixture fetch --help
 ```
 
+## CLI plugins
+
+A plugin adds commands to `sonamu`. Declare it under `cli.plugins` in `sonamu.config.ts`:
+
+```typescript title="src/sonamu.config.ts"
+import { defineCliPlugin, defineConfig } from "sonamu";
+
+import { rebuildMonthlyReport } from "./application/report/rebuild";
+
+const reports = defineCliPlugin({
+  name: "reports",
+  commands: [
+    {
+      path: ["reports", "rebuild"],
+      description: "Rebuild the monthly report table",
+      arguments: [{ name: "month", description: "Month in YYYY-MM form" }],
+      options: { batchSize: { type: "integer", description: "Rows per batch" } },
+      mutation: { dryRun: true },
+      async run(input) {
+        const month = String(input.arguments.month);
+        if (input.dryRun) return { month, rebuilt: false };
+        return rebuildMonthlyReport(month, input.options.batchSize);
+      },
+    },
+  ],
+});
+
+export default defineConfig({
+  // ...
+  cli: { plugins: [reports] },
+});
+```
+
+```bash
+pnpm sonamu reports rebuild 2026-01 --batch-size 500
+pnpm sonamu reports rebuild 2026-01 --batch-size 500 --execute --confirm
+```
+
+The words in `path` become the command path. `arguments` are positional, in order; optional
+arguments must follow required ones, and only the last one may be `variadic`. An option key in
+camelCase becomes a kebab-case flag, so `batchSize` is `--batch-size`. Boolean options are flags
+that default to `false`; `required` and `multiple` apply to string and integer options, and
+`choices` to string options. `run` receives `input.arguments`, `input.options`, and
+`input.dryRun`, plus a context with the command id (`reports.rebuild`), `json`, and `interactive`.
+
+A command that changes state declares `mutation`, and then passes the same approval as built-in
+mutation commands: on a terminal the CLI asks for confirmation, and a non-interactive call needs
+`--execute --confirm` or exits with `CONFIRMATION_REQUIRED` (code `3`). With
+`mutation: { dryRun: true }` the command also runs without approval when `--execute` is absent,
+with `input.dryRun` set to `true`; in that mode it must change nothing. With `dryRun: false`, `run`
+is never called without approval.
+
+`run` executes after `Sonamu.init`, so models and the database are available, and the CLI destroys
+Sonamu afterwards, also when `run` throws. An object result is printed like any command result, in
+JSON with `--json`. An async iterable is streamed as one JSON line per event. A thrown error is
+reported like a built-in failure; `code`, `exitCode`, `hint`, and `details` on the error are kept.
+
+The CLI reads plugins from the built config, `dist/sonamu.config.js`, so run `pnpm build` before a
+new or changed plugin command appears. Built-in commands never load the config for plugins. If the
+plugins cannot be loaded, `pnpm sonamu --help`, completion, and the command menu still show the
+built-in commands. Help and the menu also print one line on stderr with the reason; completion stays
+silent. An unknown command explains whether plugins were loaded.
+
+The CLI refuses a plugin, naming it, when two commands share a path, when one path is a prefix of
+another, when its first word is a built-in command or `completion` or `help`, or when an option
+would shadow a CLI flag such as `--json`, `--execute`, `--confirm`, or `--dry-run`.
+
+`@sonamu-kit/opensearch` ships its search administration as a plugin of this kind: see the
+`sonamu search` commands in [Index administration](/en/advanced-features/opensearch/index-administration).
+
 ## Completion
 
 Optique 1.3.6 generates completion scripts for Bash, zsh, fish, PowerShell, and Nushell:
