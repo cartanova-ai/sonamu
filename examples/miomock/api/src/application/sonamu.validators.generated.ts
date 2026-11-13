@@ -21,7 +21,11 @@ import {
 import { EmployeeListParams, EmployeeSaveParams } from "./employee/employee.types";
 import { FileListParams, FileSaveParams } from "./file/file.types";
 import { MilestoneListParams, MilestoneSaveParams } from "./milestone/milestone.types";
-import { ProjectListParams, ProjectSaveParams } from "./project/project.types";
+import {
+  ProjectIndexedSearchParams,
+  ProjectListParams,
+  ProjectSaveParams,
+} from "./project/project.types";
 import {
   AuditEventSubsetKey,
   AuditLogSubsetKey,
@@ -41,7 +45,7 @@ import { TagListParams, TagSaveParams } from "./tag/tag.types";
 import { TelemetryQueryParams } from "./telemetry/telemetry.types";
 import { UserListParams, UserSaveParams } from "./user/user.types";
 
-export const fingerprint = "b3a11764171147a9bc3d07bb479816e35a240affd15a7b36a5b64b7b8de2d597";
+export const fingerprint = "e95ad0c6a41839db50e5a343ccc763879708fc784b0e4c27a3f00a70b6f74f0e";
 export const routeIds = {
   '["AuditEventModel","del","POST","/auditEvent/del"]':
     "167a3b99f09bee1d82f7dff5188522d7d10cc77f541484728120dd644a884e6f",
@@ -139,6 +143,8 @@ export const routeIds = {
     "e70999e7a8fb7d17917270ecef0cef0a020797a365f24add9f04e6da399b8c38",
   '["ProjectModel","search","GET","/project/search"]':
     "a929095ffe17327fccbf125512124089dfcb8ca95e05002e2ca24a00f6ce9329",
+  '["ProjectModel","searchIndexed","GET","/project/searchIndexed"]':
+    "22ee4ff50191f88dae358e595384916eccb61fdd992608e2a305314e6a7e3ece",
   '["SyncFixtureModel","del","POST","/syncFixture/del"]':
     "d5a0cef9611490d5f2477a75c2a53e70810c5fab21e4d33c59a307c96fb4b87d",
   '["SyncFixtureModel","findById","GET","/syncFixture/findById"]':
@@ -204,6 +210,7 @@ const types = {
   MilestoneListParams,
   MilestoneSaveParams,
   MilestoneSubsetKey,
+  ProjectIndexedSearchParams,
   ProjectListParams,
   ProjectSaveParams,
   ProjectSubsetKey,
@@ -1206,6 +1213,24 @@ export const validator_a929095ffe17327fccbf125512124089dfcb8ca95e05002e2ca24a00f
     ),
   ),
 );
+export const validator_22ee4ff50191f88dae358e595384916eccb61fdd992608e2a305314e6a7e3ece = compile(
+  fastifyCaster(
+    getZodObjectFromApi(
+      {
+        modelName: "ProjectModel",
+        methodName: "searchIndexed",
+        path: "/project/searchIndexed",
+        options: { httpMethod: "GET" },
+        typeParameters: [],
+        parameters: [
+          { name: "params", type: { t: "ref", id: "ProjectIndexedSearchParams" }, optional: false },
+        ],
+        returnType: "unknown",
+      },
+      { ...types },
+    ),
+  ),
+);
 export const validator_d5a0cef9611490d5f2477a75c2a53e70810c5fab21e4d33c59a307c96fb4b87d = compile(
   fastifyCaster(
     getZodObjectFromApi(
@@ -1766,6 +1791,10 @@ export const validators = new Map([
   [
     '["ProjectModel","search","GET","/project/search"]',
     validator_a929095ffe17327fccbf125512124089dfcb8ca95e05002e2ca24a00f6ce9329,
+  ],
+  [
+    '["ProjectModel","searchIndexed","GET","/project/searchIndexed"]',
+    validator_22ee4ff50191f88dae358e595384916eccb61fdd992608e2a305314e6a7e3ece,
   ],
   [
     '["SyncFixtureModel","del","POST","/syncFixture/del"]',

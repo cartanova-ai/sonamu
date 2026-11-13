@@ -3,23 +3,33 @@ import {
   api,
   asArray,
   BaseModelClass,
+  DB,
   exhaustive,
   Naite,
   NotFoundException,
   Puri,
   Sonamu,
   stream,
+  UnauthorizedException,
 } from "sonamu";
 import { type ListResult } from "sonamu";
 
 import { SD } from "../../i18n/sd.generated";
+import { SearchDisabledException } from "../../search/errors";
+import { searchProjectsAs } from "../../search/project-search";
+import { getSearchRuntime } from "../../search/runtime";
 import { markProjectsChanged } from "../../search/synchronization";
 import { AuditLogModel } from "../audit-log/audit-log.model";
 import { type ProjectSubsetKey, type ProjectSubsetMapping } from "../sonamu.generated";
 import { projectLoaderQueries, projectSubsetQueries } from "../sonamu.generated.sso";
 import { ProjectAgent } from "./project.agent";
 import { ProjectAskStreamEvents } from "./project.types";
-import { type ProjectListParams, type ProjectSaveParams } from "./project.types";
+import {
+  type ProjectIndexedSearchParams,
+  type ProjectIndexedSearchResult,
+  type ProjectListParams,
+  type ProjectSaveParams,
+} from "./project.types";
 
 /*
   Project Model
@@ -300,6 +310,25 @@ class ProjectModelClass extends BaseModelClass<
       });
 
     return rows;
+  }
+
+  /** Searches the index for projects the caller may see (members and admins) and returns their current rows. */
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+  async searchIndexed(params: ProjectIndexedSearchParams): Promise<ProjectIndexedSearchResult> {
+    const runtime = getSearchRuntime();
+    if (runtime === undefined) {
+      throw new SearchDisabledException();
+    }
+    const { user } = Sonamu.getContext();
+    if (!user) {
+      throw new UnauthorizedException(SD("error.unauthorized"));
+    }
+    const { result } = await searchProjectsAs(
+      { queries: runtime.queries, db: DB.getDB("w") },
+      user.id,
+      params,
+    );
+    return result;
   }
 }
 

@@ -2,9 +2,25 @@ import path from "path";
 
 import { getConsoleSink } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
-import { admin, CachePresets, defineConfig, passkey, sonamuAuditLog, twoFactor } from "sonamu";
+import { SearchError } from "@sonamu-kit/opensearch";
+import {
+  admin,
+  CachePresets,
+  defineConfig,
+  passkey,
+  sonamuAuditLog,
+  twoFactor,
+  UnauthorizedException,
+} from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
+
+import {
+  SEARCH_HTTP_STATUS,
+  SearchDisabledException,
+  toSearchErrorResponse,
+} from "./search/errors";
+import { initializeSearchStore, startSearch, stopSearch } from "./search/startup";
 
 const host = "localhost";
 const port = 10280;
@@ -137,8 +153,9 @@ export default defineConfig({
         prefix: "/api/public",
       },
       sse: true,
-      custom: (_server) => {
-        // nothing yet
+      custom: (server) => {
+        // Fixes the search store identity before listen; see search/startup.ts.
+        server.addHook("onReady", initializeSearchStore);
       },
     },
 
@@ -249,13 +266,39 @@ export default defineConfig({
     },
 
     lifecycle: {
-      onStart: () => {
+      onStart: async () => {
         console.log(`🌲 Server listening on http://${host}:${port}`);
+        await startSearch();
       },
-      onShutdown: () => {
+      onShutdown: async () => {
         console.log("graceful shutdown");
+        await stopSearch();
       },
-      onError: (error, _request, reply) => {
+      onError: (error, request, reply) => {
+        if (error instanceof SearchError) {
+          const locale = request.headers["accept-language"]?.split(",")[0]?.trim() || "ko";
+          const response = toSearchErrorResponse(error, locale);
+          reply.status(response.status).send(response.body);
+          return;
+        }
+        if (error instanceof SearchDisabledException) {
+          reply.status(SEARCH_HTTP_STATUS.disabled).send({
+            name: error.name,
+            code: error.code,
+            reason: "search-disabled",
+            message: error.message,
+            retryable: false,
+          });
+          return;
+        }
+        // 401 rather than 500, so the search screen can prompt for login.
+        if (error instanceof UnauthorizedException) {
+          reply.status(SEARCH_HTTP_STATUS.unauthorized).send({
+            name: error.name,
+            message: error.message,
+          });
+          return;
+        }
         console.error(error);
         reply.status(500).send({
           name: error.name,
@@ -266,4 +309,5 @@ export default defineConfig({
   },
 
   externalEditor: "Zed",
+
 });
