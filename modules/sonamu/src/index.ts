@@ -1,5 +1,6 @@
 export * from "./api/base-frame";
 export * from "./api/config";
+export * from "./cli/plugin";
 export type * from "./api/context";
 export * from "./api/decorators";
 export { fastifyCaster } from "./api/caster";

@@ -16,6 +16,7 @@ import { type SsePluginOptions } from "fastify-sse-v2/lib/types";
 import { type Knex } from "knex";
 
 import { type CacheConfig } from "../cache/types";
+import { type SonamuCliPlugin } from "../cli/plugin";
 import { type SonamuDBConfig } from "../database/db";
 import { applyCurrentSnapshotToProcessEnv } from "../env";
 import { type SonamuLoggingOptions } from "../logger/configure";
@@ -171,6 +172,11 @@ export type SonamuConfig<TSinkId extends string = string, TFilterId extends stri
    * ```
    */
   externalEditor?: "Visual Studio Code" | "Zed" | "Cursor";
+
+  /** Commands added to the `sonamu` CLI. A plugin's top-level command must not shadow a built-in one. */
+  cli?: {
+    plugins?: readonly SonamuCliPlugin[];
+  };
 
   /**
    * Slack 승인 설정 (Production 마이그레이션용)
