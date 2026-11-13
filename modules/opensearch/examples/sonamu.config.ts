@@ -1,4 +1,5 @@
 import { SearchError, setSearchLocale } from "@sonamu-kit/opensearch";
+import { createSearchCliPlugin } from "@sonamu-kit/opensearch/sonamu";
 import { defineConfig } from "sonamu";
 
 import { registerJapaneseSearchMessages, toSearchErrorResponse } from "./search/errors";
@@ -13,6 +14,14 @@ export default defineConfig({
   i18n: { defaultLocale: "ko", supportedLocales: ["ko", "en", "ja"] },
   sync: { targets: ["web"] },
   database: {},
+  cli: {
+    // Loaded lazily, so evaluating this config never imports the search setup.
+    plugins: [
+      createSearchCliPlugin({
+        load: async () => (await import("./search/cli-setup")).chatSearchCliSetup(),
+      }),
+    ],
+  },
   server: {
     // Authenticate and authorize here; chat-message.search.ts re-checks authorization of each search hit.
     apiConfig: {
