@@ -1,0 +1,90 @@
+export type {
+  NativeBulkResponseItem,
+  NativeDynamicMapping,
+  NativeErrorCause,
+  NativeHighlight,
+  NativeIndexSettings,
+  NativeProperty,
+  NativeQuery,
+  NativeSearchBody,
+  NativeSearchRequestBody,
+  NativeSort,
+  NativeSortValues,
+  NativeSourceConfig,
+  NativeTrackHits,
+  NativeTypeMapping,
+  OpenSearchClient,
+  SearchDocumentMappings,
+} from "./client/sdk-types";
+export {
+  type ConnectionReport,
+  createSearchClient,
+  type SearchClient,
+  type SearchClientOptions,
+} from "./client/search-client";
+export {
+  canonicalizeJson,
+  computeProjectionHash,
+  HASH_VERSION,
+  type HashVersion,
+  type JsonObject,
+  type JsonValue,
+} from "./definition/canonical-json";
+export {
+  RECOMMENDED_ADMIN_LIFETIMES,
+  RECOMMENDED_ADMIN_TIMEOUTS,
+  RECOMMENDED_CLIENT_REQUEST_TIMEOUT_MS,
+  RECOMMENDED_CUTOVER,
+  RECOMMENDED_QUERY_LIMITS,
+  RECOMMENDED_READ_LIFETIMES,
+  RECOMMENDED_RETIREMENT_SAFETY_MARGIN_MS,
+  RECOMMENDED_WORKER_BOUNDS,
+  RECOMMENDED_WORKER_LIMITS,
+  RECOMMENDED_WORKER_POLL_INTERVAL_MS,
+  RECOMMENDED_WORKER_STOP_DEADLINE_MS,
+  type WorkerBounds,
+  workerBoundsFrom,
+} from "./defaults";
+export {
+  type DefinedSearch,
+  defineSearch,
+  type DocumentId,
+  type Projection,
+  type ProjectionReadContext,
+  type Revision,
+  type SearchDefinition,
+} from "./definition/define-search";
+export * from "./errors";
+export {
+  DEFAULT_SEARCH_LOCALE,
+  formatSearchMessage,
+  getSearchLocale,
+  type PartialSearchMessageCatalog,
+  registerSearchMessages,
+  type SearchMessage,
+  type SearchMessageCatalog,
+  type SearchMessageKey,
+  type SearchMessageParams,
+  type SearchMessageParamValue,
+  setSearchLocale,
+} from "./i18n";
+export type {
+  CatalogReadOptions,
+  ReadHeadState,
+  ReadHeadsResult,
+  ReadLifetimeLimits,
+  ReadTarget,
+  ResolvedTarget,
+  SearchCatalogReader,
+  TargetState,
+} from "./query/catalog";
+export {
+  createSearchQueries,
+  type CursorSigningKey,
+  type SearchCandidate,
+  type SearchCandidates,
+  type SearchInput,
+  type SearchQueries,
+  type SearchQueriesOptions,
+  type SearchSortValue,
+} from "./query/search-queries";
