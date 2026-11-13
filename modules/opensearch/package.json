@@ -1,0 +1,93 @@
+{
+  "name": "@sonamu-kit/opensearch",
+  "version": "0.13.9",
+  "description": "OpenSearch transactional indexing and query integration for Sonamu",
+  "license": "MIT",
+  "author": "CartaNova <dev@cartanova.ai>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cartanova-ai/sonamu.git",
+    "directory": "modules/opensearch"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts"
+    },
+    "./postgres": {
+      "import": "./dist/postgres/index.js",
+      "types": "./dist/postgres/index.d.ts",
+      "development": "./src/postgres/index.ts"
+    },
+    "./sonamu": {
+      "import": "./dist/sonamu/index.js",
+      "types": "./dist/sonamu/index.d.ts",
+      "development": "./src/sonamu/index.ts"
+    },
+    "./admin": {
+      "import": "./dist/admin/index.js",
+      "types": "./dist/admin/index.d.ts",
+      "development": "./src/admin/index.ts"
+    },
+    "./testing": {
+      "import": "./dist/testing/index.js",
+      "types": "./dist/testing/index.d.ts",
+      "development": "./src/testing/index.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown && tsc --emitDeclarationOnly",
+    "prepack": "pnpm run build",
+    "typecheck": "pnpm run check:type",
+    "check": "pnpm run check:type && oxlint src tests examples && oxfmt --check src tests examples *.json *.ts",
+    "check:type": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc -p tsconfig.tools.json",
+    "check:format": "oxfmt src tests examples *.json *.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:type": "vitest run --project unit tests/types/",
+    "test:integration": "vitest run --project integration --project sonamu",
+    "test:watch": "vitest watch --project unit"
+  },
+  "dependencies": {
+    "@standard-schema/spec": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@opensearch-project/opensearch": "catalog:",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "knex": "catalog:",
+    "opensearch-sdk-floor": "npm:@opensearch-project/opensearch@3.9.0",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "pg": "catalog:",
+    "sonamu": "workspace:*",
+    "testcontainers": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@opensearch-project/opensearch": "catalog:",
+    "knex": "catalog:",
+    "sonamu": ">=0.13.9"
+  },
+  "peerDependenciesMeta": {
+    "sonamu": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
