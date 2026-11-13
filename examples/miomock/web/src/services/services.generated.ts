@@ -37,7 +37,12 @@ import {
 import { EmployeeListParams, EmployeeSaveParams } from "./employee/employee.types";
 import { FileListParams, FileSaveParams } from "./file/file.types";
 import { MilestoneListParams, MilestoneSaveParams } from "./milestone/milestone.types";
-import { ProjectListParams, ProjectSaveParams } from "./project/project.types";
+import {
+  ProjectListParams,
+  ProjectSaveParams,
+  ProjectIndexedSearchParams,
+  ProjectIndexedSearchResult,
+} from "./project/project.types";
 import {
   UserSubsetKey,
   UserSubsetMapping,
@@ -751,6 +756,32 @@ export namespace ProjectService {
       url: `/api/project/search?${qs.stringify({ search })}`,
     });
   }
+
+  export async function searchIndexed(
+    params: ProjectIndexedSearchParams,
+  ): Promise<ProjectIndexedSearchResult> {
+    return fetch({
+      method: "GET",
+      url: `/api/project/searchIndexed?${qs.stringify({ params })}`,
+    });
+  }
+
+  export const searchIndexedQueryOptions = (params: ProjectIndexedSearchParams) =>
+    queryOptions({
+      queryKey: ["Project", "searchIndexed", params],
+      queryFn: () => searchIndexed(params),
+    });
+
+  export const useSearchIndexed = (
+    params: ProjectIndexedSearchParams,
+    options?: { enabled?: boolean },
+  ) =>
+    useRefreshable(
+      useQuery({
+        ...searchIndexedQueryOptions(params),
+        ...options,
+      }),
+    );
 }
 
 export namespace MilestoneService {
