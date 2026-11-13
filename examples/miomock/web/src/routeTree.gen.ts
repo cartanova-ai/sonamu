@@ -32,6 +32,7 @@ import { Route as AdminFilesUploadTestRouteImport } from './routes/admin/files/u
 import { Route as AdminProjectsIndexRouteImport } from './routes/admin/projects/index'
 import { Route as AdminProjectsProjectIdRouteImport } from './routes/admin/projects/$projectId'
 import { Route as AdminProjectsFormRouteImport } from './routes/admin/projects/form'
+import { Route as AdminProjectsSearchRouteImport } from './routes/admin/projects/search'
 import { Route as AdminSelectTestIndexRouteImport } from './routes/admin/select-test/index'
 import { Route as AdminTagsIndexRouteImport } from './routes/admin/tags/index'
 import { Route as AdminTagsFormRouteImport } from './routes/admin/tags/form'
@@ -154,6 +155,11 @@ const AdminProjectsFormRoute = AdminProjectsFormRouteImport.update({
   path: '/admin/projects/form',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminProjectsSearchRoute = AdminProjectsSearchRouteImport.update({
+  id: '/admin/projects/search',
+  path: '/admin/projects/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminSelectTestIndexRoute = AdminSelectTestIndexRouteImport.update({
   id: '/admin/select-test/',
   path: '/admin/select-test/',
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/admin/files/upload-test': typeof AdminFilesUploadTestRoute
   '/admin/projects/$projectId': typeof AdminProjectsProjectIdRoute
   '/admin/projects/form': typeof AdminProjectsFormRoute
+  '/admin/projects/search': typeof AdminProjectsSearchRoute
   '/admin/tags/form': typeof AdminTagsFormRoute
   '/admin/users/form': typeof AdminUsersFormRoute
   '/admin/audit-logs/': typeof AdminAuditLogsIndexRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/admin/files/upload-test': typeof AdminFilesUploadTestRoute
   '/admin/projects/$projectId': typeof AdminProjectsProjectIdRoute
   '/admin/projects/form': typeof AdminProjectsFormRoute
+  '/admin/projects/search': typeof AdminProjectsSearchRoute
   '/admin/tags/form': typeof AdminTagsFormRoute
   '/admin/users/form': typeof AdminUsersFormRoute
   '/admin/audit-logs': typeof AdminAuditLogsIndexRoute
@@ -264,6 +272,7 @@ export interface FileRoutesById {
   '/admin/files/upload-test': typeof AdminFilesUploadTestRoute
   '/admin/projects/$projectId': typeof AdminProjectsProjectIdRoute
   '/admin/projects/form': typeof AdminProjectsFormRoute
+  '/admin/projects/search': typeof AdminProjectsSearchRoute
   '/admin/tags/form': typeof AdminTagsFormRoute
   '/admin/users/form': typeof AdminUsersFormRoute
   '/admin/audit-logs/': typeof AdminAuditLogsIndexRoute
@@ -297,6 +306,7 @@ export interface FileRouteTypes {
     | '/admin/files/upload-test'
     | '/admin/projects/$projectId'
     | '/admin/projects/form'
+    | '/admin/projects/search'
     | '/admin/tags/form'
     | '/admin/users/form'
     | '/admin/audit-logs/'
@@ -328,6 +338,7 @@ export interface FileRouteTypes {
     | '/admin/files/upload-test'
     | '/admin/projects/$projectId'
     | '/admin/projects/form'
+    | '/admin/projects/search'
     | '/admin/tags/form'
     | '/admin/users/form'
     | '/admin/audit-logs'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/admin/files/upload-test'
     | '/admin/projects/$projectId'
     | '/admin/projects/form'
+    | '/admin/projects/search'
     | '/admin/tags/form'
     | '/admin/users/form'
     | '/admin/audit-logs/'
@@ -391,6 +403,7 @@ export interface RootRouteChildren {
   AdminFilesUploadTestRoute: typeof AdminFilesUploadTestRoute
   AdminProjectsProjectIdRoute: typeof AdminProjectsProjectIdRoute
   AdminProjectsFormRoute: typeof AdminProjectsFormRoute
+  AdminProjectsSearchRoute: typeof AdminProjectsSearchRoute
   AdminTagsFormRoute: typeof AdminTagsFormRoute
   AdminUsersFormRoute: typeof AdminUsersFormRoute
   AdminAuditLogsIndexRoute: typeof AdminAuditLogsIndexRoute
@@ -570,6 +583,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProjectsFormRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/projects/search': {
+      id: '/admin/projects/search'
+      path: '/admin/projects/search'
+      fullPath: '/admin/projects/search'
+      preLoaderRoute: typeof AdminProjectsSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/select-test/': {
       id: '/admin/select-test/'
       path: '/admin/select-test'
@@ -631,6 +651,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminFilesUploadTestRoute: AdminFilesUploadTestRoute,
   AdminProjectsProjectIdRoute: AdminProjectsProjectIdRoute,
   AdminProjectsFormRoute: AdminProjectsFormRoute,
+  AdminProjectsSearchRoute: AdminProjectsSearchRoute,
   AdminTagsFormRoute: AdminTagsFormRoute,
   AdminUsersFormRoute: AdminUsersFormRoute,
   AdminAuditLogsIndexRoute: AdminAuditLogsIndexRoute,

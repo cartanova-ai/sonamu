@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 
-import { ProjectBaseListParams, ProjectBaseSchema } from "../sonamu.generated";
+import { ProjectBaseListParams, ProjectBaseSchema, ProjectStatus } from "../sonamu.generated";
 
 // Project - ListParams
 export const ProjectListParams = ProjectBaseListParams;
@@ -26,6 +26,38 @@ export const ProjectSaveParams = ProjectBaseSchema.partial({
     textsearchable_index_col: true,
   });
 export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
+
+// Project - IndexedSearch
+/** Highlight fragments are not HTML-escaped: split them on these markers and render text, never HTML. */
+export const PROJECT_SEARCH_HIGHLIGHT_START = "\uE000";
+export const PROJECT_SEARCH_HIGHLIGHT_END = "\uE001";
+
+export const ProjectIndexedSearchParams = z.object({
+  q: z.string().trim().min(1).max(200),
+  size: z.number().int().min(1).max(50).optional(),
+  // Valid only with the same q that produced it.
+  cursor: z.string().min(1).max(4096).optional(),
+});
+export type ProjectIndexedSearchParams = z.infer<typeof ProjectIndexedSearchParams>;
+
+export const ProjectIndexedSearchHit = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  description: z.string().nullable(),
+  status: ProjectStatus,
+  // Empty when the indexed text differs from the current text.
+  highlights: z.object({
+    name: z.array(z.string()),
+    description: z.array(z.string()),
+  }),
+});
+export type ProjectIndexedSearchHit = z.infer<typeof ProjectIndexedSearchHit>;
+
+export const ProjectIndexedSearchResult = z.object({
+  rows: z.array(ProjectIndexedSearchHit),
+  nextCursor: z.string().nullable(),
+});
+export type ProjectIndexedSearchResult = z.infer<typeof ProjectIndexedSearchResult>;
 
 export const StringArray = z.array(z.string());
 export type StringArray = z.infer<typeof StringArray>;

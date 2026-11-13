@@ -271,6 +271,15 @@ function ProjectList({}: ProjectListProps) {
 
                   <div className="ml-auto flex items-center gap-2">
                     <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<SearchIcon />}
+                      className="h-8"
+                      onClick={() => navigate({ to: `${PAGE.route}/search` })}
+                    >
+                      <span className="text-xs">{SD("projectSearch.open")}</span>
+                    </Button>
+                    <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
