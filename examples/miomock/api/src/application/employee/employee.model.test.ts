@@ -5,6 +5,7 @@ import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
 import { z } from "zod";
 
+import { UserModel } from "../user/user.model";
 import { EmployeeModel } from "./employee.model";
 
 bootstrap(vi);
@@ -265,6 +266,95 @@ describe("EmployeeModel", () => {
 
       const assigned = await EmployeeModel.findById("P", assignedId);
       expect(assigned.user.employee?.department?.id).toBe(deptId);
+    });
+
+    test("subset이 id를 고르지 않은 nullable 관계도 비면 null이고 자동으로 넣은 id는 결과에 남지 않음", async () => {
+      const noEmployeeUserId = await createUser("emp-auto-id-none@test.com", "empautoidnone");
+      const unassignedUserId = await createUser("emp-auto-id-free@test.com", "empautoidfree");
+      const assignedUserId = await createUser("emp-auto-id-dept@test.com", "empautoiddept");
+      const deptId = await createDepartment(
+        "자동아이디부서",
+        await createCompany("자동아이디회사"),
+      );
+      await EmployeeModel.save([
+        {
+          user_id: unassignedUserId,
+          employee_number: "40000201",
+          department_id: null,
+          salary: "100",
+          hire_date: null,
+          notes: null,
+        },
+        {
+          user_id: assignedUserId,
+          employee_number: "40000202",
+          department_id: deptId,
+          salary: "200",
+          hire_date: null,
+          notes: null,
+        },
+      ]);
+
+      // User P 서브셋은 employee.department.name과 employee.salary만 고르고 id는 고르지 않습니다.
+      const noEmployee = await UserModel.findById("P", noEmployeeUserId);
+      expect(noEmployee.employee).toBeNull();
+      const unassigned = await UserModel.findById("P", unassignedUserId);
+      expect(unassigned.employee).toEqual({ department: null, salary: "100.00" });
+      const assigned = await UserModel.findById("P", assignedUserId);
+      expect(assigned.employee).toEqual({
+        department: { name: "자동아이디부서" },
+        salary: "200.00",
+      });
+    });
+
+    test("중첩 로더는 부모 관계가 비어 있는 줄을 건너뛰고 나머지 줄에 붙음", async () => {
+      const wdb = DB.getDB("w");
+      const unassignedUserId = await createUser("emp-loader-free@test.com", "emploaderfree");
+      const assignedUserId = await createUser("emp-loader-dept@test.com", "emploaderdept");
+      const deptId = await createDepartment("로더부서", await createCompany("로더회사"));
+      const [unassignedId, assignedId] = await EmployeeModel.save([
+        {
+          user_id: unassignedUserId,
+          employee_number: "40000301",
+          department_id: null,
+          salary: null,
+          hire_date: null,
+          notes: null,
+        },
+        {
+          user_id: assignedUserId,
+          employee_number: "40000302",
+          department_id: deptId,
+          salary: null,
+          hire_date: null,
+          notes: null,
+        },
+      ]);
+      assert(unassignedId && assignedId);
+      const [project] = await wdb("projects")
+        .insert({ name: "로더프로젝트", status: "planning", created_at: new Date() })
+        .returning("id");
+      const projectId = z.number().parse(project?.id);
+      await wdb("projects__employees").insert({ project_id: projectId, employee_id: assignedId });
+
+      // P 서브셋의 department.employees.projs는 department(nullable) 아래 HasMany 아래 ManyToMany입니다.
+      const { rows } = await EmployeeModel.findMany("P", {
+        id: [unassignedId, assignedId],
+        num: 0,
+        page: 1,
+      });
+      const unassigned = rows.find((row) => row.id === unassignedId);
+      const assigned = rows.find((row) => row.id === assignedId);
+      expect(unassigned?.department).toBeNull();
+      expect(assigned?.department?.id).toBe(deptId);
+      expect(assigned?.department?.employees).toEqual([
+        {
+          id: assignedId,
+          salary: null,
+          projs: [expect.objectContaining({ id: projectId, name: "로더프로젝트" })],
+        },
+      ]);
+      expect(assigned?.projs).toEqual([expect.objectContaining({ id: projectId })]);
     });
 
     test("hydrate는 깊이마다 id로 관계의 null 여부를 판단", () => {

@@ -9,7 +9,6 @@ import { EntityManager } from "../entity/entity-manager";
 import { type FilterOperator, type FilterQuery } from "../filter/types";
 import { normalizeFilterQuery, validateSonamuFilters } from "../filter/utils";
 import { convertDomainToCategory } from "../logger/category";
-import { Naite } from "../naite/naite";
 import { type DatabaseSchemaExtend, type SonamuQueryMode } from "../types/types";
 import { type ListResult } from "../utils/model";
 import { isObjectValue } from "../utils/runtime-value";
@@ -48,6 +47,30 @@ type DatabaseRecord = Record<string, DatabaseRecordValue | undefined>;
  * @template TSubsetQueries - 서브셋 쿼리 함수 객체
  * @template TLoaderQueries - 서브셋별 로더 쿼리 배열 객체
  */
+// 로더 정의의 refId(부모 줄에서 꺼낼 값)와 as(결과를 넣을 자리)는 생성 코드에서
+// "content__ref"처럼 __로 이은 문자열입니다. 본 쿼리와 로더 쿼리는 Puri가 이미 접은
+// 객체를 돌려주므로, 여기서 __를 객체 경계로 보고 그 객체 속 위치로 번역해 읽고 씁니다.
+// 중간 관계가 null이면(관계가 비었으면) 읽기는 null, 쓰기는 건너뜁니다.
+function readLoaderPath(row: any, path: string): any {
+  let value = row;
+  for (const key of path.split("__")) {
+    if (!isObjectValue(value) || Array.isArray(value)) return null;
+    value = value[key];
+  }
+  return value ?? null;
+}
+
+function writeLoaderPath(row: any, path: string, value: any[]): void {
+  const keys = path.split("__");
+  const last = keys.pop();
+  let parent = row;
+  for (const key of keys) {
+    if (!isObjectValue(parent) || Array.isArray(parent)) return;
+    parent = parent[key];
+  }
+  if (last !== undefined && isObjectValue(parent) && !Array.isArray(parent)) parent[last] = value;
+}
+
 export class BaseModelClass<
   TSubsetKey extends string = never,
   TSubsetMapping extends { [K in TSubsetKey]: TSubsetMapping[K] } = never,
@@ -521,9 +544,7 @@ export class BaseModelClass<
         return qb.limit(num).offset(num * (page - 1));
       }
     })();
-    // 로더는 평평한 refId 별칭을 사용하므로 로딩을 마친 뒤 hydrate합니다.
-    Naite.t("puri:executed-query", limitedQb.toQuery());
-    let unloadedRows = await limitedQb.rawQuery();
+    let rows: any[] = await limitedQb;
 
     if (debug) {
       qb.debug();
@@ -533,10 +554,10 @@ export class BaseModelClass<
     // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     const loaders = (this.loaderQueries as any)[subset];
     if (loaders && Array.isArray(loaders)) {
-      unloadedRows = await this.processLoaders(unloadedRows, loaders, debug, puriWrapper);
+      rows = await this.processLoaders(rows, loaders, debug, puriWrapper);
     }
 
-    return this.hydrate(unloadedRows);
+    return rows;
   }
 
   /**
@@ -553,16 +574,14 @@ export class BaseModelClass<
 
       const resolveLoaderQb = resolveLoaderQbFn(
         puriWrapper,
-        rows.map((row) => row[refId]),
+        rows.map((row) => readLoaderPath(row, refId)).filter((id) => id !== null),
       );
 
       if (debug) {
         resolveLoaderQb.debug();
       }
 
-      Naite.t("puri:executed-query", resolveLoaderQb.toQuery());
-      // SAFETY: 로더의 select 쿼리는 평평한 레코드 배열을 반환합니다.
-      let loadedRows = (await resolveLoaderQb.rawQuery()) as any[];
+      let loadedRows: any[] = await resolveLoaderQb;
 
       // 중첩 loaders가 있으면 재귀 처리
       if (nestedLoaders && nestedLoaders.length > 0) {
@@ -572,7 +591,12 @@ export class BaseModelClass<
       const subRowGroups = group(loadedRows, (row) => row.refId);
 
       rows = rows.map((row) => {
-        row[as] = (subRowGroups[row[refId]] ?? []).map((r) => omit(r, ["refId"]));
+        const refValue = readLoaderPath(row, refId);
+        writeLoaderPath(
+          row,
+          as,
+          (refValue === null ? [] : (subRowGroups[refValue] ?? [])).map((r) => omit(r, ["refId"])),
+        );
         return row;
       });
     }
