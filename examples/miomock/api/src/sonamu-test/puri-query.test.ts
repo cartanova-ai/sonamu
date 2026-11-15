@@ -46,7 +46,7 @@ async function expectConflictJsonValue(value: ConflictJsonValue) {
 }
 
 describe("Puri Query", () => {
-  test("이름이 다른 담당자 관계는 원시 집계 표현식과 수동 hydrate 후에도 nullable 계약을 지킨다", async () => {
+  test("이름이 다른 담당자 관계는 원시 집계 표현식과 함께여도 id로 nullable 계약을 지킨다", async () => {
     type ManagerSchema = {
       roots: { id: number };
       staffs: { id: number; root_id: number; user_id: number };
@@ -71,7 +71,7 @@ describe("Puri Query", () => {
         total: Puri.rawNumber("(SELECT COUNT(*)::integer FROM staffs)"),
       })
       .orderBy("roots.id");
-    const rows = UserModel.hydrate(await selected);
+    const rows = await selected;
     const schema = z.array(
       z.object({
         id: z.number(),
@@ -85,10 +85,11 @@ describe("Puri Query", () => {
     ]);
   });
 
-  test("LEFT JOIN의 nullable 필드만 조회해도 존재하는 행과 없는 행을 구분한다", async () => {
+  test("LEFT JOIN 그룹은 nullable 필드만 고르면 오류를 내고 id를 고르면 존재하는 행과 없는 행을 구분한다", async () => {
     type PresenceSchema = {
       roots: { id: number };
       details: {
+        id: number;
         root_id: number;
         note: string | null;
         extra: string | null;
@@ -107,13 +108,20 @@ describe("Puri Query", () => {
       .with(
         "details",
         knex.raw(
-          "SELECT 1 AS root_id, NULL::text AS note, NULL::text AS extra, NULL::text AS detail",
+          "SELECT 7 AS id, 1 AS root_id, NULL::text AS note, NULL::text AS extra, NULL::text AS detail",
         ),
       );
-    const selected = base
+    const joined = base
       .leftJoin({ detail: "details" }, (join) => join.on("roots.id", "detail.root_id"))
-      .select({ id: "roots.id", detail: { note: "detail.note", extra: "detail.extra" } })
       .orderBy("roots.id");
+    await expect(
+      joined.clone().select({ id: "roots.id", detail: { note: "detail.note" } }),
+    ).rejects.toThrow(/needs an "id" field because it reads LEFT JOIN "detail"/);
+
+    const selected = joined.select({
+      id: "roots.id",
+      detail: { id: "detail.id", note: "detail.note", extra: "detail.extra" },
+    });
     const onQuery = vi.fn();
     const onResponse = vi.fn();
     selected
@@ -122,26 +130,35 @@ describe("Puri Query", () => {
       .on("query", onQuery)
       .on("query-response", onResponse);
     expect(await selected).toEqual([
-      { id: 1, detail: { note: null, extra: null } },
+      { id: 1, detail: { id: 7, note: null, extra: null } },
       { id: 2, detail: null },
     ]);
     expect(onQuery).toHaveBeenCalledOnce();
     expect(onQuery.mock.calls[0]?.[0]).toMatchObject({ timeout: 5000, cancelOnTimeout: true });
     expect(onResponse).toHaveBeenCalledOnce();
-    expect(await selected.clone().first()).toEqual({ id: 1, detail: { note: null, extra: null } });
+    expect(await selected.clone().first()).toEqual({
+      id: 1,
+      detail: { id: 7, note: null, extra: null },
+    });
     expect(await selected.clone().where("roots.id", 2).first()).toEqual({ id: 2, detail: null });
     expect(await selected.rawQuery()).toEqual([
-      { id: 1, detail__note: null, detail__extra: null },
-      { id: 2, detail__note: null, detail__extra: null },
+      { id: 1, detail__id: 7, detail__note: null, detail__extra: null },
+      { id: 2, detail__id: null, detail__note: null, detail__extra: null },
     ]);
 
     const projection = selected
       .clone()
       .clear("select")
       .clear("order")
-      .select({ detail: { note: "detail.note" } });
-    expect(await projection.clone().groupBy("detail.note")).toEqual([{ detail: { note: null } }]);
-    expect(await projection.clone().distinct()).toEqual([{ detail: { note: null } }]);
+      .select({ detail: { id: "detail.id", note: "detail.note" } });
+    expect(
+      await projection.clone().groupBy("detail.id", "detail.note").orderBy("detail.id"),
+    ).toEqual([{ detail: { id: 7, note: null } }, { detail: null }]);
+    expect(await projection.clone().distinct().orderBy("detail.id")).toEqual([
+      { detail: { id: 7, note: null } },
+      { detail: null },
+    ]);
+    // raw 식만 든 그룹은 검사하지 않고 객체로 둡니다.
     const count = projection
       .clone()
       .clear("select")
