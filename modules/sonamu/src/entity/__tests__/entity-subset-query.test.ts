@@ -11,6 +11,14 @@ const chatRoomJson: EntityJson = {
     { name: "id", type: "integer", desc: "ID" },
     { name: "name", type: "string", desc: "이름" },
     { name: "case", type: "relation", relationType: "BelongsToOne", with: "Case", desc: "케이스" },
+    {
+      name: "owned_cases",
+      type: "relation",
+      relationType: "HasMany",
+      with: "Case",
+      joinColumn: "owner_id",
+      desc: "소유 케이스",
+    },
   ],
   indexes: [],
   subsets: {},
@@ -93,5 +101,18 @@ describe("Entity.resolveSubsetQuery", () => {
     expect(caseEntity.getSubsetFieldsForQuery("A")).toContain("owner.id");
     expect(caseEntity.getSubsetAutoInternalFields("B")).toEqual([]);
     expect(caseEntity.subsetsInternal).toEqual({ A: [], B: [] });
+  });
+
+  it("로더 부모 줄에는 refId 칸을, 로더 줄의 관계 그룹에는 id를 넣는다", () => {
+    const caseEntity = setup();
+    const chatRoom = EntityManager.get("ChatRoom");
+    chatRoom.subsets = { A: ["name", "owned_cases.owner.name"] };
+    chatRoom.subsetsInternal = { A: [] };
+    caseEntity.subsets = { A: ["owner.owned_cases.id"] };
+    caseEntity.subsetsInternal = { A: [] };
+
+    expect(chatRoom.getSubsetAutoInternalFields("A")).toEqual(["id", "owned_cases.owner.id"]);
+    // 로더가 owner__id로 자식을 붙이므로 owner 그룹의 id 하나로 둘 다 충족합니다.
+    expect(caseEntity.getSubsetAutoInternalFields("A")).toEqual(["owner.id"]);
   });
 });
