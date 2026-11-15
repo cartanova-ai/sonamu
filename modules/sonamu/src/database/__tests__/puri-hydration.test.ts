@@ -135,16 +135,43 @@ describe("Puri 중첩 select 결과", () => {
     expect(await selected).toEqual([{ colleague: { total: null } }]);
   });
 
-  it("서브쿼리를 LEFT JOIN한 별칭을 중첩 그룹으로 고르면 id가 있어도 오류를 낸다", async () => {
+  it("서브쿼리를 LEFT JOIN한 그룹도 id가 없으면 오류를 내고 id가 있으면 id로 판정한다", async () => {
     const sub = query().select({ id: "users.id", name: "users.name" });
+    const missing = query()
+      .leftJoin({ sq: sub }, "users.id", "sq.id")
+      .select({ sq: { name: "sq.name" } });
+    result(missing.rawQuery(), []);
+    await expect(missing).rejects.toThrow(/needs an "id" field because it reads LEFT JOIN "sq"/);
     const selected = query()
       .leftJoin({ sq: sub }, "users.id", "sq.id")
       .select({ sq: { id: "sq.id", name: "sq.name" } });
-    result(selected.rawQuery(), []);
-    await expect(selected).rejects.toThrow(/LEFT JOIN subquery "sq". Select its columns flat/);
+    result(selected.rawQuery(), [
+      { sq__id: 1, sq__name: null },
+      { sq__id: null, sq__name: null },
+    ]);
+    expect(await selected).toEqual([{ sq: { id: 1, name: null } }, { sq: null }]);
     const flat = query().leftJoin({ sq: sub }, "users.id", "sq.id").select({ sq__name: "sq.name" });
     result(flat.rawQuery(), [{ sq__name: null }]);
     expect(await flat).toEqual([{ sq__name: null }]);
+  });
+
+  it("Puri가 모르게 joinRaw로 붙인 별칭은 id가 있으면 id로 판정한다", async () => {
+    // medpath의 마지막 메시지처럼 rawQuery().joinRaw("LEFT JOIN LATERAL …")로 붙인 별칭입니다.
+    const selected = query().select({
+      // @ts-expect-error joinRaw로 붙인 별칭은 Puri 타입이 모릅니다.
+      last_message: { id: "last_message.id", body: "last_message.body" },
+    });
+    selected
+      .rawQuery()
+      .joinRaw("LEFT JOIN LATERAL (SELECT 1 AS id, '' AS body) AS last_message ON TRUE");
+    result(selected.rawQuery(), [
+      { last_message__id: 1, last_message__body: null },
+      { last_message__id: null, last_message__body: null },
+    ]);
+    expect(await selected).toEqual([
+      { last_message: { id: 1, body: null } },
+      { last_message: null },
+    ]);
   });
 
   it.each([false, true])(

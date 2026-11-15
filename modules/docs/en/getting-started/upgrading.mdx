@@ -12,7 +12,8 @@ Standalone Puri queries no longer append hidden presence columns (`"alias".* IS 
 - A group whose name matches a LEFT JOIN alias, or whose fields read a LEFT JOIN alias, must select `id`; otherwise the query throws when executed. Add that alias's `id` to the group, or select the fields as flat aliases (`{ detail__note: "detail.note" }`). `rawQuery()` and `toQuery()` are not checked.
 - A group mixing aliases (`manager: { id: "staffs.id", name: "users.name" }`) passes with a single `id`. The group becomes `null` only when that `id` is `null`; fields from other aliases simply stay `null`.
 - Groups containing only SQL expressions are not checked and always stay objects. INNER JOIN groups never become `null`.
-- An alias LEFT JOINed from a subquery cannot be selected as a nested group. Select it with flat aliases.
+- Aliases LEFT JOINed from a subquery follow the same rule. To select one as a nested group, the subquery must select `id`.
+- For an alias joined outside Puri, such as with `rawQuery().joinRaw()`, a group with `id` becomes null when that `id` is null. A group without `id` is not checked and stays an object.
 - To fold a LEFT JOIN group in `GROUP BY` or `DISTINCT` queries, include its `id` in the select and in `GROUP BY`.
 
 ```typescript

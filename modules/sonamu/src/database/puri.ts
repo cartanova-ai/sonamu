@@ -207,8 +207,10 @@ type SelectGroupRule = {
  *
  * - 그룹 경로가 LEFT JOIN 별칭이거나 그룹 칸이 LEFT JOIN 별칭을 가리키면, 그 그룹의 `id`가
  *   null인지로만 그룹 전체가 null인지 판정합니다. 그래서 그런 그룹에는 `id`가 있어야 합니다.
+ * - 서브쿼리를 LEFT JOIN한 별칭도 같습니다. 서브쿼리가 `id`를 골라 와야 중첩 그룹으로 고를 수 있습니다.
+ * - `rawQuery().joinRaw()`처럼 Puri가 모르게 붙인 별칭은 조인 종류를 알 수 없으므로, 그룹에 `id`가
+ *   있으면 그 `id`가 null일 때 null로 판정하고 `id`가 없으면 그대로 객체로 둡니다.
  * - 칸이 전부 raw 식이면 별칭을 알 수 없으므로 판정하지 않고 늘 객체로 둡니다.
- * - 서브쿼리를 LEFT JOIN한 별칭은 `id`를 보장할 수 없으므로 중첩 그룹으로 고를 수 없습니다.
  */
 function resolveSelectGroupRules(
   paths: ReadonlyMap<string, readonly string[]>,
@@ -243,19 +245,14 @@ function resolveSelectGroupRules(
       const relation = correlations.get(alias);
       return relation?.kind === "join" && relation.joinType === "leftJoin" ? [relation] : [];
     });
-    const subquery = leftJoins.find((relation) => relation.table === null);
-    if (subquery !== undefined) {
-      throw new Error(
-        `Nested select group "${groupPath}" cannot select from LEFT JOIN subquery "${subquery.alias}". Select its columns flat instead.`,
-      );
-    }
     if (leftJoins.length > 0 && !group.hasId) {
       const aliases = leftJoins.map((relation) => `"${relation.alias}"`).join(", ");
       throw new Error(
         `Nested select group "${groupPath}" needs an "id" field because it reads LEFT JOIN ${aliases}. Select the id of that alias in the group, or select its columns flat instead.`,
       );
     }
-    rules.set(groupPath, { nullable: leftJoins.length > 0 });
+    const unregistered = [...group.aliases].some((alias) => !correlations.has(alias));
+    rules.set(groupPath, { nullable: leftJoins.length > 0 || (group.hasId && unregistered) });
   }
   return rules;
 }

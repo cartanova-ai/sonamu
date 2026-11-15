@@ -12,7 +12,8 @@ description: "Sonamu 버전을 올릴 때 필요한 변경 사항"
 - 그룹 이름이 LEFT JOIN 별칭과 같거나, 그룹 칸이 LEFT JOIN 별칭을 가리키는데 그룹에 `id`가 없으면 실행할 때 오류가 납니다. 그 별칭의 `id`를 그룹에 넣거나, 칸을 평평한 별칭(`{ detail__note: "detail.note" }`)으로 고르세요. `rawQuery()`와 `toQuery()`는 검사하지 않습니다.
 - 여러 별칭이 섞인 그룹(`manager: { id: "staffs.id", name: "users.name" }`)은 `id` 하나로 통과합니다. 그룹은 그 `id`가 null일 때만 null이 되고, 다른 별칭의 칸은 값이 null로 남습니다.
 - SQL 식만 든 그룹은 검사하지 않고 늘 객체로 둡니다. INNER JOIN 그룹은 null이 되지 않습니다.
-- 서브쿼리를 LEFT JOIN한 별칭은 중첩 그룹으로 고를 수 없습니다. 평평한 별칭으로 고르세요.
+- 서브쿼리를 LEFT JOIN한 별칭도 같습니다. 중첩 그룹으로 고르려면 서브쿼리가 `id`를 골라 와야 합니다.
+- `rawQuery().joinRaw()`처럼 Puri가 모르게 붙인 별칭은 그룹에 `id`가 있으면 그 `id`가 null일 때 null이 됩니다. `id`가 없으면 검사하지 않고 객체로 둡니다.
 - `GROUP BY`·`DISTINCT` 조회에서 LEFT JOIN 그룹을 접으려면 그 `id`를 select와 `GROUP BY`에 넣으세요.
 
 ```typescript
