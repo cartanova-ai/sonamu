@@ -9,35 +9,10 @@ const query = () => new Puri<Schema, Schema, Schema["users"]>(db, "users");
 
 type RawRow = { [column: string]: string | number | boolean | null | RawRow[] };
 
-function result(
-  builder: Knex.QueryBuilder,
-  rows: RawRow | RawRow[] | undefined,
-  presence: Record<string, readonly boolean[]> = {},
-) {
-  if (vi.isMockFunction(builder.clone)) builder.clone.mockRestore();
-  const clone = builder.clone.bind(builder);
-  vi.spyOn(builder, "clone").mockImplementation(() => {
-    const cloned = clone();
-    result(cloned, rows, presence);
-    return cloned;
-  });
-  vi.spyOn(builder, "then").mockImplementation((fulfilled, rejected) => {
-    const markers = [
-      ...builder.toQuery().matchAll(/"([^"]+)"\.\* IS DISTINCT FROM NULL AS "([^"]+)"/g),
-    ];
-    const withPresence = (row: RawRow, index: number) => ({
-      ...row,
-      ...Object.fromEntries(
-        markers.map(([, alias, column]) => [column, presence[alias]?.[index] ?? true]),
-      ),
-    });
-    const output = Array.isArray(rows)
-      ? rows.map(withPresence)
-      : rows
-        ? withPresence(rows, 0)
-        : rows;
-    return Promise.resolve(output).then(fulfilled, rejected);
-  });
+function result(builder: Knex.QueryBuilder, rows: RawRow | RawRow[] | undefined) {
+  vi.spyOn(builder, "then").mockImplementation((fulfilled, rejected) =>
+    Promise.resolve(rows).then(fulfilled, rejected),
+  );
 }
 
 afterAll(() => db.destroy());
@@ -64,19 +39,17 @@ describe("Puri 중첩 select 결과", () => {
     expect(await selected).toEqual([{ user: { data: [] } }]);
   });
 
-  it("중첩 단계마다 null 관계를 복원하고 id가 없는 그룹도 처리한다", async () => {
+  it("중첩 단계마다 id로 null 관계를 복원한다", async () => {
     const selected = query()
       .leftJoin({ user: "users" }, (join) => join.on("users.id", "user.id"))
       .leftJoin({ user__detail: "users" }, (join) => join.on("users.id", "user__detail.id"))
-      .select({ user: { id: "user.id", detail: { name: "user__detail.name" } } });
-    result(
-      selected.rawQuery(),
-      [
-        { user__id: 1, user__detail__name: null },
-        { user__id: null, user__detail__name: "무시할 값" },
-      ],
-      { user: [true, false], user__detail: [false, true] },
-    );
+      .select({
+        user: { id: "user.id", detail: { id: "user__detail.id", name: "user__detail.name" } },
+      });
+    result(selected.rawQuery(), [
+      { user__id: 1, user__detail__id: null, user__detail__name: null },
+      { user__id: null, user__detail__id: 2, user__detail__name: "무시할 값" },
+    ]);
     expect(await selected).toEqual([{ user: { id: 1, detail: null } }, { user: null }]);
   });
 
@@ -86,17 +59,30 @@ describe("Puri 중첩 select 결과", () => {
     expect(await selected).toEqual([{ profile: { nickname: null } }]);
   });
 
-  it("LEFT JOIN 별칭과 다른 이름으로 묶은 그룹은 객체로 유지한다", async () => {
-    const selected = query()
-      .leftJoin({ colleague: "users" }, (join) => join.on("users.id", "colleague.id"))
-      .select({
-        profile: { nickname: "colleague.nickname" },
-        colleague: { nickname: "colleague.nickname" },
-      });
-    result(selected.rawQuery(), [{ profile__nickname: null, colleague__nickname: null }], {
-      colleague: [false],
-    });
-    expect(await selected).toEqual([{ profile: { nickname: null }, colleague: null }]);
+  const leftJoined = () =>
+    query().leftJoin({ colleague: "users" }, (join) => join.on("users.id", "colleague.id"));
+  it.each([
+    [
+      "LEFT JOIN 별칭과 같은 그룹",
+      () => leftJoined().select({ colleague: { nickname: "colleague.nickname" } }),
+    ],
+    [
+      "LEFT JOIN 별칭을 다른 이름으로 묶은 그룹",
+      () => leftJoined().select({ profile: { nickname: "colleague.nickname" } }),
+    ],
+    [
+      "칸 없이 하위 그룹만 가진 LEFT JOIN 그룹",
+      () => leftJoined().select({ colleague: { detail: { name: "users.name" } } }),
+    ],
+  ])("%s에 id가 없으면 실행할 때 오류를 낸다", async (_, build) => {
+    const selected = build();
+    result(selected.rawQuery(), []);
+    await expect(selected).rejects.toThrow(
+      /needs an "id" field because it reads LEFT JOIN "colleague"/,
+    );
+    // rawQuery와 toQuery는 검사하지 않습니다.
+    expect(selected.toQuery()).toContain("left join");
+    expect(await selected.rawQuery()).toEqual([]);
   });
 
   it("INNER JOIN 별칭과 같은 그룹도 nullable 필드를 보존한다", async () => {
@@ -107,28 +93,58 @@ describe("Puri 중첩 select 결과", () => {
     expect(await selected).toEqual([{ colleague: { nickname: null } }]);
   });
 
-  it("선택한 값이 모두 null이어도 실제 LEFT JOIN 행이 있으면 객체를 유지한다", async () => {
+  it("선택한 값이 모두 null이어도 LEFT JOIN 행의 id가 있으면 객체를 유지한다", async () => {
     const selected = query()
       .leftJoin({ colleague: "users" }, (join) => join.on("users.id", "colleague.id"))
-      .select({ colleague: { nickname: "colleague.nickname" } });
-    result(selected.rawQuery(), [{ colleague__nickname: null }, { colleague__nickname: null }], {
-      colleague: [true, false],
-    });
-    expect(await selected).toEqual([{ colleague: { nickname: null } }, { colleague: null }]);
-    expect(selected.toQuery()).not.toContain("__sonamu_presence_");
-    expect(await selected.rawQuery()).toEqual([
-      { colleague__nickname: null },
-      { colleague__nickname: null },
-    ]);
+      .select({ colleague: { id: "colleague.id", nickname: "colleague.nickname" } });
+    const rows = [
+      { colleague__id: 1, colleague__nickname: null },
+      { colleague__id: null, colleague__nickname: null },
+    ];
+    result(selected.rawQuery(), rows);
+    expect(await selected).toEqual([{ colleague: { id: 1, nickname: null } }, { colleague: null }]);
+    expect(await selected.rawQuery()).toEqual(rows);
   });
 
-  it("그룹화한 no-id projection은 SQL 열을 추가하지 않고 객체를 유지한다", async () => {
+  it("GROUP BY에 id를 넣은 LEFT JOIN 그룹도 id로 판정한다", async () => {
     const selected = query()
       .leftJoin({ colleague: "users" }, (join) => join.on("users.id", "colleague.id"))
-      .select({ colleague: { nickname: "colleague.nickname" } })
-      .groupBy("colleague.nickname");
-    result(selected.rawQuery(), [{ colleague__nickname: null }], { colleague: [false] });
-    expect(await selected).toEqual([{ colleague: { nickname: null } }]);
+      .select({ colleague: { id: "colleague.id", nickname: "colleague.nickname" } })
+      .groupBy("colleague.id", "colleague.nickname");
+    result(selected.rawQuery(), [
+      { colleague__id: 1, colleague__nickname: null },
+      { colleague__id: null, colleague__nickname: null },
+    ]);
+    expect(await selected).toEqual([{ colleague: { id: 1, nickname: null } }, { colleague: null }]);
+  });
+
+  it("여러 별칭이 섞인 그룹은 id 하나로 통과하고 그 id로만 판정한다", async () => {
+    const selected = query()
+      .join({ staffs: "users" }, "users.id", "staffs.id")
+      .leftJoin({ colleague: "users" }, (join) => join.on("users.id", "colleague.id"))
+      .select({ manager: { id: "staffs.id", name: "colleague.name" } });
+    result(selected.rawQuery(), [{ manager__id: 1, manager__name: null }]);
+    expect(await selected).toEqual([{ manager: { id: 1, name: null } }]);
+  });
+
+  it("raw 식만 든 그룹은 LEFT JOIN 별칭과 같아도 검사하지 않고 객체로 둔다", async () => {
+    const selected = query()
+      .leftJoin({ colleague: "users" }, (join) => join.on("users.id", "colleague.id"))
+      .select({ colleague: { total: Puri.rawNumber("COUNT(colleague.id)") } });
+    result(selected.rawQuery(), [{ colleague__total: null }]);
+    expect(await selected).toEqual([{ colleague: { total: null } }]);
+  });
+
+  it("서브쿼리를 LEFT JOIN한 별칭을 중첩 그룹으로 고르면 id가 있어도 오류를 낸다", async () => {
+    const sub = query().select({ id: "users.id", name: "users.name" });
+    const selected = query()
+      .leftJoin({ sq: sub }, "users.id", "sq.id")
+      .select({ sq: { id: "sq.id", name: "sq.name" } });
+    result(selected.rawQuery(), []);
+    await expect(selected).rejects.toThrow(/LEFT JOIN subquery "sq". Select its columns flat/);
+    const flat = query().leftJoin({ sq: sub }, "users.id", "sq.id").select({ sq__name: "sq.name" });
+    result(flat.rawQuery(), [{ sq__name: null }]);
+    expect(await flat).toEqual([{ sq__name: null }]);
   });
 
   it.each([false, true])(
@@ -138,18 +154,12 @@ describe("Puri 중첩 select 결과", () => {
         .leftJoin({ staffs: "users" }, (join) => join.on("users.id", "staffs.id"))
         .select({ manager: { id: "staffs.id", name: "staffs.name" } });
       if (raw) selected.appendSelect({ total: Puri.rawNumber("(SELECT COUNT(*) FROM users)") });
-      result(
-        selected.rawQuery(),
-        [
-          { manager__id: 1, manager__name: "담당자" },
-          { manager__id: null, manager__name: null },
-        ],
-        { staffs: [true, false] },
-      );
-      expect(await selected.clone()).toEqual([
-        { manager: { id: 1, name: "담당자" } },
-        { manager: null },
+      const cloned = selected.clone();
+      result(cloned.rawQuery(), [
+        { manager__id: 1, manager__name: "담당자" },
+        { manager__id: null, manager__name: null },
       ]);
+      expect(await cloned).toEqual([{ manager: { id: 1, name: "담당자" } }, { manager: null }]);
     },
   );
 

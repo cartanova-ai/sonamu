@@ -1,8 +1,6 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // Puri는 다양한 타입을 사용하고 있습니다.
 
 import assert from "assert";
-import { randomUUID } from "node:crypto";
-import { type EventEmitter } from "node:events";
 
 import chalk from "chalk";
 import inflection from "inflection";
@@ -199,30 +197,76 @@ type SelectResultValue =
 type SelectRow = { [column: string]: SelectResultValue };
 type SelectResult = SelectRow | SelectRow[] | undefined;
 
-function getSelectRelationAlias(
-  path: string,
+type SelectGroupRule = {
+  /** LEFT JOIN 때문에 비어 있을 수 있어 `id`로 null을 판정하는 그룹 */
+  nullable: boolean;
+};
+
+/**
+ * 중첩 select 그룹마다 null 판정 규칙을 정하고, 판정할 수 없는 모양이면 오류를 냅니다.
+ *
+ * - 그룹 경로가 LEFT JOIN 별칭이거나 그룹 칸이 LEFT JOIN 별칭을 가리키면, 그 그룹의 `id`가
+ *   null인지로만 그룹 전체가 null인지 판정합니다. 그래서 그런 그룹에는 `id`가 있어야 합니다.
+ * - 칸이 전부 raw 식이면 별칭을 알 수 없으므로 판정하지 않고 늘 객체로 둡니다.
+ * - 서브쿼리를 LEFT JOIN한 별칭은 `id`를 보장할 수 없으므로 중첩 그룹으로 고를 수 없습니다.
+ */
+function resolveSelectGroupRules(
+  paths: ReadonlyMap<string, readonly string[]>,
+  sources: ReadonlyMap<string, string | null>,
   correlations: ReadonlyMap<string, CorrelationRegistration>,
-  identitySources: ReadonlyMap<string, string>,
-): string | undefined {
-  const identityAlias = identitySources.get(`${path}__id`);
-  const identityRelation =
-    identityAlias === undefined ? undefined : correlations.get(identityAlias);
-  if (identityRelation?.kind === "join" && identityRelation.joinType === "leftJoin")
-    return identityAlias;
-  const relation = correlations.get(path);
-  return relation?.kind === "join" && relation.joinType === "leftJoin" ? path : undefined;
+): Map<string, SelectGroupRule> {
+  const groups = new Map<string, { aliases: Set<string>; hasLeaf: boolean; hasId: boolean }>();
+  for (const [key, path] of paths) {
+    for (let length = 1; length < path.length; length++) {
+      const groupPath = path.slice(0, length).join("__");
+      let group = groups.get(groupPath);
+      if (group === undefined) {
+        group = { aliases: new Set(), hasLeaf: false, hasId: false };
+        groups.set(groupPath, group);
+      }
+      if (length === path.length - 1) {
+        group.hasLeaf = true;
+        group.hasId ||= path[length] === "id";
+        const alias = sources.get(key);
+        if (alias !== undefined && alias !== null) group.aliases.add(alias);
+      }
+    }
+  }
+
+  const rules = new Map<string, SelectGroupRule>();
+  for (const [groupPath, group] of groups) {
+    if (group.hasLeaf && group.aliases.size === 0) {
+      rules.set(groupPath, { nullable: false });
+      continue;
+    }
+    const leftJoins = [...new Set([groupPath, ...group.aliases])].flatMap((alias) => {
+      const relation = correlations.get(alias);
+      return relation?.kind === "join" && relation.joinType === "leftJoin" ? [relation] : [];
+    });
+    const subquery = leftJoins.find((relation) => relation.table === null);
+    if (subquery !== undefined) {
+      throw new Error(
+        `Nested select group "${groupPath}" cannot select from LEFT JOIN subquery "${subquery.alias}". Select its columns flat instead.`,
+      );
+    }
+    if (leftJoins.length > 0 && !group.hasId) {
+      const aliases = leftJoins.map((relation) => `"${relation.alias}"`).join(", ");
+      throw new Error(
+        `Nested select group "${groupPath}" needs an "id" field because it reads LEFT JOIN ${aliases}. Select the id of that alias in the group, or select its columns flat instead.`,
+      );
+    }
+    rules.set(groupPath, { nullable: leftJoins.length > 0 });
+  }
+  return rules;
 }
 
 function hydrateSelectResult(
   result: SelectResult,
   paths: ReadonlyMap<string, readonly string[]>,
-  correlations: ReadonlyMap<string, CorrelationRegistration>,
-  presenceColumns: ReadonlyMap<string, string>,
-  identitySources: ReadonlyMap<string, string>,
+  rules: ReadonlyMap<string, SelectGroupRule>,
 ): SelectResult {
   if (paths.size === 0 || result === undefined) return result;
 
-  const hiddenColumns = new Set(presenceColumns.values());
   const projection: SelectProjection = new Map();
   for (const [alias, path] of paths) {
     let parent = projection;
@@ -250,24 +294,12 @@ function hydrateSelectResult(
         }
       }
       const value = Object.fromEntries(entries);
-      // 그룹 이름이 달라도 명시한 id의 LEFT JOIN 원본으로 관계 존재 여부를 판단합니다.
-      const relationAlias = getSelectRelationAlias(path.join("__"), correlations, identitySources);
-      const presenceColumn =
-        relationAlias === undefined ? undefined : presenceColumns.get(relationAlias);
-      if (
-        relationAlias !== undefined &&
-        (presenceColumn !== undefined
-          ? row[presenceColumn] === false
-          : Object.hasOwn(value, "id") && value.id === null)
-      ) {
-        return null;
-      }
+      // LEFT JOIN 그룹은 id가 null일 때만 관계가 비었다고 봅니다.
+      if (rules.get(path.join("__"))?.nullable === true && value.id === null) return null;
       return value;
     };
     return {
-      ...Object.fromEntries(
-        Object.entries(row).filter(([key]) => !paths.has(key) && !hiddenColumns.has(key)),
-      ),
+      ...Object.fromEntries(Object.entries(row).filter(([key]) => !paths.has(key))),
       ...Object.fromEntries(
         [...projection].map(([key, fields]) => {
           assert(fields instanceof Map);
@@ -285,7 +317,8 @@ export class Puri<TSchema, TTables extends object, TResult> {
   private knexQuery: Knex.QueryBuilder;
   private tableSpec: TableSpec | null = null;
   private nestedSelectPaths = new Map<string, readonly string[]>();
-  private nestedSelectIdentitySources = new Map<string, string>();
+  // 중첩 select 칸이 가리키는 별칭(raw 식이면 null)
+  private nestedSelectSources = new Map<string, string | null>();
   private correlationRegistry = new Map<string, CorrelationRegistration>();
 
   // 생성자 시그니처들
@@ -727,11 +760,17 @@ export class Puri<TSchema, TTables extends object, TResult> {
       if (isNestedSelectObject(value)) {
         yield* this.flattenSelectEntries(value, fieldPath);
       } else {
-        if (fieldPath.length > 1) this.nestedSelectPaths.set(fullKey, fieldPath);
-        else this.nestedSelectPaths.delete(fullKey);
-        this.nestedSelectIdentitySources.delete(fullKey);
-        if (fieldPath.length > 1 && key === "id" && isStringValue(value) && value.includes(".")) {
-          this.nestedSelectIdentitySources.set(fullKey, value.slice(0, value.lastIndexOf(".")));
+        if (fieldPath.length > 1) {
+          this.nestedSelectPaths.set(fullKey, fieldPath);
+          this.nestedSelectSources.set(
+            fullKey,
+            isStringValue(value) && value.includes(".")
+              ? value.slice(0, value.lastIndexOf("."))
+              : null,
+          );
+        } else {
+          this.nestedSelectPaths.delete(fullKey);
+          this.nestedSelectSources.delete(fullKey);
         }
         yield [fullKey, value];
       }
@@ -791,7 +830,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
     this.knexQuery.clear(statement);
     if (statement === "select" || statement === "columns") {
       this.nestedSelectPaths.clear();
-      this.nestedSelectIdentitySources.clear();
+      this.nestedSelectSources.clear();
     }
     if (statement === "join") {
       this.clearJoinRegistrations();
@@ -1596,74 +1635,16 @@ export class Puri<TSchema, TTables extends object, TResult> {
     return this;
   }
 
-  private executeSelect(): Promise<SelectResult> {
+  private async executeSelect(): Promise<SelectResult> {
     if (this.nestedSelectPaths.size === 0) return this.knexQuery.then();
-    const presenceColumns = new Map<string, string>();
-    // 원본 쿼리는 rawQuery와 서브셋 로더가 공유하므로 실행 복제본에만 판별식을 추가합니다.
-    let executable = this.knexQuery;
-    if (this.canSelectRelationPresence()) {
-      const sql = this.toQuery();
-      for (const path of this.nestedSelectPaths.values()) {
-        for (let length = 1; length < path.length; length++) {
-          const alias = getSelectRelationAlias(
-            path.slice(0, length).join("__"),
-            this.correlationRegistry,
-            this.nestedSelectIdentitySources,
-          );
-          if (alias === undefined || presenceColumns.has(alias)) continue;
-          let column: string;
-          do {
-            column = `__sonamu_presence_${randomUUID().replaceAll("-", "")}`;
-          } while (sql.includes(column));
-          if (presenceColumns.size === 0) {
-            executable = this.knexQuery.clone();
-            // Knex.clone이 복제하지 않는 실행 제한과 이벤트는 원본의 계약을 유지합니다.
-            // SAFETY: timeout은 Knex QueryBuilder가 보관하는 실행 옵션입니다.
-            const timeout = (this.knexQuery as any)._timeout;
-            if (isNumberValue(timeout)) {
-              // SAFETY: cancelOnTimeout은 timeout 옵션과 함께 Knex가 기록하는 불리언입니다.
-              executable.timeout(timeout, {
-                cancel: (this.knexQuery as any)._cancelOnTimeout === true,
-              });
-            }
-            // SAFETY: Knex QueryBuilder는 EventEmitter를 상속하지만 공개 타입에는 일부 메서드만 있습니다.
-            const emitter = this.knexQuery as Knex.QueryBuilder & EventEmitter;
-            // SAFETY: 실행 복제본도 동일한 Knex EventEmitter 구현입니다.
-            const executionEmitter: EventEmitter = executable as Knex.QueryBuilder & EventEmitter;
-            for (const event of emitter.eventNames()) {
-              executionEmitter.on(event, (...args: any[]) => emitter.emit(event, ...args));
-            }
-          }
-          presenceColumns.set(alias, column);
-          executable.select(this.knex.raw("??.* IS DISTINCT FROM NULL AS ??", [alias, column]));
-        }
-      }
-    }
-    return executable.then((result) =>
-      hydrateSelectResult(
-        result,
-        this.nestedSelectPaths,
-        this.correlationRegistry,
-        presenceColumns,
-        this.nestedSelectIdentitySources,
-      ),
+    // select와 join이 모두 정해진 실행 시점에 그룹 규칙을 정합니다.
+    const rules = resolveSelectGroupRules(
+      this.nestedSelectPaths,
+      this.nestedSelectSources,
+      this.correlationRegistry,
     );
-  }
-
-  private canSelectRelationPresence(): boolean {
-    // 그룹·집계·DISTINCT·원시 표현식에는 열을 추가하면 SQL 의미가 바뀔 수 있습니다.
-    // SAFETY: Knex의 statement 구조는 다른 JOIN/벡터 처리와 동일한 내부 계약으로 읽습니다.
-    const statements = (this.knexQuery as any)._statements;
-    return statements.every((statement: any) => {
-      if (["group", "having", "union"].includes(statement.grouping)) return false;
-      if (statement.grouping !== "columns") return true;
-      if (statement.distinct || statement.distinctOn || statement.type) return false;
-      return statement.value.every((column: string | { ref?: string }) =>
-        isStringValue(column)
-          ? !column.includes("*")
-          : isObjectValue(column) && isStringValue(column.ref),
-      );
-    });
+    const result = await this.knexQuery.then();
+    return hydrateSelectResult(result, this.nestedSelectPaths, rules);
   }
 
   // 실행 메서드들 - thenable 구현
@@ -1816,7 +1797,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
     newPuri.knexQuery = this.knexQuery.clone();
     newPuri.tableSpec = this.tableSpec;
     newPuri.nestedSelectPaths = new Map(this.nestedSelectPaths);
-    newPuri.nestedSelectIdentitySources = new Map(this.nestedSelectIdentitySources);
+    newPuri.nestedSelectSources = new Map(this.nestedSelectSources);
     newPuri.correlationRegistry = new Map(this.correlationRegistry);
     return newPuri;
   }
