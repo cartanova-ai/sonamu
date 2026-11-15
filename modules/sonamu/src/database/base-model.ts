@@ -584,32 +584,38 @@ export class BaseModelClass<
    * - nullable relation의 경우 id 필드가 null이면 객체 자체를 null로
    */
   hydrate<T extends object>(rows: T[]): T[] {
+    const toObjPath = (key: string) => {
+      const [head, ...rest] = key.split("__");
+      return head + rest.map((part) => `[${part}]`).join("");
+    };
     // SAFETY: 쿼리 빌더의 제네릭 계약과 선행 검증이 이 타입을 보장합니다.
     return rows.map((row: T) => {
       const rowValues = new Map(Object.entries(row));
-      // nullable relation 처리: 그룹의 id 필드가 null이면 객체 전체를 null로
       const nestedKeys = Object.keys(row).filter((key) => key.includes("__"));
-      const groups = Object.groupBy(nestedKeys, (key) => key.split("__")[0]);
+      // 중첩 관계마다 접두사를 모읍니다 (예: shop__country__id → shop, shop__country)
+      const prefixes = new Set(
+        nestedKeys.flatMap((key) => {
+          const parts = key.split("__");
+          return parts.slice(1).map((_, i) => parts.slice(0, i + 1).join("__"));
+        }),
+      );
 
-      // id 필드가 null인 그룹 찾기 (예: parent__id가 null이면 parent 그룹 전체가 null)
-      const nullKeys = Object.entries(groups)
-        .filter(([groupKey, fields]) => {
-          if (!fields || fields.length === 0) return false;
+      // 관계의 id 필드가 null이면 그 관계 객체 전체를 null로 (예: shop__country__id → shop.country)
+      const nullKeys = [...prefixes].filter((prefix) => {
+        const idField = `${prefix}__id`;
+        if (idField in row) {
+          return rowValues.get(idField) === null;
+        }
 
-          // 그룹의 id 필드 찾기 (예: "parent__id")
-          const idField = `${groupKey}__id`;
-          if (idField in row) {
-            // id 필드가 null이면 객체 전체가 null
-            return rowValues.get(idField) === null;
-          }
-
-          // id 필드가 없으면 기존 로직: 모든 필드가 null인지 확인
-          return fields.every((field) => {
+        // 첫 단계 관계에 id 필드가 없으면 기존 로직: 모든 필드가 null인지 확인
+        if (prefix.includes("__")) return false;
+        return nestedKeys
+          .filter((key) => key.startsWith(`${prefix}__`))
+          .every((field) => {
             const fieldValue = rowValues.get(field);
             return fieldValue === null || (Array.isArray(fieldValue) && fieldValue.length === 0);
           });
-        })
-        .map(([key]) => key);
+      });
 
       let hydrated: DatabaseRecord = Object.fromEntries([]);
       for (const field of Object.keys(row)) {
@@ -624,27 +630,21 @@ export class BaseModelClass<
         }
 
         // 중첩 필드 처리: user__name → user[name]
-        const parts = field.split("__");
-        const objPath =
-          parts[0] +
-          parts
-            .slice(1)
-            .map((part) => `[${part}]`)
-            .join("");
-
         hydrated = set(
           hydrated,
-          objPath,
+          toObjPath(field),
           fieldValue && Array.isArray(fieldValue) && isObject(fieldValue[0])
             ? this.hydrate(fieldValue)
             : fieldValue,
         );
       }
 
-      // null relation 처리
-      nullKeys.forEach((nullKey) => {
-        Object.assign(hydrated, { [nullKey]: null });
-      });
+      // null relation 처리: 안쪽부터 적용해야 바깥 null이 안쪽 경로에 덮여 객체로 되살아나지 않습니다.
+      nullKeys
+        .sort((a, b) => b.split("__").length - a.split("__").length)
+        .forEach((nullKey) => {
+          hydrated = set(hydrated, toObjPath(nullKey), null);
+        });
 
       return hydrated;
     }) as T[];

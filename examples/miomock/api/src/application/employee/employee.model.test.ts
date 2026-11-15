@@ -233,6 +233,50 @@ describe("EmployeeModel", () => {
 
       expect(result.rows.length).toBe(0);
     });
+
+    test("둘째 단계 아래 nullable 관계가 비어 있으면 빈 객체가 아니라 null로 조회", async () => {
+      const unassignedUserId = await createUser("emp-deep-null@test.com", "empdeepnull");
+      const assignedUserId = await createUser("emp-deep-dept@test.com", "empdeepdept");
+      const deptId = await createDepartment("깊은부서", await createCompany("깊은회사"));
+
+      const [unassignedId, assignedId] = await EmployeeModel.save([
+        {
+          user_id: unassignedUserId,
+          employee_number: "40000101",
+          department_id: null,
+          salary: null,
+          hire_date: null,
+          notes: null,
+        },
+        {
+          user_id: assignedUserId,
+          employee_number: "40000102",
+          department_id: deptId,
+          salary: null,
+          hire_date: null,
+          notes: null,
+        },
+      ]);
+      assert(unassignedId && assignedId);
+
+      // P 서브셋의 user.employee.department는 user(필수) → employee → department(nullable) 세 단계입니다.
+      const unassigned = await EmployeeModel.findById("P", unassignedId);
+      expect(unassigned.user.employee?.department).toBeNull();
+
+      const assigned = await EmployeeModel.findById("P", assignedId);
+      expect(assigned.user.employee?.department?.id).toBe(deptId);
+    });
+
+    test("hydrate는 깊이마다 id로 관계의 null 여부를 판단", () => {
+      const [cEmpty, bEmpty, filled] = EmployeeModel.hydrate([
+        { id: 1, b__id: 1, b__c__id: null, b__c__name: null },
+        { id: 2, b__id: null, b__c__id: null, b__c__name: null },
+        { id: 3, b__id: 1, b__c__id: 2, b__c__name: "x" },
+      ]);
+      expect(cEmpty).toEqual({ id: 1, b: { id: 1, c: null } });
+      expect(bEmpty).toEqual({ id: 2, b: null });
+      expect(filled).toEqual({ id: 3, b: { id: 1, c: { id: 2, name: "x" } } });
+    });
   });
 
   describe("직원 삭제", () => {
