@@ -609,6 +609,11 @@ export class BaseModelClass<
    *
    * - `user__name` → `{ user: { name } }`
    * - nullable relation의 경우 id 필드가 null이면 객체 자체를 null로
+   *
+   * @deprecated 키 이름의 `__`와 id·칸 값으로 관계가 있는지 추측해 접습니다. 그래서 id 없는
+   * 중첩 그룹은 비어 있어도 null이 아니라 칸이 전부 null인 객체가 되고, jsonb 값이나 raw
+   * 별칭에 든 `__`도 접어 버립니다. Puri 쿼리를 직접 `await`하면 select에 적은 중첩 모양
+   * 그대로 접힌 결과를 받습니다.
    */
   hydrate<T extends object>(rows: T[]): T[] {
     const toObjPath = (key: string) => {
