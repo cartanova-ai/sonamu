@@ -80,4 +80,18 @@ describe("Entity.resolveSubsetQuery", () => {
     expect(result.select).toEqual(["cases.owner_id"]);
     expect(result.joins).toEqual([]);
   });
+
+  it("JOIN으로 붙는 관계 그룹에 id가 없으면 계산된 internal id로 넣고 subsetsInternal에는 쓰지 않는다", () => {
+    const caseEntity = setup();
+    caseEntity.subsets = {
+      A: ["id", "owner.name", "owner.case.id", "chat_room.id"],
+      B: ["owner.id", "owner.name"],
+    };
+    caseEntity.subsetsInternal = { A: [], B: [] };
+
+    expect(caseEntity.getSubsetAutoInternalFields("A")).toEqual(["owner.id"]);
+    expect(caseEntity.getSubsetFieldsForQuery("A")).toContain("owner.id");
+    expect(caseEntity.getSubsetAutoInternalFields("B")).toEqual([]);
+    expect(caseEntity.subsetsInternal).toEqual({ A: [], B: [] });
+  });
 });

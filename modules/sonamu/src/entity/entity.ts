@@ -179,10 +179,66 @@ export class Entity {
   }
 
   /**
-   * 쿼리용 서브셋 필드를 반환합니다 (subsets + subsetsInternal 합침)
+   * 쿼리용 서브셋 필드를 반환합니다 (subsets + subsetsInternal + 자동 internal id)
    */
   getSubsetFieldsForQuery(subsetKey: string): string[] {
-    return [...(this.subsets[subsetKey] ?? []), ...(this.subsetsInternal[subsetKey] ?? [])];
+    const fields = [...(this.subsets[subsetKey] ?? []), ...(this.subsetsInternal[subsetKey] ?? [])];
+    return [...fields, ...this.getRequiredIdFields(fields)];
+  }
+
+  /**
+   * 서브셋 쿼리에 자동으로 넣고 결과에서는 지우는 id 필드를 반환합니다.
+   * 계산 값이라 subsetsInternal에 쓰지 않습니다(entity.json으로 되써지지 않도록).
+   */
+  getSubsetAutoInternalFields(subsetKey: string): string[] {
+    return this.getRequiredIdFields([
+      ...(this.subsets[subsetKey] ?? []),
+      ...(this.subsetsInternal[subsetKey] ?? []),
+    ]);
+  }
+
+  /**
+   * 주어진 필드에 없지만 결과를 접는 데 필요한 id 필드를 계산합니다.
+   *
+   * - JOIN으로 붙는 -One 관계 그룹마다 `<그룹>.id`: Puri가 그 id로만 관계가 비었는지 판정합니다.
+   * - -Many 관계를 가진 줄마다 로더 refId가 가리키는 칸(`id` 또는 fromColumn): 로더가 그 값으로 자식을 붙입니다.
+   */
+  private getRequiredIdFields(fields: string[]): string[] {
+    const ownFields = new Set(fields.filter((field) => !field.includes(".")));
+    const required: string[] = [];
+    const requireOwn = (field: string) => {
+      if (!ownFields.has(field) && !required.includes(field)) required.push(field);
+    };
+
+    const relationGroups = group(
+      fields.filter((field) => field.includes(".")),
+      (field) => field.slice(0, field.indexOf(".")),
+    );
+    for (const [groupKey, groupedFields = []] of Object.entries(relationGroups)) {
+      const relation = this.relations[groupKey];
+      // 없는 관계는 resolveSubsetQuery가 오류를 냅니다.
+      if (relation === undefined) continue;
+      const relFields = groupedFields.map((field) => field.slice(field.indexOf(".") + 1));
+      const relEntity = EntityManager.get(relation.with);
+
+      if (isOneToOneRelationProp(relation) || isBelongsToOneRelationProp(relation)) {
+        // id 단독 지름길(JOIN 없이 FK만 고름)은 그대로 둡니다.
+        const isIdShortcut =
+          relFields.length === 1 &&
+          relFields[0] === "id" &&
+          !(isOneToOneRelationProp(relation) && !relation.hasJoinColumn);
+        if (isIdShortcut) continue;
+        const nested = relEntity.getRequiredIdFields(relFields);
+        const relRequired = relFields.includes("id") || nested.includes("id") ? [] : ["id"];
+        required.push(...[...relRequired, ...nested].map((field) => `${groupKey}.${field}`));
+      } else if (isHasManyRelationProp(relation) || isManyToManyRelationProp(relation)) {
+        requireOwn(isHasManyRelationProp(relation) ? (relation.fromColumn ?? "id") : "id");
+        required.push(
+          ...relEntity.getRequiredIdFields(relFields).map((field) => `${groupKey}.${field}`),
+        );
+      }
+    }
+    return required;
   }
 
   /**

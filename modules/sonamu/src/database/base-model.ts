@@ -263,7 +263,10 @@ export class BaseModelClass<
 
     // Internal 필드 제거
     const entity = EntityManager.get(this.modelName);
-    const internalFields = entity.subsetsInternal[subset] ?? [];
+    const internalFields = [
+      ...(entity.subsetsInternal[subset] ?? []),
+      ...entity.getSubsetAutoInternalFields(subset),
+    ];
     const rows =
       internalFields.length > 0
         ? enhancedRows.map((row) => this.omitInternalFields(row, internalFields))

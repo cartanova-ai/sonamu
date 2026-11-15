@@ -284,6 +284,7 @@ export const employeeSubsetQueries = {
           name: "department.name",
           company: {
             name: "department__company.name",
+            id: "department__company.id",
           },
         },
       });
@@ -311,6 +312,7 @@ export const employeeSubsetQueries = {
             },
             employee_number: "user__employee.employee_number",
             salary: "user__employee.salary",
+            id: "user__employee.id",
           },
         },
         department: {
@@ -494,9 +496,11 @@ export const projectLoaderQueries = {
             user: {
               email: "user.email",
               username: "user.username",
+              id: "user.id",
             },
             department: {
               name: "department.name",
+              id: "department.id",
             },
             refId: "projects__employees.project_id",
           });
@@ -536,9 +540,11 @@ export const projectLoaderQueries = {
             user: {
               email: "user.email",
               username: "user.username",
+              id: "user.id",
             },
             department: {
               name: "department.name",
+              id: "department.id",
             },
             refId: "projects__employees.project_id",
           });
@@ -681,8 +687,10 @@ export const userSubsetQueries = {
         employee: {
           department: {
             name: "employee__department.name",
+            id: "employee__department.id",
           },
           salary: "employee.salary",
+          id: "employee.id",
         },
       });
   },
