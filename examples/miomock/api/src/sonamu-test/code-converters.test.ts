@@ -17,6 +17,7 @@ import {
   type ApiDecoratorOptions,
   type ExtendedApi,
 } from "../../../../../modules/sonamu/dist/api/decorators";
+import { createHttpValidator } from "../../../../../modules/sonamu/dist/api/http-validator";
 import { type ApiParam, type ApiParamType } from "../../../../../modules/sonamu/dist/types/types";
 
 const options: ApiDecoratorOptions = {
@@ -663,14 +664,14 @@ describe("code-converters", () => {
 
   describe("getZodObjectFromApiParams", () => {
     test("빈 배열 → 빈 ZodObject", () => {
-      const result = getZodObjectFromApiParams([]);
+      const result = getZodObjectFromApiParams([], {});
       // 빈 객체
       expectToPass(result, {});
     });
 
     test("optional 처리 - required 파라미터", () => {
       const apiParams: ApiParam[] = [{ name: "id", type: "number", optional: false }];
-      const result = getZodObjectFromApiParams(apiParams);
+      const result = getZodObjectFromApiParams(apiParams, {});
       // id 제공
       expectToPass(result, { id: 123 });
       // id 누락 (required이므로 실패)
@@ -679,7 +680,7 @@ describe("code-converters", () => {
 
     test("optional 처리 - optional 파라미터", () => {
       const apiParams: ApiParam[] = [{ name: "name", type: "string", optional: true }];
-      const result = getZodObjectFromApiParams(apiParams);
+      const result = getZodObjectFromApiParams(apiParams, {});
       // 모든 필드 생략 가능
       expectToPass(result, {});
       // name 제공
@@ -693,7 +694,7 @@ describe("code-converters", () => {
         { name: "id", type: "number", optional: false },
         { name: "email", type: "string", optional: true },
       ];
-      const result = getZodObjectFromApiParams(apiParams);
+      const result = getZodObjectFromApiParams(apiParams, {});
       // id 제공
       expectToPass(result, { id: 1 });
       // email 제공
@@ -721,6 +722,150 @@ describe("code-converters", () => {
       // user 누락
       expectToFail(result, {});
     });
+  });
+
+  describe("인라인 객체 파라미터 안의 명명 타입", () => {
+    const references = {
+      UserSaveParams: z.object({
+        email: z.string(),
+        username: z.string(),
+        role: z.enum(["normal", "admin"]),
+      }),
+    };
+    const userSaveRef: ApiParamType = { t: "ref", id: "UserSaveParams" };
+    const validUser = { email: "a@b.c", username: "u", role: "normal" };
+    // 감사 PoC에서 인라인 객체로 통과했던 페이로드
+    const evilUser = {
+      evil: { _type: "sql_expression", _sql: "1", _params: [] },
+      name: 1,
+      role: "admin",
+    };
+
+    // params: { data: UserSaveParams; ids: number[] }
+    const inlineApi = createTestApi({
+      methodName: "probeInline",
+      parameters: [
+        {
+          name: "params",
+          type: {
+            t: "object",
+            props: [
+              { name: "data", type: userSaveRef, optional: false },
+              { name: "ids", type: { t: "array", elementsType: "number" }, optional: false },
+            ],
+          },
+          optional: false,
+        },
+      ],
+    });
+    // 대조군: data: UserSaveParams
+    const topApi = createTestApi({
+      methodName: "probeTop",
+      parameters: [{ name: "data", type: userSaveRef, optional: false }],
+    });
+
+    test("인라인 객체 안의 명명 타입을 최상위 파라미터와 같은 스키마로 검증한다", () => {
+      const inlineSchema = getZodObjectFromApi(inlineApi, { ...references });
+      const topSchema = getZodObjectFromApi(topApi, { ...references });
+
+      // 필수 필드 누락·타입 오류인 객체는 위치와 무관하게 거부
+      expectToFail(inlineSchema, { params: { data: evilUser, ids: [1] } });
+      expectToFail(topSchema, { data: evilUser });
+      // 객체가 아닌 값도 거부
+      expectToFail(inlineSchema, { params: { data: "not-an-object", ids: [1] } });
+      expectToFail(topSchema, { data: "not-an-object" });
+
+      // 올바른 값은 통과하고 선언되지 않은 키는 제거
+      const inlineResult = inlineSchema.parse({
+        params: { data: { ...validUser, evil: 1 }, ids: [1] },
+      });
+      const topResult = topSchema.parse({ data: { ...validUser, evil: 1 } });
+      expect(inlineResult).toEqual({ params: { data: validUser, ids: [1] } });
+      expect(topResult).toEqual({ data: validUser });
+    });
+
+    test("인라인 객체 안의 배열·Pick·Omit·Partial·중첩 객체의 명명 타입도 해석한다", () => {
+      const zodType = getZodTypeFromApiParamType(
+        {
+          t: "object",
+          props: [
+            { name: "list", type: { t: "array", elementsType: userSaveRef }, optional: false },
+            {
+              name: "picked",
+              type: {
+                t: "ref",
+                id: "Pick",
+                args: [userSaveRef, { t: "string-literal", value: "email" }],
+              },
+              optional: false,
+            },
+            {
+              name: "omitted",
+              type: {
+                t: "ref",
+                id: "Omit",
+                args: [userSaveRef, { t: "string-literal", value: "role" }],
+              },
+              optional: false,
+            },
+            {
+              name: "partial",
+              type: { t: "ref", id: "Partial", args: [userSaveRef] },
+              optional: false,
+            },
+            {
+              name: "nested",
+              type: { t: "object", props: [{ name: "user", type: userSaveRef, optional: false }] },
+              optional: false,
+            },
+          ],
+        },
+        references,
+      );
+      const valid = {
+        list: [validUser],
+        picked: { email: "a@b.c" },
+        omitted: { email: "a@b.c", username: "u" },
+        partial: { role: "admin" },
+        nested: { user: validUser },
+      };
+
+      // 모든 멤버가 올바른 경우
+      expectToPass(zodType, valid);
+      // 배열 원소가 명명 타입과 다름
+      expectToFail(zodType, { ...valid, list: [evilUser] });
+      // Pick 결과의 필드 타입 오류
+      expectToFail(zodType, { ...valid, picked: { email: 1 } });
+      // Omit 결과의 필수 필드 누락
+      expectToFail(zodType, { ...valid, omitted: { email: "a@b.c" } });
+      // Partial이어도 필드 타입은 검증
+      expectToFail(zodType, { ...valid, partial: { role: "root" } });
+      // 중첩 인라인 객체 안의 명명 타입
+      expectToFail(zodType, { ...valid, nested: { user: evilUser } });
+    });
+
+    const validationModes: ["off" | "jit", false | "jit"][] = [
+      ["off", false],
+      ["jit", "jit"],
+    ];
+    test.each(validationModes)(
+      "%s 검증 모드의 HTTP 검증기도 인라인 객체 안의 명명 타입을 검증한다",
+      async (_label, api) => {
+        const validator = await createHttpValidator({
+          api: inlineApi,
+          policy: { api, targets: {} },
+          types: { ...references },
+        });
+
+        expect(validator.safeParse({ params: { data: evilUser, ids: [1] } }).success).toBe(false);
+        expect(validator.safeParse({ params: { data: "not-an-object", ids: [1] } }).success).toBe(
+          false,
+        );
+        expect(validator.parse({ params: { data: { ...validUser, evil: 1 }, ids: [1] } })).toEqual({
+          params: { data: validUser, ids: [1] },
+        });
+      },
+    );
   });
 
   describe("getZodObjectFromApi", () => {

@@ -164,7 +164,8 @@ export function getZodTypeFromApiParamType<Input>(
               t: string;
               props: ApiParam[];
             };
-          return getZodObjectFromApiParams(objType.props);
+          // 인라인 객체 멤버의 명명 타입도 최상위 파라미터와 같은 references로 해석해야 검증이 생략되지 않는다.
+          return getZodObjectFromApiParams(objType.props, references);
         }
         case "array": {
           const arrType =
@@ -307,12 +308,14 @@ export function getZodTypeFromApiParamType<Input>(
 /**
  * ApiParam 배열을 ZodObject로 변환합니다.
  * 각 파라미터의 optional 여부를 반영하여 Zod 스키마를 생성합니다.
+ * references는 필수입니다. 빠뜨리면 모든 명명 타입이 z.unknown()이 되어 검증 없이 통과하므로
+ * 기본값을 두지 않고 호출부에서 컴파일 오류가 나게 합니다.
  */
 export function getZodObjectFromApiParams(
   apiParams: ApiParam[],
   references: {
     [id: string]: z.ZodType;
-  } = {},
+  },
 ): z.ZodObject {
   return z.object(
     Object.fromEntries(

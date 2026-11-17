@@ -28,8 +28,9 @@ const probeLitParams: ApiParam[] = [
 ];
 
 async function createValidators(params: ApiParam[]) {
-  const plain = fastifyCaster(getZodObjectFromApiParams(params));
-  const compiled = await jit(fastifyCaster(getZodObjectFromApiParams(params)), { eager: true });
+  // 명명 타입이 없는 파라미터이므로 빈 references를 명시합니다 (SON-633에서 references가 필수가 됨).
+  const plain = fastifyCaster(getZodObjectFromApiParams(params, {}));
+  const compiled = await jit(fastifyCaster(getZodObjectFromApiParams(params, {})), { eager: true });
   return [
     ["plain", plain],
     ["jit", compiled],
