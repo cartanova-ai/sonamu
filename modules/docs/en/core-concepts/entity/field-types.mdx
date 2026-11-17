@@ -55,6 +55,8 @@ A column that automatically generates computed values.
   cannot be used together
 </Warning>
 
+`expression` and SQL-expression `dbDefault` values (such as `CURRENT_TIMESTAMP`) go into the generated migration as SQL, so use only trusted values. If they contain `;`, even inside a SQL string literal, migration generation fails.
+
 ## Numeric Types
 
 ### integer / integer[]

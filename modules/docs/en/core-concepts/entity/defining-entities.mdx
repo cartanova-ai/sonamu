@@ -193,7 +193,7 @@ Use the `where` field to define a PostgreSQL partial index. A partial index cove
 }
 ```
 
-The `where` value is a raw SQL predicate without the `WHERE` keyword. It is used as-is in the generated migration, so never concatenate user input into this field.
+The `where` value is a raw SQL predicate without the `WHERE` keyword. It is used as-is in the generated migration, so never concatenate user input into this field. Migration generation fails if it contains `;`.
 
 ### subsets
 

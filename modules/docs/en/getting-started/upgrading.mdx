@@ -91,6 +91,14 @@ On local dev servers, Sonamu UI and DevRunner now reject with 403 any request wh
 
 Sonamu UI now handles only the `development`, `test`, and `fixture` family of presets. Migration apply and rollback, and fixture lookup and import, on `staging` or `production` are rejected with 400, so move that work to the CLI, such as `sonamu migrate`. There is no option to allow them in the UI again. UI rollbacks of remote databases covered by Slack approval now need approval too, and each target and latest batch needs its own approval. If you call the approval request API directly, pass `action: "rollback"` for rollbacks (it defaults to `apply`). See [Production approval](/en/database/migrations/production-approval) for details.
 
+### Code-generation checks for entity.json values
+
+entity.json values that go into generated code are now checked on load, save, and code generation. The Entity `id`, `parentId`, and `table`, prop `name`, enum IDs, and relation `with`, `relationType`, `joinTable`, `joinColumn`, and `fromColumn` must be ASCII identifiers (`^[A-Za-z_$][A-Za-z0-9_$]*$`), and a prop's `id` and subset keys and field paths must follow a similar format. `length`, `precision`, `scale`, and `dimensions` must be numbers, not strings, and `zodFormat` must be a supported value. A failed check used to log only a warning; it now stops server startup and `sonamu sync`, and Sonamu UI rejects the save with 400. Non-ASCII identifiers that JavaScript allows are rejected too, so fix the values named in the error message. `title`, `desc`, and enum value keys and labels are not restricted.
+
+### SQL fragment limits in migration generation
+
+Automatic migration generation now fails when a value that goes in as SQL, such as an SQL-expression `dbDefault`, `generated.expression`, or an index `where`, contains `;`. Semicolons inside SQL string literals are rejected too, so move such SQL into a hand-written migration. A `dbDefault` that starts with a double quote (a string value default) must be exactly one double-quoted string literal, with nothing appended. Existing escapes such as `\x5b` still work.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

@@ -35,6 +35,84 @@ type ColumnDefinitionResult = {
 const NUMERIC_DEFAULT_PRECISION = 8;
 const NUMERIC_DEFAULT_SCALE = 2;
 
+// PostgreSQL이 따옴표 없이 받아들이는 식별자 문법 (첫 글자: 영문·_·비ASCII, 이후: 숫자·$ 추가)
+const PLAIN_SQL_IDENTIFIER_PATTERN = /^[A-Za-z_\u0080-\u{10FFFF}][A-Za-z0-9_$\u0080-\u{10FFFF}]*$/u;
+
+// JS 큰따옴표 문자열 리터럴 토큰 하나: 이스케이프되지 않은 `"`·줄바꿈이 없어 중간에 리터럴이 끝날 수 없다.
+const JS_DOUBLE_QUOTED_STRING_LITERAL_PATTERN = /^"(?:[^"\\\r\n]|\\[\s\S])*"$/;
+
+/**
+ * 생성 TS 코드에 들어갈 문자열 값을 JSON 문자열 리터럴로 만든다.
+ * entity.json·DB 메타데이터 값이 따옴표를 닫고 JS 코드로 해석되는 일을 막는다.
+ */
+function toJsStringLiteral(value: string): string {
+  return JSON.stringify(value);
+}
+
+/**
+ * 생성 TS 코드에 들어갈 문자열 값을 치환식 없는 템플릿 리터럴로 만든다.
+ * 백슬래시·백틱·`${`를 이스케이프해 `${...}`가 마이그레이션 실행 시 JS로 평가되지 않게 하고,
+ * 템플릿 리터럴이 CR을 LF로 바꾸지 않도록 CR도 이스케이프한다.
+ */
+function toJsTemplateLiteral(value: string): string {
+  const escaped = value
+    .replaceAll("\\", "\\\\")
+    .replaceAll("`", "\\`")
+    .replaceAll("${", "\\${")
+    .replaceAll("\r", "\\r");
+  return `\`${escaped}\``;
+}
+
+/**
+ * 생성 TS의 한 줄 주석에 넣을 텍스트. 줄바꿈 문자가 주석을 끝내고 코드가 되지 않도록 공백으로 바꾼다.
+ */
+function toJsCommentText(value: string): string {
+  return value.replace(/[\r\n\u2028\u2029]/g, " ");
+}
+
+/**
+ * SQL 식별자를 큰따옴표로 인용한다.
+ */
+function quoteSqlIdentifier(name: string): string {
+  return `"${name.replaceAll('"', '""')}"`;
+}
+
+/**
+ * 따옴표 없이 쓰던 SQL 식별자 자리에 쓴다.
+ * 따옴표 없이도 식별자로 읽히는 이름은 그대로 두어 기존 생성 결과(대소문자 접기 포함)를 유지하고,
+ * 그 밖의 이름은 인용해 SQL 구문으로 해석되지 않게 한다.
+ */
+function formatSqlIdentifier(name: string): string {
+  return PLAIN_SQL_IDENTIFIER_PATTERN.test(name) ? name : quoteSqlIdentifier(name);
+}
+
+/**
+ * 스키마로 한정될 수 있는 이름(예: opclass `public.gin_trgm_ops`)을 부분별로 식별자 처리한다.
+ */
+function formatSqlQualifiedName(name: string): string {
+  return name.split(".").map(formatSqlIdentifier).join(".");
+}
+
+/**
+ * 생성 마이그레이션의 raw SQL 한 문장을 검증한다.
+ * pg 단순 질의는 `;`로 이어 붙인 여러 문장을 모두 실행하므로, dbDefault·generated expression·
+ * index where 등에서 온 `;`가 문장 본문에 있으면 생성을 거부한다.
+ */
+function assertSingleSqlStatement(sql: string, context: string): void {
+  if (sql.includes(";")) {
+    throw new Error(`마이그레이션 SQL 조각에는 ';'를 쓸 수 없습니다 (${context}): ${sql}`);
+  }
+}
+
+/**
+ * knex.raw 호출문을 만든다. SQL 본문을 검증한 뒤 이스케이프한 템플릿 리터럴로 넣는다.
+ * @param terminator SQL 끝에 붙일 문장 종료 문자 (검증 대상이 아님)
+ */
+function genKnexRawStatement(sql: string, context: string, terminator = ""): string {
+  assertSingleSqlStatement(sql, context);
+  return `await knex.raw(${toJsTemplateLiteral(`${sql}${terminator}`)});`;
+}
+
 type SearchTextHelperKind = "text-array" | "jsonb-array";
 
 type SearchTextExpressionToken =
@@ -651,23 +729,24 @@ function buildSearchTextGeneratedExpression(
     if (!sourceProp) {
       throw new Error(`searchText source column "${source.name}"을(를) 찾을 수 없습니다.`);
     }
+    const sourceColumn = formatSqlIdentifier(source.name);
 
     if (sourceProp.type === "string") {
       return source.caseInsensitive
-        ? `lower(COALESCE(${source.name}, ''))`
-        : `COALESCE(${source.name}, '')`;
+        ? `lower(COALESCE(${sourceColumn}, ''))`
+        : `COALESCE(${sourceColumn}, '')`;
     }
 
     if (sourceProp.type === "string[]") {
       return source.caseInsensitive
-        ? `COALESCE(sonamu_text_array_agg(${source.name}), '')`
-        : `COALESCE(sonamu_text_array_agg(${source.name}, false), '')`;
+        ? `COALESCE(sonamu_text_array_agg(${sourceColumn}), '')`
+        : `COALESCE(sonamu_text_array_agg(${sourceColumn}, false), '')`;
     }
 
     if (sourceProp.type === "json") {
       return source.caseInsensitive
-        ? `COALESCE(sonamu_jsonb_array_agg(${source.name}), '')`
-        : `COALESCE(sonamu_jsonb_array_agg(${source.name}, false), '')`;
+        ? `COALESCE(sonamu_jsonb_array_agg(${sourceColumn}), '')`
+        : `COALESCE(sonamu_jsonb_array_agg(${sourceColumn}, false), '')`;
     }
 
     throw new Error(
@@ -765,7 +844,7 @@ async function generateCreateCode_ColumnAndIndexes(
     "",
     "export async function up(knex: Knex): Promise<void> {",
     ...helperDefinitions,
-    `await knex.schema.createTable("${table}", (table) => {`,
+    `await knex.schema.createTable(${toJsStringLiteral(table)}, (table) => {`,
     ...columnDefs.builder,
     "});",
     // raw 구문 (Generated Column 등)
@@ -775,7 +854,7 @@ async function generateCreateCode_ColumnAndIndexes(
     "}",
     "",
     "export async function down(knex: Knex): Promise<void> {",
-    ` return knex.schema.dropTable("${table}");`,
+    ` return knex.schema.dropTable(${toJsStringLiteral(table)});`,
     "}",
   ];
   return {
@@ -820,7 +899,10 @@ function genGeneratedColumnDefinition(table: string, column: MigrationColumn): s
   const pgType = getPgTypeForColumn(column);
   const storageType = column.generated.type === "VIRTUAL" ? " VIRTUAL" : " STORED";
   const nullableClause = column.nullable ? "" : " NOT NULL";
-  return `await knex.raw(\`ALTER TABLE "${table}" ADD COLUMN "${column.name}" ${pgType} GENERATED ALWAYS AS (${column.generated.expression})${storageType}${nullableClause}\`);`;
+  return genKnexRawStatement(
+    `ALTER TABLE ${quoteSqlIdentifier(table)} ADD COLUMN ${quoteSqlIdentifier(column.name)} ${pgType} GENERATED ALWAYS AS (${column.generated.expression})${storageType}${nullableClause}`,
+    `${table}.${column.name} generated column`,
+  );
 }
 
 /**
@@ -828,6 +910,7 @@ function genGeneratedColumnDefinition(table: string, column: MigrationColumn): s
  */
 function genNormalColumnDefinition(column: MigrationColumn): string {
   const chains: string[] = [];
+  const columnName = toJsStringLiteral(column.name);
 
   if (column.name === "id") {
     // PK 타입에 따른 분기 처리
@@ -849,37 +932,37 @@ function genNormalColumnDefinition(column: MigrationColumn): string {
   if (column.type.endsWith("[]")) {
     const elementType = column.type.slice(0, -2); // "integer[]" -> "integer"
     const pgType = getPgArrayType(column, elementType);
-    chains.push(`specificType('${column.name}', '${pgType}')`);
+    chains.push(`specificType(${columnName}, ${toJsStringLiteral(pgType)})`);
   } else if (column.type === "vector") {
     // Knex는 vector 타입을 직접 지원하지 않으므로 specificType 사용
-    chains.push(`specificType('${column.name}', 'vector(${column.dimensions})')`);
+    chains.push(
+      `specificType(${columnName}, ${toJsStringLiteral(`vector(${column.dimensions})`)})`,
+    );
   } else if (column.type === "numberOrNumeric") {
     // number
     if (column.numberType === "real") {
-      chains.push(`float('${column.name}')`);
+      chains.push(`float(${columnName})`);
     } else if (column.numberType === "double precision") {
-      chains.push(`double('${column.name}')`);
+      chains.push(`double(${columnName})`);
     } else if ((column.numberType ?? "numeric") === "numeric") {
-      chains.push(`decimal('${column.name}', ${column.precision}, ${column.scale})`);
+      chains.push(`decimal(${columnName}, ${column.precision}, ${column.scale})`);
     }
   } else if (column.type === "string") {
     // string
     if (column.length !== undefined) {
-      chains.push(`string('${column.name}', ${column.length})`);
+      chains.push(`string(${columnName}, ${column.length})`);
     } else {
-      chains.push(`text('${column.name}')`);
+      chains.push(`text(${columnName})`);
     }
   } else if (column.type === "date") {
     // date
-    chains.push(
-      `timestamp('${column.name}', { useTz: true, precision: ${column.precision ?? 3} })`,
-    );
+    chains.push(`timestamp(${columnName}, { useTz: true, precision: ${column.precision ?? 3} })`);
   } else if (column.type === "json") {
     // json
-    chains.push(`jsonb('${column.name}')`);
+    chains.push(`jsonb(${columnName})`);
   } else {
     // type, length
-    chains.push(`${column.type}('${column.name}'${column.length ? `, ${column.length}` : ""})`);
+    chains.push(`${column.type}(${columnName}${column.length ? `, ${column.length}` : ""})`);
   }
 
   // nullable
@@ -887,16 +970,43 @@ function genNormalColumnDefinition(column: MigrationColumn): string {
 
   // defaultTo
   if (column.defaultTo !== undefined) {
-    if (isStringValue(column.defaultTo) && column.defaultTo.startsWith(`"`)) {
-      chains.push(`defaultTo(${column.defaultTo})`);
-    } else if (column.type === "json" && isStringValue(column.defaultTo)) {
-      chains.push(`defaultTo(knex.raw("${column.defaultTo.replaceAll('"', "'")}::jsonb"))`);
-    } else {
-      chains.push(`defaultTo(knex.raw('${column.defaultTo}'))`);
-    }
+    chains.push(genDefaultToChain(column, column.defaultTo));
   }
 
   return `table.${chains.join(".")};`;
+}
+
+/**
+ * 컬럼 기본값(defaultTo) 체인을 만든다.
+ * - `"`로 시작하면 문자열 값 기본값이다. JS 문자열 리터럴 하나일 때만 그대로 넘겨 knex가 값으로 이스케이프하게 한다.
+ * - 그 밖에는 SQL 식(CURRENT_TIMESTAMP 등)이다. 한 문장 검증 뒤 문자열 리터럴로 knex.raw에 넘긴다.
+ */
+function genDefaultToChain(column: MigrationColumn, defaultTo: string): string {
+  const value: unknown = defaultTo;
+  if (isStringValue(value) && value.startsWith(`"`)) {
+    assertJsStringLiteral(column.name, value);
+    // 기존 entity의 JS 이스케이프(예: "\\x5b\\x5d")를 유지하도록 검증된 리터럴을 그대로 쓴다.
+    return `defaultTo(${value})`;
+  }
+
+  // dbDefault는 스키마상 number·boolean도 올 수 있으므로 문자열로 맞춘다.
+  const rawSql =
+    column.type === "json" && isStringValue(value)
+      ? `${value.replaceAll('"', "'")}::jsonb`
+      : String(value);
+  assertSingleSqlStatement(rawSql, `${column.name} 컬럼 dbDefault`);
+  return `defaultTo(knex.raw(${toJsStringLiteral(rawSql)}))`;
+}
+
+/**
+ * `"`로 시작하는 기본값이 JS 큰따옴표 문자열 리터럴 하나인지 검증한다. 아니면 생성을 거부한다.
+ */
+function assertJsStringLiteral(columnName: string, defaultTo: string): void {
+  if (!JS_DOUBLE_QUOTED_STRING_LITERAL_PATTERN.test(defaultTo)) {
+    throw new Error(
+      `${columnName} 컬럼의 dbDefault ${defaultTo}는 큰따옴표로 감싼 하나의 문자열 리터럴이어야 합니다.`,
+    );
+  }
 }
 
 /**
@@ -974,26 +1084,30 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
   const usingClause = index.using === undefined ? "" : `USING ${index.using}`;
   const whereClause = getIndexWhereClause(index);
 
-  return `await knex.raw(
-  \`CREATE ${methodMap[index.type]} ${index.name} ON ${table} ${usingClause}(${index.columns
+  const columnsClause = index.columns
     .map((col) => {
       const opclassClause = (() => {
         const opclass = getIndexColumnOpclass(col);
-        return opclass ? ` ${opclass}` : "";
+        return opclass ? ` ${formatSqlQualifiedName(opclass)}` : "";
       })();
 
       // 정렬 옵션은 btree만 사용 가능
       if (index.using !== "btree" && index.using !== undefined) {
-        return `${col.name}${opclassClause}`;
+        return `${formatSqlIdentifier(col.name)}${opclassClause}`;
       }
 
       const sortOrderClause = col.sortOrder === undefined ? "" : ` ${col.sortOrder}`;
       const nullsFirstClause =
         col.nullsFirst === undefined ? "" : ` NULLS ${col.nullsFirst ? "FIRST" : "LAST"}`;
-      return `${col.name}${opclassClause}${sortOrderClause}${nullsFirstClause}`;
+      return `${formatSqlIdentifier(col.name)}${opclassClause}${sortOrderClause}${nullsFirstClause}`;
     })
-    .join(", ")})${nullsNotDistinctClause}${whereClause};\`
-  );`;
+    .join(", ");
+
+  return genKnexRawStatement(
+    `CREATE ${methodMap[index.type]} ${formatSqlIdentifier(index.name)} ON ${formatSqlIdentifier(table)} ${usingClause}(${columnsClause})${nullsNotDistinctClause}${whereClause}`,
+    `${table}.${index.name} index`,
+    ";",
+  );
 }
 
 function genPgroongaIndexDefinition(index: MigrationIndex, table: string) {
@@ -1005,15 +1119,17 @@ function genPgroongaIndexDefinition(index: MigrationIndex, table: string) {
     if (index.columns.length === 1) {
       const column = entity.propsDict[index.columns[0].name];
       const option = getPgroongaColumnOption(column);
-      return `${index.columns[0].name}${option ? ` ${option}` : ""}`;
+      return `${formatSqlIdentifier(index.columns[0].name)}${option ? ` ${option}` : ""}`;
     }
 
-    return `(ARRAY[${index.columns.map((col) => `${col.name}::text`).join(",")}])`;
+    return `(ARRAY[${index.columns.map((col) => `${formatSqlIdentifier(col.name)}::text`).join(",")}])`;
   })();
 
-  return `await knex.raw(
-  \`CREATE INDEX ${index.name} ON ${table} USING pgroonga (${columnClause}) WITH (tokenizer='TokenMecab')${whereClause};\`
-  )`;
+  return genKnexRawStatement(
+    `CREATE INDEX ${formatSqlIdentifier(index.name)} ON ${formatSqlIdentifier(table)} USING pgroonga (${columnClause}) WITH (tokenizer='TokenMecab')${whereClause}`,
+    `${table}.${index.name} pgroonga index`,
+    ";",
+  );
 }
 
 /**
@@ -1045,20 +1161,29 @@ function getPgroongaColumnOption(column: EntityProp) {
  */
 function genVectorIndexDefinition(index: MigrationIndex, table: string): string {
   const column = index.columns[0];
-  const vectorOps = getIndexColumnOpclass(column) ?? "vector_cosine_ops";
+  const vectorOps = formatSqlQualifiedName(getIndexColumnOpclass(column) ?? "vector_cosine_ops");
+  const columnName = formatSqlIdentifier(column.name);
+  const indexName = formatSqlIdentifier(index.name);
+  const tableName = formatSqlIdentifier(table);
   const whereClause = getIndexWhereClause(index);
 
   // HNSW (Hierarchical Navigable Small World) - 권장: 빠른 검색, 높은 정확도
   if (index.type === "hnsw") {
     const m = index.m ?? 16;
     const efConstruction = index.efConstruction ?? 64;
-    return `await knex.raw(\`CREATE INDEX ${index.name} ON ${table} USING hnsw (${column.name} ${vectorOps}) WITH (m = ${m}, ef_construction = ${efConstruction})${whereClause}\`);`;
+    return genKnexRawStatement(
+      `CREATE INDEX ${indexName} ON ${tableName} USING hnsw (${columnName} ${vectorOps}) WITH (m = ${m}, ef_construction = ${efConstruction})${whereClause}`,
+      `${table}.${index.name} hnsw index`,
+    );
   }
 
   // IVFFlat (Inverted File with Flat Compression) - 대용량, 비용 중요 시
   if (index.type === "ivfflat") {
     const lists = index.lists ?? 100;
-    return `await knex.raw(\`CREATE INDEX ${index.name} ON ${table} USING ivfflat (${column.name} ${vectorOps}) WITH (lists = ${lists})${whereClause}\`);`;
+    return genKnexRawStatement(
+      `CREATE INDEX ${indexName} ON ${tableName} USING ivfflat (${columnName} ${vectorOps}) WITH (lists = ${lists})${whereClause}`,
+      `${table}.${index.name} ivfflat index`,
+    );
   }
 
   throw new Error(`Unknown raw SQL index type: ${index.type}`);
@@ -1091,14 +1216,14 @@ async function generateCreateCode_Foreign(
     'import type { Knex } from "knex";',
     "",
     "export async function up(knex: Knex): Promise<void> {",
-    `return knex.schema.alterTable("${table}", (table) => {`,
+    `return knex.schema.alterTable(${toJsStringLiteral(table)}, (table) => {`,
     "// create fk",
     ...up,
     "});",
     "}",
     "",
     "export async function down(knex: Knex): Promise<void> {",
-    `return knex.schema.alterTable("${table}", (table) => {`,
+    `return knex.schema.alterTable(${toJsStringLiteral(table)}, (table) => {`,
     "// drop fk",
     ...down,
     "});",
@@ -1126,13 +1251,13 @@ function genForeignDefinitions(
   return foreigns.reduce(
     (r, foreign) => {
       const columnsStringQuote = foreign.columns
-        .map((col) => `'${col.replace(`${table}.`, "")}'`)
+        .map((col) => toJsStringLiteral(col.replace(`${table}.`, "")))
         .join(",");
       r.up.push(
-        `table.foreign('${foreign.columns.join(",")}')
-            .references('${foreign.to}')
-            .onUpdate('${foreign.onUpdate}')
-            .onDelete('${foreign.onDelete}')`,
+        `table.foreign(${toJsStringLiteral(foreign.columns.join(","))})
+            .references(${toJsStringLiteral(foreign.to)})
+            .onUpdate(${toJsStringLiteral(foreign.onUpdate)})
+            .onDelete(${toJsStringLiteral(foreign.onDelete)})`,
       );
       r.down.push(`table.dropForeign([${columnsStringQuote}])`);
       return r;
@@ -1313,14 +1438,22 @@ async function generateAlterCode_ColumnAndIndexes(
     "",
     "export async function up(knex: Knex): Promise<void> {",
     ...(upBuilderLines.length > 0
-      ? [`await knex.schema.alterTable("${table}", (table) => {`, ...upBuilderLines, "});"]
+      ? [
+          `await knex.schema.alterTable(${toJsStringLiteral(table)}, (table) => {`,
+          ...upBuilderLines,
+          "});",
+        ]
       : []),
     ...upRawLines,
     "}",
     "",
     "export async function down(knex: Knex): Promise<void> {",
     ...(downBuilderLines.length > 0
-      ? [`await knex.schema.alterTable("${table}", (table) => {`, ...downBuilderLines, "});"]
+      ? [
+          `await knex.schema.alterTable(${toJsStringLiteral(table)}, (table) => {`,
+          ...downBuilderLines,
+          "});",
+        ]
       : []),
     ...downRawLines,
     "}",
@@ -1510,7 +1643,7 @@ function getAlterColumnLinesTo(
       columnsTo.add.length > 0
         ? [
             "// rollback - add",
-            `table.dropColumns(${columnsTo.add.map((col) => `'${col.name}'`).join(", ")})`,
+            `table.dropColumns(${columnsTo.add.map((col) => toJsStringLiteral(col.name)).join(", ")})`,
           ]
         : [],
     raw: [],
@@ -1523,7 +1656,7 @@ function getAlterColumnLinesTo(
   );
 
   const dropFkLines = fkToDropBeforeColumn.map((fk) => {
-    const columnsStringQuote = fk.columns.map((col) => `'${col}'`).join(",");
+    const columnsStringQuote = fk.columns.map((col) => toJsStringLiteral(col)).join(",");
     return `table.dropForeign([${columnsStringQuote}])`;
   });
 
@@ -1540,7 +1673,7 @@ function getAlterColumnLinesTo(
         ...(columnsTo.drop.length > 0
           ? [
               "// drop columns",
-              `table.dropColumns(${columnsTo.drop.map((col) => `'${col.name}'`).join(", ")})`,
+              `table.dropColumns(${columnsTo.drop.map((col) => toJsStringLiteral(col.name)).join(", ")})`,
             ]
           : []),
       ],
@@ -1580,7 +1713,7 @@ function getAlterColumnLinesTo(
         r.up.builder = [
           ...r.up.builder,
           "// alter generated column",
-          `table.dropColumns('${dbColumn.name}')`,
+          `table.dropColumns(${toJsStringLiteral(dbColumn.name)})`,
         ];
         r.up.raw = [
           ...r.up.raw,
@@ -1591,7 +1724,7 @@ function getAlterColumnLinesTo(
         r.down.builder = [
           ...r.down.builder,
           "// rollback - alter generated column",
-          `table.dropColumns('${dbColumn.name}')`,
+          `table.dropColumns(${toJsStringLiteral(dbColumn.name)})`,
         ];
         r.down.raw = [
           ...r.down.raw,
@@ -1612,15 +1745,16 @@ function getAlterColumnLinesTo(
         genColumnDefinitions(table, [entityColumn]).builder,
       );
       if (columnDiffUp.length > 0) {
+        // 줄 끝의 문장 종료 ';'만 떼고 .alter()를 붙인다 (문자열 값 안의 ';'는 건드리지 않음).
         r.up.builder = [
           ...r.up.builder,
           "// alter column",
-          ...columnDiffUp.map((l) => `${l.replace(";", "")}.alter();`),
+          ...columnDiffUp.map((l) => `${l.replace(/;$/, "")}.alter();`),
         ];
         r.down.builder = [
           ...r.down.builder,
           "// rollback - alter column",
-          ...columnDiffDown.map((l) => `${l.replace(";", "")}.alter();`),
+          ...columnDiffDown.map((l) => `${l.replace(/;$/, "")}.alter();`),
         ];
       }
 
@@ -1714,8 +1848,8 @@ export function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: Mi
  */
 function genIndexDropDefinition(index: MigrationIndex) {
   return `table.dropIndex([${index.columns
-    .map((column) => `'${column.name}'`)
-    .join(",")}], '${index.name}')`;
+    .map((column) => toJsStringLiteral(column.name))
+    .join(",")}], ${toJsStringLiteral(index.name)})`;
 }
 
 /**
@@ -1853,7 +1987,7 @@ async function generateAlterCode_Foreigns(
     'import type { Knex } from "knex";',
     "",
     "export async function up(knex: Knex): Promise<void> {",
-    `return knex.schema.alterTable("${table}", (table) => {`,
+    `return knex.schema.alterTable(${toJsStringLiteral(table)}, (table) => {`,
     ...linesTo.drop.down,
     ...linesTo.add.up,
     ...linesTo.alterSrc.down,
@@ -1862,7 +1996,7 @@ async function generateAlterCode_Foreigns(
     "}",
     "",
     "export async function down(knex: Knex): Promise<void> {",
-    `return knex.schema.alterTable("${table}", (table) => {`,
+    `return knex.schema.alterTable(${toJsStringLiteral(table)}, (table) => {`,
     ...linesTo.add.down,
     ...linesTo.alterDst.down,
     ...linesTo.alterSrc.up,
@@ -2040,63 +2174,69 @@ async function generatePkTypeChangeMigration(
   const newPkPgType = getPkPgType(entityIdCol);
   const oldPkPgType = getPkPgType(dbIdCol);
 
+  // 생성 TS에 들어가는 이름은 SQL 식별자로 인용하고, 주석은 줄바꿈을 제거한다 (DB 메타데이터에서 온 값).
+  const pkComment = (text: string) => `  // ${toJsCommentText(text)}`;
+  const pkRaw = (sql: string) => `  ${genKnexRawStatement(sql, `${table} PK 타입 변경`)}`;
+  const quotedTable = quoteSqlIdentifier(table);
+  const quotedPkConstraint = quoteSqlIdentifier(pkConstraintName);
+  const dropFkSql = (fk: (typeof referencingFKs)[number]) =>
+    `ALTER TABLE ${quoteSqlIdentifier(fk.tableName)} DROP CONSTRAINT ${quoteSqlIdentifier(fk.constraintName)}`;
+  const alterFkColumnTypeSql = (fk: (typeof referencingFKs)[number], pgType: string) => {
+    const column = quoteSqlIdentifier(fk.columnName);
+    return `ALTER TABLE ${quoteSqlIdentifier(fk.tableName)} ALTER COLUMN ${column} TYPE ${pgType} USING ${column}::${pgType}`;
+  };
+  const addFkSql = (fk: (typeof referencingFKs)[number]) =>
+    `ALTER TABLE ${quoteSqlIdentifier(fk.tableName)} ADD CONSTRAINT ${quoteSqlIdentifier(fk.constraintName)} FOREIGN KEY (${quoteSqlIdentifier(fk.columnName)}) REFERENCES ${quotedTable}("id") ON UPDATE ${fk.onUpdate} ON DELETE ${fk.onDelete}`;
+
   // UP 코드 생성
   const upLines: string[] = [];
 
   // 1. 외부 테이블의 FK 제약조건 삭제
   for (const fk of externalReferencingFKs) {
-    upLines.push(`  // ${fk.tableName}.${fk.columnName} FK 제약조건 삭제`);
-    upLines.push(
-      `  await knex.raw('ALTER TABLE "${fk.tableName}" DROP CONSTRAINT "${fk.constraintName}"');`,
-    );
+    upLines.push(pkComment(`${fk.tableName}.${fk.columnName} FK 제약조건 삭제`));
+    upLines.push(pkRaw(dropFkSql(fk)));
   }
 
   // 2. 자기 참조 FK 삭제
   for (const fk of selfReferencingFKs) {
-    upLines.push(`  // 자기 참조 FK 삭제: ${fk.columnName}`);
-    upLines.push(
-      `  await knex.raw('ALTER TABLE "${table}" DROP CONSTRAINT "${fk.constraintName}"');`,
-    );
+    upLines.push(pkComment(`자기 참조 FK 삭제: ${fk.columnName}`));
+    upLines.push(pkRaw(dropFkSql(fk)));
   }
 
   // 3. PK 제약조건 삭제
-  upLines.push(`  // PK 제약조건 삭제`);
-  upLines.push(`  await knex.raw('ALTER TABLE "${table}" DROP CONSTRAINT "${pkConstraintName}"');`);
+  upLines.push(pkComment("PK 제약조건 삭제"));
+  upLines.push(pkRaw(`ALTER TABLE ${quotedTable} DROP CONSTRAINT ${quotedPkConstraint}`));
 
   // 4. PK 컬럼 타입 변경
-  upLines.push(`  // PK 컬럼 타입 변경`);
+  upLines.push(pkComment("PK 컬럼 타입 변경"));
   upLines.push(
-    `  await knex.raw('ALTER TABLE "${table}" ALTER COLUMN "id" TYPE ${newPkPgType} USING "id"::${newPkPgType}');`,
+    pkRaw(
+      `ALTER TABLE ${quotedTable} ALTER COLUMN "id" TYPE ${newPkPgType} USING "id"::${newPkPgType}`,
+    ),
   );
 
   // 5. FK 컬럼 타입 변경 (역참조 테이블들) - 자기 참조 포함
   for (const fk of referencingFKs) {
-    upLines.push(`  // ${fk.tableName}.${fk.columnName} 컬럼 타입 변경`);
-    upLines.push(
-      `  await knex.raw('ALTER TABLE "${fk.tableName}" ALTER COLUMN "${fk.columnName}" TYPE ${newPkPgType} USING "${fk.columnName}"::${newPkPgType}');`,
-    );
+    upLines.push(pkComment(`${fk.tableName}.${fk.columnName} 컬럼 타입 변경`));
+    upLines.push(pkRaw(alterFkColumnTypeSql(fk, newPkPgType)));
   }
 
   // 6. PK 제약조건 복구
-  upLines.push(`  // PK 제약조건 복구`);
+  upLines.push(pkComment("PK 제약조건 복구"));
   upLines.push(
-    `  await knex.raw('ALTER TABLE "${table}" ADD CONSTRAINT "${pkConstraintName}" PRIMARY KEY ("id")');`,
+    pkRaw(`ALTER TABLE ${quotedTable} ADD CONSTRAINT ${quotedPkConstraint} PRIMARY KEY ("id")`),
   );
 
   // 7. 자기 참조 FK 복구
   for (const fk of selfReferencingFKs) {
-    upLines.push(`  // 자기 참조 FK 복구: ${fk.columnName}`);
-    upLines.push(
-      `  await knex.raw('ALTER TABLE "${table}" ADD CONSTRAINT "${fk.constraintName}" FOREIGN KEY ("${fk.columnName}") REFERENCES "${table}"("id") ON UPDATE ${fk.onUpdate} ON DELETE ${fk.onDelete}');`,
-    );
+    upLines.push(pkComment(`자기 참조 FK 복구: ${fk.columnName}`));
+    upLines.push(pkRaw(addFkSql(fk)));
   }
 
   // 8. 외부 테이블의 FK 제약조건 복구
   for (const fk of externalReferencingFKs) {
-    upLines.push(`  // ${fk.tableName}.${fk.columnName} FK 제약조건 복구`);
-    upLines.push(
-      `  await knex.raw('ALTER TABLE "${fk.tableName}" ADD CONSTRAINT "${fk.constraintName}" FOREIGN KEY ("${fk.columnName}") REFERENCES "${table}"("id") ON UPDATE ${fk.onUpdate} ON DELETE ${fk.onDelete}');`,
-    );
+    upLines.push(pkComment(`${fk.tableName}.${fk.columnName} FK 제약조건 복구`));
+    upLines.push(pkRaw(addFkSql(fk)));
   }
 
   // DOWN 코드 생성 (역순)
@@ -2104,60 +2244,50 @@ async function generatePkTypeChangeMigration(
 
   // 1. 외부 테이블의 FK 제약조건 삭제
   for (const fk of externalReferencingFKs) {
-    downLines.push(`  // ${fk.tableName}.${fk.columnName} FK 제약조건 삭제`);
-    downLines.push(
-      `  await knex.raw('ALTER TABLE "${fk.tableName}" DROP CONSTRAINT "${fk.constraintName}"');`,
-    );
+    downLines.push(pkComment(`${fk.tableName}.${fk.columnName} FK 제약조건 삭제`));
+    downLines.push(pkRaw(dropFkSql(fk)));
   }
 
   // 2. 자기 참조 FK 삭제
   for (const fk of selfReferencingFKs) {
-    downLines.push(`  // 자기 참조 FK 삭제: ${fk.columnName}`);
-    downLines.push(
-      `  await knex.raw('ALTER TABLE "${table}" DROP CONSTRAINT "${fk.constraintName}"');`,
-    );
+    downLines.push(pkComment(`자기 참조 FK 삭제: ${fk.columnName}`));
+    downLines.push(pkRaw(dropFkSql(fk)));
   }
 
   // 3. PK 제약조건 삭제
-  downLines.push(`  // PK 제약조건 삭제`);
-  downLines.push(
-    `  await knex.raw('ALTER TABLE "${table}" DROP CONSTRAINT "${pkConstraintName}"');`,
-  );
+  downLines.push(pkComment("PK 제약조건 삭제"));
+  downLines.push(pkRaw(`ALTER TABLE ${quotedTable} DROP CONSTRAINT ${quotedPkConstraint}`));
 
   // 4. PK 컬럼 타입 원복
-  downLines.push(`  // PK 컬럼 타입 원복`);
+  downLines.push(pkComment("PK 컬럼 타입 원복"));
   downLines.push(
-    `  await knex.raw('ALTER TABLE "${table}" ALTER COLUMN "id" TYPE ${oldPkPgType} USING "id"::${oldPkPgType}');`,
+    pkRaw(
+      `ALTER TABLE ${quotedTable} ALTER COLUMN "id" TYPE ${oldPkPgType} USING "id"::${oldPkPgType}`,
+    ),
   );
 
   // 5. FK 컬럼 타입 원복 (역참조 테이블들)
   for (const fk of referencingFKs) {
-    downLines.push(`  // ${fk.tableName}.${fk.columnName} 컬럼 타입 원복`);
-    downLines.push(
-      `  await knex.raw('ALTER TABLE "${fk.tableName}" ALTER COLUMN "${fk.columnName}" TYPE ${oldPkPgType} USING "${fk.columnName}"::${oldPkPgType}');`,
-    );
+    downLines.push(pkComment(`${fk.tableName}.${fk.columnName} 컬럼 타입 원복`));
+    downLines.push(pkRaw(alterFkColumnTypeSql(fk, oldPkPgType)));
   }
 
   // 6. PK 제약조건 복구
-  downLines.push(`  // PK 제약조건 복구`);
+  downLines.push(pkComment("PK 제약조건 복구"));
   downLines.push(
-    `  await knex.raw('ALTER TABLE "${table}" ADD CONSTRAINT "${pkConstraintName}" PRIMARY KEY ("id")');`,
+    pkRaw(`ALTER TABLE ${quotedTable} ADD CONSTRAINT ${quotedPkConstraint} PRIMARY KEY ("id")`),
   );
 
   // 7. 자기 참조 FK 복구
   for (const fk of selfReferencingFKs) {
-    downLines.push(`  // 자기 참조 FK 복구: ${fk.columnName}`);
-    downLines.push(
-      `  await knex.raw('ALTER TABLE "${table}" ADD CONSTRAINT "${fk.constraintName}" FOREIGN KEY ("${fk.columnName}") REFERENCES "${table}"("id") ON UPDATE ${fk.onUpdate} ON DELETE ${fk.onDelete}');`,
-    );
+    downLines.push(pkComment(`자기 참조 FK 복구: ${fk.columnName}`));
+    downLines.push(pkRaw(addFkSql(fk)));
   }
 
   // 8. 외부 테이블의 FK 제약조건 복구
   for (const fk of externalReferencingFKs) {
-    downLines.push(`  // ${fk.tableName}.${fk.columnName} FK 제약조건 복구`);
-    downLines.push(
-      `  await knex.raw('ALTER TABLE "${fk.tableName}" ADD CONSTRAINT "${fk.constraintName}" FOREIGN KEY ("${fk.columnName}") REFERENCES "${table}"("id") ON UPDATE ${fk.onUpdate} ON DELETE ${fk.onDelete}');`,
-    );
+    downLines.push(pkComment(`${fk.tableName}.${fk.columnName} FK 제약조건 복구`));
+    downLines.push(pkRaw(addFkSql(fk)));
   }
 
   const lines: string[] = [

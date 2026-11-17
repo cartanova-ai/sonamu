@@ -55,6 +55,8 @@ Sonamu는 다양한 데이터 타입을 지원하며, 각 타입은 PostgreSQL, 
   동시에 사용할 수 없습니다
 </Warning>
 
+`expression`과 SQL 식으로 쓰는 `dbDefault`(예: `CURRENT_TIMESTAMP`)는 생성된 마이그레이션에 SQL로 들어가므로 신뢰할 수 있는 값만 넣으세요. `;`가 들어 있으면 SQL 문자열 리터럴 안이라도 마이그레이션 생성이 실패합니다.
+
 ## 숫자 타입
 
 ### integer / integer[]
