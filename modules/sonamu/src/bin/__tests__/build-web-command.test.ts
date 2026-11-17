@@ -54,4 +54,28 @@ describe("buildWebCommand", () => {
     // 타입 오류 시 기존 dist/*를 건드리지 않도록 타입체크 명령 하나만 실행된다.
     expect(calls).toHaveLength(1);
   });
+
+  it("NODE_ENV가 없으면 vite 빌드를 production NODE_ENV로 실행한다", async () => {
+    vi.stubEnv("NODE_ENV", "");
+    const nodeEnvs: (string | undefined)[] = [];
+
+    await buildWebCommand({
+      exec: async (cmd, options) => {
+        nodeEnvs.push(process.env.NODE_ENV);
+        await exec(cmd, options);
+      },
+    });
+
+    // development NODE_ENV를 물려받으면 SSR 번들이 jsxDEV를 써서 프로덕션 렌더링이 실패한다.
+    expect(nodeEnvs.length).toBeGreaterThan(0);
+    expect(nodeEnvs.every((nodeEnv) => nodeEnv === "production")).toBe(true);
+  });
+
+  it("명시한 NODE_ENV는 web 빌드에서도 그대로 유지한다", async () => {
+    vi.stubEnv("NODE_ENV", "staging");
+
+    await buildWebCommand({ exec });
+
+    expect(process.env.NODE_ENV).toBe("staging");
+  });
 });

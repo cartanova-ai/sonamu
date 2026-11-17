@@ -373,13 +373,14 @@ pnpm start
 - **빠른 시작**: 컴파일이 완료된 JavaScript 실행
 - **낮은 메모리**: TypeScript 변환 오버헤드 없음
 - **소스맵 지원**: 에러 발생 시 원본 파일 위치 표시
+- **production 기본값**: `NODE_ENV`가 없으면 `.env.local`·`.env`의 `NODE_ENV`를, 그것도 없으면 `production`을 씁니다. `pnpm build`도 같은 규칙으로 빌드합니다.
 
 ### 직접 실행
 
 `pnpm start` 대신 Node.js로 직접 실행할 수도 있습니다:
 
 ```bash
-node --enable-source-maps dist/index.js
+NODE_ENV=production node --enable-source-maps dist/index.js
 ```
 
 **옵션 설명**:

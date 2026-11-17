@@ -31,7 +31,7 @@ import { DB } from "../database/db";
 import { type SonamuDBConfig } from "../database/db";
 import { SD, setSDConfig } from "../dict/sd";
 import { type LocalizedString } from "../dict/types";
-import { getSonamuEnvironment, readAllEnvironmentSnapshots } from "../env";
+import { ensureServerEnvironment, getSonamuEnvironment, readAllEnvironmentSnapshots } from "../env";
 import { NotFoundException, UnauthorizedException } from "../exceptions/so-exceptions";
 import { runtimeTypeOf } from "../runtime-type";
 import { BufferedFile } from "../storage/buffered-file";
@@ -495,8 +495,16 @@ class SonamuClass {
   private initElapsed = 0;
   private configElapsed = 0;
 
+  /**
+   * Fastify 서버를 만들어 라우트를 등록하고 기동합니다.
+   * 초기화 전이면 `resolveSonamuEnvironment` 규칙으로 NODE_ENV를 정하며,
+   * `HOT=yes`(sonamu dev)·`VITEST=true`가 아니면 기본값은 production입니다.
+   */
   async createServer(initOptions?: { enableSync?: boolean; doSilent?: boolean }) {
     if (!this.isInitialized) {
+      // 설정을 읽기 전에 서버 환경을 확정해야 dist 서버가 NODE_ENV 없이 개발 도구 라우트를 열지 않습니다.
+      const { findApiRootPath } = await import("../utils/utils");
+      ensureServerEnvironment(findApiRootPath());
       await this.init(initOptions?.doSilent, initOptions?.enableSync);
     }
 

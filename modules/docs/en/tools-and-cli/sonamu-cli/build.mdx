@@ -377,13 +377,14 @@ pnpm start
 - **Fast startup**: Run pre-compiled JavaScript
 - **Low memory**: No TypeScript transformation overhead
 - **Source map support**: Show original file location on errors
+- **Production by default**: When `NODE_ENV` is unset, the server uses `NODE_ENV` from `.env.local` or `.env`, and falls back to `production`. `pnpm build` follows the same rule.
 
 ### Direct Execution
 
 You can also run directly with Node.js instead of `pnpm start`:
 
 ```bash
-node --enable-source-maps dist/index.js
+NODE_ENV=production node --enable-source-maps dist/index.js
 ```
 
 **Option description**:

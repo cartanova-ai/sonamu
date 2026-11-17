@@ -40,7 +40,7 @@ NODE_ENV=production node dist/index.js
 Or using PM2:
 
 ```bash
-pm2 start dist/index.js --name sonamu-api
+NODE_ENV=production pm2 start dist/index.js --name sonamu-api
 ```
 
 <Note>
@@ -483,11 +483,12 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
+# Build and run in production mode
+ENV NODE_ENV=production
+
 # Build
 RUN pnpm build
 
-# Run in production mode
-ENV NODE_ENV=production
 EXPOSE 34900
 
 CMD ["node", "dist/index.js"]

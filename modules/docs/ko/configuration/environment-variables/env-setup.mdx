@@ -19,18 +19,33 @@ Sonamu는 `sonamu.config.ts`를 import하기 전에 API 패키지 루트의 dote
 3. `.env.local`
 4. export된 process 환경변수
 
-뒤에 오는 값이 앞의 값을 덮습니다. `NODE_ENV`가 없으면 `development`를 사용합니다. 허용 값은
-`test`, `development`, `staging`, `production`입니다.
+뒤에 오는 값이 앞의 값을 덮습니다. 허용 값은 `test`, `development`, `staging`, `production`입니다.
+
+런타임 `NODE_ENV`가 없으면 `.env.local`, `.env`에 적힌 `NODE_ENV`를 차례로 보고, 그것도 없으면 실행
+방식에 따른 기본값을 씁니다. `sonamu build`·`sonamu start`와 `createServer()`로 띄운 서버는
+`production`, `sonamu dev`와 테스트, `sync`·`migrate` 같은 CLI 도구는 `development`가 기본값입니다.
+`.env.${NODE_ENV}`는 환경이 정해진 뒤에 읽으므로 그 안의 `NODE_ENV`는 판정에 쓰이지 않습니다.
 
 ## 프로그래밍 환경 API
 
 현재 환경 조회 함수와 반환 타입을 루트 패키지에서 import할 수 있습니다.
 
 ```typescript
-import { getSonamuEnvironment, type SonamuEnvironment } from "sonamu";
+import {
+  findApiRootPath,
+  getSonamuEnvironment,
+  resolveSonamuEnvironment,
+  type SonamuEnvironment,
+} from "sonamu";
 
 const environment: SonamuEnvironment = getSonamuEnvironment();
+// 런타임과 dotenv 어디에도 NODE_ENV가 없으면 "production"
+const resolved: SonamuEnvironment = resolveSonamuEnvironment(findApiRootPath(), "production");
 ```
+
+`getSonamuEnvironment()`는 dotenv 파일을 읽지 않고 전달된 환경 객체(기본값 `process.env`)의
+`NODE_ENV`만 봅니다. `resolveSonamuEnvironment(rootPath, fallback)`는 런타임 `NODE_ENV`, `rootPath`의
+`.env.local`·`.env`, `fallback` 순서로 환경을 정하며 `process.env`를 바꾸지 않습니다.
 
 `SonamuEnvironment`는 `"test" | "development" | "staging" | "production"`입니다. `NODE_ENV`가
 없거나 빈 문자열이면 `"development"`를 반환합니다. 이 네 환경에 속하지 않는 비어 있지 않은

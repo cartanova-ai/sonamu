@@ -7,6 +7,7 @@ import chalk from "chalk";
 import { type UserConfig } from "tsdown";
 
 import { type NormalizedZodCompilerPolicy } from "../api/config";
+import { ensureSonamuEnvironment } from "../env";
 import {
   execWithLinePrefix,
   printBuildSummary,
@@ -291,6 +292,8 @@ async function runBuildSteps<T>(
 
 export async function buildApiCommand(): Promise<void> {
   const apiRootPath = findApiRootPath();
+  // 빌드는 배포 산출물을 만드므로 NODE_ENV가 없으면 production 설정으로 빌드합니다.
+  ensureSonamuEnvironment(apiRootPath, "production");
   const baseConfigPath = await resolveApiBuildConfigPath(apiRootPath);
   const policy = await loadBuildCompilerPolicy(apiRootPath);
   const registryPath = path.join(apiRootPath, HTTP_VALIDATOR_REGISTRY_SOURCE_PATH);
@@ -335,6 +338,8 @@ export async function buildWebCommand({
 }: { skipIfMissing?: boolean; exec?: typeof execWithLinePrefix } = {}): Promise<void> {
   const appRootPath = findAppRootPath();
   const webPath = path.join(appRootPath, "web");
+  // vite 자식 프로세스가 development NODE_ENV를 물려받으면 SSR 번들이 jsxDEV를 써서 프로덕션에서 깨집니다.
+  ensureSonamuEnvironment(findApiRootPath(), "production");
   if (!(await exists(webPath))) {
     if (skipIfMissing) {
       console.log(chalk.gray("Web 디렉토리가 없으므로 Web 빌드를 건너뜁니다."));

@@ -40,7 +40,7 @@ NODE_ENV=production node dist/index.js
 또는 PM2 사용:
 
 ```bash
-pm2 start dist/index.js --name sonamu-api
+NODE_ENV=production pm2 start dist/index.js --name sonamu-api
 ```
 
 <Note>
@@ -482,11 +482,12 @@ RUN pnpm install --frozen-lockfile
 # 소스 코드 복사
 COPY . .
 
+# 프로덕션 모드로 빌드하고 실행
+ENV NODE_ENV=production
+
 # 빌드
 RUN pnpm build
 
-# 프로덕션 모드로 실행
-ENV NODE_ENV=production
 EXPOSE 34900
 
 CMD ["node", "dist/index.js"]

@@ -87,9 +87,11 @@ rotate keys, use the `secrets` option or `BETTER_AUTH_SECRETS` (`<version>:<valu
 <Warning>
   Without a secret, better-auth signs with a default constant published in its source and rejects
   it only when `NODE_ENV=production`. Sonamu therefore refuses to start the server in every
-  environment except test (development, staging, production, and an unset `NODE_ENV`, which counts
-  as development) when the secret is missing or a publicly known value. If you have run with a
-  public value, rotate the secret and revoke existing sessions.
+  environment except test (development, staging, and production) when the secret is missing or a
+  publicly known value. If you have run with a public value, rotate the secret and revoke existing
+  sessions. The check also covers the keys in `secrets` or `BETTER_AUTH_SECRETS` and the legacy
+  secret kept for decrypting existing data, so a public legacy key left in your rotation settings
+  also blocks startup.
 </Warning>
 
 ### Email/Password Authentication

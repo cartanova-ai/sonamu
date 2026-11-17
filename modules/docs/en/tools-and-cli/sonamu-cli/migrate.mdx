@@ -58,7 +58,7 @@ pnpm sonamu migrate generate
 ### run - Apply to the Current Environment
 
 ```bash
-# Development (NODE_ENV unset or development)
+# Development (NODE_ENV is development, or is unset and absent from .env and .env.local)
 pnpm sonamu migrate run --execute
 
 # Production

@@ -21,18 +21,36 @@ For the active `NODE_ENV`, Sonamu applies sources in this order:
 3. `.env.local`
 4. Exported process environment variables
 
-Each source can override values loaded before it. If `NODE_ENV` is not set, Sonamu uses
-`development`. Allowed values are `test`, `development`, `staging`, and `production`.
+Each source can override values loaded before it. Allowed values are `test`, `development`,
+`staging`, and `production`.
+
+If the runtime `NODE_ENV` is not set, Sonamu checks `NODE_ENV` in `.env.local`, then `.env`, and
+otherwise uses a default that depends on how Sonamu runs: `production` for `sonamu build`,
+`sonamu start`, and servers started with `createServer()`; `development` for `sonamu dev`, tests,
+and CLI tools such as `sync` and `migrate`. `.env.${NODE_ENV}` is read only after the environment
+is chosen, so a `NODE_ENV` inside it is ignored for this decision.
 
 ## Programmatic Environment API
 
 Import the current environment reader and its return type from the root package:
 
 ```typescript
-import { getSonamuEnvironment, type SonamuEnvironment } from "sonamu";
+import {
+  findApiRootPath,
+  getSonamuEnvironment,
+  resolveSonamuEnvironment,
+  type SonamuEnvironment,
+} from "sonamu";
 
 const environment: SonamuEnvironment = getSonamuEnvironment();
+// "production" when NODE_ENV is found neither at runtime nor in dotenv files
+const resolved: SonamuEnvironment = resolveSonamuEnvironment(findApiRootPath(), "production");
 ```
+
+`getSonamuEnvironment()` does not read dotenv files; it only checks `NODE_ENV` in the given
+environment object (`process.env` by default). `resolveSonamuEnvironment(rootPath, fallback)` picks
+the environment from the runtime `NODE_ENV`, then `.env.local` and `.env` in `rootPath`, then
+`fallback`, without modifying `process.env`.
 
 `SonamuEnvironment` is `"test" | "development" | "staging" | "production"`. An absent or empty
 `NODE_ENV` returns `"development"`. Any non-empty value outside these four environments throws an

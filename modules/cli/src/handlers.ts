@@ -91,6 +91,18 @@ function createLazyToolingHandlers(): CliHandlers {
 
 const requireFromHere = createRequire(import.meta.url);
 
+/**
+ * `sonamu start`가 빌드 산출물을 띄울 때 쓸 환경 변수를 만듭니다.
+ * NODE_ENV가 없으면 `.env.local`·`.env`의 NODE_ENV를, 그것도 없으면 production을 씁니다.
+ */
+export async function createStartEnvironment(
+  apiRootPath: string,
+  baseEnv: NodeJS.ProcessEnv,
+): Promise<NodeJS.ProcessEnv> {
+  const { resolveSonamuEnvironment } = await import("sonamu");
+  return { ...baseEnv, NODE_ENV: resolveSonamuEnvironment(apiRootPath, "production", baseEnv) };
+}
+
 function hmrHandler(apiOnly: boolean): CliHandler {
   return async () => {
     const { findApiRootPath } = await import("sonamu");
@@ -148,7 +160,11 @@ const processHandlers: CliHandlers = {
     return runChildProcess({
       executable: process.execPath,
       args: ["--enable-source-maps", "-r", "dotenv/config", entryPoint],
-      spawnOptions: { cwd: apiRootPath, stdio: "inherit" },
+      spawnOptions: {
+        cwd: apiRootPath,
+        stdio: "inherit",
+        env: await createStartEnvironment(apiRootPath, process.env),
+      },
     });
   },
 };
