@@ -248,6 +248,8 @@ User 엔티티에 `role` 필드를 추가합니다:
 - 타입: `string`
 - 기본값: `"user"`
 
+그다음 entity.json의 `role` prop에 `"readonly": true`를 직접 지정하세요. 그래야 `UserBaseSaveParams`에서 빠져 스캐폴드된 `save` API로 역할을 바꿀 수 없습니다. 아래 `additionalFields`의 `input: false`는 인증 API 요청만 막습니다.
+
 ### 2. Enum 추가 (선택사항)
 
 ```json

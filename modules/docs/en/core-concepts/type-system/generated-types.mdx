@@ -207,8 +207,8 @@ Parameter types for save APIs.
 
 <CodeGroup>
 ```typescript title="user.types.ts (auto-generated)"
-// SaveParams = Base type with id as optional
-export const UserSaveParams = User.partial({ id: true });
+// SaveParams = BaseSaveParams (system columns excluded) with id as optional
+export const UserSaveParams = UserBaseSaveParams.partial({ id: true });
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
 
 // Equivalent to:
@@ -216,7 +216,6 @@ export type UserSaveParams = z.infer<typeof UserSaveParams>;
 // id?: number;
 // email: string;
 // username: string;
-// created_at: Date;
 // }
 
 ````
@@ -227,7 +226,6 @@ await UserService.save([
   {
     email: "new@test.com",
     username: "newuser",
-    created_at: new Date(),
   }
 ]);
 
@@ -237,7 +235,6 @@ await UserService.save([
     id: 1,
     email: "updated@test.com",
     username: "updateduser",
-    created_at: new Date(),
   }
 ]);
 ````

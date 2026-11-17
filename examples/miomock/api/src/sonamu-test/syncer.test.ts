@@ -549,6 +549,10 @@ describe("Syncer", () => {
 
         // findMany 기본 파라미터 적용시 satisfies 적용되어 있는지 확인
         expect(writeFile.data).toContain("satisfies SyncFixtureListParams");
+
+        // 쓰기 API(save·del)는 스캐폴드 직후부터 admin 가드가 붙어 있어야 함
+        expect(writeFile.data).toMatch(/guards: \[\s*"admin"\s*\]\s*\}\)\s*async save\(/);
+        expect(writeFile.data).toMatch(/guards: \[\s*"admin"\s*\]\s*\}\)\s*async del\(/);
       }
     });
 

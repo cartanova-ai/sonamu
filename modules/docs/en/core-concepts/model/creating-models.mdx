@@ -237,7 +237,7 @@ class UserModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async save(spa: UserSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
@@ -337,6 +337,7 @@ async save(spa: UserSaveParams[]): Promise<number[]>
 - Processes multiple records at once with array
 - Executes wrapped in transaction
 - Returns array of created/updated IDs
+- Has `guards: ["admin"]` by default, so only admins can call it
 
 ### 5. del
 

@@ -30,6 +30,7 @@ Entity별 TypeScript 타입과 Zod 스키마가 생성됩니다.
 
 ```typescript title="api/src/application/user/user.types.ts (자동 생성)"
 import { z } from "zod";
+import { UserBaseSaveParams } from "../sonamu.generated";
 
 // Base 타입
 export type User = {
@@ -59,7 +60,7 @@ export const UserListParams = z.object({
 });
 
 // Save 파라미터
-export const UserSaveParams = User.partial({ id: true });
+export const UserSaveParams = UserBaseSaveParams.partial({ id: true });
 ```
 
 **생성 시점**: Entity 저장 또는 `pnpm sonamu sync`

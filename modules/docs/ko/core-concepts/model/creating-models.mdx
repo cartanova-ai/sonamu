@@ -236,7 +236,7 @@ class UserModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async save(spa: UserSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
@@ -336,6 +336,7 @@ async save(spa: UserSaveParams[]): Promise<number[]>
 - 배열로 여러 레코드 한번에 처리
 - 트랜잭션으로 묶어서 실행
 - 생성/수정된 ID 배열 반환
+- 기본으로 `guards: ["admin"]`이 붙어 관리자만 호출 가능
 
 ### 5. del
 

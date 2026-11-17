@@ -61,6 +61,7 @@ export function EntityPropModal({
       desc: z.string().optional(),
       nullable: z.boolean().optional(),
       toFilter: z.boolean().optional(),
+      readonly: z.boolean().optional(),
       dbDefault: z.string().optional(),
       length: z.number().optional(),
       numberType: z.enum(["real", "double precision", "numeric"]).optional(),

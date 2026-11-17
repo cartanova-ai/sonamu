@@ -18,6 +18,15 @@ Sonamu는 다양한 데이터 타입을 지원하며, 각 타입은 PostgreSQL, 
 | `toFilter`  | boolean         | `sonamuFilter`·목록 필터 허용 여부 | `false` |
 | `dbDefault` | string          | 데이터베이스 기본값   | -       |
 | `generated` | GeneratedColumn | 계산 컬럼 설정        | -       |
+| `readonly`  | boolean         | SaveParams에서 제외   | `false` |
+
+### readonly
+
+`readonly: true`인 필드는 `sonamu.generated.ts`의 `{Entity}BaseSaveParams`에서 빠지므로, 스캐폴드된 `save` API로 클라이언트가 값을 바꿀 수 없습니다. 권한(`role`), 인증 상태, 비밀번호·토큰 같은 시스템 컬럼에 지정합니다. relation 필드는 FK 컬럼(`{name}_id`)이 빠집니다. 새로 만드는 better-auth 엔티티의 시스템 컬럼에는 기본으로 지정되지만, 이미 있는 entity.json에는 자동으로 추가되지 않습니다.
+
+이 제외는 `{Entity}BaseSaveParams`로 만든 `SaveParams`에만 적용됩니다. `BaseSchema`로 직접 만든 `SaveParams`에는 적용되지 않으며, 모델 코드의 DB 쓰기를 막는 권한 설정도 아닙니다.
+
+`created_at`, generated 컬럼, searchText 컬럼은 `readonly` 없이도 항상 제외됩니다. 서버 코드에서 이 컬럼을 써야 하면 모델 메서드 안에서 직접 값을 넣으세요.
 
 ### Generated Column
 

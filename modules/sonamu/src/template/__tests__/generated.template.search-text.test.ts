@@ -147,9 +147,13 @@ describe("Template__generated searchText", () => {
     template.getTargetAndPath = () => ({ target: "", path: "" });
 
     const { body } = template.render({ entityId: entity.id });
+    const { lines } = new Template__generated().getBaseSaveParamsSourceCode(entity);
 
+    expect(lines[0]).toBe(
+      `export const ${entity.id}BaseSaveParams = ${entity.id}BaseSchema.omit({ slug: true, search_text: true });`,
+    );
     expect(body).toContain(
-      `export const ${entity.id}SaveParams = ${entity.id}BaseSchema.omit({ slug: true, search_text: true }).partial({ id: true });`,
+      `export const ${entity.id}SaveParams = ${entity.id}BaseSaveParams.partial({ id: true });`,
     );
   });
 });

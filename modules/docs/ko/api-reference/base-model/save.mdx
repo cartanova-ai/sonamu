@@ -25,7 +25,7 @@ Sonamu는 Entity를 기반으로 다음 코드를 자동으로 생성합니다:
 ```typescript
 // src/application/user/user.model.ts (자동 생성)
 class UserModelClass extends BaseModelClass {
-  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async save(spa: UserSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
@@ -127,7 +127,6 @@ class UserService {
         email,
         name,
         status: "active",
-        created_at: new Date(),
       },
     ]);
 
@@ -583,7 +582,7 @@ async createUser(params: UserSaveParams) {
 ```typescript
 // Model 클래스
 class UserModelClass extends BaseModelClass {
-  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async save(spa: UserSaveParams[]): Promise<number[]> {
     // 자동 생성된 코드
   }

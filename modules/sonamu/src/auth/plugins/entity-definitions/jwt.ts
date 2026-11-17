@@ -16,10 +16,10 @@ export const jwtEntityDef: BetterAuthEntityDef = {
       title: "JWKS",
       props: [
         { name: "id", type: "string", desc: "ID" },
-        { name: "public_key", type: "string", desc: "공개키" },
-        { name: "private_key", type: "string", desc: "비밀키" },
+        { name: "public_key", type: "string", readonly: true, desc: "공개키" },
+        { name: "private_key", type: "string", readonly: true, desc: "비밀키" },
         { name: "created_at", type: "date", dbDefault: "CURRENT_TIMESTAMP", desc: "생성일시" },
-        { name: "expires_at", type: "date", nullable: true, desc: "만료일시" },
+        { name: "expires_at", type: "date", nullable: true, readonly: true, desc: "만료일시" },
       ],
       indexes: [],
       subsets: {

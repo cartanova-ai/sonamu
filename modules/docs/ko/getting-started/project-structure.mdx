@@ -471,16 +471,13 @@ export const UserModel = new UserModelClass();
 ```typescript title="user.types.ts"
 // 자동 생성 + 확장 가능
 import { z } from "zod";
-import { UserBaseSchema } from "../sonamu.generated";
+import { UserBaseSaveParams, UserBaseSchema } from "../sonamu.generated";
 
 // Base 타입 (자동 생성됨)
 export type User = z.infer<typeof UserBaseSchema>;
 
 // 확장 가능한 커스텀 타입
-export const UserSaveParams = UserBaseSchema.partial({
-  id: true,
-  created_at: true,
-});
+export const UserSaveParams = UserBaseSaveParams.partial({ id: true });
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
 ```
 

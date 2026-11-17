@@ -188,7 +188,8 @@ class ${entityId}ModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  // 쓰기 API는 기본으로 관리자 전용입니다. 공개 범위를 넓히려면 guards를 직접 조정하세요.
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: [ "admin" ] })
   async save(
     spa: ${entityId}SaveParams[]
   ): Promise<${idTsType}[]> {

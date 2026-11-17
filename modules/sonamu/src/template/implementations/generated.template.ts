@@ -6,7 +6,12 @@ import { Sonamu } from "../../api";
 import { type Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
 import { Naite } from "../../naite/naite";
-import { isVirtualCodeProp, isVirtualQueryProp } from "../../types/types";
+import {
+  isBelongsToOneRelationProp,
+  isOneToOneRelationProp,
+  isVirtualCodeProp,
+  isVirtualQueryProp,
+} from "../../types/types";
 import { type EntityIndex, type EntityPropNode } from "../../types/types";
 import { nonNullable } from "../../utils/utils";
 import { Template } from "../template";
@@ -38,6 +43,7 @@ export class Template__generated extends Template {
       return [
         this.getEnumsSourceCode(entity),
         this.getBaseSchemaSourceCode(entity),
+        this.getBaseSaveParamsSourceCode(entity),
         this.getBaseListParamsSourceCode(entity),
         this.getSubsetSourceCode(entity),
       ].filter(nonNullable);
@@ -45,7 +51,14 @@ export class Template__generated extends Template {
     Naite.t("Template__generated:sourceCodes", sourceCodes);
 
     // Sort
-    const LABEL_KEY_ORDER = ["Enums", "BaseSchema", "BaseListParams", "Subsets", "SubsetQueries"];
+    const LABEL_KEY_ORDER = [
+      "Enums",
+      "BaseSchema",
+      "BaseSaveParams",
+      "BaseListParams",
+      "Subsets",
+      "SubsetQueries",
+    ];
     sourceCodes.sort((a, b) => {
       const [aKey] = a.label.split(":");
       const [bKey] = b.label.split(":");
@@ -289,6 +302,54 @@ export class Template__generated extends Template {
       label: `BaseSchema: ${entity.id}`,
       importKeys,
       lines,
+    };
+  }
+
+  /**
+   * 클라이언트 저장 입력(SaveParams)의 기반 스키마를 생성합니다.
+   *
+   * sonamu.generated.ts는 sync마다 다시 생성되므로, 나중에 추가된 prop(예: 인증 플러그인의 role)도
+   * 제외 목록에 바로 반영됩니다. 다음 컬럼을 BaseSchema에서 제외합니다.
+   * - generated/searchText 컬럼: DB가 계산하므로 값을 쓸 수 없음
+   * - `created_at`: 시스템이 기록하는 생성 시각
+   * - `readonly: true` prop: 권한·인증 상태·비밀값 등 시스템 컬럼 (relation은 FK 컬럼 `{name}_id`)
+   */
+  getBaseSaveParamsSourceCode(entity: Entity): SourceCode {
+    const schemaName = `${entity.names.module}BaseSaveParams`;
+    const baseSchemaName = `${entity.names.module}BaseSchema`;
+
+    const omitColumns = unique(
+      entity.props.flatMap((prop) => {
+        if (prop.type === "relation") {
+          const hasJoinColumn =
+            isBelongsToOneRelationProp(prop) ||
+            (isOneToOneRelationProp(prop) && prop.hasJoinColumn === true);
+          return prop.readonly === true && hasJoinColumn ? [`${prop.name}_id`] : [];
+        }
+        if (
+          prop.readonly === true ||
+          prop.name === "created_at" ||
+          prop.generated !== undefined ||
+          prop.type === "searchText"
+        ) {
+          return [prop.name];
+        }
+        return [];
+      }),
+    );
+
+    const schemaBody =
+      omitColumns.length > 0
+        ? `${baseSchemaName}.omit({ ${omitColumns.map((column) => `${column}: true`).join(", ")} })`
+        : baseSchemaName;
+
+    return {
+      label: `BaseSaveParams: ${entity.id}`,
+      importKeys: [],
+      lines: [
+        `export const ${schemaName} = ${schemaBody};`,
+        `export type ${schemaName} = z.infer<typeof ${schemaName}>;`,
+      ],
     };
   }
 

@@ -55,10 +55,6 @@ New projects created with `create-sonamu` ship a `guardHandler` that denies by d
 - Change `SaveParams` to `{Entity}BaseSaveParams.partial({ id: true })` and run `sonamu sync`. Where save inputs or forms used `created_at`, use the value from the fetched row instead.
 - Review the `guards` on scaffolded `save` and other write APIs.
 
-### `sonamuFilter` accepts only `toFilter` props
-
-`sonamuFilter` now filters only props marked `"toFilter": true` in entity.json. To filter a relation FK (`{relation_name}_id`), mark the relation prop. Fields that are not allowed, and invalid operators or values, are rejected with `BadRequestException` (400) before the query runs, including when server code calls `findMany`. Mark only the fields you filter on with `toFilter: true` and run `sonamu sync`. Never mark secret fields such as passwords or tokens. See [sonamuFilter](/en/api-reference/base-model/sonamu-filter) for details.
-
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

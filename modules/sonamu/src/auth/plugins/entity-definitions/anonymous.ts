@@ -12,6 +12,14 @@ export const anonymousEntityDef: BetterAuthEntityDef = {
   name: "Anonymous",
   entities: [],
   additionalProps: {
-    User: [{ name: "is_anonymous", type: "boolean", nullable: true, desc: "익명 사용자 여부" }],
+    User: [
+      {
+        name: "is_anonymous",
+        type: "boolean",
+        nullable: true,
+        readonly: true,
+        desc: "익명 사용자 여부",
+      },
+    ],
   },
 };

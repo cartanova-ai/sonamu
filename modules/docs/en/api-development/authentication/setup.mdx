@@ -249,6 +249,8 @@ Add `role` field to User entity:
 - Type: `string`
 - Default: `"user"`
 
+Then set `"readonly": true` on the `role` prop in entity.json by hand. This removes it from `UserBaseSaveParams`, so the scaffolded `save` API cannot change roles. `input: false` in `additionalFields` below only blocks auth API requests.
+
 ### 2. Add Enum (Optional)
 
 ```json

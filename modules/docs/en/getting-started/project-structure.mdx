@@ -472,16 +472,13 @@ export const UserModel = new UserModelClass();
 ```typescript title="user.types.ts"
 // Auto-generated + extensible
 import { z } from "zod";
-import { UserBaseSchema } from "../sonamu.generated";
+import { UserBaseSaveParams, UserBaseSchema } from "../sonamu.generated";
 
 // Base type (auto-generated)
 export type User = z.infer<typeof UserBaseSchema>;
 
 // Extensible custom types
-export const UserSaveParams = UserBaseSchema.partial({
-  id: true,
-  created_at: true,
-});
+export const UserSaveParams = UserBaseSaveParams.partial({ id: true });
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
 ```
 

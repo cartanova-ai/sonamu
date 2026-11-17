@@ -1,11 +1,11 @@
 import { z } from "zod";
 
-import { SyncFixtureBaseSchema, SyncFixtureBaseListParams } from "../sonamu.generated";
+import { SyncFixtureBaseSaveParams, SyncFixtureBaseListParams } from "../sonamu.generated";
 
 // SyncFixture - ListParams
 export const SyncFixtureListParams = SyncFixtureBaseListParams;
 export type SyncFixtureListParams = z.infer<typeof SyncFixtureListParams>;
 
 // SyncFixture - SaveParams
-export const SyncFixtureSaveParams = SyncFixtureBaseSchema.partial({ id: true, created_at: true });
+export const SyncFixtureSaveParams = SyncFixtureBaseSaveParams.partial({ id: true });
 export type SyncFixtureSaveParams = z.infer<typeof SyncFixtureSaveParams>;

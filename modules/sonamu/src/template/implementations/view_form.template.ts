@@ -228,6 +228,9 @@ export class Template__view_form extends Template {
 
     const defaultValue = this.resolveDefaultValue(columns);
 
+    // created_at은 SaveParams에서 빠지므로, 조회한 행에서 따로 받아 표시만 합니다.
+    const showCreatedAt = entity.subsets.A?.includes("created_at") ?? false;
+
     // enum과 FK에 대한 import 정보 수집
     const enumImports = new Set<string>();
     const fkConfigImports = new Set<string>();
@@ -285,7 +288,7 @@ import {
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect${showCreatedAt ? ", useState" : ""} } from "react";
 import { z } from "zod";
 import { ${names.capital}Service } from "@/services/services.generated";
 import type { ${names.capital}SubsetA } from "@/services/sonamu.generated";${
@@ -346,6 +349,7 @@ export function ${names.capitalPlural}Form({ id, mode }: ${names.capitalPlural}F
   const queryClient = useQueryClient();
 
   const { form, setForm, register${columns.some((col) => ["json-sonamufile", "json-sonamufile-array"].includes(col.renderType)) ? ", submit" : ""} } = useTypeForm(${names.capital}SaveParams, ${JSON.stringify(defaultValue).replace(/"now\(\)"/g, '""')});
+${showCreatedAt ? "  const [createdAt, setCreatedAt] = useState<string>();\n" : ""}
 ${(() => {
   const hasDatetime = columns.some((col) => col.renderType === "string-datetime");
   const hasDate = columns.some((col) => col.renderType === "string-date");
@@ -387,7 +391,7 @@ ${(() => {
   useEffect(() => {
     if (id) {
       ${names.capital}Service.get${names.capital}("A", id).then((row) => {
-        setForm((prevForm) => ({
+        ${showCreatedAt ? "setCreatedAt(String(row.created_at));\n        " : ""}setForm((prevForm) => ({
           ...prevForm,
           ...row,${(() => {
             // relation 필드들을 찾아서 변환 코드 생성
@@ -523,14 +527,18 @@ ${columns
 
                 {/* Save Button */}
                 <div className="flex items-center justify-between pt-4">
-                  {form.id && form.created_at && (
+                  ${
+                    showCreatedAt
+                      ? `{form.id && createdAt && (
                     <div className="flex items-center">
                       <label className="mr-2 text-xs text-gray-600">{SD("form.createdAt")}:</label>
                       <span className="text-xs text-gray-600">
-                        {String(form.created_at)}
+                        {createdAt}
                       </span>
                     </div>
-                  )}
+                  )}`
+                      : ""
+                  }
                   <Button
                     onClick={handleSubmit}
                     icon={<SaveIcon />}

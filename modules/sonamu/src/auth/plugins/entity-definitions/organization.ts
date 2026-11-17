@@ -44,6 +44,7 @@ export const organizationEntityDef: BetterAuthEntityDef = {
         {
           type: "relation",
           name: "organization",
+          readonly: true,
           with: "Organization",
           relationType: "BelongsToOne",
           onDelete: "CASCADE",
@@ -71,11 +72,12 @@ export const organizationEntityDef: BetterAuthEntityDef = {
       title: "멤버",
       props: [
         { name: "id", type: "string", desc: "ID" },
-        { name: "role", type: "string", desc: "역할" },
+        { name: "role", type: "string", readonly: true, desc: "역할" },
         { name: "created_at", type: "date", dbDefault: "CURRENT_TIMESTAMP", desc: "생성일시" },
         {
           type: "relation",
           name: "user",
+          readonly: true,
           with: "User",
           relationType: "BelongsToOne",
           onDelete: "CASCADE",
@@ -84,6 +86,7 @@ export const organizationEntityDef: BetterAuthEntityDef = {
         {
           type: "relation",
           name: "organization",
+          readonly: true,
           with: "Organization",
           relationType: "BelongsToOne",
           onDelete: "CASCADE",
@@ -113,13 +116,14 @@ export const organizationEntityDef: BetterAuthEntityDef = {
       props: [
         { name: "id", type: "string", desc: "ID" },
         { name: "email", type: "string", desc: "이메일" },
-        { name: "role", type: "string", desc: "역할" },
-        { name: "status", type: "string", desc: "상태" },
-        { name: "expires_at", type: "date", desc: "만료일시" },
+        { name: "role", type: "string", readonly: true, desc: "역할" },
+        { name: "status", type: "string", readonly: true, desc: "상태" },
+        { name: "expires_at", type: "date", readonly: true, desc: "만료일시" },
         { name: "created_at", type: "date", dbDefault: "CURRENT_TIMESTAMP", desc: "생성일시" },
         {
           type: "relation",
           name: "inviter",
+          readonly: true,
           with: "User",
           relationType: "BelongsToOne",
           onDelete: "CASCADE",
@@ -128,6 +132,7 @@ export const organizationEntityDef: BetterAuthEntityDef = {
         {
           type: "relation",
           name: "organization",
+          readonly: true,
           with: "Organization",
           relationType: "BelongsToOne",
           onDelete: "CASCADE",
@@ -136,6 +141,7 @@ export const organizationEntityDef: BetterAuthEntityDef = {
         {
           type: "relation",
           name: "team",
+          readonly: true,
           with: "Team",
           relationType: "BelongsToOne",
           onDelete: "SET NULL",
@@ -179,6 +185,7 @@ export const organizationEntityDef: BetterAuthEntityDef = {
         {
           type: "relation",
           name: "team",
+          readonly: true,
           with: "Team",
           relationType: "BelongsToOne",
           onDelete: "CASCADE",
@@ -187,6 +194,7 @@ export const organizationEntityDef: BetterAuthEntityDef = {
         {
           type: "relation",
           name: "user",
+          readonly: true,
           with: "User",
           relationType: "BelongsToOne",
           onDelete: "CASCADE",
@@ -208,8 +216,20 @@ export const organizationEntityDef: BetterAuthEntityDef = {
   ],
   additionalProps: {
     Session: [
-      { name: "active_organization_id", type: "string", nullable: true, desc: "활성 조직 ID" },
-      { name: "active_team_id", type: "string", nullable: true, desc: "활성 팀 ID" },
+      {
+        name: "active_organization_id",
+        type: "string",
+        nullable: true,
+        readonly: true,
+        desc: "활성 조직 ID",
+      },
+      {
+        name: "active_team_id",
+        type: "string",
+        nullable: true,
+        readonly: true,
+        desc: "활성 팀 ID",
+      },
     ],
   },
 };

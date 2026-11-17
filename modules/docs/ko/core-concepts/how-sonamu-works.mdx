@@ -96,16 +96,13 @@ graph TD
 ```typescript title="user.types.ts (엔티티별 타입)"
 // 자동 생성 + 확장 가능
 import { z } from "zod";
-import { UserBaseSchema } from "../sonamu.generated";
+import { UserBaseSaveParams, UserBaseSchema } from "../sonamu.generated";
 
 // Base 타입 (자동 생성)
 export type User = z.infer<typeof UserBaseSchema>;
 
 // 커스텀 타입 (직접 작성 가능)
-export const UserSaveParams = UserBaseSchema.partial({
-id: true,
-created_at: true,
-});
+export const UserSaveParams = UserBaseSaveParams.partial({ id: true });
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
 
 ````

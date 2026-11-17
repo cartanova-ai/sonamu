@@ -25,7 +25,7 @@ Sonamu automatically generates the following code based on your Entity:
 ```typescript
 // src/application/user/user.model.ts (auto-generated)
 class UserModelClass extends BaseModelClass {
-  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async save(spa: UserSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
@@ -127,7 +127,6 @@ class UserService {
         email,
         name,
         status: "active",
-        created_at: new Date(),
       },
     ]);
 
@@ -581,7 +580,7 @@ async createUser(params: UserSaveParams) {
 ```typescript
 // Model class
 class UserModelClass extends BaseModelClass {
-  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async save(spa: UserSaveParams[]): Promise<number[]> {
     // Auto-generated code
   }

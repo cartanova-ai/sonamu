@@ -93,7 +93,7 @@ class UserModelClass extends BaseModelClass<
     // id / search-keyword / orderBy 처리 후 executeSubsetQuery
   }
 
-  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async save(spa: UserSaveParams[]): Promise<number[]> {
     // ubRegister + transaction(ubUpsert)
   }

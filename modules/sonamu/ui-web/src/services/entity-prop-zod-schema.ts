@@ -76,6 +76,8 @@ export namespace EntityPropZodSchema {
       ])
       .optional(),
     generated: GeneratedColumn.optional(),
+    // UI에 토글은 없지만, prop을 수정해 저장할 때 SaveParams 제외 설정이 지워지지 않도록 유지합니다.
+    readonly: z.boolean().optional(),
   });
   export const IntegerProp = CommonProp.extend({
     type: z.literal("integer"),
@@ -144,6 +146,7 @@ export namespace EntityPropZodSchema {
     nullable: z.boolean().optional(),
     toFilter: z.boolean().optional(),
     desc: z.string().optional(),
+    readonly: z.boolean().optional(),
   });
   export const OneToOneRelationCommon = RelationPropBase.extend({
     relationType: z.literal("OneToOne"),

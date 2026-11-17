@@ -601,6 +601,77 @@ export type VerificationBaseSchema = z.infer<typeof VerificationBaseSchema> & {
   readonly __hasDefault__: readonly ["created_at", "updated_at", "id"];
 };
 
+// BaseSaveParams: Account
+export const AccountBaseSaveParams = AccountBaseSchema.omit({ created_at: true });
+export type AccountBaseSaveParams = z.infer<typeof AccountBaseSaveParams>;
+
+// BaseSaveParams: AuditEvent
+export const AuditEventBaseSaveParams = AuditEventBaseSchema;
+export type AuditEventBaseSaveParams = z.infer<typeof AuditEventBaseSaveParams>;
+
+// BaseSaveParams: AuditLog
+export const AuditLogBaseSaveParams = AuditLogBaseSchema.omit({ created_at: true });
+export type AuditLogBaseSaveParams = z.infer<typeof AuditLogBaseSaveParams>;
+
+// BaseSaveParams: Company
+export const CompanyBaseSaveParams = CompanyBaseSchema.omit({ created_at: true });
+export type CompanyBaseSaveParams = z.infer<typeof CompanyBaseSaveParams>;
+
+// BaseSaveParams: Department
+export const DepartmentBaseSaveParams = DepartmentBaseSchema.omit({ created_at: true, code: true });
+export type DepartmentBaseSaveParams = z.infer<typeof DepartmentBaseSaveParams>;
+
+// BaseSaveParams: Document
+export const DocumentBaseSaveParams = DocumentBaseSchema.omit({ created_at: true });
+export type DocumentBaseSaveParams = z.infer<typeof DocumentBaseSaveParams>;
+
+// BaseSaveParams: Employee
+export const EmployeeBaseSaveParams = EmployeeBaseSchema.omit({ created_at: true });
+export type EmployeeBaseSaveParams = z.infer<typeof EmployeeBaseSaveParams>;
+
+// BaseSaveParams: File
+export const FileBaseSaveParams = FileBaseSchema.omit({ created_at: true });
+export type FileBaseSaveParams = z.infer<typeof FileBaseSaveParams>;
+
+// BaseSaveParams: Milestone
+export const MilestoneBaseSaveParams = MilestoneBaseSchema.omit({ created_at: true });
+export type MilestoneBaseSaveParams = z.infer<typeof MilestoneBaseSaveParams>;
+
+// BaseSaveParams: Passkey
+export const PasskeyBaseSaveParams = PasskeyBaseSchema.omit({ created_at: true });
+export type PasskeyBaseSaveParams = z.infer<typeof PasskeyBaseSaveParams>;
+
+// BaseSaveParams: Project
+export const ProjectBaseSaveParams = ProjectBaseSchema.omit({
+  created_at: true,
+  textsearchable_index_col: true,
+});
+export type ProjectBaseSaveParams = z.infer<typeof ProjectBaseSaveParams>;
+
+// BaseSaveParams: Session
+export const SessionBaseSaveParams = SessionBaseSchema.omit({ created_at: true });
+export type SessionBaseSaveParams = z.infer<typeof SessionBaseSaveParams>;
+
+// BaseSaveParams: SyncFixture
+export const SyncFixtureBaseSaveParams = SyncFixtureBaseSchema.omit({ created_at: true });
+export type SyncFixtureBaseSaveParams = z.infer<typeof SyncFixtureBaseSaveParams>;
+
+// BaseSaveParams: Tag
+export const TagBaseSaveParams = TagBaseSchema.omit({ created_at: true });
+export type TagBaseSaveParams = z.infer<typeof TagBaseSaveParams>;
+
+// BaseSaveParams: TwoFactor
+export const TwoFactorBaseSaveParams = TwoFactorBaseSchema.omit({ created_at: true });
+export type TwoFactorBaseSaveParams = z.infer<typeof TwoFactorBaseSaveParams>;
+
+// BaseSaveParams: User
+export const UserBaseSaveParams = UserBaseSchema.omit({ created_at: true });
+export type UserBaseSaveParams = z.infer<typeof UserBaseSaveParams>;
+
+// BaseSaveParams: Verification
+export const VerificationBaseSaveParams = VerificationBaseSchema.omit({ created_at: true });
+export type VerificationBaseSaveParams = z.infer<typeof VerificationBaseSaveParams>;
+
 // BaseListParams: Account
 export const AccountBaseListParams = z
   .object({

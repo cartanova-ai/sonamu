@@ -18,6 +18,15 @@ Options that apply to all field types.
 | `toFilter`  | boolean         | Allow in `sonamuFilter` and list filters | `false`    |
 | `dbDefault` | string          | Database default value  | -          |
 | `generated` | GeneratedColumn | Computed column setting | -          |
+| `readonly`  | boolean         | Exclude from SaveParams | `false`    |
+
+### readonly
+
+A field with `readonly: true` is left out of `{Entity}BaseSaveParams` in `sonamu.generated.ts`, so clients cannot change it through the scaffolded `save` API. Use it for system columns such as roles (`role`), verification state, passwords, and tokens. For a relation field, the FK column (`{name}_id`) is excluded. Newly generated better-auth entities have it set on their system columns, but it is not added to an existing entity.json automatically.
+
+The exclusion applies only to `SaveParams` built from `{Entity}BaseSaveParams`. It does not apply to `SaveParams` built directly from `BaseSchema`, and it is not a permission that blocks database writes in model code.
+
+`created_at`, generated columns, and searchText columns are always excluded, even without `readonly`. If server code must set one of them, assign it inside the model method.
 
 ### Generated Column
 

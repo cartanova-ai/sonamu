@@ -55,10 +55,6 @@ GET·HEAD·OPTIONS가 아닌 API에 `guards`가 없으면 서버 시작 시 경�
 - `SaveParams`를 `{Entity}BaseSaveParams.partial({ id: true })`로 바꾸고 `sonamu sync`를 실행하세요. 저장 입력이나 폼에서 `created_at`을 쓰던 곳은 조회한 행의 값을 쓰게 고치세요.
 - 스캐폴드한 `save`를 비롯한 쓰기 API의 `guards`를 확인하세요.
 
-### `sonamuFilter`는 `toFilter` prop만 허용
-
-`sonamuFilter`는 이제 entity.json에서 `"toFilter": true`로 지정한 prop만 필터링합니다. 관계의 FK(`{관계명}_id`)는 관계 prop에 지정해야 하고, 허용하지 않은 필드나 잘못된 연산자·값은 쿼리 전에 `BadRequestException`(400)으로 거부됩니다. 서버 코드에서 `findMany`를 호출할 때도 같습니다. 필터에 쓰는 필드에만 `toFilter: true`를 지정하고 `sonamu sync`를 실행하세요. 비밀번호·토큰 같은 비밀 필드는 지정하지 마세요. 자세한 내용은 [sonamuFilter](/ko/api-reference/base-model/sonamu-filter)를 참고하세요.
-
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

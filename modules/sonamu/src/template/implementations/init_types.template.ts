@@ -20,39 +20,21 @@ export class Template__init_types extends Template {
 
   render({ entityId }: TemplateOptions["init_types"]) {
     const names = EntityManager.getNamesFromId(entityId);
-    const entity = EntityManager.get(entityId);
-
-    const partialColumns = ["id"];
-    if (entity.props.some((prop) => prop.name === "created_at")) {
-      partialColumns.push("created_at");
-    }
-
-    const writeIneligibleColumns = entity.props
-      .filter(
-        (prop) =>
-          prop.type !== "relation" && (prop.generated !== undefined || prop.type === "searchText"),
-      )
-      .map((prop) => prop.name);
-
-    const omitGeneratedColumns =
-      writeIneligibleColumns.length > 0
-        ? `.omit({ ${writeIneligibleColumns.map((column) => `${column}: true`).join(", ")} })`
-        : "";
 
     return {
       ...this.getTargetAndPath(names),
+      // 쓰기 불가 컬럼 제외는 sync마다 재생성되는 BaseSaveParams가 담당하므로,
+      // 사용자 소유인 이 파일에는 제외 목록을 고정하지 않습니다.
       body: `
 import { z } from "zod";
-import { ${entityId}BaseSchema, ${entityId}BaseListParams } from "../sonamu.generated";
+import { ${entityId}BaseSaveParams, ${entityId}BaseListParams } from "../sonamu.generated";
 
 // ${entityId} - ListParams
 export const ${entityId}ListParams = ${entityId}BaseListParams;
 export type ${entityId}ListParams = z.infer<typeof ${entityId}ListParams>;
 
 // ${entityId} - SaveParams
-export const ${entityId}SaveParams = ${entityId}BaseSchema${omitGeneratedColumns}.partial({ ${partialColumns
-        .map((column) => `${column}: true`)
-        .join(", ")} });
+export const ${entityId}SaveParams = ${entityId}BaseSaveParams.partial({ id: true });
 export type ${entityId}SaveParams = z.infer<typeof ${entityId}SaveParams>;
 
       `.trim(),

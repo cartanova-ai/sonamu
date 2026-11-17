@@ -207,8 +207,8 @@ const result = await UserService.getUsers("A", {
 
 <CodeGroup>
 ```typescript title="user.types.ts (자동 생성)"
-// SaveParams = Base 타입의 id를 optional로
-export const UserSaveParams = User.partial({ id: true });
+// SaveParams = BaseSaveParams(시스템 컬럼 제외)의 id를 optional로
+export const UserSaveParams = UserBaseSaveParams.partial({ id: true });
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
 
 // 동일:
@@ -216,7 +216,6 @@ export type UserSaveParams = z.infer<typeof UserSaveParams>;
 // id?: number;
 // email: string;
 // username: string;
-// created_at: Date;
 // }
 
 ````
@@ -227,7 +226,6 @@ await UserService.save([
   {
     email: "new@test.com",
     username: "newuser",
-    created_at: new Date(),
   }
 ]);
 
@@ -237,7 +235,6 @@ await UserService.save([
     id: 1,
     email: "updated@test.com",
     username: "updateduser",
-    created_at: new Date(),
   }
 ]);
 ````

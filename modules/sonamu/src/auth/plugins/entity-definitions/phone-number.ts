@@ -22,6 +22,7 @@ export const phoneNumberEntityDef: BetterAuthEntityDef = {
       },
       {
         name: "phone_number_verified",
+        readonly: true,
         type: "boolean",
         nullable: true,
         desc: "전화번호 인증 여부",

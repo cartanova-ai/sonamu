@@ -30,6 +30,7 @@ TypeScript types and Zod schemas are generated per Entity.
 
 ```typescript title="api/src/application/user/user.types.ts (auto-generated)"
 import { z } from "zod";
+import { UserBaseSaveParams } from "../sonamu.generated";
 
 // Base type
 export type User = {
@@ -59,7 +60,7 @@ export const UserListParams = z.object({
 });
 
 // Save parameters
-export const UserSaveParams = User.partial({ id: true });
+export const UserSaveParams = UserBaseSaveParams.partial({ id: true });
 ```
 
 **Generated when**: Entity save or `pnpm sonamu sync`

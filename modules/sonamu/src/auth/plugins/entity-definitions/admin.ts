@@ -23,6 +23,7 @@ export const adminEntityDef: BetterAuthEntityDef = {
     User: [
       {
         name: "role",
+        readonly: true,
         type: "string",
         nullable: true,
         dbDefault: '"user"',
@@ -30,6 +31,7 @@ export const adminEntityDef: BetterAuthEntityDef = {
       },
       {
         name: "banned",
+        readonly: true,
         type: "boolean",
         nullable: true,
         dbDefault: "false",
@@ -37,12 +39,14 @@ export const adminEntityDef: BetterAuthEntityDef = {
       },
       {
         name: "ban_reason",
+        readonly: true,
         type: "string",
         nullable: true,
         desc: "차단 사유",
       },
       {
         name: "ban_expires",
+        readonly: true,
         type: "date",
         nullable: true,
         desc: "차단 만료",
@@ -51,6 +55,7 @@ export const adminEntityDef: BetterAuthEntityDef = {
     Session: [
       {
         name: "impersonated_by",
+        readonly: true,
         type: "string",
         nullable: true,
         desc: "대리 로그인한 관리자 ID",

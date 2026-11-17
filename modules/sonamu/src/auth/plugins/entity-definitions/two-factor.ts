@@ -17,21 +17,35 @@ export const twoFactorEntityDef: BetterAuthEntityDef = {
       title: "2FA 설정",
       props: [
         { name: "id", type: "string", desc: "ID" },
-        { name: "secret", type: "string", desc: "비밀 키" },
-        { name: "backup_codes", type: "string", desc: "백업 코드" },
-        { name: "verified", type: "boolean", dbDefault: "true", desc: "TOTP 검증 여부" },
+        { name: "secret", type: "string", readonly: true, desc: "비밀 키" },
+        { name: "backup_codes", type: "string", readonly: true, desc: "백업 코드" },
+        {
+          name: "verified",
+          type: "boolean",
+          dbDefault: "true",
+          readonly: true,
+          desc: "TOTP 검증 여부",
+        },
         {
           name: "failed_verification_count",
+          readonly: true,
           type: "integer",
           dbDefault: "0",
           desc: "연속 검증 실패 횟수",
         },
-        { name: "locked_until", type: "date", nullable: true, desc: "검증 잠금 해제 일시" },
+        {
+          name: "locked_until",
+          type: "date",
+          nullable: true,
+          readonly: true,
+          desc: "검증 잠금 해제 일시",
+        },
         { name: "created_at", type: "date", dbDefault: "CURRENT_TIMESTAMP", desc: "생성일시" },
         { name: "updated_at", type: "date", dbDefault: "CURRENT_TIMESTAMP", desc: "수정일시" },
         {
           type: "relation",
           name: "user",
+          readonly: true,
           with: "User",
           relationType: "BelongsToOne",
           onDelete: "CASCADE",
@@ -53,6 +67,7 @@ export const twoFactorEntityDef: BetterAuthEntityDef = {
     User: [
       {
         name: "two_factor_enabled",
+        readonly: true,
         type: "boolean",
         nullable: true,
         desc: "2FA 활성화 여부",

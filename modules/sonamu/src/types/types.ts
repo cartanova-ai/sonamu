@@ -80,6 +80,11 @@ export type CommonProp = {
   desc?: string;
   dbDefault?: string;
   generated?: GeneratedColumn;
+  /**
+   * true이면 생성되는 `{Entity}BaseSaveParams`(클라이언트 저장 입력)에서 제외합니다.
+   * 권한·인증 상태·비밀값처럼 클라이언트가 직접 바꾸면 안 되는 시스템 컬럼에 지정합니다.
+   */
+  readonly?: boolean;
   cone?: Cone; // cone 메타데이터
 };
 
@@ -244,6 +249,8 @@ type _RelationProp = {
   nullable?: boolean; // DEFAULT: false
   toFilter?: true; // DEFAULT: false
   desc?: string;
+  /** true이면 생성되는 `{Entity}BaseSaveParams`에서 FK 컬럼(`{name}_id`)을 제외합니다. */
+  readonly?: boolean;
   cone?: Cone; // cone 메타데이터
 };
 export type OneToOneRelationProp = _RelationProp & {
@@ -1170,6 +1177,7 @@ const BasePropFields = {
   toFilter: z.boolean().default(false).optional(),
   dbDefault: z.union([z.string(), z.number(), z.boolean()]).optional(),
   generated: GeneratedColumnSchema.optional(),
+  readonly: z.boolean().optional(),
   cone: ConeSchema.optional(),
 };
 
