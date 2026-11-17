@@ -172,7 +172,7 @@ async uploadAvatar() {
 
 ### limits
 
-파일 업로드 제한을 설정합니다. Fastify multipart의 `limits` 옵션을 그대로 받습니다.
+파일 업로드 제한을 설정합니다. Fastify multipart의 `limits` 옵션을 그대로 받습니다. 지정한 항목만 `server.plugins.multipart.limits`를 덮어쓰고, 지정하지 않았거나 `undefined`인 항목은 전역 한도를 따릅니다.
 
 ```typescript
 type UploadDecoratorOptions = {

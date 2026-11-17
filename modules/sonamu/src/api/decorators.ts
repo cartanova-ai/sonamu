@@ -90,6 +90,7 @@ type StreamUploadOptions = {
 export type UploadDecoratorOptions = {
   guards?: GuardKey[];
   description?: string;
+  /** 지정한 항목만 server.plugins.multipart.limits를 덮어쓰고, 생략하거나 undefined인 항목은 전역 한도를 따릅니다. */
   limits?: FastifyMultipartBaseOptions["limits"];
 } & (BufferUploadOptions | StreamUploadOptions);
 

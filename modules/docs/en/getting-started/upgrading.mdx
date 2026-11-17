@@ -127,6 +127,10 @@ An SQL expression is now recognized only when it carries the Symbol brand that P
 
 If `server.plugins.ws.options.maxPayload` is not set, the maximum size of a single client frame drops from the previous default of 100 MiB to 64 KiB, and a larger frame closes the connection with close code `1009`. Set `maxPayload` explicitly if you need larger messages. See [Inbound frame size limit](/en/api-reference/decorators/websocket#inbound-frame-size-limit) for details.
 
+### Global multipart limits apply to `@upload()` without `limits`
+
+Previously, `@upload()` without `limits` ignored `server.plugins.multipart.limits` and accepted uploads with no size or count limit, and an `undefined` entry in `limits` removed that global limit. The global limits now apply and the decorator's `limits` override only the fields they set, so uploads over a limit are rejected (with 413 under Fastify's default error handling, or whatever your `lifecycle.onError` returns). If an API accepts large files, check the global limits or set the values it needs in that API's `limits`.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

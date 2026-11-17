@@ -127,6 +127,10 @@ SQL 식은 이제 Puri API가 붙이는 Symbol 브랜드가 있어야 인식됩�
 
 `server.plugins.ws.options.maxPayload`를 지정하지 않았다면 클라이언트 프레임 1개의 최대 크기가 기존 기본값 100MiB에서 64KiB로 줄었고, 이보다 큰 프레임을 받으면 close code `1009`로 연결을 닫습니다. 더 큰 메시지를 받아야 한다면 `maxPayload`를 명시하세요. 자세한 내용은 [인바운드 프레임 크기 상한](/ko/api-reference/decorators/websocket#인바운드-프레임-크기-상한)을 참고하세요.
 
+### `limits` 없는 `@upload()`에도 전역 multipart 한도 적용
+
+이전에는 `limits` 없는 `@upload()`가 `server.plugins.multipart.limits`를 무시해 크기·개수 제한 없이 업로드를 받았고, `limits`의 `undefined` 항목도 해당 전역 한도를 지웠습니다. 이제 전역 한도가 적용되고 데코레이터의 `limits`는 지정한 항목만 덮어쓰므로, 한도를 넘는 업로드는 거부됩니다(Fastify 기본 오류 처리에서는 413, `lifecycle.onError`를 구현했다면 그 응답). 큰 파일을 받는 API가 있다면 전역 한도를 확인하거나 그 API의 `limits`에 필요한 값을 지정하세요.
+
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

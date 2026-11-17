@@ -252,6 +252,8 @@ export default defineConfig({
 });
 ```
 
+These limits also apply to `@upload()` without arguments, and `@upload({ limits })` overrides only the fields it sets. Uploads over a limit are rejected (with 413 under Fastify's default error handling).
+
 **Allowing larger files**:
 
 ```typescript

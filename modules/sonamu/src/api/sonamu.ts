@@ -73,7 +73,7 @@ import {
   type SonamuTaskOptions,
 } from "./config";
 import { type Context, type RuntimeContext, type WebSocketContext } from "./context";
-import { type ExtendedApi } from "./decorators";
+import { type ExtendedApi, type UploadDecoratorOptions } from "./decorators";
 import { assertGuardKeyHandled, checkGuardKeys, warnUnguardedMutationApis } from "./guards";
 import {
   assertHttpValidatorRegistry,
@@ -145,6 +145,28 @@ async function humanizeZodErrorMessage(e: ZodError): Promise<LocalizedString> {
     .map((issue) => issue.message)
     .join(" ");
   return /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ messages as LocalizedString;
+}
+
+type UploadLimits = NonNullable<UploadDecoratorOptions["limits"]>;
+
+/**
+ * `@upload` 데코레이터의 limits를 `request.parts()` 옵션으로 바꿉니다.
+ *
+ * `@fastify/multipart`는 플러그인 옵션과 요청 옵션을 deepmerge로 병합하는데, 값이 undefined인 키도
+ * 그대로 덮어씁니다. `{ limits: undefined }`를 넘기면 전역 multipart limits(fileSize, parts 등)가
+ * 통째로 사라져 busboy가 모든 한도를 Infinity로 취급합니다. 그래서 정의된 항목만 남기고,
+ * 남은 항목이 없으면 옵션 자체를 생략해 전역 한도를 그대로 적용합니다.
+ */
+function toMultipartPartsOptions(
+  limits: UploadDecoratorOptions["limits"],
+): { limits: UploadLimits } | undefined {
+  if (limits === undefined) {
+    return undefined;
+  }
+  const definedLimits: UploadLimits = Object.fromEntries(
+    Object.entries(limits).filter(([, value]) => value !== undefined),
+  );
+  return Object.keys(definedLimits).length > 0 ? { limits: definedLimits } : undefined;
 }
 
 function createUnavailableSSE<T extends ZodObject>(_events: T): never {
@@ -1157,9 +1179,7 @@ class SonamuClass {
         try {
           const body = request[which] ?? {};
           if (api.uploadOptions) {
-            const parts = request.parts({
-              limits: api.uploadOptions.limits,
-            });
+            const parts = request.parts(toMultipartPartsOptions(api.uploadOptions.limits));
 
             // FormData의 field들을 임시로 저장
             const fields: Record<string, string> = {};

@@ -172,7 +172,7 @@ async uploadAvatar() {
 
 ### limits
 
-Specifies file upload limits. Accepts Fastify multipart's `limits` options directly.
+Specifies file upload limits. Accepts Fastify multipart's `limits` options directly. Only the fields you set override `server.plugins.multipart.limits`; fields that are omitted or `undefined` keep the global limits.
 
 ```typescript
 type UploadDecoratorOptions = {
