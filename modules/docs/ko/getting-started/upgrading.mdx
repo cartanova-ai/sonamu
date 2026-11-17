@@ -131,6 +131,10 @@ SQL 식은 이제 Puri API가 붙이는 Symbol 브랜드가 있어야 인식됩�
 
 이전에는 `limits` 없는 `@upload()`가 `server.plugins.multipart.limits`를 무시해 크기·개수 제한 없이 업로드를 받았고, `limits`의 `undefined` 항목도 해당 전역 한도를 지웠습니다. 이제 전역 한도가 적용되고 데코레이터의 `limits`는 지정한 항목만 덮어쓰므로, 한도를 넘는 업로드는 거부됩니다(Fastify 기본 오류 처리에서는 413, `lifecycle.onError`를 구현했다면 그 응답). 큰 파일을 받는 API가 있다면 전역 한도를 확인하거나 그 API의 `limits`에 필요한 값을 지정하세요.
 
+### 업로드 파일의 확장자·Content-Type과 정적 서빙 헤더
+
+허용 목록 밖의 MIME(HTML·SVG·XML 등)으로 올라온 파일은 이제 `file.extname`과 stream 기본 키의 확장자가 `bin`이고, `saveToDisk`와 stream 자동 저장은 Content-Type을 `application/octet-stream`으로 저장합니다. SVG 같은 파일을 브라우저에서 바로 보여 주던 화면을 점검하세요. `file.mimetype`과 사용자 지정 키는 바뀌지 않습니다. fs 업로드 디렉토리를 `server.plugins.static`으로 서빙한다면, 새 템플릿처럼 `sonamu/storage`의 `createUploadStaticHeaders({ uploadDir })`를 `setHeaders`에 지정하세요(`uploadDir`은 fs 드라이버의 `location`과 같은 경로, 기존 콜백은 `setHeaders` 옵션으로 전달). 자세한 내용은 [정적 파일 서빙](/ko/advanced-features/storage/storage-drivers#정적-파일-서빙)을 참고하세요.
+
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

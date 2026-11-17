@@ -4,6 +4,7 @@ import { type MultipartFile } from "@fastify/multipart";
 
 import { BaseFile } from "./base-file";
 import { type DiskName } from "./types";
+import { resolveUploadContentType } from "./upload-safety";
 
 /**
  * Buffer 모드로 업로드된 파일
@@ -35,6 +36,7 @@ export class BufferedFile extends BaseFile {
 
   /**
    * 파일을 디스크에 저장
+   * Content-Type 은 resolveUploadContentType 으로 정해, 허용 목록 밖의 MIME 은 `application/octet-stream` 으로 저장합니다.
    * @param diskName 설정에 등록한 디스크 이름
    * @param key 저장 경로 (예: 'uploads/avatar.png')
    * @returns 저장된 파일의 URL
@@ -45,7 +47,7 @@ export class BufferedFile extends BaseFile {
     const disk = Sonamu.storage.use(diskName);
 
     await disk.put(key, new Uint8Array(this.bufferValue), {
-      contentType: this.mimetype,
+      contentType: resolveUploadContentType(this.mimetype),
     });
 
     this["_url"] = await disk.getUrl(key);

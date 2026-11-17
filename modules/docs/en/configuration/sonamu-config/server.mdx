@@ -294,6 +294,10 @@ export default defineConfig({
 
 **Example**: `/api/public/images/logo.png` → `public/images/logo.png` file
 
+If you also serve uploaded files from this path, set `setHeaders` to `createUploadStaticHeaders({ uploadDir })` from `sonamu/storage`. New project templates include it, but existing projects do not get it automatically.
+
+→ [Static file serving](/en/advanced-features/storage/storage-drivers#static-file-serving)
+
 ### Sessions and authentication
 
 `server.plugins` has no session plugin. Authentication and sessions are configured with

@@ -131,6 +131,10 @@ If `server.plugins.ws.options.maxPayload` is not set, the maximum size of a sing
 
 Previously, `@upload()` without `limits` ignored `server.plugins.multipart.limits` and accepted uploads with no size or count limit, and an `undefined` entry in `limits` removed that global limit. The global limits now apply and the decorator's `limits` override only the fields they set, so uploads over a limit are rejected (with 413 under Fastify's default error handling, or whatever your `lifecycle.onError` returns). If an API accepts large files, check the global limits or set the values it needs in that API's `limits`.
 
+### Upload extensions, Content-Type, and static serving headers
+
+Files uploaded with a MIME type outside the allow-list (HTML, SVG, XML, and so on) now get the `bin` extension from `file.extname` and default stream keys, and `saveToDisk` and automatic stream uploads store them as `application/octet-stream`. Review screens that display such files, such as SVGs, directly in the browser. `file.mimetype` and custom keys are unchanged. If you serve the fs upload directory through `server.plugins.static`, set `setHeaders` to `createUploadStaticHeaders({ uploadDir })` from `sonamu/storage`, as new templates do (`uploadDir` must match the fs driver's `location`; pass an existing callback through its `setHeaders` option). See [Static file serving](/en/advanced-features/storage/storage-drivers#static-file-serving) for details.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

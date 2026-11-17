@@ -651,6 +651,7 @@ async deleteFile(key: string) {
 
    // ✅ Check MIME type
    if (file.mimetype === 'image/png') { ... }
+   // mimetype is also sent by the client; check the file signature when the contents matter
    ```
 
 </Warning>

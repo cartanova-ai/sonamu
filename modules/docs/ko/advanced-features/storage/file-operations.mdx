@@ -649,6 +649,7 @@ async deleteFile(key: string) {
 
    // ✅ MIME 타입 체크
    if (file.mimetype === 'image/png') { ... }
+   // mimetype도 클라이언트가 보낸 값이므로, 내용 확인이 필요하면 파일 시그니처를 검사하세요
    ```
 
 </Warning>

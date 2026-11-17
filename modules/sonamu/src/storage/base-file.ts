@@ -1,4 +1,4 @@
-import mime from "mime-types";
+import { resolveUploadExtension } from "./upload-safety";
 
 /**
  * 파일의 기본 메타데이터(filename, mimetype, size 등)에 대한 접근자 제공
@@ -29,7 +29,7 @@ export abstract class BaseFile {
     return this["_filename"];
   }
 
-  /** MIME 타입 */
+  /** MIME 타입. 클라이언트가 보낸 값이며 파일 내용을 검증한 결과가 아닙니다. */
   get mimetype(): string {
     return this["_mimetype"];
   }
@@ -39,9 +39,13 @@ export abstract class BaseFile {
     return this["_size"];
   }
 
-  /** 확장자 (점 제외) */
+  /**
+   * 확장자 (점 제외)
+   * MIME 은 클라이언트가 보낸 값이므로, 업로드 허용 목록 밖의 타입(HTML·SVG 등)은 `bin` 으로 바꿉니다.
+   * MIME 을 알 수 없으면 `false` 입니다.
+   */
   get extname(): string | false {
-    return mime.extension(this["_mimetype"]);
+    return resolveUploadExtension(this["_mimetype"]);
   }
 
   /** 저장된 URL (Unsigned) */

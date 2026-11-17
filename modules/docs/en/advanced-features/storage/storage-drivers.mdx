@@ -142,20 +142,25 @@ You need to serve static files with Fastify:
 ```typescript
 // sonamu.config.ts
 import path from "path";
+import { createUploadStaticHeaders, drivers } from "sonamu/storage";
+
+const uploadDir = path.join(process.cwd(), "uploads");
 
 export const config: SonamuConfig = {
   server: {
     plugins: {
       static: {
-        root: path.join(process.cwd(), "uploads"),
+        root: uploadDir,
         prefix: "/uploads/",
+        // Add security headers so uploaded HTML/SVG cannot run on the app origin
+        setHeaders: createUploadStaticHeaders({ uploadDir }),
       },
     },
     storage: {
       default: "fs",
       drivers: {
         fs: drivers.fs({
-          location: "./uploads",
+          location: uploadDir,
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
           },
@@ -172,6 +177,17 @@ export const config: SonamuConfig = {
 http://localhost:3000/uploads/avatars/user-1.png
 → Serves ./uploads/avatars/user-1.png file
 ```
+
+<Warning>
+When uploads are served from the app origin, a script inside an uploaded HTML or SVG file can call your API with another user's session.
+`createUploadStaticHeaders({ uploadDir })` adds `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox` to files inside `uploadDir`,
+and `Content-Disposition: attachment` to anything that is not an image, audio, or video. Files whose extension maps to an executable type such as `.html` or `.svg` are served as `application/octet-stream`.
+Pass an existing `setHeaders` through its `setHeaders` option.
+Serve uploads from a separate domain when you can.
+
+When the client-sent MIME type is outside the allow-list (HTML, SVG, XML, and so on), `file.extname` and the default stream key generator use the `bin` extension, and `saveToDisk` and automatic stream uploads store the Content-Type as `application/octet-stream`. When you call `disk.put` directly, `resolveUploadContentType(mimetype)` from `sonamu/storage` returns the same Content-Type.
+A custom key generator that uses the original filename still keeps extensions such as `.html`, so the headers above are required.
+</Warning>
 
 ## s3 Driver
 

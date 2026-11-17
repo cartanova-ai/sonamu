@@ -5,12 +5,15 @@ import { getPrettyFormatter } from "@logtape/pretty";
 import { CachePresets, defineConfig, isSoException, Sonamu, UnauthorizedException } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { type LocalizedString } from "sonamu/dict";
-import { drivers } from "sonamu/storage";
+import { createUploadStaticHeaders, drivers } from "sonamu/storage";
 
 import { ForbiddenException } from "./exceptions/forbidden-exception";
 
 const host = "localhost";
 const port = 34900;
+const publicDir = path.join(import.meta.dirname, "/../", "public");
+// fs 저장소 위치는 정적 서빙 루트 아래이므로 두 설정이 같은 경로를 공유한다
+const uploadDir = path.join(publicDir, "uploaded");
 
 // 설정 파일은 사전(sd.generated) 생성 전에도 로드되므로 가드 거부 메시지는 고정 문자열로 둠
 const GUARD_MESSAGES = {
@@ -116,8 +119,10 @@ export default defineConfig({
       qs: true,
       multipart: { limits: { fileSize: 1024 * 1024 * 30 } },
       static: {
-        root: path.join(import.meta.dirname, "/../", "public"),
+        root: publicDir,
         prefix: "/api/public",
+        // 업로드된 HTML·SVG 가 앱 오리진에서 실행되지 않도록 업로드 경로에 보안 헤더를 붙인다
+        setHeaders: createUploadStaticHeaders({ uploadDir }),
       },
       custom: (_server) => {
         // nothing yet
@@ -160,7 +165,7 @@ export default defineConfig({
           body: request.body,
         };
       },
-      // 가드는 예외를 던져야만 요청을 막으므로, 통과 조건을 만족하지 않으면 모두 예외로 거부함(fail-closed)
+      // 가드는 예외를 던지거나 false를 반환하면 요청을 막음. 통과 조건을 만족하지 않으면 모두 예외로 거부함(fail-closed)
       guardHandler: (guard, _request, _api) => {
         const { user } = Sonamu.getContext();
 
@@ -219,7 +224,7 @@ export default defineConfig({
     storage: {
       drivers: {
         fs: drivers.fs({
-          location: path.join(import.meta.dirname, "/../public/uploaded"),
+          location: uploadDir,
           visibility: "public",
           urlBuilder: {
             async generateURL(key) {

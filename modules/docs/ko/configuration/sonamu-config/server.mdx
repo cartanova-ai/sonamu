@@ -294,6 +294,10 @@ export default defineConfig({
 
 **예시**: `/api/public/images/logo.png` → `public/images/logo.png` 파일
 
+업로드 파일도 이 경로로 서빙한다면 `sonamu/storage`의 `createUploadStaticHeaders({ uploadDir })`를 `setHeaders`에 지정하세요. 새 프로젝트 템플릿에는 들어 있지만 기존 프로젝트에는 자동으로 추가되지 않습니다.
+
+→ [정적 파일 서빙](/ko/advanced-features/storage/storage-drivers#정적-파일-서빙)
+
 ### 세션과 인증
 
 `server.plugins`에는 세션 플러그인이 없습니다. 인증과 세션은 `server.auth`(Better Auth)로 설정합니다.

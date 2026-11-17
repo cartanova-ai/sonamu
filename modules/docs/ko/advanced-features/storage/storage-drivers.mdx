@@ -48,7 +48,7 @@ export const config: SonamuConfig = {
 <Tabs>
   <Tab title="location" icon="folder">
     **파일 저장 위치**
-    
+
     ```typescript
     fs: drivers.fs({
       location: './uploads',  // 상대 경로
@@ -64,7 +64,7 @@ export const config: SonamuConfig = {
   
   <Tab title="urlBuilder" icon="link">
     **URL 생성 규칙**
-    
+
     ```typescript
     fs: drivers.fs({
       location: './uploads',
@@ -85,7 +85,7 @@ export const config: SonamuConfig = {
   
   <Tab title="visibility" icon="eye">
     **파일 접근 권한** (Unix 권한)
-    
+
     ```typescript
     fs: drivers.fs({
       location: './uploads',
@@ -139,20 +139,25 @@ Fastify에서 정적 파일을 서빙해야 합니다:
 ```typescript
 // sonamu.config.ts
 import path from "path";
+import { createUploadStaticHeaders, drivers } from "sonamu/storage";
+
+const uploadDir = path.join(process.cwd(), "uploads");
 
 export const config: SonamuConfig = {
   server: {
     plugins: {
       static: {
-        root: path.join(process.cwd(), "uploads"),
+        root: uploadDir,
         prefix: "/uploads/",
+        // 업로드된 HTML·SVG 가 앱 오리진에서 실행되지 않도록 보안 헤더를 붙입니다
+        setHeaders: createUploadStaticHeaders({ uploadDir }),
       },
     },
     storage: {
       default: "fs",
       drivers: {
         fs: drivers.fs({
-          location: "./uploads",
+          location: uploadDir,
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
           },
@@ -169,6 +174,17 @@ export const config: SonamuConfig = {
 http://localhost:3000/uploads/avatars/user-1.png
 → ./uploads/avatars/user-1.png 파일 서빙
 ```
+
+<Warning>
+업로드 파일을 앱과 같은 오리진에서 서빙하면, 사용자가 올린 HTML·SVG 의 스크립트가 다른 사용자의 세션으로 API 를 호출할 수 있습니다.
+`createUploadStaticHeaders({ uploadDir })` 는 `uploadDir` 안의 파일에 `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox` 를 붙이고,
+이미지·오디오·비디오가 아니면 `Content-Disposition: attachment` 로 내려받게 합니다. `.html`·`.svg` 처럼 실행 가능한 타입의 확장자는 `application/octet-stream` 으로 서빙합니다.
+기존 `setHeaders` 가 있으면 `setHeaders` 옵션으로 함께 넘기세요.
+가능하면 업로드 파일은 앱과 다른 도메인에서 서빙하세요.
+
+클라이언트가 보낸 MIME 이 허용 목록 밖(HTML·SVG·XML 등)이면 `file.extname` 과 stream 기본 키 생성기는 확장자를 `bin` 으로 정하고, `saveToDisk` 와 stream 자동 저장은 Content-Type 을 `application/octet-stream` 으로 저장합니다. `disk.put` 을 직접 호출할 때는 `sonamu/storage` 의 `resolveUploadContentType(mimetype)` 으로 같은 Content-Type 을 얻을 수 있습니다.
+다만 원본 파일명을 키에 쓰는 사용자 키 생성기는 `.html` 같은 확장자를 그대로 남기므로, 위 헤더 설정이 필요합니다.
+</Warning>
 
 ## s3 드라이버
 
@@ -213,7 +229,7 @@ AWS_BUCKET=my-app-uploads
 <Tabs>
   <Tab title="credentials" icon="key">
     **AWS 자격증명**
-    
+
     ```typescript
     s3: drivers.s3({
       credentials: {
@@ -233,7 +249,7 @@ AWS_BUCKET=my-app-uploads
   
   <Tab title="region" icon="globe">
     **AWS 리전**
-    
+
     ```typescript
     s3: drivers.s3({
       region: 'ap-northeast-2',  // 서울
@@ -250,7 +266,7 @@ AWS_BUCKET=my-app-uploads
   
   <Tab title="bucket" icon="bucket">
     **S3 버킷 이름**
-    
+
     ```typescript
     s3: drivers.s3({
       bucket: 'my-app-uploads',
@@ -268,7 +284,7 @@ AWS_BUCKET=my-app-uploads
   
   <Tab title="urlBuilder" icon="link">
     **URL 생성 규칙** (선택)
-    
+
     ```typescript
     s3: drivers.s3({
       bucket: 'my-bucket',

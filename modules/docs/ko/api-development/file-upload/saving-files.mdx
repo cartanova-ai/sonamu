@@ -70,6 +70,7 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 import { Sonamu } from "sonamu";
+import { resolveUploadContentType } from "sonamu/storage";
 
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
@@ -80,13 +81,13 @@ class FileModel extends BaseModelClass {
   }): Promise<{ url: string }> {
     const { buffer, filename, mimetype } = params;
 
-    // 기본 디스크 가져오기
-    const disk = Sonamu.storage.use();
+    // fs 디스크 가져오기
+    const disk = Sonamu.storage.use("fs");
 
     // 파일 저장
     const key = `uploads/${Date.now()}-${filename}`;
     await disk.put(key, new Uint8Array(buffer), {
-      contentType: mimetype,
+      contentType: resolveUploadContentType(mimetype),
     });
 
     // URL 생성
@@ -96,6 +97,8 @@ class FileModel extends BaseModelClass {
   }
 }
 ```
+
+`resolveUploadContentType`은 허용 목록 밖의 MIME(HTML·SVG 등)을 `application/octet-stream`으로 바꿔, `saveToDisk`와 같은 Content-Type으로 저장하게 합니다. 원본 파일명을 키에 쓰면 `.html` 같은 확장자가 남으므로, fs 디스크를 정적으로 서빙한다면 [createUploadStaticHeaders](/ko/advanced-features/storage/storage-drivers#정적-파일-서빙)도 설정하세요.
 
 ### 특정 디스크 사용
 
@@ -191,7 +194,7 @@ export const storageConfig: StorageConfig = {
 ### put() - 파일 저장
 
 ```typescript
-const disk = Sonamu.storage.use();
+const disk = Sonamu.storage.use("fs");
 
 await disk.put(key, data, options);
 ```
@@ -334,7 +337,7 @@ class ImageModel extends BaseModelClass {
     const originalUrl = await image.saveToDisk("fs", originalKey);
 
     // Storage Manager 가져오기
-    const disk = Sonamu.storage.use();
+    const disk = Sonamu.storage.use("fs");
 
     // 썸네일 생성 및 저장 (200x200)
     const thumbnailBuffer = await sharp(buffer)
@@ -372,6 +375,8 @@ class ImageModel extends BaseModelClass {
 ### 여러 디스크에 동시 저장
 
 ```typescript
+import { resolveUploadContentType } from "sonamu/storage";
+
 class FileModel extends BaseModelClass {
   @upload()
   async uploadWithBackup(): Promise<{
@@ -391,7 +396,7 @@ class FileModel extends BaseModelClass {
     // Backup 디스크에도 저장
     const backupDisk = Sonamu.storage.use("backup");
     await backupDisk.put(key, new Uint8Array(buffer), {
-      contentType: file.mimetype,
+      contentType: resolveUploadContentType(file.mimetype),
     });
     const backupUrl = await backupDisk.getUrl(key);
 

@@ -15,7 +15,7 @@ import {
   type FastifyReply,
   type FastifyRequest,
 } from "fastify";
-import mime, { lookup as mimeLookup } from "mime-types";
+import { lookup as mimeLookup } from "mime-types";
 import { type WebSocket } from "ws";
 import { type ZodError, type ZodObject } from "zod";
 
@@ -37,6 +37,7 @@ import { runtimeTypeOf } from "../runtime-type";
 import { BufferedFile } from "../storage/buffered-file";
 import { type StorageManager } from "../storage/storage-manager";
 import { type KeyGenerator } from "../storage/types";
+import { resolveUploadContentType, resolveUploadExtension } from "../storage/upload-safety";
 import { UploadedFile } from "../storage/uploaded-file";
 import { createMockSSEFactory } from "../stream/sse";
 import {
@@ -1215,7 +1216,7 @@ class SonamuClass {
                   });
 
                   await disk.putStream(key, part.file, {
-                    contentType: part.mimetype,
+                    contentType: resolveUploadContentType(part.mimetype),
                   });
 
                   const url = await disk.getUrl(key);
@@ -2454,9 +2455,10 @@ export const Sonamu = new SonamuClass();
 
 /**
  * stream 모드에서 키 생성 함수가 지정되지 않았을 때 사용하는 기본 함수입니다.
+ * 확장자는 클라이언트 MIME 을 믿지 않고 허용 목록 안에서만 고르며, 그 밖이면 `bin` 입니다.
  */
 function defaultKeyGenerator(file: { filename: string; mimetype: string }): string {
-  const ext = mime.extension(file.mimetype) || "bin";
+  const ext = resolveUploadExtension(file.mimetype) || "bin";
   const timestamp = Date.now();
   const random = Math.random().toString(36).slice(2, 8);
   return `uploads/${timestamp}-${random}.${ext}`;

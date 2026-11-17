@@ -158,7 +158,7 @@ interface BufferedFile {
   filename: string; // Filename
   mimetype: string; // MIME type (e.g., "image/png", "application/pdf")
   size: number; // File size (bytes)
-  extname: string; // Extension (e.g., "png", "pdf")
+  extname: string | false; // Extension (e.g., "png", "pdf"); "bin" outside the allow-list, false for an unknown MIME type
 
   // File processing methods
   buffer: Buffer; // File Buffer (getter)
@@ -244,7 +244,7 @@ interface UploadedFile {
   filename: string; // Filename
   mimetype: string; // MIME type (e.g., "image/png", "application/pdf")
   size: number; // File size (bytes)
-  extname: string; // Extension (e.g., "png", "pdf")
+  extname: string | false; // Extension (e.g., "png", "pdf"); "bin" outside the allow-list, false for an unknown MIME type
   url: string; // URL of the stored file
   signedUrl: string; // Signed URL (with expiration)
   key: string; // Key in storage
