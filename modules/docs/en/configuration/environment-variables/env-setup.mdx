@@ -66,8 +66,8 @@ SONAMU_DB_USER=postgres
 SONAMU_DB_PASSWORD=your-db-password
 
 # Secrets and external services
-SESSION_SECRET=your-session-secret
-SESSION_SALT=your-session-salt
+# better-auth signing key. Required outside test when auth is enabled (generate with openssl rand -base64 32).
+BETTER_AUTH_SECRET=your-random-secret
 OPENAI_API_KEY=your-openai-api-key
 ```
 

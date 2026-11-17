@@ -64,8 +64,8 @@ SONAMU_DB_USER=postgres
 SONAMU_DB_PASSWORD=your-db-password
 
 # 비밀값과 외부 서비스
-SESSION_SECRET=your-session-secret
-SESSION_SALT=your-session-salt
+# better-auth 서명 키. auth를 쓰면 test 외 환경에서 필수입니다(openssl rand -base64 32로 생성).
+BETTER_AUTH_SECRET=your-random-secret
 OPENAI_API_KEY=your-openai-api-key
 ```
 

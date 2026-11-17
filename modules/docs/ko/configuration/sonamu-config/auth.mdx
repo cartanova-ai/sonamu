@@ -14,6 +14,7 @@ export default defineConfig({
   server: {
     // 기본 설정으로 인증 활성화
     auth: {
+      secret: process.env.BETTER_AUTH_SECRET,
       emailAndPassword: {
         enabled: true,
       },
@@ -21,6 +22,7 @@ export default defineConfig({
 
     // 또는 상세 설정
     auth: {
+      secret: process.env.BETTER_AUTH_SECRET,
       basePath: "/api/auth",
       emailAndPassword: {
         enabled: true,
@@ -86,9 +88,7 @@ better-auth는 `auth.secret`, `BETTER_AUTH_SECRET`, `AUTH_SECRET` 순서로 secr
   secret을 생략하면 better-auth는 소스에 공개된 기본 상수로 서명하고, 이를 `NODE_ENV=production`일
   때만 거부합니다. 그래서 Sonamu는 test를 뺀 모든 환경(development, staging, production, 그리고
   development로 보는 `NODE_ENV` 미설정)에서 secret이 없거나 공개된 값이면 서버 기동을 거부합니다.
-  `secrets`·`BETTER_AUTH_SECRETS`의 키와 이전 데이터 복호화용으로 남는 secret도 함께 검사하므로,
-  키 교체 설정에 공개된 이전 키가 남아 있어도 기동하지 않습니다. 공개된 값으로 운영한 적이 있다면
-  secret을 교체하고 기존 세션을 폐기하세요.
+  공개된 값으로 운영한 적이 있다면 secret을 교체하고 기존 세션을 폐기하세요.
 </Warning>
 
 ### 이메일/비밀번호 인증
@@ -802,6 +802,7 @@ import { defineConfig } from "sonamu";
 export default defineConfig({
   server: {
     auth: {
+      secret: process.env.BETTER_AUTH_SECRET,
       emailAndPassword: {
         enabled: true,
       },
@@ -863,6 +864,7 @@ pnpm sonamu migrate run
 
 ```bash
 # .env
+BETTER_AUTH_SECRET=your-random-secret # openssl rand -base64 32
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 GITHUB_CLIENT_ID=your-github-client-id
