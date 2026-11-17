@@ -14,17 +14,12 @@ import { SD } from "../dict/sd";
 import { sonamuDictionary } from "../dict/sonamu-dictionary";
 import { type Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
-import {
-  BadRequestException,
-  isSoException,
-  ServiceUnavailableException,
-} from "../exceptions/so-exceptions";
-import { TemplateManager } from "../template/template-manager";
+import { BadRequestException } from "../exceptions/so-exceptions";
 import { DataExplorer, type DataExplorerOptions } from "../testing/data-explorer";
 import { FixtureGenerator, type FixtureGenerationSpec } from "../testing/fixture-generator";
 import { FixtureManager } from "../testing/fixture-manager";
 import { type DuplicateCheckOptions } from "../testing/fixture-manager";
-import { BUILT_IN_TYPE_IDS, TemplateKey } from "../types/types";
+import { BUILT_IN_TYPE_IDS } from "../types/types";
 import {
   type Cone,
   type EntityIndex,
@@ -33,10 +28,8 @@ import {
   type FixtureRecord,
   type FixtureSearchOptions,
   type FlattenSubsetRow,
-  type PathAndCode,
 } from "../types/types";
 import { isObjectValue } from "../utils/runtime-value";
-import { nonNullable } from "../utils/utils";
 import {
   canServeSonamuUIToken,
   getSonamuUIToken,
@@ -58,13 +51,9 @@ import {
 } from "./cdd-service";
 import { registerMigrationsApi } from "./migrations-api";
 import { registerOpenVscodeApi } from "./open-vscode-api";
+import { registerScaffoldingApi } from "./scaffolding-api";
 import { assertUIDBPreset } from "./ui-db-presets";
 import { requireSameOriginUIRequest } from "./ui-request-guard";
-
-interface EntityTemplateInput {
-  entityId: string;
-  enumId?: string;
-}
 
 async function waitForHMRCompleted<T>(fn: () => Promise<T>): Promise<T> {
   const waitPromise = new Promise<void>((resolve) => {
@@ -779,130 +768,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         }),
       );
 
-      server.post<{
-        Body: {
-          entityIds: string[];
-          templateKeys: string[];
-        };
-      }>("/api/scaffolding/getStatus", (request) =>
-        forwardAsyncErrors(async () => {
-          const { entityIds, templateKeys: _templateKeys } = request.body;
-          if ((entityIds ?? []).length === 0) {
-            throw new BadRequestException(SD("sonamu.error.entityIdsRequired"));
-          } else if ((_templateKeys ?? []).length === 0) {
-            throw new BadRequestException(SD("sonamu.error.templateKeysRequired"));
-          }
-
-          // sorting
-          entityIds.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-          const templateKeys = TemplateKey.options.filter((tk) => _templateKeys.includes(tk));
-
-          const combinations = entityIds.flatMap((entityId) => {
-            return templateKeys.map((templateKey) => [entityId, templateKey]);
-          });
-
-          const statuses = await Promise.all(
-            combinations.map(async ([entityId, templateKey]) => {
-              const { subPath, fullPath, isExists } = await Sonamu.syncer.checkExistsGenCode(
-                entityId,
-                /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ templateKey as TemplateKey,
-              );
-              return {
-                entityId,
-                templateKey,
-                subPath,
-                fullPath,
-                isExists,
-              };
-            }),
-          );
-          return { statuses };
-        }),
-      );
-
-      server.post<{
-        Body: {
-          options: {
-            entityId: string;
-            templateKey: string;
-            enumId?: string;
-            overwrite?: boolean;
-          }[];
-        };
-      }>("/api/scaffolding/generate", (request) =>
-        forwardAsyncErrors(async () => {
-          const { options } = request.body;
-          if (options.length === 0) {
-            throw new BadRequestException(SD("sonamu.error.optionsRequired"));
-          }
-
-          // 1. 모든 템플릿에서 필요한 dict 키를 수집
-          const keys = options.flatMap(({ templateKey }) => {
-            const template = TemplateManager.get(templateKey);
-            return template.getRequiredDictKeys() ?? [];
-          });
-
-          // 2. target별로 ensureDictKeys 호출 (순차 처리)
-          await sonamuDictionary.ensureDictKeys([...new Set(keys)]);
-
-          // 3. 템플릿 생성 (병렬 처리)
-          const result = await Promise.all(
-            options.map(async ({ entityId, templateKey, enumId, overwrite }) => {
-              try {
-                return await Sonamu.syncer.generateTemplate(
-                  /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ templateKey as TemplateKey,
-                  /* SAFETY: UI 도구의 Zod 입력 스키마가 Entity 템플릿 옵션을 보장한다. */ {
-                    entityId,
-                    enumId,
-                  } as EntityTemplateInput,
-                  {
-                    overwrite,
-                  },
-                );
-              } catch (e) {
-                if (isSoException(e) && e.statusCode === 541) {
-                  return null;
-                } else {
-                  console.error(e);
-                  throw e;
-                }
-              }
-            }),
-          );
-
-          if (result.filter(nonNullable).length === 0) {
-            throw new ServiceUnavailableException(SD("sonamu.error.allFilesGenerated"));
-          }
-          return result;
-        }),
-      );
-
-      server.post<{
-        Body: {
-          option: {
-            entityId: string;
-            templateKey: string;
-            enumId?: string;
-          };
-        };
-      }>("/api/scaffolding/preview", (request): Promise<{ pathAndCodes: PathAndCode[] }> =>
-        forwardAsyncErrors(async () => {
-          const { option } = request.body;
-
-          try {
-            const { templateKey, ...templateOptions } = option;
-            const pathAndCodes = await Sonamu.syncer.renderTemplate(
-              /* SAFETY: UI 도구의 Zod 입력 스키마가 이 값의 타입을 보장한다. */ templateKey as TemplateKey,
-              templateOptions,
-            );
-
-            return { pathAndCodes };
-          } catch (e) {
-            console.error(e);
-            throw e;
-          }
-        }),
-      );
+      await registerScaffoldingApi(server);
 
       server.post("/api/fixture", (request) =>
         forwardAsyncErrors(async () => {

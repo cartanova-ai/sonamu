@@ -159,12 +159,12 @@ export default defineConfig({
 
 ### 커스텀 경로
 
-target 디렉토리가 다른 위치에 있다면 상대 경로를 사용할 수 있습니다:
+target은 앱 루트(API 디렉토리의 상위 디렉토리) 기준 경로이므로, 하위 디렉토리에 있는 프로젝트도 지정할 수 있습니다:
 
 ```typescript
 export default defineConfig({
   sync: {
-    targets: ["../frontend/web", "../mobile/app"],
+    targets: ["frontend/web", "mobile/app"],
   },
 });
 ```
@@ -174,18 +174,22 @@ export default defineConfig({
 <Card>
   <FileTree>
     <FileItem name="workspace/">
-      <FileItem name="backend/">
-        <FileItem name="api/" description="Sonamu 실행 위치" />
-      </FileItem>
+      <FileItem name="api/" description="Sonamu 실행 위치" />
       <FileItem name="frontend/">
-        <FileItem name="web/" description="../frontend/web" />
+        <FileItem name="web/" description="frontend/web" />
       </FileItem>
       <FileItem name="mobile/">
-        <FileItem name="app/" description="../mobile/app" />
+        <FileItem name="app/" description="mobile/app" />
       </FileItem>
     </FileItem>
   </FileTree>
 </Card>
+
+<Warning>
+  target은 앱 루트 안에 있어야 합니다. `"../frontend/web"`처럼 앱 루트 밖을 가리키면 파일을 쓰기 전에
+  오류가 나서 동기화가 실패합니다. 앱 루트 밖 디렉토리에 생성해야 한다면 앱 루트 안에 그 디렉토리를 가리키는
+  심볼릭 링크를 두고 링크 경로를 target으로 지정하세요.
+</Warning>
 
 ## 동기화 확인
 
@@ -365,7 +369,7 @@ export default defineConfig({
   projectName: "MonorepoApp",
 
   sync: {
-    targets: ["../packages/web-client", "../packages/admin-panel", "../packages/mobile-app"],
+    targets: ["packages/web-client", "packages/admin-panel", "packages/mobile-app"],
   },
 
   // ...
@@ -377,10 +381,8 @@ export default defineConfig({
 <Card>
   <FileTree>
     <FileItem name="monorepo/">
-      <FileItem name="apps/">
-        <FileItem name="api/" description="Sonamu 실행 위치">
-          <FileItem name="sonamu.config.ts" />
-        </FileItem>
+      <FileItem name="api/" description="Sonamu 실행 위치">
+        <FileItem name="sonamu.config.ts" />
       </FileItem>
       <FileItem name="packages/">
         <FileItem name="web-client/" description="고객용 웹">

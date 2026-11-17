@@ -103,26 +103,6 @@ Sonamu UI는 이제 `development`·`test`·`fixture` 계열 프리셋만 다룹�
 
 Sonamu UI의 스캐폴딩 API(`scaffolding/getStatus`·`generate`·`preview`)는 이제 등록된 Entity ID와 `model`, `model_test`, `view_list`, `view_search_input`, `view_form`, `view_id_all_select` 템플릿만 받고, 그 밖의 값은 상태 조회에서도 400으로 거부합니다. 또한 템플릿 생성 경로가 앱 루트(API 디렉토리의 상위 디렉토리) 밖을 가리키면 파일을 쓰기 전에 오류가 납니다. `sync.targets`에 `"../frontend/web"`처럼 앱 루트 밖 경로를 썼다면 `sonamu sync`가 실패하므로, target을 앱 루트 안으로 옮기거나 앱 루트 안에 심볼릭 링크를 두고 그 경로를 지정하세요. 자세한 내용은 [동기화 대상](/ko/configuration/sonamu-config/sync-targets)을 참고하세요.
 
-### i18n 함수 값은 허용 목록을 통과해야 함수로 저장됨
-
-Sonamu UI, Excel, CLI로 넣는 사전 값은 이제 허용 목록을 통과하는 화살표 함수 하나일 때만 함수로 저장됩니다. 다른 함수를 부르는 값처럼 그 밖의 함수 형태 값은 문자열로 저장되므로, import 파일에 그런 값이 있다면 그 함수는 사전 TS 파일에 직접 작성하세요. 같은 키에 이미 있는 함수와 내용이 같은 값은 키 이름만 바꾼 경우를 포함해 함수로 유지되므로, 내보낸 파일을 그대로 다시 가져오는 데는 영향이 없습니다. 자세한 규칙은 [함수형 값 처리](/ko/advanced-features/i18n/excel-import#함수형-값-처리)를 참고하세요.
-
-### 요청 처리 DB 풀의 기본 `statement_timeout`과 PostgreSQL 전용 설정 타입
-
-테스트 환경이 아니면 `DB.getDB("w")`·`DB.getDB("r")` 풀에 `statement_timeout` 15초가 기본으로 적용되어, 더 오래 걸리는 쿼리는 PostgreSQL 오류 `57014`로 취소됩니다. 앱 프로세스에서 긴 리포트·배치 쿼리를 실행한다면 `database.defaultOptions.connection.options`로 값을 바꾸거나 트랜잭션 안에서 `SET LOCAL statement_timeout`으로 늘리세요. 또한 `SonamuDBConfig`는 이제 `Record<SonamuDBPreset, DatabaseConfig>`이고 `DB.getDBConfig()`도 `DatabaseConfig`를 반환합니다. `Knex.Config` 타입 값이나 문자열·함수형 `connection`으로 이 설정을 만들던 코드는 컴파일되지 않으므로 `Knex.PgConnectionConfig` 객체를 쓰는 `DatabaseConfig`로 바꾸세요. 자세한 내용은 [데이터베이스 설정](/ko/configuration/sonamu-config/database)을 참고하세요.
-
-### Puri `limit`·`offset`의 정수 검사
-
-`limit`·`offset`은 이제 0 이상의 안전한 정수가 아니면 쿼리 전에 `Error`를 던집니다. 이전에는 `NaN`·`Infinity`를 넘기면 LIMIT 없이 실행됐으므로, 요청 값을 그대로 넘기던 코드는 정수로 바꾸고 검증한 뒤 넘기세요.
-
-### `SqlExpression`은 Puri API로만 생성
-
-SQL 식은 이제 Puri API가 붙이는 Symbol 브랜드가 있어야 인식됩니다. `_type: "sql_expression"` 객체를 직접 만드는 코드는 컴파일되지 않습니다. 식을 JSON이나 캐시로 직렬화했다가 복원한 값은 `select`·`orderBy` 같은 식 자리에서 `TypeError`가 나고, `onConflict`의 update 값에서는 SQL이 아닌 일반 값으로 바인딩됩니다. 식은 `Puri.rawString`·`Puri.rawNumber` 같은 API로 만들고, 저장이 필요하면 식 대신 식을 다시 만드는 데 필요한 값을 저장하세요.
-
-### `@cache`의 Context 인자 키와 직렬화 오류
-
-`@cache`는 이제 Context 인자를 직렬화하지 않고 그 사용자의 구분자(예: `user:"u1"`, 비로그인은 `anon`)로 바꿔 키를 만듭니다. Context를 받는 메서드의 키가 바뀌므로, 그 키를 직접 지정해 삭제·만료하던 코드는 새 키에 맞추세요. `BigInt`, 순환 참조, `Map`/`Set`, 함수처럼 직렬화할 수 없는 인자는 더 이상 문자열로 바꾸지 않고 메서드 실행 전에 `CacheKeySerializationError`를 던지므로, 이런 인자를 받는 메서드에는 `key` 함수를 지정하세요. 인자가 아닌 `Sonamu.getContext().user`에 따라 결과가 달라지는 메서드는 새 옵션 `scope: "user"`로 사용자별 캐시를 나누세요(기본값 `"global"`). 자세한 내용은 [@cache 데코레이터](/ko/advanced-features/caching/cache-decorator)를 참고하세요.
-
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

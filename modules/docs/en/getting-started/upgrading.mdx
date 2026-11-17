@@ -103,26 +103,6 @@ Automatic migration generation now fails when a value that goes in as SQL, such 
 
 The Sonamu UI scaffolding APIs (`scaffolding/getStatus`, `generate`, and `preview`) now accept only registered Entity IDs and the `model`, `model_test`, `view_list`, `view_search_input`, `view_form`, and `view_id_all_select` templates, and reject anything else with 400, including in status queries. Template generation also fails before writing any file when an output path points outside the app root (the parent directory of the API directory). If `sync.targets` contains a path outside the app root, such as `"../frontend/web"`, `sonamu sync` fails, so move the target inside the app root or create a symlink inside the app root and use that path. See [Sync targets](/en/configuration/sonamu-config/sync-targets) for details.
 
-### i18n function values must pass the allow-list
-
-Dictionary values entered through Sonamu UI, Excel, or the CLI are now saved as functions only when they are a single arrow function that passes the allow-list. Other function-like values, such as ones calling other functions, are saved as strings. If your import files contain such values, write those functions directly in the dictionary TS files. A value identical to the existing function for the same key stays a function, including when only the key is renamed, so re-importing an exported file is unaffected. See [Handling Function Values](/en/advanced-features/i18n/excel-import#handling-function-values) for the rules.
-
-### Default `statement_timeout` for request DB pools and PostgreSQL-only config types
-
-Outside the test environment, the `DB.getDB("w")` and `DB.getDB("r")` pools now apply a default `statement_timeout` of 15 seconds, so PostgreSQL cancels longer queries with error `57014`. If your app process runs long report or batch queries, change the value with `database.defaultOptions.connection.options` or extend it inside a transaction with `SET LOCAL statement_timeout`. In addition, `SonamuDBConfig` is now `Record<SonamuDBPreset, DatabaseConfig>`, and `DB.getDBConfig()` returns `DatabaseConfig`. Code that built these values as `Knex.Config` or with string or function `connection` values no longer compiles; switch to `DatabaseConfig` with a `Knex.PgConnectionConfig` object. See [Database](/en/configuration/sonamu-config/database) for details.
-
-### Integer checks in Puri `limit` and `offset`
-
-`limit` and `offset` now throw an `Error` before the query when the value is not a nonnegative safe integer. Previously, `NaN` or `Infinity` ran the query without a LIMIT, so convert and validate request values before passing them.
-
-### `SqlExpression` values come only from Puri APIs
-
-An SQL expression is now recognized only when it carries the Symbol brand that Puri APIs attach. Code that builds a `_type: "sql_expression"` object directly no longer compiles. An expression serialized to JSON or a cache and restored throws `TypeError` in expression positions such as `select` and `orderBy`, and is bound as a plain value, not SQL, in an `onConflict` update. Create expressions with APIs such as `Puri.rawString` and `Puri.rawNumber`, and if you need to store one, store the values needed to recreate it instead.
-
-### `@cache` keys for Context arguments and serialization errors
-
-`@cache` no longer serializes Context arguments; it replaces them with that user's segment (for example `user:"u1"`, or `anon` when signed out). Keys of methods that take a Context change, so update code that deletes or expires those keys directly. Arguments that cannot be serialized, such as `BigInt`, circular references, `Map`/`Set`, and functions, are no longer turned into strings; they throw `CacheKeySerializationError` before the method runs, so give such methods a `key` function. For methods whose result depends on `Sonamu.getContext().user` rather than the arguments, split the cache per user with the new `scope: "user"` option (default `"global"`). See [@cache Decorator](/en/advanced-features/caching/cache-decorator) for details.
-
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

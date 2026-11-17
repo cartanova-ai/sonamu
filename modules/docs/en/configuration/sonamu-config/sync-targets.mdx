@@ -159,12 +159,12 @@ By default, Sonamu looks for directories with the same name as the target in the
 
 ### Custom Paths
 
-If target directories are in different locations, you can use relative paths:
+Targets are paths relative to the app root (the parent directory of the API directory), so you can point to projects in subdirectories:
 
 ```typescript
 export default defineConfig({
   sync: {
-    targets: ["../frontend/web", "../mobile/app"],
+    targets: ["frontend/web", "mobile/app"],
   },
 });
 ```
@@ -174,18 +174,22 @@ export default defineConfig({
 <Card>
   <FileTree>
     <FileItem name="workspace/">
-      <FileItem name="backend/">
-        <FileItem name="api/" description="Sonamu run location" />
-      </FileItem>
+      <FileItem name="api/" description="Sonamu run location" />
       <FileItem name="frontend/">
-        <FileItem name="web/" description="../frontend/web" />
+        <FileItem name="web/" description="frontend/web" />
       </FileItem>
       <FileItem name="mobile/">
-        <FileItem name="app/" description="../mobile/app" />
+        <FileItem name="app/" description="mobile/app" />
       </FileItem>
     </FileItem>
   </FileTree>
 </Card>
+
+<Warning>
+  Targets must be inside the app root. A target that points outside it, such as `"../frontend/web"`,
+  raises an error before any file is written, and the sync fails. To generate into a directory outside
+  the app root, create a symlink to it inside the app root and use the link path as the target.
+</Warning>
 
 ## Verifying Sync
 
@@ -365,7 +369,7 @@ export default defineConfig({
   projectName: "MonorepoApp",
 
   sync: {
-    targets: ["../packages/web-client", "../packages/admin-panel", "../packages/mobile-app"],
+    targets: ["packages/web-client", "packages/admin-panel", "packages/mobile-app"],
   },
 
   // ...
@@ -377,10 +381,8 @@ export default defineConfig({
 <Card>
   <FileTree>
     <FileItem name="monorepo/">
-      <FileItem name="apps/">
-        <FileItem name="api/" description="Sonamu run location">
-          <FileItem name="sonamu.config.ts" />
-        </FileItem>
+      <FileItem name="api/" description="Sonamu run location">
+        <FileItem name="sonamu.config.ts" />
       </FileItem>
       <FileItem name="packages/">
         <FileItem name="web-client/" description="Customer web">

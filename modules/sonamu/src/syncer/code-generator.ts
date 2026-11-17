@@ -28,6 +28,8 @@ import { syncerFileExists, syncerFilesystem } from "./filesystem-dependencies";
 /**
  * 템플릿을 렌더링하고 파일로 생성합니다.
  * overwrite 옵션이 false인 경우, 이미 존재하는 파일은 건너뜁니다.
+ * sync target을 치환해 정규화한 출력 경로가 하나라도 Sonamu.appRootPath 밖이면 파일을 쓰기 전에 Error를 던집니다.
+ * 심볼릭 링크의 실제 경로는 확인하지 않습니다.
  * @param key - 템플릿 키 (예: "entity", "model", "service" 등)
  * @param templateOptions - 템플릿 렌더링에 필요한 옵션
  * @param _generateOptions - 생성 옵션 (overwrite 여부)
@@ -56,16 +58,16 @@ export async function generateTemplate<T extends TemplateKey>(
     )
   ).flat();
 
+  // 존재 확인이나 쓰기 전에 모든 대상 경로가 앱 루트 안인지 먼저 확인한다.
+  pathAndCodes.forEach(getDstFilePaths);
+
   const filteredPathAndCodes: PathAndCode[] = await (async () => {
     if (generateOptions.overwrite) {
       return pathAndCodes;
     } else {
       return await filterAsync(pathAndCodes, async (pathAndCode) => {
-        const { targets } = Sonamu.config.sync;
-        const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
-        const dstFilePaths = targets.map((target) => filePath.replace("/:target/", `/${target}/`));
         return await everyAsync(
-          dstFilePaths,
+          getDstFilePaths(pathAndCode),
           async (dstPath) => !(await syncerFileExists(dstPath)),
         );
       });
@@ -201,9 +203,12 @@ async function resolveRenderedTemplate(
   };
 }
 
-async function writeCodeToPathEachTarget(pathAndCode: PathAndCode): Promise<AbsolutePath[]> {
+/**
+ * 렌더링된 경로를 sync target별 절대 경로로 펼칩니다.
+ * `..` 등으로 앱 루트 밖을 가리키는 경로가 하나라도 있으면 예외를 던져 파일을 만들지 않습니다.
+ */
+function getDstFilePaths(pathAndCode: PathAndCode): AbsolutePath[] {
   const { targets } = Sonamu.config.sync;
-  const { appRootPath } = Sonamu;
   const filePath =
     /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ `${Sonamu.appRootPath}/${pathAndCode.path}` as AbsolutePath;
 
@@ -212,6 +217,26 @@ async function writeCodeToPathEachTarget(pathAndCode: PathAndCode): Promise<Abso
       (target) => filePath.replace("/:target/", `/${target}/`),
     ) as AbsolutePath[],
   );
+
+  // 심볼릭 링크로 연결된 target 디렉터리는 그대로 허용하도록 실제 경로가 아닌 정규화한 경로로 판정한다.
+  const appRootPath = path.resolve(Sonamu.appRootPath);
+  for (const dstFilePath of dstFilePaths) {
+    const relativePath = path.relative(appRootPath, path.resolve(dstFilePath));
+    const isInsideAppRoot =
+      relativePath !== "" &&
+      relativePath !== ".." &&
+      !relativePath.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relativePath);
+    if (!isInsideAppRoot) {
+      throw new Error(`생성 경로가 앱 루트 밖을 가리킵니다: ${pathAndCode.path}`);
+    }
+  }
+  return dstFilePaths;
+}
+
+async function writeCodeToPathEachTarget(pathAndCode: PathAndCode): Promise<AbsolutePath[]> {
+  const { appRootPath } = Sonamu;
+  const dstFilePaths = getDstFilePaths(pathAndCode);
   return await Promise.all(
     dstFilePaths.map(async (dstFilePath) => {
       const dir = path.dirname(dstFilePath);
