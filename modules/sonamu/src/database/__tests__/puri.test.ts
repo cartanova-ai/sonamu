@@ -501,3 +501,23 @@ describe("Puri ensureJoin", () => {
     expect(query.toQuery().match(/join "departments" as "department"/g)).toHaveLength(1);
   });
 });
+
+describe("Puri limit/offset 입력 검증", () => {
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -1, 1.5])("limit(%s)는 오류를 던진다", (value) => {
+    expect(() => usersQuery().limit(value)).toThrow("Invalid limit");
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -1, 1.5])(
+    "offset(%s)는 오류를 던진다",
+    (value) => {
+      expect(() => usersQuery().offset(value)).toThrow("Invalid offset");
+    },
+  );
+
+  it("0 이상의 정수는 그대로 LIMIT/OFFSET으로 만든다", () => {
+    expect(usersQuery().limit(0).offset(0).toQuery()).toBe('select * from "users" limit 0');
+    expect(usersQuery().limit(10).offset(20).toQuery()).toBe(
+      'select * from "users" limit 10 offset 20',
+    );
+  });
+});

@@ -55,6 +55,66 @@ New projects created with `create-sonamu` ship a `guardHandler` that denies by d
 - Change `SaveParams` to `{Entity}BaseSaveParams.partial({ id: true })` and run `sonamu sync`. Where save inputs or forms used `created_at`, use the value from the fetched row instead.
 - Review the `guards` on scaffolded `save` and other write APIs.
 
+### `sonamuFilter` accepts only `toFilter` props
+
+`sonamuFilter` now filters only props marked `"toFilter": true` in entity.json. To filter a relation FK (`{relation_name}_id`), mark the relation prop. Fields that are not allowed, and invalid operators or values, are rejected with `BadRequestException` (400) before the query runs, including when server code calls `findMany`. Mark only the fields you filter on with `toFilter: true` and run `sonamu sync`. Never mark secret fields such as passwords or tokens. See [sonamuFilter](/en/api-reference/base-model/sonamu-filter) for details.
+
+### Guards and input validation for SSR preloads
+
+SSR preloads now go through the API's `guards` and HTTP input validation. A guard rejection skips that preload, so the data is not prefilled in the HTML for visitors who do not pass the guard. If a preload that passed its guards has arguments that fail validation (for example `NaN` from `parseInt`), the whole page responds with 400, so review preloads that convert URL parameters. See [Data preloading](/en/frontend-integration/ssr/preloading-data) for details.
+
+### Named types inside inline object parameters are validated
+
+Named types inside an inline object parameter, such as `params: { data: UserSaveParams }`, used to pass without validation. They are now validated with the same Zod schemas as top-level parameters: invalid values are rejected with 400 and keys missing from the schema are stripped. Review clients that send values outside the schema in such parameters, and model code that relied on those values.
+
+### Parameters with `null`, `undefined`, or boolean literals are validated
+
+`null`, `undefined`, `void`, `true`, and `false` in API parameter types used to accept any value, and a union containing one of them (for example `"asc" | "desc" | null`) was not validated at all. Each now accepts only matching values, and anything else is rejected with 400. If a GET parameter is declared as a `true | false` union, its query string is not converted to a boolean and is rejected, so declare it as `boolean`. In GET, a union containing `number` converts the query string to a number before validation, so non-numeric strings are rejected.
+
+### `tools/openVscode` restricts `absPath`
+
+The Sonamu UI API `tools/openVscode` now opens an `absPath` only if it is an existing file under the app root (the parent directory of the API directory). Paths outside the app root, symlinks pointing outside it, directories, and missing files are rejected with 400. The file-open buttons in the UI keep working; only scripts that used this API to open files elsewhere need changes.
+
+### Editor-launch APIs accept only JSON POST
+
+Call `tools/openVscode` and `tools/openEditor` with POST and a JSON body instead of GET query parameters. These two, `cdd/openSource`, and `cdd/editContent` reject requests with 403 when `Content-Type: application/json` or the `X-Sonamu-UI: 1` header is missing, or when the request comes from another origin. The bundled UI already calls them this way, so only scripts that call them directly need changes.
+
+### Sonamu UI API access token and DevRunner request checks
+
+`/sonamu-ui/api/**` now requires an access token, created by the server for each process, in the `X-Sonamu-UI-Token` header. A missing or wrong token returns 401, and a request from another origin returns 403. The UI sends the token from the `/sonamu-ui` HTML automatically, so open it as usual and reload it after restarting the server. Tools that called UI APIs directly must read the token from the `sonamu-ui-token` meta tag of that HTML and send it. DevRunner (`/__test__` by default) needs no token, but rejects requests from other origins with 403 and non-JSON POST requests with 415; `sonamu test` keeps working. See [Sonamu UI getting started](/en/tools-and-cli/sonamu-ui/getting-started) for details.
+
+### Host checks for Sonamu UI and DevRunner
+
+On local dev servers, Sonamu UI and DevRunner now reject with 403 any request whose `Host` is not `localhost`, `*.localhost`, an IP address, or the hostname in `server.listen.host` or `server.baseUrl`. If you connected through an `/etc/hosts` alias or a tunnel domain, set that hostname in `server.listen.host` or `server.baseUrl`. There is no separate allowlist option, and binding to `0.0.0.0` does not turn this check off. App APIs are not checked.
+
+### Sonamu UI database targets and rollback approval
+
+Sonamu UI now handles only the `development`, `test`, and `fixture` family of presets. Migration apply and rollback, and fixture lookup and import, on `staging` or `production` are rejected with 400, so move that work to the CLI, such as `sonamu migrate`. There is no option to allow them in the UI again. UI rollbacks of remote databases covered by Slack approval now need approval too, and each target and latest batch needs its own approval. If you call the approval request API directly, pass `action: "rollback"` for rollbacks (it defaults to `apply`). See [Production approval](/en/database/migrations/production-approval) for details.
+
+### Code-generation checks for entity.json values
+
+entity.json values that go into generated code are now checked on load, save, and code generation. The Entity `id`, `parentId`, and `table`, prop `name`, enum IDs, and relation `with`, `relationType`, `joinTable`, `joinColumn`, and `fromColumn` must be ASCII identifiers (`^[A-Za-z_$][A-Za-z0-9_$]*$`), and a prop's `id` and subset keys and field paths must follow a similar format. `length`, `precision`, `scale`, and `dimensions` must be numbers, not strings, and `zodFormat` must be a supported value. A failed check used to log only a warning; it now stops server startup and `sonamu sync`, and Sonamu UI rejects the save with 400. Non-ASCII identifiers that JavaScript allows are rejected too, so fix the values named in the error message. `title`, `desc`, and enum value keys and labels are not restricted.
+
+### SQL fragment limits in migration generation
+
+Automatic migration generation now fails when a value that goes in as SQL, such as an SQL-expression `dbDefault`, `generated.expression`, or an index `where`, contains `;`. Semicolons inside SQL string literals are rejected too, so move such SQL into a hand-written migration. A `dbDefault` that starts with a double quote (a string value default) must be exactly one double-quoted string literal, with nothing appended. Existing escapes such as `\x5b` still work.
+
+### Scaffolding API inputs and generated paths are restricted
+
+The Sonamu UI scaffolding APIs (`scaffolding/getStatus`, `generate`, and `preview`) now accept only registered Entity IDs and the `model`, `model_test`, `view_list`, `view_search_input`, `view_form`, and `view_id_all_select` templates, and reject anything else with 400, including in status queries. Template generation also fails before writing any file when an output path points outside the app root (the parent directory of the API directory). If `sync.targets` contains a path outside the app root, such as `"../frontend/web"`, `sonamu sync` fails, so move the target inside the app root or create a symlink inside the app root and use that path. See [Sync targets](/en/configuration/sonamu-config/sync-targets) for details.
+
+### i18n function values must pass the allow-list
+
+Dictionary values entered through Sonamu UI, Excel, or the CLI are now saved as functions only when they are a single arrow function that passes the allow-list. Other function-like values, such as ones calling other functions, are saved as strings. If your import files contain such values, write those functions directly in the dictionary TS files. See [Handling Function Values](/en/advanced-features/i18n/excel-import#handling-function-values) for the rules.
+
+### Default `statement_timeout` for request DB pools and PostgreSQL-only config types
+
+Outside the test environment, the `DB.getDB("w")` and `DB.getDB("r")` pools now apply a default `statement_timeout` of 15 seconds, so PostgreSQL cancels longer queries with error `57014`. If your app process runs long report or batch queries, change the value with `database.defaultOptions.connection.options` or extend it inside a transaction with `SET LOCAL statement_timeout`. In addition, `SonamuDBConfig` is now `Record<SonamuDBPreset, DatabaseConfig>`, and `DB.getDBConfig()` returns `DatabaseConfig`. Code that built these values as `Knex.Config` or with string or function `connection` values no longer compiles; switch to `DatabaseConfig` with a `Knex.PgConnectionConfig` object. See [Database](/en/configuration/sonamu-config/database) for details.
+
+### Integer checks in Puri `limit` and `offset`
+
+`limit` and `offset` now throw an `Error` before the query when the value is not a nonnegative safe integer. Previously, `NaN` or `Infinity` ran the query without a LIMIT, so convert and validate request values before passing them.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

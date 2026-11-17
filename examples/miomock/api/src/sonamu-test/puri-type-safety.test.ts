@@ -4,7 +4,6 @@ import {
   type InsertResult,
   type JsonColumns,
   type JsonSupersetValue,
-  Naite,
   Puri,
   type SqlExpression,
 } from "sonamu";
@@ -868,11 +867,6 @@ describe("Puri Type Safety", () => {
     });
 
     test("LIMIT / OFFSET 타입 안전성", async () => {
-      // console.log를 차단하기 위해 spyOn
-      vi.spyOn(console, "log").mockImplementation((message: string) => {
-        Naite.t("console:log", message);
-      });
-
       const db = UserModel.getPuri("r");
 
       // 유효한 limit / offset 사용
@@ -883,24 +877,23 @@ describe("Puri Type Safety", () => {
       // 체이닝과 함께 사용
       db.table("users").select({ id: "id" }).orderBy("id", "asc").limit(5).offset(10);
 
+      // 정수가 아닌 값은 knex가 LIMIT/OFFSET을 조용히 빼지 않도록 런타임에서도 거부한다.
       // @ts-expect-error - limit에 string 전달
-      db.table("users").limit("10");
+      expect(() => db.table("users").limit("10")).toThrow("Invalid limit");
 
       // @ts-expect-error - offset에 string 전달
-      db.table("users").offset("20");
+      expect(() => db.table("users").offset("20")).toThrow("Invalid offset");
 
-      // limit/offset에 음수 전달 시 런타임 에러 발생
-      // db.table("users").limit(-1);
-      // db.table("users").offset(-1);
+      expect(() => db.table("users").limit(-1)).toThrow("Invalid limit");
+      expect(() => db.table("users").offset(-1)).toThrow("Invalid offset");
+      expect(() => db.table("users").limit(Number.NaN)).toThrow("Invalid limit");
+      expect(() => db.table("users").offset(Number.NaN)).toThrow("Invalid offset");
 
       // @ts-expect-error - limit에 undefined
-      db.table("users").limit(undefined);
-      expect(Naite.get("console:log").first()).toContain(
-        "A valid integer must be provided to limit",
-      ); // knex에서 컬러값을 사용하므로 toContain 사용
+      expect(() => db.table("users").limit(undefined)).toThrow("Invalid limit");
 
       // @ts-expect-error - offset에 null
-      db.table("users").offset(null);
+      expect(() => db.table("users").offset(null)).toThrow("Invalid offset");
     });
   });
 

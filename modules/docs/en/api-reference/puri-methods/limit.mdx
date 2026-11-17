@@ -442,6 +442,15 @@ await puri.table("posts").where("posts.id", ">", lastId).limit(10);
 await puri.table("posts").where("posts.created_at", "<=", snapshotTime).limit(10).offset(20);
 ```
 
+### 5. Nonnegative Integers Only
+
+`limit` and `offset` accept only nonnegative safe integers (`Number.isSafeInteger`). Negative numbers, `NaN`, `Infinity`, fractions, and numeric strings throw an `Error` before the query runs, so convert and validate request values first.
+
+```typescript
+.limit(-1)   // Error: Invalid limit: must be a non-negative integer (received -1)
+.offset(1.5) // Error: Invalid offset: must be a non-negative integer (received 1.5)
+```
+
 ## Type Safety
 
 Type safety is maintained when using limit and offset.

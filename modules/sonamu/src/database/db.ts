@@ -56,7 +56,51 @@ export type SonamuReadonlyDBPreset =
 export type SonamuDBPreset = SonamuMainDBPreset | SonamuReadonlyDBPreset;
 export type DBPreset = "w" | "r" | SonamuDBPreset;
 
-export type SonamuDBConfig = Record<SonamuDBPreset, Knex.Config>;
+/** preset별 PostgreSQL 연결 설정. `connection`은 `Knex.PgConnectionConfig` 객체만 받습니다. */
+export type SonamuDBConfig = Record<SonamuDBPreset, DatabaseConfig>;
+
+/**
+ * 요청 처리용 런타임 풀(`DB.getDB("w" | "r")`)에 적용하는 기본 `statement_timeout`(ms).
+ * 커넥션 획득 대기 한도(30초)보다 짧게 잡아, 느린 쿼리가 풀을 점유해도 대기 중인 요청이
+ * 획득 타임아웃으로 실패하기 전에 커넥션을 돌려받게 한다.
+ */
+export const DEFAULT_STATEMENT_TIMEOUT_MS = 15_000;
+
+/**
+ * 커넥션 설정에 세션 수준 `statement_timeout` 기본값을 넣은 새 설정을 반환합니다.
+ * 이미 지정되어 있거나 `connection`이 일반 객체가 아니면 받은 설정을 그대로 반환합니다.
+ *
+ * - 접속 시 startup 파라미터(`options: "-c statement_timeout=..."`)로 한 번만 설정하므로
+ *   쿼리마다 추가 비용이 없습니다. pg-native(libpq)는 `statement_timeout` 필드를 전달하지
+ *   않고 `options`만 전달하므로 두 드라이버 모두에 적용되도록 `options`를 씁니다.
+ * - 사용자가 `connection.statement_timeout` 키를 지정했거나(`false`/`0` 포함)
+ *   `connection.options`에 `statement_timeout`을 이미 넣었다면 그대로 둡니다.
+ * - 기존 `connection.options` 값은 유지하고 그 앞에 붙입니다.
+ *
+ * @throws {Error} `timeoutMs`가 양의 안전한 정수가 아닐 때
+ */
+export function withDefaultStatementTimeout(
+  config: DatabaseConfig,
+  timeoutMs: number = DEFAULT_STATEMENT_TIMEOUT_MS,
+): DatabaseConfig {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
+    throw new Error(`Invalid statement timeout: ${String(timeoutMs)}`);
+  }
+  const connection = config.connection;
+  if (!isPlainObject(connection)) {
+    return config;
+  }
+
+  const existingOptions = connection.options ?? "";
+  if ("statement_timeout" in connection || existingOptions.includes("statement_timeout")) {
+    return config;
+  }
+
+  const options = [`-c statement_timeout=${timeoutMs}`, existingOptions]
+    .filter((option) => option !== "")
+    .join(" ");
+  return { ...config, connection: { ...connection, options } };
+}
 
 function isConcretePreset(value: DBPreset): value is SonamuDBPreset {
   return value !== "w" && value !== "r";
@@ -235,7 +279,9 @@ export class DBClass {
 
     if (!this[instanceName]) {
       const config = this.getDBConfig(which);
-      this[instanceName] = createKnexInstance(config);
+      // 비인증 요청의 느린 쿼리가 풀 전체를 무기한 점유하지 않도록 요청 처리용 풀에만 적용한다.
+      // 마이그레이션·픽스처·테스트용 인스턴스는 긴 DDL/대량 복사가 끊기지 않도록 제외한다.
+      this[instanceName] = createKnexInstance(withDefaultStatementTimeout(config));
     }
 
     return this[instanceName];
@@ -271,7 +317,11 @@ export class DBClass {
     return db;
   }
 
-  getDBConfig(which: DBPreset): Knex.Config {
+  /**
+   * preset의 연결 설정을 반환합니다. `"w"`·`"r"`은 현재 환경의 preset으로 해석하며,
+   * `getDB()`가 요청 처리용 풀에 더하는 기본 `statement_timeout`은 포함하지 않습니다.
+   */
+  getDBConfig(which: DBPreset): DatabaseConfig {
     const dbConfig = this.getCurrentConfig();
 
     if (isConcretePreset(which)) {
@@ -349,7 +399,7 @@ export class DBClass {
       return snapshots[preset];
     };
 
-    const mainConfig = (preset: SonamuMainDBPreset): Knex.Config =>
+    const mainConfig = (preset: SonamuMainDBPreset): DatabaseConfig =>
       mergeConfigs(defaultKnexConfig, {
         connection: connectionFromEnv({
           baseName,
@@ -358,8 +408,8 @@ export class DBClass {
           env: envForPreset(preset),
         }),
       });
-    const readonlyConfig = (environment: SonamuEnvironment): Knex.Config =>
-      mergeConfigs<Knex.Config>(defaultKnexConfig, mainConfig(environment), {
+    const readonlyConfig = (environment: SonamuEnvironment): DatabaseConfig =>
+      mergeConfigs<DatabaseConfig>(defaultKnexConfig, mainConfig(environment), {
         connection: connectionFromEnv({
           baseName,
           suffix: environment,

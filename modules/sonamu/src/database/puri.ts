@@ -1584,17 +1584,26 @@ export class Puri<TSchema, TTables extends object, TResult> {
   }
 
   // 기본 쿼리 메서드들
+  /**
+   * 조회할 최대 행 수를 지정합니다.
+   * @throws {Error} `count`가 0 이상의 안전한 정수가 아닐 때(NaN·Infinity·소수 포함)
+   */
   limit(count: number): this {
-    if (count < 0) {
-      throw new Error("Invalid limit: must be >= 0");
+    // knex는 NaN·Infinity를 경고만 남기고 LIMIT 없이 실행하므로 여기서 거부한다.
+    if (!Number.isSafeInteger(count) || count < 0) {
+      throw new Error(`Invalid limit: must be a non-negative integer (received ${String(count)})`);
     }
     this.knexQuery.limit(count);
     return this;
   }
 
+  /**
+   * 건너뛸 행 수를 지정합니다.
+   * @throws {Error} `count`가 0 이상의 안전한 정수가 아닐 때(NaN·Infinity·소수 포함)
+   */
   offset(count: number): this {
-    if (count < 0) {
-      throw new Error("Invalid offset: must be >= 0");
+    if (!Number.isSafeInteger(count) || count < 0) {
+      throw new Error(`Invalid offset: must be a non-negative integer (received ${String(count)})`);
     }
     this.knexQuery.offset(count);
     return this;

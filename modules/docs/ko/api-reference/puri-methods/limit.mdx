@@ -413,7 +413,7 @@ await puri.table("users").orderBy("users.id", "asc").limit(10);
 .offset(10)  // 11번째 레코드부터
 
 // ❌ 에러: 음수 불가
-.offset(-1)  // Error: Invalid offset: must be >= 0
+.offset(-1)  // Error: Invalid offset: must be a non-negative integer (received -1)
 ```
 
 ### 3. limit도 0 이상
@@ -424,8 +424,10 @@ await puri.table("users").orderBy("users.id", "asc").limit(10);
 .limit(10)   // 10개
 
 // ❌ 에러: 음수 불가
-.limit(-1)   // Error: Invalid limit: must be >= 0
+.limit(-1)   // Error: Invalid limit: must be a non-negative integer (received -1)
 ```
+
+`limit`·`offset`은 0 이상의 안전한 정수(`Number.isSafeInteger`)만 받습니다. `NaN`, `Infinity`, 소수, 숫자 문자열을 넘겨도 쿼리 실행 전에 `Error`가 발생하므로, 요청에서 받은 값은 정수로 바꾸고 검증한 뒤 넘기세요.
 
 ### 4. 일관된 정렬
 
@@ -452,10 +454,10 @@ await puri
 // ✅ 올바른 사용
 await puri.table("users").limit(10).offset(0);
 
-// ❌ 타입 에러: 음수
+// ❌ 런타임 에러: 음수
 await puri.table("users").limit(-10); // Error: Invalid limit
 
-// ❌ 타입 에러: 음수
+// ❌ 런타임 에러: 음수
 await puri.table("users").offset(-5); // Error: Invalid offset
 ```
 
