@@ -87,6 +87,10 @@ Sonamu UI API `tools/openVscode`는 이제 `absPath`로 앱 루트(API 디렉토
 
 로컬 개발 서버의 Sonamu UI와 DevRunner는 이제 `Host`가 `localhost`, `*.localhost`, IP 주소, `server.listen.host`·`server.baseUrl`의 호스트 이름이 아닌 요청을 403으로 거부합니다. `/etc/hosts` 별칭이나 터널 도메인으로 접속해 왔다면 그 호스트 이름을 `server.listen.host`나 `server.baseUrl`에 지정하세요. 별도의 허용 목록 옵션은 없고, `0.0.0.0` 바인딩으로는 이 검사를 끌 수 없습니다. 앱 API는 검사하지 않습니다.
 
+### Sonamu UI의 DB 대상 제한과 롤백 승인
+
+Sonamu UI는 이제 `development`·`test`·`fixture` 계열 프리셋만 다룹니다. `staging`·`production` 대상의 마이그레이션 적용·롤백과 fixture 조회·가져오기는 400으로 거부되므로 `sonamu migrate` 같은 CLI로 옮기세요. UI에서 다시 허용하는 옵션은 없습니다. Slack 승인 대상인 원격 DB는 UI 롤백에도 승인이 필요하며, 승인은 대상과 최신 batch마다 따로 받습니다. 승인 요청 API를 직접 호출한다면 롤백에는 `action: "rollback"`을 지정하세요(생략하면 `apply`). 자세한 내용은 [프로덕션 승인](/ko/database/migrations/production-approval)을 참고하세요.
+
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

@@ -117,14 +117,18 @@ flowchart TD
 
 ### Normal Approval
 
-1. Click Apply for Production target migration in Sonamu UI
+<Info>
+  Sonamu UI rejects `staging` and `production` targets. In the UI, approval applies to remote `development`, `test`, or `fixture` targets listed in `slackConfirm.targets`, for both Apply and Rollback.
+</Info>
+
+1. Click Apply or Rollback for an approval target in Sonamu UI
 2. Approval request message sent to Slack channel
 3. Manager clicks ✅ emoji
-4. Migration executes automatically
+4. Once approved, click the run button to execute (Rollback asks for a second click to confirm)
 
 ### Force Proceed
 
-When you need to proceed without waiting for approval:
+When you need to proceed without waiting for approval (Apply only; the rollback dialog has no Force Proceed button):
 
 1. Click "Force Proceed" button while waiting
 2. Enter reason
@@ -151,7 +155,7 @@ src/migrations/.slack-confirm-{hash}
 
 ### Filename Convention
 
-- `{hash}` = MD5 hash of sorted migration names (12 characters)
+- `{hash}` = MD5 hash of the sorted approval items (12 characters). Apply uses pending migration names, and Rollback uses `[rollback:<target>#<batch>] <file>` items, so a changed target or latest batch needs a new approval.
 - Example: `.slack-confirm-a1b2c3d4e5f6`
 
 ### File Contents

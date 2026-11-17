@@ -58,6 +58,7 @@ import {
 } from "./cdd-service";
 import { registerMigrationsApi } from "./migrations-api";
 import { registerOpenVscodeApi } from "./open-vscode-api";
+import { assertUIDBPreset } from "./ui-db-presets";
 import { requireSameOriginUIRequest } from "./ui-request-guard";
 
 interface EntityTemplateInput {
@@ -912,6 +913,9 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
               search: FixtureSearchOptions;
               duplicateCheck?: DuplicateCheckOptions;
             };
+          // 운영 계열 DB를 브라우저 요청으로 조회하거나 비교하지 않도록 프리셋을 제한합니다.
+          assertUIDBPreset(sourceDB, Sonamu.dbConfig, "sourceDB");
+          assertUIDBPreset(targetDB, Sonamu.dbConfig, "targetDB");
 
           return FixtureManager.getFixtures(sourceDB, targetDB, search, duplicateCheck);
         }),
@@ -924,6 +928,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
               db: keyof SonamuDBConfig;
               fixtures: FixtureRecord[];
             };
+          assertUIDBPreset(db, Sonamu.dbConfig, "db");
 
           return FixtureManager.insertFixtures(db, fixtures);
         }),

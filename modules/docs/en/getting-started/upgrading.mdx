@@ -87,6 +87,10 @@ Call `tools/openVscode` and `tools/openEditor` with POST and a JSON body instead
 
 On local dev servers, Sonamu UI and DevRunner now reject with 403 any request whose `Host` is not `localhost`, `*.localhost`, an IP address, or the hostname in `server.listen.host` or `server.baseUrl`. If you connected through an `/etc/hosts` alias or a tunnel domain, set that hostname in `server.listen.host` or `server.baseUrl`. There is no separate allowlist option, and binding to `0.0.0.0` does not turn this check off. App APIs are not checked.
 
+### Sonamu UI database targets and rollback approval
+
+Sonamu UI now handles only the `development`, `test`, and `fixture` family of presets. Migration apply and rollback, and fixture lookup and import, on `staging` or `production` are rejected with 400, so move that work to the CLI, such as `sonamu migrate`. There is no option to allow them in the UI again. UI rollbacks of remote databases covered by Slack approval now need approval too, and each target and latest batch needs its own approval. If you call the approval request API directly, pass `action: "rollback"` for rollbacks (it defaults to `apply`). See [Production approval](/en/database/migrations/production-approval) for details.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

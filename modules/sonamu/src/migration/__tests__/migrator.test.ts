@@ -6,6 +6,7 @@ import { type DatabaseConfig, type SonamuConfig } from "../../api/config";
 import { Sonamu } from "../../api/sonamu";
 import { type SonamuDBConfig, type SonamuDBPreset } from "../../database/db";
 import { setSDConfig } from "../../dict/sd";
+import { isUIDBPreset } from "../../ui/ui-db-presets";
 import { Migrator } from "../migrator";
 import { SlackConfirm } from "../slack-confirm";
 
@@ -88,6 +89,18 @@ describe("Migrator environment target filtering", () => {
       "staging",
       "production",
     ]);
+  });
+
+  it("targetFilter로 좁힌 대상 밖의 DB는 연결하기 전에 거부한다", async () => {
+    process.env.NODE_ENV = "development";
+    Sonamu.dbConfig = dbConfig;
+    const migrator = new Migrator({ targetFilter: isUIDBPreset });
+
+    expect(migrator.getMigrationTargetKeys()).toEqual(["test", "fixture", "development"]);
+    await expect(migrator.getConnectionStatus("production")).rejects.toThrow(/not allowed/);
+    await expect(migrator.getLatestAppliedBatch("staging")).rejects.toThrow(/not allowed/);
+    await expect(migrator.rollback(["production"])).rejects.toThrow(/not allowed/);
+    await expect(migrator.apply(["staging"])).rejects.toThrow(/not allowed/);
   });
 });
 

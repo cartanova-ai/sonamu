@@ -21,17 +21,26 @@ import {
   type MigrationTarget,
 } from "../migration/types";
 import { forwardAsyncErrors } from "./async-route";
+import { isUIDBPreset } from "./ui-db-presets";
 
 type ApprovalReady = { type: "ready" };
 type ApprovalResult = ApprovalReady | SlackConfirmPendingResult;
+type ApprovalAction = Exclude<MigrationAction, "shadow">;
 type ApplyBody = { targets: MigrationTarget[]; requestor?: string };
+type ApprovalRequestBody = ApplyBody & { action?: ApprovalAction };
 type LegacyApplyBody = ApplyBody & { force?: boolean; forceReason?: string };
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 
 function assertTargets(migrator: Migrator, targets: MigrationTarget[]): void {
+  // urlencoded 단일 값처럼 배열이 아닌 입력은 대상 판별 전에 거부합니다.
+  if (!Array.isArray(targets)) {
+    throw new BadRequestException(SD("error.badRequest"), {
+      message: "Invalid migration targets: (not an array)",
+    });
+  }
   const allowed = new Set(migrator.getConnections().map(({ connKey }) => connKey));
-  const invalid = targets.filter((target) => !allowed.has(target));
+  const invalid = targets.filter((target) => !allowed.has(target)).map(String);
   if (targets.length === 0 || invalid.length > 0) {
     throw new BadRequestException(SD("error.badRequest"), {
       message: `Invalid migration targets: ${invalid.length === 0 ? "(empty)" : invalid.join(", ")}`,
@@ -64,11 +73,41 @@ function getPendingMigrations(statuses: MigrationConnectionStatus[]) {
   return [...new Set(statuses.flatMap(({ pending }) => pending))];
 }
 
+/**
+ * 승인 요청을 식별하는 마이그레이션 목록을 만듭니다.
+ *
+ * apply는 pending 파일 이름을, rollback은 대상별 최신 batch 번호를 포함한 항목을 씁니다.
+ * rollback 항목은 apply 항목과 겹치지 않으므로 apply 승인으로 rollback을 실행할 수 없고,
+ * 다시 적용되어 batch 번호가 바뀌면 새 승인을 받아야 합니다.
+ */
+async function getApprovalMigrations(
+  migrator: Migrator,
+  action: ApprovalAction,
+  targets: MigrationTarget[],
+  statuses: MigrationConnectionStatus[],
+): Promise<string[]> {
+  if (action === "apply") {
+    return getPendingMigrations(statuses);
+  }
+  const batches = await Promise.all(
+    targets.map(async (target) => ({ target, ...(await migrator.getLatestAppliedBatch(target)) })),
+  );
+  return batches.flatMap(({ target, batchNo, files }) =>
+    files.map((file) => `[rollback:${String(target)}#${batchNo}] ${file}`),
+  );
+}
+
 async function requestApproval(
   migrator: Migrator,
-  targets: MigrationTarget[],
-  requestor?: string,
+  body: ApprovalRequestBody,
 ): Promise<ApprovalResult> {
+  const { targets, requestor } = body;
+  const action = body.action ?? "apply";
+  if (action !== "apply" && action !== "rollback") {
+    throw new BadRequestException(SD("error.badRequest"), {
+      message: `Invalid approval action: ${String(action)}`,
+    });
+  }
   assertTargets(migrator, targets);
   const statuses = await getAvailableTargetStatuses(migrator, targets);
   const slack = new SlackConfirm();
@@ -77,7 +116,7 @@ async function requestApproval(
     return { type: "ready" };
   }
 
-  const pending = getPendingMigrations(statuses);
+  const pending = await getApprovalMigrations(migrator, action, targets, statuses);
   if (pending.length === 0) {
     return { type: "ready" };
   }
@@ -94,12 +133,18 @@ async function requestApproval(
     return { type: "pending", ...existing };
   }
 
-  const created = await slack.postApprovalRequest(pending, targets, requestor);
+  const created = await slack.postApprovalRequest(pending, targets, requestor, action);
   await slack.saveRequest(pending, created.channel, created.ts);
   return { type: "pending", ...created };
 }
 
-async function requireApprovedApply(
+/**
+ * apply·rollback 실행 직전에 Slack 승인이 끝났는지 확인합니다.
+ * 승인 대상이 아니면 null을, 승인된 요청이면 실행 로그를 남길 Slack 메시지를 반환합니다.
+ */
+async function requireApproved(
+  migrator: Migrator,
+  action: ApprovalAction,
   body: ApplyBody,
   statuses: MigrationConnectionStatus[],
 ): Promise<{ channel: string; ts: string } | null> {
@@ -109,7 +154,7 @@ async function requireApprovedApply(
     return null;
   }
 
-  const pending = getPendingMigrations(statuses);
+  const pending = await getApprovalMigrations(migrator, action, body.targets, statuses);
   if (pending.length === 0) {
     return null;
   }
@@ -175,6 +220,54 @@ async function runLegacyApply(
   const result = await migrator.apply(body.targets);
   if (result.length > 0) {
     await slack.logExecution(existing.channel, existing.ts, result, body.requestor);
+  }
+  return result;
+}
+
+/**
+ * 이전 runAction 호출의 rollback 경로입니다.
+ * 승인 대상이면 apply와 같이 요청을 만들거나 기존 승인 상태를 따르며, force 생략은 허용하지 않습니다.
+ */
+async function runLegacyRollback(
+  migrator: Migrator,
+  body: ApplyBody,
+): Promise<MigrationResult | SlackConfirmPendingResult> {
+  assertTargets(migrator, body.targets);
+  const statuses = await getAvailableTargetStatuses(migrator, body.targets);
+  const slack = new SlackConfirm();
+  const requiresApproval = body.targets.some((target) => targetRequiresApproval(slack, target));
+  if (!requiresApproval || !slack.isConfigured()) {
+    return migrator.rollback(body.targets);
+  }
+
+  const pending = await getApprovalMigrations(migrator, "rollback", body.targets, statuses);
+  if (pending.length === 0) {
+    return migrator.rollback(body.targets);
+  }
+
+  const existing = await slack.getExistingRequest(pending);
+  if (existing === null) {
+    const created = await slack.postApprovalRequest(
+      pending,
+      body.targets,
+      body.requestor,
+      "rollback",
+    );
+    await slack.saveRequest(pending, created.channel, created.ts);
+    return { type: "pending", ...created };
+  }
+
+  const approval = await slack.checkApproval(existing.channel, existing.ts);
+  if (approval.rejected) {
+    throw new BadRequestException(SD("sonamu.error.migrationRejected"));
+  }
+  if (!approval.approved) {
+    return { type: "pending", ...existing };
+  }
+
+  const result = await migrator.rollback(body.targets);
+  if (result.length > 0) {
+    await slack.logExecution(existing.channel, existing.ts, result, body.requestor, "rollback");
   }
   return result;
 }
@@ -247,8 +340,9 @@ function sendMigrationStream(
 }
 
 export async function registerMigrationsApi(server: FastifyInstance) {
-  // dev 서버 UI는 인증 없이 열려 있으므로 production은 대상에서 빼고 CLI(sonamu migrate)로만 다룹니다.
-  const migrator = new Migrator({ excludedTargets: ["production"] });
+  // dev 서버 UI는 브라우저에서 호출되므로 개발용 DB(development·test·fixture와 그 readonly)만 대상으로 받습니다.
+  // production 제외는 허용 목록과 별개로 한 번 더 막아 두는 방어선입니다.
+  const migrator = new Migrator({ excludedTargets: ["production"], targetFilter: isUIDBPreset });
 
   server.get("/api/migrations/connections", async () => ({
     connections: migrator.getConnections(),
@@ -281,9 +375,9 @@ export async function registerMigrationsApi(server: FastifyInstance) {
       })),
   );
 
-  server.post<{ Body: ApplyBody }>("/api/migrations/request-approval", (request) =>
+  server.post<{ Body: ApprovalRequestBody }>("/api/migrations/request-approval", (request) =>
     forwardAsyncErrors(async () => {
-      return requestApproval(migrator, request.body.targets, request.body.requestor);
+      return requestApproval(migrator, request.body);
     }),
   );
   server.post<{ Body: { channel: string; ts: string } }>(
@@ -322,7 +416,7 @@ export async function registerMigrationsApi(server: FastifyInstance) {
   server.post<{ Body: ApplyBody }>("/api/migrations/apply", async (request, reply) => {
     assertTargets(migrator, request.body.targets);
     const statuses = await getAvailableTargetStatuses(migrator, request.body.targets);
-    const approval = await requireApprovedApply(request.body, statuses);
+    const approval = await requireApproved(migrator, "apply", request.body, statuses);
     return sendMigrationStream(
       reply,
       "apply",
@@ -340,16 +434,29 @@ export async function registerMigrationsApi(server: FastifyInstance) {
           },
     );
   });
-  server.post<{ Body: { targets: MigrationTarget[] } }>(
-    "/api/migrations/rollback",
-    async (request, reply) => {
-      assertTargets(migrator, request.body.targets);
-      await getAvailableTargetStatuses(migrator, request.body.targets);
-      return sendMigrationStream(reply, "rollback", request.body.targets, (onProgress) => {
-        return migrator.rollback(request.body.targets, { onProgress });
-      });
-    },
-  );
+  server.post<{ Body: ApplyBody }>("/api/migrations/rollback", async (request, reply) => {
+    assertTargets(migrator, request.body.targets);
+    const statuses = await getAvailableTargetStatuses(migrator, request.body.targets);
+    // rollback은 데이터를 지울 수 있으므로 apply와 같은 Slack 승인을 거칩니다.
+    const approval = await requireApproved(migrator, "rollback", request.body, statuses);
+    return sendMigrationStream(
+      reply,
+      "rollback",
+      request.body.targets,
+      (onProgress) => migrator.rollback(request.body.targets, { onProgress }),
+      approval === null
+        ? undefined
+        : async (result) => {
+            await new SlackConfirm().logExecution(
+              approval.channel,
+              approval.ts,
+              result,
+              request.body.requestor,
+              "rollback",
+            );
+          },
+    );
+  });
 
   server.post<{ Body: { compareConnKey?: MigrationTarget } }>(
     "/api/migrations/generatePreparedCodes",
@@ -374,9 +481,7 @@ export async function registerMigrationsApi(server: FastifyInstance) {
       if (request.body.action === "apply") {
         return runLegacyApply(migrator, request.body);
       }
-      assertTargets(migrator, request.body.targets);
-      await getAvailableTargetStatuses(migrator, request.body.targets);
-      return migrator.rollback(request.body.targets);
+      return runLegacyRollback(migrator, request.body);
     }),
   );
 }

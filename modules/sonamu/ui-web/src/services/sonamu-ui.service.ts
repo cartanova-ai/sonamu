@@ -340,11 +340,12 @@ export namespace SonamuUIService {
   export function requestMigrationApproval(
     targets: MigrationTarget[],
     requestor?: string,
+    action: "apply" | "rollback" = "apply",
   ): Promise<MigrationApprovalResult> {
     return fetch({
       method: "POST",
       url: "/sonamu-ui/api/migrations/request-approval",
-      data: { targets, requestor },
+      data: { targets, requestor, action },
     });
   }
 

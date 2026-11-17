@@ -23,9 +23,8 @@ Rollback migrations to restore the database to a previous state.
 </CardGroup>
 
 <Warning>
-  **There is no rollback CLI command.** `sonamu migrate` provides exactly four subcommands: `run`,
-  `apply`, `generate`, and `status`. Rollback is performed only from Sonamu UI or via
-  `Migrator.runAction("rollback", ...)`.
+  Sonamu UI rolls back only `development`, `test`, and `fixture` connections. Roll back `staging`
+  and `production` with the `pnpm sonamu migrate rollback TARGET --execute` CLI or `Migrator.rollback()`.
 </Warning>
 
 ## Basic Rollback
@@ -35,7 +34,8 @@ Rollback migrations to restore the database to a previous state.
 1. Start the API dev server (`pnpm dev`).
 2. Open the **Migrations** tab at `http://localhost:34900/sonamu-ui`.
 3. Select the database connections to roll back.
-4. Click **Rollback** and confirm in the modal.
+4. Click **Rollback** to open the confirmation modal. If it includes a remote database covered by [Slack approval](/en/database/migrations/production-approval), request approval first and wait until it is approved.
+5. Click the rollback button in the modal; it changes to a confirmation label, and a second click runs the rollback.
 
 <Info>A rollback reverts **every migration in the most recent batch** of the selected database.</Info>
 

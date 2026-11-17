@@ -8,6 +8,9 @@ import { Sonamu } from "../api/sonamu";
 import { type SonamuDBConfig } from "../database/db";
 import { SD } from "../dict/sd";
 import { type MigrationResult } from "./migrator";
+import { type MigrationAction } from "./types";
+
+type SlackConfirmAction = Exclude<MigrationAction, "shadow">;
 
 export type SlackConfirmResult = {
   status: "approved" | "rejected" | "pending" | "not_configured" | "error";
@@ -111,11 +114,13 @@ export class SlackConfirm {
 
   /**
    * 슬랙 메시지를 발송합니다.
+   * rollback 요청은 승인자가 되돌리는 작업임을 알 수 있도록 별도 문구로 보냅니다.
    */
   async postApprovalRequest(
     migrations: string[],
     targets: string[],
     requestor?: string,
+    action: SlackConfirmAction = "apply",
   ): Promise<{ channel: string; ts: string }> {
     assert(this.config, SD("sonamu.error.slackConfirmNotConfigured"));
     this.validateConfiguredTargets();
@@ -128,7 +133,7 @@ export class SlackConfirm {
       },
       body: JSON.stringify({
         channel: this.config.channelId,
-        text: this.buildMessageText(migrations, targets, requestor ?? this.getRequestor()),
+        text: this.buildMessageText(migrations, targets, requestor ?? this.getRequestor(), action),
         unfurl_links: false,
         unfurl_media: false,
       }),
@@ -158,21 +163,29 @@ export class SlackConfirm {
   /**
    * 메시지 텍스트를 생성합니다.
    */
-  private buildMessageText(migrations: string[], targets: string[], requestor: string): string {
+  private buildMessageText(
+    migrations: string[],
+    targets: string[],
+    requestor: string,
+    action: SlackConfirmAction,
+  ): string {
     const projectName = Sonamu.config.projectName ?? "Unknown";
     const timestamp = new Date().toLocaleString("ko-KR", {
       timeZone: "Asia/Seoul",
     });
     const migrationsText = migrations.map((m) => `• ${m}`).join("\n");
     const targetsText = targets.join(", ");
+    const title =
+      action === "rollback" ? "마이그레이션 롤백 승인 요청" : "Production 마이그레이션 승인 요청";
+    const listTitle = action === "rollback" ? "롤백 예정 마이그레이션" : "적용 예정 마이그레이션";
 
-    return `🗄️ *[${projectName}] Production 마이그레이션 승인 요청*
+    return `🗄️ *[${projectName}] ${title}*
 
 *요청자:* ${requestor}
 *대상 DB:* ${targetsText}
 *시간:* ${timestamp}
 
-*적용 예정 마이그레이션:*
+*${listTitle}:*
 ${migrationsText}`;
   }
 
@@ -286,6 +299,7 @@ ${migrationsText}`;
     ts: string,
     results: MigrationResult,
     requestor?: string,
+    action: SlackConfirmAction = "apply",
   ): Promise<void> {
     const config = this.config;
     assert(config, SD("sonamu.error.slackConfirmNotConfigured"));
@@ -313,7 +327,7 @@ ${migrationsText}`;
       body: JSON.stringify({
         channel,
         thread_ts: ts,
-        text: `✅ *마이그레이션 실행 완료*\n실행자: ${actualRequestor}\n시간: ${timestamp}\n\n적용됨:\n${appliedText}`,
+        text: `✅ *마이그레이션 ${action === "rollback" ? "롤백" : "실행"} 완료*\n실행자: ${actualRequestor}\n시간: ${timestamp}\n\n${action === "rollback" ? "롤백됨" : "적용됨"}:\n${appliedText}`,
       }),
     });
 

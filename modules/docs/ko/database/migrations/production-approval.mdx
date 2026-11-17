@@ -114,14 +114,18 @@ flowchart TD
 
 ### 일반 승인
 
-1. Sonamu UI에서 Production 대상 마이그레이션 Apply 클릭
+<Info>
+  Sonamu UI는 `staging`·`production` 대상을 거부합니다. UI에서는 `slackConfirm.targets`에 넣은 원격 `development`·`test`·`fixture` 대상의 적용과 롤백에 승인이 적용됩니다.
+</Info>
+
+1. Sonamu UI에서 승인 대상 DB의 Apply 또는 Rollback 클릭
 2. 슬랙 채널에 승인 요청 메시지 발송됨
 3. 매니저가 ✅ 이모지 클릭
-4. 자동으로 마이그레이션 실행
+4. 승인되면 실행 버튼을 눌러 실행 (롤백은 한 번 더 눌러 확인)
 
 ### Force 진행
 
-승인을 기다리지 않고 진행해야 할 경우:
+승인을 기다리지 않고 진행해야 할 경우(Apply만 해당하며, 롤백 창에는 Force 진행 버튼이 없습니다):
 
 1. 대기 중 "Force 진행" 버튼 클릭
 2. 사유 입력
@@ -147,7 +151,7 @@ src/migrations/.slack-confirm-{hash}
 
 ### 파일명 규칙
 
-- `{hash}` = 마이그레이션 이름 목록을 정렬 후 MD5 해시 (12자)
+- `{hash}` = 승인 대상 항목 목록을 정렬 후 MD5 해시 (12자). Apply는 pending 마이그레이션 이름을, Rollback은 `[rollback:<대상>#<batch>] <파일명>` 항목을 쓰므로 대상이나 최신 batch가 바뀌면 승인을 새로 받아야 합니다.
 - 예: `.slack-confirm-a1b2c3d4e5f6`
 
 ### 파일 내용

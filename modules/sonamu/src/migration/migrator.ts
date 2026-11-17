@@ -66,6 +66,11 @@ export type MigratorOptions = {
    * 목록·상태 조회와 적용·롤백 모두 이 대상을 허용 목록에서 제외합니다.
    */
   excludedTargets?: readonly MigrationTarget[];
+  /**
+   * 실행 환경 규칙으로 허용된 대상 중 호출자가 다룰 수 있는 대상을 한 번 더 좁힙니다.
+   * 연결 목록, 상태 조회, 비교, apply/rollback이 모두 이 필터를 거칩니다.
+   */
+  targetFilter?: (target: MigrationTarget) => boolean;
 };
 
 function padDatePart(number: number, size: number = 2): string {
@@ -116,7 +121,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => Error)
 export class Migrator {
   private readonly excludedTargets: ReadonlySet<MigrationTarget>;
 
-  constructor(options: MigratorOptions = {}) {
+  constructor(private readonly options: MigratorOptions = {}) {
     this.excludedTargets = new Set(options.excludedTargets ?? []);
   }
 
@@ -135,6 +140,12 @@ export class Migrator {
 
   /** 현재 실행 환경에서 허용된 마이그레이션 대상 키를 반환합니다. */
   getMigrationTargetKeys(): MigrationTarget[] {
+    const { targetFilter } = this.options;
+    const keys = this.getEnvironmentTargetKeys();
+    return targetFilter === undefined ? keys : keys.filter((key) => targetFilter(key));
+  }
+
+  private getEnvironmentTargetKeys(): MigrationTarget[] {
     const connKeys = Object.keys(Sonamu.dbConfig)
       .filter(isMigrationTarget)
       .filter((key) => !key.endsWith("_readonly") && !this.excludedTargets.has(key));

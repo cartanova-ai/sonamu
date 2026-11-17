@@ -19,6 +19,10 @@ After files are generated, Pending state is refreshed for every database.
 
 Rows are migration files and columns are database connections. Each cell shows `APPLIED` or `PENDING`. Connections load independently, so a slow or failed database does not block other columns.
 
+<Info>
+  Sonamu UI only shows and runs the `development`, `test`, and `fixture` connections. The UI API rejects `staging` and `production`, so run those migrations with the [`sonamu migrate` CLI](/en/tools-and-cli/sonamu-cli/migrate).
+</Info>
+
 - Select an execution target by clicking its column header or cells.
 - Enable **Details** to show the host, database, remote marker, and per-column refresh action.
 - Select an **Error** badge to inspect the server error.
@@ -48,8 +52,10 @@ Rollback ignores migration-file row selection and rolls back the **entire latest
 
 Because this is destructive, the first click only arms the Rollback button and changes its confirmation text. The second click starts the operation. If a file fails, execution stops at that file. The rollback transaction is canceled, so the database may appear unchanged. Rollbacks run from the latest migration backward, so execution cannot continue to the next rollback after a failure in the middle.
 
+When the selection includes a remote database that requires [Slack approval](/en/database/migrations/production-approval), Rollback requests approval first, just like Apply. The request includes each target's latest batch number, so an Apply approval or an approval for an earlier batch cannot start a rollback.
+
 <Warning>
-  Rollback can drop columns or tables and lose data. Verify backups and each `down()` implementation before using it on Production.
+  Rollback can drop columns or tables and lose data. Verify backups and each `down()` implementation before running it.
 </Warning>
 
 ## Next steps

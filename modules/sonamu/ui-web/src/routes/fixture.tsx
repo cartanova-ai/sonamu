@@ -34,7 +34,8 @@ export const Route = createFileRoute("/fixture")({
   component: FixtureIndex,
 });
 
-const DB_NAMES = ["development", "staging", "production", "fixture", "test"];
+// 서버의 UI API는 운영 계열(staging·production) DB를 거부하므로 선택지에서도 제외합니다.
+const DB_NAMES = ["development", "fixture", "test"];
 
 /**
  * 중복 확인 옵션 타입

@@ -1,11 +1,14 @@
 import Fastify, { type FastifyInstance } from "fastify";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type DatabaseConfig, type SonamuConfig } from "../../api/config";
 import { Sonamu } from "../../api/sonamu";
 import { type SonamuDBConfig, type SonamuDBPreset } from "../../database/db";
 import { setSDConfig } from "../../dict/sd";
+import { type MigrationResult, Migrator } from "../../migration/migrator";
+import { type MigrationConnectionStatus, type MigrationTarget } from "../../migration/types";
 import { registerMigrationsApi } from "../migrations-api";
+import { createConfig, createDBConfig, setupSonamu } from "./ui-test-helpers";
 
 // 운영 자격증명이 있는 dev 머신처럼 production preset이 원격 운영 DB를 가리키게 둡니다.
 // 테스트는 이 주소에 연결하지 않으며, 연결을 시도하면 거부 대신 타임아웃이 나므로 회귀가 드러납니다.
@@ -44,6 +47,50 @@ const config: SonamuConfig = {
   },
 };
 
+const PENDING_FILE = "20260101000000_create__posts";
+const APPLIED_FILE = "20251201000000_create__users";
+
+type SlackCall = { url: string; body: string };
+
+/** Slack API를 흉내 내고 호출 내역과 승인 상태를 조절할 수 있는 fetch 대역입니다. */
+function stubSlack() {
+  const calls: SlackCall[] = [];
+  const state = { approved: false, nextTs: 1 };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string, init?: RequestInit) => {
+      const body = String(init?.body ?? "");
+      calls.push({ url: input, body });
+      if (input.startsWith("https://slack.com/api/reactions.get")) {
+        return Response.json({
+          ok: true,
+          message: {
+            reactions: state.approved ? [{ name: "white_check_mark", users: ["U1"] }] : [],
+          },
+        });
+      }
+      const ts = `${state.nextTs}.000100`;
+      state.nextTs += 1;
+      return Response.json({ ok: true, channel: "C123", ts });
+    }),
+  );
+  const posted = () =>
+    calls
+      .filter(({ url }) => url === "https://slack.com/api/chat.postMessage")
+      .map(({ body }) => body);
+  return { calls, state, posted };
+}
+
+function readyStatus(connKey: MigrationTarget): MigrationConnectionStatus {
+  return {
+    connKey,
+    currentVersion: APPLIED_FILE,
+    status: 1,
+    pending: [PENDING_FILE],
+    latencyMs: 1,
+  };
+}
+
 describe("Sonamu UI 마이그레이션 API의 production 대상 제외", () => {
   const originalEnv = { ...process.env };
   let server: FastifyInstance;
@@ -73,11 +120,11 @@ describe("Sonamu UI 마이그레이션 API의 production 대상 제외", () => {
 
     expect(response.statusCode).toBe(200);
     const body: { connections: { connKey: string }[] } = response.json();
+    // SON-620의 UI 허용 목록이 staging도 제외하므로 개발용 DB만 남습니다.
     expect(body.connections.map(({ connKey }) => connKey)).toEqual([
       "test",
       "fixture",
       "development",
-      "staging",
     ]);
     expect(response.body).not.toContain("prod-db.invalid");
   });
@@ -130,5 +177,176 @@ describe("Sonamu UI 마이그레이션 API의 production 대상 제외", () => {
       expect(response.statusCode).toBeGreaterThanOrEqual(400);
       expect(response.body).toContain("Migration target is not allowed");
     }
+  });
+});
+
+// 이 describe는 Migrator.prototype 스파이를 복원하지 않으므로 실제 Migrator로 거부를 확인하는 위 describe보다 뒤에 둡니다.
+describe("Sonamu UI 마이그레이션 API", () => {
+  let app: ReturnType<typeof Fastify>;
+  let cleanup: () => Promise<void>;
+  const applySpy = vi.spyOn(Migrator.prototype, "apply");
+  const rollbackSpy = vi.spyOn(Migrator.prototype, "rollback");
+
+  async function start(options: { slackTargets?: MigrationTarget[]; remoteDevelopment?: boolean }) {
+    ({ cleanup } = await setupSonamu(
+      createConfig(options.slackTargets),
+      createDBConfig(
+        options.remoteDevelopment === true ? { development: "db.internal.example" } : {},
+      ),
+    ));
+    app = Fastify();
+    await registerMigrationsApi(app);
+  }
+
+  beforeEach(() => {
+    vi.spyOn(Migrator.prototype, "getConnectionStatus").mockImplementation(async (connKey) =>
+      readyStatus(connKey),
+    );
+    vi.spyOn(Migrator.prototype, "getLatestAppliedBatch").mockResolvedValue({
+      batchNo: 3,
+      files: [APPLIED_FILE],
+    });
+    const result = (targets: MigrationTarget[], files: string[]): MigrationResult =>
+      targets.map((connKey) => ({ connKey, batchNo: 3, applied: files }));
+    applySpy.mockImplementation(async (targets) => result(targets, [PENDING_FILE]));
+    rollbackSpy.mockImplementation(async (targets) => result(targets, [APPLIED_FILE]));
+  });
+
+  afterEach(async () => {
+    await app.close();
+    await cleanup();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  describe("운영 계열 DB 대상 거부", () => {
+    beforeEach(async () => {
+      await start({});
+    });
+
+    it("연결 목록에 staging·production을 노출하지 않는다", async () => {
+      const res = await app.inject({ method: "GET", url: "/api/migrations/connections" });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().connections.map(({ connKey }: { connKey: string }) => connKey)).toEqual([
+        "test",
+        "fixture",
+        "development",
+      ]);
+    });
+
+    it.each([
+      ["/api/migrations/rollback", { targets: ["production"] }],
+      ["/api/migrations/rollback", { targets: ["test", "staging"] }],
+      ["/api/migrations/apply", { targets: ["production"] }],
+      ["/api/migrations/request-approval", { targets: ["production"] }],
+      ["/api/migrations/runAction", { action: "rollback", targets: ["production"] }],
+      ["/api/migrations/runAction", { action: "apply", targets: ["staging"] }],
+      ["/api/migrations/rollback", { targets: "production" }],
+    ])("%s 요청이 %j 이면 400으로 거부하고 실행하지 않는다", async (url, payload) => {
+      const res = await app.inject({ method: "POST", url, payload });
+
+      expect(res.statusCode).toBe(400);
+      expect(applySpy).not.toHaveBeenCalled();
+      expect(rollbackSpy).not.toHaveBeenCalled();
+    });
+
+    it("허용된 로컬 DB는 승인 설정이 없으면 바로 rollback한다", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/migrations/rollback",
+        payload: { targets: ["test"] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toContain('"type":"complete"');
+      expect(rollbackSpy).toHaveBeenCalledWith(["test"], expect.anything());
+    });
+  });
+
+  describe("rollback 승인", () => {
+    beforeEach(async () => {
+      await start({ slackTargets: ["development"], remoteDevelopment: true });
+    });
+
+    it("승인 요청 없이 승인 대상 DB를 rollback하면 거부한다", async () => {
+      const slack = stubSlack();
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/migrations/rollback",
+        payload: { targets: ["development"] },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(rollbackSpy).not.toHaveBeenCalled();
+      expect(slack.posted()).toHaveLength(0);
+    });
+
+    it("rollback 승인 요청을 보내고 승인된 뒤에만 rollback한다", async () => {
+      const slack = stubSlack();
+
+      const requested = await app.inject({
+        method: "POST",
+        url: "/api/migrations/request-approval",
+        payload: { targets: ["development"], action: "rollback" },
+      });
+      expect(requested.json()).toMatchObject({ type: "pending", channel: "C123" });
+      expect(slack.posted()[0]).toContain("롤백 승인 요청");
+      expect(slack.posted()[0]).toContain(`[rollback:development#3] ${APPLIED_FILE}`);
+
+      const whilePending = await app.inject({
+        method: "POST",
+        url: "/api/migrations/rollback",
+        payload: { targets: ["development"] },
+      });
+      expect(whilePending.statusCode).toBe(400);
+      expect(rollbackSpy).not.toHaveBeenCalled();
+
+      slack.state.approved = true;
+      const approved = await app.inject({
+        method: "POST",
+        url: "/api/migrations/rollback",
+        payload: { targets: ["development"] },
+      });
+      expect(approved.statusCode).toBe(200);
+      expect(approved.body).toContain('"type":"complete"');
+      expect(rollbackSpy).toHaveBeenCalledTimes(1);
+      expect(slack.posted().at(-1)).toContain("롤백 완료");
+    });
+
+    it("apply 승인으로는 rollback을 실행할 수 없다", async () => {
+      const slack = stubSlack();
+      await app.inject({
+        method: "POST",
+        url: "/api/migrations/request-approval",
+        payload: { targets: ["development"] },
+      });
+      slack.state.approved = true;
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/migrations/rollback",
+        payload: { targets: ["development"] },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(rollbackSpy).not.toHaveBeenCalled();
+    });
+
+    it("이전 runAction rollback도 승인 요청만 만들고 실행하지 않는다", async () => {
+      const slack = stubSlack();
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/migrations/runAction",
+        payload: { action: "rollback", targets: ["development"], force: true },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toMatchObject({ type: "pending" });
+      expect(rollbackSpy).not.toHaveBeenCalled();
+      expect(slack.posted()[0]).toContain("롤백 승인 요청");
+    });
   });
 });

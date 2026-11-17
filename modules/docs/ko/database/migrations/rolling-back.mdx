@@ -23,9 +23,8 @@ Migration을 롤백하여 데이터베이스를 이전 상태로 되돌릴 수 �
 </CardGroup>
 
 <Warning>
-  **롤백 전용 CLI 명령은 없습니다.** `sonamu migrate`가 제공하는 서브커맨드는 `run`, `apply`,
-  `generate`, `status` 네 가지뿐입니다. 롤백은 Sonamu UI 또는 `Migrator.runAction("rollback", ...)`
-  으로만 수행합니다.
+  Sonamu UI는 `development`·`test`·`fixture` 연결만 롤백합니다. `staging`·`production`은
+  `pnpm sonamu migrate rollback TARGET --execute` CLI나 `Migrator.rollback()`으로 롤백하세요.
 </Warning>
 
 ## 기본 롤백
@@ -35,7 +34,8 @@ Migration을 롤백하여 데이터베이스를 이전 상태로 되돌릴 수 �
 1. API 개발 서버를 실행합니다(`pnpm dev`).
 2. `http://localhost:34900/sonamu-ui`의 **Migrations** 탭을 엽니다.
 3. 롤백할 DB 커넥션을 선택합니다.
-4. **롤백** 버튼을 클릭하고 확인 모달에서 실행합니다.
+4. **롤백** 버튼을 클릭해 확인 모달을 엽니다. [Slack 승인](/ko/database/migrations/production-approval) 대상인 원격 DB가 있으면 먼저 승인을 요청하고 승인될 때까지 기다립니다.
+5. 모달의 롤백 버튼을 누르면 확인 문구로 바뀌고, 한 번 더 눌러야 실행됩니다.
 
 <Info>롤백은 선택한 DB의 **가장 최근 batch에 속한 모든 Migration**을 되돌립니다.</Info>
 
