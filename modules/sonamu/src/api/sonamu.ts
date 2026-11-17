@@ -2176,11 +2176,7 @@ class SonamuClass {
     const resolvedPluginOptions = resolveWebSocketPluginOptions({
       rawPluginOption: pluginOption,
     });
-    if (resolvedPluginOptions) {
-      await server.register(websocketPlugin, resolvedPluginOptions);
-    } else {
-      await server.register(websocketPlugin);
-    }
+    await server.register(websocketPlugin, resolvedPluginOptions);
 
     this.websocketPluginServers.add(server);
     this.warnOnPotentialWebSocketTimeoutConflicts(server);

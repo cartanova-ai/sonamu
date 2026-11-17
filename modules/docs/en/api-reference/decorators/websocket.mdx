@@ -374,6 +374,26 @@ The random suffix in the default `nodeId` keeps a restarted container with the s
 
 On shutdown, the runtime closes local connections, waits up to `drainTimeoutMs` for queued store mutations and publishes, then calls `presenceStore.shutdown()` (if defined) and `clusterBus.shutdown()`.
 
+### Inbound frame size limit
+
+`server.plugins.ws.options.maxPayload` (bytes) sets the maximum size of a single client frame. The default is 64 KiB (`65536`). A frame over the limit closes the connection with close code `1009` (Message Too Big). Raise it explicitly only when you need larger messages.
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      ws: {
+        options: {
+          maxPayload: 256 * 1024,
+        },
+      },
+    },
+  },
+});
+```
+
+Frames that arrive before the guards pass are held unparsed and processed in arrival order once the connection is activated. Each connection holds at most 100 frames; on overflow, the oldest frame is dropped and `ws.message.buffer.dropped` telemetry is recorded. If a guard rejects the connection, the held frames are discarded without being parsed.
+
 ### Custom presence store
 
 Every method may return a value or a promise (`MaybePromise<T> = T | Promise<T>`). A synchronous throw is treated like a rejection.

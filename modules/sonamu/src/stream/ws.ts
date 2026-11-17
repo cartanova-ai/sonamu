@@ -49,11 +49,15 @@ const MAX_SOCKET_BUFFERED_AMOUNT = 1_048_576;
 const OUTBOUND_BATCH_SIZE = 50;
 const OUTBOUND_RETRY_DELAY_MS = 5;
 
+type WebSocketEnvelopeData = z.output<ReturnType<typeof z.json>>;
+
 // envelope을 `{event, data}` 형태로 고정해 server handler와 generated client가 같은 framing contract를 쓰게 함
 // meta는 optional이므로 기존 `{event, data}` 메시지도 그대로 파싱됨 (backward-compatible)
+// data는 JSON.parse 결과라 항상 JSON 값이므로 z.json()으로 모든 노드를 다시 재귀 검증하지 않고 타입만 선언함(키 누락은 그대로 거부).
+// 실제 값 검증은 이벤트 스키마가 맡음
 const WebSocketEnvelopeSchema = z.object({
   event: z.string(),
-  data: z.json(),
+  data: z.custom<WebSocketEnvelopeData>(),
   meta: z
     .object({
       traceparent: z.string().optional(),
@@ -142,6 +146,8 @@ export type WebSocketRuntimeOptions = {
 export class WebSocketRuntime {
   readonly registry: WebSocketRegistry;
   readonly telemetryController: WebSocketTelemetryController;
+  // active: false로 등록돼 아직 인바운드 프레임을 처리하지 않는 연결. activateConnection에서 꺼내 인바운드를 연다
+  private readonly inactiveConnections = new Map<string, { openInbound(): void }>();
 
   constructor(options: WebSocketRuntimeOptions = {}) {
     // nodeId를 주지 않으면 store/bus가 가진 nodeId를 따르고, 둘 다 없으면 hostname-pid-랜덤으로 만든다.
@@ -177,6 +183,8 @@ export class WebSocketRuntime {
 
   /**
    * 소켓 리스너를 동기로 붙이고 registry에 등록한다. store.register가 끝나면(실패해도) resolve한다.
+   * active: false면 activateConnection 전까지 인바운드 프레임을 파싱하지 않고 최대 100개까지 보관하며,
+   * 넘치면 가장 오래된 프레임을 버린다.
    */
   async registerConnection<
     TOutSchema extends WebSocketEventFields,
@@ -195,12 +203,24 @@ export class WebSocketRuntime {
       registry: this.registry,
       telemetryController: this.telemetryController,
     });
+    if (options.active === false) {
+      this.inactiveConnections.set(connection.id, connection);
+      connection.onClose(() => {
+        this.inactiveConnections.delete(connection.id);
+      });
+    }
     await this.registry.register(connection, options.active ?? true);
     return connection;
   }
 
-  activateConnection(connectionId: string): Promise<void> {
-    return this.registry.activate(connectionId);
+  /**
+   * 연결을 registry에서 활성화한 뒤, 활성화 전까지 파싱하지 않고 보관하던 인바운드 프레임을 도착 순서대로 처리한다.
+   */
+  async activateConnection(connectionId: string): Promise<void> {
+    const connection = this.inactiveConnections.get(connectionId);
+    this.inactiveConnections.delete(connectionId);
+    await this.registry.activate(connectionId);
+    connection?.openInbound();
   }
 
   leaveUser(
@@ -270,6 +290,8 @@ class WebSocketConnectionImpl<
   private readonly closeCallbacks: CloseHandler[] = [];
   private readonly messageHandlers = new Map<string, Array<MessageHandler<unknown>>>();
   private readonly pendingMessages: ParsedEnvelope[] = [];
+  // 가드 통과(활성화) 전에 도착한 프레임. 비인가 연결이 파싱 비용을 쓰게 하지 않도록 raw 그대로 보관한다
+  private readonly heldInboundFrames: RawData[] = [];
   private readonly pendingOutboundMessages: Array<{ payload: string; event: string }> = [];
   private readonly closePromise: Promise<void>;
   private readonly resolveClosePromise: () => void;
@@ -291,6 +313,7 @@ class WebSocketConnectionImpl<
 
   private closedInternal = false;
   private closeStarted = false;
+  private inboundOpen: boolean;
   private awaitingPong = false;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private messageQueue: Promise<void> = Promise.resolve();
@@ -310,6 +333,7 @@ class WebSocketConnectionImpl<
     this.connectionParentSpanId = options.parentSpanId;
     this.connectionSampled = options.sampled;
     this.eventSchemasIn = options.inEvents["shape"];
+    this.inboundOpen = options.active ?? true;
 
     let resolveClosePromise!: () => void;
     this.closePromise = new Promise<void>((resolve) => {
@@ -391,7 +415,7 @@ class WebSocketConnectionImpl<
 
   getTelemetrySnapshot(): WebSocketTelemetryConnectionSnapshot {
     return {
-      pendingInboundMessages: this.pendingMessages.length,
+      pendingInboundMessages: this.pendingMessages.length + this.heldInboundFrames.length,
       pendingOutboundMessages: this.pendingOutboundMessages.length,
       socketBufferedBytes: this.socket.readyState === WS_OPEN ? this.socket.bufferedAmount : 0,
     };
@@ -454,6 +478,43 @@ class WebSocketConnectionImpl<
 
   // 인바운드 메시지를 순차 처리 큐에 올림. Sonamu envelope 검증 수행
   private readonly handleMessage = (raw: RawData) => {
+    if (!this.inboundOpen) {
+      this.holdInboundFrame(raw);
+      return;
+    }
+
+    this.enqueueInboundFrame(raw);
+  };
+
+  /**
+   * 활성화(가드 통과) 뒤 호출된다. 보관하던 raw 프레임을 도착 순서대로 처리 큐에 올리고 이후 프레임은 바로 처리한다.
+   */
+  openInbound(): void {
+    if (this.inboundOpen || this.closedInternal) {
+      return;
+    }
+
+    this.inboundOpen = true;
+    for (const raw of this.heldInboundFrames.splice(0)) {
+      this.enqueueInboundFrame(raw);
+    }
+  }
+
+  // 활성화 전 보관 개수는 handler 대기 버퍼와 같은 상한을 쓰고, 넘치면 오래된 프레임부터 버린다
+  private holdInboundFrame(raw: RawData): void {
+    if (this.heldInboundFrames.length >= MAX_PENDING_MESSAGES) {
+      this.options.telemetryController.emit({
+        name: "ws.message.buffer.dropped",
+        level: "warn",
+        ...this.telemetryFields(),
+        detail: { reason: "inactive" },
+      });
+      this.heldInboundFrames.shift();
+    }
+    this.heldInboundFrames.push(raw);
+  }
+
+  private enqueueInboundFrame(raw: RawData): void {
     this.enqueueMessageTask(async () => {
       const text = normalizeMessage(raw);
       const parsedEnvelope = safeParseEnvelope(text);
@@ -473,7 +534,7 @@ class WebSocketConnectionImpl<
       this.options.registry.touch(this.id);
       await this.dispatchEnvelope(parsedEnvelope);
     });
-  };
+  }
 
   private readonly handleClose = (code?: number, reason?: Buffer | string) => {
     const reasonText = isStringValue(reason) ? reason : reason?.toString();
@@ -700,6 +761,7 @@ class WebSocketConnectionImpl<
     this.socket.off("pong", this.handlePong);
     this.awaitingPong = false;
     this.pendingMessages.length = 0;
+    this.heldInboundFrames.length = 0;
     this.pendingOutboundMessages.length = 0;
     this.options.registry.unregister(this.id);
     for (const callback of this.closeCallbacks.splice(0)) {

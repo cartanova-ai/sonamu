@@ -378,6 +378,26 @@ export default defineConfig({
 
 → [SSE 사용법](/ko/advanced-features/sse/sse-setup)
 
+### ws
+
+WebSocket 연결을 처리합니다 (`@fastify/websocket`).
+
+**타입**: `boolean | WebsocketPluginOptions` (선택적)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      ws: true,
+    },
+  },
+});
+```
+
+`options.maxPayload`를 지정하지 않으면 클라이언트 프레임 1개의 최대 크기는 64KiB(`65536`바이트)이고, 이보다 큰 프레임을 받으면 close code `1009`로 연결을 닫습니다.
+
+→ [인바운드 프레임 크기 상한](/ko/api-reference/decorators/websocket#인바운드-프레임-크기-상한)
+
 ### custom
 
 커스텀 Fastify 플러그인을 등록합니다.

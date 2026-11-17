@@ -374,6 +374,26 @@ export default defineConfig({
 
 shutdown 시 runtime은 로컬 연결을 닫고, 대기 중인 store 변경과 publish를 최대 `drainTimeoutMs`까지 기다린 뒤 `presenceStore.shutdown()`(정의된 경우)과 `clusterBus.shutdown()`을 호출합니다.
 
+### 인바운드 프레임 크기 상한
+
+클라이언트가 보내는 프레임 1개의 최대 크기는 `server.plugins.ws.options.maxPayload`(바이트)로 정하며 기본값은 64KiB(`65536`)입니다. 상한을 넘는 프레임을 받으면 연결을 close code `1009`(Message Too Big)로 닫습니다. 더 큰 메시지가 필요한 경우에만 명시적으로 올립니다.
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      ws: {
+        options: {
+          maxPayload: 256 * 1024,
+        },
+      },
+    },
+  },
+});
+```
+
+guard를 통과하기 전에 도착한 프레임은 파싱하지 않고 보관했다가 연결이 활성화된 뒤 도착 순서대로 처리합니다. 보관은 연결당 최대 100개까지이며, 넘치면 가장 오래된 프레임부터 버리고 `ws.message.buffer.dropped` telemetry를 남깁니다. guard가 연결을 거부하면 보관한 프레임은 파싱하지 않고 버립니다.
+
 ### 커스텀 presence store
 
 모든 메서드는 값이나 promise를 반환할 수 있습니다(`MaybePromise<T> = T | Promise<T>`). 동기 throw는 rejection과 같게 처리됩니다.

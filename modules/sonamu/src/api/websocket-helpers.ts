@@ -31,12 +31,18 @@ export function resolveIntegratedViteHmrOptions({
   return Number.isFinite(parsedPort) && parsedPort > 0 ? { port: parsedPort } : { port: 24678 };
 }
 
-// @fastify/websocket transport option은 server.plugins.ws에 명시된 값만 사용함.
+/**
+ * 인바운드 WebSocket 프레임 1개의 기본 최대 크기(바이트).
+ * ws 기본값(100MiB)이면 프레임 하나로 이벤트 루프가 멈추거나 힙이 고갈되므로, 넘는 프레임은 ws가 1009로 닫게 한다.
+ */
+export const DEFAULT_WEBSOCKET_MAX_PAYLOAD_BYTES = 64 * 1024;
+
+// @fastify/websocket transport option은 server.plugins.ws에 명시된 값을 쓰고, maxPayload만 안전한 기본값을 채움.
 export function resolveWebSocketPluginOptions({
   rawPluginOption,
 }: {
   rawPluginOption: boolean | WebsocketPluginOptions | undefined;
-}): WebsocketPluginOptions | undefined {
+}): WebsocketPluginOptions {
   const pluginOptions = rawPluginOption && rawPluginOption !== true ? { ...rawPluginOption } : {};
   const serverOptions: NonNullable<WebsocketPluginOptions["options"]> = isPlainObject(
     pluginOptions.options,
@@ -44,11 +50,10 @@ export function resolveWebSocketPluginOptions({
     ? { ...pluginOptions.options }
     : {};
 
-  if (Object.keys(serverOptions).length > 0) {
-    pluginOptions.options = serverOptions;
-  }
+  serverOptions.maxPayload ??= DEFAULT_WEBSOCKET_MAX_PAYLOAD_BYTES;
+  pluginOptions.options = serverOptions;
 
-  return Object.keys(pluginOptions).length > 0 ? pluginOptions : undefined;
+  return pluginOptions;
 }
 
 // handshake/auth/validation 실패를 generic 1011로 뭉개지 않고 1008(policy violation)로 매핑해,

@@ -378,6 +378,88 @@ describe("WebSocketRuntime", () => {
     expect(runtime.registry.getConnectionCount("chat")).toBe(1);
   });
 
+  it("활성화 전에 도착한 프레임은 파싱하지 않고 보관했다가 활성화 뒤 순서대로 처리한다", async () => {
+    const runtime = createWebSocketRuntime();
+    const socket = new FakeWebSocket();
+    const connection = await runtime.registerConnection(asWebSocket(socket), {
+      outEvents: OutEvents,
+      inEvents: InEvents,
+      namespace: "chat",
+      active: false,
+    });
+    const handler = vi.fn();
+    connection.onMessage("joinRoom", handler);
+
+    socket.emit("message", JSON.stringify({ event: "joinRoom", data: { roomId: "alpha" } }));
+    socket.emit(
+      "message",
+      Buffer.from(JSON.stringify({ event: "joinRoom", data: { roomId: "beta" } })),
+    );
+    await waitForAsyncQueue();
+
+    expect(handler).not.toHaveBeenCalled();
+
+    await runtime.activateConnection(connection.id);
+    await waitForAsyncQueue();
+
+    expect(handler.mock.calls.map(([data]) => data)).toEqual([
+      { roomId: "alpha" },
+      { roomId: "beta" },
+    ]);
+    expect(socket.closedWith).toBeNull();
+  });
+
+  it("가드가 끝나기 전 잘못된 프레임은 파싱하지 않으며, 가드 거부로 닫히면 그대로 버린다", async () => {
+    const runtime = createWebSocketRuntime();
+    const socket = new FakeWebSocket();
+    const connection = await runtime.registerConnection(asWebSocket(socket), {
+      outEvents: OutEvents,
+      inEvents: InEvents,
+      namespace: "chat",
+      active: false,
+    });
+    const handler = vi.fn();
+    connection.onMessage("joinRoom", handler);
+
+    socket.emit("message", "{not-json");
+    socket.emit("message", JSON.stringify({ event: "joinRoom", data: { roomId: "alpha" } }));
+    await waitForAsyncQueue();
+
+    // 파싱했다면 1007로 닫혔을 것이다
+    expect(socket.closedWith).toBeNull();
+
+    // 가드 거부를 흉내 내 1008로 닫는다
+    connection.close(1008, "Unauthorized websocket connection");
+    await runtime.activateConnection(connection.id);
+    await waitForAsyncQueue();
+
+    expect(socket.closedWith).toEqual({ code: 1008, reason: "Unauthorized websocket connection" });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("활성화 전 보관 프레임은 개수 상한을 넘으면 오래된 것부터 버린다", async () => {
+    const runtime = createWebSocketRuntime();
+    const socket = new FakeWebSocket();
+    const connection = await runtime.registerConnection(asWebSocket(socket), {
+      outEvents: OutEvents,
+      inEvents: InEvents,
+      namespace: "chat",
+      active: false,
+    });
+    const handler = vi.fn();
+    connection.onMessage("joinRoom", handler);
+
+    for (let index = 0; index < 101; index += 1) {
+      socket.emit("message", JSON.stringify({ event: "joinRoom", data: { roomId: `r${index}` } }));
+    }
+    await runtime.activateConnection(connection.id);
+    await waitForAsyncQueue(10);
+
+    expect(handler).toHaveBeenCalledTimes(100);
+    expect(handler.mock.calls[0]?.[0]).toEqual({ roomId: "r1" });
+    expect(handler.mock.calls[99]?.[0]).toEqual({ roomId: "r100" });
+  });
+
   it("manages rooms and user fan-out through the registry", async () => {
     const runtime = createWebSocketRuntime();
     const socketA = new FakeWebSocket();
@@ -587,6 +669,21 @@ describe("WebSocketRuntime", () => {
     await Promise.resolve();
 
     expect(socket.closedWith?.code).toBe(1007);
+  });
+
+  it("data 키가 없는 envelope은 계속 잘못된 payload로 닫는다", async () => {
+    const runtime = createWebSocketRuntime();
+    const socket = new FakeWebSocket();
+    await runtime.registerConnection(asWebSocket(socket), {
+      outEvents: OutEvents,
+      inEvents: InEvents,
+      namespace: "chat",
+    });
+
+    socket.emit("message", JSON.stringify({ event: "joinRoom" }));
+    await waitForAsyncQueue();
+
+    expect(socket.closedWith).toEqual({ code: 1007, reason: "Invalid message payload" });
   });
 
   it("still closes and unregisters when onClose callbacks throw", async () => {

@@ -217,6 +217,7 @@ export type SonamuServerOptions = {
     qs?: boolean | QsPluginOptions;
     sse?: boolean | SsePluginOptions;
     static?: boolean | FastifyStaticOptions;
+    /** WebSocket 플러그인 (@fastify/websocket). options.maxPayload를 생략하면 프레임 1개당 64KiB로 제한합니다. */
     ws?: boolean | WebsocketPluginOptions;
 
     custom?: (server: FastifyInstance) => void;

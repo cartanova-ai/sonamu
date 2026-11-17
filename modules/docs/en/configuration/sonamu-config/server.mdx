@@ -379,6 +379,26 @@ export default defineConfig({
 
 → [SSE usage](/en/advanced-features/sse/sse-setup)
 
+### ws
+
+Handles WebSocket connections (`@fastify/websocket`).
+
+**Type**: `boolean | WebsocketPluginOptions` (optional)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      ws: true,
+    },
+  },
+});
+```
+
+Without `options.maxPayload`, a single client frame is limited to 64 KiB (`65536` bytes), and a larger frame closes the connection with close code `1009`.
+
+→ [Inbound frame size limit](/en/api-reference/decorators/websocket#inbound-frame-size-limit)
+
 ### custom
 
 Registers custom Fastify plugins.
