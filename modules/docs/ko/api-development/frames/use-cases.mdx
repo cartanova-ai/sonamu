@@ -100,7 +100,8 @@ interface HealthDetailResponse {
 class HealthFrame extends BaseFrameClass {
   frameName = "Health";
 
-  @api({ httpMethod: "GET" })
+  // OS·메모리·DB 상태를 노출하므로 관리자만 조회
+  @api({ httpMethod: "GET", guards: ["admin"] })
   async detail(): Promise<HealthDetailResponse> {
     const startTime = Date.now();
 
@@ -173,35 +174,38 @@ class HealthFrame extends BaseFrameClass {
 
 ```typescript
 // crypto.frame.ts
-import { BaseFrameClass, api } from "sonamu";
+import { BadRequestException, BaseFrameClass, api } from "sonamu";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+
+// bcrypt cost는 클라이언트가 아니라 서버가 정합니다. cost가 1 오를 때마다 계산 시간이 두 배가 되고,
+// bcrypt는 libuv 스레드풀(기본 4개)에서 돌기 때문에 높은 cost 요청 몇 개로 같은 풀을 쓰는
+// 파일·압축·DNS 작업까지 함께 멈춥니다.
+const BCRYPT_COST = 12;
+
+// 암호화 키와 JWT secret은 요청으로 받지 않고 서버에만 둡니다.
+function getEncryptionKey(): Buffer {
+  const key = Buffer.from(process.env.ENCRYPTION_KEY ?? "", "base64");
+  if (key.length !== 32) {
+    throw new Error("ENCRYPTION_KEY에는 32바이트 키를 base64로 넣어야 합니다");
+  }
+  return key;
+}
 
 interface HashParams {
   text: string;
   algorithm: "md5" | "sha256" | "sha512" | "bcrypt";
-  saltRounds?: number; // bcrypt용
-}
-
-interface EncryptParams {
-  plaintext: string;
-  secret: string;
-}
-
-interface DecryptParams {
-  ciphertext: string;
-  secret: string;
 }
 
 class CryptoFrame extends BaseFrameClass {
   frameName = "Crypto";
 
   // 해시 생성
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", guards: ["user"] })
   async hash(params: HashParams): Promise<{ hash: string }> {
     if (params.algorithm === "bcrypt") {
-      const saltRounds = params.saltRounds || 10;
-      const hash = await bcrypt.hash(params.text, saltRounds);
+      const hash = await bcrypt.hash(params.text, BCRYPT_COST);
       return { hash };
     }
 
@@ -211,62 +215,73 @@ class CryptoFrame extends BaseFrameClass {
   }
 
   // bcrypt 검증
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", guards: ["user"] })
   async verifyHash(params: { text: string; hash: string }): Promise<{ valid: boolean }> {
+    // bcrypt.compare는 해시에 적힌 cost를 그대로 쓰므로, cost가 서버 상한을 넘는 해시는 계산 전에 거부
+    const match = /^\$2[aby]\$(\d{2})\$[./A-Za-z0-9]{53}$/.exec(params.hash);
+    if (!match || Number(match[1]) > BCRYPT_COST) {
+      throw new BadRequestException("지원하지 않는 해시입니다");
+    }
+
     const valid = await bcrypt.compare(params.text, params.hash);
     return { valid };
   }
 
-  // AES 암호화
-  @api({ httpMethod: "POST" })
-  async encrypt(params: EncryptParams): Promise<{
+  // AES-256-GCM 암호화 (무결성 검증 포함)
+  // user 가드는 로그인만 확인하므로, 실제 서비스에서는 호출자가 소유한 데이터만 다루도록 범위를 제한하세요
+  @api({ httpMethod: "POST", guards: ["user"] })
+  async encrypt(params: { plaintext: string }): Promise<{
     ciphertext: string;
     iv: string;
+    tag: string;
   }> {
-    const algorithm = "aes-256-cbc";
-    const key = crypto.scryptSync(params.secret, "salt", 32);
-    const iv = crypto.randomBytes(16);
-
-    const cipher = crypto.createCipheriv(algorithm, key, iv);
-
-    let encrypted = cipher.update(params.plaintext, "utf8", "hex");
-    encrypted += cipher.final("hex");
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", getEncryptionKey(), iv);
+    const ciphertext = Buffer.concat([cipher.update(params.plaintext, "utf8"), cipher.final()]);
 
     return {
-      ciphertext: encrypted,
-      iv: iv.toString("hex"),
+      ciphertext: ciphertext.toString("base64"),
+      iv: iv.toString("base64"),
+      tag: cipher.getAuthTag().toString("base64"),
     };
   }
 
-  // AES 복호화
-  @api({ httpMethod: "POST" })
-  async decrypt(
-    params: DecryptParams & {
-      iv: string;
-    },
-  ): Promise<{ plaintext: string }> {
-    const algorithm = "aes-256-cbc";
-    const key = crypto.scryptSync(params.secret, "salt", 32);
-    const iv = Buffer.from(params.iv, "hex");
+  // AES-256-GCM 복호화
+  @api({ httpMethod: "POST", guards: ["user"] })
+  async decrypt(params: { ciphertext: string; iv: string; tag: string }): Promise<{
+    plaintext: string;
+  }> {
+    const key = getEncryptionKey();
 
-    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    try {
+      const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(params.iv, "base64"), {
+        authTagLength: 16,
+      });
+      decipher.setAuthTag(Buffer.from(params.tag, "base64"));
+      const plaintext = Buffer.concat([
+        decipher.update(Buffer.from(params.ciphertext, "base64")),
+        decipher.final(),
+      ]);
 
-    let decrypted = decipher.update(params.ciphertext, "hex", "utf8");
-    decrypted += decipher.final("utf8");
-
-    return { plaintext: decrypted };
+      return { plaintext: plaintext.toString("utf8") };
+    } catch {
+      // 실패 원인(태그 불일치, 길이 오류 등)을 구분하지 않고 같은 오류로 응답
+      throw new BadRequestException("복호화할 수 없습니다");
+    }
   }
 
   // JWT 토큰 검증 (간단 버전)
-  @api({ httpMethod: "POST" })
-  async verifyToken(params: { token: string; secret: string }): Promise<{
+  @api({ httpMethod: "POST", guards: ["user"] })
+  async verifyToken(params: { token: string }): Promise<{
     valid: boolean;
     payload?: any;
     error?: string;
   }> {
     try {
-      const jwt = require("jsonwebtoken");
-      const payload = jwt.verify(params.token, params.secret);
+      // 서버의 secret과 허용 알고리즘으로만 검증
+      const payload = jwt.verify(params.token, process.env.JWT_SECRET ?? "", {
+        algorithms: ["HS256"],
+      });
 
       return {
         valid: true,
@@ -471,7 +486,7 @@ export const WeatherFrameInstance = new WeatherFrame();
 
 ```typescript
 // payment.frame.ts
-import { BaseFrameClass, api } from "sonamu";
+import { BadRequestException, BaseFrameClass, NotFoundException, Sonamu, api } from "sonamu";
 import axios from "axios";
 
 class PaymentFrame extends BaseFrameClass {
@@ -480,22 +495,30 @@ class PaymentFrame extends BaseFrameClass {
   private stripeApiKey = process.env.STRIPE_SECRET_KEY || "";
   private stripeBaseUrl = "https://api.stripe.com/v1";
 
-  @api({ httpMethod: "POST" })
-  async createPaymentIntent(params: {
-    amount: number; // 센트 단위
-    currency: string;
-    customerId?: string;
-  }): Promise<{
+  @api({ httpMethod: "POST", guards: ["user"] })
+  async createPaymentIntent(params: { orderId: number }): Promise<{
     clientSecret: string;
     paymentIntentId: string;
   }> {
+    const { user } = Sonamu.getContext();
+
+    // 금액과 통화는 클라이언트 값이 아니라 로그인한 사용자의 주문 정보로 서버가 정함
+    const order = await this.getPuri("r")
+      .table("orders")
+      .where("id", params.orderId)
+      .where("user_id", user!.id)
+      .select({ amount: "amount", currency: "currency" })
+      .first();
+    if (!order) {
+      throw new NotFoundException("주문을 찾을 수 없습니다");
+    }
+
     try {
       const response = await axios.post(
         `${this.stripeBaseUrl}/payment_intents`,
         new URLSearchParams({
-          amount: params.amount.toString(),
-          currency: params.currency,
-          ...(params.customerId && { customer: params.customerId }),
+          amount: String(order.amount), // 센트 단위
+          currency: order.currency,
         }),
         {
           headers: {
@@ -514,16 +537,22 @@ class PaymentFrame extends BaseFrameClass {
     }
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", guards: ["user"] })
   async verifyPayment(params: { paymentIntentId: string }): Promise<{
     status: string;
     amount: number;
     currency: string;
     paid: boolean;
   }> {
+    // 형식 검사는 소유권 확인이 아니므로, 실제 서비스에서는 이 intent가 로그인 사용자의 주문에 연결된 것인지 서버에 저장한 값으로 확인하세요
+    // 서버 비밀키로 호출하는 경로에 들어가므로 Stripe ID 형식만 허용 (경로 조작 차단)
+    if (!/^pi_[A-Za-z0-9]+$/.test(params.paymentIntentId)) {
+      throw new BadRequestException("잘못된 결제 ID입니다");
+    }
+
     try {
       const response = await axios.get(
-        `${this.stripeBaseUrl}/payment_intents/${params.paymentIntentId}`,
+        `${this.stripeBaseUrl}/payment_intents/${encodeURIComponent(params.paymentIntentId)}`,
         {
           headers: {
             Authorization: `Bearer ${this.stripeApiKey}`,
@@ -592,7 +621,7 @@ interface DashboardStats {
 class AdminStatsFrame extends BaseFrameClass {
   frameName = "AdminStats";
 
-  @api({ httpMethod: "GET" })
+  @api({ httpMethod: "GET", guards: ["admin"] })
   async dashboard(): Promise<DashboardStats> {
     const rdb = this.getPuri("r");
 
@@ -726,13 +755,85 @@ export const AdminStatsFrameInstance = new AdminStatsFrame();
 ```typescript
 // validation.frame.ts
 import { BaseFrameClass, api } from "sonamu";
-import dns from "dns/promises";
+import axios from "axios";
+import dns from "dns";
+import http from "http";
+import https from "https";
+import net from "net";
+
+// 외부에 공개되지 않은 IPv4 대역 (사설망, 루프백, 링크로컬·클라우드 메타데이터, CGNAT, 멀티캐스트 등)
+const NON_PUBLIC_IPV4 = new net.BlockList();
+for (const [address, prefix] of [
+  ["0.0.0.0", 8],
+  ["10.0.0.0", 8],
+  ["100.64.0.0", 10],
+  ["127.0.0.0", 8],
+  ["169.254.0.0", 16],
+  ["172.16.0.0", 12],
+  ["192.0.0.0", 24],
+  ["192.0.2.0", 24],
+  ["192.168.0.0", 16],
+  ["198.18.0.0", 15],
+  ["198.51.100.0", 24],
+  ["203.0.113.0", 24],
+  ["224.0.0.0", 3],
+] as const) {
+  NON_PUBLIC_IPV4.addSubnet(address, prefix, "ipv4");
+}
+
+// IPv6는 전역 유니캐스트(2000::/3)만 허용하고, 그 안의 문서용·6to4 대역은 제외
+// (::1, fc00::/7, fe80::/10, IPv4-mapped ::ffff:0:0/96 등은 모두 거부됨)
+const GLOBAL_IPV6 = new net.BlockList();
+GLOBAL_IPV6.addSubnet("2000::", 3, "ipv6");
+const NON_PUBLIC_IPV6 = new net.BlockList();
+NON_PUBLIC_IPV6.addSubnet("2001:db8::", 32, "ipv6");
+NON_PUBLIC_IPV6.addSubnet("2002::", 16, "ipv6");
+
+function isPublicAddress(address: string): boolean {
+  if (net.isIPv4(address)) {
+    return !NON_PUBLIC_IPV4.check(address, "ipv4");
+  }
+  if (net.isIPv6(address)) {
+    return GLOBAL_IPV6.check(address, "ipv6") && !NON_PUBLIC_IPV6.check(address, "ipv6");
+  }
+  return false;
+}
+
+// 소켓을 열기 직전에 DNS 결과를 검사합니다. 검사한 주소로 바로 연결하므로
+// 검사 뒤에 DNS 응답을 바꾸는 DNS rebinding도 통하지 않습니다.
+const publicOnlyLookup: net.LookupFunction = (hostname, options, callback) => {
+  dns.lookup(hostname, { ...options, all: true }, (error, addresses) => {
+    if (error) {
+      callback(error, "");
+      return;
+    }
+    if (addresses.length === 0 || !addresses.every((a) => isPublicAddress(a.address))) {
+      callback(new Error(`내부 주소로 해석되는 호스트입니다: ${hostname}`), "");
+      return;
+    }
+    if (options.all) {
+      callback(null, addresses);
+    } else {
+      callback(null, addresses[0].address, addresses[0].family);
+    }
+  });
+};
+
+// 사용자가 준 URL에 요청할 때만 쓰는 axios 인스턴스
+const publicOnlyHttp = axios.create({
+  httpAgent: new http.Agent({ lookup: publicOnlyLookup }),
+  httpsAgent: new https.Agent({ lookup: publicOnlyLookup }),
+  proxy: false, // 프록시를 거치면 lookup 검사가 프록시 주소에만 적용되므로 끔
+  maxRedirects: 0, // 리다이렉트 대상(IP 리터럴 포함)을 다시 검사할 수 없으므로 따라가지 않음
+  maxContentLength: 1024 * 1024, // 응답 본문 1MiB 상한
+  timeout: 5000,
+});
 
 class ValidationFrame extends BaseFrameClass {
   frameName = "Validation";
 
   // 이메일 검증
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", guards: ["user"] })
   async validateEmail(params: { email: string; checkDns?: boolean }): Promise<{
     valid: boolean;
     format: boolean;
@@ -758,7 +859,7 @@ class ValidationFrame extends BaseFrameClass {
 
     if (params.checkDns) {
       try {
-        await dns.resolveMx(domain);
+        await dns.promises.resolveMx(domain);
       } catch (error) {
         domainValid = false;
       }
@@ -773,7 +874,7 @@ class ValidationFrame extends BaseFrameClass {
   }
 
   // URL 검증
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", guards: ["user"] })
   async validateUrl(params: { url: string; checkReachable?: boolean }): Promise<{
     valid: boolean;
     format: boolean;
@@ -802,15 +903,23 @@ class ValidationFrame extends BaseFrameClass {
       };
     }
 
+    // IP 주소로 쓴 호스트는 DNS 조회(lookup)를 거치지 않으므로 여기서 직접 검사
+    const host = urlObj.hostname.replace(/^\[(.*)\]$/, "$1");
+    if (net.isIP(host) !== 0 && !isPublicAddress(host)) {
+      return {
+        valid: false,
+        format: true,
+        message: "Internal addresses are not allowed",
+      };
+    }
+
     // 도달 가능 여부 확인
     let reachable: boolean | undefined;
     let statusCode: number | undefined;
 
     if (params.checkReachable) {
       try {
-        const axios = require("axios");
-        const response = await axios.head(params.url, {
-          timeout: 5000,
+        const response = await publicOnlyHttp.head(urlObj.href, {
           validateStatus: () => true, // 모든 상태 코드 허용
         });
 

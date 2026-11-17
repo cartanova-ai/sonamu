@@ -106,7 +106,7 @@ interface HealthCheckResponse {
 class HealthFrame extends BaseFrameClass {
   frameName = "Health";
 
-  @api({ httpMethod: "GET" })
+  @api({ httpMethod: "GET", guards: ["admin"] })
   async check(): Promise<HealthCheckResponse> {
     // DB 연결 체크
     let dbStatus: "connected" | "disconnected" = "disconnected";
@@ -172,16 +172,6 @@ interface HashParams {
   algorithm: "md5" | "sha256" | "sha512";
 }
 
-interface EncryptParams {
-  text: string;
-  key: string;
-}
-
-interface DecryptParams {
-  encrypted: string;
-  key: string;
-}
-
 class UtilsFrame extends BaseFrameClass {
   frameName = "Utils";
 
@@ -197,40 +187,6 @@ class UtilsFrame extends BaseFrameClass {
     return {
       uuid: crypto.randomUUID(),
     };
-  }
-
-  @api({ httpMethod: "POST" })
-  async encrypt(params: EncryptParams): Promise<{ encrypted: string }> {
-    const algorithm = "aes-256-cbc";
-    const key = crypto.scryptSync(params.key, "salt", 32);
-    const iv = crypto.randomBytes(16);
-
-    const cipher = crypto.createCipheriv(algorithm, key, iv);
-
-    let encrypted = cipher.update(params.text, "utf8", "hex");
-    encrypted += cipher.final("hex");
-
-    // IV를 함께 반환 (복호화에 필요)
-    return {
-      encrypted: iv.toString("hex") + ":" + encrypted,
-    };
-  }
-
-  @api({ httpMethod: "POST" })
-  async decrypt(params: DecryptParams): Promise<{ decrypted: string }> {
-    const algorithm = "aes-256-cbc";
-    const key = crypto.scryptSync(params.key, "salt", 32);
-
-    // IV와 암호문 분리
-    const [ivHex, encrypted] = params.encrypted.split(":");
-    const iv = Buffer.from(ivHex, "hex");
-
-    const decipher = crypto.createDecipheriv(algorithm, key, iv);
-
-    let decrypted = decipher.update(encrypted, "hex", "utf8");
-    decrypted += decipher.final("utf8");
-
-    return { decrypted };
   }
 
   @api({ httpMethod: "POST" })
@@ -271,6 +227,8 @@ class UtilsFrame extends BaseFrameClass {
 
 export const UtilsFrameInstance = new UtilsFrame();
 ```
+
+`HealthFrame.check`처럼 메모리·DB 상태를 반환하는 API는 `admin` 가드로 보호하세요. 암호화 API는 키를 요청으로 받지 않고 서버에 두는 [사용 사례](/ko/api-development/frames/use-cases)의 예제를 참고하세요.
 
 ### 외부 API 프록시 Frame
 
@@ -444,14 +402,33 @@ class AdminFrame extends BaseFrameClass {
 ### try-catch 패턴
 
 ```typescript
+import { BadRequestException, BaseFrameClass, api } from "sonamu";
+import axios from "axios";
+
+// 요청을 허용할 외부 호스트. 사용자가 준 URL을 그대로 요청하면 localhost, 내부망,
+// 클라우드 메타데이터(169.254.169.254) 같은 내부 주소의 응답이 그대로 노출됩니다(SSRF).
+const ALLOWED_HOSTS = new Set(["api.example.com"]);
+
 class ExternalApiFrame extends BaseFrameClass {
   frameName = "External";
 
-  @api({ httpMethod: "GET" })
-  async fetchData(params: { url: string }): Promise<any> {
+  @api({ httpMethod: "GET", guards: ["user"] })
+  async fetchData(params: { url: string }): Promise<{ success: boolean; data: unknown }> {
+    let url: URL;
     try {
-      const response = await axios.get(params.url, {
+      url = new URL(params.url);
+    } catch {
+      throw new BadRequestException("올바른 URL이 아닙니다");
+    }
+    if (url.protocol !== "https:" || url.port !== "" || !ALLOWED_HOSTS.has(url.hostname)) {
+      throw new BadRequestException("허용되지 않은 URL입니다");
+    }
+
+    try {
+      const response = await axios.get(url.href, {
         timeout: 5000,
+        maxRedirects: 0, // 리다이렉트로 허용 목록 밖 주소에 가지 않도록 따라가지 않음
+        maxContentLength: 1024 * 1024, // 응답 본문 1MiB 상한
       });
 
       return {

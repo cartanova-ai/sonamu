@@ -100,7 +100,8 @@ interface HealthDetailResponse {
 class HealthFrame extends BaseFrameClass {
   frameName = "Health";
 
-  @api({ httpMethod: "GET" })
+  // Exposes OS, memory, and DB status, so restrict it to admins
+  @api({ httpMethod: "GET", guards: ["admin"] })
   async detail(): Promise<HealthDetailResponse> {
     const startTime = Date.now();
 
@@ -173,35 +174,38 @@ class HealthFrame extends BaseFrameClass {
 
 ```typescript
 // crypto.frame.ts
-import { BaseFrameClass, api } from "sonamu";
+import { BadRequestException, BaseFrameClass, api } from "sonamu";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+
+// The server, not the client, decides the bcrypt cost. Each extra cost point doubles the work,
+// and bcrypt runs on the libuv thread pool (4 threads by default), so a few high-cost requests
+// also stall file, compression, and DNS work that shares the pool.
+const BCRYPT_COST = 12;
+
+// Keep the encryption key and JWT secret on the server; never accept them from the request.
+function getEncryptionKey(): Buffer {
+  const key = Buffer.from(process.env.ENCRYPTION_KEY ?? "", "base64");
+  if (key.length !== 32) {
+    throw new Error("ENCRYPTION_KEY must be a base64-encoded 32-byte key");
+  }
+  return key;
+}
 
 interface HashParams {
   text: string;
   algorithm: "md5" | "sha256" | "sha512" | "bcrypt";
-  saltRounds?: number; // for bcrypt
-}
-
-interface EncryptParams {
-  plaintext: string;
-  secret: string;
-}
-
-interface DecryptParams {
-  ciphertext: string;
-  secret: string;
 }
 
 class CryptoFrame extends BaseFrameClass {
   frameName = "Crypto";
 
   // Hash generation
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", guards: ["user"] })
   async hash(params: HashParams): Promise<{ hash: string }> {
     if (params.algorithm === "bcrypt") {
-      const saltRounds = params.saltRounds || 10;
-      const hash = await bcrypt.hash(params.text, saltRounds);
+      const hash = await bcrypt.hash(params.text, BCRYPT_COST);
       return { hash };
     }
 
@@ -211,62 +215,73 @@ class CryptoFrame extends BaseFrameClass {
   }
 
   // bcrypt verification
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", guards: ["user"] })
   async verifyHash(params: { text: string; hash: string }): Promise<{ valid: boolean }> {
+    // bcrypt.compare uses the cost written in the hash, so reject hashes above the server cap before hashing
+    const match = /^\$2[aby]\$(\d{2})\$[./A-Za-z0-9]{53}$/.exec(params.hash);
+    if (!match || Number(match[1]) > BCRYPT_COST) {
+      throw new BadRequestException("Unsupported hash");
+    }
+
     const valid = await bcrypt.compare(params.text, params.hash);
     return { valid };
   }
 
-  // AES encryption
-  @api({ httpMethod: "POST" })
-  async encrypt(params: EncryptParams): Promise<{
+  // AES-256-GCM encryption (with integrity check)
+  // The user guard only checks sign-in; in production, limit these APIs to data the caller owns
+  @api({ httpMethod: "POST", guards: ["user"] })
+  async encrypt(params: { plaintext: string }): Promise<{
     ciphertext: string;
     iv: string;
+    tag: string;
   }> {
-    const algorithm = "aes-256-cbc";
-    const key = crypto.scryptSync(params.secret, "salt", 32);
-    const iv = crypto.randomBytes(16);
-
-    const cipher = crypto.createCipheriv(algorithm, key, iv);
-
-    let encrypted = cipher.update(params.plaintext, "utf8", "hex");
-    encrypted += cipher.final("hex");
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", getEncryptionKey(), iv);
+    const ciphertext = Buffer.concat([cipher.update(params.plaintext, "utf8"), cipher.final()]);
 
     return {
-      ciphertext: encrypted,
-      iv: iv.toString("hex"),
+      ciphertext: ciphertext.toString("base64"),
+      iv: iv.toString("base64"),
+      tag: cipher.getAuthTag().toString("base64"),
     };
   }
 
-  // AES decryption
-  @api({ httpMethod: "POST" })
-  async decrypt(
-    params: DecryptParams & {
-      iv: string;
-    },
-  ): Promise<{ plaintext: string }> {
-    const algorithm = "aes-256-cbc";
-    const key = crypto.scryptSync(params.secret, "salt", 32);
-    const iv = Buffer.from(params.iv, "hex");
+  // AES-256-GCM decryption
+  @api({ httpMethod: "POST", guards: ["user"] })
+  async decrypt(params: { ciphertext: string; iv: string; tag: string }): Promise<{
+    plaintext: string;
+  }> {
+    const key = getEncryptionKey();
 
-    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    try {
+      const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(params.iv, "base64"), {
+        authTagLength: 16,
+      });
+      decipher.setAuthTag(Buffer.from(params.tag, "base64"));
+      const plaintext = Buffer.concat([
+        decipher.update(Buffer.from(params.ciphertext, "base64")),
+        decipher.final(),
+      ]);
 
-    let decrypted = decipher.update(params.ciphertext, "hex", "utf8");
-    decrypted += decipher.final("utf8");
-
-    return { plaintext: decrypted };
+      return { plaintext: plaintext.toString("utf8") };
+    } catch {
+      // Return the same error whatever failed (tag mismatch, bad length, ...)
+      throw new BadRequestException("Unable to decrypt");
+    }
   }
 
   // JWT token verification (simple version)
-  @api({ httpMethod: "POST" })
-  async verifyToken(params: { token: string; secret: string }): Promise<{
+  @api({ httpMethod: "POST", guards: ["user"] })
+  async verifyToken(params: { token: string }): Promise<{
     valid: boolean;
     payload?: any;
     error?: string;
   }> {
     try {
-      const jwt = require("jsonwebtoken");
-      const payload = jwt.verify(params.token, params.secret);
+      // Verify only with the server secret and the allowed algorithm
+      const payload = jwt.verify(params.token, process.env.JWT_SECRET ?? "", {
+        algorithms: ["HS256"],
+      });
 
       return {
         valid: true,
@@ -471,7 +486,7 @@ export const WeatherFrameInstance = new WeatherFrame();
 
 ```typescript
 // payment.frame.ts
-import { BaseFrameClass, api } from "sonamu";
+import { BadRequestException, BaseFrameClass, NotFoundException, Sonamu, api } from "sonamu";
 import axios from "axios";
 
 class PaymentFrame extends BaseFrameClass {
@@ -480,22 +495,30 @@ class PaymentFrame extends BaseFrameClass {
   private stripeApiKey = process.env.STRIPE_SECRET_KEY || "";
   private stripeBaseUrl = "https://api.stripe.com/v1";
 
-  @api({ httpMethod: "POST" })
-  async createPaymentIntent(params: {
-    amount: number; // in cents
-    currency: string;
-    customerId?: string;
-  }): Promise<{
+  @api({ httpMethod: "POST", guards: ["user"] })
+  async createPaymentIntent(params: { orderId: number }): Promise<{
     clientSecret: string;
     paymentIntentId: string;
   }> {
+    const { user } = Sonamu.getContext();
+
+    // The server sets the amount and currency from the signed-in user's order, not from client input
+    const order = await this.getPuri("r")
+      .table("orders")
+      .where("id", params.orderId)
+      .where("user_id", user!.id)
+      .select({ amount: "amount", currency: "currency" })
+      .first();
+    if (!order) {
+      throw new NotFoundException("Order not found");
+    }
+
     try {
       const response = await axios.post(
         `${this.stripeBaseUrl}/payment_intents`,
         new URLSearchParams({
-          amount: params.amount.toString(),
-          currency: params.currency,
-          ...(params.customerId && { customer: params.customerId }),
+          amount: String(order.amount), // in cents
+          currency: order.currency,
         }),
         {
           headers: {
@@ -514,16 +537,22 @@ class PaymentFrame extends BaseFrameClass {
     }
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", guards: ["user"] })
   async verifyPayment(params: { paymentIntentId: string }): Promise<{
     status: string;
     amount: number;
     currency: string;
     paid: boolean;
   }> {
+    // A format check does not prove ownership; in production, confirm the intent is linked to the signed-in user's order stored on the server
+    // The ID goes into a path called with the server secret key, so allow only the Stripe ID format (blocks path manipulation)
+    if (!/^pi_[A-Za-z0-9]+$/.test(params.paymentIntentId)) {
+      throw new BadRequestException("Invalid payment ID");
+    }
+
     try {
       const response = await axios.get(
-        `${this.stripeBaseUrl}/payment_intents/${params.paymentIntentId}`,
+        `${this.stripeBaseUrl}/payment_intents/${encodeURIComponent(params.paymentIntentId)}`,
         {
           headers: {
             Authorization: `Bearer ${this.stripeApiKey}`,
@@ -592,7 +621,7 @@ interface DashboardStats {
 class AdminStatsFrame extends BaseFrameClass {
   frameName = "AdminStats";
 
-  @api({ httpMethod: "GET" })
+  @api({ httpMethod: "GET", guards: ["admin"] })
   async dashboard(): Promise<DashboardStats> {
     const rdb = this.getPuri("r");
 
@@ -726,13 +755,85 @@ export const AdminStatsFrameInstance = new AdminStatsFrame();
 ```typescript
 // validation.frame.ts
 import { BaseFrameClass, api } from "sonamu";
-import dns from "dns/promises";
+import axios from "axios";
+import dns from "dns";
+import http from "http";
+import https from "https";
+import net from "net";
+
+// IPv4 ranges that are not publicly routable (private, loopback, link-local/cloud metadata, CGNAT, multicast, ...)
+const NON_PUBLIC_IPV4 = new net.BlockList();
+for (const [address, prefix] of [
+  ["0.0.0.0", 8],
+  ["10.0.0.0", 8],
+  ["100.64.0.0", 10],
+  ["127.0.0.0", 8],
+  ["169.254.0.0", 16],
+  ["172.16.0.0", 12],
+  ["192.0.0.0", 24],
+  ["192.0.2.0", 24],
+  ["192.168.0.0", 16],
+  ["198.18.0.0", 15],
+  ["198.51.100.0", 24],
+  ["203.0.113.0", 24],
+  ["224.0.0.0", 3],
+] as const) {
+  NON_PUBLIC_IPV4.addSubnet(address, prefix, "ipv4");
+}
+
+// For IPv6, allow only global unicast (2000::/3) minus its documentation and 6to4 ranges
+// (::1, fc00::/7, fe80::/10, IPv4-mapped ::ffff:0:0/96, and so on are all rejected)
+const GLOBAL_IPV6 = new net.BlockList();
+GLOBAL_IPV6.addSubnet("2000::", 3, "ipv6");
+const NON_PUBLIC_IPV6 = new net.BlockList();
+NON_PUBLIC_IPV6.addSubnet("2001:db8::", 32, "ipv6");
+NON_PUBLIC_IPV6.addSubnet("2002::", 16, "ipv6");
+
+function isPublicAddress(address: string): boolean {
+  if (net.isIPv4(address)) {
+    return !NON_PUBLIC_IPV4.check(address, "ipv4");
+  }
+  if (net.isIPv6(address)) {
+    return GLOBAL_IPV6.check(address, "ipv6") && !NON_PUBLIC_IPV6.check(address, "ipv6");
+  }
+  return false;
+}
+
+// Check the DNS result right before the socket opens. The connection uses the checked address,
+// so DNS rebinding (changing the answer after the check) does not work either.
+const publicOnlyLookup: net.LookupFunction = (hostname, options, callback) => {
+  dns.lookup(hostname, { ...options, all: true }, (error, addresses) => {
+    if (error) {
+      callback(error, "");
+      return;
+    }
+    if (addresses.length === 0 || !addresses.every((a) => isPublicAddress(a.address))) {
+      callback(new Error(`Host resolves to an internal address: ${hostname}`), "");
+      return;
+    }
+    if (options.all) {
+      callback(null, addresses);
+    } else {
+      callback(null, addresses[0].address, addresses[0].family);
+    }
+  });
+};
+
+// axios instance used only for user-supplied URLs
+const publicOnlyHttp = axios.create({
+  httpAgent: new http.Agent({ lookup: publicOnlyLookup }),
+  httpsAgent: new https.Agent({ lookup: publicOnlyLookup }),
+  proxy: false, // A proxy would make the lookup check apply only to the proxy address
+  maxRedirects: 0, // Redirect targets (including IP literals) cannot be re-checked, so do not follow them
+  maxContentLength: 1024 * 1024, // Cap the response body at 1 MiB
+  timeout: 5000,
+});
 
 class ValidationFrame extends BaseFrameClass {
   frameName = "Validation";
 
   // Email validation
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", guards: ["user"] })
   async validateEmail(params: { email: string; checkDns?: boolean }): Promise<{
     valid: boolean;
     format: boolean;
@@ -758,7 +859,7 @@ class ValidationFrame extends BaseFrameClass {
 
     if (params.checkDns) {
       try {
-        await dns.resolveMx(domain);
+        await dns.promises.resolveMx(domain);
       } catch (error) {
         domainValid = false;
       }
@@ -773,7 +874,7 @@ class ValidationFrame extends BaseFrameClass {
   }
 
   // URL validation
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", guards: ["user"] })
   async validateUrl(params: { url: string; checkReachable?: boolean }): Promise<{
     valid: boolean;
     format: boolean;
@@ -802,15 +903,23 @@ class ValidationFrame extends BaseFrameClass {
       };
     }
 
+    // Hosts written as IP addresses skip the DNS lookup, so check them here
+    const host = urlObj.hostname.replace(/^\[(.*)\]$/, "$1");
+    if (net.isIP(host) !== 0 && !isPublicAddress(host)) {
+      return {
+        valid: false,
+        format: true,
+        message: "Internal addresses are not allowed",
+      };
+    }
+
     // Check reachability
     let reachable: boolean | undefined;
     let statusCode: number | undefined;
 
     if (params.checkReachable) {
       try {
-        const axios = require("axios");
-        const response = await axios.head(params.url, {
-          timeout: 5000,
+        const response = await publicOnlyHttp.head(urlObj.href, {
           validateStatus: () => true, // Allow all status codes
         });
 
