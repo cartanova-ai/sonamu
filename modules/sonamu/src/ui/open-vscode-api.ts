@@ -9,6 +9,7 @@ import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { BadRequestException } from "../exceptions/so-exceptions";
 import { forwardAsyncErrors } from "./async-route";
+import { requireSameOriginUIRequest } from "./ui-request-guard";
 
 /**
  * openVscode가 받은 absPath를 앱 루트 아래에 실제로 있는 파일의 경로로 확정합니다.
@@ -38,15 +39,16 @@ function resolveOpenVscodeAbsPath(absPath: string): string {
 
 /** 엔티티 파일이나 지정한 경로를 VS Code로 여는 Sonamu UI 도구 API를 등록합니다. */
 export async function registerOpenVscodeApi(server: FastifyInstance) {
-  server.get<{
-    Querystring: {
+  // 프로세스를 실행하는 라우트는 동일 출처 JSON POST만 받습니다.
+  server.post<{
+    Body: {
       entityId?: string;
       preset?: "types" | "entity.json" | "generated";
       absPath?: string;
     };
-  }>("/api/tools/openVscode", (request) =>
+  }>("/api/tools/openVscode", { onRequest: requireSameOriginUIRequest }, (request) =>
     forwardAsyncErrors(async () => {
-      const { entityId, preset, absPath } = request.query;
+      const { entityId, preset, absPath } = request.body;
 
       const targetPath = (() => {
         if (entityId && preset) {

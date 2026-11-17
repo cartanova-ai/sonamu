@@ -75,6 +75,10 @@ Named types inside an inline object parameter, such as `params: { data: UserSave
 
 The Sonamu UI API `tools/openVscode` now opens an `absPath` only if it is an existing file under the app root (the parent directory of the API directory). Paths outside the app root, symlinks pointing outside it, directories, and missing files are rejected with 400. The file-open buttons in the UI keep working; only scripts that used this API to open files elsewhere need changes.
 
+### Editor-launch APIs accept only JSON POST
+
+Call `tools/openVscode` and `tools/openEditor` with POST and a JSON body instead of GET query parameters. These two, `cdd/openSource`, and `cdd/editContent` reject requests with 403 when `Content-Type: application/json` or the `X-Sonamu-UI: 1` header is missing, or when the request comes from another origin. The bundled UI already calls them this way, so only scripts that call them directly need changes.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

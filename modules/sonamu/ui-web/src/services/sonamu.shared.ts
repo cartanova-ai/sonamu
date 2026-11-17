@@ -15,6 +15,8 @@ export async function fetch<T = unknown>(options: AxiosRequestConfig): Promise<T
     const res = await axios<T>({
       baseURL,
       ...options,
+      // 서버는 이 헤더가 있는 동일 출처 요청만 프로세스 실행 API로 받습니다.
+      headers: { "X-Sonamu-UI": "1", ...options.headers },
     });
     return res.data;
   } catch (e: unknown) {

@@ -585,9 +585,9 @@ export namespace SonamuUIService {
         },
   ): Promise<void> {
     return fetch({
-      method: "GET",
+      method: "POST",
       url: `/sonamu-ui/api/tools/openVscode`,
-      params,
+      data: params,
     });
   }
 
@@ -596,9 +596,9 @@ export namespace SonamuUIService {
     absPath: string;
   }): Promise<void> {
     return fetch({
-      method: "GET",
+      method: "POST",
       url: `/sonamu-ui/api/tools/openEditor`,
-      params,
+      data: params,
     });
   }
 

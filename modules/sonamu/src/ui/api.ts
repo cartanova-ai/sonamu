@@ -52,6 +52,7 @@ import {
 } from "./cdd-service";
 import { registerMigrationsApi } from "./migrations-api";
 import { registerOpenVscodeApi } from "./open-vscode-api";
+import { requireSameOriginUIRequest } from "./ui-request-guard";
 
 interface EntityTemplateInput {
   entityId: string;
@@ -97,25 +98,25 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
 
       await registerOpenVscodeApi(server);
 
-      server.get<{
-        Querystring: {
+      server.post<{
+        Body: {
           editor: "vscode" | "cursor" | "zed";
           absPath: string;
         };
-      }>("/api/tools/openEditor", (request) =>
+      }>("/api/tools/openEditor", { onRequest: requireSameOriginUIRequest }, (request) =>
         forwardAsyncErrors(async () => {
           const commands = {
             vscode: "code",
             cursor: "cursor",
             zed: "zed",
           } as const;
-          const command = commands[request.query.editor];
+          const command = commands[request.body.editor];
           if (command === undefined) {
             throw new BadRequestException(SD("error.badRequest"));
           }
 
           // 셸을 거치지 않아 파일 경로가 명령으로 해석되지 않도록 합니다.
-          execFileSync(command, [request.query.absPath]);
+          execFileSync(command, [request.body.absPath]);
         }),
       );
 
@@ -1333,19 +1334,25 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         }),
       );
 
-      server.post<{ Body: { filePath: string } }>("/api/cdd/editContent", (request) =>
-        forwardAsyncErrors(async () => {
-          const { filePath } = request.body;
-          return editContent(filePath);
-        }),
+      server.post<{ Body: { filePath: string } }>(
+        "/api/cdd/editContent",
+        { onRequest: requireSameOriginUIRequest },
+        (request) =>
+          forwardAsyncErrors(async () => {
+            const { filePath } = request.body;
+            return editContent(filePath);
+          }),
       );
 
-      server.post<{ Body: { filePath: string } }>("/api/cdd/openSource", (request) =>
-        forwardAsyncErrors(async () => {
-          const { filePath } = request.body;
-          openSourceFile(filePath);
-          return { success: true };
-        }),
+      server.post<{ Body: { filePath: string } }>(
+        "/api/cdd/openSource",
+        { onRequest: requireSameOriginUIRequest },
+        (request) =>
+          forwardAsyncErrors(async () => {
+            const { filePath } = request.body;
+            openSourceFile(filePath);
+            return { success: true };
+          }),
       );
 
       // CDD Rules API

@@ -53,6 +53,7 @@ pnpm dev
 
 Sonamu UI는 로컬 개발 서버(`development`·`test` 환경)에서만 열리며, 다른 웹페이지가 개발자 PC의 UI API를 호출하지 못하도록 요청을 검사합니다.
 
+- 에디터를 실행하는 `tools/openVscode`, `tools/openEditor`, `cdd/openSource`, `cdd/editContent`는 `Content-Type: application/json`과 `X-Sonamu-UI: 1` 헤더를 붙인 같은 출처의 POST 요청만 받고, 나머지는 403으로 거부합니다.
 - `tools/openVscode`에 `absPath`를 넘기면 앱 루트(API 디렉토리의 상위 디렉토리) 아래에 실제로 있는 파일만 엽니다. 앱 루트 밖 경로와 그곳을 가리키는 심볼릭 링크, 디렉토리, 없는 파일은 400으로 거부합니다.
 
 ## 인터페이스 구조

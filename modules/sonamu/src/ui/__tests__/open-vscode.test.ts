@@ -25,7 +25,7 @@ function isAbsolutePath(value: string): value is AbsolutePath {
   return value.startsWith("/");
 }
 
-describe("GET /sonamu-ui/api/tools/openVscode", () => {
+describe("POST /sonamu-ui/api/tools/openVscode", () => {
   const originalState = Sonamu.captureTestingSnapshot();
   const originalPath = process.env.PATH;
   let tempRoot: string;
@@ -72,10 +72,12 @@ describe("GET /sonamu-ui/api/tools/openVscode", () => {
   });
 
   async function openVscode(absPath: string) {
+    // 동일 출처 가드를 통과하는 Sonamu UI 요청 형식(JSON + X-Sonamu-UI)으로 보냅니다.
     return server.inject({
-      method: "GET",
+      method: "POST",
       url: "/sonamu-ui/api/tools/openVscode",
-      query: { absPath },
+      headers: { "content-type": "application/json", "x-sonamu-ui": "1" },
+      payload: JSON.stringify({ absPath }),
     });
   }
 

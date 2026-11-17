@@ -75,6 +75,10 @@ API 파라미터 타입의 `null`, `undefined`, `void`, `true`, `false`는 이�
 
 Sonamu UI API `tools/openVscode`는 이제 `absPath`로 앱 루트(API 디렉토리의 상위 디렉토리) 아래에 실제로 있는 파일만 엽니다. 앱 루트 밖 경로와 그곳을 가리키는 심볼릭 링크, 디렉토리, 없는 파일은 400으로 거부합니다. UI의 파일 열기 버튼은 그대로 동작하므로, 이 API로 다른 위치의 파일을 열던 스크립트만 고치면 됩니다.
 
+### 에디터 실행 API는 JSON POST만 받음
+
+`tools/openVscode`와 `tools/openEditor`는 GET 쿼리 대신 JSON 본문의 POST로 호출해야 합니다. 이 둘과 `cdd/openSource`, `cdd/editContent`는 `Content-Type: application/json`과 `X-Sonamu-UI: 1` 헤더가 없거나 다른 출처에서 온 요청을 403으로 거부합니다. 번들된 UI는 이미 이렇게 호출하므로 직접 호출하던 스크립트만 바꾸면 됩니다.
+
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만
