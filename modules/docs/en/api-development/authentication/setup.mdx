@@ -183,15 +183,19 @@ export default {
             }
             break;
 
-          case "query":
-            // Allow all users
-            break;
+          default:
+            // Reject keys without implemented checks (query, custom keys, etc.)
+            throw new Error("Request not allowed");
         }
       },
     },
   },
 } satisfies SonamuConfig;
 ```
+
+<Note>
+  In a new project created with `create-sonamu`, `guardHandler` denies by default. `user` rejects a signed-out request with `UnauthorizedException` (401); `admin` rejects a signed-out user or a `role` other than `"admin"` with the project's `ForbiddenException` (403, `src/exceptions/forbidden-exception.ts`); `query` and custom keys are rejected with 403 until you add their checks. Throwing a plain `Error`, as in the example above, does not produce a 401 or 403 response.
+</Note>
 
 ## Social Login Setup
 

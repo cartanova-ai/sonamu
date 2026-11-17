@@ -8,14 +8,29 @@ import {
   defineConfig,
   isSoException,
   passkey,
+  Sonamu,
   sonamuAuditLog,
   twoFactor,
+  UnauthorizedException,
 } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
+import { type LocalizedString } from "sonamu/dict";
 import { drivers } from "sonamu/storage";
+
+import { ForbiddenException } from "./exceptions/forbidden-exception";
 
 const host = "localhost";
 const port = 10280;
+
+// 설정 파일은 사전(sd.generated) 생성 전에도 로드되므로 가드 거부 메시지는 고정 문자열로 둠
+const GUARD_MESSAGES = {
+  // SAFETY: 사전 키가 아닌 고정 메시지에 LocalizedString 브랜드만 붙인다.
+  loginRequired: "로그인이 필요합니다" as LocalizedString,
+  // SAFETY: 사전 키가 아닌 고정 메시지에 LocalizedString 브랜드만 붙인다.
+  adminRequired: "관리자 권한이 필요합니다" as LocalizedString,
+  // SAFETY: 사전 키가 아닌 고정 메시지에 LocalizedString 브랜드만 붙인다.
+  unhandledGuard: "허용되지 않은 요청입니다" as LocalizedString,
+};
 
 export default defineConfig({
   projectName: "Miomock",
@@ -187,7 +202,7 @@ export default defineConfig({
           body: request.body,
         };
       },
-      // 가드는 예외를 던지거나 false를 반환하면 요청을 막음. 통과 조건을 만족하지 않으면 모두 예외로 거부함(fail-closed)
+      // 가드는 예외를 던져야만 요청을 막으므로, 통과 조건을 만족하지 않으면 모두 예외로 거부함(fail-closed)
       guardHandler: (guard, _request, _api) => {
         const { user } = Sonamu.getContext();
 
@@ -286,7 +301,7 @@ export default defineConfig({
       },
       onError: (error, _request, reply) => {
         console.error(error);
-        // 가드의 UnauthorizedException(401)처럼 Sonamu 예외는 자신의 상태 코드로 응답한다
+        // 가드의 401/403처럼 Sonamu 예외는 자신의 상태 코드로 응답한다
         reply.status(isSoException(error) ? error.statusCode : 500).send({
           name: error.name,
           message: error.message,

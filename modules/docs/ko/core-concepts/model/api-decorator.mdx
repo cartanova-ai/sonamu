@@ -321,13 +321,19 @@ Guard 로직은 `sonamu.config.ts`의 `guardHandler`에서 정의합니다.
 
 ```typescript title="sonamu.config.ts"
 export default {
-  guardHandler: (guard, request, api) => {
-    if (guard === "user" && !request.user) {
-      throw new UnauthorizedException("로그인이 필요합니다");
-    }
-    if (guard === "admin" && request.user?.role !== "admin") {
-      throw new UnauthorizedException("관리자 권한이 필요합니다");
-    }
+  server: {
+    apiConfig: {
+      guardHandler: (guard, request, api) => {
+        const { user } = Sonamu.getContext();
+        if (guard === "user" && !user) {
+          throw new UnauthorizedException("로그인이 필요합니다");
+        }
+        // role은 auth의 user.additionalFields로 선언한 필드
+        if (guard === "admin" && (!user || !("role" in user) || user.role !== "admin")) {
+          throw new UnauthorizedException("관리자 권한이 필요합니다");
+        }
+      },
+    },
   },
 };
 ```

@@ -182,15 +182,19 @@ export default {
             }
             break;
 
-          case "query":
-            // 모든 사용자 허용
-            break;
+          default:
+            // 판정 로직을 구현하지 않은 키(query, 커스텀 키 등)는 거부
+            throw new Error("허용되지 않은 요청입니다");
         }
       },
     },
   },
 } satisfies SonamuConfig;
 ```
+
+<Note>
+  `create-sonamu`로 만든 새 프로젝트의 `guardHandler`는 기본 거부 방식입니다. `user`는 로그인하지 않았으면 `UnauthorizedException`(401)으로, `admin`은 로그인하지 않았거나 `role`이 `"admin"`이 아니면 프로젝트의 `ForbiddenException`(403, `src/exceptions/forbidden-exception.ts`)으로 거부하고, `query`와 커스텀 키는 판정 로직을 넣기 전까지 403으로 거부합니다. 위 예제처럼 일반 `Error`를 던지면 401·403으로 응답되지 않습니다.
+</Note>
 
 ## 소셜 로그인 설정
 

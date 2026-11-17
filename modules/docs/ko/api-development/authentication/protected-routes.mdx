@@ -278,7 +278,9 @@ export default {
     route: {
       prefix: "/api",
     },
-    server: {
+  },
+  server: {
+    plugins: {
       custom: (server) => {
         // Fastify 서버 커스터마이징
       },
@@ -333,6 +335,10 @@ export default {
   },
 };
 ```
+
+<Note>
+  일반 `Error`에는 상태 코드가 없어 401·403으로 응답되지 않습니다. 실제 구현에서는 인증 실패에 `UnauthorizedException`(401)을, 권한 거부에 [커스텀 예외](/ko/api-reference/exceptions/custom-errors)로 정의한 `ForbiddenException`(403)을 던지세요. 이 페이지의 다른 예제도 마찬가지입니다.
+</Note>
 
 ### 커스텀 Guard 타입 추가
 

@@ -62,7 +62,8 @@ export default {
   server: {
     apiConfig: {
       guardHandler: (guard, request, api) => {
-        if (guard === "user" && !request.user) {
+        const { user } = Sonamu.getContext();
+        if (guard === "user" && !user) {
           throw new UnauthorizedException("Login required");
         }
         return true;
@@ -340,11 +341,12 @@ private isIPAllowed(ip: string, allowedRanges: string[]): boolean {
 ```typescript
 // sonamu.config.ts
 guardHandler: (guard, request, api) => {
-  if (guard === "user" && !request.user) {
+  const { user } = Sonamu.getContext();
+  if (guard === "user" && !user) {
     throw new UnauthorizedException("Login required");
   }
 
-  if (guard === "admin" && !request.user?.isAdmin) {
+  if (guard === "admin" && (!user || !("role" in user) || user.role !== "admin")) {
     throw new UnauthorizedException("Admin permission required");
   }
 

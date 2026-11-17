@@ -368,7 +368,7 @@ export default defineConfig({
         // Get user from Context
         const { user } = Sonamu.getContext();
 
-        if (guard === "auth" && !user) {
+        if (guard === "user" && !user) {
           throw new UnauthorizedException("Login required");
         }
 
@@ -811,7 +811,7 @@ export default defineConfig({
       guardHandler: async (guard) => {
         const { user } = Sonamu.getContext();
 
-        if (guard === "auth" && !user) {
+        if (guard === "user" && !user) {
           throw new UnauthorizedException("Login required");
         }
       },

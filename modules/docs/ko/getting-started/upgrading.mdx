@@ -43,6 +43,10 @@ GET·HEAD·OPTIONS가 아닌 API에 `guards`가 없으면 서버 시작 시 경�
 
 이제 `guardHandler`가 반환한 Promise를 기다린 뒤 다음 가드와 API를 실행하고, `false`를 반환하면 `UnauthorizedException`(401)으로 거부합니다. 이전에는 async 가드의 거부와 `false` 반환이 무시되어 요청이 그대로 실행됐으므로, 이 동작에 기대던 가드가 있다면 이제 요청을 막는지 확인하세요. `lifecycle.onError`를 직접 구현했다면 `isSoException(error) ? error.statusCode : 500`처럼 Sonamu 예외의 상태 코드를 유지하세요. 모두 500으로 응답하면 가드 거부도 500이 됩니다.
 
+### 새 프로젝트의 기본 거부 `guardHandler`
+
+`create-sonamu`로 만드는 새 프로젝트의 `guardHandler`는 기본 거부 방식입니다. `user`는 로그인하지 않았으면 401, `admin`은 로그인하지 않았거나 관리자가 아니면 403, 판정 로직이 없는 `query`와 커스텀 키는 403으로 거부합니다. 기존 프로젝트의 설정은 바뀌지 않으므로, 예전 템플릿처럼 로그만 남기거나 처리하지 않는 키를 그냥 통과시키는 `guardHandler`는 같은 방식으로 바꾸세요. 403에는 프로젝트에서 정의한 `ForbiddenException`을 쓰세요. 자세한 내용은 [인증 설정](/ko/api-development/authentication/setup)을 참고하세요.
+
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

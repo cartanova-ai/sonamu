@@ -278,7 +278,9 @@ export default {
     route: {
       prefix: "/api",
     },
-    server: {
+  },
+  server: {
+    plugins: {
       custom: (server) => {
         // Fastify server customization
       },
@@ -333,6 +335,10 @@ export default {
   },
 };
 ```
+
+<Note>
+  A plain `Error` has no status code, so it does not produce a 401 or 403 response. In real code, throw `UnauthorizedException` (401) for authentication failures and a `ForbiddenException` (403) defined as a [custom exception](/en/api-reference/exceptions/custom-errors) for permission denials. The same applies to the other examples on this page.
+</Note>
 
 ### Adding Custom Guard Types
 

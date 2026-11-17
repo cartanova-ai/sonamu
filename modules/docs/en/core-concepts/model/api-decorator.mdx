@@ -321,13 +321,19 @@ Guard logic is defined in `guardHandler` in `sonamu.config.ts`.
 
 ```typescript title="sonamu.config.ts"
 export default {
-  guardHandler: (guard, request, api) => {
-    if (guard === "user" && !request.user) {
-      throw new UnauthorizedException("Login required");
-    }
-    if (guard === "admin" && request.user?.role !== "admin") {
-      throw new UnauthorizedException("Admin permission required");
-    }
+  server: {
+    apiConfig: {
+      guardHandler: (guard, request, api) => {
+        const { user } = Sonamu.getContext();
+        if (guard === "user" && !user) {
+          throw new UnauthorizedException("Login required");
+        }
+        // role is a field declared in auth user.additionalFields
+        if (guard === "admin" && (!user || !("role" in user) || user.role !== "admin")) {
+          throw new UnauthorizedException("Admin permission required");
+        }
+      },
+    },
   },
 };
 ```

@@ -364,7 +364,7 @@ export default defineConfig({
         // Context에서 user 가져오기
         const { user } = Sonamu.getContext();
 
-        if (guard === "auth" && !user) {
+        if (guard === "user" && !user) {
           throw new UnauthorizedException("로그인이 필요합니다");
         }
 
@@ -806,7 +806,7 @@ export default defineConfig({
       guardHandler: async (guard) => {
         const { user } = Sonamu.getContext();
 
-        if (guard === "auth" && !user) {
+        if (guard === "user" && !user) {
           throw new UnauthorizedException("로그인이 필요합니다");
         }
       },

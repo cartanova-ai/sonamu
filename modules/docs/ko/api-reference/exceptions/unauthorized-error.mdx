@@ -62,7 +62,8 @@ export default {
   server: {
     apiConfig: {
       guardHandler: (guard, request, api) => {
-        if (guard === "user" && !request.user) {
+        const { user } = Sonamu.getContext();
+        if (guard === "user" && !user) {
           throw new UnauthorizedException("로그인이 필요합니다");
         }
         return true;
@@ -340,11 +341,12 @@ private isIPAllowed(ip: string, allowedRanges: string[]): boolean {
 ```typescript
 // sonamu.config.ts
 guardHandler: (guard, request, api) => {
-  if (guard === "user" && !request.user) {
+  const { user } = Sonamu.getContext();
+  if (guard === "user" && !user) {
     throw new UnauthorizedException("로그인이 필요합니다");
   }
 
-  if (guard === "admin" && !request.user?.isAdmin) {
+  if (guard === "admin" && (!user || !("role" in user) || user.role !== "admin")) {
     throw new UnauthorizedException("관리자 권한이 필요합니다");
   }
 

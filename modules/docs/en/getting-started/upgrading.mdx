@@ -43,6 +43,10 @@ The server now prints a startup warning for APIs without `guards` whose method i
 
 Sonamu now waits for the Promise returned by `guardHandler` before running the next guard or the API, and a `false` return rejects the request with `UnauthorizedException` (401). Previously, async guard rejections and `false` returns were ignored and the request ran anyway, so check any guard that relied on that: it now blocks requests. If you implement `lifecycle.onError` yourself, keep the status code of Sonamu exceptions, as in `isSoException(error) ? error.statusCode : 500`. Sending everything as 500 turns guard rejections into 500 too.
 
+### Default-deny `guardHandler` in new projects
+
+New projects created with `create-sonamu` ship a `guardHandler` that denies by default: `user` returns 401 when signed out, `admin` returns 403 when signed out or not an admin, and `query` or custom keys without checks return 403. Existing project configs are not changed, so if your `guardHandler` only logs, like the old template, or lets unhandled keys through, rewrite it the same way. Use a `ForbiddenException` defined in your project for 403. See [Authentication setup](/en/api-development/authentication/setup) for details.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only
