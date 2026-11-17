@@ -413,6 +413,10 @@ async getCounter() {
 }
 ```
 
+### 5. Check Authorization Outside the Cache
+
+On a cache hit, the `@cache` method body does not run, so login and ownership checks inside it are skipped. Check authorization in an `@api` method or guard that runs on every call, then call the cached internal method. `scope: "user"` and user IDs in keys only separate cache entries; they do not authorize the caller. See [@cache Decorator](/en/advanced-features/caching/cache-decorator) for an example.
+
 ## Performance Optimization
 
 ### Multi-tier Caching

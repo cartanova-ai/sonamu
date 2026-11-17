@@ -646,28 +646,51 @@ class ReportModelClass extends BaseModelClass {
 
 #### 예제 4: 사용자별 캐싱
 
+`@cache`가 붙은 메서드는 캐시 적중 시 **본문을 실행하지 않습니다**. 그래서 권한 검사는 캐시 밖, 매 요청마다 실행되는 메서드에 두고, 검사를 통과한 뒤에만 캐시된 내부 메서드를 호출해야 합니다.
+
 ```typescript
 class DashboardModelClass extends BaseModelClass {
-  // ✅ 사용자 ID를 키에 포함
-  @cache({
-    key: (userId: number) => `dashboard:user:${userId}`,
-    ttl: "10m",
-  })
-  async getUserDashboard(userId: number) {
-    const context = Sonamu.getContext();
+  // ❌ 문제: 권한 검사가 캐시된 메서드 안에 있음
+  @cache({ ttl: "10m" })
+  @api({ httpMethod: "GET" })
+  async getUserDashboardUnsafe(userId: string) {
+    const { user } = Sonamu.getContext();
+    // 캐시 적중 시 이 검사는 실행되지 않음
+    // → 소유자가 한 번 조회한 뒤 TTL 동안 다른 사용자(비로그인 포함)도 같은 결과를 받음
+    if (user?.id !== userId) {
+      throw new UnauthorizedException("권한이 없습니다");
+    }
+    // ...
+  }
 
-    // 권한 체크
-    if (context.user?.id !== userId && context.user?.role !== "admin") {
+  // ✅ 해결책: 권한 검사(캐시 밖) → 캐시된 내부 메서드 호출
+  @api({ httpMethod: "GET" })
+  async getUserDashboard(userId: string) {
+    const { user } = Sonamu.getContext();
+
+    // 권한 검사: 캐시와 상관없이 매 요청마다 실행됨
+    // (관리자 허용 같은 추가 조건도 여기에서 검사)
+    if (!user || user.id !== userId) {
       throw new UnauthorizedException("권한이 없습니다");
     }
 
+    return this.getUserDashboardCached(userId);
+  }
+
+  // 캐시 키에 대상 사용자 ID를 넣어 사용자별로 캐시 항목을 분리
+  // 키: "dashboard:user:<userId>"
+  // @api를 붙이지 않아 HTTP로 직접 노출되지 않음. 다른 내부 코드에서도 권한 검사를 거친 뒤에만 호출
+  @cache({ key: "dashboard:user", ttl: "10m" })
+  async getUserDashboardCached(userId: string) {
+    // 결과는 userId 인자로만 정해져야 함 (getContext()의 요청자 정보로 결과를 바꾸지 않음)
     // 대시보드 데이터 조회
     // ...
   }
 
-  // ✅ Context 기반 캐싱
+  // ✅ Context 기반 캐싱 (내 대시보드)
   @cache({
     key: () => {
+      // 키 함수는 캐시 조회 전에 매 호출마다 실행되므로 요청자 ID가 키에 들어감
       const context = Sonamu.getContext();
       return `dashboard:user:${context.user?.id || "guest"}`;
     },
@@ -675,10 +698,21 @@ class DashboardModelClass extends BaseModelClass {
   })
   async getMyDashboard() {
     // Context에서 자동으로 사용자 ID 가져옴
+    // 본문은 캐시 미스일 때만 실행되므로 권한 검사를 여기에 두지 않음
     // ...
   }
 }
 ```
+
+<Warning>
+  **권한 검사는 `@cache` 메서드 밖에서 하세요**: `@cache`는 캐시 적중 시 메서드 본문을 실행하지 않고
+  저장된 값을 돌려줍니다. 본문 안의 권한 검사, 소유권 확인, 로그인 확인은 캐시 미스일 때만 실행되므로,
+  다른 사용자가 채운 캐시를 권한 없는 사용자가 그대로 받을 수 있습니다.
+
+  - 권한 검사는 매 요청 실행되는 메서드(또는 guard)에서 하고, 통과한 뒤에 `@cache` 메서드를 호출하세요.
+  - 캐시 키에 사용자 ID를 넣는 것은 캐시 항목을 나눌 뿐 권한을 검사하지 않습니다.
+  - 결과가 `Sonamu.getContext().user` 같은 요청자 정보에 따라 달라지면 그 사용자 범위(ID)를 반드시 캐시 키에 넣으세요.
+</Warning>
 
 #### 예제 5: 순환 참조 객체
 
@@ -807,7 +841,7 @@ class AnalyticsModelClass extends BaseModelClass {
 | **객체 파라미터** | 주요 필드만 추출 또는 정규화 | 키 길이 최소화, 일관성 |
 | **배열 파라미터** | 정렬 후 join                 | 순서 무관하게 동일 키  |
 | **날짜 파라미터** | ISO 문자열 (날짜만)          | 시간대 문제 방지       |
-| **사용자별 캐싱** | `user:${userId}` 포함        | 권한 분리              |
+| **사용자별 캐싱** | `user:${userId}` 포함        | 캐시 항목 분리 (권한 검사는 캐시 밖에서) |
 | **순환 참조**     | ID만 사용                    | 직렬화 오류 방지       |
 | **큰 객체**       | 해시 또는 주요 속성만        | 키 길이 제한           |
 | **다중 필터**     | 정렬된 key=value 쌍          | 필터 순서 무관         |
@@ -982,6 +1016,28 @@ class UserModelClass extends BaseModelClass {
 
    find("John", 30)  // 키: "Model.find:["John",30]"
    find(30, "John")  // 키: "Model.find:[30,"John"]" (다른 키!)
+   ```
+
+6. **권한 검사는 캐시 밖에서**: 캐시 적중 시 메서드 본문이 실행되지 않으므로 본문 안의 권한 검사도 건너뜀
+
+   ```typescript
+   // ❌ 잘못된 예: 캐시 적중 시 권한 검사가 실행되지 않음
+   @cache({ key: "order", ttl: "10m" })
+   async getOrder(orderId: string) {
+     await assertOrderOwner(orderId); // 캐시 미스일 때만 실행됨
+     return this.findById("A", orderId);
+   }
+
+   // ✅ 올바른 예: 권한 검사 후 캐시된 메서드 호출
+   async getOrder(orderId: string) {
+     await assertOrderOwner(orderId); // 매 호출마다 실행됨
+     return this.getOrderCached(orderId);
+   }
+
+   @cache({ key: "order", ttl: "10m" })
+   async getOrderCached(orderId: string) {
+     return this.findById("A", orderId);
+   }
    ```
 
 </Warning>

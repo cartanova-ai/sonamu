@@ -83,6 +83,12 @@ function serializeArgs(args: unknown[]): string {
  *
  * 메서드의 결과를 캐싱합니다.
  *
+ * - 자동 키·문자열 키에서 Context 인자는 키에서 빠지고, 대신 그 Context의 사용자(`user:<id>` 또는 `anon`)가 키에 들어갑니다.
+ *   함수 키는 Context 인자를 직접 다룹니다.
+ * - `scope: "user"`이면 요청 안에서 호출될 때 요청 사용자가 키에 들어갑니다. 기본값은 `"global"`입니다.
+ * - 직렬화할 수 없는 인자는 CacheKeySerializationError로 거부합니다.
+ * - 캐시 적중 시 메서드 본문을 실행하지 않으므로, 권한 검사는 캐시 밖(호출하는 메서드나 가드)에서 하세요.
+ *
  * @example
  * class UserModelClass extends BaseModelClass<...> {
  *   @cache({ ttl: '10m', tags: ['user'] })

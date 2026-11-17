@@ -642,6 +642,31 @@ class UserModelClass extends BaseModelClass {
    find(30, "John")  // Key: "Model.find:[30,"John"]" (different key!)
    ```
 
+6. **Check Authorization Outside the Cache**: On a cache hit the method body does not run, so authorization checks inside the body are skipped
+
+   ```typescript
+   // ❌ Bad example: the authorization check is skipped on a cache hit
+   @cache({ key: "order", ttl: "10m" })
+   async getOrder(orderId: string) {
+     await assertOrderOwner(orderId); // Runs only on a cache miss
+     return this.findById("A", orderId);
+   }
+
+   // ✅ Good example: check authorization, then call the cached method
+   async getOrder(orderId: string) {
+     await assertOrderOwner(orderId); // Runs on every call
+     return this.getOrderCached(orderId);
+   }
+
+   @cache({ key: "order", ttl: "10m" })
+   async getOrderCached(orderId: string) {
+     return this.findById("A", orderId);
+   }
+   ```
+
+   Putting a user ID in the cache key only separates cache entries; it does not authorize the caller.
+   If the result depends on the requester (for example `Sonamu.getContext().user`), include that user's ID in the cache key.
+
 </Warning>
 
 ## Next Steps

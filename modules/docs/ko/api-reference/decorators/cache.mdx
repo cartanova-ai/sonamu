@@ -411,6 +411,10 @@ async getCounter() {
 }
 ```
 
+### 5. 권한 검사는 캐시 밖에서
+
+캐시 적중 시 `@cache` 메서드 본문은 실행되지 않으므로 본문 안의 로그인·소유권 검사도 건너뜁니다. 권한은 호출마다 실행되는 `@api` 메서드나 가드에서 검사한 뒤 캐시된 내부 메서드를 호출하세요. `scope: "user"`나 키에 넣은 사용자 ID는 캐시 항목을 나눌 뿐 권한을 검사하지 않습니다. 예시는 [@cache 데코레이터](/ko/advanced-features/caching/cache-decorator)를 참고하세요.
+
 ## 성능 최적화
 
 ### Multi-tier 캐싱

@@ -1,7 +1,9 @@
-import { cache, Sonamu } from "sonamu";
+import { cache, type Context, Sonamu, UnauthorizedException } from "sonamu";
 import { setCacheManagerRef } from "sonamu/cache";
-import { bootstrap } from "sonamu/test";
+import { bootstrap, runWithMockContext } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
+
+import { SD } from "../i18n/sd.generated";
 
 bootstrap(vi);
 
@@ -508,6 +510,99 @@ describe("cache", () => {
       // 캐시 미스 (무효화됨)
       await cachedFn(1);
       expect(originalFn).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // 문서(cache-decorator.mdx 예제 4)의 권한 검사 위치 안내를 실제 데코레이터로 확인
+  describe("@cache와 권한 검사 위치", () => {
+    const createUser = (id: string): NonNullable<Context["user"]> => ({
+      id,
+      email: `${id}@cache-test.local`,
+      emailVerified: true,
+      name: id,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+      role: "normal",
+      created_at: new Date(0),
+    });
+
+    let baseContext: Context;
+    beforeAll(async () => {
+      await runWithMockContext(async () => {
+        baseContext = Sonamu.getContext();
+      });
+    });
+
+    // 주어진 사용자(null이면 비로그인)의 요청 컨텍스트에서 fn을 실행
+    const runAs = <T>(user: Context["user"], fn: () => Promise<T>): Promise<T> =>
+      Sonamu.asyncLocalStorage.run({ context: { ...baseContext, user } }, fn);
+
+    // 문서 예제의 권한 검사: 요청자가 대상 사용자 본인일 때만 허용
+    const assertOwner = (userId: string) => {
+      const { user } = Sonamu.getContext();
+      if (!user || user.id !== userId) {
+        throw new UnauthorizedException(SD("error.forbidden"));
+      }
+    };
+
+    test("권한 검사를 캐시된 메서드 안에 두면 캐시 적중 시 검사가 실행되지 않음 (잘못된 패턴)", async () => {
+      const target = createMockTarget("Dashboard");
+      const loadDashboard = vi.fn((userId: string) => Promise.resolve({ owner: userId }));
+      const unsafeDashboard = applyCache(
+        target,
+        "getUserDashboardUnsafe",
+        async (userId: string) => {
+          assertOwner(userId);
+          return loadDashboard(userId);
+        },
+        { key: "dashboard:unsafe", ttl: "10s" },
+      );
+
+      // 소유자가 조회해 캐시를 채움
+      expect(await runAs(createUser("owner"), () => unsafeDashboard("owner"))).toEqual({
+        owner: "owner",
+      });
+
+      // 캐시 적중이면 본문의 권한 검사를 건너뛰어 다른 사용자와 비로그인 요청도 소유자 데이터를 받음
+      expect(await runAs(createUser("attacker"), () => unsafeDashboard("owner"))).toEqual({
+        owner: "owner",
+      });
+      expect(await runAs(null, () => unsafeDashboard("owner"))).toEqual({ owner: "owner" });
+      expect(loadDashboard).toHaveBeenCalledTimes(1);
+    });
+
+    test("권한 검사 후 캐시된 메서드를 호출하면 캐시 적중 시에도 권한 없는 요청을 거부함 (문서 패턴)", async () => {
+      const target = createMockTarget("Dashboard");
+      const loadDashboard = vi.fn((userId: string) => Promise.resolve({ owner: userId }));
+      const getUserDashboardCached = applyCache(target, "getUserDashboardCached", loadDashboard, {
+        key: "dashboard:user",
+        ttl: "10s",
+      });
+      // 캐시 밖에서 매 호출마다 권한을 검사한 뒤 캐시된 메서드를 호출
+      const getUserDashboard = async (userId: string) => {
+        assertOwner(userId);
+        return getUserDashboardCached(userId);
+      };
+
+      // 소유자 조회로 캐시를 채움 (키: dashboard:user:<userId>)
+      expect(await runAs(createUser("owner"), () => getUserDashboard("owner"))).toEqual({
+        owner: "owner",
+      });
+      expect(await Sonamu.cache.has({ key: "dashboard:user:owner" })).toBe(true);
+
+      // 캐시가 채워진 뒤에도 다른 사용자와 비로그인 요청은 거부됨
+      await expect(
+        runAs(createUser("attacker"), () => getUserDashboard("owner")),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(runAs(null, () => getUserDashboard("owner"))).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+
+      // 소유자의 재조회는 캐시에서 반환됨
+      expect(await runAs(createUser("owner"), () => getUserDashboard("owner"))).toEqual({
+        owner: "owner",
+      });
+      expect(loadDashboard).toHaveBeenCalledTimes(1);
     });
   });
 });
