@@ -6,9 +6,16 @@ import { type ViteDevServer } from "vite";
 import { applyCacheHeaders } from "../cache-control/cache-control";
 import { type CacheControlRequest } from "../cache-control/types";
 import { type SonamuFastifyConfig } from "../types/types";
+import { SSRPreloadValidationException } from "./errors";
 import { HMR_OPT_OUT_SCRIPT, isHmrDisabledByQuery } from "./hmr-opt-out";
 import { type PreloadedData, type SSRRoute } from "./types";
 
+/**
+ * 등록된 SSR 라우트의 preload를 실행하고 HTML을 렌더링합니다.
+ * preload의 가드 거부나 모델 오류는 해당 preload만 건너뜁니다.
+ *
+ * @throws {SSRPreloadValidationException} 가드를 통과한 preload 인자가 API 입력 검증에 실패한 경우(400)
+ */
 export async function renderSSR(
   url: string,
   route: SSRRoute,
@@ -41,6 +48,11 @@ export async function renderSSR(
         data: result,
       });
     } catch (e) {
+      // 잘못된 preload 인자는 HTTP 호출처럼 400으로 응답한다.
+      // guard 거부·모델 오류는 이 preload만 건너뛰어 데이터를 싣지 않고, 클라이언트가 API로 다시 조회한다.
+      if (e instanceof SSRPreloadValidationException) {
+        throw e;
+      }
       console.error(`Failed to preload ${modelName}.${methodName}:`, e);
     }
   }

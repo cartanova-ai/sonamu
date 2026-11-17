@@ -63,38 +63,6 @@ GET·HEAD·OPTIONS가 아닌 API에 `guards`가 없으면 서버 시작 시 경�
 
 SSR preload도 이제 API의 `guards`와 HTTP 입력 검증을 거칩니다. 가드가 거부하면 해당 preload를 건너뛰므로, 가드를 통과하지 못한 방문자의 HTML에는 그 데이터가 미리 채워지지 않습니다. 가드를 통과한 preload의 인자가 검증에 실패하면(예: `parseInt`가 만든 `NaN`) 페이지 전체가 400으로 응답하므로, URL 파라미터를 변환해 넘기는 preload를 점검하세요. 자세한 내용은 [데이터 프리로딩](/ko/frontend-integration/ssr/preloading-data)을 참고하세요.
 
-### 인라인 객체 파라미터 안의 명명 타입 검증
-
-`params: { data: UserSaveParams }`처럼 인라인 객체 파라미터 안에 둔 명명 타입은 이전에는 검증 없이 통과했지만, 이제 최상위 파라미터와 같은 Zod 스키마로 검증합니다. 잘못된 값은 400으로 거부되고 스키마에 없는 키는 제거되므로, 이런 파라미터에 스키마 밖의 값을 넣어 보내던 클라이언트와 그 값에 기대던 모델 코드를 점검하세요.
-
-### `null`·`undefined`·불리언 리터럴이 섞인 파라미터 검증
-
-API 파라미터 타입의 `null`, `undefined`, `void`, `true`, `false`는 이전에 아무 값이나 통과시켰고, 이런 멤버가 섞인 union(예: `"asc" | "desc" | null`)도 전체가 검증되지 않았습니다. 이제 각 타입에 맞는 값만 받고 나머지는 400으로 거부합니다. GET 파라미터를 `true | false` union으로 선언했다면 쿼리 문자열이 불리언으로 바뀌지 않아 거부되므로 `boolean`으로 바꾸세요. GET에서 `number`가 섞인 union은 쿼리 문자열을 숫자로 바꾼 뒤 검증하므로 숫자가 아닌 문자열은 거부됩니다.
-
-### `tools/openVscode`의 `absPath` 제한
-
-Sonamu UI API `tools/openVscode`는 이제 `absPath`로 앱 루트(API 디렉토리의 상위 디렉토리) 아래에 실제로 있는 파일만 엽니다. 앱 루트 밖 경로와 그곳을 가리키는 심볼릭 링크, 디렉토리, 없는 파일은 400으로 거부합니다. UI의 파일 열기 버튼은 그대로 동작하므로, 이 API로 다른 위치의 파일을 열던 스크립트만 고치면 됩니다.
-
-### 에디터 실행 API는 JSON POST만 받음
-
-`tools/openVscode`와 `tools/openEditor`는 GET 쿼리 대신 JSON 본문의 POST로 호출해야 합니다. 이 둘과 `cdd/openSource`, `cdd/editContent`는 `Content-Type: application/json`과 `X-Sonamu-UI: 1` 헤더가 없거나 다른 출처에서 온 요청을 403으로 거부합니다. 번들된 UI는 이미 이렇게 호출하므로 직접 호출하던 스크립트만 바꾸면 됩니다.
-
-### Sonamu UI API 접근 토큰과 DevRunner 요청 검사
-
-`/sonamu-ui/api/**`는 이제 서버가 프로세스마다 만드는 접근 토큰을 `X-Sonamu-UI-Token` 헤더로 받아야 하며, 토큰이 없거나 틀리면 401, 다른 출처에서 온 요청이면 403입니다. UI는 `/sonamu-ui` HTML에 든 토큰을 자동으로 보내므로 평소처럼 접속하고, 서버를 재시작한 뒤에는 새로고침하세요. UI API를 직접 호출하던 도구는 그 HTML의 `sonamu-ui-token` meta 태그에서 토큰을 읽어 보내야 합니다. DevRunner(기본 `/__test__`)는 토큰 대신 다른 출처 요청을 403, JSON이 아닌 POST를 415로 거부하며 `sonamu test`는 그대로 동작합니다. 자세한 내용은 [Sonamu UI 시작하기](/ko/tools-and-cli/sonamu-ui/getting-started)를 참고하세요.
-
-### Sonamu UI·DevRunner의 Host 검사
-
-로컬 개발 서버의 Sonamu UI와 DevRunner는 이제 `Host`가 `localhost`, `*.localhost`, IP 주소, `server.listen.host`·`server.baseUrl`의 호스트 이름이 아닌 요청을 403으로 거부합니다. `/etc/hosts` 별칭이나 터널 도메인으로 접속해 왔다면 그 호스트 이름을 `server.listen.host`나 `server.baseUrl`에 지정하세요. 별도의 허용 목록 옵션은 없고, `0.0.0.0` 바인딩으로는 이 검사를 끌 수 없습니다. 앱 API는 검사하지 않습니다.
-
-### Sonamu UI의 DB 대상 제한과 롤백 승인
-
-Sonamu UI는 이제 `development`·`test`·`fixture` 계열 프리셋만 다룹니다. `staging`·`production` 대상의 마이그레이션 적용·롤백과 fixture 조회·가져오기는 400으로 거부되므로 `sonamu migrate` 같은 CLI로 옮기세요. UI에서 다시 허용하는 옵션은 없습니다. Slack 승인 대상인 원격 DB는 UI 롤백에도 승인이 필요하며, 승인은 대상과 최신 batch마다 따로 받습니다. 승인 요청 API를 직접 호출한다면 롤백에는 `action: "rollback"`을 지정하세요(생략하면 `apply`). 자세한 내용은 [프로덕션 승인](/ko/database/migrations/production-approval)을 참고하세요.
-
-### entity.json의 코드 생성 값 검사
-
-생성 코드에 들어가는 entity.json 값을 이제 로드·저장·코드 생성 때 검사합니다. Entity `id`·`parentId`·`table`, prop `name`, enum ID, 관계의 `with`·`relationType`·`joinTable`·`joinColumn`·`fromColumn`은 ASCII 식별자(`^[A-Za-z_$][A-Za-z0-9_$]*$`)여야 하고, prop의 `id`와 subset 키·필드 경로도 비슷한 형식을 따라야 합니다. `length`·`precision`·`scale`·`dimensions`는 문자열이 아닌 숫자, `zodFormat`은 지원하는 값이어야 합니다. 검사에 실패하면 경고만 남기던 이전과 달리 서버 기동과 `sonamu sync`가 멈추고 Sonamu UI 저장은 400으로 거부됩니다. 한글처럼 JavaScript가 허용하는 비ASCII 식별자도 거부하므로 오류 메시지에 나온 값을 고치세요. `title`·`desc`와 enum 값의 키·레이블은 제한하지 않습니다.
-
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

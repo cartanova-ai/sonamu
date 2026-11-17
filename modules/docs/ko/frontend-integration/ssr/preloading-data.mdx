@@ -325,7 +325,14 @@ registerSSR({
 
 ```typescript
 // sonamu/src/ssr/renderer.ts (간략화)
-export async function renderSSR(url: string, route: SSRRoute, params: Record<string, string>) {
+export async function renderSSR(
+  url: string,
+  route: SSRRoute,
+  params: Record<string, string>,
+  request: FastifyRequest,
+  reply: FastifyReply,
+  config: SonamuFastifyConfig,
+) {
   // 1. preload 실행
   const preloadConfig = route.preload ? route.preload(params) : [];
   const preloadedData: PreloadedData[] = [];
@@ -336,14 +343,20 @@ export async function renderSSR(url: string, route: SSRRoute, params: Record<str
       (a) => a.modelName === modelName && a.methodName === methodName,
     );
 
-    // 3. 백엔드 API 직접 호출 (HTTP 없음!)
-    const result = await Sonamu.invokeApiForSSR(api, apiParams);
+    // 3. 백엔드 API 직접 호출 (HTTP 없이, 가드와 입력 검증은 HTTP와 같음)
+    try {
+      const result = await Sonamu.invokeApiForSSR(api, apiParams, config, request, reply);
 
-    // 4. PreloadedData 저장
-    preloadedData.push({
-      queryKey: [...serviceKey, ...apiParams],
-      data: result,
-    });
+      // 4. PreloadedData 저장
+      preloadedData.push({
+        queryKey: [...serviceKey, ...apiParams],
+        data: result,
+      });
+    } catch (e) {
+      // 인자 검증 실패만 다시 던져 400으로 응답하고, 나머지는 이 preload만 건너뜀
+      if (e instanceof SSRPreloadValidationException) throw e;
+      console.error(`Failed to preload ${modelName}.${methodName}:`, e);
+    }
   }
 
   // 5. entry-server.generated.tsx의 render() 호출
@@ -412,7 +425,7 @@ registerSSR({
         },
       ];
     } catch (error) {
-      // 파라미터 파싱 실패 등
+      // preload 배열을 만드는 중 던진 예외만 잡음 (parseInt는 예외 대신 NaN을 반환)
       console.error("Preload error:", error);
       return [];
     }
@@ -426,7 +439,19 @@ registerSSR({
 Failed to preload PostModel.getPost: Post not found
 ```
 
-개별 쿼리 실패는 전체 SSR을 중단시키지 않습니다. 실패한 데이터만 클라이언트에서 다시 로드됩니다.
+개별 쿼리 실패는 전체 SSR을 중단시키지 않습니다. 실패한 데이터만 클라이언트에서 다시 로드됩니다. 단, 아래처럼 API 인자 검증에 실패하면 페이지가 400이 됩니다.
+
+### 가드와 입력 검증
+
+preload도 HTTP 호출과 같은 `guards`와 입력 검증을 거칩니다.
+
+- **가드 거부**: `guardHandler`가 거부하면 해당 preload만 건너뜁니다. 보호된 데이터는 HTML에 실리지 않고, 클라이언트가 API를 호출할 때 다시 가드가 적용됩니다.
+- **잘못된 파라미터**: preload가 만든 인자가 API 파라미터 타입 검증을 통과하지 못하면(예: `parseInt("abc")`의 `NaN`) `sonamu/ssr`의 `SSRPreloadValidationException`이 발생해 SSR 응답 전체가 `400 Bad Request`가 됩니다. 가드가 먼저 실행되므로 가드가 거부한 preload는 인자를 검증하지 않고 건너뜁니다. 모델이 직접 던진 `BadRequestException`은 해당 preload만 건너뜁니다.
+
+<Warning>
+  preload 함수는 URL 파라미터만 받으므로 로그인 여부를 판단할 수 없습니다. 인증이 필요한 데이터는 API에
+  `guards`를 지정해 보호하세요. 가드가 없는 API는 비인증 SSR 요청에서도 그대로 실행됩니다.
+</Warning>
 
 ## 성능 최적화
 
@@ -466,9 +491,9 @@ preload: (params) => {
   // 기본 데이터
   queries.push({ modelName: "PageModel", methodName: "getPage", ... });
 
-  // 인증된 사용자만
-  if (hasAuth(params)) {
-    queries.push({ modelName: "UserModel", methodName: "getProfile", ... });
+  // 댓글 탭을 열었을 때만
+  if (params.tab === "comments") {
+    queries.push({ modelName: "CommentModel", methodName: "getComments", ... });
   }
 
   return queries;
@@ -481,7 +506,8 @@ preload: (params) => {
   **registerSSR 사용 시 주의사항**: 1. **queryKey 정확히 매칭**: 서버와 클라이언트의 queryKey가
   동일해야 함 2. **params 순서 주의**: 백엔드 메서드 파라미터 순서를 정확히 따라야 함 3. **Context
   제외**: params에 Context는 포함하지 않습니다 4. **타입 변환 주의**: `parseInt(params.id)` 등 타입
-  변환 필요 5. **에러는 로그로**: 개별 쿼리 실패가 전체 SSR을 중단시키지 않음
+  변환 필요하며, 검증을 통과하지 못하면 SSR 응답이 400이 됨 5. **에러는 로그로**: 가드 거부나 개별 쿼리
+  실패는 해당 preload만 건너뛰고 전체 SSR을 중단시키지 않음
 </Warning>
 
 ## 다음 단계

@@ -17,7 +17,7 @@ import {
 } from "fastify";
 import mime, { lookup as mimeLookup } from "mime-types";
 import { type WebSocket } from "ws";
-import { type ZodObject } from "zod";
+import { type ZodError, type ZodObject } from "zod";
 
 import { type AuthBaseURLResolution } from "../auth/base-url";
 import { buildBetterAuthOptions } from "../auth/better-auth-options";
@@ -79,6 +79,7 @@ import {
   assertHttpValidatorRegistry,
   createHttpValidator,
   getHttpValidatorRouteKey,
+  type HttpRequestParameters,
   type HttpValidator,
   type HttpValidatorRegistry,
 } from "./http-validator";
@@ -132,6 +133,18 @@ function toApiArgument<Value>(value: Value): ApiArgument {
 
 function toApiArgumentMap<Value extends object>(value: Value): Map<string, ApiArgument> {
   return new Map(Object.entries(value).map(([key, item]) => [key, toApiArgument(item)]));
+}
+
+/**
+ * Zod 검증 오류를 HTTP 400 응답에 쓰는 메시지로 바꿉니다.
+ * HTTP 요청과 SSR preload가 같은 메시지를 내도록 두 경로가 함께 사용합니다.
+ */
+async function humanizeZodErrorMessage(e: ZodError): Promise<LocalizedString> {
+  const { humanizeZodError } = await import("../utils/zod-error");
+  const messages = humanizeZodError(e)
+    .map((issue) => issue.message)
+    .join(" ");
+  return /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ messages as LocalizedString;
 }
 
 function createUnavailableSSE<T extends ZodObject>(_events: T): never {
@@ -1215,17 +1228,10 @@ class SonamuClass {
         } catch (e) {
           const { ZodError } = await import("zod");
           if (e instanceof ZodError) {
-            const { humanizeZodError } = await import("../utils/zod-error");
-            const messages = humanizeZodError(e)
-              .map((issue) => issue.message)
-              .join(" ");
             const { BadRequestException } = await import("../exceptions/so-exceptions");
-            throw new BadRequestException(
-              /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ messages as LocalizedString,
-              {
-                zodError: e,
-              },
-            );
+            throw new BadRequestException(await humanizeZodErrorMessage(e), {
+              zodError: e,
+            });
           } else {
             throw e;
           }
@@ -1820,7 +1826,9 @@ class SonamuClass {
 
   /**
    * SSR용 API 호출 (HTTP 오버헤드 없이 직접 호출)
-   * createApiHandler의 로직을 재사용하되, request 파싱 대신 params 직접 사용
+   * createApiHandler와 같은 guards와 HTTP 검증기를 거친 뒤, request 파싱 대신 preload params를 사용합니다.
+   * guard가 거부하면 그 예외를 그대로 던지고, params가 검증기를 통과하지 못하면
+   * SSRPreloadValidationException(400)을 던집니다.
    */
   async invokeApiForSSR(
     api: ExtendedApi,
@@ -1829,18 +1837,56 @@ class SonamuClass {
     request: FastifyRequest,
     reply: FastifyReply,
   ): Promise<ApiMethodResult> {
+    // HTTP 경로와 같은 검증기(캐시·AOT·JIT 정책 포함)를 사용한다
+    const preparedValidator = this.getOrCreateHttpValidator(
+      api,
+      defaultSonamuHttpValidatorDependencies,
+    );
+    const validator =
+      preparedValidator instanceof Promise ? await preparedValidator : preparedValidator;
     // Context 생성 (기존 메소드 재사용)
     const context = await this.createContext(config, request, reply);
 
     return this.asyncLocalStorage.run({ context }, async () => {
-      // args 생성: Context 파라미터는 주입, 나머지는 params에서 가져오기
+      // SSR 응답에 보호된 데이터가 실리지 않도록 HTTP 호출과 같은 guards를 먼저 실행한다.
+      // guardHandler가 Promise를 돌려주는 경우에도 거부가 무시되지 않도록 await한다.
+      await runGuards({
+        guards: api.options.guards,
+        config,
+        request,
+        api,
+      });
+
+      // preload는 Context를 뺀 위치 인수를 넘기므로, HTTP 요청과 같은 이름 맵으로 바꿔 검증한다
       const { ApiParamType } = await import("../types/types");
+      const namedParams: HttpRequestParameters = {};
       let paramsIndex = 0;
+      for (const param of api.parameters) {
+        if (!ApiParamType.isContext(param.type)) {
+          namedParams[param.name] = params[paramsIndex++];
+        }
+      }
+
+      let parsedParams: Map<string, ApiArgument>;
+      try {
+        parsedParams = toApiArgumentMap(validator.parse(namedParams));
+      } catch (e) {
+        const { ZodError } = await import("zod");
+        if (e instanceof ZodError) {
+          const { SSRPreloadValidationException } = await import("../ssr/errors");
+          throw new SSRPreloadValidationException(await humanizeZodErrorMessage(e), {
+            zodError: e,
+          });
+        }
+        throw e;
+      }
+
+      // args 생성: Context 파라미터는 주입, 나머지는 검증된 값 사용
       const args = api.parameters.map((param) => {
         if (ApiParamType.isContext(param.type)) {
           return context;
         }
-        return params[paramsIndex++];
+        return parsedParams.get(param.name);
       });
 
       // 모델 메서드 호출 (기존 메서드 재사용)

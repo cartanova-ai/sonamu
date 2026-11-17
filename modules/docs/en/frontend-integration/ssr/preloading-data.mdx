@@ -325,7 +325,14 @@ registerSSR({
 
 ```typescript
 // sonamu/src/ssr/renderer.ts (simplified)
-export async function renderSSR(url: string, route: SSRRoute, params: Record<string, string>) {
+export async function renderSSR(
+  url: string,
+  route: SSRRoute,
+  params: Record<string, string>,
+  request: FastifyRequest,
+  reply: FastifyReply,
+  config: SonamuFastifyConfig,
+) {
   // 1. Execute preload
   const preloadConfig = route.preload ? route.preload(params) : [];
   const preloadedData: PreloadedData[] = [];
@@ -336,14 +343,20 @@ export async function renderSSR(url: string, route: SSRRoute, params: Record<str
       (a) => a.modelName === modelName && a.methodName === methodName,
     );
 
-    // 3. Direct backend API call (no HTTP!)
-    const result = await Sonamu.invokeApiForSSR(api, apiParams);
+    // 3. Direct backend API call (no HTTP; same guards and input validation as HTTP)
+    try {
+      const result = await Sonamu.invokeApiForSSR(api, apiParams, config, request, reply);
 
-    // 4. Save PreloadedData
-    preloadedData.push({
-      queryKey: [...serviceKey, ...apiParams],
-      data: result,
-    });
+      // 4. Save PreloadedData
+      preloadedData.push({
+        queryKey: [...serviceKey, ...apiParams],
+        data: result,
+      });
+    } catch (e) {
+      // Rethrow only validation failures (400); skip just this preload otherwise
+      if (e instanceof SSRPreloadValidationException) throw e;
+      console.error(`Failed to preload ${modelName}.${methodName}:`, e);
+    }
   }
 
   // 5. Call entry-server.generated.tsx's render()
@@ -412,7 +425,7 @@ registerSSR({
         },
       ];
     } catch (error) {
-      // Parameter parsing failure etc.
+      // Catches only errors thrown while building the array (parseInt returns NaN instead of throwing)
       console.error("Preload error:", error);
       return [];
     }
@@ -426,7 +439,20 @@ registerSSR({
 Failed to preload PostModel.getPost: Post not found
 ```
 
-Individual query failure doesn't stop the entire SSR. Only failed data is reloaded on client.
+Individual query failure doesn't stop the entire SSR. Only failed data is reloaded on client. API argument validation failures are the exception: they make the page 400, as described below.
+
+### Guards and Input Validation
+
+Preloads go through the same `guards` and input validation as HTTP calls.
+
+- **Guard rejection**: If `guardHandler` rejects, only that preload is skipped. The protected data is not embedded in the HTML, and the guard applies again when the client calls the API.
+- **Invalid parameters**: If the arguments built by preload fail the API parameter validation (for example `NaN` from `parseInt("abc")`), `SSRPreloadValidationException` from `sonamu/ssr` is thrown and the whole SSR response becomes `400 Bad Request`. Guards run first, so a preload rejected by a guard is skipped without validating its arguments. A `BadRequestException` thrown by the model itself only skips that preload.
+
+<Warning>
+  The preload function only receives URL parameters, so it cannot tell whether the user is signed in.
+  Protect data that requires authentication with `guards` on the API. APIs without guards run for
+  unauthenticated SSR requests too.
+</Warning>
 
 ## Performance Optimization
 
@@ -466,9 +492,9 @@ preload: (params) => {
   // Base data
   queries.push({ modelName: "PageModel", methodName: "getPage", ... });
 
-  // Authenticated users only
-  if (hasAuth(params)) {
-    queries.push({ modelName: "UserModel", methodName: "getProfile", ... });
+  // Only when the comments tab is open
+  if (params.tab === "comments") {
+    queries.push({ modelName: "CommentModel", methodName: "getComments", ... });
   }
 
   return queries;
@@ -481,8 +507,9 @@ preload: (params) => {
   **Cautions when using registerSSR**: 1. **Match queryKey exactly**: Server and client queryKey
   must be identical 2. **Careful with params order**: Must follow backend method parameter order
   exactly 3. **Exclude Context**: params doesn't include Context 4. **Type conversion caution**:
-  Type conversion like `parseInt(params.id)` needed 5. **Errors are logged**: Individual query
-  failure doesn't stop entire SSR
+  Type conversion like `parseInt(params.id)` needed, and values that fail validation make the SSR
+  response 400 5. **Errors are logged**: A guard rejection or individual query failure skips only
+  that preload and doesn't stop entire SSR
 </Warning>
 
 ## Next Steps
