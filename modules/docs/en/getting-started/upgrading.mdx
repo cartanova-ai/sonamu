@@ -13,6 +13,68 @@ With auth enabled, the server no longer starts outside test (development, stagin
 
 For users with 2FA enabled, sessions newly issued by `/api/auth/verify-email` (including `autoSignInAfterVerification`) are now removed immediately. The verification or email change still takes effect. If a screen assumes the user is signed in right after verification, send the user to the normal sign-in flow instead.
 
+### `user.additionalFields` now default to `input: false`
+
+`user.additionalFields` entries without `input` are no longer accepted from sign-up (`/api/auth/sign-up/email`) or update (`/api/auth/update-user`) request bodies. If a request includes such a field, sign-up ignores it when the field has a `defaultValue`; otherwise the request fails with 400 `FIELD_NOT_ALLOWED`. Set `input: true` only on fields the client must provide, and never on permission fields such as `role`. See [Authentication setup](/en/api-development/authentication/setup) for details.
+
+### Model scaffolding refused for credential Entities
+
+The CLI and Sonamu UI now refuse to scaffold a Model for the Entities where better-auth stores credentials (`Session`, `Account`, `Verification`, `TwoFactor`, `Passkey`, `Jwks`, `ApiKey`, `SsoProvider`). Upgrading does not touch Models or entity.json subsets you already generated, so clean them up yourself.
+
+- Remove the Model APIs scaffolded for these Entities, or add an admin guard to only the methods you need.
+- Remove secret fields from their subsets (`Session.token`; `access_token`, `refresh_token`, `id_token`, and `password` on `Account`; `Verification.value`; `secret` and `backup_codes` on `TwoFactor`; `Jwks.private_key`; `ApiKey.key`; `oidc_config` and `saml_config` on `SsoProvider`), then run `sonamu sync`.
+
+### Auth baseURL is required in remote environments
+
+With auth enabled in staging or production, the server starts only when `server.auth.baseURL`, a better-auth environment variable such as `BETTER_AUTH_URL`, or an absolute http(s) `server.baseUrl` is set. This keeps password reset and email verification links from being built from the request `Host` header. A config that falls back to a local address, such as `` baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}` ``, passes this check but produces wrong links in deployment, so always set `BETTER_AUTH_URL` when deploying.
+
+### Environment selection when `NODE_ENV` is missing
+
+When the runtime `NODE_ENV` is not set, Sonamu now checks `NODE_ENV` in `.env.local`, then `.env`, and uses a default only if neither has one. For `sonamu build`, `sonamu start`, and servers started with `createServer()`, that default changed from `development` to `production`. `sonamu dev`, tests, and CLI tools still default to `development`.
+
+- Set `NODE_ENV` explicitly for development or staging servers you started without it. Otherwise they use the production settings and DB preset, and fail to start when neither `.env` nor `.env.production` exists.
+- If `.env` or `.env.local` sets `NODE_ENV`, CLI tools such as `sync` and `migrate` use that environment too. For example, with `NODE_ENV=production` in `.env`, `migrate run` targets the production database.
+
+### Startup warning for unguarded state-changing APIs, and `guardKeys`
+
+The server now prints a startup warning for APIs without `guards` whose method is not GET, HEAD, or OPTIONS. Mark intentionally public APIs with `guards: []` and add suitable guards to the rest. If you list the keys your `guardHandler` actually checks in the new `server.apiConfig.guardKeys` option, any other key is rejected with 401 without calling `guardHandler`, and the server does not start while an API uses such a key. Without the option, every key is passed to `guardHandler` as before, so keys the handler does not check are allowed. See [Server configuration](/en/configuration/sonamu-config/server) for details.
+
+### Async guards are awaited and `false` rejects
+
+Sonamu now waits for the Promise returned by `guardHandler` before running the next guard or the API, and a `false` return rejects the request with `UnauthorizedException` (401). Previously, async guard rejections and `false` returns were ignored and the request ran anyway, so check any guard that relied on that: it now blocks requests. If you implement `lifecycle.onError` yourself, keep the status code of Sonamu exceptions, as in `isSoException(error) ? error.statusCode : 500`. Sending everything as 500 turns guard rejections into 500 too.
+
+### Default-deny `guardHandler` in new projects
+
+New projects created with `create-sonamu` ship a `guardHandler` that denies by default: `user` returns 401 when signed out, `admin` returns 403 when signed out or not an admin, and `query` or custom keys without checks return 403. Existing project configs are not changed, so if your `guardHandler` only logs, like the old template, or lets unhandled keys through, rewrite it the same way. Use a `ForbiddenException` defined in your project for 403. See [Authentication setup](/en/api-development/authentication/setup) for details.
+
+### `BaseSaveParams` and the admin guard on scaffolded `save`
+
+`sonamu.generated.ts` now exports `{Entity}BaseSaveParams` for each entity, a save-input schema without `created_at`, generated and searchText columns, and `readonly: true` props (the FK for relations), regenerated on every sync. Newly scaffolded `SaveParams` builds on it, and the scaffolded `save` API gets `guards: ["admin"]`. Existing `*.types.ts` files and models are not changed, so migrate them yourself.
+
+- Set `readonly: true` on permission, verification-state, and secret props. It is not added to existing better-auth entity.json files either.
+- Change `SaveParams` to `{Entity}BaseSaveParams.partial({ id: true })` and run `sonamu sync`. Where save inputs or forms used `created_at`, use the value from the fetched row instead.
+- Review the `guards` on scaffolded `save` and other write APIs.
+
+### `sonamuFilter` accepts only `toFilter` props
+
+`sonamuFilter` now filters only props marked `"toFilter": true` in entity.json. To filter a relation FK (`{relation_name}_id`), mark the relation prop. Fields that are not allowed, and invalid operators or values, are rejected with `BadRequestException` (400) before the query runs, including when server code calls `findMany`. Mark only the fields you filter on with `toFilter: true` and run `sonamu sync`. Never mark secret fields such as passwords or tokens. See [sonamuFilter](/en/api-reference/base-model/sonamu-filter) for details.
+
+### Guards and input validation for SSR preloads
+
+SSR preloads now go through the API's `guards` and HTTP input validation. A guard rejection skips that preload, so the data is not prefilled in the HTML for visitors who do not pass the guard. If a preload that passed its guards has arguments that fail validation (for example `NaN` from `parseInt`), the whole page responds with 400, so review preloads that convert URL parameters. See [Data preloading](/en/frontend-integration/ssr/preloading-data) for details.
+
+### Named types inside inline object parameters are validated
+
+Named types inside an inline object parameter, such as `params: { data: UserSaveParams }`, used to pass without validation. They are now validated with the same Zod schemas as top-level parameters: invalid values are rejected with 400 and keys missing from the schema are stripped. Review clients that send values outside the schema in such parameters, and model code that relied on those values.
+
+### Parameters with `null`, `undefined`, or boolean literals are validated
+
+`null`, `undefined`, `void`, `true`, and `false` in API parameter types used to accept any value, and a union containing one of them (for example `"asc" | "desc" | null`) was not validated at all. Each now accepts only matching values, and anything else is rejected with 400. If a GET parameter is declared as a `true | false` union, its query string is not converted to a boolean and is rejected, so declare it as `boolean`. In GET, a union containing `number` converts the query string to a number before validation, so non-numeric strings are rejected.
+
+### `tools/openVscode` restricts `absPath`
+
+The Sonamu UI API `tools/openVscode` now opens an `absPath` only if it is an existing file under the app root (the parent directory of the API directory). Paths outside the app root, symlinks pointing outside it, directories, and missing files are rejected with 400. The file-open buttons in the UI keep working; only scripts that used this API to open files elsewhere need changes.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

@@ -1,4 +1,4 @@
-import { execFileSync, execSync } from "child_process";
+import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
 
@@ -51,6 +51,7 @@ import {
   readRule,
 } from "./cdd-service";
 import { registerMigrationsApi } from "./migrations-api";
+import { registerOpenVscodeApi } from "./open-vscode-api";
 
 interface EntityTemplateInput {
   entityId: string;
@@ -94,44 +95,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         return Sonamu.config;
       });
 
-      server.get<{
-        Querystring: {
-          entityId?: string;
-          preset?: "types" | "entity.json" | "generated";
-          absPath?: string;
-        };
-      }>("/api/tools/openVscode", (request) =>
-        forwardAsyncErrors(async () => {
-          const { entityId, preset, absPath } = request.query;
-
-          const targetPath = (() => {
-            if (entityId && preset) {
-              const entity = EntityManager.get(entityId);
-              const { names } = entity;
-
-              const { apiRootPath } = Sonamu;
-              const filename = (() => {
-                switch (preset) {
-                  case "types":
-                    return `${names.fs}.types.ts`;
-                  case "entity.json":
-                    return `${names.fs}.entity.json`;
-                  case "generated":
-                    return `${names.fs}.generated.ts`;
-                }
-                return undefined;
-              })();
-              return `${apiRootPath}/src/application/${entity.names.parentFs}/${filename}`;
-            } else {
-              if (!absPath) {
-                throw new BadRequestException(SD("sonamu.error.presetOrAbsPathRequired"));
-              }
-              return absPath;
-            }
-          })();
-          execSync(`code ${targetPath}`);
-        }),
-      );
+      await registerOpenVscodeApi(server);
 
       server.get<{
         Querystring: {

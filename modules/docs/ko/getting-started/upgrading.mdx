@@ -13,6 +13,68 @@ auth를 쓰는 서버는 test를 뺀 모든 환경(development, staging, product
 
 2FA를 켠 사용자에게 `/api/auth/verify-email`이 새로 발급한 세션(`autoSignInAfterVerification` 포함)은 이제 바로 폐기됩니다. 이메일 인증·변경은 그대로 반영됩니다. 인증 직후 로그인된 상태를 가정하는 화면이 있다면 일반 로그인으로 보내세요.
 
+### `user.additionalFields`의 `input` 기본값은 `false`
+
+`input`을 지정하지 않은 `user.additionalFields` 필드는 이제 가입(`/api/auth/sign-up/email`)·수정(`/api/auth/update-user`) 요청 바디로 받지 않습니다. 이런 필드를 요청에 넣으면 가입 시 `defaultValue`가 있을 때는 무시되고, 그 밖에는 400 `FIELD_NOT_ALLOWED`로 실패합니다. 클라이언트가 직접 넣어야 하는 필드에만 `input: true`를 명시하고, `role` 같은 권한 필드에는 쓰지 마세요. 자세한 내용은 [인증 설정](/ko/api-development/authentication/setup)을 참고하세요.
+
+### 인증 정보 Entity의 Model 스캐폴드 거부
+
+better-auth가 인증 정보를 저장하는 Entity(`Session`, `Account`, `Verification`, `TwoFactor`, `Passkey`, `Jwks`, `ApiKey`, `SsoProvider`)는 CLI와 Sonamu UI 모두 Model 스캐폴드를 거부합니다. 업그레이드해도 이미 만든 Model과 entity.json의 subset은 그대로이므로 직접 정리하세요.
+
+- 스캐폴드로 만든 이 Entity의 Model API는 지우거나, 꼭 필요한 메서드에만 관리자 가드를 거세요.
+- subset에서 비밀 필드(`Session.token`, `Account`의 `access_token`·`refresh_token`·`id_token`·`password`, `Verification.value`, `TwoFactor`의 `secret`·`backup_codes`, `Jwks.private_key`, `ApiKey.key`, `SsoProvider`의 `oidc_config`·`saml_config`)를 빼고 `sonamu sync`를 실행하세요.
+
+### 원격 환경의 인증 baseURL 필수
+
+staging·production에서 auth를 쓰면 `server.auth.baseURL`, `BETTER_AUTH_URL` 같은 better-auth 환경 변수, 절대 http(s) URL인 `server.baseUrl` 중 하나가 있어야 서버가 기동합니다. 비밀번호 재설정·이메일 인증 링크를 요청의 `Host` 헤더로 만들지 않기 위해서입니다. `` baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}` ``처럼 로컬 주소를 fallback으로 둔 설정은 이 검사를 통과하지만 배포 환경에서 잘못된 링크를 만드니, 배포할 때 `BETTER_AUTH_URL`을 꼭 설정하세요.
+
+### `NODE_ENV`가 없을 때의 환경 판정
+
+런타임 `NODE_ENV`가 없으면 이제 `.env.local`, `.env`에 적힌 `NODE_ENV`를 먼저 보고, 그것도 없을 때만 기본값을 씁니다. `sonamu build`·`sonamu start`와 `createServer()`로 띄운 서버의 기본값은 `development`에서 `production`으로 바뀌었습니다. `sonamu dev`와 테스트, CLI 도구는 계속 `development`입니다.
+
+- `NODE_ENV` 없이 띄우던 개발·staging 서버는 `NODE_ENV`를 명시하세요. 그대로 두면 production 설정과 DB preset을 쓰며, `.env`와 `.env.production`이 모두 없으면 기동하지 않습니다.
+- `.env`나 `.env.local`에 `NODE_ENV`를 적어 두었다면 `sync`·`migrate` 같은 CLI 도구도 그 환경을 씁니다. 예를 들어 `.env`에 `NODE_ENV=production`이 있으면 `migrate run`은 production DB를 대상으로 합니다.
+
+### 가드 없는 상태 변경 API 경고와 `guardKeys`
+
+GET·HEAD·OPTIONS가 아닌 API에 `guards`가 없으면 서버 시작 시 경고가 출력됩니다. 의도한 공개 API에는 `guards: []`를 지정하고, 나머지에는 알맞은 가드를 거세요. 새 옵션 `server.apiConfig.guardKeys`에 `guardHandler`가 실제로 검사하는 키를 적으면 목록 밖 키는 `guardHandler`를 거치지 않고 401로 거부되며, 그런 키를 쓰는 API가 있으면 서버가 시작되지 않습니다. 설정하지 않으면 기존처럼 모든 키를 `guardHandler`에 넘기므로 핸들러가 검사하지 않는 키는 통과합니다. 자세한 내용은 [서버 설정](/ko/configuration/sonamu-config/server)을 참고하세요.
+
+### 비동기 가드를 기다리고 `false` 반환을 거부로 처리
+
+이제 `guardHandler`가 반환한 Promise를 기다린 뒤 다음 가드와 API를 실행하고, `false`를 반환하면 `UnauthorizedException`(401)으로 거부합니다. 이전에는 async 가드의 거부와 `false` 반환이 무시되어 요청이 그대로 실행됐으므로, 이 동작에 기대던 가드가 있다면 이제 요청을 막는지 확인하세요. `lifecycle.onError`를 직접 구현했다면 `isSoException(error) ? error.statusCode : 500`처럼 Sonamu 예외의 상태 코드를 유지하세요. 모두 500으로 응답하면 가드 거부도 500이 됩니다.
+
+### 새 프로젝트의 기본 거부 `guardHandler`
+
+`create-sonamu`로 만드는 새 프로젝트의 `guardHandler`는 기본 거부 방식입니다. `user`는 로그인하지 않았으면 401, `admin`은 로그인하지 않았거나 관리자가 아니면 403, 판정 로직이 없는 `query`와 커스텀 키는 403으로 거부합니다. 기존 프로젝트의 설정은 바뀌지 않으므로, 예전 템플릿처럼 로그만 남기거나 처리하지 않는 키를 그냥 통과시키는 `guardHandler`는 같은 방식으로 바꾸세요. 403에는 프로젝트에서 정의한 `ForbiddenException`을 쓰세요. 자세한 내용은 [인증 설정](/ko/api-development/authentication/setup)을 참고하세요.
+
+### `BaseSaveParams`와 스캐폴드 `save`의 관리자 가드
+
+`sonamu.generated.ts`에 엔티티별 `{Entity}BaseSaveParams`가 생깁니다. `created_at`, generated·searchText 컬럼, `readonly: true` prop(관계는 FK)을 뺀 저장 입력 스키마로, sync마다 다시 만들어집니다. 새로 스캐폴드한 `SaveParams`는 이를 기반으로 하고, `save` API에는 `guards: ["admin"]`이 붙습니다. 기존 프로젝트의 `*.types.ts`와 모델은 바뀌지 않으므로 직접 옮기세요.
+
+- 권한·인증 상태·비밀값 prop에 `readonly: true`를 지정하세요. 기존 better-auth 엔티티의 entity.json에도 자동으로 추가되지 않습니다.
+- `SaveParams`를 `{Entity}BaseSaveParams.partial({ id: true })`로 바꾸고 `sonamu sync`를 실행하세요. 저장 입력이나 폼에서 `created_at`을 쓰던 곳은 조회한 행의 값을 쓰게 고치세요.
+- 스캐폴드한 `save`를 비롯한 쓰기 API의 `guards`를 확인하세요.
+
+### `sonamuFilter`는 `toFilter` prop만 허용
+
+`sonamuFilter`는 이제 entity.json에서 `"toFilter": true`로 지정한 prop만 필터링합니다. 관계의 FK(`{관계명}_id`)는 관계 prop에 지정해야 하고, 허용하지 않은 필드나 잘못된 연산자·값은 쿼리 전에 `BadRequestException`(400)으로 거부됩니다. 서버 코드에서 `findMany`를 호출할 때도 같습니다. 필터에 쓰는 필드에만 `toFilter: true`를 지정하고 `sonamu sync`를 실행하세요. 비밀번호·토큰 같은 비밀 필드는 지정하지 마세요. 자세한 내용은 [sonamuFilter](/ko/api-reference/base-model/sonamu-filter)를 참고하세요.
+
+### SSR preload에 가드와 입력 검증 적용
+
+SSR preload도 이제 API의 `guards`와 HTTP 입력 검증을 거칩니다. 가드가 거부하면 해당 preload를 건너뛰므로, 가드를 통과하지 못한 방문자의 HTML에는 그 데이터가 미리 채워지지 않습니다. 가드를 통과한 preload의 인자가 검증에 실패하면(예: `parseInt`가 만든 `NaN`) 페이지 전체가 400으로 응답하므로, URL 파라미터를 변환해 넘기는 preload를 점검하세요. 자세한 내용은 [데이터 프리로딩](/ko/frontend-integration/ssr/preloading-data)을 참고하세요.
+
+### 인라인 객체 파라미터 안의 명명 타입 검증
+
+`params: { data: UserSaveParams }`처럼 인라인 객체 파라미터 안에 둔 명명 타입은 이전에는 검증 없이 통과했지만, 이제 최상위 파라미터와 같은 Zod 스키마로 검증합니다. 잘못된 값은 400으로 거부되고 스키마에 없는 키는 제거되므로, 이런 파라미터에 스키마 밖의 값을 넣어 보내던 클라이언트와 그 값에 기대던 모델 코드를 점검하세요.
+
+### `null`·`undefined`·불리언 리터럴이 섞인 파라미터 검증
+
+API 파라미터 타입의 `null`, `undefined`, `void`, `true`, `false`는 이전에 아무 값이나 통과시켰고, 이런 멤버가 섞인 union(예: `"asc" | "desc" | null`)도 전체가 검증되지 않았습니다. 이제 각 타입에 맞는 값만 받고 나머지는 400으로 거부합니다. GET 파라미터를 `true | false` union으로 선언했다면 쿼리 문자열이 불리언으로 바뀌지 않아 거부되므로 `boolean`으로 바꾸세요. GET에서 `number`가 섞인 union은 쿼리 문자열을 숫자로 바꾼 뒤 검증하므로 숫자가 아닌 문자열은 거부됩니다.
+
+### `tools/openVscode`의 `absPath` 제한
+
+Sonamu UI API `tools/openVscode`는 이제 `absPath`로 앱 루트(API 디렉토리의 상위 디렉토리) 아래에 실제로 있는 파일만 엽니다. 앱 루트 밖 경로와 그곳을 가리키는 심볼릭 링크, 디렉토리, 없는 파일은 400으로 거부합니다. UI의 파일 열기 버튼은 그대로 동작하므로, 이 API로 다른 위치의 파일을 열던 스크립트만 고치면 됩니다.
+
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만
