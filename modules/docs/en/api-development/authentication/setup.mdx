@@ -263,7 +263,27 @@ Add `role` field to User entity:
 }
 ```
 
-### 3. Check Role in guardHandler
+### 3. Declare role in additionalFields
+
+Declare `role` in `user.additionalFields` so the session `user` carries it. `input: false` stops request bodies of `/api/auth/sign-up/email` and `/api/auth/update-user` from setting the value. A `role` sent at sign-up is stored as `defaultValue`; a `role` sent to update-user returns 400 `FIELD_NOT_ALLOWED`.
+
+```typescript
+// sonamu.config.ts
+auth: {
+  emailAndPassword: { enabled: true },
+  user: {
+    additionalFields: {
+      role: { type: "string", sonamuType: "UserRole", input: false, defaultValue: "user" },
+    },
+  },
+},
+```
+
+<Warning>
+  Sonamu also sets `input: false` on `additionalFields` that omit `input`. Set `input: true` only on fields that clients must send in sign-up or update requests. Never use `input: true` on fields that grant permissions, such as `role`; change roles through an admin-only API.
+</Warning>
+
+### 4. Check Role in guardHandler
 
 ```typescript
 guardHandler: (guard, request, api) => {
@@ -328,7 +348,7 @@ Things to verify after setting up authentication:
 - [ ] Configure `server.auth` in `sonamu.config.ts`
 - [ ] Implement `guardHandler`
 - [ ] Verify user/session access in Context
-- [ ] Add role to User entity if role-based auth is needed
+- [ ] Add role to User entity if role-based auth is needed, and declare it in additionalFields with `input: false`
 
 ## Next Steps
 

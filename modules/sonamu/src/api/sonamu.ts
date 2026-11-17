@@ -19,7 +19,7 @@ import mime, { lookup as mimeLookup } from "mime-types";
 import { type WebSocket } from "ws";
 import { type ZodObject } from "zod";
 
-import { BASE_FIELD_MAPPINGS } from "../auth/better-auth-entities";
+import { buildBetterAuthOptions } from "../auth/better-auth-options";
 import { createBetterAuthRequest } from "../auth/better-auth-request";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
 import { type CacheControlConfig, type CacheControlRequest } from "../cache-control/types";
@@ -64,7 +64,7 @@ import {
   isStringValue,
   isSymbolValue,
 } from "../utils/runtime-value";
-import { convertFastifyHeadersToStandard, merge } from "../utils/utils";
+import { convertFastifyHeadersToStandard } from "../utils/utils";
 import {
   normalizeZodCompilerPolicy,
   type SonamuConfig,
@@ -424,8 +424,8 @@ class SonamuClass {
     // BetterAuth 초기화
     const authConfig = this.config.server.auth;
     if (authConfig) {
-      // 사용자 설정과 기본값을 merge
-      const mergedFieldMappings = merge(BASE_FIELD_MAPPINGS, authConfig);
+      // 사용자 설정과 기본값을 merge하고 additionalFields의 클라이언트 입력을 기본 차단
+      const mergedFieldMappings = buildBetterAuthOptions(authConfig);
 
       // better-auth 인스턴스 생성
       const { betterAuth } = await import("better-auth");

@@ -143,9 +143,10 @@ export default defineConfig({
     //       name: "username",
     //       emailVerified: "is_verified",
     //     },
+    //     // input: false인 필드는 가입·수정 요청 바디로 바꿀 수 없습니다 (Sonamu는 input 미지정도 false로 둡니다).
     //     additionalFields: {
-    //       role: { type: "string", sonamuType: "UserRole" },
-    //       created_at: { type: "date" },
+    //       role: { type: "string", sonamuType: "UserRole", input: false, defaultValue: "user" },
+    //       created_at: { type: "date", input: false },
     //     },
     //   },
     // },

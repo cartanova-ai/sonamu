@@ -226,6 +226,7 @@ export type SonamuServerOptions = {
    * better-auth 인증 설정
    * Sonamu 확장으로 additionalFields에 sonamuType 속성 추가 가능
    * BetterAuth의 DBFieldAttribute를 확장할 수 없어서 우선 user만 적용
+   * user.additionalFields에서 input을 생략하면 false로 취급하므로 가입·수정 요청 바디로 받을 필드만 input: true로 지정
    */
   auth?: BetterAuthOptions & {
     user?: {
