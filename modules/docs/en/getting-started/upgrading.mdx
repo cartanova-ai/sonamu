@@ -24,6 +24,10 @@ The CLI and Sonamu UI now refuse to scaffold a Model for the Entities where bett
 - Remove the Model APIs scaffolded for these Entities, or add an admin guard to only the methods you need.
 - Remove secret fields from their subsets (`Session.token`; `access_token`, `refresh_token`, `id_token`, and `password` on `Account`; `Verification.value`; `secret` and `backup_codes` on `TwoFactor`; `Jwks.private_key`; `ApiKey.key`; `oidc_config` and `saml_config` on `SsoProvider`), then run `sonamu sync`.
 
+### Auth baseURL is required in remote environments
+
+With auth enabled in staging or production, the server starts only when `server.auth.baseURL`, a better-auth environment variable such as `BETTER_AUTH_URL`, or an absolute http(s) `server.baseUrl` is set. This keeps password reset and email verification links from being built from the request `Host` header. A config that falls back to a local address, such as `` baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}` ``, passes this check but produces wrong links in deployment, so always set `BETTER_AUTH_URL` when deploying.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

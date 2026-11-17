@@ -24,6 +24,10 @@ better-auth가 인증 정보를 저장하는 Entity(`Session`, `Account`, `Verif
 - 스캐폴드로 만든 이 Entity의 Model API는 지우거나, 꼭 필요한 메서드에만 관리자 가드를 거세요.
 - subset에서 비밀 필드(`Session.token`, `Account`의 `access_token`·`refresh_token`·`id_token`·`password`, `Verification.value`, `TwoFactor`의 `secret`·`backup_codes`, `Jwks.private_key`, `ApiKey.key`, `SsoProvider`의 `oidc_config`·`saml_config`)를 빼고 `sonamu sync`를 실행하세요.
 
+### 원격 환경의 인증 baseURL 필수
+
+staging·production에서 auth를 쓰면 `server.auth.baseURL`, `BETTER_AUTH_URL` 같은 better-auth 환경 변수, 절대 http(s) URL인 `server.baseUrl` 중 하나가 있어야 서버가 기동합니다. 비밀번호 재설정·이메일 인증 링크를 요청의 `Host` 헤더로 만들지 않기 위해서입니다. `` baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}` ``처럼 로컬 주소를 fallback으로 둔 설정은 이 검사를 통과하지만 배포 환경에서 잘못된 링크를 만드니, 배포할 때 `BETTER_AUTH_URL`을 꼭 설정하세요.
+
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

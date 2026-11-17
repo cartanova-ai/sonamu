@@ -43,6 +43,12 @@ Or using PM2:
 pm2 start dist/index.js --name sonamu-api
 ```
 
+<Note>
+A server started from the build output (`dist/index.js`), `sonamu start`, and `sonamu build` use `NODE_ENV` from `.env.local` or `.env` when `NODE_ENV` is unset, and fall back to `production` otherwise. Set `NODE_ENV` explicitly to run another environment such as staging.
+
+With auth enabled, the server also needs a secret (such as `BETTER_AUTH_SECRET`) and an auth baseURL (`server.auth.baseURL`, `BETTER_AUTH_URL`, or an absolute http(s) `server.baseUrl`) to start.
+</Note>
+
 **Web server:**
 
 Serve static files with Nginx or Apache:

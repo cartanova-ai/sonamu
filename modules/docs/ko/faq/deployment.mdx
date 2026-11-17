@@ -43,6 +43,12 @@ NODE_ENV=production node dist/index.js
 pm2 start dist/index.js --name sonamu-api
 ```
 
+<Note>
+빌드 산출물(`dist/index.js`)로 뜬 서버와 `sonamu start`·`sonamu build`는 `NODE_ENV`가 없으면 `.env.local`·`.env`의 `NODE_ENV`를 쓰고, 그래도 없으면 `production`으로 동작합니다. staging처럼 다른 환경으로 띄울 때는 `NODE_ENV`를 명시하세요.
+
+auth를 쓰면 secret(`BETTER_AUTH_SECRET` 등)과 인증 baseURL(`server.auth.baseURL`, `BETTER_AUTH_URL`, 절대 http(s) `server.baseUrl` 중 하나)도 설정해야 서버가 기동합니다.
+</Note>
+
 **Web 서버:**
 
 Nginx나 Apache로 정적 파일 서빙:

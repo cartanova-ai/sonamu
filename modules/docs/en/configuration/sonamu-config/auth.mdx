@@ -162,6 +162,28 @@ export default defineConfig({
 });
 ```
 
+### baseURL
+
+Password reset links, email verification links, and `trustedOrigins` are built from the baseURL. Clients control the request `Host` header, so Sonamu always takes the baseURL from configuration:
+
+1. `server.auth.baseURL`
+2. better-auth environment variables (`BETTER_AUTH_URL` and others)
+3. The origin of `server.baseUrl` plus `basePath` (when it is an absolute http(s) URL)
+4. Locally only (`development`, `test`): `http://{listen.host}:{listen.port}` plus `basePath`, with a warning
+
+In `staging` or `production`, the server refuses to start when none of 1-3 is set.
+
+```typescript
+export default defineConfig({
+  server: {
+    baseUrl: "https://api.example.com",
+    auth: {
+      baseURL: process.env.BETTER_AUTH_URL ?? "https://api.example.com",
+    },
+  },
+});
+```
+
 ## Entity Generation
 
 You need to generate the required entities before using better-auth.

@@ -208,3 +208,48 @@ describe("createBetterAuthRequest — 기존 동작 회귀 보장", () => {
     expect(params.get("state")).toBe("abc");
   });
 });
+
+describe("createBetterAuthRequest — baseURL로 요청 origin 고정 (SON-612)", () => {
+  const baseURL = "https://app.example.com/api/auth";
+
+  test("Host 헤더를 바꿔도 요청 URL의 origin은 설정된 baseURL을 따른다", () => {
+    const request = createMockFastifyRequest({
+      url: "/api/auth/request-password-reset?foo=bar",
+      headers: { host: "attacker.example" },
+    });
+
+    const result = createBetterAuthRequest(request, undefined, baseURL);
+
+    expect(result.url).toBe("https://app.example.com/api/auth/request-password-reset?foo=bar");
+  });
+
+  test("절대형 request-target의 스킴·호스트는 버리고 경로·쿼리만 쓴다", () => {
+    const request = createMockFastifyRequest({
+      url: "http://abs-attacker.example/api/auth/request-password-reset?x=1",
+    });
+
+    const result = createBetterAuthRequest(request, undefined, baseURL);
+
+    expect(result.url).toBe("https://app.example.com/api/auth/request-password-reset?x=1");
+  });
+
+  test("'//'로 시작하는 경로도 호스트로 해석하지 않는다", () => {
+    const request = createMockFastifyRequest({
+      url: "http://abs-attacker.example//evil.example/x",
+    });
+
+    const result = createBetterAuthRequest(request, undefined, baseURL);
+
+    expect(new URL(result.url).host).toBe("app.example.com");
+    expect(new URL(result.url).pathname).toBe("//evil.example/x");
+  });
+
+  test("Host 헤더가 없어도(HTTP/2 등) 설정된 origin으로 요청을 만든다", () => {
+    const request = createMockFastifyRequest({ url: "/api/auth/session" });
+    delete request.headers.host;
+
+    const result = createBetterAuthRequest(request, undefined, baseURL);
+
+    expect(result.url).toBe("https://app.example.com/api/auth/session");
+  });
+});

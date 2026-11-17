@@ -161,6 +161,28 @@ export default defineConfig({
 });
 ```
 
+### baseURL
+
+비밀번호 재설정·이메일 인증 링크와 `trustedOrigins`는 baseURL로 만들어집니다. 요청의 `Host` 헤더는 클라이언트가 바꿀 수 있으므로 Sonamu는 baseURL을 항상 설정값에서 정합니다.
+
+1. `server.auth.baseURL`
+2. better-auth 환경 변수(`BETTER_AUTH_URL` 등)
+3. `server.baseUrl`의 origin + `basePath` (절대 http(s) URL일 때)
+4. 로컬(`development`, `test`)에서만 `http://{listen.host}:{listen.port}` + `basePath` (경고 출력)
+
+`staging`이나 `production`에서 1~3이 모두 없으면 서버가 기동하지 않습니다.
+
+```typescript
+export default defineConfig({
+  server: {
+    baseUrl: "https://api.example.com",
+    auth: {
+      baseURL: process.env.BETTER_AUTH_URL ?? "https://api.example.com",
+    },
+  },
+});
+```
+
 ## 엔티티 생성
 
 better-auth를 사용하려면 먼저 필요한 엔티티들을 생성해야 합니다.

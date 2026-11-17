@@ -19,6 +19,7 @@ import mime, { lookup as mimeLookup } from "mime-types";
 import { type WebSocket } from "ws";
 import { type ZodObject } from "zod";
 
+import { type AuthBaseURLResolution } from "../auth/base-url";
 import { buildBetterAuthOptions } from "../auth/better-auth-options";
 import { createBetterAuthRequest } from "../auth/better-auth-request";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
@@ -295,6 +296,8 @@ class SonamuClass {
     }
     return this.authValue;
   }
+  // init에서 better-auth에 주입한 baseURL과 그 출처 (Host 헤더로 baseURL을 정하지 않기 위해 보관)
+  private authBaseURLResolution: AuthBaseURLResolution | null = null;
 
   private devVitestManagerValue: DevVitestManager | null = null;
   get devVitestManager(): DevVitestManager | null {
@@ -431,10 +434,25 @@ class SonamuClass {
       const { betterAuth } = await import("better-auth");
       const { sonamuKnexAdapter } = await import("../auth/knex-adapter");
       const { sonamuVerifyEmailGuard } = await import("../auth/verify-email-guard");
+      const { resolveAuthBaseURL } = await import("../auth/base-url");
+      const { isLocal } = await import("../utils/controller");
+
+      // baseURL이 없으면 better-auth가 Host 헤더로 리셋·인증 링크를 만들므로 설정값으로 고정한다.
+      // 원격 환경에서 정할 수 없으면(source: "none") CLI는 그대로 두고 서버 기동만 거부한다.
+      const baseURLResolution = resolveAuthBaseURL(this.config.server, { local: isLocal() });
+      this.authBaseURLResolution = baseURLResolution;
+      if (baseURLResolution.source === "listen" && !doSilent) {
+        console.warn(
+          chalk.yellow(
+            `⚠ auth.baseURL is not set. Using ${String(baseURLResolution.baseURL)} for auth links. Set auth.baseURL, BETTER_AUTH_URL, or server.baseUrl before deploying.`,
+          ),
+        );
+      }
 
       const authOptions: BetterAuthOptions = {
         database: sonamuKnexAdapter(),
         ...mergedFieldMappings,
+        baseURL: baseURLResolution.baseURL,
         // verify-email 가드는 다른 플러그인 훅보다 먼저 실행되도록 맨 앞에 둔다. (SON-601)
         plugins: [sonamuVerifyEmailGuard(), ...(mergedFieldMappings.plugins ?? [])],
       };
@@ -2153,6 +2171,13 @@ class SonamuClass {
   ) {
     if (!options) return;
 
+    const baseURLResolution = this.authBaseURLResolution;
+    if (!baseURLResolution || baseURLResolution.source === "none") {
+      throw new Error(
+        "auth.baseURL is required outside development/test. Set server.auth.baseURL, the BETTER_AUTH_URL environment variable, or an absolute http(s) server.baseUrl so auth links are not built from the request Host header.",
+      );
+    }
+    const { requestBaseURL } = baseURLResolution;
     const basePath = options.basePath ?? "/api/auth";
 
     // better-auth 라우트 등록
@@ -2161,7 +2186,11 @@ class SonamuClass {
       url: `${basePath}/*`,
       handler: async (request, reply) => {
         const response = await this.auth.handler(
-          createBetterAuthRequest(request, options.advanced?.ipAddress?.ipAddressHeaders),
+          createBetterAuthRequest(
+            request,
+            options.advanced?.ipAddress?.ipAddressHeaders,
+            requestBaseURL,
+          ),
         );
 
         reply.status(response.status);

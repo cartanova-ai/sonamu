@@ -78,6 +78,8 @@ export default defineConfig({
 
 <Tip>`baseUrl`은 파일 업로드 시 생성되는 URL, SSR 메타 태그 등에 사용됩니다.</Tip>
 
+auth를 쓰면서 `server.auth.baseURL`과 `BETTER_AUTH_URL` 같은 환경 변수가 없으면, 절대 http(s) URL인 `baseUrl`의 origin에 `auth.basePath`를 붙여 인증 baseURL로도 씁니다. 자세한 내용은 [auth 설정](/ko/configuration/sonamu-config/auth)을 참고하세요.
+
 ## listen
 
 서버가 수신할 포트와 호스트를 설정합니다.

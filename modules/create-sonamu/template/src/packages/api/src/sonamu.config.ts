@@ -128,6 +128,7 @@ export default defineConfig({
     //   appName: "Sonamu Project",
     //   plugins: [twoFactor(), passkey()],
     //   emailAndPassword: { enabled: true },
+    //   // 배포 시 BETTER_AUTH_URL을 공개 URL로 설정하세요. 로컬 주소 fallback은 기동 검사에 걸리지 않습니다.
     //   baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}`,
     //   // 공개 문자열을 fallback으로 두지 마세요. 값이 없으면 test 외 환경에서 기동을 거부합니다.
     //   // 생성: openssl rand -base64 32

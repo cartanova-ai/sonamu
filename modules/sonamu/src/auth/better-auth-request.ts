@@ -47,11 +47,38 @@ function serializeBody(request: FastifyRequest, headers: Headers): string {
   return params.toString();
 }
 
+/**
+ * better-auth에 넘길 요청 URL을 만든다.
+ *
+ * baseURL이 주어지면 그 origin에 request.url의 경로·쿼리만 붙인다.
+ * Host 헤더와 절대형 request-target(`POST http://evil.example/api/auth/...`)은 클라이언트가
+ * 마음대로 정할 수 있으므로 origin을 정하는 데 쓰지 않는다.
+ * baseURL이 없으면(동적 baseURL 설정, 테스트 헬퍼) 기존처럼 Host 헤더로 만든다.
+ */
+function resolveRequestURL(request: FastifyRequest, baseURL: string | undefined): URL {
+  if (!baseURL) return new URL(request.url, `http://${request.headers.host}`);
+
+  const target = new URL(request.url, "http://localhost");
+  const url = new URL(new URL(baseURL).origin);
+  // 문자열로 이어 붙이면 "//host/..." 형태의 경로가 다시 호스트로 해석되므로 속성으로 대입한다
+  url.pathname = target.pathname;
+  url.search = target.search;
+  return url;
+}
+
+/**
+ * Fastify 요청을 better-auth handler용 표준 Request로 변환한다.
+ *
+ * @param request Fastify 요청
+ * @param ipAddressHeaders better-auth `advanced.ipAddress.ipAddressHeaders` 설정
+ * @param baseURL better-auth에 설정된 baseURL. 주면 요청 URL의 origin을 이 값으로 고정한다.
+ */
 export function createBetterAuthRequest(
   request: FastifyRequest,
   ipAddressHeaders?: readonly string[],
+  baseURL?: string,
 ): Request {
-  const url = new URL(request.url, `http://${request.headers.host}`);
+  const url = resolveRequestURL(request, baseURL);
   const headers = convertFastifyHeadersToStandard(request.headers);
 
   replaceClientIpHeaders(headers, request.ip, ipAddressHeaders);

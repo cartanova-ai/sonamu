@@ -78,6 +78,8 @@ export default defineConfig({
 
 <Tip>`baseUrl` is used for URLs generated during file uploads, SSR meta tags, etc.</Tip>
 
+With auth enabled and neither `server.auth.baseURL` nor an environment variable such as `BETTER_AUTH_URL` set, Sonamu also uses the origin of `baseUrl` plus `auth.basePath` as the auth baseURL, as long as `baseUrl` is an absolute http(s) URL. See [auth settings](/en/configuration/sonamu-config/auth) for details.
+
 ## listen
 
 Configures the port and host the server listens on.
