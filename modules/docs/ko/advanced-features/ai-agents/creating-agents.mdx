@@ -265,10 +265,70 @@ export const HotelBookingAgent = new HotelBookingAgentClass();
 
 ### 2. 데이터 분석 에이전트
 
+LLM이 만든 SQL을 실행하는 도구는 프롬프트 인젝션으로 공격자가 원하는 SQL을 실행하게 될 수 있습니다. `/^SELECT/i` 같은
+정규식 검사는 `SELECT 1; DROP TABLE users` 같은 다중 문장을 막지 못하므로, 아래처럼 세 겹으로 막습니다.
+
+1. **최소 권한 DB 역할**: 허용한 뷰에만 `SELECT` 권한이 있는 전용 역할로 접속합니다. 쓰기와 민감한 테이블 조회를 막는 실제
+   경계입니다.
+2. **단일 문장 파서**: PostgreSQL 파서([`libpg-query`](https://www.npmjs.com/package/libpg-query))로 SQL이 `SELECT` 문
+   하나인지 확인합니다.
+3. **읽기 전용 트랜잭션**: `READ ONLY` 트랜잭션과 `statement_timeout` 안에서 실행합니다.
+
+먼저 DB 관리자 계정으로 AI에 보여 줄 뷰와 전용 역할을 만듭니다.
+
+```sql
+-- AI에 보여 줄 컬럼만 담은 뷰
+CREATE SCHEMA ai_readonly;
+CREATE VIEW ai_readonly.daily_sales AS
+  SELECT created_at::date AS day, count(*) AS order_count, sum(total_price) AS revenue
+  FROM orders
+  GROUP BY 1;
+
+-- 허용한 뷰만 읽을 수 있는 전용 역할
+CREATE ROLE ai_analyst LOGIN PASSWORD '강력한-비밀번호로-바꾸세요';
+ALTER ROLE ai_analyst SET default_transaction_read_only = on;
+ALTER ROLE ai_analyst SET statement_timeout = '5s';
+GRANT USAGE ON SCHEMA ai_readonly TO ai_analyst;
+GRANT SELECT ON ai_readonly.daily_sales TO ai_analyst;
+```
+
+파서는 `pnpm add libpg-query`로 설치하고, 접속 정보는 `AI_ANALYST_DB_*` 환경 변수에 넣습니다.
+
+<Warning>
+  `BaseModel.getPuri("r")`는 이 용도로 쓰지 마세요. read-only replica를 설정하지 않으면 `"r"`은 main DB와 같은 계정으로
+  접속하므로 그 계정의 권한을 그대로 가지며, 대개 쓰기와 모든 테이블 조회가 가능합니다.
+</Warning>
+
 ```typescript
 import { BaseAgentClass, tools } from "sonamu/ai";
-import { BaseModel } from "sonamu";
+import knex from "knex";
+import { parse } from "libpg-query";
 import { z } from "zod";
+
+// AI 도구 전용 연결: 위에서 만든 ai_analyst 역할로 접속합니다.
+const analystDB = knex({
+  client: "pg",
+  connection: {
+    host: process.env.AI_ANALYST_DB_HOST,
+    port: Number(process.env.AI_ANALYST_DB_PORT ?? 5432),
+    user: process.env.AI_ANALYST_DB_USER,
+    password: process.env.AI_ANALYST_DB_PASSWORD,
+    database: process.env.AI_ANALYST_DB_NAME,
+  },
+  pool: { min: 0, max: 2 },
+});
+
+/**
+ * PostgreSQL 파서로 SQL이 SELECT 문 하나인지 확인합니다.
+ * 문장이 하나여야 `COMMIT`을 끼워 넣어 읽기 전용 트랜잭션을 끝내는 우회도 막힙니다.
+ */
+async function assertSingleSelect(sql: string): Promise<void> {
+  const { stmts = [] } = await parse(sql);
+  const stmt = stmts.length === 1 ? stmts[0]?.stmt : undefined;
+  if (stmt === undefined || !("SelectStmt" in stmt)) {
+    throw new Error("SELECT 문 하나만 실행할 수 있습니다");
+  }
+}
 
 class DataAnalystAgentClass extends BaseAgentClass<{
   sessionId: string;
@@ -278,36 +338,38 @@ class DataAnalystAgentClass extends BaseAgentClass<{
   }
 
   @tools({
-    description: "SQL 쿼리를 실행하여 데이터를 조회합니다",
+    description: "ai_readonly 스키마의 뷰에 SELECT 문 하나를 실행하여 데이터를 조회합니다",
     schema: {
       input: z.object({
-        query: z.string().describe("실행할 SQL 쿼리"),
+        query: z.string().describe("실행할 SELECT 문 하나"),
       }),
       output: z.object({
-        rows: z.array(z.record(z.any())),
+        rows: z.array(z.record(z.string(), z.unknown())),
         rowCount: z.number(),
       }),
     },
   })
   async executeQuery(input: { query: string }) {
-    // 안전성 검증 (SELECT만 허용)
-    if (!/^SELECT/i.test(input.query.trim())) {
-      throw new Error("SELECT 쿼리만 허용됩니다");
-    }
+    await assertSingleSelect(input.query);
 
-    const result = await BaseModel.getPuri("r").raw(input.query);
+    // 읽기 전용 트랜잭션이라 데이터 변경 CTE, SELECT INTO, nextval() 같은 쓰기도 실패합니다.
+    const rows = await analystDB.transaction(
+      async (trx) => {
+        await trx.raw("SET LOCAL statement_timeout = '5s'");
+        const result = await trx.raw(input.query);
+        return result.rows as Record<string, unknown>[];
+      },
+      { readOnly: true },
+    );
 
-    return {
-      rows: result.rows,
-      rowCount: result.rows.length,
-    };
+    return { rows, rowCount: rows.length };
   }
 
   @tools({
     description: "데이터를 시각화하기 위한 차트 설정을 생성합니다",
     schema: {
       input: z.object({
-        data: z.array(z.record(z.any())),
+        data: z.array(z.record(z.string(), z.unknown())),
         xAxis: z.string().describe("X축 컬럼명"),
         yAxis: z.string().describe("Y축 컬럼명"),
         chartType: z.enum(["bar", "line", "pie"]),

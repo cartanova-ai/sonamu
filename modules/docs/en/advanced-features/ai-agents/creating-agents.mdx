@@ -269,10 +269,72 @@ export const HotelBookingAgent = new HotelBookingAgentClass();
 
 ### 2. Data Analysis Agent
 
+A tool that runs LLM-generated SQL can be steered by prompt injection into running whatever SQL an attacker wants. A
+regex check such as `/^SELECT/i` does not stop multi-statement input like `SELECT 1; DROP TABLE users`, so the example
+below uses three layers.
+
+1. **Least-privilege DB role**: connect as a dedicated role that has `SELECT` only on allowed views. This is the real
+   boundary that blocks writes and reads of sensitive tables.
+2. **Single-statement parser**: use the PostgreSQL parser ([`libpg-query`](https://www.npmjs.com/package/libpg-query))
+   to check that the SQL is exactly one `SELECT` statement.
+3. **Read-only transaction**: run the query in a `READ ONLY` transaction with a `statement_timeout`.
+
+First, create the views exposed to the AI and the dedicated role with a DB admin account.
+
+```sql
+-- View that contains only the columns exposed to the AI
+CREATE SCHEMA ai_readonly;
+CREATE VIEW ai_readonly.daily_sales AS
+  SELECT created_at::date AS day, count(*) AS order_count, sum(total_price) AS revenue
+  FROM orders
+  GROUP BY 1;
+
+-- Dedicated role that can read only the allowed views
+CREATE ROLE ai_analyst LOGIN PASSWORD 'replace-with-a-strong-password';
+ALTER ROLE ai_analyst SET default_transaction_read_only = on;
+ALTER ROLE ai_analyst SET statement_timeout = '5s';
+GRANT USAGE ON SCHEMA ai_readonly TO ai_analyst;
+GRANT SELECT ON ai_readonly.daily_sales TO ai_analyst;
+```
+
+Install the parser with `pnpm add libpg-query`, and put the connection settings in `AI_ANALYST_DB_*` environment
+variables.
+
+<Warning>
+  Do not use `BaseModel.getPuri("r")` for this. Without a read-only replica, `"r"` connects with the same account as
+  the main DB and has that account's privileges, which usually include writing and reading every table.
+</Warning>
+
 ```typescript
 import { BaseAgentClass, tools } from "sonamu/ai";
-import { BaseModel } from "sonamu";
+import knex from "knex";
+import { parse } from "libpg-query";
 import { z } from "zod";
+
+// Connection for the AI tool only: connects as the ai_analyst role created above.
+const analystDB = knex({
+  client: "pg",
+  connection: {
+    host: process.env.AI_ANALYST_DB_HOST,
+    port: Number(process.env.AI_ANALYST_DB_PORT ?? 5432),
+    user: process.env.AI_ANALYST_DB_USER,
+    password: process.env.AI_ANALYST_DB_PASSWORD,
+    database: process.env.AI_ANALYST_DB_NAME,
+  },
+  pool: { min: 0, max: 2 },
+});
+
+/**
+ * Uses the PostgreSQL parser to check that the SQL is exactly one SELECT statement.
+ * A single statement also prevents ending the read-only transaction with an injected `COMMIT`.
+ */
+async function assertSingleSelect(sql: string): Promise<void> {
+  const { stmts = [] } = await parse(sql);
+  const stmt = stmts.length === 1 ? stmts[0]?.stmt : undefined;
+  if (stmt === undefined || !("SelectStmt" in stmt)) {
+    throw new Error("Only a single SELECT statement is allowed");
+  }
+}
 
 class DataAnalystAgentClass extends BaseAgentClass<{
   sessionId: string;
@@ -282,36 +344,38 @@ class DataAnalystAgentClass extends BaseAgentClass<{
   }
 
   @tools({
-    description: "Executes a SQL query to retrieve data",
+    description: "Runs a single SELECT statement against the views in the ai_readonly schema",
     schema: {
       input: z.object({
-        query: z.string().describe("SQL query to execute"),
+        query: z.string().describe("A single SELECT statement to run"),
       }),
       output: z.object({
-        rows: z.array(z.record(z.any())),
+        rows: z.array(z.record(z.string(), z.unknown())),
         rowCount: z.number(),
       }),
     },
   })
   async executeQuery(input: { query: string }) {
-    // Safety validation (only allow SELECT)
-    if (!/^SELECT/i.test(input.query.trim())) {
-      throw new Error("Only SELECT queries are allowed");
-    }
+    await assertSingleSelect(input.query);
 
-    const result = await BaseModel.getPuri("r").raw(input.query);
+    // The read-only transaction also blocks writes such as data-modifying CTEs, SELECT INTO, and nextval().
+    const rows = await analystDB.transaction(
+      async (trx) => {
+        await trx.raw("SET LOCAL statement_timeout = '5s'");
+        const result = await trx.raw(input.query);
+        return result.rows as Record<string, unknown>[];
+      },
+      { readOnly: true },
+    );
 
-    return {
-      rows: result.rows,
-      rowCount: result.rows.length,
-    };
+    return { rows, rowCount: rows.length };
   }
 
   @tools({
     description: "Creates chart configuration for data visualization",
     schema: {
       input: z.object({
-        data: z.array(z.record(z.any())),
+        data: z.array(z.record(z.string(), z.unknown())),
         xAxis: z.string().describe("X-axis column name"),
         yAxis: z.string().describe("Y-axis column name"),
         chartType: z.enum(["bar", "line", "pie"]),
