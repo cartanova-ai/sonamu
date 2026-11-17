@@ -98,7 +98,18 @@ Function values are preserved as-is in Excel:
 | `common.results`      | `(count: number) => \`${count}개 결과\``     |
 | `validation.required` | `(field: string) => \`${field}은(는) 필수\`` |
 
-During import, arrow function patterns (`(...) => ...`) are automatically detected and saved as functions.
+During import, a value is saved as a function in these cases:
+
+- It is identical to the existing function for the same key in the dictionary file (`ko.ts`, `en.ts`). Re-importing an exported file keeps existing functions as they are.
+- It is a single arrow function expression with simple parameters and an expression body that uses only literals, template literals, its parameters, the `plural`/`josa`/`format` helpers, and safe operators and methods (for example `(count: number) => \`${count} results\``).
+
+Functions in the second case cannot contain comments, a trailing semicolon, `async`, type parameters, a block body, or default, destructured, or rest parameters. Parameter type annotations are allowed. Only the `plural`, `josa`, and `format.*` helpers and the `join`, `padEnd`, `padStart`, `slice`, `substring`, `toFixed`, `toLocaleDateString`, `toLocaleString`, `toLocaleTimeString`, `toLowerCase`, `toString`, `toUpperCase`, and `trim` methods can be called.
+
+Any other value, including function-like code outside these rules, is saved as a plain string. Write more complex functions directly in the dictionary file. Editing and adding entries in Sonamu UI follow the same rule, and keys are always saved as strings.
+
+<Warning>
+  Imported values are written to the dictionary files that the dev server loads. Do not import Excel files from unknown or untrusted sources.
+</Warning>
 
 ## Important Notes
 

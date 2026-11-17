@@ -57,6 +57,193 @@ function readCellText(cell: JsRowCell | undefined): string {
   return "";
 }
 
+/** 사전 함수 값에서 부를 수 있는 헬퍼. generateProjectDict가 이 이름들의 import를 만든다. */
+const DICT_HELPER_NAMES = new Set(["plural", "josa", "format"]);
+
+/** 프로토타입 체인을 따라 Function 생성자 등에 닿을 수 있어 접근을 막는 프로퍼티 이름 */
+const FORBIDDEN_PROPERTY_NAMES = new Set([
+  "constructor",
+  "prototype",
+  "__proto__",
+  "__defineGetter__",
+  "__defineSetter__",
+  "__lookupGetter__",
+  "__lookupSetter__",
+]);
+
+/** 매개변수 값에 대해 부를 수 있는 원시 값 메서드. 앱 객체의 임의 메서드 호출은 막는다. */
+const SAFE_METHOD_NAMES = new Set([
+  "join",
+  "padEnd",
+  "padStart",
+  "slice",
+  "substring",
+  "toFixed",
+  "toLocaleDateString",
+  "toLocaleString",
+  "toLocaleTimeString",
+  "toLowerCase",
+  "toString",
+  "toUpperCase",
+  "trim",
+]);
+
+const SAFE_BINARY_OPERATORS = new Set<ts.SyntaxKind>([
+  ts.SyntaxKind.PlusToken,
+  ts.SyntaxKind.MinusToken,
+  ts.SyntaxKind.AsteriskToken,
+  ts.SyntaxKind.SlashToken,
+  ts.SyntaxKind.PercentToken,
+  ts.SyntaxKind.EqualsEqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsEqualsToken,
+  ts.SyntaxKind.EqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsToken,
+  ts.SyntaxKind.LessThanToken,
+  ts.SyntaxKind.GreaterThanToken,
+  ts.SyntaxKind.LessThanEqualsToken,
+  ts.SyntaxKind.GreaterThanEqualsToken,
+  ts.SyntaxKind.AmpersandAmpersandToken,
+  ts.SyntaxKind.BarBarToken,
+  ts.SyntaxKind.QuestionQuestionToken,
+]);
+
+const SAFE_PREFIX_OPERATORS = new Set<ts.SyntaxKind>([
+  ts.SyntaxKind.ExclamationToken,
+  ts.SyntaxKind.MinusToken,
+  ts.SyntaxKind.PlusToken,
+]);
+
+/**
+ * 소스 안에 주석이 있는지 확인합니다.
+ * 주석은 항상 어떤 토큰의 앞쪽 trivia에 들어가므로, 모든 말단 토큰의 앞쪽 trivia가 공백뿐인지 봅니다.
+ */
+function hasComment(node: ts.Node, sourceFile: ts.SourceFile): boolean {
+  const children = node.getChildren(sourceFile);
+  if (children.length === 0) {
+    const trivia = sourceFile.text.slice(node.pos, node.getStart(sourceFile));
+    return !/^\s*$/.test(trivia);
+  }
+  return children.some((child) => hasComment(child, sourceFile));
+}
+
+/**
+ * 사전 함수 값의 화살표 함수가 허용된 템플릿 형식인지 확인합니다.
+ * 블록 본문·async·기본값·구조 분해·나머지 매개변수와 헬퍼 이름을 가리는 매개변수는 받지 않습니다.
+ */
+function isSafeDictArrowFunction(fn: ts.ArrowFunction, outerScope: ReadonlySet<string>): boolean {
+  if ((fn.modifiers?.length ?? 0) > 0 || fn.typeParameters !== undefined || ts.isBlock(fn.body)) {
+    return false;
+  }
+  const scope = new Set(outerScope);
+  for (const param of fn.parameters) {
+    if (
+      !ts.isIdentifier(param.name) ||
+      param.initializer !== undefined ||
+      param.dotDotDotToken !== undefined ||
+      (param.modifiers?.length ?? 0) > 0 ||
+      DICT_HELPER_NAMES.has(param.name.text)
+    ) {
+      return false;
+    }
+    // 타입 주석은 런타임에 지워지므로 검사하지 않습니다.
+    scope.add(param.name.text);
+  }
+  return isSafeDictExpression(fn.body, scope);
+}
+
+/**
+ * 사전 함수 본문의 표현식이 허용 목록 안의 구문과 식별자만 쓰는지 확인합니다.
+ * 식별자는 매개변수와 plural/josa/format 헬퍼만 참조할 수 있습니다.
+ */
+function isSafeDictExpression(node: ts.Expression, scope: ReadonlySet<string>): boolean {
+  switch (node.kind) {
+    case ts.SyntaxKind.StringLiteral:
+    case ts.SyntaxKind.NumericLiteral:
+    case ts.SyntaxKind.NoSubstitutionTemplateLiteral:
+    case ts.SyntaxKind.TrueKeyword:
+    case ts.SyntaxKind.FalseKeyword:
+    case ts.SyntaxKind.NullKeyword:
+      return true;
+  }
+  if (ts.isIdentifier(node)) {
+    return scope.has(node.text);
+  }
+  if (ts.isTemplateExpression(node)) {
+    return node.templateSpans.every((span) => isSafeDictExpression(span.expression, scope));
+  }
+  if (ts.isParenthesizedExpression(node) || ts.isTypeOfExpression(node)) {
+    return isSafeDictExpression(node.expression, scope);
+  }
+  if (ts.isConditionalExpression(node)) {
+    return (
+      isSafeDictExpression(node.condition, scope) &&
+      isSafeDictExpression(node.whenTrue, scope) &&
+      isSafeDictExpression(node.whenFalse, scope)
+    );
+  }
+  if (ts.isBinaryExpression(node)) {
+    return (
+      SAFE_BINARY_OPERATORS.has(node.operatorToken.kind) &&
+      isSafeDictExpression(node.left, scope) &&
+      isSafeDictExpression(node.right, scope)
+    );
+  }
+  if (ts.isPrefixUnaryExpression(node)) {
+    return SAFE_PREFIX_OPERATORS.has(node.operator) && isSafeDictExpression(node.operand, scope);
+  }
+  if (ts.isPropertyAccessExpression(node)) {
+    return (
+      ts.isIdentifier(node.name) &&
+      !FORBIDDEN_PROPERTY_NAMES.has(node.name.text) &&
+      isSafeDictExpression(node.expression, scope)
+    );
+  }
+  if (ts.isCallExpression(node)) {
+    return (
+      node.typeArguments === undefined &&
+      isSafeDictCallee(node.expression, scope) &&
+      node.arguments.every((arg) => isSafeDictExpression(arg, scope))
+    );
+  }
+  if (ts.isObjectLiteralExpression(node)) {
+    // plural(n, { one: ..., other: ... }) 옵션 객체
+    return node.properties.every(
+      (prop) =>
+        ts.isPropertyAssignment(prop) &&
+        (ts.isIdentifier(prop.name) ||
+          ts.isStringLiteral(prop.name) ||
+          ts.isNumericLiteral(prop.name)) &&
+        prop.name.text !== "__proto__" &&
+        isSafeDictExpression(prop.initializer, scope),
+    );
+  }
+  if (ts.isArrowFunction(node)) {
+    // plural의 other: (n) => ... 처럼 중첩된 화살표 함수
+    return isSafeDictArrowFunction(node, scope);
+  }
+  return false;
+}
+
+/**
+ * 호출 대상이 plural/josa, format.<메서드>, 또는 안전한 원시 값 메서드인지 확인합니다.
+ */
+function isSafeDictCallee(callee: ts.Expression, scope: ReadonlySet<string>): boolean {
+  if (ts.isIdentifier(callee)) {
+    return callee.text === "plural" || callee.text === "josa";
+  }
+  if (!ts.isPropertyAccessExpression(callee) || !ts.isIdentifier(callee.name)) {
+    return false;
+  }
+  const methodName = callee.name.text;
+  if (FORBIDDEN_PROPERTY_NAMES.has(methodName)) {
+    return false;
+  }
+  if (ts.isIdentifier(callee.expression) && callee.expression.text === "format") {
+    return true;
+  }
+  return SAFE_METHOD_NAMES.has(methodName) && isSafeDictExpression(callee.expression, scope);
+}
+
 /**
  * Sonamu Dictionary 관리 클래스
  * i18n 딕셔너리의 CRUD 및 Excel import/export를 담당합니다.
@@ -116,7 +303,14 @@ export class SonamuDictionary {
   }
 
   /**
-   * 문자열이 화살표 함수 또는 함수 표현식인지 판별
+   * 사전 값 문자열을 함수로 출력해도 되는지 판별합니다.
+   *
+   * Excel import와 사전 편집 API의 값은 외부 입력이므로, generateProjectDict가 원문 그대로
+   * TS 소스에 쓰는 함수 값은 엄격하게 검사합니다. 아래를 모두 만족할 때만 true이고,
+   * 그 밖의 값은 false가 되어 문자열 리터럴로 저장됩니다.
+   * - 문법 오류·주석 없이 전체가 화살표 함수 표현식 하나
+   * - 매개변수는 기본값 없는 단순 식별자, 본문은 블록이 아닌 표현식
+   * - 본문은 리터럴, 템플릿 리터럴, 매개변수, plural/josa/format 헬퍼, 안전한 연산자와 메서드만 사용
    */
   isExpressionFunction(code: string): boolean {
     // 빈 문자열이나 공백만 있는 경우
@@ -124,9 +318,31 @@ export class SonamuDictionary {
       return false;
     }
 
-    const ARROW_FUNCTION_PATTERN = /^\s*\([^)]*\)\s*=>/;
+    const sourceFile = ts.createSourceFile(
+      "dict-value.ts",
+      code,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const [statement, ...rest] = sourceFile.statements;
+    if (
+      statement === undefined ||
+      rest.length > 0 ||
+      !ts.isExpressionStatement(statement) ||
+      // 세미콜론 등 표현식 뒤에 붙은 토큰이 없어야 한다
+      statement.end !== statement.expression.end ||
+      !ts.isArrowFunction(statement.expression)
+    ) {
+      return false;
+    }
 
-    return ARROW_FUNCTION_PATTERN.test(code);
+    const { diagnostics } = ts.transpileModule(code, { reportDiagnostics: true });
+    if ((diagnostics?.length ?? 0) > 0 || hasComment(sourceFile, sourceFile)) {
+      return false;
+    }
+
+    return isSafeDictArrowFunction(statement.expression, new Set());
   }
 
   /**
@@ -392,11 +608,13 @@ export class SonamuDictionary {
     }
 
     for (const entry of sorted) {
+      // 키는 외부 입력(Excel import, 사전 편집)이므로 항상 문자열 리터럴로 직렬화합니다.
+      const key = JSON.stringify(entry.key);
       if (entry.isFunction) {
-        // 함수인 경우: 원형 그대로 출력
-        lines.push(`  "${entry.key}": ${entry.value},`);
+        // 함수인 경우: 원형 그대로 출력 (외부 입력은 isExpressionFunction 검사를 통과한 값만 함수가 됨)
+        lines.push(`  ${key}: ${entry.value},`);
       } else {
-        lines.push(`  "${entry.key}": ${JSON.stringify(entry.value)},`);
+        lines.push(`  ${key}: ${JSON.stringify(entry.value)},`);
       }
     }
 

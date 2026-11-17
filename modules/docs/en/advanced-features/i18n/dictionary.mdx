@@ -121,6 +121,8 @@ export default {
 } as const;
 ```
 
+Unlike functions written directly in a dictionary file, new function values entered through Sonamu UI, Excel import, or the CLI are saved as functions only when they pass the [function value rules](/en/advanced-features/i18n/excel-import#handling-function-values); otherwise they are saved as strings.
+
 ## Using in Models
 
 ```typescript

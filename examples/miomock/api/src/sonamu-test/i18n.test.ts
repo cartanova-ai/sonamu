@@ -6,6 +6,7 @@ import { Sonamu } from "sonamu";
 import { createFormat, josa, plural, sonamuDictionary } from "sonamu/dict";
 import { type DictEntry } from "sonamu/dict";
 import { bootstrap, runWithContext } from "sonamu/test";
+import ts from "typescript";
 import { describe, expect, expectTypeOf, test, vi } from "vitest";
 
 import { BadRequestException } from "../../../../../modules/sonamu/dist/exceptions/so-exceptions";
@@ -13,6 +14,45 @@ import { localizedColumn, SD } from "../i18n/sd.generated";
 
 bootstrap(vi);
 const colLetter = (index: number) => String.fromCharCode(65 + index);
+
+/**
+ * 생성된 사전 TS 소스를 파싱해 export default 객체의 프로퍼티를 key→initializer로 반환합니다.
+ * 문법 오류가 있거나, 프로퍼티 이름이 문자열 리터럴이 아니거나, 사전 객체 밖에 실행 가능한 문장이 있으면 실패합니다.
+ */
+const parseGeneratedDict = (content: string): Map<string, ts.Expression> => {
+  const { diagnostics } = ts.transpileModule(content, { reportDiagnostics: true });
+  expect(diagnostics?.map((d) => ts.flattenDiagnosticMessageText(d.messageText, "\n"))).toEqual([]);
+  const sourceFile = ts.createSourceFile("dict.ts", content, ts.ScriptTarget.Latest, true);
+  const props = new Map<string, ts.Expression>();
+  for (const statement of sourceFile.statements) {
+    if (ts.isImportDeclaration(statement)) continue;
+    // createFormat("<locale>") 호출만 허용되는 상수 선언
+    if (ts.isVariableStatement(statement)) {
+      expect(statement.getText(sourceFile)).toMatch(/^const format = createFormat\("\w+"\);$/);
+      continue;
+    }
+    if (!ts.isExportAssignment(statement)) {
+      throw new Error(`예상하지 못한 문장: ${statement.getText(sourceFile)}`);
+    }
+    let expr = statement.expression;
+    if (ts.isAsExpression(expr)) expr = expr.expression;
+    if (ts.isCallExpression(expr)) {
+      expect(expr.expression.getText(sourceFile)).toBe("defineLocale");
+      expect(expr.arguments).toHaveLength(1);
+      expr = expr.arguments[0] ?? expr;
+    }
+    if (!ts.isObjectLiteralExpression(expr)) {
+      throw new Error(`사전 객체가 아닙니다: ${expr.getText(sourceFile)}`);
+    }
+    for (const prop of expr.properties) {
+      if (!ts.isPropertyAssignment(prop) || !ts.isStringLiteral(prop.name)) {
+        throw new Error(`문자열 리터럴 키가 아닌 프로퍼티: ${prop.getText(sourceFile)}`);
+      }
+      props.set(prop.name.text, prop.initializer);
+    }
+  }
+  return props;
+};
 
 describe("i18n", () => {
   describe("localizedColumn", () => {
@@ -550,9 +590,115 @@ describe("i18n", () => {
         })`;
       expect(sonamuDictionary.isExpressionFunction(multiline)).toBe(true);
     });
+
+    test("miomock 사전의 함수 값 형식은 true", () => {
+      expect(
+        sonamuDictionary.isExpressionFunction(
+          "(name: string, id: number | string) => `${name} 수정 (#${id})`",
+        ),
+      ).toBe(true);
+      expect(sonamuDictionary.isExpressionFunction("(date: Date) => format.date(date)")).toBe(true);
+      expect(
+        sonamuDictionary.isExpressionFunction(
+          "(count: number) => plural(count, { one: `${count} result`, other: `${count} results` })",
+        ),
+      ).toBe(true);
+      expect(
+        sonamuDictionary.isExpressionFunction(
+          '(n: number) => plural(n, { zero: "없음", other: (m: number) => `${m.toLocaleString()}개` })',
+        ),
+      ).toBe(true);
+      expect(
+        sonamuDictionary.isExpressionFunction('(n: number) => (n > 1 ? `${n}개` : "하나")'),
+      ).toBe(true);
+    });
+
+    test("현재 project dict와 rc-keys의 함수 값은 모두 함수로 인정된다", () => {
+      const functionValues = Sonamu.config.i18n.supportedLocales.flatMap((locale) => [
+        ...sonamuDictionary.loadProjectDict(locale).entries,
+        ...sonamuDictionary.extractRCKeys(locale),
+      ]);
+      const functions = functionValues.filter((entry) => entry.isFunction);
+      expect(functions.length).toBeGreaterThan(0);
+      for (const entry of functions) {
+        expect({
+          key: entry.key,
+          result: sonamuDictionary.isExpressionFunction(entry.value),
+        }).toEqual({ key: entry.key, result: true });
+      }
+    });
+
+    test("화살표 함수 뒤에 다른 코드가 이어지면 false", () => {
+      // SON-604 감사 PoC: 함수 뒤에 computed key 프로퍼티를 이어 붙여 모듈 로드 시 실행
+      expect(
+        sonamuDictionary.isExpressionFunction(
+          '() => "", [(globalThis.process.getBuiltinModule("node:child_process").execSync("id"), "v2")]: "x"',
+        ),
+      ).toBe(false);
+      expect(sonamuDictionary.isExpressionFunction('() => "a"; globalThis.x = 1')).toBe(false);
+      expect(sonamuDictionary.isExpressionFunction('() => "a"\nglobalThis.x = 1')).toBe(false);
+      expect(sonamuDictionary.isExpressionFunction('() => "a", 1')).toBe(false);
+      expect(sonamuDictionary.isExpressionFunction('() => "a" // 주석')).toBe(false);
+      expect(sonamuDictionary.isExpressionFunction('() => /* 주석 */ "a"')).toBe(false);
+      expect(sonamuDictionary.isExpressionFunction("() => `a`)")).toBe(false);
+    });
+
+    test("허용되지 않은 식별자·구문을 쓰는 화살표 함수는 false", () => {
+      const rejected = [
+        '() => globalThis.process.getBuiltinModule("node:child_process").execSync("id")',
+        '() => require("child_process")',
+        '() => import("node:child_process")',
+        "() => process.exit(1)",
+        '() => eval("1")',
+        '(n) => n.constructor.constructor("return process")()',
+        '(n) => n["constructor"]',
+        "(n) => n.__proto__",
+        '(n) => new Function("return 1")',
+        "(n) => String.raw`${n}`",
+        "(n) => (n = 1)",
+        "(n) => { return n; }",
+        "async (n) => n",
+        '(n = globalThis.process.exit()) => "a"',
+        "(...n) => n",
+        "({ a }) => a",
+        '(n) => ({ ["k"]: n })',
+        "(n) => ({ __proto__: n })",
+        "(n) => ({ get k() { return 1; } })",
+        "(n) => this",
+        "(n) => n.remove()",
+        '(plural) => plural(1, { other: "x" })',
+        "(n) => plural(...n)",
+        "(n) => [n]",
+        "(n) => format",
+        "(n) => delete n.x",
+      ];
+      for (const code of rejected) {
+        expect({ code, result: sonamuDictionary.isExpressionFunction(code) }).toEqual({
+          code,
+          result: false,
+        });
+      }
+    });
   });
 
   describe("generateProjectDict", () => {
+    test("따옴표·괄호·백틱이 든 키는 문자열 리터럴로 이스케이프된다", () => {
+      // SON-604 감사 PoC: 키를 닫고 computed key를 끼워 넣는 시도
+      const evilKey =
+        'audit.key": "v", [(globalThis.process.getBuiltinModule("node:child_process").execSync("id"), "k2")]: "q", "k3';
+      const entries: DictEntry[] = [
+        { key: evilKey, value: "plain text", isFunction: false },
+        { key: "back`tick${1}\\", value: "값", isFunction: false },
+      ];
+      const result = sonamuDictionary.generateProjectDict("ko", entries, true);
+
+      const props = parseGeneratedDict(result);
+      expect([...props.keys()].toSorted()).toEqual([evilKey, "back`tick${1}\\"].toSorted());
+      for (const initializer of props.values()) {
+        expect(ts.isStringLiteral(initializer)).toBe(true);
+      }
+    });
+
     test("일반 문자열 값은 JSON.stringify로 출력", () => {
       const entries: DictEntry[] = [{ key: "greeting", value: "안녕하세요", isFunction: false }];
       const result = sonamuDictionary.generateProjectDict("ko", entries, true);
@@ -1103,6 +1249,74 @@ describe("i18n", () => {
           ["sparse.second", "Second"],
         ]),
       );
+    });
+
+    test("따옴표·괄호·백틱이 든 xlsx를 import해도 생성 TS가 문자열 리터럴만 가진다", async () => {
+      // SON-604 감사 PoC와 같은 형식의 키·값 인젝션 행을 담은 xlsx
+      const cp = 'globalThis.process.getBuiltinModule("node:child_process")';
+      const evilKey = `audit.key": "v", [(${cp}.execSync("id"), "audit.k2")]: "q", "audit.k3`;
+      const evilValue = `() => "", [(${cp}.execSync("id"), "audit.v2")]: "x"`;
+      const evilValues = [
+        evilValue,
+        '() => "a"; globalThis.x = 1',
+        '(n) => n.constructor.constructor("return process")()',
+        '따옴표 "x" 괄호 (y) 백틱 `z` ${1}',
+      ];
+      const wb = new Workbook();
+      const sheet = firstSheetName(wb);
+      wb.setCellValue(sheet, "A1", "Evil Dictionary");
+      wb.setRowValues(sheet, 3, "A", ["key", "source", "ko", "en"]);
+      wb.setRowValues(sheet, 4, "A", [evilKey, "project", "plain text", "`)]}"]);
+      evilValues.forEach((value, index) => {
+        wb.setRowValues(sheet, 5 + index, "A", [`audit.value${index}`, "project", value, value]);
+      });
+      // 정상 함수 값은 함수로 남아야 한다
+      wb.setRowValues(sheet, 9, "A", [
+        "audit.fn",
+        "project",
+        '(word: string) => josa(word, "은는")',
+        "(n: number) => plural(n, { one: `${n} item`, other: `${n} items` })",
+      ]);
+
+      const written = new Map<string, string>();
+      const writeFileSyncSpy = vi.spyOn(fs, "writeFileSync").mockImplementation((file, data) => {
+        written.set(String(file), String(data));
+      });
+      const updateEntityByKeySpy = vi
+        .spyOn(sonamuDictionary, "updateEntityByKey")
+        .mockResolvedValue(false);
+      try {
+        const result = await sonamuDictionary.importFromExcel(Buffer.from(wb.writeBufferSync()));
+        expect(result.updatedLocales).toBe(2);
+      } finally {
+        writeFileSyncSpy.mockRestore();
+        updateEntityByKeySpy.mockRestore();
+      }
+
+      const byLocale = new Map(
+        [...written].map(([file, content]) => [file.split("/").at(-1), content]),
+      );
+      expect([...byLocale.keys()].toSorted()).toEqual(["en.ts", "ko.ts"]);
+      for (const content of byLocale.values()) {
+        const props = parseGeneratedDict(content);
+        expect(props.has(evilKey)).toBe(true);
+        for (const [key, initializer] of props) {
+          if (key === "audit.fn") {
+            expect(ts.isArrowFunction(initializer)).toBe(true);
+          } else {
+            expect({ key, isString: ts.isStringLiteral(initializer) }).toEqual({
+              key,
+              isString: true,
+            });
+          }
+        }
+        evilValues.forEach((value, index) => {
+          const initializer = props.get(`audit.value${index}`);
+          expect(initializer && ts.isStringLiteral(initializer) ? initializer.text : null).toBe(
+            value,
+          );
+        });
+      }
     });
   });
 });

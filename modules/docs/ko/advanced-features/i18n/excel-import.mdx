@@ -97,7 +97,18 @@ Excel에서 함수형 값도 그대로 유지됩니다:
 | `common.results`      | `(count: number) => \`${count}개 결과\``     |
 | `validation.required` | `(field: string) => \`${field}은(는) 필수\`` |
 
-Import 시 화살표 함수 패턴(`(...) => ...`)을 자동으로 감지하여 함수로 저장합니다.
+Import할 때 다음 경우에만 값을 함수로 저장합니다:
+
+- 같은 키의 사전 파일(`ko.ts`, `en.ts`)에 이미 있는 함수와 내용이 같은 경우. 내보낸 파일을 다시 가져와도 기존 함수가 그대로 유지됩니다.
+- 화살표 함수 표현식 하나로, 매개변수가 단순 식별자이고 본문이 리터럴, 템플릿 리터럴, 매개변수, `plural`·`josa`·`format` 헬퍼, 안전한 연산자와 메서드만 쓰는 경우 (예: `(count: number) => \`${count}개 결과\``)
+
+두 번째 경우의 함수에는 주석, 끝의 세미콜론, `async`, 타입 매개변수, 블록 본문, 기본값·구조 분해·나머지 매개변수를 쓸 수 없습니다. 매개변수의 타입 주석은 쓸 수 있습니다. 호출할 수 있는 것은 `plural`·`josa`·`format.*` 헬퍼와 `join`, `padEnd`, `padStart`, `slice`, `substring`, `toFixed`, `toLocaleDateString`, `toLocaleString`, `toLocaleTimeString`, `toLowerCase`, `toString`, `toUpperCase`, `trim` 메서드뿐입니다.
+
+그 밖의 값은 함수처럼 보이는 코드라도 모두 문자열로 저장됩니다. 더 복잡한 함수는 사전 파일에서 직접 작성하세요. Sonamu UI의 편집·추가 기능도 같은 규칙을 따르며, 키는 항상 문자열로 저장됩니다.
+
+<Warning>
+  Import한 값은 dev 서버가 읽는 사전 파일에 기록됩니다. 출처를 알 수 없거나 신뢰할 수 없는 Excel 파일은 가져오지 마세요.
+</Warning>
 
 ## 주의사항
 
