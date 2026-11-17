@@ -83,6 +83,10 @@ Sonamu UI API `tools/openVscode`는 이제 `absPath`로 앱 루트(API 디렉토
 
 `/sonamu-ui/api/**`는 이제 서버가 프로세스마다 만드는 접근 토큰을 `X-Sonamu-UI-Token` 헤더로 받아야 하며, 토큰이 없거나 틀리면 401, 다른 출처에서 온 요청이면 403입니다. UI는 `/sonamu-ui` HTML에 든 토큰을 자동으로 보내므로 평소처럼 접속하고, 서버를 재시작한 뒤에는 새로고침하세요. UI API를 직접 호출하던 도구는 그 HTML의 `sonamu-ui-token` meta 태그에서 토큰을 읽어 보내야 합니다. DevRunner(기본 `/__test__`)는 토큰 대신 다른 출처 요청을 403, JSON이 아닌 POST를 415로 거부하며 `sonamu test`는 그대로 동작합니다. 자세한 내용은 [Sonamu UI 시작하기](/ko/tools-and-cli/sonamu-ui/getting-started)를 참고하세요.
 
+### Sonamu UI·DevRunner의 Host 검사
+
+로컬 개발 서버의 Sonamu UI와 DevRunner는 이제 `Host`가 `localhost`, `*.localhost`, IP 주소, `server.listen.host`·`server.baseUrl`의 호스트 이름이 아닌 요청을 403으로 거부합니다. `/etc/hosts` 별칭이나 터널 도메인으로 접속해 왔다면 그 호스트 이름을 `server.listen.host`나 `server.baseUrl`에 지정하세요. 별도의 허용 목록 옵션은 없고, `0.0.0.0` 바인딩으로는 이 검사를 끌 수 없습니다. 앱 API는 검사하지 않습니다.
+
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

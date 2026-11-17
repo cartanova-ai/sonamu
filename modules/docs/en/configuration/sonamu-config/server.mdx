@@ -155,6 +155,10 @@ export default defineConfig({
 
 <Warning>When using `0.0.0.0` in production, verify your firewall settings.</Warning>
 
+<Note>
+  On local dev servers (`development` and `test`), the Sonamu UI and DevRunner routes accept only requests whose `Host` is `localhost`, `*.localhost`, an IP address, or the hostname in `listen.host` or `baseUrl`; any other `Host` is rejected with 403. Binding to `0.0.0.0` does not change this check, so to connect through an alias domain or a tunnel, set that hostname in `listen.host` or `baseUrl`. App APIs are not affected.
+</Note>
+
 ## fastify
 
 Configures Fastify server options.

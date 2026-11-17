@@ -155,6 +155,10 @@ export default defineConfig({
 
 <Warning>프로덕션 환경에서 `0.0.0.0`을 사용할 때는 방화벽 설정을 확인하세요.</Warning>
 
+<Note>
+  로컬 개발 서버(`development`·`test`)의 Sonamu UI와 DevRunner 경로는 `localhost`, `*.localhost`, IP 주소, 그리고 `listen.host`와 `baseUrl`의 호스트 이름으로 들어온 요청만 받고, 다른 `Host`는 403으로 거부합니다. `0.0.0.0`으로 바인딩해도 이 검사는 그대로이므로, 별칭 도메인이나 터널로 접속하려면 그 호스트 이름을 `listen.host`나 `baseUrl`에 지정하세요. 앱 API에는 적용되지 않습니다.
+</Note>
+
 ## fastify
 
 Fastify 서버 옵션을 설정합니다.

@@ -627,6 +627,20 @@ class SonamuClass {
     // Sonamu UI API (로컬 환경에서만)
     const { isLocal } = await import("../utils/controller");
     if (isLocal()) {
+      // DNS rebinding으로 공격자 도메인이 개발 서버를 가리켜도 UI·dev 라우트에 닿지 못하도록 Host를 검사합니다.
+      // 보호할 라우트를 등록하기 전에 훅을 걸어야 합니다.
+      const { getConfiguredDevHostnames, registerDevHostGuard } =
+        await import("../ui/dev-host-guard");
+      registerDevHostGuard(server, {
+        configuredHostnames: getConfiguredDevHostnames(this.config.server),
+        protectedPrefixes: [
+          "/sonamu-ui",
+          ...(this.config.test?.devRunner?.enabled
+            ? [this.config.test.devRunner.routePrefix ?? "/__test__"]
+            : []),
+        ],
+      });
+
       const { sonamuUIApiPlugin } = await import("../ui/api");
       server.register(sonamuUIApiPlugin);
     }

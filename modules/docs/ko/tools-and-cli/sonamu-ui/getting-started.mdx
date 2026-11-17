@@ -57,6 +57,7 @@ Sonamu UI는 로컬 개발 서버(`development`·`test` 환경)에서만 열리�
 - `/sonamu-ui/api/**`를 직접 호출하는 도구도 현재 HTML의 `sonamu-ui-token` meta 태그에 든 토큰을 같은 헤더로 보내야 합니다. 토큰이 없거나 틀리면 401, 토큰이 맞아도 다른 출처에서 온 요청이면 403입니다.
 - 에디터를 실행하는 `tools/openVscode`, `tools/openEditor`, `cdd/openSource`, `cdd/editContent`는 `Content-Type: application/json`과 `X-Sonamu-UI: 1` 헤더를 붙인 같은 출처의 POST 요청만 받고, 나머지는 403으로 거부합니다.
 - `tools/openVscode`에 `absPath`를 넘기면 앱 루트(API 디렉토리의 상위 디렉토리) 아래에 실제로 있는 파일만 엽니다. 앱 루트 밖 경로와 그곳을 가리키는 심볼릭 링크, 디렉토리, 없는 파일은 400으로 거부합니다.
+- `Host` 헤더가 `localhost`, `*.localhost`, IP 주소, 또는 `server.listen.host`·`server.baseUrl`의 호스트 이름이 아닌 요청은 403입니다. 별칭 도메인이나 터널로 접속하려면 그 호스트 이름을 [서버 설정](/ko/configuration/sonamu-config/server)의 두 옵션 중 하나에 지정하세요.
 
 ## 인터페이스 구조
 

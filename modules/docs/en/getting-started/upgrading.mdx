@@ -83,6 +83,10 @@ Call `tools/openVscode` and `tools/openEditor` with POST and a JSON body instead
 
 `/sonamu-ui/api/**` now requires an access token, created by the server for each process, in the `X-Sonamu-UI-Token` header. A missing or wrong token returns 401, and a request from another origin returns 403. The UI sends the token from the `/sonamu-ui` HTML automatically, so open it as usual and reload it after restarting the server. Tools that called UI APIs directly must read the token from the `sonamu-ui-token` meta tag of that HTML and send it. DevRunner (`/__test__` by default) needs no token, but rejects requests from other origins with 403 and non-JSON POST requests with 415; `sonamu test` keeps working. See [Sonamu UI getting started](/en/tools-and-cli/sonamu-ui/getting-started) for details.
 
+### Host checks for Sonamu UI and DevRunner
+
+On local dev servers, Sonamu UI and DevRunner now reject with 403 any request whose `Host` is not `localhost`, `*.localhost`, an IP address, or the hostname in `server.listen.host` or `server.baseUrl`. If you connected through an `/etc/hosts` alias or a tunnel domain, set that hostname in `server.listen.host` or `server.baseUrl`. There is no separate allowlist option, and binding to `0.0.0.0` does not turn this check off. App APIs are not checked.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only
