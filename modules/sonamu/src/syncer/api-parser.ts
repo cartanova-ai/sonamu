@@ -372,6 +372,18 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
         };
       }
       break;
+    case ts.SyntaxKind.TypeOperator: {
+      // readonly T[] / readonly [A, B] 는 런타임 검증·클라이언트 타입에 영향이 없으므로 내부 타입으로 풀어낸다.
+      // (가변 배열은 readonly 배열 파라미터에 그대로 대입 가능)
+      const opNode =
+        /* SAFETY: TypeScript AST 파싱과 동기화 입력 계약이 이 값의 타입을 보장한다. */ typeNode as ts.TypeOperatorNode;
+      if (opNode.operator === ts.SyntaxKind.ReadonlyKeyword) {
+        return resolveTypeNode(opNode.type);
+      }
+      throw new Error(
+        `지원하지 않는 타입 연산자 ${ts.tokenToString(opNode.operator)} (API 파라미터에는 keyof/unique 를 쓸 수 없습니다)`,
+      );
+    }
     case ts.SyntaxKind.ParenthesizedType:
       // 괄호로 묶인 타입 (예: (A & B)[] 에서 (A & B))
       // 내부 타입을 재귀적으로 resolve
