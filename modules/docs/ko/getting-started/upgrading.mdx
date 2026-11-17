@@ -95,10 +95,6 @@ Sonamu UI는 이제 `development`·`test`·`fixture` 계열 프리셋만 다룹�
 
 생성 코드에 들어가는 entity.json 값을 이제 로드·저장·코드 생성 때 검사합니다. Entity `id`·`parentId`·`table`, prop `name`, enum ID, 관계의 `with`·`relationType`·`joinTable`·`joinColumn`·`fromColumn`은 ASCII 식별자(`^[A-Za-z_$][A-Za-z0-9_$]*$`)여야 하고, prop의 `id`와 subset 키·필드 경로도 비슷한 형식을 따라야 합니다. `length`·`precision`·`scale`·`dimensions`는 문자열이 아닌 숫자, `zodFormat`은 지원하는 값이어야 합니다. 검사에 실패하면 경고만 남기던 이전과 달리 서버 기동과 `sonamu sync`가 멈추고 Sonamu UI 저장은 400으로 거부됩니다. 한글처럼 JavaScript가 허용하는 비ASCII 식별자도 거부하므로 오류 메시지에 나온 값을 고치세요. `title`·`desc`와 enum 값의 키·레이블은 제한하지 않습니다.
 
-### 마이그레이션 생성의 SQL 조각 제한
-
-자동 마이그레이션 생성은 이제 SQL 식인 `dbDefault`, `generated.expression`, 인덱스 `where`처럼 SQL로 들어가는 값에 `;`가 있으면 오류를 냅니다. SQL 문자열 리터럴 안의 `;`도 거부하므로, 그런 SQL은 직접 작성한 마이그레이션으로 옮기세요. 큰따옴표로 시작하는 `dbDefault`(문자열 값 기본값)는 큰따옴표 문자열 리터럴 하나여야 하며 뒤에 다른 식을 붙일 수 없습니다. 기존의 `\x5b` 같은 이스케이프는 그대로 쓸 수 있습니다.
-
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

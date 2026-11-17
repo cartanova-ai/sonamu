@@ -162,9 +162,10 @@ export class Template__generated extends Template {
       lines: Object.entries(entity.enumLabels)
         .filter(([, enumLabel]) => Object.keys(enumLabel).length > 0)
         .flatMap(([enumId, enumLabel]) => [
-          `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
-            (el) => `"${el}"`,
-          )}]).describe("${enumId}");`,
+          // enum 키는 자유 문자열이므로 JSON 문자열 리터럴로 출력합니다.
+          `export const ${enumId} = z.enum([${Object.keys(enumLabel).map((el) =>
+            JSON.stringify(el),
+          )}]).describe(${JSON.stringify(enumId)});`,
           `export type ${enumId} = z.infer<typeof ${enumId}>;`,
           `export const ${enumId}Label = ${JSON.stringify(enumLabel)};`,
         ]),

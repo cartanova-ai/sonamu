@@ -410,14 +410,13 @@ SD.enumLabels = (enumName: string): Record<string, LocalizedString> => {
       return "const entityLabels = {} as const;";
     }
 
-    const entries = labels.map(({ key, value }) => `  "${key}": "${this.escapeString(value)}",`);
+    // 키(enum 값 포함)와 라벨은 자유 문자열이므로 JSON 문자열 리터럴로 출력합니다(따옴표·역슬래시·개행 문자 모두 이스케이프).
+    const entries = labels.map(
+      ({ key, value }) => `  ${JSON.stringify(key)}: ${JSON.stringify(value)},`,
+    );
 
     return `const entityLabels = {
 ${entries.join("\n")}
 } as const;`;
-  }
-
-  private escapeString(str: string): string {
-    return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
   }
 }

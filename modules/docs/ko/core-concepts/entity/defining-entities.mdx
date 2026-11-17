@@ -103,6 +103,10 @@ Entity의 속성(컬럼) 배열입니다. 각 속성은 타입과 옵션을 정�
 | `nullable`  | boolean | NULL 허용 여부      | `false` |
 | `dbDefault` | string  | DB 기본값           | -       |
 
+<Warning>
+  Entity `id`·`table`, prop `name`, enum ID, 관계의 `with`·`joinTable`·`joinColumn`처럼 생성 코드의 식별자로 쓰이는 값은 ASCII 식별자(`^[A-Za-z_$][A-Za-z0-9_$]*$`)여야 합니다. 한글 같은 비ASCII 문자나 공백·하이픈·점이 들어가면 entity.json을 불러오거나 저장할 때 오류가 나고, Sonamu UI 저장은 400으로 거부됩니다.
+</Warning>
+
 <Info>
   **더 알아보기** - [Field Types](/ko/core-concepts/entity/field-types) - 사용 가능한 모든 데이터
   타입 - [Relations](/ko/core-concepts/entity/relations) - Entity 간 관계 정의

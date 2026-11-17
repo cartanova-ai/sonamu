@@ -20,6 +20,7 @@ import { importMembers } from "../utils/esm-utils";
 import { type AbsolutePath } from "../utils/path-utils";
 import { runtimePath } from "../utils/path-utils";
 import { type Entity } from "./entity";
+import { assertEntityJsonCodegenSafe } from "./entity-codegen-safety";
 
 export type EntityNamesRecord = Record<
   "fs" | "fsPlural" | "camel" | "camelPlural" | "capital" | "capitalPlural" | "upper" | "constant",
@@ -78,6 +79,7 @@ class EntityManagerClass {
       await this.register(json, {
         deferSearchTextJsonSourceValidation: true,
         apiRootPath,
+        source: path.relative(apiRootPath, file),
       });
     }
 
@@ -103,8 +105,15 @@ class EntityManagerClass {
 
   async register(
     json: EntityJson,
-    options: { deferSearchTextJsonSourceValidation?: boolean; apiRootPath?: string } = {},
+    options: {
+      deferSearchTextJsonSourceValidation?: boolean;
+      apiRootPath?: string;
+      /** 검증 오류 메시지에 표시할 출처(entity.json 경로) */
+      source?: string;
+    } = {},
   ): Promise<void> {
+    // 생성 코드에 그대로 들어가는 값은 등록 전에 강제 검증합니다(스키마 경고와 달리 로드를 중단).
+    assertEntityJsonCodegenSafe(json, options.source);
     const { Entity } = await import("./entity");
     const entity = new Entity(json);
     await entity.registerModulePaths(options.apiRootPath);
@@ -113,6 +122,25 @@ class EntityManagerClass {
     }
     entity.registerTableSpecs();
     this.entities.set(json.id, entity);
+  }
+
+  /**
+   * 디스크의 entity.json을 다시 읽어 등록합니다.
+   * 저장이 거부된 뒤 메모리에 남은 값을 마지막으로 저장된 상태로 되돌릴 때 씁니다.
+   */
+  async registerFromFile(jsonPath: string): Promise<void> {
+    const json = parseEntityJson((await readFile(jsonPath)).toString());
+    await this.register(json, { source: jsonPath });
+  }
+
+  /**
+   * 등록된 모든 엔티티가 생성 코드에 안전하게 들어갈 수 있는지 검사합니다.
+   * 코드 생성 직전의 마지막 방어선으로, 저장을 거치지 않고 메모리에서 바뀐 값도 막습니다.
+   */
+  assertAllCodegenSafe(): void {
+    for (const entity of this.entities.values()) {
+      assertEntityJsonCodegenSafe(entity.toJson());
+    }
   }
 
   async validateAllRegisteredSearchTextJsonSources(apiRootPath?: string): Promise<void> {

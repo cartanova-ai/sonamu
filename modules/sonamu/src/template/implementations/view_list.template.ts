@@ -429,7 +429,7 @@ import { SD } from "@/i18n/sd.generated";
 
 const ${filterSchemaName} = ${names.capital}BaseSchema.pick({ ${filterSchemaPick} });
 
-export const Route = createFileRoute("/admin/${names.fsPlural}/")({\n  head: () => ({\n    meta: [\n      { title: "${entity.title ?? names.capital} List" },\n      { name: "description", content: SD("entity.listManage")("${entity.title ?? names.capital}") },\n    ],\n  }),\n  component: ${names.capital}List,\n});\n\ntype ${names.capital}ListProps = {};
+export const Route = createFileRoute("/admin/${names.fsPlural}/")({\n  head: () => ({\n    meta: [\n      { title: ${JSON.stringify(`${entity.title ?? names.capital} List`)} },\n      { name: "description", content: SD("entity.listManage")(${JSON.stringify(entity.title ?? names.capital)}) },\n    ],\n  }),\n  component: ${names.capital}List,\n});\n\ntype ${names.capital}ListProps = {};
 
 function ${names.capital}List({}: ${names.capital}ListProps) {
   const navigate = useNavigate();

@@ -106,6 +106,10 @@ An array of Entity properties (columns). Each property defines its type and opti
 | `nullable`  | boolean | Allow NULL                 | `false`    |
 | `dbDefault` | string  | DB default value           | -          |
 
+<Warning>
+  Values used as identifiers in generated code, such as the Entity `id` and `table`, prop `name`, enum IDs, and relation `with`, `joinTable`, and `joinColumn`, must be ASCII identifiers (`^[A-Za-z_$][A-Za-z0-9_$]*$`). Non-ASCII letters, spaces, hyphens, or dots cause an error when entity.json is loaded or saved, and Sonamu UI rejects the save with 400.
+</Warning>
+
 <Info>
   **Learn More** - [Field Types](/en/core-concepts/entity/field-types) - All available data types -
   [Relations](/en/core-concepts/entity/relations) - Defining Entity relationships

@@ -488,7 +488,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             const { entityId, at, newProp } = request.body;
 
             const entity = EntityManager.get(entityId);
-            entity.modifyProp(newProp, at);
+            await entity.modifyProp(newProp, at);
 
             return true;
           });
@@ -506,7 +506,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             const { entityId, at } = request.body;
 
             const entity = EntityManager.get(entityId);
-            entity.delProp(at);
+            await entity.delProp(at);
             return true;
           });
         }),
@@ -524,7 +524,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             const { entityId, at, to } = request.body;
 
             const entity = EntityManager.get(entityId);
-            entity.moveProp(at, to);
+            await entity.moveProp(at, to);
 
             return true;
           });

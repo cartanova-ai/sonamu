@@ -41,6 +41,7 @@ import { exists } from "../utils/fs-utils";
 import { runtimePath } from "../utils/path-utils";
 import { isStringValue } from "../utils/runtime-value";
 import { assertDefined, nonNullable } from "../utils/utils";
+import { assertEntityJsonCodegenSafe } from "./entity-codegen-safety";
 
 type NestedSelect = { [key: string]: string | NestedSelect };
 import { EntityManager } from "./entity-manager";
@@ -261,9 +262,9 @@ export class Entity {
       const joinMethod = join.join === "inner" ? "join" : "leftJoin";
 
       if ("custom" in join) {
-        // custom join clause는 raw 사용
+        // custom join clause는 raw 사용 (자유 문자열이므로 JSON 문자열 리터럴로 출력)
         lines.push(
-          `.${joinMethod}({ ${join.as}: "${join.table}" }, qbWrapper.knex.raw(\`${join.custom}\`))`,
+          `.${joinMethod}({ ${join.as}: "${join.table}" }, qbWrapper.knex.raw(${JSON.stringify(join.custom)}))`,
         );
       } else {
         lines.push(`.${joinMethod}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`);
@@ -419,7 +420,7 @@ export class Entity {
               // custom join clause는 callback 형태의 on 메서드로 처리합니다.
               loaderLines.push(
                 `.${joinMethod}({ ${join.as}: "${join.table}" }, (j) => {`,
-                `j.on(Puri.rawString("${join.custom}"));`,
+                `j.on(Puri.rawString(${JSON.stringify(join.custom)}));`,
                 "})",
               );
             } else {
@@ -451,7 +452,7 @@ export class Entity {
               // custom join clause는 callback 형태의 on 메서드로 처리합니다.
               loaderLines.push(
                 `.${joinMethod}({ ${join.as}: "${join.table}" }, (j) => {`,
-                `j.on(Puri.rawString("${join.custom}"));`,
+                `j.on(Puri.rawString(${JSON.stringify(join.custom)}));`,
                 "})",
               );
             } else {
@@ -1017,6 +1018,20 @@ export class Entity {
   }
 
   async save(): Promise<void> {
+    const jsonPath = path.join(
+      Sonamu.apiRootPath,
+      `src/application/${this.names.parentFs}/${this.names.fs}.entity.json`,
+    );
+
+    // 생성 코드에 들어갈 수 없는 값은 파일에 쓰기 전에 거부합니다.
+    try {
+      assertEntityJsonCodegenSafe(this.toJson());
+    } catch (error) {
+      // 호출부가 이미 메모리의 엔티티를 바꿨으므로, 거부된 값이 다음 코드 생성에 쓰이지 않게 디스크 상태로 되돌립니다.
+      await EntityManager.registerFromFile(jsonPath);
+      throw error;
+    }
+
     // sort: subsets
     const subsetRows = this.getSubsetRows();
     this.subsets = Object.fromEntries(
@@ -1031,10 +1046,6 @@ export class Entity {
     );
 
     // save
-    const jsonPath = path.join(
-      Sonamu.apiRootPath,
-      `src/application/${this.names.parentFs}/${this.names.fs}.entity.json`,
-    );
     const json = this.toJson();
     await writeFile(jsonPath, await formatCode(JSON.stringify(json), jsonPath));
 

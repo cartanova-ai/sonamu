@@ -96,6 +96,9 @@ export async function renderTemplate<T extends keyof TemplateOptions>(
 ): Promise<PathAndCode[]> {
   Naite.t("renderTemplate", { key, options });
 
+  // 메모리에서 바뀐 엔티티 값이 검증 없이 생성 코드로 나가지 않도록 렌더 직전에 다시 확인합니다.
+  EntityManager.assertAllCodegenSafe();
+
   const template = TemplateManager.get(key);
 
   const rendered = await template.render(options);
