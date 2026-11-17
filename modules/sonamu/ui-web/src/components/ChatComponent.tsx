@@ -8,6 +8,8 @@ import AlertCircleIcon from "~icons/lucide/alert-circle";
 import CheckIcon from "~icons/lucide/check";
 import Loader2Icon from "~icons/lucide/loader-2";
 
+import { sonamuUITokenHeaders } from "../services/sonamu-ui-token";
+
 type ToolState = "idle" | "running" | "success" | "error";
 
 type ChatComponentProps = {
@@ -24,6 +26,7 @@ export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: Chat
   const { messages, status, sendMessage, setMessages, stop } = useChat({
     transport: new DefaultChatTransport({
       api: "/sonamu-ui/api/ai/fixture/chat",
+      headers: sonamuUITokenHeaders,
     }),
     onError: (error) => {
       const err = (() => {

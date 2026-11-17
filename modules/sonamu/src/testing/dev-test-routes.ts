@@ -8,6 +8,7 @@ import { Sonamu } from "../api/sonamu";
 import { type SerializedTrace } from "../naite/naite";
 import { createSSEFactory } from "../stream/sse";
 import { type SSEConnection } from "../stream/sse";
+import { rejectCrossOriginDevRequest } from "../ui/access-guard";
 import {
   type ManagerStatus,
   type RunResult,
@@ -202,8 +203,11 @@ export async function registerDevTestRoutes(
 
   const sseAvailable = dependencies?.sseAvailable ?? !!Sonamu.config.server.plugins?.sse;
 
+  // 루트 서버에 직접 등록되므로 전역 훅 대신 라우트마다 교차 출처 차단 훅을 붙입니다.
+  const routeOptions = { onRequest: rejectCrossOriginDevRequest };
+
   if (sseAvailable) {
-    server.get(`${prefix}/events`, (request, reply): void => {
+    server.get(`${prefix}/events`, routeOptions, (request, reply): void => {
       const sse: SSEConnection<typeof TestEventSchema> = createSSEFactory(
         request.socket,
         reply,
@@ -263,7 +267,7 @@ export async function registerDevTestRoutes(
     });
   }
 
-  server.post(`${prefix}/run`, async (request, reply) => {
+  server.post(`${prefix}/run`, routeOptions, async (request, reply) => {
     const runId = randomUUID();
     const runRequest = RunRequestSchema.parse(request.body ?? {});
 
@@ -312,7 +316,7 @@ export async function registerDevTestRoutes(
     }
   });
 
-  server.get(`${prefix}/status`, async () => {
+  server.get(`${prefix}/status`, routeOptions, async () => {
     const status: ManagerStatus = manager.getStatus();
     return { ...status, sseAvailable };
   });

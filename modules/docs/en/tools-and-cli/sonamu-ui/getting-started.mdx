@@ -55,6 +55,8 @@ pnpm dev
 
 Sonamu UI is served only by local dev servers (`development` and `test` environments), and it checks requests so that other web pages cannot call its APIs on your machine.
 
+- The server puts an access token, created anew for each process, into the HTML served at `/sonamu-ui`, and the UI sends it in the `X-Sonamu-UI-Token` header when calling APIs. You do not add the token to the URL, but reload the UI after restarting the server. Opening the file path `/sonamu-ui/index.html` directly serves the page without a token.
+- Tools that call `/sonamu-ui/api/**` directly must also send the token from the `sonamu-ui-token` meta tag of the current HTML in the same header. A missing or wrong token returns 401; a request from another origin returns 403 even with a valid token.
 - The editor-launch APIs `tools/openVscode`, `tools/openEditor`, `cdd/openSource`, and `cdd/editContent` accept only same-origin POST requests with `Content-Type: application/json` and an `X-Sonamu-UI: 1` header; anything else is rejected with 403.
 - When `tools/openVscode` receives `absPath`, it opens only an existing file under the app root (the parent directory of the API directory). Paths outside the app root, symlinks pointing outside it, directories, and missing files are rejected with 400.
 

@@ -53,6 +53,8 @@ pnpm dev
 
 Sonamu UI는 로컬 개발 서버(`development`·`test` 환경)에서만 열리며, 다른 웹페이지가 개발자 PC의 UI API를 호출하지 못하도록 요청을 검사합니다.
 
+- 서버가 `/sonamu-ui`의 HTML에 프로세스마다 새로 만드는 접근 토큰을 넣고, UI는 API를 호출할 때 이 토큰을 `X-Sonamu-UI-Token` 헤더로 보냅니다. URL에 토큰을 붙일 필요는 없지만, 서버를 재시작했다면 UI를 새로고침하세요. `/sonamu-ui/index.html`처럼 파일 경로로 직접 열면 토큰이 들어가지 않습니다.
+- `/sonamu-ui/api/**`를 직접 호출하는 도구도 현재 HTML의 `sonamu-ui-token` meta 태그에 든 토큰을 같은 헤더로 보내야 합니다. 토큰이 없거나 틀리면 401, 토큰이 맞아도 다른 출처에서 온 요청이면 403입니다.
 - 에디터를 실행하는 `tools/openVscode`, `tools/openEditor`, `cdd/openSource`, `cdd/editContent`는 `Content-Type: application/json`과 `X-Sonamu-UI: 1` 헤더를 붙인 같은 출처의 POST 요청만 받고, 나머지는 403으로 거부합니다.
 - `tools/openVscode`에 `absPath`를 넘기면 앱 루트(API 디렉토리의 상위 디렉토리) 아래에 실제로 있는 파일만 엽니다. 앱 루트 밖 경로와 그곳을 가리키는 심볼릭 링크, 디렉토리, 없는 파일은 400으로 거부합니다.
 

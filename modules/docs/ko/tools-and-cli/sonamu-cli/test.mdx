@@ -131,6 +131,8 @@ sequenceDiagram
 2. dev 서버의 `DevVitestManager`가 상주 Vitest 인스턴스로 테스트를 실행합니다.
 3. 결과를 JSON으로 반환하면 CLI가 요약을 출력합니다.
 
+DevRunner 엔드포인트는 다른 출처에서 온 브라우저 요청을 403으로 거부하고, GET·HEAD가 아닌 요청은 `Content-Type: application/json`일 때만 받습니다(아니면 415). `sonamu test`는 이미 JSON으로 요청하며, Sonamu UI 접근 토큰은 필요하지 않습니다.
+
 ## `pnpm test`와의 비교
 
 |           | `pnpm test`     | `pnpm sonamu test`            |

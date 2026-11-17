@@ -22,6 +22,7 @@ import {
 } from "sonamu";
 import { z } from "zod";
 
+import { sonamuUITokenHeaders } from "./sonamu-ui-token";
 import { fetch } from "./sonamu.shared";
 
 export type ExtendedEntity = Entity & {
@@ -480,7 +481,7 @@ export namespace SonamuUIService {
   ): AsyncGenerator<MigrationStreamEvent> {
     const response = await globalThis.fetch(`/sonamu-ui/api/migrations/${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...sonamuUITokenHeaders() },
       body: JSON.stringify(body),
       signal,
     });

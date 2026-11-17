@@ -37,6 +37,12 @@ import {
 } from "../types/types";
 import { isObjectValue } from "../utils/runtime-value";
 import { nonNullable } from "../utils/utils";
+import {
+  canServeSonamuUIToken,
+  getSonamuUIToken,
+  requireSonamuUIToken,
+  SONAMU_UI_TOKEN_PLACEHOLDER,
+} from "./access-guard";
 import { setAiApi } from "./ai-api";
 import { forwardAsyncErrors } from "./async-route";
 import { type CddAddRuleRequest } from "./cdd-service";
@@ -89,6 +95,19 @@ function flattenSubsetRows(subsetRows: EntitySubsetRow[]): FlattenSubsetRow[] {
 export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
   fastify.register(
     async (server) => {
+      // 이 범위에 등록되는 모든 API 라우트(이후 추가되는 라우트 포함)에 접근 토큰 검사를 붙입니다.
+      // 원본 URL이 아니라 매칭된 라우트 패턴으로 판정하므로 퍼센트 인코딩 등으로 우회할 수 없습니다.
+      server.addHook("onRoute", (routeOptions) => {
+        if (!routeOptions.url.startsWith(`${routeOptions.prefix}/api/`)) {
+          return;
+        }
+        const existing = routeOptions.onRequest;
+        routeOptions.onRequest = [
+          requireSonamuUIToken,
+          ...(existing === undefined ? [] : Array.isArray(existing) ? existing : [existing]),
+        ];
+      });
+
       await setAiApi(server);
       await registerMigrationsApi(server);
 
@@ -1387,15 +1406,21 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         prefix: "/",
         decorateReply: false,
         wildcard: false,
+        // index.html은 접근 토큰을 넣어야 하므로 아래 SPA fallback에서만 내려줍니다.
+        index: false,
       });
 
       // SPA fallback - 정적 파일이 없는 모든 경로는 index.html로
-      server.get("*", async (_request, reply) => {
+      server.get("*", async (request, reply) => {
+        if (!canServeSonamuUIToken(request)) {
+          return reply.code(403).send({ message: SD("error.forbidden"), issues: [] });
+        }
         reply.headers({ "Content-type": "text/html" }).send(
           fs
             .readFileSync(path.resolve(uiDistPath, "index.html"))
             .toString()
-            .replace("{{projectName}}", Sonamu.config.projectName ?? "UnknownSonamuProject"),
+            .replace("{{projectName}}", Sonamu.config.projectName ?? "UnknownSonamuProject")
+            .replace(SONAMU_UI_TOKEN_PLACEHOLDER, getSonamuUIToken()),
         );
       });
     },

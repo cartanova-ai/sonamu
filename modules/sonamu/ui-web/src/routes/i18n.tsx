@@ -16,6 +16,7 @@ import TrashIcon from "~icons/lucide/trash-2";
 import UploadIcon from "~icons/lucide/upload";
 
 import { useSonamuContext } from "../contexts/sonamu-provider";
+import { sonamuUITokenHeaders } from "../services/sonamu-ui-token";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { defaultCatch } from "../services/sonamu.shared";
 
@@ -25,8 +26,29 @@ export const Route = createFileRoute("/i18n")({
   component: I18nIndex,
 });
 
+// 페이지 이동으로는 접근 토큰 헤더를 보낼 수 없어서 fetch로 받은 파일을 내려받습니다.
+async function downloadI18nExport(): Promise<void> {
+  const response = await globalThis.fetch("/sonamu-ui/api/i18n/export", {
+    headers: sonamuUITokenHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`i18n export failed: HTTP ${response.status}`);
+  }
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "i18n.xlsx";
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  // 브라우저가 내려받기를 시작하기 전에 URL이 무효화되지 않도록 해제를 미룹니다.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function handleExport(): void {
-  window.location.href = "/sonamu-ui/api/i18n/export";
+  downloadI18nExport().catch(defaultCatch);
 }
 
 function I18nIndex() {

@@ -3,7 +3,12 @@
 import axios, { isAxiosError, type AxiosRequestConfig } from "axios";
 import { z } from "zod";
 
+import { sonamuUITokenHeaders } from "./sonamu-ui-token";
+
 const baseURL = "";
+
+// 모든 Sonamu UI API 요청에 접근 토큰을 붙이는 전용 인스턴스입니다.
+const sonamuUIAxios = axios.create({ headers: sonamuUITokenHeaders() });
 
 const sonamuErrorResponseSchema = z.object({
   message: z.string(),
@@ -12,7 +17,7 @@ const sonamuErrorResponseSchema = z.object({
 
 export async function fetch<T = unknown>(options: AxiosRequestConfig): Promise<T> {
   try {
-    const res = await axios<T>({
+    const res = await sonamuUIAxios<T>({
       baseURL,
       ...options,
       // 서버는 이 헤더가 있는 동일 출처 요청만 프로세스 실행 API로 받습니다.

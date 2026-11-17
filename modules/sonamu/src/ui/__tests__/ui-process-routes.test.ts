@@ -7,15 +7,19 @@ import fastify, { type FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { setSDConfig } from "../../dict/sd";
+import { getSonamuUIToken } from "../access-guard";
 import { sonamuUIApiPlugin } from "../api";
 
 const HOST = "localhost:10280";
+// SON-618 접근 토큰 검사를 통과시켜 SON-603 가드 자체의 거부·허용을 검증합니다.
+const UI_TOKEN_HEADERS = { "x-sonamu-ui-token": getSonamuUIToken() };
 const SAME_ORIGIN_HEADERS = {
   host: HOST,
   origin: `http://${HOST}`,
   "sec-fetch-site": "same-origin",
   "content-type": "application/json",
   "x-sonamu-ui": "1",
+  ...UI_TOKEN_HEADERS,
 };
 
 /**
@@ -89,6 +93,7 @@ describe("Sonamu UI 프로세스 실행 API의 교차 출처 차단", () => {
         origin: "http://evil.example",
         "sec-fetch-site": "cross-site",
         "content-type": "application/x-www-form-urlencoded",
+        ...UI_TOKEN_HEADERS,
       },
       (route) => new URLSearchParams(route.payload).toString(),
     );
@@ -101,6 +106,7 @@ describe("Sonamu UI 프로세스 실행 API의 교차 출처 차단", () => {
         origin: "http://127.0.0.1:10997",
         "sec-fetch-site": "same-site",
         "content-type": "text/plain;charset=UTF-8",
+        ...UI_TOKEN_HEADERS,
       },
       (route) => JSON.stringify(route.payload),
     );
@@ -135,7 +141,12 @@ describe("Sonamu UI 프로세스 실행 API의 교차 출처 차단", () => {
       // Sec-Fetch-Site를 보내지 않는 브라우저의 동일 출처 요청
       (({ "sec-fetch-site": _omitted, ...rest }) => rest)(SAME_ORIGIN_HEADERS),
       // 브라우저 밖 로컬 클라이언트(Origin·Sec-Fetch-Site 없음)
-      { host: HOST, "content-type": "application/json; charset=utf-8", "x-sonamu-ui": "1" },
+      {
+        host: HOST,
+        "content-type": "application/json; charset=utf-8",
+        "x-sonamu-ui": "1",
+        ...UI_TOKEN_HEADERS,
+      },
     ];
     for (const headers of allowedHeaders) {
       for (const route of processRoutes) {

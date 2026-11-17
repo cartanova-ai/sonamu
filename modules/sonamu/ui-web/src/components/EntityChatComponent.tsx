@@ -10,6 +10,8 @@ import MessageCircleIcon from "~icons/lucide/message-circle";
 import SendIcon from "~icons/lucide/send";
 import StopCircleIcon from "~icons/lucide/stop-circle";
 
+import { sonamuUITokenHeaders } from "../services/sonamu-ui-token";
+
 type ToolState = "idle" | "running" | "success" | "error";
 
 type EntityChatComponentProps = {
@@ -29,6 +31,7 @@ export default function EntityChatComponent({
   const { messages, status, sendMessage, stop } = useChat({
     transport: new DefaultChatTransport({
       api: "/sonamu-ui/api/ai/entity/chat",
+      headers: sonamuUITokenHeaders,
     }),
     onError: (error) => {
       const err = (() => {

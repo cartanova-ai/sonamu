@@ -131,6 +131,8 @@ sequenceDiagram
 2. The dev server's `DevVitestManager` runs the tests using the resident Vitest instance.
 3. Results are returned as JSON, and the CLI prints a summary.
 
+DevRunner endpoints reject browser requests from other origins with 403, and accept requests other than GET and HEAD only with `Content-Type: application/json` (otherwise 415). `sonamu test` already sends JSON, and no Sonamu UI access token is required.
+
 ## Comparison with `pnpm test`
 
 |                 | `pnpm test`              | `pnpm sonamu test`                 |

@@ -1,3 +1,4 @@
+import formbody from "@fastify/formbody";
 import Fastify from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -120,6 +121,104 @@ describe("registerDevTestRoutes", () => {
         running: false,
         lastRunAt: null,
       });
+    });
+  });
+
+  describe("교차 출처 요청 차단", () => {
+    // 스캐폴드 기본값처럼 formbody를 켠 서버에서 단순 요청 형식을 검증합니다.
+    let formApp: ReturnType<typeof Fastify>;
+
+    beforeEach(async () => {
+      formApp = Fastify();
+      await formApp.register(formbody);
+      await registerDevTestRoutes(formApp, defaultConfig, dependencies);
+      vi.clearAllMocks();
+      mockManager.run.mockResolvedValue(okRunResult);
+      mockManager.getStatus.mockReturnValue(okStatus);
+    });
+
+    afterEach(async () => {
+      await formApp.close();
+    });
+
+    it("다른 출처 웹페이지의 form·no-cors·본문 없는 POST는 테스트를 실행하지 않는다", async () => {
+      const requests: { headers: Record<string, string>; payload?: string }[] = [
+        {
+          headers: {
+            origin: "http://evil.example",
+            "sec-fetch-site": "cross-site",
+            "content-type": "application/x-www-form-urlencoded",
+          },
+          payload: "pattern=x",
+        },
+        {
+          headers: {
+            origin: "http://localhost:3000",
+            "sec-fetch-site": "same-site",
+            "content-type": "text/plain;charset=UTF-8",
+          },
+          payload: "{}",
+        },
+        // Sec-Fetch-Site를 보내지 않는 브라우저는 Origin과 Host를 비교합니다.
+        { headers: { origin: "http://evil.example" } },
+        { headers: { origin: "null", "content-type": "application/json" }, payload: "{}" },
+      ];
+      for (const { headers, payload } of requests) {
+        const res = await formApp.inject({
+          method: "POST",
+          url: "/__test__/run",
+          headers: { host: "localhost:10280", ...headers },
+          payload,
+        });
+        expect(res.statusCode, JSON.stringify(headers)).toBe(403);
+      }
+      expect(mockManager.run).not.toHaveBeenCalled();
+      expect(mockManager.emitEvent).not.toHaveBeenCalled();
+    });
+
+    it("JSON이 아닌 POST는 출처 표시가 없어도 415로 거부한다", async () => {
+      const requests: { headers: Record<string, string>; payload?: string }[] = [
+        { headers: {} },
+        { headers: { "content-type": "application/x-www-form-urlencoded" }, payload: "pattern=x" },
+        { headers: { "content-type": "text/plain" }, payload: "{}" },
+      ];
+      for (const { headers, payload } of requests) {
+        const res = await formApp.inject({
+          method: "POST",
+          url: "/__test__/run",
+          headers,
+          payload,
+        });
+        expect(res.statusCode, JSON.stringify(headers)).toBe(415);
+      }
+      expect(mockManager.run).not.toHaveBeenCalled();
+    });
+
+    it("다른 출처의 GET /__test__/status는 403으로 거부한다", async () => {
+      const res = await formApp.inject({
+        method: "GET",
+        url: "/__test__/status",
+        headers: { origin: "http://evil.example", "sec-fetch-site": "cross-site" },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it("sonamu test CLI의 JSON 요청과 동일 출처 Sonamu UI 요청은 통과한다", async () => {
+      const cliRes = await formApp.inject({
+        method: "POST",
+        url: "/__test__/run",
+        headers: { "content-type": "application/json" },
+        payload: JSON.stringify({ files: ["foo.test.ts"] }),
+      });
+      expect(cliRes.statusCode).toBe(200);
+      expect(mockManager.run).toHaveBeenCalledTimes(1);
+
+      const uiRes = await formApp.inject({
+        method: "GET",
+        url: "/__test__/status",
+        headers: { origin: "http://localhost:65000", "sec-fetch-site": "same-origin" },
+      });
+      expect(uiRes.statusCode).toBe(200);
     });
   });
 
