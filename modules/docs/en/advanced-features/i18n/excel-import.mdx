@@ -105,7 +105,7 @@ During import, a value is saved as a function in these cases:
 
 Functions in the second case cannot contain comments, a trailing semicolon, `async`, type parameters, a block body, or default, destructured, or rest parameters. Parameter type annotations are allowed. Only the `plural`, `josa`, and `format.*` helpers and the `join`, `padEnd`, `padStart`, `slice`, `substring`, `toFixed`, `toLocaleDateString`, `toLocaleString`, `toLocaleTimeString`, `toLowerCase`, `toString`, `toUpperCase`, and `trim` methods can be called.
 
-Any other value, including function-like code outside these rules, is saved as a plain string. Write more complex functions directly in the dictionary file. Editing and adding entries in Sonamu UI follow the same rule, and keys are always saved as strings.
+Any other value, including function-like code outside these rules, is saved as a plain string. Write more complex functions directly in the dictionary file. Editing and adding entries in Sonamu UI follow the same rule, and keys are always saved as strings. Renaming a key without changing its value keeps the function from the old key.
 
 <Warning>
   Imported values are written to the dictionary files that the dev server loads. Do not import Excel files from unknown or untrusted sources.

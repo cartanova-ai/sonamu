@@ -194,7 +194,8 @@ Migration을 실행하지 않습니다. 실제 Shadow 검증에는 `--execute`�
 `i18n import`는 `--format workbook|json` 형식의 `--file FILE`을 읽고, `i18n export`는 지정한 형식과
 경로에 파일을 씁니다. i18n import와 항목 변경에는 `--execute --confirm`을 사용하며, export는
 파일만 생성합니다. `i18n list`나 `i18n export`에 `--locale LOCALE`을 추가하면 해당 locale만
-포함합니다.
+포함합니다. import·create·update로 넣는 함수 형태 값은 [함수형 값 처리](/ko/advanced-features/i18n/excel-import#함수형-값-처리)
+규칙을 통과할 때만 함수로 저장되고, 나머지는 문자열로 저장됩니다.
 
 `i18n update`에 `--source project|entity`를 추가하면 갱신할 항목의 출처를 명시합니다. 생략하면
 사전에 등록된 기존 출처를 그대로 사용하며, 사전에 없는 key라면 `project`로 폴백합니다.

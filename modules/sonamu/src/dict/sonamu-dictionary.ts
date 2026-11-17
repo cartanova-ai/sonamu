@@ -593,7 +593,7 @@ export class SonamuDictionary {
 
     // format 사용 시 createFormat 호출 추가
     if (usesFormat) {
-      lines.push(`const format = createFormat("${locale}");`);
+      lines.push(`const format = createFormat(${JSON.stringify(locale)});`);
       lines.push("");
     }
 
@@ -970,6 +970,35 @@ export class SonamuDictionary {
   }
 
   /**
+   * UI 편집 API나 Excel import로 받은 외부 값을 사전 엔트리로 만듭니다.
+   *
+   * 같은 locale 사전 파일에 이미 있는 함수 엔트리(`trustedKeys` 중 하나의 키)와 원문이 같으면
+   * 그 함수를 그대로 유지합니다. 내보낸 Excel을 다시 가져오거나 키 이름만 바꿀 때, 허용 목록에
+   * 없는 형태의 기존 함수도 문자열로 바뀌지 않게 하기 위함입니다.
+   * 그 밖의 값은 허용된 화살표 함수(`isExpressionFunction`)일 때만 함수 엔트리가 되고,
+   * 나머지는 모두 문자열 엔트리로 저장합니다.
+   *
+   * @param key - 저장할 키
+   * @param value - 외부에서 받은 값 (trim된 문자열)
+   * @param existingEntries - 같은 locale의 현재 사전 파일 엔트리
+   * @param trustedKeys - 기존 함수를 이어받을 수 있는 키 (기본값: `key`, 키 변경 시 이전 키 포함)
+   */
+  private toInputEntry(
+    key: string,
+    value: string,
+    existingEntries: DictEntry[],
+    trustedKeys: string[] = [key],
+  ): DictEntry {
+    const preserved = existingEntries.find(
+      (e) => e.isFunction && trustedKeys.includes(e.key) && e.value === value,
+    );
+    if (preserved) {
+      return { key, value: preserved.value, isFunction: true };
+    }
+    return { key, value, isFunction: this.isExpressionFunction(value) };
+  }
+
+  /**
    * Excel에서 가져오기
    *
    * 형식:
@@ -988,6 +1017,15 @@ export class SonamuDictionary {
 
     let updatedEntities = 0;
     let updatedLocales = 0;
+
+    // 함수 엔트리 유지 판단에 쓸 locale별 현재 사전 파일 엔트리
+    const existingDictEntries: Record<string, DictEntry[]> = {};
+    for (const locale of locales) {
+      existingDictEntries[locale] = this.loadProjectDict(locale).entries;
+    }
+
+    // entity.json 갱신은 모든 행을 엔트리로 만든 뒤에 적용한다 (중간에 실패한 import가 일부만 반영되지 않게).
+    const entityUpdates: { key: string; value: string }[] = [];
 
     // locale별 project dict entries
     const projectDictEntries: Record<string, DictEntry[]> = {};
@@ -1043,10 +1081,7 @@ export class SonamuDictionary {
         // entity source: default locale만 entity.json에 저장
         const defaultValue = rowValues[defaultLocale];
         if (defaultValue) {
-          const updated = await this.updateEntityByKey(key, defaultValue);
-          if (updated) {
-            updatedEntities++;
-          }
+          entityUpdates.push({ key, value: defaultValue });
         }
 
         // non-default locale은 project dict에 저장
@@ -1054,11 +1089,9 @@ export class SonamuDictionary {
           if (locale === defaultLocale) continue;
           const cellValue = rowValues[locale]?.trim();
           if (cellValue) {
-            projectDictEntries[locale].push({
-              key,
-              value: cellValue,
-              isFunction: this.isExpressionFunction(cellValue),
-            });
+            projectDictEntries[locale].push(
+              this.toInputEntry(key, cellValue, existingDictEntries[locale]),
+            );
           }
         }
       } else if (source === "project") {
@@ -1066,13 +1099,18 @@ export class SonamuDictionary {
         for (const locale of locales) {
           const cellValue = rowValues[locale]?.trim();
           if (cellValue) {
-            projectDictEntries[locale].push({
-              key,
-              value: cellValue,
-              isFunction: this.isExpressionFunction(cellValue),
-            });
+            projectDictEntries[locale].push(
+              this.toInputEntry(key, cellValue, existingDictEntries[locale]),
+            );
           }
         }
+      }
+    }
+
+    for (const { key, value } of entityUpdates) {
+      const updated = await this.updateEntityByKey(key, value);
+      if (updated) {
+        updatedEntities++;
       }
     }
 
@@ -1106,15 +1144,12 @@ export class SonamuDictionary {
     const { defaultLocale, supportedLocales } = this.getI18nConfig();
     const locales = supportedLocales;
 
-    // entity source의 default locale 처리
-    if (source === "entity" && values[defaultLocale]) {
-      await this.updateEntityByKey(newKey, values[defaultLocale]);
-    }
-
     // project dict 업데이트
     // - entity의 non-default locale
     // - project source의 모든 locale
     // - sonamu source의 모든 locale (override)
+    // 모든 locale 엔트리를 먼저 만든 뒤 저장한다 (중간에 실패한 요청이 일부 locale만 바꾸지 않게).
+    const pendingSaves: { locale: string; entries: DictEntry[] }[] = [];
     for (const locale of locales) {
       // entity source의 default locale은 entity.json에서 처리했으므로 스킵
       if (source === "entity" && locale === defaultLocale) continue;
@@ -1124,6 +1159,8 @@ export class SonamuDictionary {
 
       // 기존 dict 로드
       const { entries } = this.loadProjectDict(locale);
+      // 기존 함수 유지 판단용 원본 (아래에서 entries를 바꾸기 전 상태)
+      const originalEntries = [...entries];
 
       // key 변경 시 기존 key 제거
       if (oldKey !== newKey) {
@@ -1135,11 +1172,7 @@ export class SonamuDictionary {
 
       // 새 값 업데이트 또는 추가
       const existingIndex = entries.findIndex((e) => e.key === newKey);
-      const newEntry: DictEntry = {
-        key: newKey,
-        value: cellValue,
-        isFunction: this.isExpressionFunction(cellValue),
-      };
+      const newEntry = this.toInputEntry(newKey, cellValue, originalEntries, [oldKey, newKey]);
 
       if (existingIndex !== -1) {
         entries[existingIndex] = newEntry;
@@ -1147,7 +1180,16 @@ export class SonamuDictionary {
         entries.push(newEntry);
       }
 
-      // dict 파일 저장
+      pendingSaves.push({ locale, entries });
+    }
+
+    // entity source의 default locale 처리
+    if (source === "entity" && values[defaultLocale]) {
+      await this.updateEntityByKey(newKey, values[defaultLocale]);
+    }
+
+    // dict 파일 저장
+    for (const { locale, entries } of pendingSaves) {
       await this.saveDictFile(locale, entries, locale === defaultLocale);
     }
   }
@@ -1173,18 +1215,18 @@ export class SonamuDictionary {
       }
     }
 
-    // 각 locale에 새 키 추가
+    // 각 locale에 새 키 추가 (모든 locale 엔트리를 먼저 만든 뒤 저장)
+    const pendingSaves: { locale: string; entries: DictEntry[] }[] = [];
     for (const locale of locales) {
       const cellValue = values[locale]?.trim();
       if (!cellValue) continue;
 
       const { entries } = this.loadProjectDict(locale);
-      entries.push({
-        key,
-        value: cellValue,
-        isFunction: this.isExpressionFunction(cellValue),
-      });
+      entries.push(this.toInputEntry(key, cellValue, []));
+      pendingSaves.push({ locale, entries });
+    }
 
+    for (const { locale, entries } of pendingSaves) {
       await this.saveDictFile(locale, entries, locale === defaultLocale);
     }
   }

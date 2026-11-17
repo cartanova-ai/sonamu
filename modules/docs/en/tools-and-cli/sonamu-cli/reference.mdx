@@ -187,7 +187,8 @@ execution command when reviewed output may replace existing files.
 `i18n import` accepts `--format workbook|json` and reads `--file FILE`; `i18n export` writes that
 format to the specified file. i18n imports and entry mutations use `--execute --confirm`; exports do
 not accept these flags. Add `--locale LOCALE` to `i18n list` or `i18n export` to include only that
-locale.
+locale. Function-like values from import, create, and update are saved as functions only when they pass the
+[function value rules](/en/advanced-features/i18n/excel-import#handling-function-values); other values are saved as strings.
 
 Add `--source project|entity` to `i18n update` to state which source owns the entry. Omitting it
 keeps the source already registered in the dictionary; when the key is not in the dictionary yet,
