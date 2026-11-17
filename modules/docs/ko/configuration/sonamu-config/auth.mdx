@@ -182,6 +182,11 @@ pnpm sonamu auth generate
 
 <Note>이미 User 엔티티가 있는 경우, 명령 실행 시 누락된 필드만 추가됩니다.</Note>
 
+<Note>
+  인증 정보 엔티티의 기본 subset `A`에는 세션 토큰, 비밀번호 해시, OAuth 토큰 같은 비밀 필드를 넣지
+  않습니다. 이미 있는 subset은 바꾸지 않으므로 직접 확인하세요.
+</Note>
+
 ### 플러그인과 함께 엔티티 생성
 
 better-auth 플러그인을 사용하려면 `--plugins` 옵션으로 필요한 플러그인들을 지정합니다:

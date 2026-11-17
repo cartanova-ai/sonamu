@@ -40,7 +40,8 @@ export const twoFactorEntityDef: BetterAuthEntityDef = {
       ],
       indexes: [{ type: "index", name: "two_factors_user_id_idx", columns: [{ name: "user_id" }] }],
       subsets: {
-        A: ["id", "secret", "backup_codes", "created_at", "updated_at", "user.id"],
+        // TOTP secret과 백업 코드는 subset에 넣지 않는다.
+        A: ["id", "created_at", "updated_at", "user.id"],
       },
       enums: {
         TwoFactorOrderBy: { "id-desc": "ID최신순" },

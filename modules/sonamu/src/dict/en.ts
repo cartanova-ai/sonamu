@@ -67,6 +67,8 @@ export default {
   "sonamu.error.shadowDbTestFailed": "Error during Shadow DB test",
   "sonamu.error.allFilesExist": "All files already exist at the path.",
   "sonamu.error.allFilesGenerated": "All files have already been generated.",
+  "sonamu.error.authEntityModelScaffoldRefused": (entityId: string) =>
+    `${entityId} is a better-auth credential entity, so a model cannot be scaffolded for it. The generated unguarded API would expose secrets such as session tokens and password hashes. Use the better-auth API, or write only the methods you need with an admin guard.`,
   "sonamu.error.fixtureRecordRequired": "Fixture record not found. Please fetch fixtures first.",
   "sonamu.error.presetOrAbsPathRequired": "preset or absPath must be provided",
   "sonamu.error.entityIdsRequired": "entityIds must be provided",

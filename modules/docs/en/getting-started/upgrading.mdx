@@ -17,6 +17,13 @@ For users with 2FA enabled, sessions newly issued by `/api/auth/verify-email` (i
 
 `user.additionalFields` entries without `input` are no longer accepted from sign-up (`/api/auth/sign-up/email`) or update (`/api/auth/update-user`) request bodies. If a request includes such a field, sign-up ignores it when the field has a `defaultValue`; otherwise the request fails with 400 `FIELD_NOT_ALLOWED`. Set `input: true` only on fields the client must provide, and never on permission fields such as `role`. See [Authentication setup](/en/api-development/authentication/setup) for details.
 
+### Model scaffolding refused for credential Entities
+
+The CLI and Sonamu UI now refuse to scaffold a Model for the Entities where better-auth stores credentials (`Session`, `Account`, `Verification`, `TwoFactor`, `Passkey`, `Jwks`, `ApiKey`, `SsoProvider`). Upgrading does not touch Models or entity.json subsets you already generated, so clean them up yourself.
+
+- Remove the Model APIs scaffolded for these Entities, or add an admin guard to only the methods you need.
+- Remove secret fields from their subsets (`Session.token`; `access_token`, `refresh_token`, `id_token`, and `password` on `Account`; `Verification.value`; `secret` and `backup_codes` on `TwoFactor`; `Jwks.private_key`; `ApiKey.key`; `oidc_config` and `saml_config` on `SsoProvider`), then run `sonamu sync`.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

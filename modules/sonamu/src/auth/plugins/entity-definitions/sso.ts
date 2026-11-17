@@ -41,16 +41,8 @@ export const ssoEntityDef: BetterAuthEntityDef = {
         { type: "index", name: "sso_providers_user_id_idx", columns: [{ name: "user_id" }] },
       ],
       subsets: {
-        A: [
-          "id",
-          "issuer",
-          "oidc_config",
-          "saml_config",
-          "provider_id",
-          "domain",
-          "created_at",
-          "user.id",
-        ],
+        // OIDC/SAML 설정은 client secret을 담을 수 있으므로 subset에 넣지 않는다.
+        A: ["id", "issuer", "provider_id", "domain", "created_at", "user.id"],
       },
       enums: {
         SsoProviderOrderBy: { "id-desc": "ID최신순" },

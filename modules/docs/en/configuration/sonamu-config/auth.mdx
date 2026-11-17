@@ -185,6 +185,11 @@ This command generates the following entities:
   If a User entity already exists, only missing fields will be added when running the command.
 </Note>
 
+<Note>
+  The default subset `A` of credential entities leaves out secret fields such as session tokens,
+  password hashes, and OAuth tokens. Existing subsets are not changed, so review them yourself.
+</Note>
+
 ### Generate Entities with Plugins
 
 To use better-auth plugins, specify the required plugins with the `--plugins` option:

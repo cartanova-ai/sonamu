@@ -53,9 +53,9 @@ export const apiKeyEntityDef: BetterAuthEntityDef = {
         { type: "unique", name: "api_keys_key_unique", columns: [{ name: "key" }] },
       ],
       subsets: {
+        // 해시된 API 키(key)는 subset에 넣지 않는다.
         A: [
           "id",
-          "key",
           "start",
           "prefix",
           "name",

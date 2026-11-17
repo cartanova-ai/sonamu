@@ -17,6 +17,13 @@ auth를 쓰는 서버는 test를 뺀 모든 환경(development, staging, product
 
 `input`을 지정하지 않은 `user.additionalFields` 필드는 이제 가입(`/api/auth/sign-up/email`)·수정(`/api/auth/update-user`) 요청 바디로 받지 않습니다. 이런 필드를 요청에 넣으면 가입 시 `defaultValue`가 있을 때는 무시되고, 그 밖에는 400 `FIELD_NOT_ALLOWED`로 실패합니다. 클라이언트가 직접 넣어야 하는 필드에만 `input: true`를 명시하고, `role` 같은 권한 필드에는 쓰지 마세요. 자세한 내용은 [인증 설정](/ko/api-development/authentication/setup)을 참고하세요.
 
+### 인증 정보 Entity의 Model 스캐폴드 거부
+
+better-auth가 인증 정보를 저장하는 Entity(`Session`, `Account`, `Verification`, `TwoFactor`, `Passkey`, `Jwks`, `ApiKey`, `SsoProvider`)는 CLI와 Sonamu UI 모두 Model 스캐폴드를 거부합니다. 업그레이드해도 이미 만든 Model과 entity.json의 subset은 그대로이므로 직접 정리하세요.
+
+- 스캐폴드로 만든 이 Entity의 Model API는 지우거나, 꼭 필요한 메서드에만 관리자 가드를 거세요.
+- subset에서 비밀 필드(`Session.token`, `Account`의 `access_token`·`refresh_token`·`id_token`·`password`, `Verification.value`, `TwoFactor`의 `secret`·`backup_codes`, `Jwks.private_key`, `ApiKey.key`, `SsoProvider`의 `oidc_config`·`saml_config`)를 빼고 `sonamu sync`를 실행하세요.
+
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

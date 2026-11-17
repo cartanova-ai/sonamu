@@ -75,16 +75,8 @@ export const betterAuthV1: EntityJson[] = [
       { type: "index", name: "sessions_user_id_idx", columns: [{ name: "user_id" }] },
     ],
     subsets: {
-      A: [
-        "id",
-        "expires_at",
-        "token",
-        "created_at",
-        "updated_at",
-        "ip_address",
-        "user_agent",
-        "user.id",
-      ],
+      // 세션 토큰(token)은 API 응답으로 나가면 세션 탈취로 이어지므로 subset에 넣지 않는다.
+      A: ["id", "expires_at", "created_at", "updated_at", "ip_address", "user_agent", "user.id"],
     },
     enums: { SessionOrderBy: { "id-desc": "ID최신순" }, SessionSearchField: { id: "ID" } },
   },
@@ -128,18 +120,15 @@ export const betterAuthV1: EntityJson[] = [
     ],
     indexes: [{ type: "index", name: "accounts_user_id_idx", columns: [{ name: "user_id" }] }],
     subsets: {
+      // 비밀번호 해시와 OAuth 토큰(access/refresh/id_token)은 subset에 넣지 않는다.
       A: [
         "id",
         "account_id",
         "provider_id",
         "user.id",
-        "access_token",
-        "refresh_token",
-        "id_token",
         "access_token_expires_at",
         "refresh_token_expires_at",
         "scope",
-        "password",
         "created_at",
         "updated_at",
       ],
@@ -164,7 +153,8 @@ export const betterAuthV1: EntityJson[] = [
       { type: "index", name: "verifications_identifier_idx", columns: [{ name: "identifier" }] },
     ],
     subsets: {
-      A: ["id", "identifier", "value", "expires_at", "created_at", "updated_at"],
+      // 인증 값(value)은 OTP·재설정 토큰 등을 담으므로 subset에 넣지 않는다.
+      A: ["id", "identifier", "expires_at", "created_at", "updated_at"],
     },
     enums: {
       VerificationOrderBy: { "id-desc": "ID최신순" },

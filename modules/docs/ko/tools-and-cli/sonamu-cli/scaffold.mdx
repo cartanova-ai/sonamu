@@ -35,6 +35,10 @@ TTY에서 Entity를 생략하면 대화형 프롬프트로 선택합니다:
 
 `scaffold model`은 Model 파일이 이미 있으면 실패합니다. 다시 생성하려면 [Model 재생성](#model-재생성)을 참고하세요.
 
+<Warning>
+better-auth가 인증 정보를 저장하는 Entity(`Session`, `Account`, `Verification`, `TwoFactor`, `Passkey`, `Jwks`, `ApiKey`, `SsoProvider`)에는 Model을 스캐폴드할 수 없습니다. 생성되는 `findById`·`findMany`·`save`에는 가드가 없어서 세션 토큰이나 비밀번호 해시를 비인증으로 읽거나 바꿀 수 있기 때문입니다. 이 데이터가 필요하면 better-auth API를 쓰거나, 필요한 메서드만 관리자 가드를 걸어 직접 작성하세요. Entity ID와 테이블명이 better-auth 정의(예: `Session`·`sessions`)와 모두 같을 때 거부하며, Sonamu UI의 Model 생성과 미리보기도 마찬가지입니다.
+</Warning>
+
 **생성되는 파일**:
 
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";

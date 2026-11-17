@@ -23,7 +23,8 @@ export const jwtEntityDef: BetterAuthEntityDef = {
       ],
       indexes: [],
       subsets: {
-        A: ["id", "public_key", "private_key", "created_at", "expires_at"],
+        // 서명용 비밀키(private_key)는 subset에 넣지 않는다.
+        A: ["id", "public_key", "created_at", "expires_at"],
       },
       enums: {
         JwksOrderBy: { "id-desc": "ID최신순", "created_at-desc": "생성일최신순" },

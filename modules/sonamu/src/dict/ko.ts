@@ -67,6 +67,8 @@ export default {
   "sonamu.error.shadowDbTestFailed": "Shadow DB 테스트 진행 중 에러",
   "sonamu.error.allFilesExist": "이미 경로에 모든 파일이 존재합니다.",
   "sonamu.error.allFilesGenerated": "이미 모든 파일이 생성된 상태입니다.",
+  "sonamu.error.authEntityModelScaffoldRefused": (entityId: string) =>
+    `${entityId} 엔티티는 better-auth 인증 정보를 저장하므로 모델을 스캐폴드할 수 없습니다. 생성되는 가드 없는 API가 세션 토큰·비밀번호 해시 같은 비밀 값을 노출합니다. better-auth API를 쓰거나, 필요한 메서드만 관리자 가드를 걸어 직접 작성하세요.`,
   "sonamu.error.fixtureRecordRequired": "픽스쳐 레코드가 없습니다. 픽스쳐 조회 후 시도하세요.",
   "sonamu.error.presetOrAbsPathRequired": "preset or absPath must be provided",
   "sonamu.error.entityIdsRequired": "entityIds must be provided",

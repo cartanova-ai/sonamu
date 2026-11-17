@@ -1,8 +1,11 @@
 import type z from "zod";
 
 import { Sonamu } from "../../api";
+import { findBetterAuthCredentialEntity } from "../../auth/auth-entity-policy";
+import { SD } from "../../dict/sd";
 import { EntityManager } from "../../entity/entity-manager";
 import { type EntityNamesRecord } from "../../entity/entity-manager";
+import { BadRequestException } from "../../exceptions/so-exceptions";
 import { Naite } from "../../naite/naite";
 import { type TemplateOptions } from "../../types/types";
 import { Template } from "../template";
@@ -28,6 +31,16 @@ export class Template__model extends Template {
 
   async render({ entityId }: TemplateOptions["model"]) {
     Naite.t("render", { entityId });
+
+    // 이 템플릿은 가드 없는 findById/findMany/save를 만든다. better-auth 자격 증명 테이블에 쓰면
+    // 세션 토큰·비밀번호 해시를 비인증으로 읽거나 덮어쓸 수 있으므로 스캐폴드를 거부한다.
+    // 존재하지 않는 엔티티는 기존 경로의 에러 메시지를 그대로 유지한다.
+    if (
+      EntityManager.exists(entityId) &&
+      findBetterAuthCredentialEntity(EntityManager.get(entityId))
+    ) {
+      throw new BadRequestException(SD("sonamu.error.authEntityModelScaffoldRefused")(entityId));
+    }
 
     const listParamsZodType = await getZodTypeById(`${entityId}ListParams`);
     const listParamsNode = zodTypeToRenderingNode(listParamsZodType);

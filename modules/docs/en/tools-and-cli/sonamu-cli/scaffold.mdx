@@ -35,6 +35,10 @@ If you omit the Entity in a TTY, an interactive prompt asks for it:
 
 `scaffold model` fails when the Model file already exists. To regenerate it, see [Regenerating Model](#regenerating-model).
 
+<Warning>
+You cannot scaffold a Model for the Entities where better-auth stores credentials (`Session`, `Account`, `Verification`, `TwoFactor`, `Passkey`, `Jwks`, `ApiKey`, `SsoProvider`). The generated `findById`, `findMany`, and `save` have no guards, so anyone could read or overwrite session tokens and password hashes without signing in. If you need this data, use the better-auth API, or write only the methods you need with an admin guard. The refusal applies when both the Entity ID and table match the better-auth definition (for example, `Session` and `sessions`), and also covers Model generation and preview in Sonamu UI.
+</Warning>
+
 **Generated files**:
 
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
