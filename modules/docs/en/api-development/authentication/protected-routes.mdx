@@ -10,7 +10,7 @@ Learn how to implement role-based access control for API endpoints using Sonamu'
 <CardGroup cols={2}>
   <Card title="Declarative Permissions" icon="shield-check">
     @api guards option
-    
+
     Simple permission setup
   </Card>
   <Card title="Guard Types" icon="shield-halved">
@@ -21,12 +21,12 @@ Learn how to implement role-based access control for API endpoints using Sonamu'
   </Card>
   <Card title="Custom Guards" icon="wand-magic-sparkles">
     Business logic
-    
+
     Flexible extension
   </Card>
   <Card title="Hierarchical Permissions" icon="sitemap">
     Role-based control
-    
+
     RBAC implementation
   </Card>
 </CardGroup>
@@ -60,7 +60,7 @@ Guards are **functions that verify permissions before an API method executes**. 
 5. Return response
 
    ↓ Failure
-3. 403 Forbidden response
+3. 401/403 response (depends on the exception the guard throws; returning false gives 401)
 ```
 
 ## Guard Types
@@ -295,7 +295,7 @@ export default {
        * @param guard - Guard key ("user", "admin", "query", etc.)
        * @param request - Fastify Request object
        * @param api - API metadata
-       * @returns true to pass, false or throw exception to block
+       * @returns true or undefined to pass; return false or throw to block (async handlers are awaited)
        */
       guardHandler: (guard: GuardKey, request: FastifyRequest, api) => {
         // Get user information from Sonamu Context
@@ -733,7 +733,8 @@ describe("Guards", () => {
 <Warning>
   **Cautions when using Guards**: 1. Guards only handle Authentication, Authorization should be
   handled in business logic 2. Additional verification required for sensitive data even after
-  passing Guards 3. Return 403 Forbidden on Guard failure (not 401 Unauthorized) 4. Consider order
+  passing Guards 3. On Guard failure, the status follows the exception the guard throws (returning
+  false gives 401) 4. Consider order
   when using multiple Guards (general to specific) 5. Avoid complex business logic in Guards (simple
   permission checks only) 6. Resource ownership verification should be handled inside API methods
 </Warning>

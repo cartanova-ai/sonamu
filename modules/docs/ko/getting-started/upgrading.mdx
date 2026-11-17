@@ -39,6 +39,10 @@ staging·production에서 auth를 쓰면 `server.auth.baseURL`, `BETTER_AUTH_URL
 
 GET·HEAD·OPTIONS가 아닌 API에 `guards`가 없으면 서버 시작 시 경고가 출력됩니다. 의도한 공개 API에는 `guards: []`를 지정하고, 나머지에는 알맞은 가드를 거세요. 새 옵션 `server.apiConfig.guardKeys`에 `guardHandler`가 실제로 검사하는 키를 적으면 목록 밖 키는 `guardHandler`를 거치지 않고 401로 거부되며, 그런 키를 쓰는 API가 있으면 서버가 시작되지 않습니다. 설정하지 않으면 기존처럼 모든 키를 `guardHandler`에 넘기므로 핸들러가 검사하지 않는 키는 통과합니다. 자세한 내용은 [서버 설정](/ko/configuration/sonamu-config/server)을 참고하세요.
 
+### 비동기 가드를 기다리고 `false` 반환을 거부로 처리
+
+이제 `guardHandler`가 반환한 Promise를 기다린 뒤 다음 가드와 API를 실행하고, `false`를 반환하면 `UnauthorizedException`(401)으로 거부합니다. 이전에는 async 가드의 거부와 `false` 반환이 무시되어 요청이 그대로 실행됐으므로, 이 동작에 기대던 가드가 있다면 이제 요청을 막는지 확인하세요. `lifecycle.onError`를 직접 구현했다면 `isSoException(error) ? error.statusCode : 500`처럼 Sonamu 예외의 상태 코드를 유지하세요. 모두 500으로 응답하면 가드 거부도 500이 됩니다.
+
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

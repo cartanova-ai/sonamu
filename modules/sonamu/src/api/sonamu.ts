@@ -31,7 +31,7 @@ import { type SonamuDBConfig } from "../database/db";
 import { SD, setSDConfig } from "../dict/sd";
 import { type LocalizedString } from "../dict/types";
 import { getSonamuEnvironment, readAllEnvironmentSnapshots } from "../env";
-import { NotFoundException } from "../exceptions/so-exceptions";
+import { NotFoundException, UnauthorizedException } from "../exceptions/so-exceptions";
 import { runtimeTypeOf } from "../runtime-type";
 import { BufferedFile } from "../storage/buffered-file";
 import { type StorageManager } from "../storage/storage-manager";
@@ -1085,7 +1085,7 @@ class SonamuClass {
 
       return this.asyncLocalStorage.run({ context }, async () => {
         // guards 처리
-        runGuards({
+        await runGuards({
           guards: api.options.guards,
           config,
           request,
@@ -1450,7 +1450,7 @@ class SonamuClass {
         wsContext = await this.createWebSocketContext(config, request, scopedWs);
 
         await this.asyncLocalStorage.run({ context: wsContext }, async () => {
-          runGuards({
+          await runGuards({
             guards: api.options.guards,
             config,
             request,
@@ -2359,8 +2359,15 @@ function isLocalHost(host: string): boolean {
   return LOCAL_HOSTS.has(host) || host.endsWith(".local");
 }
 
+/**
+ * API에 선언된 guard를 순서대로 실행합니다.
+ *
+ * async guardHandler의 Promise를 기다리고, 예외는 그대로 전파합니다.
+ * guardHandler가 `false`를 반환하면 UnauthorizedException으로 요청을 거부합니다.
+ * 호출부는 반드시 await해야 하며, 그렇지 않으면 거부가 무시되고 unhandledRejection이 발생합니다.
+ */
 // `.every()`가 첫 guard 이후 순회를 멈추는 문제가 있어 `for...of`로 모든 guard를 순서대로 실행하도록 고정함
-function runGuards({
+async function runGuards({
   guards,
   config,
   request,
@@ -2370,10 +2377,14 @@ function runGuards({
   config: Pick<SonamuFastifyConfig, "guardHandler" | "guardKeys">;
   request: FastifyRequest;
   api: ExtendedApi;
-}): void {
+}): Promise<void> {
   for (const guard of guards ?? []) {
     // guardKeys 밖의 키는 guardHandler가 처리하지 않는 키이므로 호출 없이 거부한다
     assertGuardKeyHandled(guard, config.guardKeys);
-    config.guardHandler(guard, request, api);
+    const result = await config.guardHandler(guard, request, api);
+    // 문서가 안내하는 "false 반환 시 차단" 계약을 지킨다. undefined/true는 통과로 본다
+    if (result === false) {
+      throw new UnauthorizedException(SD("error.unauthorized"));
+    }
   }
 }

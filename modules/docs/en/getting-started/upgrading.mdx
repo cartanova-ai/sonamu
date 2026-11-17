@@ -39,6 +39,10 @@ When the runtime `NODE_ENV` is not set, Sonamu now checks `NODE_ENV` in `.env.lo
 
 The server now prints a startup warning for APIs without `guards` whose method is not GET, HEAD, or OPTIONS. Mark intentionally public APIs with `guards: []` and add suitable guards to the rest. If you list the keys your `guardHandler` actually checks in the new `server.apiConfig.guardKeys` option, any other key is rejected with 401 without calling `guardHandler`, and the server does not start while an API uses such a key. Without the option, every key is passed to `guardHandler` as before, so keys the handler does not check are allowed. See [Server configuration](/en/configuration/sonamu-config/server) for details.
 
+### Async guards are awaited and `false` rejects
+
+Sonamu now waits for the Promise returned by `guardHandler` before running the next guard or the API, and a `false` return rejects the request with `UnauthorizedException` (401). Previously, async guard rejections and `false` returns were ignored and the request ran anyway, so check any guard that relied on that: it now blocks requests. If you implement `lifecycle.onError` yourself, keep the status code of Sonamu exceptions, as in `isSoException(error) ? error.statusCode : 500`. Sending everything as 500 turns guard rejections into 500 too.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

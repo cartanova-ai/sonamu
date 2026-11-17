@@ -429,10 +429,12 @@ export default defineConfig({
 
 A function called when Guard decorators execute.
 
-**Type**: `(guard, request, api) => void`
+**Type**: `(guard, request, api) => void | boolean | Promise<void | boolean>`
 
-The handler runs synchronously inside the request context, so `Sonamu.getContext()` returns the
-current `user` and `session`. Throw to reject the request; a returned Promise is not awaited.
+The handler runs inside the request context, so `Sonamu.getContext()` returns the current `user`
+and `session`. Throw or return `false` to reject the request; `false` becomes an
+`UnauthorizedException` (401). Async handlers are supported: the returned Promise is awaited before
+the next guard or the API runs.
 
 ```typescript
 import { Sonamu, UnauthorizedException } from "sonamu";
@@ -562,12 +564,19 @@ Executes when an unhandled error occurs.
 **Type**: `(error, request, reply) => void | Promise<void>`
 
 ```typescript
+import { defineConfig, isSoException } from "sonamu";
+
 export default defineConfig({
   server: {
     lifecycle: {
       onError: (error, request, reply) => {
         console.error(`[ERROR] ${request.method} ${request.url}`, error);
 
+        // Respond to Sonamu exceptions, such as guard 401/403, with their own status code
+        if (isSoException(error)) {
+          reply.status(error.statusCode).send({ message: error.message });
+          return;
+        }
         reply.status(500).send({
           error: "Internal Server Error",
           message: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -577,6 +586,8 @@ export default defineConfig({
   },
 });
 ```
+
+If every error is sent as 500, guard rejections (401/403) become 500 too. Use `isSoException` to keep the `statusCode` of Sonamu exceptions.
 
 ## Practical Examples
 
@@ -623,7 +634,7 @@ export default defineConfig({
 
 ```typescript
 import path from "path";
-import { defineConfig, Sonamu, UnauthorizedException } from "sonamu";
+import { defineConfig, isSoException, Sonamu, UnauthorizedException } from "sonamu";
 
 const port = Number(process.env.PORT ?? 3000);
 const host = "0.0.0.0";
@@ -702,6 +713,10 @@ export default defineConfig({
           stack: error.stack,
         });
 
+        if (isSoException(error)) {
+          reply.status(error.statusCode).send({ message: error.message });
+          return;
+        }
         reply.status(500).send({
           error: "Internal Server Error",
         });

@@ -428,10 +428,11 @@ export default defineConfig({
 
 Guard 데코레이터 실행 시 호출되는 함수입니다.
 
-**타입**: `(guard, request, api) => void`
+**타입**: `(guard, request, api) => void | boolean | Promise<void | boolean>`
 
-핸들러는 요청 Context 안에서 동기적으로 실행되므로 `Sonamu.getContext()`로 현재 `user`와 `session`을
-읽을 수 있습니다. 요청을 거부하려면 예외를 던지세요. 반환한 Promise는 기다리지 않습니다.
+핸들러는 요청 Context 안에서 실행되므로 `Sonamu.getContext()`로 현재 `user`와 `session`을 읽을 수
+있습니다. 요청을 거부하려면 예외를 던지거나 `false`를 반환하세요. `false`는 `UnauthorizedException`(401)으로
+처리됩니다. async 함수도 쓸 수 있으며, 반환한 Promise가 끝날 때까지 기다린 뒤 다음 guard나 API를 실행합니다.
 
 ```typescript
 import { Sonamu, UnauthorizedException } from "sonamu";
@@ -562,12 +563,19 @@ export default defineConfig({
 **타입**: `(error, request, reply) => void | Promise<void>`
 
 ```typescript
+import { defineConfig, isSoException } from "sonamu";
+
 export default defineConfig({
   server: {
     lifecycle: {
       onError: (error, request, reply) => {
         console.error(`[ERROR] ${request.method} ${request.url}`, error);
 
+        // 가드의 401·403처럼 Sonamu 예외는 자신의 상태 코드로 응답
+        if (isSoException(error)) {
+          reply.status(error.statusCode).send({ message: error.message });
+          return;
+        }
         reply.status(500).send({
           error: "Internal Server Error",
           message: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -577,6 +585,8 @@ export default defineConfig({
   },
 });
 ```
+
+모든 오류를 500으로 응답하면 가드가 거부한 요청의 401·403도 500이 됩니다. `isSoException`으로 Sonamu 예외의 `statusCode`를 유지하세요.
 
 ## 실전 예시
 
@@ -623,7 +633,7 @@ export default defineConfig({
 
 ```typescript
 import path from "path";
-import { defineConfig, Sonamu, UnauthorizedException } from "sonamu";
+import { defineConfig, isSoException, Sonamu, UnauthorizedException } from "sonamu";
 
 const port = Number(process.env.PORT ?? 3000);
 const host = "0.0.0.0";
@@ -702,6 +712,10 @@ export default defineConfig({
           stack: error.stack,
         });
 
+        if (isSoException(error)) {
+          reply.status(error.statusCode).send({ message: error.message });
+          return;
+        }
         reply.status(500).send({
           error: "Internal Server Error",
         });

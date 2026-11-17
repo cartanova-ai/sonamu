@@ -10,7 +10,7 @@ Sonamu의 Guards 시스템을 사용하여 API 엔드포인트에 권한 기반 
 <CardGroup cols={2}>
   <Card title="선언적 권한" icon="shield-check">
     @api guards 옵션
-    
+
     간단한 권한 설정
   </Card>
   <Card title="Guard 타입" icon="shield-halved">
@@ -21,12 +21,12 @@ Sonamu의 Guards 시스템을 사용하여 API 엔드포인트에 권한 기반 
   </Card>
   <Card title="커스텀 Guards" icon="wand-magic-sparkles">
     비즈니스 로직
-    
+
     유연한 확장
   </Card>
   <Card title="계층적 권한" icon="sitemap">
     역할 기반 제어
-    
+
     RBAC 구현
   </Card>
 </CardGroup>
@@ -60,7 +60,7 @@ Guards는 **API 메서드가 실행되기 전에 권한을 검증하는 함수**
 5. 응답 반환
 
    ↓ 실패
-3. 403 Forbidden 응답
+3. 401·403 응답 (가드가 던진 예외에 따름, false 반환은 401)
 ```
 
 ## Guard 타입
@@ -295,7 +295,7 @@ export default {
        * @param guard - Guard 키 ("user", "admin", "query" 등)
        * @param request - Fastify Request 객체
        * @param api - API 메타데이터
-       * @returns true면 통과, false나 예외 발생 시 차단
+       * @returns true나 undefined면 통과, false 반환이나 예외 발생 시 차단 (async 함수면 Promise를 기다림)
        */
       guardHandler: (guard: GuardKey, request: FastifyRequest, api) => {
         // Sonamu Context에서 사용자 정보 가져오기
@@ -731,8 +731,8 @@ describe("Guards", () => {
 
 <Warning>
   **Guards 사용 시 주의사항**: 1. Guards는 인증(Authentication)만 담당, 인가(Authorization)는
-  비즈니스 로직에서 처리 2. 민감한 데이터는 Guards 통과 후에도 추가 검증 필수 3. Guards 실패 시 403
-  Forbidden 반환 (401 Unauthorized 아님) 4. 여러 Guards 사용 시 순서 고려 (일반적인 것부터 구체적인
+  비즈니스 로직에서 처리 2. 민감한 데이터는 Guards 통과 후에도 추가 검증 필수 3. Guards 실패 시 응답
+  코드는 가드가 던진 예외를 따름 (false 반환은 401) 4. 여러 Guards 사용 시 순서 고려 (일반적인 것부터 구체적인
   순서로) 5. Guards에서는 복잡한 비즈니스 로직 지양 (단순 권한 확인만) 6. 리소스 소유권 확인은 API
   메서드 내부에서 처리
 </Warning>

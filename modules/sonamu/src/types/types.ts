@@ -1849,6 +1849,11 @@ export type SonamuFastifyConfig = {
   ) =>
     | import("../api/context").WebSocketContext
     | Promise<import("../api/context").WebSocketContext>;
+  /**
+   * API의 `guards` 키마다 순서대로 호출되는 가드 핸들러입니다.
+   * 반환한 Promise는 기다리며, 예외를 던지거나 `false`를 반환하면 요청을 거부합니다.
+   * `false` 반환은 UnauthorizedException(401)으로 처리됩니다.
+   */
   guardHandler: (
     guard: GuardKey,
     request: FastifyRequest,
@@ -1861,7 +1866,7 @@ export type SonamuFastifyConfig = {
       path: string;
       options: ApiDecoratorOptions;
     },
-  ) => void;
+  ) => void | boolean | Promise<void | boolean>;
   /**
    * guardHandler가 실제로 검사하는 가드 키 목록입니다.
    *

@@ -2,7 +2,7 @@ import path from "path";
 
 import { getConsoleSink } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
-import { CachePresets, defineConfig } from "sonamu";
+import { CachePresets, defineConfig, isSoException } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
 
@@ -145,9 +145,25 @@ export default defineConfig({
           body: request.body,
         };
       },
-      guardHandler: (_guard, _request, _api) => {
-        if (_guard === "user") {
-          console.log("user guard");
+      // 가드는 예외를 던지거나 false를 반환하면 요청을 막음. 통과 조건을 만족하지 않으면 모두 예외로 거부함(fail-closed)
+      guardHandler: (guard, _request, _api) => {
+        const { user } = Sonamu.getContext();
+
+        switch (guard) {
+          case "user":
+            if (!user) {
+              throw new UnauthorizedException(GUARD_MESSAGES.loginRequired);
+            }
+            return;
+          case "admin":
+            // role은 auth 설정의 user.additionalFields.role에서 옴
+            if (!user || !("role" in user) || user.role !== "admin") {
+              throw new ForbiddenException(GUARD_MESSAGES.adminRequired);
+            }
+            return;
+          default:
+            // 구현하지 않은 가드 키(query, 커스텀 키 등)는 판정 로직을 추가하기 전까지 거부함
+            throw new ForbiddenException(GUARD_MESSAGES.unhandledGuard);
         }
         console.log("NOTHING YET");
       },
@@ -230,7 +246,8 @@ export default defineConfig({
       },
       onError: (error, _request, reply) => {
         console.error(error);
-        reply.status(500).send({
+        // 가드의 UnauthorizedException(401)처럼 Sonamu 예외는 자신의 상태 코드로 응답한다
+        reply.status(isSoException(error) ? error.statusCode : 500).send({
           name: error.name,
           message: error.message,
         });
