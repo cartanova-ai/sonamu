@@ -1863,6 +1863,14 @@ export type SonamuFastifyConfig = {
     },
   ) => void;
   /**
+   * guardHandler가 실제로 검사하는 가드 키 목록입니다.
+   *
+   * 설정하면 목록에 없는 가드 키는 guardHandler를 호출하지 않고 거부(401)하며,
+   * 목록에 없는 키를 쓰는 API가 있으면 부팅을 중단합니다.
+   * 설정하지 않으면 모든 키를 guardHandler에 넘기는 기존 동작을 유지하고 부팅 시 경고합니다.
+   */
+  guardKeys?: readonly GuardKey[];
+  /**
    * 전역 Cache-Control 핸들러입니다.
    * 요청 타입(api, assets, ssr, csr)에 따라 Cache-Control 설정을 반환합니다.
    * undefined를 반환하면 타입별 기본값이 적용됩니다.

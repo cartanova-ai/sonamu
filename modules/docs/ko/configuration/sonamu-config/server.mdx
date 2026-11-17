@@ -451,6 +451,39 @@ export default defineConfig({
 });
 ```
 
+### guardKeys
+
+`guardHandler`가 실제로 검사하는 가드 키 목록입니다.
+
+**타입**: `readonly GuardKey[]` (선택)
+
+설정하면 목록에 없는 가드 키는 `guardHandler`를 호출하지 않고 `UnauthorizedException`(401)으로 거부합니다.
+목록에 없는 키를 쓰는 API가 있으면 서버 시작이 해당 API 목록과 함께 중단됩니다. 설정하지 않으면 모든 키를
+`guardHandler`에 넘기는 기존 동작을 유지하므로, 핸들러가 검사하지 않는 키는 그대로 통과합니다. 이 경우 가드를
+쓰는 API가 있으면 서버 시작 시 경고가 출력됩니다.
+
+`guardKeys: []`는 모든 가드 키를 거부합니다. API를 공개하려면 `guardKeys`가 아니라 해당 API에 `guards: []`를
+지정하세요.
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      guardKeys: ["user", "admin"],
+      guardHandler: (guard) => {
+        const { user } = Sonamu.getContext();
+        if (!user) {
+          throw new UnauthorizedException("Login required");
+        }
+        if (guard === "admin" && user.role !== "admin") {
+          throw new UnauthorizedException("Admin only");
+        }
+      },
+    },
+  },
+});
+```
+
 ### cacheControlHandler
 
 Cache-Control 헤더를 설정하는 함수입니다.

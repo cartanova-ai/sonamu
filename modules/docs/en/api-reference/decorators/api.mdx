@@ -198,7 +198,18 @@ async getProfile() {
 
 @api({ guards: ["query", "admin"] })
 async search(query: string) {
-  // Requires query or admin permission
+  // Must pass both the query and admin guards
+}
+```
+
+An API without `guards` can be called by anyone without authentication. If a state-changing API
+(any method other than GET, HEAD, or OPTIONS) has no `guards`, the server prints a warning listing it
+at startup. Mark intentionally public APIs with `guards: []` to silence the warning.
+
+```typescript
+@api({ httpMethod: "POST", guards: [] })
+async subscribeNewsletter(email: string) {
+  // Explicitly public API
 }
 ```
 

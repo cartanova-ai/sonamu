@@ -73,6 +73,7 @@ import {
 } from "./config";
 import { type Context, type RuntimeContext, type WebSocketContext } from "./context";
 import { type ExtendedApi } from "./decorators";
+import { assertGuardKeyHandled, checkGuardKeys, warnUnguardedMutationApis } from "./guards";
 import {
   assertHttpValidatorRegistry,
   createHttpValidator,
@@ -542,6 +543,13 @@ class SonamuClass {
     this.server = server;
     this.websocketRuntime ??= new WebSocketRuntime(this.config.server.websocket);
     await this.refreshHttpValidators();
+
+    // guardKeys를 설정했다면 목록 밖 가드 키를 쓰는 API가 있을 때 부팅을 중단한다
+    checkGuardKeys(this.syncer.apis, config.guardKeys, options?.doSilent ? () => {} : undefined);
+    // guards 미지정 상태 변경 API는 비인증으로 호출되므로 부팅 시 목록을 경고로 알린다
+    if (!options?.doSilent) {
+      warnUnguardedMutationApis(this.syncer.apis);
+    }
 
     // timezone 설정
     const timezone = this.config.api.timezone;
@@ -2359,11 +2367,13 @@ function runGuards({
   api,
 }: {
   guards: ExtendedApi["options"]["guards"] | undefined;
-  config: Pick<SonamuFastifyConfig, "guardHandler">;
+  config: Pick<SonamuFastifyConfig, "guardHandler" | "guardKeys">;
   request: FastifyRequest;
   api: ExtendedApi;
 }): void {
   for (const guard of guards ?? []) {
+    // guardKeys 밖의 키는 guardHandler가 처리하지 않는 키이므로 호출 없이 거부한다
+    assertGuardKeyHandled(guard, config.guardKeys);
     config.guardHandler(guard, request, api);
   }
 }

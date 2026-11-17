@@ -452,6 +452,38 @@ export default defineConfig({
 });
 ```
 
+### guardKeys
+
+The guard keys that `guardHandler` actually checks.
+
+**Type**: `readonly GuardKey[]` (optional)
+
+When set, a guard key outside the list is rejected with `UnauthorizedException` (401) without calling
+`guardHandler`, and server startup stops with a list of APIs that use such keys. When unset, every key is
+passed to `guardHandler` as before, so a key the handler does not check is allowed; in that case the
+server prints a startup warning if any API uses guards.
+
+`guardKeys: []` rejects every guard key. To make an API public, set `guards: []` on that API instead.
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      guardKeys: ["user", "admin"],
+      guardHandler: (guard) => {
+        const { user } = Sonamu.getContext();
+        if (!user) {
+          throw new UnauthorizedException("Login required");
+        }
+        if (guard === "admin" && user.role !== "admin") {
+          throw new UnauthorizedException("Admin only");
+        }
+      },
+    },
+  },
+});
+```
+
 ### cacheControlHandler
 
 A function that sets Cache-Control headers.

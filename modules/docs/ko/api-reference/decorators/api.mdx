@@ -198,7 +198,18 @@ async getProfile() {
 
 @api({ guards: ["query", "admin"] })
 async search(query: string) {
-  // query 또는 admin 권한 필요
+  // query와 admin 가드를 모두 통과해야 함
+}
+```
+
+`guards`를 지정하지 않은 API는 인증 없이 누구나 호출할 수 있습니다. GET·HEAD·OPTIONS가 아닌 상태 변경
+API에 `guards`가 없으면 서버 시작 시 목록과 함께 경고가 출력됩니다. 의도한 공개 API라면 `guards: []`로
+명시해 경고를 끄세요.
+
+```typescript
+@api({ httpMethod: "POST", guards: [] })
+async subscribeNewsletter(email: string) {
+  // 공개 API임을 명시
 }
 ```
 
