@@ -66,6 +66,9 @@ const BAN_EXPIRES_PRESETS = [
 
 type BanExpiresPreset = (typeof BAN_EXPIRES_PRESETS)[number]["value"];
 
+// 필터 UI는 서버가 허용하는 toFilter 필드만 노출한다
+const UserFilterSchema = UserBaseSchema.pick({ role: true, is_verified: true });
+
 export const Route = createFileRoute("/admin/users/")({
   head: () => ({
     meta: [
@@ -382,7 +385,10 @@ function UserList({}: UserListProps) {
                     </Button>
                     <SonamuFilterPopover
                       rules={appliedRules}
-                      fieldMeta={extractFieldMetaFromSchema(UserBaseSchema, translateFilterEnumKey)}
+                      fieldMeta={extractFieldMetaFromSchema(
+                        UserFilterSchema,
+                        translateFilterEnumKey,
+                      )}
                     >
                       <Button
                         variant="outline"
@@ -485,7 +491,7 @@ function UserList({}: UserListProps) {
 
       {/* Sonamu Filter Modal */}
       <SonamuFilterModal
-        baseSchema={UserBaseSchema}
+        baseSchema={UserFilterSchema}
         open={filterModalOpen}
         onOpenChange={setFilterModalOpen}
         initialRules={appliedRules}

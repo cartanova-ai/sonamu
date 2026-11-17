@@ -18,6 +18,8 @@ GET {{baseUrl}}/api/user/findMany
 	&rawParams[queryMode]=both
 	&rawParams[id]=ID
 	&rawParams[sonamuFilter]=unknown-custom
+	&rawParams[role]=normal
+	&rawParams[is_verified]=false
 	&rawParams[test]=TEST
 Content-Type: application/json
 
@@ -104,6 +106,7 @@ GET {{baseUrl}}/api/tag/findMany
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
 	&rawParams[sonamuFilter]=unknown-custom
+	&rawParams[name]=NAME
 Content-Type: application/json
 
 ###
@@ -233,6 +236,13 @@ GET {{baseUrl}}/api/project/findMany
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
 	&rawParams[sonamuFilter]=unknown-custom
+	&rawParams[created_at]=2000-01-01
+	&rawParams[name]=NAME
+	&rawParams[status]=planning
+	&rawParams[description]=
+	&rawParams[budget]=
+	&rawParams[image_urls]=
+	&rawParams[textsearchable_index_col]=TEXTSEARCHABLE_INDEX_COL
 Content-Type: application/json
 
 ###
@@ -471,6 +481,7 @@ GET {{baseUrl}}/api/employee/findMany
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
 	&rawParams[sonamuFilter]=unknown-custom
+	&rawParams[department_id]=
 Content-Type: application/json
 
 ###
@@ -523,6 +534,7 @@ GET {{baseUrl}}/api/document/findMany
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
 	&rawParams[sonamuFilter]=unknown-custom
+	&rawParams[status]=draft
 	&rawParams[semanticQuery][embedding][0]=0
 	&rawParams[semanticQuery][threshold]=0
 	&rawParams[semanticQuery][method]=cosine
@@ -545,6 +557,7 @@ Content-Type: application/json
     "queryMode": "both",
     "id": 0,
     "sonamuFilter": "unknown-custom",
+    "status": "draft",
     "semanticQuery": {
       "embedding": [
         0
@@ -612,6 +625,9 @@ GET {{baseUrl}}/api/department/findMany
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
 	&rawParams[sonamuFilter]=unknown-custom
+	&rawParams[name]=NAME
+	&rawParams[company_id]=0
+	&rawParams[parent_id]=
 	&rawParams[company_name]=COMPANY_NAME
 Content-Type: application/json
 
@@ -680,6 +696,7 @@ GET {{baseUrl}}/api/company/findMany
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
 	&rawParams[sonamuFilter]=unknown-custom
+	&rawParams[name]=NAME
 Content-Type: application/json
 
 ###

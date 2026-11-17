@@ -49,6 +49,9 @@ import {
   CompanySearchFieldLabel,
 } from "@/services/sonamu.generated";
 
+// 필터 UI는 서버가 허용하는 toFilter 필드만 노출한다
+const CompanyFilterSchema = CompanyBaseSchema.pick({ name: true });
+
 export const Route = createFileRoute("/admin/companies/")({
   head: () => ({
     meta: [
@@ -217,7 +220,7 @@ function CompanyList({}: CompanyListProps) {
                     <SonamuFilterPopover
                       rules={appliedRules}
                       fieldMeta={extractFieldMetaFromSchema(
-                        CompanyBaseSchema,
+                        CompanyFilterSchema,
                         translateFilterEnumKey,
                       )}
                     >
@@ -322,7 +325,7 @@ function CompanyList({}: CompanyListProps) {
 
       {/* Sonamu Filter Modal */}
       <SonamuFilterModal
-        baseSchema={CompanyBaseSchema}
+        baseSchema={CompanyFilterSchema}
         open={filterModalOpen}
         onOpenChange={setFilterModalOpen}
         initialRules={appliedRules}

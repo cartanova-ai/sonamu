@@ -269,6 +269,13 @@ export class Template__view_list extends Template {
     const pkType = entity.getPkType();
     const idTsType = pkType === "string" || pkType === "uuid" ? "string" : "number";
 
+    // 필터 UI는 서버가 허용하는 toFilter 필드만 노출한다
+    const filterSchemaName = `${names.capital}FilterSchema`;
+    const filterSchemaPick = entity
+      .getFilterableProps()
+      .map((prop) => `${prop.name}: true`)
+      .join(", ");
+
     // 실제 리스트 컬럼
     const columns = /* SAFETY: Columns 렌더링 노드의 자식은 모두 컬럼 노드다. */ (
       columnsNode.children as RenderingNode[]
@@ -419,6 +426,8 @@ import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 import { SD } from "@/i18n/sd.generated";
+
+const ${filterSchemaName} = ${names.capital}BaseSchema.pick({ ${filterSchemaPick} });
 
 export const Route = createFileRoute("/admin/${names.fsPlural}/")({\n  head: () => ({\n    meta: [\n      { title: "${entity.title ?? names.capital} List" },\n      { name: "description", content: SD("entity.listManage")("${entity.title ?? names.capital}") },\n    ],\n  }),\n  component: ${names.capital}List,\n});\n\ntype ${names.capital}ListProps = {};
 
@@ -594,7 +603,7 @@ ${
                     <SonamuFilterPopover
                       rules={appliedRules}
                       fieldMeta={extractFieldMetaFromSchema(
-                        ${names.capital}BaseSchema,
+                        ${filterSchemaName},
                         SD as (key: string) => string,
                       )}
                     >
@@ -742,7 +751,7 @@ ${
 
       {/* Sonamu Filter Modal */}
       <SonamuFilterModal
-        baseSchema={${names.capital}BaseSchema}
+        baseSchema={${filterSchemaName}}
         open={filterModalOpen}
         onOpenChange={setFilterModalOpen}
         initialRules={appliedRules}

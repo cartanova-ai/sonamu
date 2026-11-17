@@ -25,6 +25,7 @@
     },
     {
       "name": "name",
+      "toFilter": true,
       "desc": "부서명",
       "type": "string",
       "length": 128,
@@ -36,6 +37,7 @@
     {
       "type": "relation",
       "name": "company",
+      "toFilter": true,
       "with": "Company",
       "desc": "회사",
       "relationType": "BelongsToOne",
@@ -49,6 +51,7 @@
     {
       "type": "relation",
       "name": "parent",
+      "toFilter": true,
       "with": "Department",
       "nullable": true,
       "desc": "상위부서",

@@ -49,6 +49,9 @@ import {
 } from "@/services/sonamu.generated";
 import { TagListParams } from "@/services/tag/tag.types";
 
+// 필터 UI는 서버가 허용하는 toFilter 필드만 노출한다
+const TagFilterSchema = TagBaseSchema.pick({ name: true });
+
 export const Route = createFileRoute("/admin/tags/")({
   head: () => ({
     meta: [{ title: "TAG List" }, { name: "description", content: SD("entity.listManage")("TAG") }],
@@ -221,7 +224,10 @@ function TagList({}: TagListProps) {
                     </Button>
                     <SonamuFilterPopover
                       rules={appliedRules}
-                      fieldMeta={extractFieldMetaFromSchema(TagBaseSchema, translateFilterEnumKey)}
+                      fieldMeta={extractFieldMetaFromSchema(
+                        TagFilterSchema,
+                        translateFilterEnumKey,
+                      )}
                     >
                       <Button
                         variant="outline"
@@ -324,7 +330,7 @@ function TagList({}: TagListProps) {
 
       {/* Sonamu Filter Modal */}
       <SonamuFilterModal
-        baseSchema={TagBaseSchema}
+        baseSchema={TagFilterSchema}
         open={filterModalOpen}
         onOpenChange={setFilterModalOpen}
         initialRules={appliedRules}

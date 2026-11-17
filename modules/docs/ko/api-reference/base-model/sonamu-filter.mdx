@@ -6,9 +6,9 @@ description: "타입 안전한 엔티티 필터링"
 `sonamuFilter`는 Entity의 필드를 타입 안전하게 필터링하는 기능입니다. 필터 가능한 필드와 허용되는 연산자가 Entity 정의에서 자동으로 추론되어 잘못된 필터링 시도를 타입 레벨과 런타임 모두에서 방지합니다.
 
 <Info>
-  `sonamuFilter`는 Entity의 props를 기반으로 자동 생성됩니다. 가상 필드(virtual fields)는 필터링
-  대상에서 제외되며, **FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)는 `
-  {관계명}_id` 형태로 필터링할 수 있습니다.**
+  `sonamuFilter`는 entity.json에서 `"toFilter": true`로 지정한 prop만 필터링할 수 있습니다. 가상
+  필드(virtual fields)는 제외되며, **FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)도 관계 prop에
+  `"toFilter": true`를 지정해야 `{관계명}_id` 형태로 필터링할 수 있습니다.** 허용하지 않은 필드는 400으로 거부됩니다.
 </Info>
 
 ## 기본 사용법
@@ -40,7 +40,12 @@ const { rows } = await ProjectModel.findMany("A", {
 // 자동 생성된 타입 (sonamu.generated.ts)
 export type ProjectListParams = {
   // ...기존 파라미터들
-  sonamuFilter?: FilterQuery<FilterNumericOverride<ProjectBaseSchema>>;
+  // toFilter: true인 status, name, budget(numeric)만 남김
+  sonamuFilter?: ApplySonamuFilter<
+    ProjectBaseSchema,
+    Exclude<keyof ProjectBaseSchema, "status" | "name" | "budget">,
+    "budget"
+  >;
 };
 ```
 
@@ -227,7 +232,7 @@ const { rows } = await ProjectModel.findMany("A", {
 
 ### FK (Foreign Key) 필터링
 
-FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)는 `{관계명}_id` 형태로 필터링할 수 있습니다. 내부적으로 integer 타입의 가상 prop으로 변환되어 모든 숫자 연산자를 지원합니다.
+FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)에 `"toFilter": true`를 지정하면 `{관계명}_id` 형태로 필터링할 수 있습니다. 내부적으로 integer 타입의 가상 prop으로 변환되어 모든 숫자 연산자를 지원합니다.
 
 ```typescript
 // 특정 직원이 담당하는 프로젝트 조회
@@ -290,12 +295,23 @@ Fastify가 파싱한 문자열은 자동으로 적절한 타입으로 변환됩�
 
 ### 1. 필터 가능한 필드
 
-Entity의 props에 정의된 필드만 필터링할 수 있습니다. 가상 필드는 필터링 대상에서 제외됩니다. 단, **FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)는 `{관계명}_id` 형태로 필터링할 수 있습니다.**
+엔티티 JSON에서 `"toFilter": true`로 지정한 prop만 필터링할 수 있습니다. `sonamuFilter`는 HTTP 요청에서 그대로 들어오므로, `toFilter`가 없는 컬럼(예: 모든 subset에서 숨긴 비밀번호 해시)을 필터할 수 있으면 `count` 응답의 `total`로 값을 한 글자씩 알아낼 수 있습니다. 가상 필드는 필터링할 수 없습니다. **FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)에 `"toFilter": true`를 지정하면 `{관계명}_id` 형태로 필터링할 수 있습니다.**
+
+검증에 실패한 필터는 쿼리를 실행하기 전에 `BadRequestException`(HTTP 400)을 던집니다.
+
+```json
+{ "name": "status", "toFilter": true, "type": "enum", "id": "ProjectStatus" }
+```
 
 ```typescript
 // ✅ FK를 생성하는 관계는 {관계명}_id로 필터링 가능
 await ProjectModel.findMany("A", {
-  sonamuFilter: { employee_id: { in: [1, 2, 3] } }, // employee 관계의 FK
+  sonamuFilter: { employee_id: { in: [1, 2, 3] } }, // toFilter를 지정한 employee 관계의 FK
+});
+
+// ❌ 에러: 'password' 필드는 필터링할 수 없음 (toFilter 없음)
+await UserModel.findMany("A", {
+  sonamuFilter: { password: { startsWith: "$2b$" } },
 });
 
 // ❌ 에러: 필드 'employee'는 필터링할 수 없습니다 (관계명 자체는 불가)
@@ -381,10 +397,9 @@ protected applySonamuFilters<TEntity>(
   if (!filters) return;
 
   const entity = EntityManager.get(this.modelName);
-  const filterableProps = entity.getFilterableProps();
 
   // 1. 필터 검증
-  validateSonamuFilters(filters, filterableProps);
+  validateSonamuFilters(filters, entity);
 
   // 2. 필터 적용
   for (const [field, condition] of Object.entries(filters)) {

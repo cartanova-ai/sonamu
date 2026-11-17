@@ -269,7 +269,7 @@ const { rows } = await UserModel.findMany("A", { id: [1, 2, 3] });
 
 ### 커스텀 필터
 
-필드별 조건은 [`sonamuFilter`](/ko/api-reference/base-model/sonamu-filter)를 사용하세요. 다른 테이블을 조인하거나 여러 컬럼에 대응하는 등 직접 정의한 필터 키가 필요하면 엔티티의 `ListParams`에 추가하고 `findMany`에서 처리합니다.
+필드별 조건은 [`sonamuFilter`](/ko/api-reference/base-model/sonamu-filter)를 사용하세요. `sonamuFilter`는 엔티티 JSON에서 `"toFilter": true`로 지정한 prop만 받습니다. 다른 테이블을 조인하거나 여러 컬럼에 대응하는 등 직접 정의한 필터 키가 필요하면 엔티티의 `ListParams`에 추가하고 `findMany`에서 처리합니다.
 
 <Steps>
 <Step title="1. types 파일에서 ListParams 확장">

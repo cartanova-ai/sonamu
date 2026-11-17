@@ -30,6 +30,7 @@
     },
     {
       "name": "name",
+      "toFilter": true,
       "desc": "회사명",
       "type": "string",
       "cone": {

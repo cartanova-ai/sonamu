@@ -611,7 +611,7 @@ export const AccountBaseListParams = z
     orderBy: AccountOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.string()),
-    sonamuFilter: z.custom<ApplySonamuFilter<AccountBaseSchema, never, never>>(),
+    sonamuFilter: z.custom<ApplySonamuFilter<AccountBaseSchema, keyof AccountBaseSchema, never>>(),
   })
   .partial();
 export type AccountBaseListParams = z.infer<typeof AccountBaseListParams>;
@@ -626,7 +626,8 @@ export const AuditEventBaseListParams = z
     orderBy: AuditEventOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    sonamuFilter: z.custom<ApplySonamuFilter<AuditEventBaseSchema, never, never>>(),
+    sonamuFilter:
+      z.custom<ApplySonamuFilter<AuditEventBaseSchema, keyof AuditEventBaseSchema, never>>(),
   })
   .partial();
 export type AuditEventBaseListParams = z.infer<typeof AuditEventBaseListParams>;
@@ -641,7 +642,8 @@ export const AuditLogBaseListParams = z
     orderBy: AuditLogOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    sonamuFilter: z.custom<ApplySonamuFilter<AuditLogBaseSchema, never, never>>(),
+    sonamuFilter:
+      z.custom<ApplySonamuFilter<AuditLogBaseSchema, keyof AuditLogBaseSchema, never>>(),
   })
   .partial();
 export type AuditLogBaseListParams = z.infer<typeof AuditLogBaseListParams>;
@@ -656,7 +658,11 @@ export const CompanyBaseListParams = z
     orderBy: CompanyOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    sonamuFilter: z.custom<ApplySonamuFilter<CompanyBaseSchema, never, never>>(),
+    sonamuFilter:
+      z.custom<
+        ApplySonamuFilter<CompanyBaseSchema, Exclude<keyof CompanyBaseSchema, "name">, never>
+      >(),
+    name: z.string(),
   })
   .partial();
 export type CompanyBaseListParams = z.infer<typeof CompanyBaseListParams>;
@@ -671,7 +677,17 @@ export const DepartmentBaseListParams = z
     orderBy: DepartmentOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    sonamuFilter: z.custom<ApplySonamuFilter<DepartmentBaseSchema, "employee_count", never>>(),
+    sonamuFilter:
+      z.custom<
+        ApplySonamuFilter<
+          DepartmentBaseSchema,
+          Exclude<keyof DepartmentBaseSchema, "name" | "company_id" | "parent_id">,
+          never
+        >
+      >(),
+    name: z.string().max(128),
+    company_id: z.int(),
+    parent_id: z.int().nullable(),
   })
   .partial();
 export type DepartmentBaseListParams = z.infer<typeof DepartmentBaseListParams>;
@@ -686,7 +702,11 @@ export const DocumentBaseListParams = z
     orderBy: DocumentOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    sonamuFilter: z.custom<ApplySonamuFilter<DocumentBaseSchema, never, never>>(),
+    sonamuFilter:
+      z.custom<
+        ApplySonamuFilter<DocumentBaseSchema, Exclude<keyof DocumentBaseSchema, "status">, never>
+      >(),
+    status: DocumentStatus,
   })
   .partial();
 export type DocumentBaseListParams = z.infer<typeof DocumentBaseListParams>;
@@ -701,7 +721,15 @@ export const EmployeeBaseListParams = z
     orderBy: EmployeeOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    sonamuFilter: z.custom<ApplySonamuFilter<EmployeeBaseSchema, never, "salary">>(),
+    sonamuFilter:
+      z.custom<
+        ApplySonamuFilter<
+          EmployeeBaseSchema,
+          Exclude<keyof EmployeeBaseSchema, "department_id">,
+          never
+        >
+      >(),
+    department_id: z.int().nullable(),
   })
   .partial();
 export type EmployeeBaseListParams = z.infer<typeof EmployeeBaseListParams>;
@@ -716,7 +744,7 @@ export const FileBaseListParams = z
     orderBy: FileOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    sonamuFilter: z.custom<ApplySonamuFilter<FileBaseSchema, never, never>>(),
+    sonamuFilter: z.custom<ApplySonamuFilter<FileBaseSchema, keyof FileBaseSchema, never>>(),
   })
   .partial();
 export type FileBaseListParams = z.infer<typeof FileBaseListParams>;
@@ -731,7 +759,8 @@ export const MilestoneBaseListParams = z
     orderBy: MilestoneOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    sonamuFilter: z.custom<ApplySonamuFilter<MilestoneBaseSchema, never, never>>(),
+    sonamuFilter:
+      z.custom<ApplySonamuFilter<MilestoneBaseSchema, keyof MilestoneBaseSchema, never>>(),
   })
   .partial();
 export type MilestoneBaseListParams = z.infer<typeof MilestoneBaseListParams>;
@@ -746,7 +775,7 @@ export const PasskeyBaseListParams = z
     orderBy: PasskeyOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.string()),
-    sonamuFilter: z.custom<ApplySonamuFilter<PasskeyBaseSchema, never, never>>(),
+    sonamuFilter: z.custom<ApplySonamuFilter<PasskeyBaseSchema, keyof PasskeyBaseSchema, never>>(),
   })
   .partial();
 export type PasskeyBaseListParams = z.infer<typeof PasskeyBaseListParams>;
@@ -763,8 +792,29 @@ export const ProjectBaseListParams = z
     id: zArrayable(z.number().int().positive()),
     sonamuFilter:
       z.custom<
-        ApplySonamuFilter<ProjectBaseSchema, "virtual_test" | "virtual_query_test", "budget">
+        ApplySonamuFilter<
+          ProjectBaseSchema,
+          Exclude<
+            keyof ProjectBaseSchema,
+            | "id"
+            | "created_at"
+            | "name"
+            | "status"
+            | "description"
+            | "budget"
+            | "image_urls"
+            | "textsearchable_index_col"
+          >,
+          "budget"
+        >
       >(),
+    created_at: z.date(),
+    name: z.string().max(255),
+    status: ProjectStatus,
+    description: z.string().nullable(),
+    budget: z.string().nullable().meta({ SonamuPropType: "numeric" }),
+    image_urls: SonamuFileArraySchema.nullable(),
+    textsearchable_index_col: z.string(),
   })
   .partial();
 export type ProjectBaseListParams = z.infer<typeof ProjectBaseListParams>;
@@ -779,7 +829,7 @@ export const SessionBaseListParams = z
     orderBy: SessionOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.string()),
-    sonamuFilter: z.custom<ApplySonamuFilter<SessionBaseSchema, never, never>>(),
+    sonamuFilter: z.custom<ApplySonamuFilter<SessionBaseSchema, keyof SessionBaseSchema, never>>(),
   })
   .partial();
 export type SessionBaseListParams = z.infer<typeof SessionBaseListParams>;
@@ -794,7 +844,8 @@ export const SyncFixtureBaseListParams = z
     orderBy: SyncFixtureOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    sonamuFilter: z.custom<ApplySonamuFilter<SyncFixtureBaseSchema, never, never>>(),
+    sonamuFilter:
+      z.custom<ApplySonamuFilter<SyncFixtureBaseSchema, keyof SyncFixtureBaseSchema, never>>(),
   })
   .partial();
 export type SyncFixtureBaseListParams = z.infer<typeof SyncFixtureBaseListParams>;
@@ -809,7 +860,9 @@ export const TagBaseListParams = z
     orderBy: TagOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    sonamuFilter: z.custom<ApplySonamuFilter<TagBaseSchema, never, never>>(),
+    sonamuFilter:
+      z.custom<ApplySonamuFilter<TagBaseSchema, Exclude<keyof TagBaseSchema, "name">, never>>(),
+    name: z.string(),
   })
   .partial();
 export type TagBaseListParams = z.infer<typeof TagBaseListParams>;
@@ -824,7 +877,8 @@ export const TwoFactorBaseListParams = z
     orderBy: TwoFactorOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.string()),
-    sonamuFilter: z.custom<ApplySonamuFilter<TwoFactorBaseSchema, never, never>>(),
+    sonamuFilter:
+      z.custom<ApplySonamuFilter<TwoFactorBaseSchema, keyof TwoFactorBaseSchema, never>>(),
   })
   .partial();
 export type TwoFactorBaseListParams = z.infer<typeof TwoFactorBaseListParams>;
@@ -839,7 +893,16 @@ export const UserBaseListParams = z
     orderBy: UserOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.string()),
-    sonamuFilter: z.custom<ApplySonamuFilter<UserBaseSchema, never, never>>(),
+    sonamuFilter:
+      z.custom<
+        ApplySonamuFilter<
+          UserBaseSchema,
+          Exclude<keyof UserBaseSchema, "role" | "is_verified">,
+          never
+        >
+      >(),
+    role: UserRole,
+    is_verified: z.boolean(),
   })
   .partial();
 export type UserBaseListParams = z.infer<typeof UserBaseListParams>;
@@ -854,7 +917,8 @@ export const VerificationBaseListParams = z
     orderBy: VerificationOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.string()),
-    sonamuFilter: z.custom<ApplySonamuFilter<VerificationBaseSchema, never, never>>(),
+    sonamuFilter:
+      z.custom<ApplySonamuFilter<VerificationBaseSchema, keyof VerificationBaseSchema, never>>(),
   })
   .partial();
 export type VerificationBaseListParams = z.infer<typeof VerificationBaseListParams>;

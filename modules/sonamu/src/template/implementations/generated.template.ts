@@ -302,7 +302,20 @@ export class Template__generated extends Template {
 
     const schemaName = `${entity.names.module}BaseListParams`;
 
-    const filterProps = entity.props.filter((prop) => prop.toFilter === true);
+    // 기본 ListParams 키와 이름이 겹치는 toFilter prop은 개별 필드로 만들지 않음 (sonamuFilter로만 필터)
+    const reservedListParamKeys = new Set([
+      "num",
+      "page",
+      "search",
+      "keyword",
+      "orderBy",
+      "queryMode",
+      "id",
+      "sonamuFilter",
+    ]);
+    const filterProps = entity.props.filter(
+      (prop) => prop.toFilter === true && !reservedListParamKeys.has(prop.name),
+    );
 
     const propNodes: EntityPropNode[] = filterProps.map((prop) => {
       return {
@@ -317,18 +330,18 @@ export class Template__generated extends Template {
       .map((propNode) => propNodeToZodTypeDef(propNode, importKeys))
       .join("\n");
 
-    // FilterQuery 타입을 위한 제외할 props 추출 (virtual만 제외)
-    const excludedProps = entity.props.filter((p) => p.type === "virtual").map((p) => p.name);
-
-    // numeric 타입인 props 추출
-    const numericProps = entity.props.filter((p) => p.type === "numeric");
+    // sonamuFilter 타입은 런타임 허용 목록(getFilterableProps)과 같은 필드만 남긴다
+    const filterableProps = entity.getFilterableProps();
+    const numericProps = filterableProps.filter((p) => p.type === "numeric");
 
     // ApplySonamuFilter 타입 인자 생성
     const entityType = `${entity.id}BaseSchema`;
     const numericKeysUnion =
       numericProps.length > 0 ? numericProps.map((prop) => `"${prop.name}"`).join(" | ") : "never";
     const omitKeysUnion =
-      excludedProps.length > 0 ? excludedProps.map((n) => `"${n}"`).join(" | ") : "never";
+      filterableProps.length > 0
+        ? `Exclude<keyof ${entityType}, ${filterableProps.map((prop) => `"${prop.name}"`).join(" | ")}>`
+        : `keyof ${entityType}`;
 
     // PK 타입에 따른 id Zod 타입 결정
     const pkType = entity.getPkType();

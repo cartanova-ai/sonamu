@@ -1,9 +1,12 @@
 import { api, registeredApis, stream, transactional } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
-import { beforeEach, describe, expect, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, vi } from "vitest";
 import { z } from "zod";
 
 bootstrap(vi);
+
+// isolate: false로 같은 워커의 다른 테스트 파일과 registeredApis를 공유하므로 끝나면 원래 목록을 되돌린다
+const originalRegisteredApis = [...registeredApis];
 
 const createMockTarget = (modelName: string, methodName: string) => {
   const target = {
@@ -18,6 +21,10 @@ const originalTransactionalFn = async () => "original";
 describe("decorators", () => {
   beforeEach(() => {
     registeredApis.length = 0;
+  });
+
+  afterAll(() => {
+    registeredApis.splice(0, registeredApis.length, ...originalRegisteredApis);
   });
 
   describe("@api + @stream 동시 사용 금지", () => {

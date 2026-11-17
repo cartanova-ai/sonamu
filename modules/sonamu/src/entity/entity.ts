@@ -873,14 +873,17 @@ export class Entity {
   /**
    * 필터링 가능한 props 반환
    *
-   * - 일반 prop
-   * - FK를 생성하는 relation (BelongsToOne, OneToOne with hasJoinColumn)
+   * sonamuFilter는 HTTP 요청에서 그대로 들어오므로 `toFilter: true`로 명시한 prop만 허용합니다.
+   * subset에서 숨긴 컬럼(비밀번호 해시 등)이 count 응답을 통해 추출되는 것을 막기 위함입니다.
+   *
+   * - `toFilter: true`인 일반 prop
+   * - `toFilter: true`이면서 FK를 생성하는 relation (BelongsToOne, OneToOne with hasJoinColumn)
    *   → {name}_id 형태의 가상 integer prop으로 변환
    */
   getFilterableProps(): EntityProp[] {
     return this.props.flatMap((prop): EntityProp | EntityProp[] => {
-      // Virtual prop 제외
-      if (isVirtualProp(prop)) {
+      // toFilter를 켜지 않은 prop과 virtual prop은 필터 대상이 아님
+      if (prop.toFilter !== true || isVirtualProp(prop)) {
         return [];
       }
 

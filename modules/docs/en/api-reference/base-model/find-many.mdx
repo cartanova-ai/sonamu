@@ -269,7 +269,7 @@ const { rows } = await UserModel.findMany("A", { id: [1, 2, 3] });
 
 ### Custom Filters
 
-For per-field conditions, use [`sonamuFilter`](/en/api-reference/base-model/sonamu-filter). When you need a filter key of your own (for example one that joins another table or maps to several columns), add it to the entity's `ListParams` and handle it in `findMany`.
+For per-field conditions, use [`sonamuFilter`](/en/api-reference/base-model/sonamu-filter). `sonamuFilter` accepts only props marked `"toFilter": true` in the entity JSON. When you need a filter key of your own (for example one that joins another table or maps to several columns), add it to the entity's `ListParams` and handle it in `findMany`.
 
 <Steps>
 <Step title="1. Extend ListParams in the types file">

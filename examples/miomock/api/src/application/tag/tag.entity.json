@@ -5,7 +5,7 @@
   "props": [
     { "name": "id", "type": "integer", "desc": "ID" },
     { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
-    { "name": "name", "desc": "태그명", "type": "string" },
+    { "name": "name", "toFilter": true, "desc": "태그명", "type": "string" },
     {
       "name": "name_ko",
       "nullable": true,

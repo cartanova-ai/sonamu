@@ -3,8 +3,14 @@
   "table": "projects",
   "title": "PROJECT",
   "props": [
-    { "name": "id", "type": "integer", "desc": "ID" },
-    { "name": "created_at", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP", "type": "date" },
+    { "name": "id", "toFilter": true, "type": "integer", "desc": "ID" },
+    {
+      "name": "created_at",
+      "toFilter": true,
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP",
+      "type": "date"
+    },
     {
       "type": "relation",
       "name": "employee",
@@ -15,11 +21,12 @@
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE"
     },
-    { "name": "name", "desc": "PROJECT명", "type": "string", "length": 255 },
-    { "name": "status", "desc": "상태", "type": "enum", "id": "ProjectStatus" },
-    { "name": "description", "nullable": true, "desc": "설명", "type": "string" },
+    { "name": "name", "toFilter": true, "desc": "PROJECT명", "type": "string", "length": 255 },
+    { "name": "status", "toFilter": true, "desc": "상태", "type": "enum", "id": "ProjectStatus" },
+    { "name": "description", "toFilter": true, "nullable": true, "desc": "설명", "type": "string" },
     {
       "name": "budget",
+      "toFilter": true,
       "type": "numeric",
       "precision": 12,
       "scale": 2,
@@ -40,6 +47,7 @@
     },
     {
       "name": "image_urls",
+      "toFilter": true,
       "nullable": true,
       "desc": "이미지URLS",
       "type": "json",
@@ -62,6 +70,7 @@
     },
     {
       "name": "textsearchable_index_col",
+      "toFilter": true,
       "type": "tsvector",
       "desc": "FTS 테스트용",
       "generated": {

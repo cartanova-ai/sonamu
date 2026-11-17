@@ -49,6 +49,13 @@ import {
   DepartmentSearchFieldLabel,
 } from "@/services/sonamu.generated";
 
+// 필터 UI는 서버가 허용하는 toFilter 필드만 노출한다
+const DepartmentFilterSchema = DepartmentBaseSchema.pick({
+  name: true,
+  company_id: true,
+  parent_id: true,
+});
+
 export const Route = createFileRoute("/admin/departments/")({
   head: () => ({
     meta: [
@@ -233,7 +240,7 @@ function DepartmentList({}: DepartmentListProps) {
                     <SonamuFilterPopover
                       rules={appliedRules}
                       fieldMeta={extractFieldMetaFromSchema(
-                        DepartmentBaseSchema,
+                        DepartmentFilterSchema,
                         translateFilterEnumKey,
                       )}
                     >
@@ -338,7 +345,7 @@ function DepartmentList({}: DepartmentListProps) {
 
       {/* Sonamu Filter Modal */}
       <SonamuFilterModal
-        baseSchema={DepartmentBaseSchema}
+        baseSchema={DepartmentFilterSchema}
         open={filterModalOpen}
         onOpenChange={setFilterModalOpen}
         initialRules={appliedRules}

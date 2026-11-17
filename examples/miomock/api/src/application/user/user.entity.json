@@ -75,6 +75,7 @@
     },
     {
       "name": "role",
+      "toFilter": true,
       "desc": "ROLE",
       "type": "enum",
       "id": "UserRole",
@@ -105,6 +106,7 @@
     },
     {
       "name": "is_verified",
+      "toFilter": true,
       "type": "boolean",
       "desc": "ISVERIFIED",
       "dbDefault": "false",

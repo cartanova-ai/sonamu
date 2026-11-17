@@ -6,9 +6,10 @@ description: "Type-safe entity filtering"
 `sonamuFilter` is a feature for type-safe filtering of Entity fields. Filterable fields and allowed operators are automatically inferred from the Entity definition, preventing invalid filtering attempts at both type level and runtime.
 
 <Info>
-  `sonamuFilter` is automatically generated based on the Entity's props. Virtual fields are excluded
-  from filtering targets. **Relations that create FK (`BelongsToOne`, `OneToOne` with
-  `hasJoinColumn`) can be filtered using the `{relation_name}_id` format.**
+  `sonamuFilter` only filters props marked `"toFilter": true` in entity.json. Virtual fields are
+  excluded. **Relations that create FK (`BelongsToOne`, `OneToOne` with `hasJoinColumn`) can be
+  filtered using the `{relation_name}_id` format only when the relation prop also has `"toFilter": true`.**
+  Other fields are rejected with 400.
 </Info>
 
 ## Basic Usage
@@ -40,7 +41,12 @@ const { rows } = await ProjectModel.findMany("A", {
 // Auto-generated type (sonamu.generated.ts)
 export type ProjectListParams = {
   // ...existing parameters
-  sonamuFilter?: FilterQuery<FilterNumericOverride<ProjectBaseSchema>>;
+  // keeps only status, name, and budget (numeric), which have toFilter: true
+  sonamuFilter?: ApplySonamuFilter<
+    ProjectBaseSchema,
+    Exclude<keyof ProjectBaseSchema, "status" | "name" | "budget">,
+    "budget"
+  >;
 };
 ```
 
@@ -227,7 +233,7 @@ const { rows } = await ProjectModel.findMany("A", {
 
 ### FK (Foreign Key) Filtering
 
-Relations that create FK (`BelongsToOne`, `OneToOne` with `hasJoinColumn`) can be filtered using the `{relation_name}_id` format. Internally converted to a virtual integer type prop, supporting all numeric operators.
+Relations that create FK (`BelongsToOne`, `OneToOne` with `hasJoinColumn`) can be filtered using the `{relation_name}_id` format when the relation prop has `"toFilter": true`. Internally converted to a virtual integer type prop, supporting all numeric operators.
 
 ```typescript
 // Get projects assigned to a specific employee
@@ -290,12 +296,23 @@ String values parsed by Fastify are automatically converted to appropriate types
 
 ### 1. Filterable Fields
 
-Only fields defined in the Entity's props can be filtered. Virtual fields are excluded from filtering targets. **However, relations that create FK (`BelongsToOne`, `OneToOne` with `hasJoinColumn`) can be filtered using the `{relation_name}_id` format.**
+Only props marked with `"toFilter": true` in the entity JSON can be filtered. `sonamuFilter` arrives directly from HTTP requests, so a column without `toFilter` (for example a password hash hidden by every subset) must never be filterable; otherwise the `total` of a `count` query reveals its value one character at a time. Virtual fields are never filterable. **Relations that create FK (`BelongsToOne`, `OneToOne` with `hasJoinColumn`) and have `"toFilter": true` can be filtered using the `{relation_name}_id` format.**
+
+A filter that fails validation throws `BadRequestException` (HTTP 400) before any query runs.
+
+```json
+{ "name": "status", "toFilter": true, "type": "enum", "id": "ProjectStatus" }
+```
 
 ```typescript
 // ✅ Relations that create FK can be filtered as {relation_name}_id
 await ProjectModel.findMany("A", {
-  sonamuFilter: { employee_id: { in: [1, 2, 3] } }, // FK of employee relation
+  sonamuFilter: { employee_id: { in: [1, 2, 3] } }, // FK of employee relation with toFilter
+});
+
+// ❌ Error: Field 'password' cannot be filtered (no toFilter)
+await UserModel.findMany("A", {
+  sonamuFilter: { password: { startsWith: "$2b$" } },
 });
 
 // ❌ Error: Field 'employee' cannot be filtered (relation name itself is not allowed)
@@ -381,10 +398,9 @@ protected applySonamuFilters<TEntity>(
   if (!filters) return;
 
   const entity = EntityManager.get(this.modelName);
-  const filterableProps = entity.getFilterableProps();
 
   // 1. Validate filters
-  validateSonamuFilters(filters, filterableProps);
+  validateSonamuFilters(filters, entity);
 
   // 2. Apply filters
   for (const [field, condition] of Object.entries(filters)) {

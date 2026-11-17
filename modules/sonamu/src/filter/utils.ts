@@ -1,4 +1,6 @@
+import { type LocalizedString } from "../dict/types";
 import { type Entity } from "../entity/entity";
+import { BadRequestException } from "../exceptions/so-exceptions";
 import { isEnumProp } from "../types/types";
 import { isObjectValue, isStringValue } from "../utils/runtime-value";
 import { operatorsByPropType } from "./types";
@@ -105,13 +107,21 @@ function convertType<Value>(value: Value): ConvertedFilterValue<Value> {
 // ============================================================
 
 /**
+ * 잘못된 필터 요청을 400으로 응답하기 위한 예외를 만듭니다.
+ */
+function invalidFilter(message: string): BadRequestException {
+  // SAFETY: 프레임워크 검증 메시지는 번역 키가 아닌 고정 문장이며 LocalizedString 브랜드만 붙인다.
+  return new BadRequestException(message as LocalizedString);
+}
+
+/**
  * sonamuFilter를 Entity 기반으로 검증
  *
- * 필터링 불가능한 필드, 지원하지 않는 연산자, 잘못된 enum 값 등을 체크
+ * 필터링 불가능한 필드(`toFilter`가 없는 prop 포함), 지원하지 않는 연산자, 잘못된 enum 값 등을 체크
  *
  * @param filters 검증할 필터 쿼리
  * @param entity Entity 객체
- * @throws {Error} 검증 실패 시 상세한 에러 메시지와 함께 예외 발생
+ * @throws {BadRequestException} 검증 실패 시 상세한 에러 메시지와 함께 400 예외 발생
  *
  * @example
  * validateSonamuFilters({ status: "active", id: { gte: 1 } }, ProjectEntity);
@@ -132,7 +142,7 @@ export function validateSonamuFilters<TEntity = DynamicFilterEntity>(
     const prop = filterableProps.get(field);
     if (!prop) {
       const availableFields = Array.from(filterableProps.keys()).join(", ");
-      throw new Error(
+      throw invalidFilter(
         `필드 '${field}'는 필터링할 수 없습니다. (필터 가능한 필드: ${availableFields})`,
       );
     }
@@ -163,7 +173,7 @@ export function validateSonamuFilters<TEntity = DynamicFilterEntity>(
 
       // 연산자가 해당 타입에서 지원되는지 검증
       if (!allowedOperators.includes(op)) {
-        throw new Error(
+        throw invalidFilter(
           `필드 '${field}'(타입: ${prop.type})는 '${operator}' 연산자를 지원하지 않습니다.` +
             `(지원되는 연산자: ${allowedOperators.join(", ")})`,
         );
@@ -174,12 +184,14 @@ export function validateSonamuFilters<TEntity = DynamicFilterEntity>(
       }
 
       if ((op === "in" || op === "notIn") && !Array.isArray(value)) {
-        throw new Error(`필드 '${field}'의 '${operator}' 연산자는 배열 값을 요구합니다.`);
+        throw invalidFilter(`필드 '${field}'의 '${operator}' 연산자는 배열 값을 요구합니다.`);
       }
 
       if (op === "between") {
         if (!Array.isArray(value) || value.length !== 2) {
-          throw new Error(`필드 '${field}'의 'between' 연산자는 길이 2의 배열 값을 요구합니다.`);
+          throw invalidFilter(
+            `필드 '${field}'의 'between' 연산자는 길이 2의 배열 값을 요구합니다.`,
+          );
         }
       }
 
@@ -210,7 +222,7 @@ function validateEnumValue<Value>(field: string, value: Value, enumValues: strin
     return;
   }
   if (!enumValues.includes(String(value))) {
-    throw new Error(
+    throw invalidFilter(
       `필드 '${field}'의 값 '${value}'는 유효하지 않습니다. (허용되는 값: ${enumValues.join(", ")})`,
     );
   }

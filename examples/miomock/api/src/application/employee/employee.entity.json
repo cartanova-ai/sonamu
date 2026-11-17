@@ -38,6 +38,7 @@
     {
       "type": "relation",
       "name": "department",
+      "toFilter": true,
       "with": "Department",
       "nullable": true,
       "desc": "부서",

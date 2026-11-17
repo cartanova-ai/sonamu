@@ -49,6 +49,9 @@ import {
   EmployeeSearchFieldLabel,
 } from "@/services/sonamu.generated";
 
+// 필터 UI는 서버가 허용하는 toFilter 필드만 노출한다
+const EmployeeFilterSchema = EmployeeBaseSchema.pick({ department_id: true });
+
 export const Route = createFileRoute("/admin/employees/")({
   head: () => ({
     meta: [
@@ -238,7 +241,7 @@ function EmployeeList({}: EmployeeListProps) {
                     <SonamuFilterPopover
                       rules={appliedRules}
                       fieldMeta={extractFieldMetaFromSchema(
-                        EmployeeBaseSchema,
+                        EmployeeFilterSchema,
                         translateFilterEnumKey,
                       )}
                     >
@@ -343,7 +346,7 @@ function EmployeeList({}: EmployeeListProps) {
 
       {/* Sonamu Filter Modal */}
       <SonamuFilterModal
-        baseSchema={EmployeeBaseSchema}
+        baseSchema={EmployeeFilterSchema}
         open={filterModalOpen}
         onOpenChange={setFilterModalOpen}
         initialRules={appliedRules}

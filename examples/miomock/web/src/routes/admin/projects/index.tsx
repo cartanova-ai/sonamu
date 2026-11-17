@@ -50,6 +50,18 @@ import {
   ProjectStatusLabel,
 } from "@/services/sonamu.generated";
 
+// 필터 UI는 서버가 허용하는 toFilter 필드만 노출한다
+const ProjectFilterSchema = ProjectBaseSchema.pick({
+  id: true,
+  created_at: true,
+  name: true,
+  status: true,
+  description: true,
+  budget: true,
+  image_urls: true,
+  textsearchable_index_col: true,
+});
+
 export const Route = createFileRoute("/admin/projects/")({
   head: () => ({
     meta: [
@@ -279,7 +291,7 @@ function ProjectList({}: ProjectListProps) {
                     <SonamuFilterPopover
                       rules={appliedRules}
                       fieldMeta={extractFieldMetaFromSchema(
-                        ProjectBaseSchema,
+                        ProjectFilterSchema,
                         translateFilterEnumKey,
                       )}
                     >
@@ -384,7 +396,7 @@ function ProjectList({}: ProjectListProps) {
 
       {/* Sonamu Filter Modal */}
       <SonamuFilterModal
-        baseSchema={ProjectBaseSchema}
+        baseSchema={ProjectFilterSchema}
         open={filterModalOpen}
         onOpenChange={setFilterModalOpen}
         initialRules={appliedRules}
