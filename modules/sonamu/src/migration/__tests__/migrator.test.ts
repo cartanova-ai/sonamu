@@ -2,7 +2,7 @@ import { type Knex } from "knex";
 import knex from "knex";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { type SonamuConfig } from "../../api/config";
+import { type DatabaseConfig, type SonamuConfig } from "../../api/config";
 import { Sonamu } from "../../api/sonamu";
 import { type SonamuDBConfig, type SonamuDBPreset } from "../../database/db";
 import { setSDConfig } from "../../dict/sd";
@@ -189,5 +189,67 @@ describe("SlackConfirm target validation", () => {
 
     expect(slackConfirm.isTargetRequiresApproval("production")).toBe(true);
     expect(slackConfirm.isTargetRequiresApproval("staging")).toBe(false);
+  });
+});
+
+describe("Migrator 대상 제외 옵션", () => {
+  const originalEnv = { ...process.env };
+  const presetConfig = (preset: SonamuDBPreset): DatabaseConfig => ({
+    client: "postgresql",
+    connection: { host: "localhost", database: preset },
+  });
+  const dbConfig: SonamuDBConfig = {
+    test: presetConfig("test"),
+    fixture: presetConfig("fixture"),
+    development: presetConfig("development"),
+    staging: presetConfig("staging"),
+    production: presetConfig("production"),
+    test_readonly: presetConfig("test_readonly"),
+    development_readonly: presetConfig("development_readonly"),
+    staging_readonly: presetConfig("staging_readonly"),
+    production_readonly: presetConfig("production_readonly"),
+  };
+
+  afterEach(() => {
+    for (const key of Object.keys(process.env)) {
+      if (!(key in originalEnv)) {
+        delete process.env[key];
+      }
+    }
+    Object.assign(process.env, originalEnv);
+  });
+
+  it("제외한 대상은 로컬 개발 환경에서도 대상 목록과 커넥션 메타데이터에서 빠진다", () => {
+    process.env.NODE_ENV = "development";
+    Sonamu.dbConfig = dbConfig;
+    Sonamu.config = createConfig([]);
+    setSDConfig(Sonamu.config.i18n);
+
+    const migrator = new Migrator({ excludedTargets: ["production"] });
+
+    expect(migrator.getMigrationTargetKeys()).toEqual([
+      "test",
+      "fixture",
+      "development",
+      "staging",
+    ]);
+    expect(migrator.getConnections().map(({ connKey }) => connKey)).not.toContain("production");
+  });
+
+  it("제외한 대상의 상태 조회와 적용·롤백은 DB에 연결하기 전에 거부한다", async () => {
+    process.env.NODE_ENV = "development";
+    Sonamu.dbConfig = dbConfig;
+    const migrator = new Migrator({ excludedTargets: ["production"] });
+
+    await expect(migrator.getConnectionStatus("production")).rejects.toThrow(/production/);
+    await expect(migrator.apply(["production"])).rejects.toThrow(/production/);
+    await expect(migrator.rollback(["production"])).rejects.toThrow(/production/);
+  });
+
+  it("옵션 없이 만든 Migrator(CLI 경로)는 로컬 개발 환경에서 production을 계속 허용한다", () => {
+    process.env.NODE_ENV = "development";
+    Sonamu.dbConfig = dbConfig;
+
+    expect(new Migrator().getMigrationTargetKeys()).toContain("production");
   });
 });

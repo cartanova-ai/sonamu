@@ -274,6 +274,8 @@ console.log(status.currentVersion, status.pending);
 `runAction("apply" | "rollback", targets)` still exists for backward compatibility but is
 deprecated; call `apply` or `rollback` directly.
 
+`new Migrator()` handles every target the current environment allows. Use the constructor option `excludedTargets` to remove targets, or `targetFilter` to narrow them further (for example `new Migrator({ excludedTargets: ["production"] })`). Removed targets are left out of connection lists and status queries, and passing one to `apply`, `rollback`, and similar methods throws an error before connecting to the database.
+
 ### Rollback Script
 
 ```typescript title="src/scripts/rollback-migration.ts"

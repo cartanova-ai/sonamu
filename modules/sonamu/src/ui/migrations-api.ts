@@ -247,7 +247,8 @@ function sendMigrationStream(
 }
 
 export async function registerMigrationsApi(server: FastifyInstance) {
-  const migrator = new Migrator();
+  // dev 서버 UI는 인증 없이 열려 있으므로 production은 대상에서 빼고 CLI(sonamu migrate)로만 다룹니다.
+  const migrator = new Migrator({ excludedTargets: ["production"] });
 
   server.get("/api/migrations/connections", async () => ({
     connections: migrator.getConnections(),

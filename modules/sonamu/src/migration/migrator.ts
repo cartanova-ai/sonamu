@@ -43,6 +43,31 @@ export type MigrationResult = {
 
 type ShadowMigrationTarget = Extract<MigrationTarget, "fixture" | "test">;
 
+// satisfies로 키 누락·초과를 타입 오류로 잡아 SonamuDBConfig의 preset 집합과 항상 일치시킵니다.
+const MIGRATION_TARGET_KEYS = {
+  test: true,
+  fixture: true,
+  development: true,
+  staging: true,
+  production: true,
+  test_readonly: true,
+  development_readonly: true,
+  staging_readonly: true,
+  production_readonly: true,
+} satisfies Record<MigrationTarget, true>;
+
+function isMigrationTarget(key: string): key is MigrationTarget {
+  return Object.hasOwn(MIGRATION_TARGET_KEYS, key);
+}
+
+export type MigratorOptions = {
+  /**
+   * 현재 실행 환경에서 허용되더라도 이 Migrator로는 다룰 수 없게 막을 대상입니다.
+   * 목록·상태 조회와 적용·롤백 모두 이 대상을 허용 목록에서 제외합니다.
+   */
+  excludedTargets?: readonly MigrationTarget[];
+};
+
 function padDatePart(number: number, size: number = 2): string {
   return number.toString().padStart(size, "0");
 }
@@ -89,6 +114,12 @@ function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => Error)
  * CLI 리팩토링 시점에서 제거해주셔도 무방합니다.
  */
 export class Migrator {
+  private readonly excludedTargets: ReadonlySet<MigrationTarget>;
+
+  constructor(options: MigratorOptions = {}) {
+    this.excludedTargets = new Set(options.excludedTargets ?? []);
+  }
+
   private isMissingMigrationTableError<Value>(error: Value): boolean {
     if (!isObjectValue(error) || error === null) {
       return false;
@@ -104,10 +135,9 @@ export class Migrator {
 
   /** 현재 실행 환경에서 허용된 마이그레이션 대상 키를 반환합니다. */
   getMigrationTargetKeys(): MigrationTarget[] {
-    const connKeys =
-      /* SAFETY: Knex와 PostgreSQL 스키마 조회 계약이 이 값의 타입을 보장한다. */ Object.keys(
-        Sonamu.dbConfig,
-      ).filter((key) => !key.endsWith("_readonly")) as (keyof SonamuDBConfig)[];
+    const connKeys = Object.keys(Sonamu.dbConfig)
+      .filter(isMigrationTarget)
+      .filter((key) => !key.endsWith("_readonly") && !this.excludedTargets.has(key));
 
     if (isLocal()) {
       return connKeys;
