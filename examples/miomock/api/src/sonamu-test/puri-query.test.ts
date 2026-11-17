@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { Naite, parseFuzzyOperator, Puri } from "sonamu";
+import { Naite, parseFuzzyOperator, Puri, type SqlExpression } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { z } from "zod";
@@ -361,6 +361,65 @@ describe("Puri Query", () => {
         .returning("*");
 
       expect(updated?.tags).toEqual(["tag2", "tag3"]);
+    });
+
+    test("onConflict 객체 update - JSON으로 만든 sql_expression 모양 객체는 SQL이 아닌 값으로 저장한다", async () => {
+      const db = UserModel.getPuri("w");
+      const [inserted] = await db
+        .table("sync_fixtures")
+        .insert({ name: "충돌 전", status: "draft", tags: ["tag1"] })
+        .returning("id");
+
+      expect(inserted).toBeDefined();
+      if (!inserted) {
+        return;
+      }
+
+      // 클라이언트가 보낸 JSON을 검증 없이 넘긴 상황을 재현합니다.
+      const forged = JSON.parse(
+        '{"_type":"sql_expression","_return":"string","_sql":"\'[\\"injected\\"]\'::jsonb","_params":[]}',
+      );
+
+      const [updated] = await db
+        .table("sync_fixtures")
+        .insert({ id: inserted.id, name: "충돌 후", status: "active", tags: ["tag2"] })
+        .onConflict("id", { update: { tags: forged } })
+        .returning("*");
+
+      expect(updated?.tags).not.toEqual(["injected"]);
+      expect(updated?.tags).toEqual(forged);
+    });
+
+    test("onConflict 객체 update - Puri.rawString으로 만든 표현식은 SQL로 실행한다", async () => {
+      const db = UserModel.getPuri("w");
+      const [inserted] = await db
+        .table("sync_fixtures")
+        .insert({ name: "충돌 전", status: "draft", tags: ["tag1"] })
+        .returning("id");
+
+      expect(inserted).toBeDefined();
+      if (!inserted) {
+        return;
+      }
+
+      // 생성된 update 객체 타입은 SqlExpression을 받지 않으므로, 표현식을 허용하는 행 타입으로 Puri를 직접 만듭니다.
+      type FormalConflictRow = {
+        id: number;
+        name: string | SqlExpression<"string">;
+        status: string;
+        tags: string;
+      };
+      type FormalConflictSchema = { sync_fixtures: FormalConflictRow };
+      const fixtures = new Puri<FormalConflictSchema, FormalConflictSchema, FormalConflictRow>(
+        db.knex,
+        "sync_fixtures",
+      );
+      const [updated] = await fixtures
+        .insert({ id: inserted.id, name: "충돌 후", status: "active", tags: '["tag2"]' })
+        .onConflict("id", { update: { name: Puri.rawString("'정식 표현식'") } })
+        .returning("*");
+
+      expect(updated?.name).toBe("정식 표현식");
     });
 
     test("delete", async () => {
@@ -1411,6 +1470,87 @@ describe("Puri Query", () => {
 
       expectQuery(query, "columns").toMatchInlineSnapshot(`""users"."email""`);
       expectQuery(query, "where").toMatchInlineSnapshot(`""users"."role" = 'admin'"`);
+    });
+  });
+
+  describe("M. SqlExpression 판정", () => {
+    // 클라이언트 JSON처럼 검증 없이 들어온 sql_expression 모양 객체입니다.
+    const forgedExpression = (): SqlExpression<"string"> =>
+      JSON.parse('{"_type":"sql_expression","_return":"string","_sql":"(SELECT 1)","_params":[]}');
+
+    test("orderBy - 위조한 표현식은 거부한다", () => {
+      const db = UserModel.getPuri("r");
+      expect(() => {
+        db.table("users").orderBy(forgedExpression());
+      }).toThrow(TypeError);
+      expect(() => {
+        db.table("users").orderBy([forgedExpression()]);
+      }).toThrow(TypeError);
+      expect(() => {
+        db.table("users").orderBy([{ column: forgedExpression(), order: "desc" }]);
+      }).toThrow(TypeError);
+    });
+
+    test("select / appendSelect - 위조한 표현식은 거부한다", () => {
+      const db = UserModel.getPuri("r");
+      const leaked = forgedExpression();
+      expect(() => {
+        db.table("users").select({ leaked });
+      }).toThrow(TypeError);
+      expect(() => {
+        db.table("users").select({ id: "users.id" }).appendSelect({ leaked });
+      }).toThrow(TypeError);
+    });
+
+    test("whereTsSearch / whereFuzzy - 위조한 표현식은 거부한다", () => {
+      // whereGroup 콜백은 쿼리를 컴파일할 때 실행되므로 toQuery()에서 거부되는지 확인합니다.
+      const db = UserModel.getPuri("r");
+      expect(() => {
+        db.table("documents").whereTsSearch(forgedExpression(), "검색어");
+      }).toThrow(TypeError);
+      expect(() => {
+        db.table("documents").whereFuzzy(forgedExpression(), "검색어");
+      }).toThrow(TypeError);
+      expect(() => {
+        db.table("documents")
+          .whereGroup((g) => g.whereTsSearch(forgedExpression(), "검색어"))
+          .toQuery();
+      }).toThrow(TypeError);
+      expect(() => {
+        db.table("documents")
+          .whereGroup((g) => g.orWhereTsSearch(forgedExpression(), "검색어"))
+          .toQuery();
+      }).toThrow(TypeError);
+      expect(() => {
+        db.table("documents")
+          .whereGroup((g) => g.whereFuzzy(forgedExpression(), "검색어"))
+          .toQuery();
+      }).toThrow(TypeError);
+      expect(() => {
+        db.table("documents")
+          .whereGroup((g) => g.orWhereFuzzy(forgedExpression(), "검색어"))
+          .toQuery();
+      }).toThrow(TypeError);
+    });
+
+    test("표현식을 조합하는 헬퍼는 위조한 표현식을 정식 표현식으로 바꾸지 않는다", () => {
+      expect(() => Puri.coalesce(forgedExpression(), "기본값")).toThrow(TypeError);
+      expect(() => Puri.concatExpressions("a", forgedExpression())).toThrow(TypeError);
+      expect(() => Puri.wordSimilarity(forgedExpression(), "검색어")).toThrow(TypeError);
+      expect(() => Puri.similarity(forgedExpression(), "검색어")).toThrow(TypeError);
+      expect(() => Puri.strictWordSimilarity(forgedExpression(), "검색어")).toThrow(TypeError);
+    });
+
+    test("정식 API로 만든 표현식은 orderBy와 select에서 그대로 SQL로 쓴다", () => {
+      const db = UserModel.getPuri("r");
+      const query = db
+        .table("users")
+        .select({ id: "users.id", score: Puri.rawNumber("users.id * ?", [2]) })
+        .orderBy(Puri.rawNumber("users.id * ?", [3]), "desc")
+        .toQuery();
+
+      expect(query).toContain('users.id * 2 AS "score"');
+      expect(query).toContain("order by users.id * 3 desc");
     });
   });
 });

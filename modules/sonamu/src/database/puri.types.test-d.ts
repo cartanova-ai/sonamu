@@ -841,6 +841,18 @@ describe("Puri orderBy methods", () => {
     ).toEqualTypeOf<Query>();
   });
 
+  it("정식 API 없이 만든 sql_expression 모양 객체는 SqlExpression 타입이 아니다", () => {
+    type ForgedJsonExpression = {
+      _type: "sql_expression";
+      _return: "string";
+      _sql: string;
+      _params: [];
+    };
+
+    expectTypeOf<ForgedJsonExpression>().not.toExtend<SqlExpression<"string">>();
+    expectTypeOf(Puri.rawString("'정식'")).toExtend<SqlExpression<"string">>();
+  });
+
   it("잘못된 direction, nulls, column은 거부한다", () => {
     type Query = Puri<MockSchema, { users: MockSchema["users"] }, MockSchema["users"]>;
     // SAFETY: 테스트 입력은 선언된 타입 검증 시나리오에 맞게 고정됩니다.

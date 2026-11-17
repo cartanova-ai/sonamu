@@ -115,6 +115,10 @@ Outside the test environment, the `DB.getDB("w")` and `DB.getDB("r")` pools now 
 
 `limit` and `offset` now throw an `Error` before the query when the value is not a nonnegative safe integer. Previously, `NaN` or `Infinity` ran the query without a LIMIT, so convert and validate request values before passing them.
 
+### `SqlExpression` values come only from Puri APIs
+
+An SQL expression is now recognized only when it carries the Symbol brand that Puri APIs attach. Code that builds a `_type: "sql_expression"` object directly no longer compiles. An expression serialized to JSON or a cache and restored throws `TypeError` in expression positions such as `select` and `orderBy`, and is bound as a plain value, not SQL, in an `onConflict` update. Create expressions with APIs such as `Puri.rawString` and `Puri.rawNumber`, and if you need to store one, store the values needed to recreate it instead.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

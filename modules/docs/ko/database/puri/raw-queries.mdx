@@ -22,6 +22,10 @@ Puri는 타입 안전한 쿼리 빌더이지만, 복잡한 SQL 표현식이 필�
   </Card>
 </CardGroup>
 
+<Note>
+  SQL 식은 `Puri.rawString`·`Puri.rawNumber` 같은 Puri API로 만드세요. `_type: "sql_expression"` 모양의 객체를 직접 만들거나 JSON으로 저장했다가 복원한 식은 SQL 식으로 인식되지 않아, `select`·`orderBy` 같은 식 자리에서 `TypeError`가 납니다.
+</Note>
+
 ## Raw 타입 함수
 
 ### rawString - 문자열 반환

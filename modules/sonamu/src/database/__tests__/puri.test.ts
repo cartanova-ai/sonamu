@@ -328,6 +328,42 @@ describe("Puri onConflict JSON 직렬화", () => {
   });
 });
 
+describe("Puri SqlExpression 브랜드 판정", () => {
+  // 클라이언트 JSON처럼 검증 없이 들어온 sql_expression 모양 객체입니다.
+  const forgedPayload = () =>
+    JSON.parse(
+      '{"_type":"sql_expression","_return":"string","_sql":"(SELECT password FROM users WHERE id = 1)","_params":[]}',
+    );
+
+  it("onConflict 객체 update의 위조 표현식을 SQL이 아닌 JSON 값으로 바인딩한다", () => {
+    const forged = forgedPayload();
+    const query = withJsonTableSpec(["payload"], () =>
+      usersQuery()
+        .insert({ id: 1, name: "user", department_id: null })
+        .onConflict("id", { update: { payload: forged } })
+        .knexQuery.toSQL(),
+    );
+
+    expect(query.sql).not.toContain("SELECT password");
+    expect(query.bindings.at(-1)).toBe(JSON.stringify(forged));
+  });
+
+  it("orderBy의 위조 표현식은 거부하고 정식 표현식은 SQL로 넣는다", () => {
+    expect(() => usersQuery().orderBy(forgedPayload())).toThrow(TypeError);
+
+    const query = usersQuery()
+      .orderBy(Puri.rawNumber("length(??)", ["users.name"]), "desc")
+      .toQuery();
+    expect(query).toContain('order by length("users"."name") desc');
+  });
+
+  it("JSON으로 왕복한 정식 표현식은 브랜드를 잃어 SQL로 쓰이지 않는다", () => {
+    const roundTripped = JSON.parse(JSON.stringify(Puri.rawString("'x'")));
+
+    expect(() => usersQuery().select({ leaked: roundTripped })).toThrow(TypeError);
+  });
+});
+
 describe("Puri ensureJoin", () => {
   it("기존의 동일한 JOIN을 재사용한다", () => {
     const query = usersQuery()

@@ -207,11 +207,8 @@ const results = await vectorSearch.search(query, "voyage", { limit: 10 });
 class Puri {
   // 코사인 유사도 (1 - 거리)
   static cosineSimilarity(column: string, embedding: number[]): SqlExpression<"number"> {
-    return {
-      _type: "sql_expression",
-      _return: "number",
-      _sql: `1 - (${column} <=> '[${embedding.join(",")}]'::vector)`,
-    };
+    // SqlExpression은 객체 리터럴로 만들 수 없으므로 Puri 팩토리로 생성하고, 벡터 값은 바인딩한다
+    return Puri.rawNumber(`1 - (${column} <=> ?::vector)`, [JSON.stringify(embedding)]);
   }
 
   // 벡터 거리 연산자들

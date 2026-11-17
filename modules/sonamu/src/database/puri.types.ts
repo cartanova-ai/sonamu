@@ -6,6 +6,7 @@ import { type QueryResult } from "pg";
 import { type DatabaseForeignKeys, type DatabaseSchemaExtend } from "../types/types";
 import { type Puri } from "./puri";
 import { type PuriSubsetFn } from "./puri-subset.types";
+import { type SQL_EXPRESSION_BRAND } from "./sql-expression-brand";
 
 // ============================================
 // 내부 타입 키 (메타데이터)
@@ -313,12 +314,14 @@ export const FUZZY_OPERATORS = ["<%", "%", "<<%"] as const;
 export type FuzzyOperator = (typeof FUZZY_OPERATORS)[number];
 
 // SQL Expression 타입 정의
+// 브랜드 키는 Puri 정식 API만 붙이므로, 직접 만든 객체 리터럴이나 JSON 값은 이 타입이 될 수 없습니다.
 export type SqlExpression<T extends SqlExpressionType, TNullable extends boolean = false> = {
   _type: "sql_expression"; // 또는 "computed_value"
   _return: T;
   _sql: string;
   _params: Knex.RawBinding[];
   readonly _nullable?: TNullable;
+  readonly [SQL_EXPRESSION_BRAND]: true;
 };
 
 type ParseSqlExpression<TExpression> =

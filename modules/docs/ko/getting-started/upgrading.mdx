@@ -115,6 +115,10 @@ Sonamu UI, Excel, CLI로 넣는 사전 값은 이제 허용 목록을 통과하�
 
 `limit`·`offset`은 이제 0 이상의 안전한 정수가 아니면 쿼리 전에 `Error`를 던집니다. 이전에는 `NaN`·`Infinity`를 넘기면 LIMIT 없이 실행됐으므로, 요청 값을 그대로 넘기던 코드는 정수로 바꾸고 검증한 뒤 넘기세요.
 
+### `SqlExpression`은 Puri API로만 생성
+
+SQL 식은 이제 Puri API가 붙이는 Symbol 브랜드가 있어야 인식됩니다. `_type: "sql_expression"` 객체를 직접 만드는 코드는 컴파일되지 않습니다. 식을 JSON이나 캐시로 직렬화했다가 복원한 값은 `select`·`orderBy` 같은 식 자리에서 `TypeError`가 나고, `onConflict`의 update 값에서는 SQL이 아닌 일반 값으로 바인딩됩니다. 식은 `Puri.rawString`·`Puri.rawNumber` 같은 API로 만들고, 저장이 필요하면 식 대신 식을 다시 만드는 데 필요한 값을 저장하세요.
+
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

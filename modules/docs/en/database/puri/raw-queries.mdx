@@ -22,6 +22,10 @@ Puri is a type-safe query builder, but when complex SQL expressions are needed, 
   </Card>
 </CardGroup>
 
+<Note>
+  Create SQL expressions with Puri APIs such as `Puri.rawString` and `Puri.rawNumber`. An object shaped like `_type: "sql_expression"` that you build yourself, or an expression saved as JSON and restored, is not recognized as an SQL expression and throws `TypeError` in expression positions such as `select` and `orderBy`.
+</Note>
+
 ## Raw Type Functions
 
 ### rawString - Returns String

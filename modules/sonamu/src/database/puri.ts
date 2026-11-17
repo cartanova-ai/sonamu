@@ -48,6 +48,7 @@ import {
   type WhereOperator,
 } from "./puri.types";
 import { FUZZY_OPERATORS } from "./puri.types";
+import { SQL_EXPRESSION_BRAND } from "./sql-expression-brand";
 
 type PuriOrderByDirection = "asc" | "desc";
 type PuriOrderByNulls = "first" | "last";
@@ -168,8 +169,59 @@ function isOrderByEntries<Value>(
   return Array.isArray(value);
 }
 
+/**
+ * Puri 정식 API가 만든 SqlExpression을 생성합니다. 모든 정적 헬퍼는 이 함수를 거쳐 브랜드를 붙입니다.
+ */
+function createSqlExpression<
+  TReturn extends AnySqlExpression["_return"],
+  TNullable extends boolean = false,
+>(returnType: TReturn, sql: string, params: Knex.RawBinding[]): SqlExpression<TReturn, TNullable> {
+  return {
+    _type: "sql_expression",
+    _return: returnType,
+    _sql: sql,
+    _params: params,
+    [SQL_EXPRESSION_BRAND]: true,
+  };
+}
+
+/**
+ * 브랜드가 있는 값만 SqlExpression으로 인정합니다.
+ * `_type: "sql_expression"` 모양만 같은 평범한 객체(JSON 입력 등)는 SQL이 아닌 값으로 취급합니다.
+ */
 function isSqlExpression<Value>(value: Value): value is Value & AnySqlExpression {
-  return isObjectValue(value) && "_type" in value && value["_type"] === "sql_expression";
+  return (
+    isObjectValue(value) && SQL_EXPRESSION_BRAND in value && value[SQL_EXPRESSION_BRAND] === true
+  );
+}
+
+/**
+ * 컬럼이나 SQL 식만 올 수 있는 자리에서, 브랜드 없이 sql_expression 모양만 흉내 낸 객체를 거부합니다.
+ * 검증이 빠진 요청 값이 orderBy·select 등에 흘러 들어와도 raw SQL이나 식별자로 쓰이지 않게 막습니다.
+ */
+function assertNotForgedSqlExpression<Value>(value: Value): void {
+  if (
+    isObjectValue(value) &&
+    !isSqlExpression(value) &&
+    "_type" in value &&
+    value["_type"] === "sql_expression"
+  ) {
+    throw new TypeError(
+      "Puri: a plain object shaped like an SQL expression was rejected. Create SQL expressions with Puri APIs such as Puri.rawString().",
+    );
+  }
+}
+
+/**
+ * 다른 표현식의 SQL을 이어 붙이는 헬퍼(coalesce 등)에 정식 SqlExpression만 들어오도록 확인합니다.
+ * 위조한 객체가 이 헬퍼를 거쳐 브랜드가 붙은 표현식으로 바뀌는 것을 막습니다.
+ */
+function assertSqlExpression<Value>(value: Value): asserts value is Value & AnySqlExpression {
+  if (!isSqlExpression(value)) {
+    throw new TypeError(
+      "Puri: expected an SQL expression created with Puri APIs such as Puri.rawString().",
+    );
+  }
 }
 
 function isOrderByExpression<Value>(value: Value): value is Value & PuriOrderByExpression {
@@ -367,84 +419,47 @@ export class Puri<TSchema, TTables extends object, TResult> {
 
   // Static SQL helper functions for SELECT
   static count(column: string = "*"): SqlExpression<"number"> {
-    return {
-      _type: "sql_expression",
-      _return: "number",
-      _sql: `COUNT(??)::integer`,
-      _params: [column],
-    };
+    return createSqlExpression("number", `COUNT(??)::integer`, [column]);
   }
   static sum(column: string): SqlExpression<"number"> {
-    return {
-      _type: "sql_expression",
-      _return: "number",
-      _sql: `SUM(??)`,
-      _params: [column],
-    };
+    return createSqlExpression("number", `SUM(??)`, [column]);
   }
   static avg(column: string): SqlExpression<"number"> {
-    return {
-      _type: "sql_expression",
-      _return: "number",
-      _sql: `AVG(??)`,
-      _params: [column],
-    };
+    return createSqlExpression("number", `AVG(??)`, [column]);
   }
   static max(column: string): SqlExpression<"number"> {
-    return {
-      _type: "sql_expression",
-      _return: "number",
-      _sql: `MAX(??)`,
-      _params: [column],
-    };
+    return createSqlExpression("number", `MAX(??)`, [column]);
   }
   static min(column: string): SqlExpression<"number"> {
-    return {
-      _type: "sql_expression",
-      _return: "number",
-      _sql: `MIN(??)`,
-      _params: [column],
-    };
+    return createSqlExpression("number", `MIN(??)`, [column]);
   }
   static concat(...args: string[]): SqlExpression<"string"> {
-    return {
-      _type: "sql_expression",
-      _return: "string",
-      _sql: `CONCAT(${args.map(() => "?").join(", ")})`,
-      _params: args,
-    };
+    return createSqlExpression("string", `CONCAT(${args.map(() => "?").join(", ")})`, args);
   }
   static coalesce(expression: StringSqlExpression, fallback: string): SqlExpression<"string"> {
-    return {
-      _type: "sql_expression",
-      _return: "string",
-      _sql: `COALESCE(${expression._sql}, ?)`,
-      _params: [...expression._params, fallback],
-    };
+    assertSqlExpression(expression);
+    return createSqlExpression("string", `COALESCE(${expression._sql}, ?)`, [
+      ...expression._params,
+      fallback,
+    ]);
   }
   static concatExpressions(...args: (string | StringSqlExpression)[]): SqlExpression<"string"> {
-    return {
-      _type: "sql_expression",
-      _return: "string",
-      _sql: `CONCAT(${args.map((arg) => (isStringValue(arg) ? "?::text" : arg._sql)).join(", ")})`,
-      _params: args.flatMap((arg) => (isStringValue(arg) ? [arg] : arg._params)),
-    };
+    for (const arg of args) {
+      if (!isStringValue(arg)) {
+        assertSqlExpression(arg);
+      }
+    }
+    return createSqlExpression(
+      "string",
+      `CONCAT(${args.map((arg) => (isStringValue(arg) ? "?::text" : arg._sql)).join(", ")})`,
+      args.flatMap((arg) => (isStringValue(arg) ? [arg] : arg._params)),
+    );
   }
   static upper(column: string): SqlExpression<"string"> {
-    return {
-      _type: "sql_expression",
-      _return: "string",
-      _sql: "UPPER(??)",
-      _params: [column],
-    };
+    return createSqlExpression("string", "UPPER(??)", [column]);
   }
   static lower(column: string): SqlExpression<"string"> {
-    return {
-      _type: "sql_expression",
-      _return: "string",
-      _sql: "LOWER(??)",
-      _params: [column],
-    };
+    return createSqlExpression("string", "LOWER(??)", [column]);
   }
 
   static wordSimilarity(column: string, query: string): SqlExpression<"number">;
@@ -457,20 +472,14 @@ export class Puri<TSchema, TTables extends object, TResult> {
     query: string,
   ): SqlExpression<"number", boolean> {
     if (isStringValue(column)) {
-      return {
-        _type: "sql_expression",
-        _return: "number",
-        _sql: "word_similarity(?, ??)",
-        _params: [query, column],
-      };
+      return createSqlExpression("number", "word_similarity(?, ??)", [query, column]);
     }
 
-    return {
-      _type: "sql_expression",
-      _return: "number",
-      _sql: `word_similarity(?, ${column["_sql"]})`,
-      _params: [query, ...column["_params"]],
-    };
+    assertSqlExpression(column);
+    return createSqlExpression("number", `word_similarity(?, ${column["_sql"]})`, [
+      query,
+      ...column["_params"],
+    ]);
   }
 
   static similarity(column: string, query: string): SqlExpression<"number">;
@@ -483,20 +492,14 @@ export class Puri<TSchema, TTables extends object, TResult> {
     query: string,
   ): SqlExpression<"number", boolean> {
     if (isStringValue(column)) {
-      return {
-        _type: "sql_expression",
-        _return: "number",
-        _sql: "similarity(??, ?)",
-        _params: [column, query],
-      };
+      return createSqlExpression("number", "similarity(??, ?)", [column, query]);
     }
 
-    return {
-      _type: "sql_expression",
-      _return: "number",
-      _sql: `similarity(${column["_sql"]}, ?)`,
-      _params: [...column["_params"], query],
-    };
+    assertSqlExpression(column);
+    return createSqlExpression("number", `similarity(${column["_sql"]}, ?)`, [
+      ...column["_params"],
+      query,
+    ]);
   }
 
   static strictWordSimilarity(column: string, query: string): SqlExpression<"number">;
@@ -509,41 +512,35 @@ export class Puri<TSchema, TTables extends object, TResult> {
     query: string,
   ): SqlExpression<"number", boolean> {
     if (isStringValue(column)) {
-      return {
-        _type: "sql_expression",
-        _return: "number",
-        _sql: `strict_word_similarity(?, ??)`,
-        _params: [query, column],
-      };
+      return createSqlExpression("number", `strict_word_similarity(?, ??)`, [query, column]);
     }
 
-    return {
-      _type: "sql_expression",
-      _return: "number",
-      _sql: `strict_word_similarity(?, ${column["_sql"]})`,
-      _params: [query, ...column["_params"]],
-    };
+    assertSqlExpression(column);
+    return createSqlExpression("number", `strict_word_similarity(?, ${column["_sql"]})`, [
+      query,
+      ...column["_params"],
+    ]);
   }
 
   // Raw functions for SELECT
   static rawString(sql: string, params: Knex.RawBinding[] = []): SqlExpression<"string"> {
-    return { _type: "sql_expression", _return: "string", _sql: sql, _params: params };
+    return createSqlExpression("string", sql, params);
   }
 
   static rawStringArray(sql: string, params: Knex.RawBinding[] = []): SqlExpression<"string[]"> {
-    return { _type: "sql_expression", _return: "string[]", _sql: sql, _params: params };
+    return createSqlExpression("string[]", sql, params);
   }
 
   static rawNumber(sql: string, params: Knex.RawBinding[] = []): SqlExpression<"number"> {
-    return { _type: "sql_expression", _return: "number", _sql: sql, _params: params };
+    return createSqlExpression("number", sql, params);
   }
 
   static rawBoolean(sql: string, params: Knex.RawBinding[] = []): SqlExpression<"boolean"> {
-    return { _type: "sql_expression", _return: "boolean", _sql: sql, _params: params };
+    return createSqlExpression("boolean", sql, params);
   }
 
   static rawDate(sql: string, params: Knex.RawBinding[] = []): SqlExpression<"date"> {
-    return { _type: "sql_expression", _return: "date", _sql: sql, _params: params };
+    return createSqlExpression("date", sql, params);
   }
 
   /**
@@ -572,12 +569,12 @@ export class Puri<TSchema, TTables extends object, TResult> {
 
     const hlOptions = hlOptionParts.length > 0 ? `, '${hlOptionParts.join(", ")}'` : "";
 
-    return {
-      _type: "sql_expression",
-      _return: "string",
-      _sql: `ts_headline(?, ??, ${parser}(?, ?)${hlOptions})`,
-      _params: [config, column, config, query],
-    };
+    return createSqlExpression("string", `ts_headline(?, ??, ${parser}(?, ?)${hlOptions})`, [
+      config,
+      column,
+      config,
+      query,
+    ]);
   }
 
   // ts_rank
@@ -599,12 +596,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
   }
 
   static toTsVector(column: string, config: string = "simple"): SqlExpression<"tsvector"> {
-    return {
-      _type: "sql_expression",
-      _return: "tsvector",
-      _sql: `to_tsvector(?, ??)`,
-      _params: [config, column],
-    };
+    return createSqlExpression("tsvector", `to_tsvector(?, ??)`, [config, column]);
   }
 
   static _tsRank(
@@ -632,6 +624,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
       sqlTemplate += `??, ${parser}(?, ?)`;
       params.push(column, config, query);
     } else {
+      assertSqlExpression(column);
       sqlTemplate += `${column["_sql"]}, ${parser}(?, ?)`;
       params.push(...column["_params"], config, query);
     }
@@ -643,7 +636,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
 
     sqlTemplate += ")";
 
-    return { _type: "sql_expression", _return: "number", _sql: sqlTemplate, _params: params };
+    return createSqlExpression("number", sqlTemplate, params);
   }
 
   /**
@@ -695,12 +688,10 @@ export class Puri<TSchema, TTables extends object, TResult> {
     column: JsonColumns<TTables>,
     ...path: [string, ...string[]]
   ): SqlExpression<"string", true> {
-    return {
-      _type: "sql_expression",
-      _return: "string",
-      _sql: `?? #>> ARRAY[${path.map(() => "?").join(", ")}]`,
-      _params: [column, ...path],
-    };
+    return createSqlExpression("string", `?? #>> ARRAY[${path.map(() => "?").join(", ")}]`, [
+      column,
+      ...path,
+    ]);
   }
 
   // SELECT (overwrite)
@@ -717,6 +708,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
     const selectClauses: (string | Knex.Raw)[] = [];
 
     for (const [alias, columnOrFunction] of Object.entries(flatSelect)) {
+      assertNotForgedSqlExpression(columnOrFunction);
       if (isSqlExpression(columnOrFunction)) {
         // SQL 함수인 경우
         selectClauses.push(
@@ -788,6 +780,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
     const selectClauses: (string | Knex.Raw)[] = [];
 
     for (const [alias, columnOrFunction] of Object.entries(flatSelect)) {
+      assertNotForgedSqlExpression(columnOrFunction);
       if (isSqlExpression(columnOrFunction)) {
         selectClauses.push(
           this.knex.raw(`${columnOrFunction["_sql"]} AS ${alias}`, columnOrFunction["_params"]),
@@ -1349,6 +1342,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
 
     const parser = opts.parser ?? "websearch_to_tsquery";
     const config = opts.config ?? "simple";
+    assertNotForgedSqlExpression(column);
     const columnExpr = isSqlExpression(column) ? column["_sql"] : String(column);
     const params = isSqlExpression(column)
       ? [...column["_params"], config, value]
@@ -1366,6 +1360,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
     },
   ): this {
     const operator = parseFuzzyOperator(options?.operator);
+    assertNotForgedSqlExpression(column);
 
     if (operator === "%") {
       if (isSqlExpression(column)) {
@@ -1422,6 +1417,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
   ): this {
     if (isOrderByEntries(columnOrColumns)) {
       for (const entry of columnOrColumns) {
+        assertNotForgedSqlExpression(entry);
         if (isStringValue(entry) || isOrderByExpression(entry)) {
           this.applyOrderBy(entry);
         } else {
@@ -1442,6 +1438,7 @@ export class Puri<TSchema, TTables extends object, TResult> {
   ): void {
     const normalizedDirection = normalizeOrderByDirection(direction);
     const normalizedNulls = normalizeOrderByNulls(nulls);
+    assertNotForgedSqlExpression(column);
 
     if (isOrderByExpression(column)) {
       this.knexQuery.orderByRaw(
@@ -2089,6 +2086,7 @@ export class WhereGroup<TTables extends object> {
 
     const parser = opts.parser ?? "websearch_to_tsquery";
     const config = opts.config ?? "simple";
+    assertNotForgedSqlExpression(args[0]);
     const columnExpr = isSqlExpression(args[0]) ? args[0]["_sql"] : String(args[0]);
     const params = isSqlExpression(args[0])
       ? [...args[0]["_params"], config, args[1]]
@@ -2110,6 +2108,7 @@ export class WhereGroup<TTables extends object> {
 
     const parser = opts.parser ?? "websearch_to_tsquery";
     const config = opts.config ?? "simple";
+    assertNotForgedSqlExpression(args[0]);
     const columnExpr = isSqlExpression(args[0]) ? args[0]["_sql"] : String(args[0]);
     const params = isSqlExpression(args[0])
       ? [...args[0]["_params"], config, args[1]]
@@ -2128,6 +2127,7 @@ export class WhereGroup<TTables extends object> {
   ): this;
   whereFuzzy(...args: any[]): this {
     const operator = parseFuzzyOperator(args[2]?.operator);
+    assertNotForgedSqlExpression(args[0]);
 
     if (operator === "%") {
       if (isSqlExpression(args[0])) {
@@ -2155,6 +2155,7 @@ export class WhereGroup<TTables extends object> {
   ): this;
   orWhereFuzzy(...args: any[]): this {
     const operator = parseFuzzyOperator(args[2]?.operator);
+    assertNotForgedSqlExpression(args[0]);
 
     if (operator === "%") {
       if (isSqlExpression(args[0])) {
