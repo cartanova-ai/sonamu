@@ -509,7 +509,7 @@ preload: (params) => {
   exactly 3. **Exclude Context**: params doesn't include Context 4. **Type conversion caution**:
   Type conversion like `parseInt(params.id)` needed, and values that fail validation make the SSR
   response 400 5. **Errors are logged**: A guard rejection or individual query failure skips only
-  that preload and doesn't stop entire SSR
+  that preload and doesn't stop the entire SSR
 </Warning>
 
 ## Next Steps

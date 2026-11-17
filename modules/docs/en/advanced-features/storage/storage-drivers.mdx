@@ -181,7 +181,7 @@ http://localhost:3000/uploads/avatars/user-1.png
 <Warning>
 When uploads are served from the app origin, a script inside an uploaded HTML or SVG file can call your API with another user's session.
 `createUploadStaticHeaders({ uploadDir })` adds `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox` to files inside `uploadDir`,
-and `Content-Disposition: attachment` to anything that is not an image, audio, or video. Files whose extension maps to an executable type such as `.html` or `.svg` are served as `application/octet-stream`.
+and `Content-Disposition: attachment` to anything that is not an image, audio, or video. Files whose extension maps to a type outside the allow-list, such as `.html` or `.svg`, are served as `application/octet-stream`.
 Pass an existing `setHeaders` through its `setHeaders` option.
 Serve uploads from a separate domain when you can.
 

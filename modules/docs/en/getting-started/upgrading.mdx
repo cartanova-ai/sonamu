@@ -3,11 +3,45 @@ title: "Upgrading"
 description: "Changes required when upgrading Sonamu"
 ---
 
-## 0.13.12
+## 0.14.0
+
+0.14.0 contains security fixes, and many of them require changes to existing code, configuration, or clients. If you upgrade without the changes below, compilation or server startup can fail, requests can be rejected, or behavior can change.
+
+- Auth secret is required
+- Email verification no longer signs in 2FA users
+- `user.additionalFields` now default to `input: false`
+- Model scaffolding refused for credential Entities
+- Auth baseURL is required in remote environments
+- Environment selection when `NODE_ENV` is missing
+- Async guards are awaited and `false` rejects
+- `sonamuFilter` accepts only `toFilter` props
+- Guards and input validation for SSR preloads
+- Named types inside inline object parameters are validated
+- Parameters with `null`, `undefined`, or boolean literals are validated
+- `tools/openVscode` restricts `absPath`
+- Editor-launch APIs accept only JSON POST
+- Sonamu UI API access token and DevRunner request checks
+- Host checks for Sonamu UI and DevRunner
+- Sonamu UI database targets and rollback approval
+- Code-generation checks for entity.json values
+- SQL fragment limits in migration generation
+- Scaffolding API inputs and generated paths are restricted
+- i18n function values must pass the allow-list
+- Default `statement_timeout` for request DB pools and PostgreSQL-only config types
+- Integer checks in Puri `limit` and `offset`
+- `SqlExpression` values come only from Puri APIs
+- `@cache` keys for Context arguments and serialization errors
+- WebSocket inbound frame size default
+- Global multipart limits apply to `@upload()` without `limits`
+- Upload extensions, Content-Type, and static serving headers
+
+The other three entries (the startup warning for unguarded state-changing APIs and `guardKeys`, the default-deny `guardHandler` in new projects, and `BaseSaveParams` with the admin guard on scaffolded `save`) do not break an existing project; unguarded state-changing APIs only produce a startup warning. Follow them anyway to close the security gaps they address.
 
 ### Auth secret is required
 
 With auth enabled, the server no longer starts outside test (development, staging, and production) when the secret is missing or a publicly known value. Generate a value per environment with `openssl rand -base64 32` and set it in `BETTER_AUTH_SECRET` (or `server.auth.secret`). If you ran with a public value such as the former example fallback (`"miomock-secret-key-change-this-in-production"`), rotate the secret and revoke existing sessions. If you rotate keys with `secrets` or `BETTER_AUTH_SECRETS`, remove any public legacy key as well. CLI tasks that only call `init()`, such as `sync` and `migrate`, are not checked.
+
+When the secret is missing, better-auth's default value, or the former example fallback, `/api/auth/verify-email` rejects every token with 401 (`INVALID_TOKEN`), even in the test environment. Give tests that cover email verification a test-only secret.
 
 ### Email verification no longer signs in 2FA users
 
@@ -28,6 +62,8 @@ The CLI and Sonamu UI now refuse to scaffold a Model for the Entities where bett
 
 With auth enabled in staging or production, the server starts only when `server.auth.baseURL`, a better-auth environment variable such as `BETTER_AUTH_URL`, or an absolute http(s) `server.baseUrl` is set. This keeps password reset and email verification links from being built from the request `Host` header. A config that falls back to a local address, such as `` baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}` ``, passes this check but produces wrong links in deployment, so always set `BETTER_AUTH_URL` when deploying.
 
+With a string baseURL, the origin of requests passed to better-auth is also pinned to that address, so links and `trustedOrigins` no longer vary with the request `Host`. If one server serves several domains, set `server.auth.baseURL` to better-auth's dynamic configuration based on `allowedHosts`; Sonamu passes it to better-auth unchanged.
+
 ### Environment selection when `NODE_ENV` is missing
 
 When the runtime `NODE_ENV` is not set, Sonamu now checks `NODE_ENV` in `.env.local`, then `.env`, and uses a default only if neither has one. For `sonamu build`, `sonamu start`, and servers started with `createServer()`, that default changed from `development` to `production`. `sonamu dev`, tests, and CLI tools still default to `development`.
@@ -42,6 +78,18 @@ The server now prints a startup warning for APIs without `guards` whose method i
 ### Async guards are awaited and `false` rejects
 
 Sonamu now waits for the Promise returned by `guardHandler` before running the next guard or the API, and a `false` return rejects the request with `UnauthorizedException` (401). Previously, async guard rejections and `false` returns were ignored and the request ran anyway, so check any guard that relied on that: it now blocks requests. If you implement `lifecycle.onError` yourself, keep the status code of Sonamu exceptions, as in `isSoException(error) ? error.statusCode : 500`. Sending everything as 500 turns guard rejections into 500 too.
+
+The return type of `guardHandler` also changed from `void` to `void | boolean | Promise<void | boolean>`. The return value used to be ignored, so a function returning a number, string, or object, or a Promise of one, could be assigned; it now fails to compile. To let a request through, return nothing or `true`.
+
+```typescript
+// Compiled on 0.13.11, type error on 0.14.0 (push returns a number)
+guardHandler: (guard) => guardLog.push(guard),
+
+// 0.14.0
+guardHandler: (guard) => {
+  guardLog.push(guard);
+},
+```
 
 ### Default-deny `guardHandler` in new projects
 
@@ -69,7 +117,7 @@ Named types inside an inline object parameter, such as `params: { data: UserSave
 
 ### Parameters with `null`, `undefined`, or boolean literals are validated
 
-`null`, `undefined`, `void`, `true`, and `false` in API parameter types used to accept any value, and a union containing one of them (for example `"asc" | "desc" | null`) was not validated at all. Each now accepts only matching values, and anything else is rejected with 400. If a GET parameter is declared as a `true | false` union, its query string is not converted to a boolean and is rejected, so declare it as `boolean`. In GET, a union containing `number` converts the query string to a number before validation, so non-numeric strings are rejected.
+`null`, `undefined`, `void`, `true`, and `false` in API parameter types used to accept any value, and a union containing one of them (for example `"asc" | "desc" | null`) was not validated at all. Each now accepts only matching values, and anything else is rejected with 400. For a parameter that includes `undefined` or `void`, such as `string | undefined`, omit the key when there is no value; sending `null` is rejected. If a GET parameter is declared as a `true | false` union, its query string is not converted to a boolean and is rejected, so declare it as `boolean`. In GET, a union containing `number` converts the query string to a number before validation, so non-numeric strings are rejected.
 
 ### `tools/openVscode` restricts `absPath`
 
@@ -89,19 +137,60 @@ On local dev servers, Sonamu UI and DevRunner now reject with 403 any request wh
 
 ### Sonamu UI database targets and rollback approval
 
-Sonamu UI now handles only the `development`, `test`, and `fixture` family of presets. Migration apply and rollback, and fixture lookup and import, on `staging` or `production` are rejected with 400, so move that work to the CLI, such as `sonamu migrate`. There is no option to allow them in the UI again. UI rollbacks of remote databases covered by Slack approval now need approval too, and each target and latest batch needs its own approval. If you call the approval request API directly, pass `action: "rollback"` for rollbacks (it defaults to `apply`). See [Production approval](/en/database/migrations/production-approval) for details.
+Sonamu UI now handles only the `development`, `test`, and `fixture` family of presets. Migration apply and rollback, and fixture lookup and import, on `staging` or `production` are rejected with 400, so move that work to the CLI, such as `sonamu migrate`. There is no option to allow them in the UI again. If you call the migration APIs directly, send `targets` as an array even for a single target. A non-array value used to return 500 and is now rejected with 400. UI rollbacks of remote databases covered by Slack approval now need approval too, and each target and latest batch needs its own approval. If you call the approval request API directly, pass `action: "rollback"` for rollbacks (it defaults to `apply`). See [Production approval](/en/database/migrations/production-approval) for details.
 
 ### Code-generation checks for entity.json values
 
-entity.json values that go into generated code are now checked on load, save, and code generation. The Entity `id`, `parentId`, and `table`, prop `name`, enum IDs, and relation `with`, `relationType`, `joinTable`, `joinColumn`, and `fromColumn` must be ASCII identifiers (`^[A-Za-z_$][A-Za-z0-9_$]*$`), and a prop's `id` and subset keys and field paths must follow a similar format. `length`, `precision`, `scale`, and `dimensions` must be numbers, not strings, and `zodFormat` must be a supported value. A failed check used to log only a warning; it now stops server startup and `sonamu sync`, and Sonamu UI rejects the save with 400. Non-ASCII identifiers that JavaScript allows are rejected too, so fix the values named in the error message. `title`, `desc`, and enum value keys and labels are not restricted.
+entity.json values that go into generated code are now checked on load, save, and code generation. The Entity `id`, `parentId`, and `table`, prop `name`, enum IDs, relation `with`, `relationType`, `joinTable`, `joinColumn`, and `fromColumn`, and searchText source column names must be ASCII identifiers (`^[A-Za-z_$][A-Za-z0-9_$]*$`), and a prop's `id` and subset keys and field paths must follow a similar format. `length`, `precision`, `scale`, and `dimensions` must be numbers, not strings, and `zodFormat` must be a supported value. A failed check used to log only a warning; it now stops server startup and `sonamu sync`, and Sonamu UI rejects the save with 400. Non-ASCII identifiers that JavaScript allows are rejected too, so fix the values named in the error message. `title`, `desc`, and enum value keys and labels are not restricted.
 
 ### SQL fragment limits in migration generation
 
 Automatic migration generation now fails when a value that goes in as SQL, such as an SQL-expression `dbDefault`, `generated.expression`, or an index `where`, contains `;`. Semicolons inside SQL string literals are rejected too, so move such SQL into a hand-written migration. A `dbDefault` that starts with a double quote (a string value default) must be exactly one double-quoted string literal, with nothing appended. Existing escapes such as `\x5b` still work.
 
+Index `columns[].name` values and index names no longer go in as SQL either. A name that is not a valid unquoted identifier is emitted as a double-quoted name, so an entity.json that put an expression such as `lower(email)` in the column name to build a function index now produces a migration that fails because no column has that name. Move function indexes into a hand-written migration.
+
+```typescript
+// Hand-written migration
+await knex.raw(`CREATE INDEX users_email_lower_idx ON users (lower(email))`);
+```
+
 ### Scaffolding API inputs and generated paths are restricted
 
 The Sonamu UI scaffolding APIs (`scaffolding/getStatus`, `generate`, and `preview`) now accept only registered Entity IDs and the `model`, `model_test`, `view_list`, `view_search_input`, `view_form`, and `view_id_all_select` templates, and reject anything else with 400, including in status queries. Template generation also fails before writing any file when an output path points outside the app root (the parent directory of the API directory). If `sync.targets` contains a path outside the app root, such as `"../frontend/web"`, `sonamu sync` fails, so move the target inside the app root or create a symlink inside the app root and use that path. See [Sync targets](/en/configuration/sonamu-config/sync-targets) for details.
+
+### i18n function values must pass the allow-list
+
+Dictionary values entered through Sonamu UI, Excel, or the CLI are now saved as functions only when they are a single arrow function that passes the allow-list. Other function-like values, such as ones calling other functions, are saved as strings. If your import files contain such values, write those functions directly in the dictionary TS files. A value identical to the existing function for the same key stays a function, including when only the key is renamed, so re-importing an exported file is unaffected. See [Handling Function Values](/en/advanced-features/i18n/excel-import#handling-function-values) for the rules.
+
+### Default `statement_timeout` for request DB pools and PostgreSQL-only config types
+
+Outside the test environment, the `DB.getDB("w")` and `DB.getDB("r")` pools now apply a default `statement_timeout` of 15 seconds, so PostgreSQL cancels longer queries with error `57014`. If your app process runs long report or batch queries, change the value with `database.defaultOptions.connection.options` or extend it inside a transaction with `SET LOCAL statement_timeout`. In addition, `SonamuDBConfig` is now `Record<SonamuDBPreset, DatabaseConfig>`, and `DB.getDBConfig()` returns `DatabaseConfig`. Code that built these values as `Knex.Config` or with string or function `connection` values no longer compiles; switch to `DatabaseConfig` with a `Knex.PgConnectionConfig` object. See [Database](/en/configuration/sonamu-config/database) for details.
+
+### Integer checks in Puri `limit` and `offset`
+
+`limit` and `offset` now throw an `Error` before the query when the value is not a nonnegative safe integer. Previously, `NaN` or `Infinity` ran the query without a LIMIT, so convert and validate request values before passing them.
+
+### `SqlExpression` values come only from Puri APIs
+
+An SQL expression is now recognized only when it carries the Symbol brand that Puri APIs attach. Code that builds a `_type: "sql_expression"` object directly no longer compiles. An expression serialized to JSON or a cache and restored throws `TypeError` in expression positions such as `select` and `orderBy`, and is bound as a plain value, not SQL, in an `onConflict` update. Create expressions with APIs such as `Puri.rawString` and `Puri.rawNumber`, and if you need to store one, store the values needed to recreate it instead.
+
+### `@cache` keys for Context arguments and serialization errors
+
+`@cache` no longer serializes Context arguments; it replaces them with that user's segment (for example `user:"u1"`, or `anon` when signed out). Keys of methods that take a Context change, so update code that deletes or expires those keys directly. Entries stored under the old keys are not deleted; they are simply no longer read. From a Context, only the user goes into the key, so if a method's result also depends on other Context values, such as the locale, pass that value as a regular argument or include it in a `key` function. Arguments that cannot be serialized, such as `BigInt`, circular references, `Map`/`Set`, and functions, are no longer turned into strings; they throw `CacheKeySerializationError` before the method runs, so give such methods a `key` function. For methods whose result depends on `Sonamu.getContext().user` rather than the arguments, split the cache per user with the new `scope: "user"` option (default `"global"`). See [@cache Decorator](/en/advanced-features/caching/cache-decorator) for details.
+
+### WebSocket inbound frame size default
+
+If `server.plugins.ws.options.maxPayload` is not set, the maximum size of a single client frame drops from the previous default of 100 MiB to 64 KiB, and a larger frame closes the connection with close code `1009`. Set `maxPayload` explicitly if you need larger messages. See [Inbound frame size limit](/en/api-reference/decorators/websocket#inbound-frame-size-limit) for details.
+
+A connection registered directly with `WebSocketRuntime` using `active: false` no longer processes incoming frames until `activateConnection` is called. Up to 100 frames are held and processed in arrival order on activation; beyond that, the oldest are dropped. If you expected message handlers to run before activation, call `activateConnection` once authentication and guards finish.
+
+### Global multipart limits apply to `@upload()` without `limits`
+
+Previously, `@upload()` without `limits` ignored `server.plugins.multipart.limits` and accepted uploads with no size or count limit, and an `undefined` entry in `limits` removed that global limit. The global limits now apply and the decorator's `limits` override only the fields they set, so uploads over a limit are rejected (with 413 under Fastify's default error handling, or whatever your `lifecycle.onError` returns). If an API accepts large files, check the global limits or set the values it needs in that API's `limits`.
+
+### Upload extensions, Content-Type, and static serving headers
+
+Files uploaded with a MIME type outside the allow-list (HTML, SVG, XML, and so on) now get the `bin` extension from `file.extname` and default stream keys, and `saveToDisk` and automatic stream uploads store them as `application/octet-stream`. Review screens that display such files, such as SVGs, directly in the browser. `file.mimetype` and custom keys are unchanged. If you serve the fs upload directory through `server.plugins.static`, set `setHeaders` to `createUploadStaticHeaders({ uploadDir })` from `sonamu/storage`, as new templates do (`uploadDir` must match the fs driver's `location`; pass an existing callback through its `setHeaders` option). See [Static file serving](/en/advanced-features/storage/storage-drivers#static-file-serving) for details.
 
 ## 0.13.10
 

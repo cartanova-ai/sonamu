@@ -59,7 +59,7 @@ class FileModel extends BaseModelClass {
 - `filename: string` - 원본 파일명
 - `mimetype: string` - MIME 타입. 클라이언트가 보낸 값이며 파일 내용을 검증한 결과가 아닙니다
 - `size: number` - 파일 크기 (바이트)
-- `extname: string | false` - 확장자 (점 제외). 클라이언트 MIME 이 브라우저가 실행할 수 있는 타입(HTML·SVG 등)이면 `"bin"`, 알 수 없는 MIME 이면 `false`
+- `extname: string | false` - 확장자 (점 제외). 클라이언트 MIME 이 업로드 허용 목록 밖(HTML·SVG 등)이면 `"bin"`, 알 수 없는 MIME 이면 `false`
 - `url: string | undefined` - 저장 후 Public URL
 - `signedUrl: string | undefined` - 저장 후 Signed URL
 

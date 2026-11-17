@@ -59,7 +59,7 @@ class FileModel extends BaseModelClass {
 - `filename: string` - Original filename
 - `mimetype: string` - MIME type. Sent by the client; not the result of validating the file contents
 - `size: number` - File size (bytes)
-- `extname: string | false` - Extension (without dot). `"bin"` when the client MIME type is one a browser can execute (HTML, SVG, and so on); `false` for an unknown MIME type
+- `extname: string | false` - Extension (without dot). `"bin"` when the client MIME type is outside the upload allow-list (HTML, SVG, and so on); `false` for an unknown MIME type
 - `url: string | undefined` - Public URL after saving
 - `signedUrl: string | undefined` - Signed URL after saving
 

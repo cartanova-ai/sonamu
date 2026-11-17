@@ -295,9 +295,9 @@ Fastify가 파싱한 문자열은 자동으로 적절한 타입으로 변환됩�
 
 ### 1. 필터 가능한 필드
 
-엔티티 JSON에서 `"toFilter": true`로 지정한 prop만 필터링할 수 있습니다. `sonamuFilter`는 HTTP 요청에서 그대로 들어오므로, `toFilter`가 없는 컬럼(예: 모든 subset에서 숨긴 비밀번호 해시)을 필터할 수 있으면 `count` 응답의 `total`로 값을 한 글자씩 알아낼 수 있습니다. 가상 필드는 필터링할 수 없습니다. **FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)에 `"toFilter": true`를 지정하면 `{관계명}_id` 형태로 필터링할 수 있습니다.**
+엔티티 JSON에서 `"toFilter": true`로 지정한 prop만 필터링할 수 있습니다. `sonamuFilter`는 HTTP 요청에서 그대로 들어오므로, `toFilter`가 없는 컬럼(예: 모든 subset에서 숨긴 비밀번호 해시)을 필터링할 수 있으면 `count` 응답의 `total`로 값을 한 글자씩 알아낼 수 있습니다. 가상 필드는 필터링할 수 없습니다. **FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)에 `"toFilter": true`를 지정하면 `{관계명}_id` 형태로 필터링할 수 있습니다.**
 
-검증에 실패한 필터는 쿼리를 실행하기 전에 `BadRequestException`(HTTP 400)을 던집니다.
+필터가 검증에 실패하면 쿼리를 실행하기 전에 `BadRequestException`(HTTP 400)을 던집니다.
 
 ```json
 { "name": "status", "toFilter": true, "type": "enum", "id": "ProjectStatus" }

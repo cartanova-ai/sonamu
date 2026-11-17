@@ -178,7 +178,7 @@ http://localhost:3000/uploads/avatars/user-1.png
 <Warning>
 업로드 파일을 앱과 같은 오리진에서 서빙하면, 사용자가 올린 HTML·SVG 의 스크립트가 다른 사용자의 세션으로 API 를 호출할 수 있습니다.
 `createUploadStaticHeaders({ uploadDir })` 는 `uploadDir` 안의 파일에 `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox` 를 붙이고,
-이미지·오디오·비디오가 아니면 `Content-Disposition: attachment` 로 내려받게 합니다. `.html`·`.svg` 처럼 실행 가능한 타입의 확장자는 `application/octet-stream` 으로 서빙합니다.
+이미지·오디오·비디오가 아니면 `Content-Disposition: attachment` 로 내려받게 합니다. `.html`·`.svg` 처럼 허용 목록 밖 타입의 확장자는 `application/octet-stream` 으로 서빙합니다.
 기존 `setHeaders` 가 있으면 `setHeaders` 옵션으로 함께 넘기세요.
 가능하면 업로드 파일은 앱과 다른 도메인에서 서빙하세요.
 

@@ -376,7 +376,7 @@ shutdown 시 runtime은 로컬 연결을 닫고, 대기 중인 store 변경과 p
 
 ### 인바운드 프레임 크기 상한
 
-클라이언트가 보내는 프레임 1개의 최대 크기는 `server.plugins.ws.options.maxPayload`(바이트)로 정하며 기본값은 64KiB(`65536`)입니다. 상한을 넘는 프레임을 받으면 연결을 close code `1009`(Message Too Big)로 닫습니다. 더 큰 메시지가 필요한 경우에만 명시적으로 올립니다.
+클라이언트가 보내는 프레임 1개의 최대 크기는 `server.plugins.ws.options.maxPayload`(바이트)로 정하며 기본값은 64KiB(`65536`)입니다. 상한을 넘는 프레임을 받으면 연결을 close code `1009`(Message Too Big)로 닫습니다. 더 큰 메시지가 필요한 경우에만 명시적으로 올리세요.
 
 ```typescript
 export default defineConfig({

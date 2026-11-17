@@ -267,7 +267,7 @@ Then set `"readonly": true` on the `role` prop in entity.json by hand. This remo
 
 ### 3. Declare role in additionalFields
 
-Declare `role` in `user.additionalFields` so the session `user` carries it. `input: false` stops request bodies of `/api/auth/sign-up/email` and `/api/auth/update-user` from setting the value. A `role` sent at sign-up is stored as `defaultValue`; a `role` sent to update-user returns 400 `FIELD_NOT_ALLOWED`.
+Declare `role` in `user.additionalFields` so the session `user` carries it. `input: false` stops request bodies of `/api/auth/sign-up/email` and `/api/auth/update-user` from setting the value. A `role` sent at sign-up is ignored and `defaultValue` is stored instead; a `role` sent to update-user fails with 400 `FIELD_NOT_ALLOWED`.
 
 ```typescript
 // sonamu.config.ts
