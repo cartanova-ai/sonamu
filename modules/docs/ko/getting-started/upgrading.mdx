@@ -9,6 +9,10 @@ description: "Sonamu 버전을 올릴 때 필요한 변경 사항"
 
 auth를 쓰는 서버는 test를 뺀 모든 환경(development, staging, production)에서 secret이 없거나 공개된 값이면 기동하지 않습니다. `openssl rand -base64 32`로 환경마다 값을 만들어 `BETTER_AUTH_SECRET`(또는 `server.auth.secret`)에 넣으세요. 이전 예시의 fallback(`"miomock-secret-key-change-this-in-production"`) 같은 공개 값으로 운영했다면 secret을 교체하고 기존 세션을 폐기하세요. `secrets`·`BETTER_AUTH_SECRETS`로 키를 교체하는 중이라면 남아 있는 공개된 이전 키도 지워야 합니다. `init()`만 하는 `sync`·`migrate` 같은 CLI 작업은 검사하지 않습니다.
 
+### 2FA 사용자는 이메일 인증으로 로그인되지 않음
+
+2FA를 켠 사용자에게 `/api/auth/verify-email`이 새로 발급한 세션(`autoSignInAfterVerification` 포함)은 이제 바로 폐기됩니다. 이메일 인증·변경은 그대로 반영됩니다. 인증 직후 로그인된 상태를 가정하는 화면이 있다면 일반 로그인으로 보내세요.
+
 ## 0.13.10
 
 ### 중첩 select의 null 판정은 id로만

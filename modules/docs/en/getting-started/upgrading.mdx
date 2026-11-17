@@ -9,6 +9,10 @@ description: "Changes required when upgrading Sonamu"
 
 With auth enabled, the server no longer starts outside test (development, staging, and production) when the secret is missing or a publicly known value. Generate a value per environment with `openssl rand -base64 32` and set it in `BETTER_AUTH_SECRET` (or `server.auth.secret`). If you ran with a public value such as the former example fallback (`"miomock-secret-key-change-this-in-production"`), rotate the secret and revoke existing sessions. If you rotate keys with `secrets` or `BETTER_AUTH_SECRETS`, remove any public legacy key as well. CLI tasks that only call `init()`, such as `sync` and `migrate`, are not checked.
 
+### Email verification no longer signs in 2FA users
+
+For users with 2FA enabled, sessions newly issued by `/api/auth/verify-email` (including `autoSignInAfterVerification`) are now removed immediately. The verification or email change still takes effect. If a screen assumes the user is signed in right after verification, send the user to the normal sign-in flow instead.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only

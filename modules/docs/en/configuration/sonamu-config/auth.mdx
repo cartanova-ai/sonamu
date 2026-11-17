@@ -478,6 +478,13 @@ export default defineConfig({
 - `POST /api/auth/two-factor/verify` - Verify 2FA code
 - `POST /api/auth/two-factor/disable` - Disable 2FA
 
+<Note>
+  Users with 2FA enabled cannot get a new login session from an email verification or change-email
+  link. Sonamu immediately removes sessions newly issued by `/api/auth/verify-email` (including
+  `autoSignInAfterVerification`) from the cookie and the database. The verification or email change
+  still takes effect; users sign in through the normal flow, which requires 2FA.
+</Note>
+
 ### Admin Plugin
 
 Supports user roles, banning, and impersonation:

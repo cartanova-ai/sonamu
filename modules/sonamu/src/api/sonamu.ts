@@ -429,10 +429,13 @@ class SonamuClass {
       // better-auth 인스턴스 생성
       const { betterAuth } = await import("better-auth");
       const { sonamuKnexAdapter } = await import("../auth/knex-adapter");
+      const { sonamuVerifyEmailGuard } = await import("../auth/verify-email-guard");
 
       const authOptions: BetterAuthOptions = {
         database: sonamuKnexAdapter(),
         ...mergedFieldMappings,
+        // verify-email 가드는 다른 플러그인 훅보다 먼저 실행되도록 맨 앞에 둔다. (SON-601)
+        plugins: [sonamuVerifyEmailGuard(), ...(mergedFieldMappings.plugins ?? [])],
       };
       this.authValue = betterAuth(authOptions);
     }
