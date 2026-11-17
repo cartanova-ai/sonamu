@@ -118,6 +118,8 @@ export function unwrapPromiseOnce(paramType: ApiParamType) {
  * ApiParamType을 Zod 타입 인스턴스로 변환합니다.
  * string, number, array, union 등 모든 ApiParamType을 처리하며,
  * 순환참조가 발생하는 경우 z.unknown()으로 fallback합니다.
+ * null/undefined/void/true/false 키워드는 각각 정확한 검증기로 변환하고,
+ * any/unknown으로 선언한 경우에만 의도적으로 z.unknown()을 반환합니다.
  */
 export function getZodTypeFromApiParamType<Input>(
   input: Input,
@@ -133,6 +135,19 @@ export function getZodTypeFromApiParamType<Input>(
       return z.number();
     case "boolean":
       return z.boolean();
+    case "null":
+      return z.null();
+    case "undefined":
+    case "void":
+      // JSON으로는 undefined 값을 보낼 수 없으므로 키 누락만 허용하고 다른 값은 모두 거부한다.
+      return z.undefined().optional();
+    case "true":
+      return z.literal(true);
+    case "false":
+      return z.literal(false);
+    case "any":
+    case "unknown":
+      return z.unknown();
     default: {
       const advType =
         /* SAFETY: API 데코레이터와 Zod 검증기 등록 계약이 이 값의 타입을 보장한다. */ paramType as {
@@ -231,18 +246,32 @@ export function getZodTypeFromApiParamType<Input>(
               t: string;
               types: ApiParamType[];
             };
-          // nullable 유니온
-          if (unionType.types.length === 2 && unionType.types.some((type) => type === "null")) {
-            if (unionType.types[0] === "null") {
-              return getZodTypeFromApiParamType(unionType.types[1], references).nullable();
-            } else {
-              return getZodTypeFromApiParamType(unionType.types[0], references).nullable();
-            }
-          }
-          // 일반 유니온
-          return z.union(
-            unionType.types.map((type) => getZodTypeFromApiParamType(type, references)),
+          // null/undefined 멤버는 따로 떼어 나머지 union에 nullable/optional로 붙인다.
+          // 멤버 수와 무관하게 남은 멤버만으로 검증기를 만들어야 리터럴 union이 그대로 지켜진다.
+          const hasNull = unionType.types.some((type) => type === "null");
+          const hasUndefined = unionType.types.some(
+            (type) => type === "undefined" || type === "void",
           );
+          const memberTypes = unionType.types.filter(
+            (type) => type !== "null" && type !== "undefined" && type !== "void",
+          );
+          if (memberTypes.length === 0) {
+            if (!hasNull) {
+              return z.undefined().optional();
+            }
+            return hasUndefined ? z.null().optional() : z.null();
+          }
+          let zodType: z.ZodType =
+            memberTypes.length === 1
+              ? getZodTypeFromApiParamType(memberTypes[0], references)
+              : z.union(memberTypes.map((type) => getZodTypeFromApiParamType(type, references)));
+          if (hasNull) {
+            zodType = zodType.nullable();
+          }
+          if (hasUndefined) {
+            zodType = zodType.optional();
+          }
+          return zodType;
         }
         case "intersection": {
           const intersectionType =

@@ -603,6 +603,11 @@ export class Template__generated_http extends Template {
       );
     } else if (zodType instanceof z.ZodUnknown) {
       return "unknown";
+    } else if (zodType instanceof z.ZodUndefined) {
+      // undefined 전용 파라미터는 보낼 값이 없으므로 z.unknown()으로 변환되던 때의 예시를 유지한다.
+      return "unknown";
+    } else if (zodType instanceof z.ZodNull) {
+      return null;
     } else if (zodType instanceof z.ZodTuple) {
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- ZodTuple 타입 사용
       return zodType.def.items.map((item: any) => this.zodTypeToReqDefault(item, name));

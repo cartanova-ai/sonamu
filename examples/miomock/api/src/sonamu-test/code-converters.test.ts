@@ -196,6 +196,112 @@ describe("code-converters", () => {
         // 문자열 (허용되지 않음)
         expectToFail(zodType, "test");
       });
+
+      test("3원소 이상 리터럴 union에 null이 섞여도 리터럴만 허용 ('asc' | 'desc' | null)", () => {
+        const zodType = getZodTypeFromApiParamType(
+          {
+            t: "union",
+            types: [
+              { t: "string-literal", value: "asc" },
+              { t: "string-literal", value: "desc" },
+              "null",
+            ],
+          },
+          {},
+        );
+        expectToPass(zodType, "asc");
+        expectToPass(zodType, "desc");
+        expectToPass(zodType, null);
+        // union 밖 문자열, 객체, SQL 식 모양 객체는 모두 거부
+        expectToFail(zodType, "zzz-not-in-union");
+        expectToFail(zodType, { x: 1 });
+        expectToFail(zodType, { _type: "sql_expression", _sql: "1", _params: [] });
+      });
+
+      test("number | string | null union은 배열과 객체를 거부", () => {
+        const zodType = getZodTypeFromApiParamType(
+          { t: "union", types: ["number", "string", "null"] },
+          {},
+        );
+        expectToPass(zodType, 1);
+        expectToPass(zodType, "a");
+        expectToPass(zodType, null);
+        expectToFail(zodType, [{ evil: true }]);
+        expectToFail(zodType, { evil: true });
+      });
+
+      test("undefined/void가 섞인 union은 optional로 변환 (string | undefined)", () => {
+        for (const keyword of ["undefined", "void"] as const) {
+          const zodType = getZodTypeFromApiParamType(
+            { t: "union", types: ["string", keyword] },
+            {},
+          );
+          expectToPass(zodType, "a");
+          expectToPass(zodType, undefined);
+          expectToFail(zodType, ["a"]);
+          expectToFail(zodType, 12345);
+          expectToFail(zodType, null);
+        }
+      });
+
+      test("null과 undefined가 함께 섞인 union (number | null | undefined)", () => {
+        const zodType = getZodTypeFromApiParamType(
+          { t: "union", types: ["number", "null", "undefined"] },
+          {},
+        );
+        expectToPass(zodType, 1);
+        expectToPass(zodType, null);
+        expectToPass(zodType, undefined);
+        expectToFail(zodType, "1");
+        expectToFail(zodType, { x: 1 });
+      });
+
+      test("null/undefined만으로 이루어진 union", () => {
+        const zodType = getZodTypeFromApiParamType(
+          { t: "union", types: ["null", "undefined"] },
+          {},
+        );
+        expectToPass(zodType, null);
+        expectToPass(zodType, undefined);
+        expectToFail(zodType, "a");
+        expectToFail(zodType, { x: 1 });
+      });
+
+      test("true/false 리터럴이 섞인 union ('auto' | true | false)", () => {
+        const zodType = getZodTypeFromApiParamType(
+          { t: "union", types: [{ t: "string-literal", value: "auto" }, "true", "false"] },
+          {},
+        );
+        expectToPass(zodType, "auto");
+        expectToPass(zodType, true);
+        expectToPass(zodType, false);
+        expectToFail(zodType, "manual");
+        expectToFail(zodType, { x: 1 });
+      });
+    });
+
+    describe("키워드 타입", () => {
+      test("null/undefined/void/true/false 키워드는 해당 값만 허용", () => {
+        const keywordCases: [ApiParamType, unknown, unknown][] = [
+          ["null", null, { x: 1 }],
+          ["undefined", undefined, { x: 1 }],
+          ["void", undefined, "a"],
+          ["true", true, "anything"],
+          ["false", false, true],
+        ];
+        for (const [type, validValue, invalidValue] of keywordCases) {
+          const zodType = getZodTypeFromApiParamType(type, {});
+          expectToPass(zodType, validValue);
+          expectToFail(zodType, invalidValue);
+        }
+      });
+
+      test("any/unknown 키워드만 모든 값을 허용", () => {
+        for (const type of ["any", "unknown"] as const) {
+          const zodType = getZodTypeFromApiParamType(type, {});
+          expectToPass(zodType, { any: "object" });
+        }
+      });
     });
     describe("Intersection 타입", () => {
       test("intersection of objects", () => {

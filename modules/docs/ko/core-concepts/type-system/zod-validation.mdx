@@ -549,6 +549,15 @@ export const UserSaveParams = z
 
 </CodeGroup>
 
+### API 파라미터 타입의 검증 범위
+
+`@api` 메서드의 파라미터 타입은 Zod 검증기로 바뀌어 HTTP 요청을 검증합니다.
+
+- `params: { data: UserSaveParams }`처럼 인라인 객체 안에 둔 명명 타입도 해당 Zod 스키마로 검증합니다. 배열, `Pick`·`Omit`·`Partial`, 중첩 객체도 같습니다. 일반 `z.object` 스키마라면 선언하지 않은 키는 제거되고, 잘못된 값은 400으로 거부됩니다.
+- `null`은 `null`만, `true`·`false`는 그 값만 받습니다. `T | undefined`는 `T`이거나 키를 생략한 경우만, `void`는 생략만 허용합니다. 예를 들어 `"asc" | "desc" | null`은 세 값만 받습니다.
+- GET 쿼리 문자열의 `"true"`·`"false"`는 `boolean`이나 단일 `true`·`false` 리터럴 파라미터에서 불리언으로 바뀌지만, `true | false` union에서는 바뀌지 않으니 `boolean`으로 선언하세요.
+- Zod 스키마를 찾지 못한 명명 타입과 `any`·`unknown`은 값을 검증하지 않으며, 이런 타입이 섞인 union도 마찬가지입니다. 요청으로 받는 타입은 Zod 스키마로 정의하세요.
+
 ### 비즈니스 로직 검증
 
 <CodeGroup>

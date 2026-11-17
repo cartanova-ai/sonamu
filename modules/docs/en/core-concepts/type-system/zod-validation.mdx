@@ -549,6 +549,15 @@ export const UserSaveParams = z
 
 </CodeGroup>
 
+### What API Parameter Types Validate
+
+The parameter types of an `@api` method are turned into a Zod validator that checks HTTP requests.
+
+- Named types inside an inline object, such as `params: { data: UserSaveParams }`, are validated with their Zod schemas. The same goes for arrays, `Pick`/`Omit`/`Partial`, and nested objects. With a plain `z.object` schema, undeclared keys are stripped and invalid values are rejected with 400.
+- `null` accepts only `null`, and `true`/`false` accept only that value. `T | undefined` accepts `T` or an omitted key, and `void` accepts only omission. For example, `"asc" | "desc" | null` accepts exactly those three values.
+- In GET query strings, `"true"`/`"false"` become booleans for `boolean` or a single `true`/`false` literal parameter, but not for a `true | false` union, so declare such a parameter as `boolean`.
+- Named types without a Zod schema, and `any`/`unknown`, are not validated, and neither are unions that contain them. Define the types you accept from requests as Zod schemas.
+
 ### Business Logic Validation
 
 <CodeGroup>

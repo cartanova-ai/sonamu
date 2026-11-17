@@ -49,6 +49,13 @@ export function caster(zodType: $ZodType, raw: any): any {
   } else if (zodType instanceof z.ZodBoolean && (raw === "true" || raw === "false")) {
     // boolean
     return raw === "true";
+  } else if (
+    zodType instanceof z.ZodLiteral &&
+    (raw === "true" || raw === "false") &&
+    zodType.values.has(raw === "true")
+  ) {
+    // true/false 리터럴: GET 쿼리 문자열도 boolean과 같은 규칙으로 변환한다.
+    return raw === "true";
   } else if (raw !== null && Array.isArray(raw) && zodType instanceof z.ZodArray) {
     // array
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 캐스팅에는 any가 필요함.
