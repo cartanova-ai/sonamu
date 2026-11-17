@@ -471,6 +471,7 @@ Sonamu automatically configures logging as follows:
     timestamp: "time",
     categoryWidth: 20,
     categoryTruncate: "middle",
+    wordWrap: false,
   }),
 }
 ```
@@ -478,7 +479,8 @@ Sonamu automatically configures logging as follows:
 **Features:**
 
 - Shows HTTP method and response code: `[GET:200]`
-- Shows request URL: `/api/user/list`
+- Shows request URL: `/api/user/list` (URLs longer than 1024 characters are cut to the first 1024, followed by `…(+N chars)`)
+- Prints long logs on one line without word wrapping (`wordWrap: false`)
 - Colors distinguish levels
 
 ### 2. Fastify Filter Auto-Generation

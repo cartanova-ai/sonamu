@@ -282,7 +282,7 @@ export default defineConfig({
 
 ### 콘솔 Sink
 
-터미널에 로그를 출력합니다.
+터미널에 로그를 출력합니다. 직접 만든 `getPrettyFormatter`에는 기본 Fastify Sink의 `wordWrap: false`가 적용되지 않습니다. 공백 없는 긴 외부 입력을 기록한다면 줄바꿈 처리가 느려질 수 있으니 `wordWrap: false`를 지정하세요.
 
 ```typescript
 import { getConsoleSink } from "@logtape/logtape";

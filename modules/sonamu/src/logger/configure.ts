@@ -43,6 +43,16 @@ export type SonamuLoggingOptions<TSinkId extends string, TFilterId extends strin
   loggers?: LoggerConfig<TSinkId, TFilterId>[];
 };
 
+// 요청 로그에 남기는 URL의 최대 길이. 긴 URL이 로그 용량을 키우지 않도록 앞부분만 남긴다.
+const MAX_LOGGED_URL_LENGTH = 1024;
+
+function truncateUrlForLog(url: string): string {
+  if (url.length <= MAX_LOGGED_URL_LENGTH) {
+    return url;
+  }
+  return `${url.slice(0, MAX_LOGGED_URL_LENGTH)}…(+${url.length - MAX_LOGGED_URL_LENGTH} chars)`;
+}
+
 // fastify에 대한 기본 sink 설정
 function defaultFastifySink(fastifyCategory: readonly string[]): Sink {
   const fastifyFormatter = ((formatRecord: TextFormatter, record: LogRecord) => {
@@ -62,7 +72,7 @@ function defaultFastifySink(fastifyCategory: readonly string[]): Sink {
         ...requestRecord,
         message: [
           ...requestRecord.message.slice(0, -1),
-          `[${request.method}${responseCode ? `:${responseCode}` : ""}] ${request.originalUrl} - ${lastItem}`,
+          `[${request.method}${responseCode ? `:${responseCode}` : ""}] ${truncateUrlForLog(request.originalUrl)} - ${lastItem}`,
         ],
       });
     };
@@ -90,6 +100,9 @@ function defaultFastifySink(fastifyCategory: readonly string[]): Sink {
       timestamp: "time",
       categoryWidth: 20,
       categoryTruncate: "middle",
+      // @logtape/pretty의 줄바꿈 처리는 공백 없는 긴 문자열에서 길이의 제곱에 비례해 느려진다.
+      // 공격자가 정한 URL·메시지가 이 싱크로 들어오므로 줄바꿈을 끄고 터미널의 자동 줄바꿈에 맡긴다.
+      wordWrap: false,
     }),
   );
 

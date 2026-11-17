@@ -291,6 +291,8 @@ export default defineConfig({
 [timestamp] [category] level: [method:code] URL - message
 ```
 
+URLs longer than 1024 characters are cut to the first 1024, followed by `…(+N chars)`.
+
 ## Default Behavior
 
 ### 1. Logging Target

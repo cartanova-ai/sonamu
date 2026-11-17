@@ -471,6 +471,7 @@ Sonamu는 다음과 같이 자동으로 로깅을 설정합니다:
     timestamp: "time",
     categoryWidth: 20,
     categoryTruncate: "middle",
+    wordWrap: false,
   }),
 }
 ```
@@ -478,7 +479,8 @@ Sonamu는 다음과 같이 자동으로 로깅을 설정합니다:
 **특징:**
 
 - HTTP 메서드와 응답 코드 표시: `[GET:200]`
-- 요청 URL 표시: `/api/user/list`
+- 요청 URL 표시: `/api/user/list` (1024자를 넘으면 앞 1024자 뒤에 `…(+N chars)`를 붙여 줄임)
+- 긴 로그도 줄바꿈하지 않고 한 줄로 출력(`wordWrap: false`)
 - 색상으로 레벨 구분
 
 ### 2. Fastify Filter 자동 생성

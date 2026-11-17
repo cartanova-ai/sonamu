@@ -282,7 +282,7 @@ export default defineConfig({
 
 ### Console Sink
 
-Outputs logs to the terminal.
+Outputs logs to the terminal. A `getPrettyFormatter` you create yourself does not get the default Fastify Sink's `wordWrap: false`. If you log long external input without spaces, word wrapping can become slow, so set `wordWrap: false`.
 
 ```typescript
 import { getConsoleSink } from "@logtape/logtape";
