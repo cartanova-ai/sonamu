@@ -2,7 +2,12 @@
 export { createCacheManager, createTestCacheManager } from "./cache-manager";
 
 // Decorator
-export { cache, getCacheManagerRef, setCacheManagerRef } from "./decorator";
+export {
+  cache,
+  CacheKeySerializationError,
+  getCacheManagerRef,
+  setCacheManagerRef,
+} from "./decorator";
 
 // Drivers & Store builder
 export {

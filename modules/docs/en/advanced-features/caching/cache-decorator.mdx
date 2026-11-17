@@ -36,6 +36,7 @@ class UserModelClass extends BaseModelClass {
 ```typescript
 @cache({
   key?: string | ((...args: unknown[]) => string),  // Cache key
+  scope?: "user" | "global", // Cache sharing scope (default: "global")
   store?: string,           // Store to use
   ttl?: string | number,    // Expiration time
   grace?: string | number,  // Grace period (Stale-While-Revalidate)
@@ -69,6 +70,8 @@ If no key is specified, it is **automatically generated**.
     - Single primitive (string/number/boolean): Used as-is
     - Complex objects: Uses JSON.stringify
     - No arguments: `ModelName.methodName` without suffix
+    - Context argument: not serialized; replaced by the Context user segment (`user:"<id>"` or `anon`)
+    - Unserializable arguments (BigInt, circular references, Map/Set, functions, etc.): error (see [Cache Key Generation Logic](#cache-key-generation-logic))
 
   </Tab>
 
@@ -99,7 +102,7 @@ If no key is specified, it is **automatically generated**.
   <Tab title="Function Key" icon="code">
     ```typescript
     @cache({
-      key: (userId: number, status: string) => `user:${userId}:${status}`,
+      key: (userId, status) => `user:${userId}:${status}`,
       ttl: "10m"
     })
     async findByStatus(userId: number, status: string) {
@@ -112,8 +115,39 @@ If no key is specified, it is **automatically generated**.
 
     **Useful for complex key generation**
 
+    Key functions receive the method arguments as `unknown[]`, so annotating parameter types does not compile. Leave parameters untyped when you only put them in a string, and assert the method's argument types, as in `const [params] = args as [SearchParams]`, when you need their properties.
+
   </Tab>
 </Tabs>
+
+### scope: Per-user Cache Separation
+
+`scope` decides whether results for the same arguments are shared between users.
+
+| Value                | Behavior                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| `"global"` (default) | All users share one cache entry for the same arguments (except Context arguments in auto-generated and string keys) |
+| `"user"`             | When called inside a request (HTTP/WebSocket), the key includes the request user (`user:"<id>"` or `anon`) |
+
+```typescript
+class UserModelClass extends BaseModelClass {
+  // Reads the user from Sonamu.getContext().user, not from arguments, so it must be split per user
+  @cache({ ttl: "1m", scope: "user" })
+  @api({ httpMethod: "GET" })
+  async whoami() {
+    const { user } = Sonamu.getContext();
+    return { email: user?.email ?? null };
+  }
+}
+
+// Request by user u1:  key "User.whoami:user:\"u1\""
+// Anonymous request:    key "User.whoami:anon"
+// Outside a request (tests, scripts, workflows): key "User.whoami" (no user segment)
+```
+
+- Per-user separation is not on by default. Set `scope: "user"` on methods whose result depends on the request user.
+- In auto-generated and string keys, a Context (`ctx`) argument is replaced by that Context's user segment regardless of `scope`. A key function must handle Context arguments itself.
+- With a key function and `scope: "user"`, `:<user segment>` is appended to the key the function returns.
 
 ### ttl: Expiration Time
 
@@ -343,7 +377,7 @@ class ProductModelClass extends BaseModelClass {
 ```typescript
 class OrderModelClass extends BaseModelClass {
   @cache({
-    key: (userId: number, status: string, startDate: string) =>
+    key: (userId, status, startDate) =>
       `order:user:${userId}:${status}:${startDate}`,
     ttl: "10m",
     tags: ["order"],
@@ -466,69 +500,31 @@ await UserModel.findMany("A", { id: 123, num: 1, page: 1 });
 
 ### Argument Serialization
 
-```typescript
-// Inside decorator.ts
-function serializeArgs(args: unknown[]): string {
-  if (args.length === 0) return "";
+Auto-generated and string keys serialize the method arguments with the rules below and append them as a suffix.
 
-  // Single primitive value
-  if (args.length === 1) {
-    const arg = args[0];
-    if (arg === null || arg === undefined) return "";
-    if (typeof arg === "string" || typeof arg === "number" || typeof arg === "boolean") {
-      return String(arg);
-    }
-  }
+| Argument                                                    | Handling                                                                                             |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| None, single `null`/`undefined`                             | No suffix                                                                                            |
+| Single string/number/boolean                                | Used as-is (`123`, `hello`)                                                                          |
+| Any other value                                             | `JSON.stringify(args)` (`[123,"active"]`)                                                            |
+| Context injected by Sonamu (`ctx`)                          | Not serialized; removed from the key and replaced by the Context user segment (`user:"<id>"` or `anon`) |
+| BigInt, circular references, `Map`/`Set`, functions/symbols, nested Context | Throws `CacheKeySerializationError` without running the method. Build the key with a `key` function |
 
-  // Complex values are JSON serialized
-  try {
-    return JSON.stringify(args);
-  } catch {
-    // Use toString on serialization failure
-    return args.map((arg) => String(arg)).join(":");
-  }
-}
-```
-
-**Examples**:
-
-```typescript
-// Single primitive
-serializeArgs([123]) → "123"
-serializeArgs(["hello"]) → "hello"
-
-// Complex object
-serializeArgs([{ id: 1, name: "test" }]) → '[{"id":1,"name":"test"}]'
-
-// Multiple arguments
-serializeArgs([123, "active"]) → '[123,"active"]'
-```
+Unserializable values are never converted to strings such as `[object Object]`, because such keys merge calls with different arguments, and from different users, into one cache entry.
 
 ### Full Key Generation
 
+The key has the form `<base key>[:<user segment>][:<argument suffix>]`.
+
+- **Base key**: the `key` string, otherwise `ModelName.methodName`
+- **User segment**: the Context argument's user if there is one, even outside a request; otherwise the current request user, only with `scope: "user"` inside a request
+- **Key function**: the returned value is used as-is; with `scope: "user"`, `:<user segment>` is appended when the rule above yields a user segment. The function handles Context arguments itself
+
 ```typescript
-function generateCacheKey(
-  modelName: string,
-  methodName: string,
-  args: unknown[],
-  keyOption?: string | Function,
-): string {
-  // 1. Custom key function
-  if (typeof keyOption === "function") {
-    return keyOption(...args);
-  }
-
-  // 2. String key + args suffix
-  if (typeof keyOption === "string") {
-    const argsSuffix = serializeArgs(args);
-    return argsSuffix ? `${keyOption}:${argsSuffix}` : keyOption;
-  }
-
-  // 3. Auto-generated
-  const baseKey = `${modelName}.${methodName}`;
-  const argsSuffix = serializeArgs(args);
-  return argsSuffix ? `${baseKey}:${argsSuffix}` : baseKey;
-}
+UserModel.findById("A", 123); // "User.findById:[\"A\",123]"
+UserModel.getMe(ctx); // user u1: "User.getMe:user:\"u1\"", anonymous: "User.getMe:anon"
+UserModel.getMeWith(ctx, "t1"); // "User.getMeWith:user:\"u1\":t1"
+UserModel.whoami(); // scope: "user", in a request: "User.whoami:user:\"u1\"", outside: "User.whoami"
 ```
 
 ## Direct Cache Manipulation

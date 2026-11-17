@@ -135,7 +135,7 @@ Specifies the cache key.
     ```typescript
     @cache({
       ttl: "10m",
-      key: (subset: string, id: number) => `product:${subset}:${id}`
+      key: (subset, id) => `product:${subset}:${id}`
     })
     async findById<T extends ProductSubsetKey>(subset: T, id: number) {
       // Cache key: "product:A:123"
@@ -143,7 +143,8 @@ Specifies the cache key.
 
     @cache({
       ttl: "1h",
-      key: (filters: FilterParams) => {
+      key: (...args) => {
+        const [filters] = args as [FilterParams];
         const sorted = Object.keys(filters).sort();
         return `search:${sorted.map(k => `${k}=${filters[k]}`).join(":")}`;
       }
@@ -155,6 +156,24 @@ Specifies the cache key.
 
   </Tab>
 </Tabs>
+
+Key functions receive the method arguments as `unknown[]`, so annotating parameter types does not compile. Leave parameters untyped when you only put them in a string, and assert the method's argument types, as in `const [params] = args as [SearchParams]`, when you need their properties.
+
+### scope
+
+Decides whether results for the same arguments are shared between users.
+
+**Default:** `"global"`
+
+```typescript
+@cache({ ttl: "1m", scope: "user" })
+async whoami() {
+  // Inside a request: "User.whoami:user:\"u1\"" or "User.whoami:anon"
+  // Outside a request: "User.whoami"
+}
+```
+
+Set `scope: "user"` when the result depends on the request user rather than the arguments, for example through `Sonamu.getContext().user`. Auto-generated and string keys replace Context arguments with that user's segment regardless of `scope`, while a key function gets the user segment only with `scope: "user"`. See [@cache Decorator](/en/advanced-features/caching/cache-decorator) for the full key rules.
 
 ### store
 
@@ -373,9 +392,11 @@ Complex objects are automatically JSON serialized:
 ```typescript
 @cache({ ttl: "10m" })
 async search(params: { name: string; age: number }) {
-  // Cache key: "User.search:{"name":"Alice","age":30}"
+  // Cache key: "User.search:[{"name":"Alice","age":30}]"
 }
 ```
+
+Context arguments are not serialized; they are replaced by that user's segment. Arguments that cannot be serialized, such as `BigInt`, circular references, `Map`/`Set`, and functions, throw `CacheKeySerializationError` (a `TypeError` subclass) before the cache lookup and method call. You can import this error from `sonamu` or `sonamu/cache`.
 
 <Tip>
   For objects that are difficult to serialize, use the `key` function to generate keys directly.
@@ -532,7 +553,7 @@ export default defineConfig({
       @api({ httpMethod: "GET" })
       @cache({
         ttl: "10m",
-        key: (id: number) => `user:profile:${id}`,
+        key: (id) => `user:profile:${id}`,
         tags: ["users"]
       })
       async getProfile(id: number) {
@@ -591,7 +612,7 @@ export default defineConfig({
       @api({ httpMethod: "GET" })
       @cache({
         ttl: "1d",
-        key: (date: string) => `analytics:daily:${date}`
+        key: (date) => `analytics:daily:${date}`
       })
       async getDailyStats(date: string) {
         const rdb = this.getPuri("r");
@@ -616,7 +637,8 @@ export default defineConfig({
       @api({ httpMethod: "GET" })
       @cache({
         ttl: "15m",
-        key: (query: string, filters: SearchFilters) => {
+        key: (...args) => {
+          const [query, filters] = args as [string, SearchFilters];
           const filterStr = Object.entries(filters)
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([k, v]) => `${k}:${v}`)

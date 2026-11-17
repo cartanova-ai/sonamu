@@ -1,7 +1,16 @@
 import { type BaseFrameClass } from "../api/base-frame";
+import { type RuntimeContext } from "../api/context";
+import { Sonamu } from "../api/sonamu";
 import { BaseModelClass } from "../database/base-model";
 import { isBooleanValue } from "../runtime-type";
-import { isFunctionValue, isNumberValue, isStringValue } from "../utils/runtime-value";
+import {
+  isBigIntValue,
+  isFunctionValue,
+  isNumberValue,
+  isObjectValue,
+  isStringValue,
+  isSymbolValue,
+} from "../utils/runtime-value";
 import { type CacheDecoratorOptions, type CacheManager } from "./types";
 
 type DecoratorTarget = { constructor: { name: string } };
@@ -29,35 +38,105 @@ export function getCacheManagerRef(): CacheManager | null {
 }
 
 /**
+ * 캐시 키를 만들 수 없는 인자를 받았을 때 던지는 에러
+ */
+export class CacheKeySerializationError extends TypeError {
+  constructor(cacheName: string, reason: string) {
+    super(
+      `@cache(${cacheName}): ${reason} 캐시 키를 만들 수 없습니다. key 옵션으로 키를 직접 지정하세요.`,
+    );
+    this.name = "CacheKeySerializationError";
+  }
+}
+
+/**
+ * Sonamu가 API 메서드에 주입하는 Context(HTTP/WebSocket) 객체인지 판별합니다.
+ */
+function isRuntimeContextArg<Value>(value: Value): value is Value & RuntimeContext {
+  if (!isObjectValue(value)) return false;
+  const candidate: Partial<Record<"transport" | "naiteStore", Value>> = value;
+  return (
+    (candidate.transport === "http" || candidate.transport === "ws") &&
+    candidate.naiteStore instanceof Map &&
+    "user" in value
+  );
+}
+
+/**
+ * 키에 넣을 사용자 구분자를 만듭니다.
+ * id를 JSON 문자열로 감싸 뒤따르는 인자 suffix와 경계가 섞이지 않게 합니다.
+ */
+function userSegment(context: RuntimeContext): string {
+  const userId = context.user?.id;
+  return userId === undefined || userId === null ? "anon" : `user:${JSON.stringify(userId)}`;
+}
+
+/**
+ * 현재 요청(ALS)의 Context를 가져옵니다. 요청 밖(테스트·스크립트·워크플로)에서는 null입니다.
+ * Sonamu.getContext()는 테스트 환경에서 mock을 돌려주므로 ALS store를 직접 읽습니다.
+ */
+function getRequestContext(): RuntimeContext | null {
+  return Sonamu.asyncLocalStorage.getStore()?.context ?? null;
+}
+
+/**
  * 캐시 키 생성
  */
 function generateCacheKey(
+  cacheName: string,
   modelName: string,
   methodName: string,
   args: unknown[],
-  keyOption?: CacheDecoratorOptions["key"],
+  options: Pick<CacheDecoratorOptions, "key" | "scope">,
 ): string {
-  // 커스텀 키 함수 사용
+  const { key: keyOption, scope = "global" } = options;
+  const contextArg = args.find(isRuntimeContextArg);
+  const requestContext = contextArg ?? (scope === "user" ? getRequestContext() : null);
+  const userSuffix = scope === "user" && requestContext ? userSegment(requestContext) : "";
+
+  // 커스텀 키 함수 사용 (Context 인자는 함수가 직접 다룸)
   if (isCacheKeyFactory(keyOption)) {
-    return keyOption(...args);
+    const customKey = keyOption(...args);
+    return userSuffix ? `${customKey}:${userSuffix}` : customKey;
   }
 
-  // 문자열 키 + args suffix
-  if (isStringValue(keyOption)) {
-    const argsSuffix = serializeArgs(args);
-    return argsSuffix ? `${keyOption}:${argsSuffix}` : keyOption;
-  }
+  // Context 객체 자체는 키에서 빼고, 그 메서드는 Context 사용자 기준으로 키를 나눔
+  // (Context를 받는 메서드는 요청 사용자에 따라 결과가 달라질 수 있어 사용자 간 공유를 막음)
+  const contextSuffix = contextArg ? userSegment(contextArg) : userSuffix;
+  const keyArgs = args.filter((arg) => !isRuntimeContextArg(arg));
 
-  // 자동 생성: ModelName.methodName:serializedArgs
-  const baseKey = `${modelName}.${methodName}`;
-  const argsSuffix = serializeArgs(args);
-  return argsSuffix ? `${baseKey}:${argsSuffix}` : baseKey;
+  // 문자열 키 또는 자동 생성(ModelName.methodName) + args suffix
+  const baseKey = isStringValue(keyOption) ? keyOption : `${modelName}.${methodName}`;
+  const argsSuffix = serializeArgs(cacheName, keyArgs);
+  return [baseKey, contextSuffix, argsSuffix].filter((part) => part !== "").join(":");
+}
+
+/**
+ * JSON.stringify가 조용히 버리거나 뭉개는 값을 거부하는 replacer
+ */
+function rejectUnserializable(cacheName: string) {
+  return <Value>(_key: string, value: Value): Value => {
+    if (isRuntimeContextArg(value)) {
+      throw new CacheKeySerializationError(cacheName, "인자 안에 Context 객체가 있어");
+    }
+    if (value instanceof Map || value instanceof Set) {
+      // JSON에서는 모두 {}가 되어 서로 다른 인자가 같은 키로 충돌함
+      throw new CacheKeySerializationError(cacheName, "Map/Set 인자는");
+    }
+    if (isFunctionValue(value) || isSymbolValue(value)) {
+      throw new CacheKeySerializationError(cacheName, "함수/심벌 인자는");
+    }
+    return value;
+  };
 }
 
 /**
  * 인자 직렬화
+ *
+ * 직렬화할 수 없는 인자(BigInt, 순환 참조, Map/Set, 함수 등)는 문자열로 뭉개지 않고
+ * CacheKeySerializationError를 던집니다.
  */
-function serializeArgs(args: unknown[]): string {
+function serializeArgs(cacheName: string, args: unknown[]): string {
   if (args.length === 0) return "";
 
   // 단일 primitive 값
@@ -69,12 +148,17 @@ function serializeArgs(args: unknown[]): string {
     }
   }
 
+  if (args.some(isBigIntValue)) {
+    throw new CacheKeySerializationError(cacheName, "BigInt 인자는");
+  }
+
   // 복잡한 값은 JSON 직렬화
   try {
-    return JSON.stringify(args);
-  } catch {
-    // 직렬화 실패 시 toString 사용
-    return args.map((arg) => String(arg)).join(":");
+    return JSON.stringify(args, rejectUnserializable(cacheName));
+  } catch (error) {
+    if (error instanceof CacheKeySerializationError) throw error;
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new CacheKeySerializationError(cacheName, `인자를 JSON으로 직렬화할 수 없어(${reason})`);
   }
 }
 
@@ -100,6 +184,8 @@ function serializeArgs(args: unknown[]): string {
  * }
  */
 export function cache(options: CacheDecoratorOptions = {}) {
+  const { key, scope, store: storeName, ...cacheOptions } = options;
+
   return (_target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
 
@@ -115,11 +201,14 @@ export function cache(options: CacheDecoratorOptions = {}) {
       const modelName = this instanceof BaseModelClass ? this.modelName : this.frameName;
       const methodName = propertyKey;
 
-      const cacheKey = generateCacheKey(modelName, methodName, args, options.key);
-      const store = options.store ? manager.use(options.store) : manager;
+      const cacheKey = generateCacheKey(`${modelName}.${methodName}`, modelName, methodName, args, {
+        key,
+        scope,
+      });
+      const store = storeName ? manager.use(storeName) : manager;
 
       return store.getOrSet({
-        ...options,
+        ...cacheOptions,
         key: cacheKey,
         factory: () => originalMethod.apply(this, args),
       });

@@ -1,5 +1,6 @@
+import fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import { cache, type Context, Sonamu, UnauthorizedException } from "sonamu";
-import { setCacheManagerRef } from "sonamu/cache";
+import { CacheKeySerializationError, setCacheManagerRef } from "sonamu/cache";
 import { bootstrap, runWithMockContext } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
@@ -603,6 +604,238 @@ describe("cache", () => {
         owner: "owner",
       });
       expect(loadDashboard).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("@cache 데코레이터 - 사용자 간 캐시 분리와 키 직렬화 (SON-626)", () => {
+    type CircularNode = { self?: CircularNode };
+    const createCircular = (): CircularNode => {
+      const node: CircularNode = {};
+      node.self = node;
+      return node;
+    };
+
+    let realRequest: FastifyRequest;
+    let realReply: FastifyReply;
+    beforeAll(async () => {
+      // 실제 요청처럼 소켓(순환 구조)을 가진 Fastify 요청·응답을 얻으려고 실제 연결로 한 번 요청함
+      const server = fastify();
+      server.get("/capture", async (request, reply) => {
+        realRequest = request;
+        realReply = reply;
+        return {};
+      });
+      try {
+        const address = await server.listen({ port: 0, host: "127.0.0.1" });
+        const response = await fetch(`${address}/capture`);
+        expect(response.status).toBe(200);
+      } finally {
+        await server.close();
+      }
+      // Context가 통째로 직렬화되면 안 되는 상황을 재현하는지 확인
+      expect(() => JSON.stringify(realRequest)).toThrow();
+      expect(() => JSON.stringify(realReply)).toThrow();
+    });
+
+    const createContext = (userId: string | null): Context => {
+      const now = new Date();
+      const user: Context["user"] =
+        userId === null
+          ? null
+          : {
+              id: userId,
+              email: `${userId}@test.com`,
+              emailVerified: true,
+              name: userId,
+              createdAt: now,
+              updatedAt: now,
+              role: "normal",
+              created_at: now,
+            };
+      return {
+        transport: "http",
+        request: realRequest,
+        reply: realReply,
+        headers: {},
+        // 캐시 키 계산은 createSSE를 호출하지 않음
+        createSSE: () => {
+          throw new Error("unused");
+        },
+        naiteStore: new Map(),
+        locale: "ko",
+        user,
+        session: null,
+        ip: "127.0.0.1",
+      };
+    };
+
+    test("Context 인자를 받는 메서드는 사용자마다 다른 캐시를 사용", async () => {
+      const target = createMockTarget("User");
+      const originalFn = vi
+        .fn()
+        .mockImplementation((ctx: Context) => Promise.resolve({ id: ctx.user?.id ?? null }));
+      const cachedFn = applyCache(target, "getMe", originalFn, { ttl: "10s" });
+
+      expect(await cachedFn(createContext("victim"))).toEqual({ id: "victim" });
+      expect(await cachedFn(createContext("attacker"))).toEqual({ id: "attacker" });
+      expect(await cachedFn(createContext(null))).toEqual({ id: null });
+      // 같은 사용자의 재요청은 캐시 히트
+      expect(await cachedFn(createContext("victim"))).toEqual({ id: "victim" });
+
+      expect(originalFn).toHaveBeenCalledTimes(3);
+      expect(await Sonamu.cache.has({ key: 'User.getMe:user:"victim"' })).toBe(true);
+      expect(await Sonamu.cache.has({ key: "User.getMe:anon" })).toBe(true);
+    });
+
+    test("실제 HTTP 요청의 Context(로그인 세션)로도 사용자마다 다른 캐시를 사용", async () => {
+      const callAuth = (path: string, body: Record<string, string>) =>
+        Sonamu.auth.handler(
+          new Request(`http://localhost:10280/api/auth${path}`, {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-forwarded-for": "127.0.0.1" },
+            body: JSON.stringify(body),
+          }),
+        );
+      const signInCookie = async (email: string) => {
+        const password = "cache-pass-123";
+        const signUp = await callAuth("/sign-up/email", { email, password, name: "cache" });
+        expect(signUp.status).toBe(200);
+        const signIn = await callAuth("/sign-in/email", { email, password });
+        expect(signIn.status).toBe(200);
+        return (signIn.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
+      };
+      const victimCookie = await signInCookie("cache-victim@test.com");
+      const attackerCookie = await signInCookie("cache-attacker@test.com");
+
+      const target = createMockTarget("User");
+      const originalFn = vi
+        .fn()
+        .mockImplementation((ctx: Context) => Promise.resolve({ email: ctx.user?.email ?? null }));
+      const cachedFn = applyCache(target, "getMe", originalFn, { ttl: "10s" });
+
+      const server = fastify();
+      server.get("/me", async (request, reply) => {
+        const context = await Sonamu.createContext(Sonamu.config.server.apiConfig, request, reply);
+        return Sonamu.asyncLocalStorage.run({ context }, () => cachedFn(context));
+      });
+
+      try {
+        // inject는 소켓이 없어 Context가 직렬화돼 버리므로, 실제 소켓(순환 구조)이 있는 연결로 요청함
+        const address = await server.listen({ port: 0, host: "127.0.0.1" });
+        const me = async (cookie?: string) => {
+          const response = await fetch(`${address}/me`, { headers: cookie ? { cookie } : {} });
+          expect(response.status).toBe(200);
+          return response.json();
+        };
+
+        expect(await me(victimCookie)).toEqual({ email: "cache-victim@test.com" });
+        expect(await me(attackerCookie)).toEqual({ email: "cache-attacker@test.com" });
+        expect(await me()).toEqual({ email: null });
+        expect(await me(victimCookie)).toEqual({ email: "cache-victim@test.com" });
+        expect(originalFn).toHaveBeenCalledTimes(3);
+      } finally {
+        await server.close();
+      }
+    });
+
+    test("Context와 다른 인자를 함께 받으면 Context는 사용자 구분자로 바뀌고 나머지 인자는 그대로 키에 포함", async () => {
+      const target = createMockTarget("User");
+      const originalFn = vi
+        .fn()
+        .mockImplementation((ctx: Context, tag: string) =>
+          Promise.resolve({ id: ctx.user?.id ?? null, tag }),
+        );
+      const cachedFn = applyCache(target, "getMeWith", originalFn, { ttl: "10s" });
+
+      await cachedFn(createContext("victim"), "t1");
+      expect(await cachedFn(createContext(null), "t1")).toEqual({ id: null, tag: "t1" });
+
+      expect(originalFn).toHaveBeenCalledTimes(2);
+      expect(await Sonamu.cache.has({ key: 'User.getMeWith:user:"victim":t1' })).toBe(true);
+      expect(await Sonamu.cache.has({ key: "User.getMeWith:anon:t1" })).toBe(true);
+    });
+
+    test("scope: user - 요청 안에서는 요청 사용자별로 캐시를 분리", async () => {
+      const target = createMockTarget("User");
+      const originalFn = vi
+        .fn()
+        .mockImplementation(() => Promise.resolve({ id: Sonamu.getContext().user?.id ?? null }));
+      const cachedFn = applyCache(target, "whoami", originalFn, { ttl: "10s", scope: "user" });
+
+      const run = (userId: string | null) =>
+        Sonamu.asyncLocalStorage.run({ context: createContext(userId) }, () => cachedFn());
+
+      expect(await run("victim")).toEqual({ id: "victim" });
+      expect(await run("attacker")).toEqual({ id: "attacker" });
+      expect(await run(null)).toEqual({ id: null });
+      expect(await run("victim")).toEqual({ id: "victim" });
+
+      expect(originalFn).toHaveBeenCalledTimes(3);
+      expect(await Sonamu.cache.has({ key: 'User.whoami:user:"victim"' })).toBe(true);
+      expect(await Sonamu.cache.has({ key: "User.whoami:anon" })).toBe(true);
+    });
+
+    test("scope: user - 사용자 id에 구분자가 있어도 다른 사용자·인자 조합과 키가 겹치지 않음", async () => {
+      const target = createMockTarget("User");
+      const originalFn = vi.fn().mockImplementation((tag: string) => Promise.resolve(tag));
+      const cachedFn = applyCache(target, "byTag", originalFn, { ttl: "10s", scope: "user" });
+
+      await Sonamu.asyncLocalStorage.run({ context: createContext("a:b") }, () => cachedFn("c"));
+      await Sonamu.asyncLocalStorage.run({ context: createContext("a") }, () => cachedFn("b:c"));
+
+      expect(originalFn).toHaveBeenCalledTimes(2);
+    });
+
+    test("scope: user - 요청 밖에서는 기존 키를 그대로 사용", async () => {
+      const target = createMockTarget("User");
+      const originalFn = vi.fn().mockResolvedValue("result");
+      const cachedFn = applyCache(target, "findById", originalFn, { ttl: "10s", scope: "user" });
+
+      await cachedFn(999);
+
+      expect(await Sonamu.cache.has({ key: "User.findById:999" })).toBe(true);
+    });
+
+    test("scope: user - 함수 키에도 사용자 구분자를 붙임", async () => {
+      const target = createMockTarget("User");
+      const originalFn = vi.fn().mockResolvedValue("result");
+      const cachedFn = applyCache(target, "dashboard", originalFn, {
+        key: (...args: unknown[]) => `dashboard:${args[0]}`,
+        ttl: "10s",
+        scope: "user",
+      });
+
+      await Sonamu.asyncLocalStorage.run({ context: createContext("victim") }, () => cachedFn(1));
+
+      expect(await Sonamu.cache.has({ key: 'dashboard:1:user:"victim"' })).toBe(true);
+    });
+
+    test("scope 기본값(global) - Context 인자가 없으면 요청 사용자와 무관하게 캐시를 공유", async () => {
+      const target = createMockTarget("Config");
+      const originalFn = vi.fn().mockResolvedValue({ setting: "value" });
+      const cachedFn = applyCache(target, "getAll", originalFn, { ttl: "10s" });
+
+      await Sonamu.asyncLocalStorage.run({ context: createContext("victim") }, () => cachedFn());
+      await Sonamu.asyncLocalStorage.run({ context: createContext("attacker") }, () => cachedFn());
+
+      expect(originalFn).toHaveBeenCalledTimes(1);
+      expect(await Sonamu.cache.has({ key: "Config.getAll" })).toBe(true);
+    });
+
+    test.each([
+      ["BigInt", [10n, "a:b"]],
+      ["순환 참조", [createCircular()]],
+      ["Map", [new Map([["a", 1]])]],
+      ["Set", [new Set([1])]],
+      ["함수", [{ fn: () => 1 }]],
+      ["중첩된 Context", [{ ctx: { transport: "http", naiteStore: new Map(), user: null } }]],
+    ])("직렬화할 수 없는 인자(%s)는 문자열로 뭉개지 않고 에러로 거부", async (_label, args) => {
+      const target = createMockTarget("Search");
+      const originalFn = vi.fn().mockResolvedValue("result");
+      const cachedFn = applyCache(target, "search", originalFn, { ttl: "10s" });
+
+      await expect(cachedFn(...args)).rejects.toThrow(CacheKeySerializationError);
+      expect(originalFn).not.toHaveBeenCalled();
     });
   });
 });

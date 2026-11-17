@@ -36,6 +36,7 @@ class UserModelClass extends BaseModelClass {
 ```typescript
 @cache({
   key?: string | ((...args: unknown[]) => string),  // 캐시 키
+  scope?: "user" | "global", // 캐시 공유 범위 (기본값: "global")
   store?: string,           // 사용할 스토어
   ttl?: string | number,    // 만료 시간
   grace?: string | number,  // Grace period (Stale-While-Revalidate)
@@ -69,6 +70,8 @@ class UserModelClass extends BaseModelClass {
     - 단일 primitive (string/number/boolean): 그대로 사용
     - 복잡한 객체: JSON.stringify 사용
     - 인자 없음: suffix 없이 `ModelName.methodName`
+    - Context 인자: 직렬화하지 않고 그 Context의 사용자 구분자(`user:"<id>"` 또는 `anon`)로 바뀜
+    - 직렬화할 수 없는 인자(BigInt, 순환 참조, Map/Set, 함수 등): 에러 (아래 "캐시 키 생성 로직" 참고)
   </Tab>
   
   <Tab title="문자열 키" icon="text">
@@ -97,7 +100,7 @@ class UserModelClass extends BaseModelClass {
   <Tab title="함수 키" icon="code">
     ```typescript
     @cache({ 
-      key: (userId: number, status: string) => `user:${userId}:${status}`,
+      key: (userId, status) => `user:${userId}:${status}`,
       ttl: "10m"
     })
     async findByStatus(userId: number, status: string) {
@@ -109,8 +112,39 @@ class UserModelClass extends BaseModelClass {
     ```
     
     **복잡한 키 생성 시 유용**
+
+    키 함수는 메서드 인자를 `unknown[]`으로 받으므로 매개변수에 타입을 붙이면 컴파일되지 않습니다. 인자를 문자열에 넣기만 할 때는 매개변수에 타입을 붙이지 말고, 인자의 속성을 읽어야 할 때는 `const [params] = args as [SearchParams]`처럼 메서드의 인자 타입으로 단언하세요.
   </Tab>
 </Tabs>
+
+### scope: 사용자별 캐시 분리
+
+`scope`는 같은 인자로 호출한 결과를 사용자 사이에서 공유할지 정합니다.
+
+| 값                  | 동작                                                                                   |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| `"global"` (기본값) | 인자가 같으면 모든 사용자가 같은 캐시를 공유 (자동 키·문자열 키의 Context 인자는 예외)  |
+| `"user"`            | 요청(HTTP/WebSocket) 안에서 호출되면 요청 사용자(`user:"<id>"` 또는 `anon`)를 키에 포함 |
+
+```typescript
+class UserModelClass extends BaseModelClass {
+  // 인자 없이 Sonamu.getContext().user로 사용자를 읽으므로 사용자별로 나눠야 함
+  @cache({ ttl: "1m", scope: "user" })
+  @api({ httpMethod: "GET" })
+  async whoami() {
+    const { user } = Sonamu.getContext();
+    return { email: user?.email ?? null };
+  }
+}
+
+// 사용자 u1의 요청: 키 "User.whoami:user:\"u1\""
+// 비로그인 요청:    키 "User.whoami:anon"
+// 요청 밖(테스트·스크립트·워크플로) 호출: 키 "User.whoami" (사용자 구분자 없음)
+```
+
+- 사용자별 분리는 기본으로 켜져 있지 않습니다. 결과가 요청 사용자에 따라 달라지는 메서드에는 `scope: "user"`를 직접 지정하세요.
+- 자동 키·문자열 키에서는 Context(`ctx`) 인자를 `scope`와 관계없이 그 Context의 사용자 구분자로 바꿉니다. 함수 키는 Context 인자를 직접 다뤄야 합니다.
+- 함수 키에 `scope: "user"`를 함께 쓰면 함수가 만든 키 뒤에 `:<사용자 구분자>`가 붙습니다.
 
 ### ttl: 만료 시간
 
@@ -340,7 +374,7 @@ class ProductModelClass extends BaseModelClass {
 ```typescript
 class OrderModelClass extends BaseModelClass {
   @cache({
-    key: (userId: number, status: string, startDate: string) =>
+    key: (userId, status, startDate) =>
       `order:user:${userId}:${status}:${startDate}`,
     ttl: "10m",
     tags: ["order"],
@@ -463,69 +497,31 @@ await UserModel.findMany("A", { id: 123, num: 1, page: 1 });
 
 ### 인자 직렬화
 
-```typescript
-// decorator.ts 내부
-function serializeArgs(args: unknown[]): string {
-  if (args.length === 0) return "";
+자동 생성 키와 문자열 키는 메서드 인자를 아래 규칙으로 직렬화해 suffix로 붙입니다.
 
-  // 단일 primitive 값
-  if (args.length === 1) {
-    const arg = args[0];
-    if (arg === null || arg === undefined) return "";
-    if (typeof arg === "string" || typeof arg === "number" || typeof arg === "boolean") {
-      return String(arg);
-    }
-  }
+| 인자                                                 | 처리                                                                                                      |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 없음, 단일 `null`/`undefined`                        | suffix 없음                                                                                               |
+| 단일 string/number/boolean                           | 그대로 사용 (`123`, `hello`)                                                                              |
+| 그 밖의 값                                           | `JSON.stringify(args)` (`[123,"active"]`)                                                                 |
+| Sonamu가 주입한 Context(`ctx`)                       | 직렬화하지 않고 키에서 뺀 뒤, 그 Context의 사용자 구분자(`user:"<id>"` 또는 `anon`)를 넣음                  |
+| BigInt, 순환 참조, `Map`/`Set`, 함수·심벌, 중첩된 Context | `CacheKeySerializationError`를 던지고 메서드를 실행하지 않음. `key` 함수로 키를 직접 만드세요            |
 
-  // 복잡한 값은 JSON 직렬화
-  try {
-    return JSON.stringify(args);
-  } catch {
-    // 직렬화 실패 시 toString 사용
-    return args.map((arg) => String(arg)).join(":");
-  }
-}
-```
-
-**예시**:
-
-```typescript
-// 단일 primitive
-serializeArgs([123]) → "123"
-serializeArgs(["hello"]) → "hello"
-
-// 복잡한 객체
-serializeArgs([{ id: 1, name: "test" }]) → '[{"id":1,"name":"test"}]'
-
-// 여러 인자
-serializeArgs([123, "active"]) → '[123,"active"]'
-```
+직렬화할 수 없는 값을 문자열로 바꿔(`[object Object]`) 키를 만들지 않습니다. 그렇게 만든 키는 서로 다른 인자, 서로 다른 사용자의 호출을 하나의 캐시로 묶기 때문입니다.
 
 ### 전체 키 생성
 
+키는 `<기본 키>[:<사용자 구분자>][:<인자 suffix>]` 형태입니다.
+
+- **기본 키**: `key` 문자열, 없으면 `ModelName.methodName`
+- **사용자 구분자**: Context 인자가 있으면 요청 밖에서도 그 Context의 사용자. 없으면 `scope: "user"`이고 요청 안일 때만 현재 요청의 사용자
+- **함수 키**: 함수가 돌려준 값을 그대로 쓰고, `scope: "user"`이면서 위 규칙의 사용자 구분자가 있으면 `:<사용자 구분자>`를 덧붙임. Context 인자는 함수가 직접 다룸
+
 ```typescript
-function generateCacheKey(
-  modelName: string,
-  methodName: string,
-  args: unknown[],
-  keyOption?: string | Function,
-): string {
-  // 1. 커스텀 키 함수
-  if (typeof keyOption === "function") {
-    return keyOption(...args);
-  }
-
-  // 2. 문자열 키 + args suffix
-  if (typeof keyOption === "string") {
-    const argsSuffix = serializeArgs(args);
-    return argsSuffix ? `${keyOption}:${argsSuffix}` : keyOption;
-  }
-
-  // 3. 자동 생성
-  const baseKey = `${modelName}.${methodName}`;
-  const argsSuffix = serializeArgs(args);
-  return argsSuffix ? `${baseKey}:${argsSuffix}` : baseKey;
-}
+UserModel.findById("A", 123); // "User.findById:[\"A\",123]"
+UserModel.getMe(ctx); // 사용자 u1: "User.getMe:user:\"u1\"", 비로그인: "User.getMe:anon"
+UserModel.getMeWith(ctx, "t1"); // "User.getMeWith:user:\"u1\":t1"
+UserModel.whoami(); // scope: "user", 요청 안: "User.whoami:user:\"u1\"", 요청 밖: "User.whoami"
 ```
 
 ### 복잡한 캐시 키 생성 예제
@@ -555,7 +551,8 @@ class ProductModelClass extends BaseModelClass {
 
   // ✅ 해결책 1: 정렬된 키 생성 함수
   @cache({
-    key: (params: SearchParams) => {
+    key: (...args) => {
+      const [params] = args as [SearchParams];
       // 객체를 정규화하여 일관된 키 생성
       const normalized = {
         category: params.filters.category || "",
@@ -578,7 +575,8 @@ class ProductModelClass extends BaseModelClass {
 
   // ✅ 해결책 2: 주요 필드만 사용
   @cache({
-    key: (params: SearchParams) => {
+    key: (...args) => {
+      const [params] = args as [SearchParams];
       const { category } = params.filters;
       const { page, pageSize } = params.pagination;
       return `products:search:${category}:${page}:${pageSize}`;
@@ -598,14 +596,15 @@ class PostModelClass extends BaseModelClass {
   // ❌ 문제: 배열 순서가 바뀌면 다른 키
   @cache({ ttl: "5m" })
   async findByTags(tags: string[]) {
-    // cache key: "Post.findByTags:[\"react\",\"typescript\"]"
-    // cache key: "Post.findByTags:[\"typescript\",\"react\"]"  ← 다른 키!
+    // cache key: "Post.findByTags:[[\"react\",\"typescript\"]]"
+    // cache key: "Post.findByTags:[[\"typescript\",\"react\"]]"  ← 다른 키!
     // ...
   }
 
   // ✅ 해결책: 배열 정렬
   @cache({
-    key: (tags: string[]) => {
+    key: (...args) => {
+      const [tags] = args as [string[]];
       const sortedTags = [...tags].sort().join(",");
       return `posts:tags:${sortedTags}`;
     },
@@ -631,7 +630,8 @@ class ReportModelClass extends BaseModelClass {
 
   // ✅ 해결책: ISO 문자열로 정규화
   @cache({
-    key: (startDate: Date, endDate: Date) => {
+    key: (...args) => {
+      const [startDate, endDate] = args as [Date, Date];
       const start = startDate.toISOString().split("T")[0]; // "2024-01-01"
       const end = endDate.toISOString().split("T")[0];
       return `reports:${start}:${end}`;
@@ -727,13 +727,16 @@ class TreeModelClass extends BaseModelClass {
   // ❌ 문제: 순환 참조 객체는 JSON.stringify 실패
   @cache({ ttl: "5m" })
   async buildTree(node: Node) {
-    // TypeError: Converting circular structure to JSON
+    // CacheKeySerializationError: 순환 참조라 JSON으로 직렬화할 수 없어 캐시 키를 만들지 못함
     // ...
   }
 
   // ✅ 해결책: ID만 사용
   @cache({
-    key: (node: Node) => `tree:${node.id}`,
+    key: (...args) => {
+      const [node] = args as [Node];
+      return `tree:${node.id}`;
+    },
     ttl: "5m",
   })
   async buildTreeSafe(node: Node) {
@@ -742,7 +745,7 @@ class TreeModelClass extends BaseModelClass {
 
   // ✅ 해결책: 직렬화 가능한 데이터만 사용
   @cache({
-    key: (nodeId: number, depth: number) => `tree:${nodeId}:${depth}`,
+    key: (nodeId, depth) => `tree:${nodeId}:${depth}`,
     ttl: "5m",
   })
   async buildTreeById(nodeId: number, depth: number = 3) {
@@ -766,7 +769,8 @@ interface ListFilters {
 class ProductModelClass extends BaseModelClass {
   // ✅ 필터를 정규화하여 일관된 키 생성
   @cache({
-    key: (filters: ListFilters, page: number, pageSize: number) => {
+    key: (...args) => {
+      const [filters, page, pageSize] = args as [ListFilters, number, number];
       // undefined/null 값 제거
       const normalized: Record<string, string> = {};
 
@@ -809,7 +813,7 @@ class AnalyticsModelClass extends BaseModelClass {
 
   // ✅ 해결책: 해시 사용
   @cache({
-    key: (config: LargeConfigObject) => {
+    key: (config) => {
       const hash = crypto.createHash("md5").update(JSON.stringify(config)).digest("hex");
       return `analytics:${hash}`;
     },
@@ -822,8 +826,8 @@ class AnalyticsModelClass extends BaseModelClass {
 
   // ✅ 해결책: 주요 속성만 사용
   @cache({
-    key: (config: LargeConfigObject) => {
-      const { dataSource, dateRange, metrics } = config;
+    key: (...args) => {
+      const [{ dataSource, dateRange, metrics }] = args as [LargeConfigObject];
       return `analytics:${dataSource}:${dateRange}:${metrics.join(",")}`;
     },
     ttl: "1h",

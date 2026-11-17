@@ -159,7 +159,7 @@ await UserModel.getUsersByStatus("inactive"); // UserModel.getUsersByStatus:inac
 class PostModelClass extends BaseModelClass {
   @cache({
     ttl: "10m",
-    key: (userId: number, page: number) => `posts:user:${userId}:page:${page}`,
+    key: (userId, page) => `posts:user:${userId}:page:${page}`,
   })
   async getUserPosts(userId: number, page: number = 1) {
     return this.getPuri("r")

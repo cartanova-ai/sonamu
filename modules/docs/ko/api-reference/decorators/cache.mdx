@@ -135,7 +135,7 @@ async getQuickData() {}
     ```typescript
     @cache({
       ttl: "10m",
-      key: (subset: string, id: number) => `product:${subset}:${id}`
+      key: (subset, id) => `product:${subset}:${id}`
     })
     async findById<T extends ProductSubsetKey>(subset: T, id: number) {
       // 캐시 키: "product:A:123"
@@ -143,7 +143,8 @@ async getQuickData() {}
 
     @cache({
       ttl: "1h",
-      key: (filters: FilterParams) => {
+      key: (...args) => {
+        const [filters] = args as [FilterParams];
         const sorted = Object.keys(filters).sort();
         return `search:${sorted.map(k => `${k}=${filters[k]}`).join(":")}`;
       }
@@ -155,6 +156,24 @@ async getQuickData() {}
 
   </Tab>
 </Tabs>
+
+키 함수는 메서드 인자를 `unknown[]`으로 받으므로 매개변수에 타입을 붙이면 컴파일되지 않습니다. 인자를 문자열에 넣기만 할 때는 매개변수에 타입을 붙이지 말고, 인자의 속성을 읽어야 할 때는 `const [params] = args as [SearchParams]`처럼 메서드의 인자 타입으로 단언하세요.
+
+### scope
+
+같은 인자로 호출한 결과를 사용자 사이에서 공유할지 정합니다.
+
+**기본값:** `"global"`
+
+```typescript
+@cache({ ttl: "1m", scope: "user" })
+async whoami() {
+  // 요청 안: "User.whoami:user:\"u1\"" 또는 "User.whoami:anon"
+  // 요청 밖: "User.whoami"
+}
+```
+
+`Sonamu.getContext().user`처럼 인자가 아닌 요청 사용자에 따라 결과가 달라지면 `scope: "user"`를 지정하세요. 자동 키·문자열 키는 `scope`와 관계없이 Context 인자를 그 사용자의 구분자로 바꾸고, 함수 키에는 `scope: "user"`일 때만 사용자 구분자가 붙습니다. 자세한 키 규칙은 [@cache 데코레이터](/ko/advanced-features/caching/cache-decorator)를 참고하세요.
 
 ### store
 
@@ -373,9 +392,11 @@ async getData() {}
 ```typescript
 @cache({ ttl: "10m" })
 async search(params: { name: string; age: number }) {
-  // 캐시 키: "User.search:{"name":"Alice","age":30}"
+  // 캐시 키: "User.search:[{"name":"Alice","age":30}]"
 }
 ```
+
+Context 인자는 직렬화하지 않고 그 사용자의 구분자로 바꿉니다. `BigInt`, 순환 참조, `Map`/`Set`, 함수처럼 직렬화할 수 없는 인자는 캐시 조회와 메서드 실행 전에 `CacheKeySerializationError`(`TypeError`의 하위 클래스)를 던집니다. 이 에러는 `sonamu`와 `sonamu/cache`에서 가져올 수 있습니다.
 
 <Tip>직렬화가 어려운 객체는 `key` 함수로 직접 키를 생성하세요.</Tip>
 
@@ -530,7 +551,7 @@ export default defineConfig({
       @api({ httpMethod: "GET" })
       @cache({
         ttl: "10m",
-        key: (id: number) => `user:profile:${id}`,
+        key: (id) => `user:profile:${id}`,
         tags: ["users"]
       })
       async getProfile(id: number) {
@@ -589,7 +610,7 @@ export default defineConfig({
       @api({ httpMethod: "GET" })
       @cache({
         ttl: "1d",
-        key: (date: string) => `analytics:daily:${date}`
+        key: (date) => `analytics:daily:${date}`
       })
       async getDailyStats(date: string) {
         const rdb = this.getPuri("r");
@@ -614,7 +635,8 @@ export default defineConfig({
       @api({ httpMethod: "GET" })
       @cache({
         ttl: "15m",
-        key: (query: string, filters: SearchFilters) => {
+        key: (...args) => {
+          const [query, filters] = args as [string, SearchFilters];
           const filterStr = Object.entries(filters)
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([k, v]) => `${k}:${v}`)
