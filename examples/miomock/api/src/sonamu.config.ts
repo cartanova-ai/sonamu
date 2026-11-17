@@ -152,9 +152,12 @@ export default defineConfig({
       ],
       emailAndPassword: { enabled: true },
       baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}`,
-      secret: process.env.BETTER_AUTH_SECRET ?? "miomock-secret-key-change-this-in-production",
+      // 공개 문자열을 fallback으로 두면 누구나 세션·토큰을 위조할 수 있다. 값이 없으면 test 외 환경에서 기동을 거부한다.
+      secret: process.env.BETTER_AUTH_SECRET,
       session: {
-        expiresIn: 60 * 60 * 24 * 365,
+        // 탈취된 세션이 오래 살지 않도록 7일로 두고, 하루마다 만료를 연장한다(sliding).
+        expiresIn: 60 * 60 * 24 * 7,
+        updateAge: 60 * 60 * 24,
       },
       user: {
         fields: {

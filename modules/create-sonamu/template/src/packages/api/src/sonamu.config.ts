@@ -116,10 +116,14 @@ export default defineConfig({
     //   plugins: [twoFactor(), passkey()],
     //   emailAndPassword: { enabled: true },
     //   baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}`,
-    //   secret: process.env.BETTER_AUTH_SECRET ?? "miomock-secret-key-change-this-in-production",
+    //   // 공개 문자열을 fallback으로 두지 마세요. 값이 없으면 test 외 환경에서 기동을 거부합니다.
+    //   // 생성: openssl rand -base64 32
+    //   secret: process.env.BETTER_AUTH_SECRET,
     //   trustedOrigins: ["http://localhost:5173"],
     //   session: {
-    //     expiresIn: 60 * 60 * 24 * 365,
+    //     // 7일 뒤 만료, 하루마다 연장(sliding)
+    //     expiresIn: 60 * 60 * 24 * 7,
+    //     updateAge: 60 * 60 * 24,
     //   },
     //   user: {
     //     fields: {

@@ -272,8 +272,11 @@ export const cleanupExpiredSessions = workflow(
 ## Cautions
 
 <Warning>
-  1. Set better-auth's `secret` (or the `BETTER_AUTH_SECRET` environment variable) in production;
-  it signs session cookies.
+  1. Set better-auth's `secret` (or the `BETTER_AUTH_SECRET` environment variable) to a random
+  value such as `openssl rand -base64 32`; it signs session cookies and tokens. Outside test
+  (development, staging, production), Sonamu refuses to start the server when the secret is missing
+  or a publicly known value (the old example fallback or better-auth's default). If you ran with a
+  public value, rotate the secret and revoke existing sessions.
   2. Set `baseURL` and `trustedOrigins` to the URLs your clients actually use.
   3. Serve production traffic over HTTPS so better-auth can issue secure cookies.
   4. Keep `cookieCache.maxAge` short if you rely on revoking sessions.

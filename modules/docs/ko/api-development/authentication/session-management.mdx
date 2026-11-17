@@ -269,8 +269,10 @@ export const cleanupExpiredSessions = workflow(
 ## 주의사항
 
 <Warning>
-  1. 프로덕션에서는 better-auth의 `secret`(또는 `BETTER_AUTH_SECRET` 환경 변수)을 설정하세요. 세션
-  쿠키 서명에 쓰입니다.
+  1. better-auth의 `secret`(또는 `BETTER_AUTH_SECRET` 환경 변수)을 `openssl rand -base64 32`
+  같은 임의 값으로 설정하세요. 세션 쿠키와 토큰 서명에 쓰입니다. test 외 환경(development·staging·production)에서
+  secret이 없거나 공개된 값(예시의 fallback 문자열, better-auth 기본값)이면 Sonamu가 서버 기동을 거부합니다.
+  공개 값으로 운영했다면 secret을 교체하고 기존 세션을 폐기하세요.
   2. `baseURL`과 `trustedOrigins`를 클라이언트가 실제로 쓰는 URL로 설정하세요.
   3. better-auth가 secure 쿠키를 발급할 수 있도록 프로덕션은 HTTPS로 서비스하세요.
   4. 세션 폐기에 의존한다면 `cookieCache.maxAge`를 짧게 유지하세요.

@@ -479,6 +479,8 @@ class SonamuClass {
     }
 
     const options = this.config.server;
+    // 공개된 secret으로 서명하면 세션·토큰을 위조할 수 있으므로 라우트 등록·listen 전에 거부한다.
+    await this.assertAuthSecretForServing();
     const { default: fastify } = await import("fastify");
     const { getLogTapeFastifyLogger } = await import("@logtape/fastify");
     // Fastify 5는 logger 옵션에 설정 객체만 받고, 로거 인스턴스는 loggerInstance로 넘겨야 한다
@@ -533,6 +535,7 @@ class SonamuClass {
       await this.init(options?.doSilent, options?.enableSync);
     }
 
+    await this.assertAuthSecretForServing();
     this.server = server;
     this.websocketRuntime ??= new WebSocketRuntime(this.config.server.websocket);
     await this.refreshHttpValidators();
@@ -2113,6 +2116,20 @@ class SonamuClass {
         "WebSocket heartbeat is greater than or equal to keepAliveTimeout; align infrastructure idle timeouts to avoid unexpected disconnects.",
       );
     }
+  }
+
+  /**
+   * auth를 쓰는 서버를 띄우기 전에 better-auth secret이 없거나 공개된 값이면 기동을 거부합니다(test 환경 제외).
+   * CLI 도구(sync·migrate 등)도 init()을 부르지만 요청을 받지 않으므로 init()이 아니라 서버 경계에서 확인합니다.
+   */
+  private async assertAuthSecretForServing(): Promise<void> {
+    const authConfig = this.config.server.auth;
+    if (!authConfig) {
+      return;
+    }
+
+    const { assertAuthSecretConfigured } = await import("../auth/auth-secret");
+    assertAuthSecretConfigured(authConfig);
   }
 
   /**
