@@ -1,6 +1,6 @@
 {
   "name": "@sonamu-kit/opensearch",
-  "version": "0.13.9",
+  "version": "0.14.0",
   "description": "OpenSearch transactional indexing and query integration for Sonamu",
   "license": "MIT",
   "author": "CartaNova <dev@cartanova.ai>",
@@ -80,7 +80,7 @@
   "peerDependencies": {
     "@opensearch-project/opensearch": "catalog:",
     "knex": "catalog:",
-    "sonamu": ">=0.13.9"
+    "sonamu": ">=0.14.0"
   },
   "peerDependenciesMeta": {
     "sonamu": {

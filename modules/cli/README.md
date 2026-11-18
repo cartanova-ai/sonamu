@@ -1,12 +1,12 @@
 # `@sonamu-kit/cli`
 
-The dedicated Sonamu CLI. Version 0.3.0 uses Optique 1.3.6 and requires
-`sonamu ^0.13.0`.
+The dedicated Sonamu CLI. Version 0.4.0 uses Optique 1.3.6 and requires
+`sonamu ^0.14.0`.
 
 ## Install
 
 ```sh
-pnpm add sonamu@^0.13.0 @sonamu-kit/cli@0.3.0
+pnpm add sonamu@^0.14.0 @sonamu-kit/cli@0.4.0
 ```
 
 `@sonamu-kit/cli` is the only package that provides the `sonamu` executable.

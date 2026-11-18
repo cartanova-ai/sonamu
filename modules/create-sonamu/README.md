@@ -158,10 +158,10 @@ Docker 초기화는 데이터베이스만 생성합니다. Sonamu UI에서 첫 �
 ```bash
 # 프로젝트 루트 기준
 cd packages/api
-mise exec -- pnpm add sonamu@^0.13.0 @sonamu-kit/cli@0.3.0
+mise exec -- pnpm add sonamu@^0.14.0 @sonamu-kit/cli@0.4.0
 ```
 
-`@sonamu-kit/cli` 0.3.0은 `sonamu` `^0.13.0`과 호환됩니다. `sonamu` 패키지는 이전 CLI를 대신
+`@sonamu-kit/cli` 0.4.0은 `sonamu` `^0.14.0`과 호환됩니다. `sonamu` 패키지는 이전 CLI를 대신
 실행하는 호환용 실행 파일을 제공하지 않습니다. 기존 `sonamu dev`, `sonamu build` 스크립트는 두
 의존성을 업데이트한 뒤 그대로 사용할 수 있습니다.
 

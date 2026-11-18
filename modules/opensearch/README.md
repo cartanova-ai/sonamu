@@ -27,7 +27,7 @@ pnpm add @sonamu-kit/opensearch @opensearch-project/opensearch knex
 | OpenSearch | 3.5.0 이상 4.0.0 미만 | AWS OpenSearch Service 같은 관리형 서비스는 테스트하지 않았습니다 |
 | `@opensearch-project/opensearch` | `^3.9.0` | peer 의존성. 클라이언트는 애플리케이션이 만들어 주입합니다 |
 | `knex` | `^3.3.0` | peer 의존성 |
-| `sonamu` | `>=0.13.9` | 선택 peer 의존성. `/sonamu` 진입점에서만 필요합니다 |
+| `sonamu` | `>=0.14.0` | 선택 peer 의존성. `/sonamu` 진입점에서만 필요합니다 |
 | Node.js | 24 이상 | |
 
 설치하는 것만으로는 아무것도 켜지지 않습니다. 모든 팩토리는 연결, 타이머, 스키마 접근 없이 만들어지고, 명시적인 작업이나 `start()` 호출 때만 연결합니다.

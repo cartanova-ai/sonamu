@@ -100,10 +100,10 @@ API 패키지는 `sonamu`와 `@sonamu-kit/cli`를 모두 직접 의존합니다.
 ```bash
 # 프로젝트 루트 기준
 cd packages/api
-mise exec -- pnpm add sonamu@^0.13.0 @sonamu-kit/cli@0.3.0
+mise exec -- pnpm add sonamu@^0.14.0 @sonamu-kit/cli@0.4.0
 ```
 
-`@sonamu-kit/cli` 0.3.0은 `sonamu` `^0.13.0`과 호환됩니다. `sonamu` 패키지는 이전 CLI를 대신
+`@sonamu-kit/cli` 0.4.0은 `sonamu` `^0.14.0`과 호환됩니다. `sonamu` 패키지는 이전 CLI를 대신
 실행하는 호환용 실행 파일을 제공하지 않습니다.
 
 ---
