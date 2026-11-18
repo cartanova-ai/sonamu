@@ -192,6 +192,13 @@ Previously, `@upload()` without `limits` ignored `server.plugins.multipart.limit
 
 Files uploaded with a MIME type outside the allow-list (HTML, SVG, XML, and so on) now get the `bin` extension from `file.extname` and default stream keys, and `saveToDisk` and automatic stream uploads store them as `application/octet-stream`. Review screens that display such files, such as SVGs, directly in the browser. `file.mimetype` and custom keys are unchanged. If you serve the fs upload directory through `server.plugins.static`, set `setHeaders` to `createUploadStaticHeaders({ uploadDir })` from `sonamu/storage`, as new templates do (`uploadDir` must match the fs driver's `location`; pass an existing callback through its `setHeaders` option). See [Static file serving](/en/advanced-features/storage/storage-drivers#static-file-serving) for details.
 
+### New: OpenSearch search and CLI plugins
+
+These are additions; existing projects need no changes.
+
+- `@sonamu-kit/opensearch`: an optional package that indexes PostgreSQL data in OpenSearch per transaction and searches it. Start with the [OpenSearch Search Overview](/en/advanced-features/opensearch/overview).
+- `cli.plugins`: adds commands to the `sonamu` CLI from `sonamu.config.ts`. See [CLI plugins](/en/tools-and-cli/sonamu-cli/reference#cli-plugins) for registration, and [Running administration from the CLI](/en/advanced-features/opensearch/index-administration#running-administration-from-the-cli) for the OpenSearch `sonamu search` command.
+
 ## 0.13.10
 
 ### Nested select nullability is decided by `id` only
