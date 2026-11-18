@@ -9,6 +9,9 @@
 set -e
 set +m
 
+# test 외 환경은 auth secret이 없으면 기동을 거부하므로, 값이 없을 때만 실행마다 임시 secret을 만든다
+export BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET:-$(openssl rand -hex 32)}"
+
 # 포트를 사용하는 프로세스 종료 함수
 kill_port() {
   local PORT=$1
@@ -24,7 +27,7 @@ wait_for_http() {
   local PID=$1
   local URL=$2
   local LOG_FILE=$3
-  
+
   for i in {1..50}; do
     # 프로세스가 죽었으면 실패
     if ! kill -0 $PID 2>/dev/null; then
@@ -32,16 +35,16 @@ wait_for_http() {
       cat $LOG_FILE
       exit 1
     fi
-    
+
     # HTTP 응답 확인 (2xx만 성공)
     HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" $URL 2>/dev/null || echo "000")
     if [ "$HTTP_CODE" != "000" ] && [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
       return 0
     fi
-    
+
     sleep 0.2
   done
-  
+
   # 10초 내에 응답이 안 왔거나 non-2xx 응답
   echo "HTTP request failed or non-2xx response (code: $HTTP_CODE)"
   cat $LOG_FILE
@@ -49,12 +52,14 @@ wait_for_http() {
 }
 
 echo "Testing miomock-api (start)..."
-cd examples/miomock/api && mise exec -- pnpm start > /tmp/miomock-api-start.log 2>&1 & PID=$!
+cd examples/miomock/api && mise exec -- pnpm start >/tmp/miomock-api-start.log 2>&1 &
+PID=$!
 wait_for_http $PID http://localhost:10280/api/user/getMyIP /tmp/miomock-api-start.log
 kill_port 10280
 
 echo "Testing miomock-api (dev)..."
-cd examples/miomock/api && mise exec -- pnpm dev > /tmp/miomock-api-dev.log 2>&1 & PID=$!
+cd examples/miomock/api && mise exec -- pnpm dev >/tmp/miomock-api-dev.log 2>&1 &
+PID=$!
 wait_for_http $PID http://localhost:10280/api/user/getMyIP /tmp/miomock-api-dev.log
 kill_port 10280
 
