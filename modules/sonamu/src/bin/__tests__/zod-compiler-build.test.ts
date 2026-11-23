@@ -40,6 +40,7 @@ describe("TypeScript 7 Web 빌드 정책", () => {
     expect(stdout).toBe(argument);
   });
 
+  // tsc 하위 프로세스를 세 번 실행하므로, 여러 패키지 테스트가 함께 도는 CI에서는 기본 5초를 넘깁니다.
   it("선언을 만들지 않는 앱은 모든 project reference를 타입 검사한다", async () => {
     const webRoot = await mkdtemp(path.join(process.cwd(), ".sonamu-web-typecheck-test-"));
     webTypecheckRoots.push(webRoot);
@@ -85,7 +86,7 @@ describe("TypeScript 7 Web 빌드 정책", () => {
       expect(command).not.toContain("tsc -b");
       expect(command).not.toContain("typecheck-web");
     }
-  });
+  }, 30_000);
 });
 
 describe("API zod-compiler 빌드 정책", () => {
