@@ -59,7 +59,7 @@ Sonamu UI is served only by local dev servers (`development` and `test` environm
 - Tools that call `/sonamu-ui/api/**` directly must also send the token from the `sonamu-ui-token` meta tag of the current HTML in the same header. A missing or wrong token returns 401; a request from another origin returns 403 even with a valid token.
 - The editor-launch APIs `tools/openVscode`, `tools/openEditor`, `cdd/openSource`, and `cdd/editContent` accept only same-origin POST requests with `Content-Type: application/json` and an `X-Sonamu-UI: 1` header; anything else is rejected with 403.
 - When `tools/openVscode` receives `absPath`, it opens only an existing file under the app root (the parent directory of the API directory). Paths outside the app root, symlinks pointing outside it, directories, and missing files are rejected with 400.
-- Requests whose `Host` header is not `localhost`, `*.localhost`, an IP address, or the hostname in `server.listen.host` or `server.baseUrl` return 403. To reach the UI through an alias domain or a tunnel, set that hostname in one of these two [server options](/en/configuration/sonamu-config/server).
+- Requests whose `Host` header is not `localhost`, `*.localhost`, an IP address, the hostname in `server.listen.host` or `server.baseUrl`, or a hostname listed in `server.devAllowedHosts` return 403. To reach the UI through an alias domain or a tunnel, add that hostname to [`server.devAllowedHosts`](/en/configuration/sonamu-config/server#devallowedhosts).
 
 ## Interface Structure
 

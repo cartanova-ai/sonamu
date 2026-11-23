@@ -863,9 +863,17 @@ class SonamuClass {
     });
 
     // Vite middleware 등록 (Vite 에셋 처리)
+    // DevRunner도 Fastify 라우트이므로, Vite의 Host 검사가 server.devAllowedHosts로 들어온 Sonamu UI 테스트 패널 요청을 막지 않도록 건너뜁니다.
+    const fastifyOnlyPrefixes = [
+      this.config.api.route.prefix,
+      "/sonamu-ui",
+      ...(this.config.test?.devRunner?.enabled
+        ? [this.config.test.devRunner.routePrefix ?? "/__test__"]
+        : []),
+    ];
     server.use((req, res, next) => {
-      // API와 Sonamu UI는 Fastify 라우트가 처리하도록 skip
-      if (req.url?.startsWith(this.config.api.route.prefix) || req.url?.startsWith("/sonamu-ui")) {
+      // API, Sonamu UI, DevRunner는 Fastify 라우트가 처리하도록 skip
+      if (fastifyOnlyPrefixes.some((prefix) => req.url?.startsWith(prefix))) {
         return next();
       }
       // 나머지는 Vite middleware로 전달

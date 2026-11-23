@@ -60,6 +60,27 @@ describe("getConfiguredDevHostnames", () => {
     expect(getConfiguredDevHostnames({ baseUrl: "http://[::1]:34900" })).toEqual(["::1"]);
     expect(getConfiguredDevHostnames({ baseUrl: "not a url" })).toEqual([]);
   });
+
+  it("devAllowedHosts의 호스트 이름을 기본 허용 목록에 더한다", () => {
+    const hostnames = getConfiguredDevHostnames({
+      devAllowedHosts: ["localhost", "local.example.com"],
+    });
+
+    expect(hostnames).toEqual(["localhost", "local.example.com"]);
+    expect(isAllowedDevHost("Local.Example.com:34900", hostnames)).toBe(true);
+    // 기본 허용 대상은 devAllowedHosts에 없어도 그대로 허용한다.
+    expect(isAllowedDevHost("127.0.0.1:34900", hostnames)).toBe(true);
+    expect(isAllowedDevHost("other.example.com:34900", hostnames)).toBe(false);
+  });
+
+  it.each(["", "local.example.com:34900", "http://local.example.com", "local example", "a/b"])(
+    "devAllowedHosts에 호스트 이름이 아닌 %j 가 있으면 오류를 던진다",
+    (entry) => {
+      expect(() => getConfiguredDevHostnames({ devAllowedHosts: [entry] })).toThrow(
+        "server.devAllowedHosts",
+      );
+    },
+  );
 });
 
 // 라우트가 의존하는 매니저 기능을 모두 제공하는 테스트 대역입니다.

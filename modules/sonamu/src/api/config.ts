@@ -214,6 +214,20 @@ export type SonamuServerOptions = {
     host?: string;
   };
 
+  /**
+   * 로컬 개발 서버(development·test)의 Sonamu UI와 DevRunner가 추가로 받아들일 `Host` 호스트 이름 목록입니다.
+   *
+   * localhost, `*.localhost`, IP 주소, `listen.host`·`baseUrl`의 호스트 이름은 지정하지 않아도 허용됩니다.
+   * 포트·스킴 없이 호스트 이름만 적고, 대소문자는 구분하지 않습니다. 접속 주체를 제한하는 인증이 아니라
+   * DNS rebinding 방어용 허용 목록이므로 직접 소유한 도메인만 지정하세요.
+   *
+   * @example
+   * ```typescript
+   * devAllowedHosts: ["local.example.com"]
+   * ```
+   */
+  devAllowedHosts?: readonly string[];
+
   plugins?: {
     /** 응답 압축 플러그인 (@fastify/compress) */
     compress?: boolean | FastifyCompressOptions;

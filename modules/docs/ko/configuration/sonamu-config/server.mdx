@@ -156,8 +156,32 @@ export default defineConfig({
 <Warning>프로덕션 환경에서 `0.0.0.0`을 사용할 때는 방화벽 설정을 확인하세요.</Warning>
 
 <Note>
-  로컬 개발 서버(`development`·`test`)의 Sonamu UI와 DevRunner 경로는 `localhost`, `*.localhost`, IP 주소, 그리고 `listen.host`와 `baseUrl`의 호스트 이름으로 들어온 요청만 받고, 다른 `Host`는 403으로 거부합니다. `0.0.0.0`으로 바인딩해도 이 검사는 그대로이므로, 별칭 도메인이나 터널로 접속하려면 그 호스트 이름을 `listen.host`나 `baseUrl`에 지정하세요. 앱 API에는 적용되지 않습니다.
+  로컬 개발 서버(`development`·`test`)의 Sonamu UI와 DevRunner 경로는 `localhost`, `*.localhost`, IP 주소, `listen.host`·`baseUrl`의 호스트 이름, 그리고 [`devAllowedHosts`](#devallowedhosts)에 지정한 호스트 이름으로 들어온 요청만 받고, 다른 `Host`는 403으로 거부합니다. `0.0.0.0`으로 바인딩해도 이 검사는 그대로이므로, 별칭 도메인이나 터널로 접속하려면 그 호스트 이름을 `devAllowedHosts`에 지정하세요. 앱 API에는 적용되지 않습니다.
 </Note>
+
+## devAllowedHosts
+
+로컬 개발 서버(`development`·`test`)의 Sonamu UI와 DevRunner가 추가로 받아들일 `Host` 호스트 이름 목록입니다. 공개 DNS에서 `127.0.0.1`을 가리키는 개발용 도메인이나 `/etc/hosts` 별칭, 터널 도메인으로 Sonamu UI에 접속할 때 지정합니다.
+
+**타입**: `string[]` (선택적)
+
+```typescript
+export default defineConfig({
+  server: {
+    listen: { port: 34900 },
+    devAllowedHosts: ["local.example.com"],
+  },
+});
+```
+
+- `localhost`, `*.localhost`, IP 주소, `listen.host`·`baseUrl`의 호스트 이름은 지정하지 않아도 계속 허용됩니다. 이 목록은 그 위에 더해집니다.
+- 포트·스킴 없이 호스트 이름만 적습니다. 대소문자는 구분하지 않고, 와일드카드는 지원하지 않습니다. `"local.example.com:34900"`이나 `"http://local.example.com"`처럼 적으면 서버 시작 시 오류가 납니다.
+- staging·production에서는 Sonamu UI와 DevRunner를 등록하지 않으므로 이 옵션도 쓰이지 않습니다.
+- 이 옵션은 Sonamu UI와 DevRunner에만 적용됩니다. `sonamu dev`가 Vite로 함께 띄우는 웹 앱 페이지를 같은 도메인으로 열려면 웹 프로젝트의 `vite.config`에 있는 `server.allowedHosts`에도 그 도메인을 넣으세요.
+
+<Warning>
+  이 목록은 DNS rebinding을 막기 위한 `Host` 검사일 뿐, 누가 접속할 수 있는지를 제한하지 않습니다. 직접 소유한 도메인만 지정하고, 서버를 `0.0.0.0`에 바인딩해 다른 기기에서 접속할 수 있게 하는 용도로 쓰지 마세요.
+</Warning>
 
 ## fastify
 

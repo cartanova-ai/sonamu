@@ -9,6 +9,9 @@ import { SD } from "../dict/sd";
 const HOST_HEADER_PATTERN =
   /^(?:\[(?<ipv6>[0-9a-f:.]+)\]|(?<name>[^\s:@/?#[\]\\]+))(?::\d{1,5})?$/i;
 
+/** devAllowedHosts 항목은 포트·스킴·경로가 없는 호스트 이름이어야 합니다. */
+const ALLOWED_HOSTNAME_PATTERN = /^[^\s:@/?#[\]\\]+$/;
+
 /**
  * 개발 서버의 Sonamu UI·dev 라우트가 받아들일 Host 헤더인지 판정합니다.
  *
@@ -51,10 +54,13 @@ export function isAllowedDevHost(
 }
 
 /**
- * 서버 설정에서 개발자가 직접 지정한 호스트 이름(listen.host, baseUrl의 호스트)을 모읍니다.
+ * 서버 설정에서 개발자가 직접 지정한 호스트 이름(listen.host, baseUrl의 호스트, devAllowedHosts)을 모읍니다.
+ *
+ * @throws devAllowedHosts에 포트·스킴이 붙는 등 호스트 이름이 아닌 항목이 있으면 Error를 던집니다.
+ *   이런 항목은 어떤 Host와도 일치하지 않아 조용히 403만 내므로 부팅 시점에 알립니다.
  */
 export function getConfiguredDevHostnames(
-  serverOptions: Pick<SonamuServerOptions, "baseUrl" | "listen">,
+  serverOptions: Pick<SonamuServerOptions, "baseUrl" | "listen" | "devAllowedHosts">,
 ): string[] {
   const hostnames: string[] = [];
   const listenHost = serverOptions.listen?.host;
@@ -67,6 +73,14 @@ export function getConfiguredDevHostnames(
     } catch {
       // URL이 아닌 baseUrl은 허용 호스트에 더하지 않습니다.
     }
+  }
+  for (const allowed of serverOptions.devAllowedHosts ?? []) {
+    if (!ALLOWED_HOSTNAME_PATTERN.test(allowed)) {
+      throw new Error(
+        `server.devAllowedHosts에는 포트·스킴 없는 호스트 이름만 지정할 수 있습니다: ${JSON.stringify(allowed)}`,
+      );
+    }
+    hostnames.push(allowed);
   }
   return hostnames;
 }

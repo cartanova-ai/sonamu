@@ -127,4 +127,16 @@ describe("로컬 서버의 Sonamu UI·dev 라우트 Host 검사", () => {
 
     expect(response.statusCode).toBe(200);
   });
+
+  it("devAllowedHosts로 지정한 호스트 이름은 Sonamu UI와 DevRunner에서 허용한다", async () => {
+    const server = await createDevServer({ apiConfig, devAllowedHosts: ["local.example.com"] });
+
+    for (const url of ["/sonamu-ui/api/sonamu/config", "/__test__/status"]) {
+      const response = await server.inject({
+        url,
+        headers: { host: "local.example.com:34900", ...UI_TOKEN_HEADERS },
+      });
+      expect(response.statusCode).toBe(200);
+    }
+  });
 });

@@ -156,8 +156,32 @@ export default defineConfig({
 <Warning>When using `0.0.0.0` in production, verify your firewall settings.</Warning>
 
 <Note>
-  On local dev servers (`development` and `test`), the Sonamu UI and DevRunner routes accept only requests whose `Host` is `localhost`, `*.localhost`, an IP address, or the hostname in `listen.host` or `baseUrl`; any other `Host` is rejected with 403. Binding to `0.0.0.0` does not change this check, so to connect through an alias domain or a tunnel, set that hostname in `listen.host` or `baseUrl`. App APIs are not affected.
+  On local dev servers (`development` and `test`), the Sonamu UI and DevRunner routes accept only requests whose `Host` is `localhost`, `*.localhost`, an IP address, the hostname in `listen.host` or `baseUrl`, or a hostname listed in [`devAllowedHosts`](#devallowedhosts); any other `Host` is rejected with 403. Binding to `0.0.0.0` does not change this check, so to connect through an alias domain or a tunnel, add that hostname to `devAllowedHosts`. App APIs are not affected.
 </Note>
+
+## devAllowedHosts
+
+Additional `Host` hostnames that the Sonamu UI and DevRunner accept on local dev servers (`development` and `test`). Set it when you open Sonamu UI through a development domain whose public DNS points to `127.0.0.1`, an `/etc/hosts` alias, or a tunnel domain.
+
+**Type**: `string[]` (optional)
+
+```typescript
+export default defineConfig({
+  server: {
+    listen: { port: 34900 },
+    devAllowedHosts: ["local.example.com"],
+  },
+});
+```
+
+- `localhost`, `*.localhost`, IP addresses, and the hostnames in `listen.host` and `baseUrl` stay allowed without being listed. This list adds to them.
+- List hostnames only, without a port or scheme. Matching is case-insensitive, and wildcards are not supported. An entry such as `"local.example.com:34900"` or `"http://local.example.com"` makes the server fail at startup.
+- Sonamu UI and DevRunner are not registered in staging or production, so the option has no effect there.
+- The option applies only to Sonamu UI and DevRunner. To open the web app pages that `sonamu dev` serves through Vite on the same domain, also add the domain to `server.allowedHosts` in the web project's `vite.config`.
+
+<Warning>
+  This list is a `Host` check against DNS rebinding. It does not restrict who can connect. List only domains you own, and do not use it to expose the server to other devices by binding to `0.0.0.0`.
+</Warning>
 
 ## fastify
 
