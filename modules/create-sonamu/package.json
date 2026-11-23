@@ -33,6 +33,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "start": "node index.js",
     "prepublishOnly": "zx ./scripts/prepublish.mjs",
     "postpublish": "zx ./scripts/postpublish.mjs",

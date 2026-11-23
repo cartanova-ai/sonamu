@@ -1,0 +1,35 @@
+name: Setup workspace
+description: mise 도구 설치, npm 레지스트리 설정, 의존성 설치, 빌드를 수행합니다.
+
+inputs:
+  build:
+    description: 의존성 설치 후 mise run build를 실행할지 여부
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup mise
+      uses: jdx/mise-action@v4
+      with:
+        cache: true
+        install_args: --locked
+
+    - name: Configure npm registry
+      shell: bash
+      run: |
+        npmrc="${RUNNER_TEMP}/npmrc"
+        printf '%s\n' \
+          'registry=https://registry.npmjs.org/' \
+          'always-auth=false' > "${npmrc}"
+        echo "NPM_CONFIG_USERCONFIG=${npmrc}" >> "${GITHUB_ENV}"
+
+    - name: Install dependencies
+      shell: bash
+      run: mise exec -- pnpm install
+
+    - name: Build
+      if: inputs.build == 'true'
+      shell: bash
+      run: mise run build

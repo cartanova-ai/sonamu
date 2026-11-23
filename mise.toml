@@ -40,6 +40,14 @@ run = "pnpm --filter miomock-api --filter miomock-web build"
 [tasks.build]
 run = "pnpm --filter !ui-web -r build"
 
+# build 다음에 실행합니다. 일부 패키지가 sonamu 타입을 dist에서 읽습니다.
+[tasks.typecheck]
+run = "pnpm -r --if-present typecheck"
+
+# PostgreSQL 서비스가 필요한 tasks, 컨테이너를 직접 띄우는 opensearch, miomock은 CI에서 별도 job으로 실행합니다.
+[tasks."test:packages"]
+run = "pnpm -r --if-present --no-bail --filter '!miomock-*' --filter '!@sonamu-kit/opensearch' --filter '!@sonamu-kit/tasks' test"
+
 [tasks.dev]
 run = "pnpm --parallel --filter !sonamu-docs --filter !@sonamu-kit/react-sui --filter !ui-web dev"
 

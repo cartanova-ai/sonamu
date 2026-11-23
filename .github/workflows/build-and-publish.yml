@@ -9,16 +9,39 @@ on:
     branches:
       - master
 
-permissions: # 여기를 보세요: https://docs.npmjs.com/trusted-publishers#step-2-configure-your-cicd-workflow
-  id-token: write # Required for OIDC
+permissions:
   contents: read
-  packages: write # GHCR에 업로드할 때 필요함.
+
+# PR은 새 커밋이 오면 이전 실행을 취소합니다. push는 실행마다 그룹이 달라서 서로 취소하거나 대기하지 않습니다(배포 중단 방지).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  build-and-publish:
+  # 포맷, 린트, 빌드, 타입 검사를 먼저 통과해야 테스트를 시작합니다.
+  verify:
+    name: Verify (build, check, typecheck)
     runs-on: ubuntu-latest
-    environment: deployment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
 
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      # oxlint --type-aware와 tsc가 sonamu 타입을 dist에서 읽으므로 빌드 다음에 실행합니다.
+      - name: Lint and format check
+        run: mise run check
+
+      - name: Typecheck
+        run: mise run typecheck
+
+  test-core:
+    name: Test (miomock, task queue)
+    needs: verify
+    runs-on: ubuntu-latest
     services:
       # miomock의 PostgreSQL docker compose와 같음
       postgres:
@@ -36,7 +59,125 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
 
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      - name: Setup PostgreSQL (Miomock)
+        uses: ./.github/actions/setup-miomock-postgres
+
+      # sonamu.lock 지우고 sync가 잘 되는지 봅니다.
+      - name: Miomock sync test
+        run: scripts/miomock-sync-test.sh
+
+      # miomock-api와 miomock-web이 제대로 실행되는지 봅니다.
+      - name: Miomock smoke test
+        run: scripts/miomock-smoke-test.sh
+
+      # miomock-api의 테스트를 실행합니다.
+      - name: Miomock unit test
+        run: scripts/miomock-unit-test.sh
+
+      # Tasks 관련 통합 테스트를 실행합니다.
+      - name: Task Queue integration test
+        run: scripts/task-queue-integration-test.sh
+
+      - name: OpenSearch docs parity check
+        run: mise exec -- node modules/opensearch/scripts/check-docs-parity.mjs
+
+  # PostgreSQL 서비스가 필요 없는 패키지 테스트입니다. websocket-redis-adapter는 testcontainers로 Redis를 띄웁니다.
+  test-packages:
+    name: Test (packages)
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      - name: Package tests
+        run: mise run test:packages
+
+  test-miomock-search:
+    name: Test (miomock search)
+    needs: verify
+    runs-on: ubuntu-latest
+    services:
+      # miomock의 PostgreSQL docker compose와 같음
+      postgres:
+        image: ghcr.io/cartanova-ai/sonamu-postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: miomock123
+          POSTGRES_DB: postgres
+          TZ: Asia/Seoul
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      - name: Setup PostgreSQL (Miomock)
+        uses: ./.github/actions/setup-miomock-postgres
+
+      - name: Miomock search test
+        run: scripts/miomock-search-test.sh
+
+  # testcontainers로 PostgreSQL과 OpenSearch를 직접 띄우므로 서비스 컨테이너가 필요 없습니다.
+  test-opensearch:
+    name: Test (OpenSearch ${{ matrix.opensearch-version }})
+    needs: verify
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.5.0은 지원하는 가장 오래된 엔진입니다.
+        opensearch-version: ["3.5.0", "3.9.0"]
+    env:
+      SONAMU_OPENSEARCH_TEST_IMAGE: opensearchproject/opensearch:${{ matrix.opensearch-version }}
+      SONAMU_OPENSEARCH_TEST_POSTGRES_IMAGE: ghcr.io/cartanova-ai/sonamu-postgres:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      - name: OpenSearch integration test
+        run: scripts/opensearch-integration-test.sh
+
+  # 모든 테스트가 통과한 뒤, 버전이 바뀐 경우에만 ECR Public + GHCR에 이미지를 배포합니다.
+  publish-image:
+    name: Publish Image
+    needs: [test-core, test-packages, test-miomock-search, test-opensearch]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: deployment
+    permissions:
+      contents: read
+      id-token: write # AWS OIDC
+      packages: write # GHCR에 업로드할 때 필요함.
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -58,89 +199,43 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup mise
-        uses: jdx/mise-action@v4
+      # publish 스크립트(tsx, AWS SDK)만 필요하므로 빌드하지 않습니다.
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
         with:
-          cache: true
-          install_args: --locked
+          build: "false"
 
-      - name: Configure npm registry
-        shell: bash
-        run: |
-          npmrc="${RUNNER_TEMP}/npmrc"
-          printf '%s\n' \
-            'registry=https://registry.npmjs.org/' \
-            'always-auth=false' > "${npmrc}"
-          echo "NPM_CONFIG_USERCONFIG=${npmrc}" >> "${GITHUB_ENV}"
-
-      - name: Install dependencies
-        run: mise exec -- pnpm install
-
-      # GHCR에 이미지 올리기 위한 준비입니다.
       - name: Log in to GitHub Container Registry
-        if: github.event_name == 'push' # PR로 트리거 안 되게 해용
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 빌드와는 별개로 우선 업데이트일 경우에만, ECR Public + GHCR에 이미지를 배포합니다.
       - name: Publish Image
-        if: github.event_name == 'push' # PR로 트리거 안 되게 해용
         run: mise run publish:image
 
-      - name: Build
-        run: mise run build
+  # npm에 퍼블리시합니다. 이미지 배포와 서로 의존하지 않으므로 병렬로 실행합니다.
+  # 인증은 trusted publisher로 따로 처리됩니다(https://docs.npmjs.com/trusted-publishers#step-2-configure-your-cicd-workflow).
+  publish-npm:
+    name: Publish npm packages
+    needs: [test-core, test-packages, test-miomock-search, test-opensearch]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/stable-v'))
+    runs-on: ubuntu-latest
+    environment: deployment
+    permissions:
+      contents: read
+      id-token: write # Required for OIDC
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
 
-      - name: Setup PostgreSQL (Miomock)
-        run: |
-          # PostgreSQL 클라이언트 설치
-          sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
-          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-          sudo apt-get update && sudo apt-get install -y postgresql-client-18
-          # init.sql 실행
-          PGPASSWORD=miomock123 psql -U postgres -d template1 -h 127.0.0.1 -f examples/miomock/api/database/fixtures/init.sql
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
 
-      # sonamu.lock 지우고 sync가 잘 되는지 봅니다.
-      - name: Miomock sync test
-        run: scripts/miomock-sync-test.sh
-
-      # miomock-api와 miomock-web이 제대로 실행되는지 봅니다.
-      - name: Miomock smoke test
-        run: scripts/miomock-smoke-test.sh
-
-      # miomock-api의 테스트를 실행합니다.
-      - name: Miomock unit test
-        run: scripts/miomock-unit-test.sh
-
-      - name: Miomock search test
-        run: scripts/miomock-search-test.sh
-
-      # Tasks 관련 통합 테스트를 실행합니다.
-      - name: Task Queue integration test
-        run: scripts/task-queue-integration-test.sh
-
-      - name: OpenSearch docs parity check
-        run: mise exec -- node modules/opensearch/scripts/check-docs-parity.mjs
-
-      # 3.5.0 is the oldest supported engine. The ghcr.io mirror is already pulled by the service container.
-      - name: OpenSearch integration test (3.5.0)
-        env:
-          SONAMU_OPENSEARCH_TEST_POSTGRES_IMAGE: ghcr.io/cartanova-ai/sonamu-postgres:latest
-        run: scripts/opensearch-integration-test.sh
-
-      - name: OpenSearch integration test (3.9.0)
-        env:
-          SONAMU_OPENSEARCH_TEST_IMAGE: opensearchproject/opensearch:3.9.0
-          SONAMU_OPENSEARCH_TEST_POSTGRES_IMAGE: ghcr.io/cartanova-ai/sonamu-postgres:latest
-        run: scripts/opensearch-integration-test.sh
-
-      # npm에 퍼블리시합니다.
-      # 인증은 trusted publisher로 따로 처리됩니다(https://docs.npmjs.com/trusted-publishers#step-2-configure-your-cicd-workflow).
       - name: Publish
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/stable-v'))
         run: |
           if [ "${GITHUB_REF_NAME}" = "master" ]; then
             export NPM_DIST_TAG=latest

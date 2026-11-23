@@ -47,6 +47,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint src",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run --config vitest.config.ts",
     "test:exports": "node --test tests/package-exports.test.mjs",
     "preview": "vite preview",

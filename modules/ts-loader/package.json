@@ -23,6 +23,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -b",
+    "typecheck": "tsc --noEmit",
     "test": "node --no-warnings --experimental-vm-modules --enable-source-maps --test-reporter=spec --test 'dist/__tests__/**/*.js'",
     "prepublishOnly": "pnpm build"
   },

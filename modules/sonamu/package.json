@@ -90,6 +90,8 @@
     "build:sonamu": "tsdown && tsc --emitDeclarationOnly",
     "build:ui-web": "cd ui-web && pnpm install && pnpm build",
     "benchmark:http-validator": "tsx benchmarks/run-http-validator-benchmark.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm run test:type && pnpm run test:unit",
     "test:type": "vitest run --typecheck test-d.ts",
     "test:unit": "vitest run --config vitest.config.ts"
   },

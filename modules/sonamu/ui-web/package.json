@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "tsx ../../../scripts/hard-link.ts",
-    "build": "tsc --noEmit && vite build"
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/react": "catalog:",

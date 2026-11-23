@@ -1,0 +1,16 @@
+name: Setup PostgreSQL (Miomock)
+description: PostgreSQL 18 클라이언트를 설치하고 miomock init.sql을 실행합니다. job에 postgres 서비스가 있어야 합니다.
+
+runs:
+  using: composite
+  steps:
+    - name: Setup PostgreSQL (Miomock)
+      shell: bash
+      run: |
+        # PostgreSQL 클라이언트 설치
+        sudo install -d /usr/share/postgresql-common/pgdg
+        sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+        echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+        sudo apt-get update && sudo apt-get install -y postgresql-client-18
+        # init.sql 실행
+        PGPASSWORD=miomock123 psql -U postgres -d template1 -h 127.0.0.1 -f examples/miomock/api/database/fixtures/init.sql

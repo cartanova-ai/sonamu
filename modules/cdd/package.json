@@ -32,6 +32,7 @@
     "build": "tsdown && tsc --emitDeclarationOnly",
     "check": "tsc --noEmit && oxlint src && oxfmt --check src",
     "check:type": "tsc --noEmit",
+    "typecheck": "pnpm run check:type",
     "check:format": "oxfmt src",
     "test": "vitest run",
     "test:watch": "vitest watch --standalone"
