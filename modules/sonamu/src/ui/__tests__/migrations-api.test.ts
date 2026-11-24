@@ -349,4 +349,94 @@ describe("Sonamu UI 마이그레이션 API", () => {
       expect(slack.posted()[0]).toContain("롤백 승인 요청");
     });
   });
+
+  describe("--deploy 모드(SONAMU_DEPLOY=yes)", () => {
+    const originalDeployEnv = process.env.SONAMU_DEPLOY;
+
+    afterEach(() => {
+      if (originalDeployEnv === undefined) {
+        delete process.env.SONAMU_DEPLOY;
+      } else {
+        process.env.SONAMU_DEPLOY = originalDeployEnv;
+      }
+    });
+
+    it("연결 목록에 staging·production을 노출하고 readonly는 계속 제외한다", async () => {
+      process.env.SONAMU_DEPLOY = "yes";
+      await start({});
+
+      const res = await app.inject({ method: "GET", url: "/api/migrations/connections" });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().connections.map(({ connKey }: { connKey: string }) => connKey)).toEqual([
+        "test",
+        "fixture",
+        "development",
+        "staging",
+        "production",
+      ]);
+    });
+
+    it("staging과 production 대상의 apply·rollback을 허용한다", async () => {
+      process.env.SONAMU_DEPLOY = "yes";
+      await start({});
+
+      const applyRes = await app.inject({
+        method: "POST",
+        url: "/api/migrations/apply",
+        payload: { targets: ["staging", "production"] },
+      });
+      const rollbackRes = await app.inject({
+        method: "POST",
+        url: "/api/migrations/rollback",
+        payload: { targets: ["staging"] },
+      });
+
+      expect(applyRes.statusCode).toBe(200);
+      expect(applyRes.body).toContain('"type":"complete"');
+      expect(applySpy).toHaveBeenCalledWith(["staging", "production"], expect.anything());
+      expect(rollbackRes.statusCode).toBe(200);
+      expect(rollbackRes.body).toContain('"type":"complete"');
+      expect(rollbackSpy).toHaveBeenCalledWith(["staging"], expect.anything());
+    });
+
+    it("deploy 모드에서도 원격 production 승인 설정이 있으면 승인 없이 실행할 수 없다", async () => {
+      process.env.SONAMU_DEPLOY = "yes";
+      // production은 createDBConfig에서 로컬이므로 원격 호스트를 지정해 승인 경로를 검증합니다.
+      ({ cleanup } = await setupSonamu(
+        createConfig(["production"]),
+        createDBConfig({ production: "prod-db.internal.example" }),
+      ));
+      app = Fastify();
+      await registerMigrationsApi(app);
+      const slack = stubSlack();
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/migrations/apply",
+        payload: { targets: ["production"] },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(applySpy).not.toHaveBeenCalled();
+      expect(slack.calls).toHaveLength(0);
+    });
+
+    it.each(["", "no", "true", "1"])(
+      "SONAMU_DEPLOY=%j 는 deploy 모드로 인정하지 않아 staging·production을 숨긴다",
+      async (value) => {
+        process.env.SONAMU_DEPLOY = value;
+        await start({});
+
+        const res = await app.inject({ method: "GET", url: "/api/migrations/connections" });
+
+        expect(res.statusCode).toBe(200);
+        expect(res.json().connections.map(({ connKey }: { connKey: string }) => connKey)).toEqual([
+          "test",
+          "fixture",
+          "development",
+        ]);
+      },
+    );
+  });
 });

@@ -587,21 +587,41 @@ function coneParser(): Parser<"sync", ParsedSonamuArgs, unknown> {
 }
 
 function targetParser(parent: "build" | "dev"): Parser<"sync", ParsedSonamuArgs, unknown> {
-  const all = branch("all", leaf(`${parent}.all`));
-  const api = branch("api", leaf(`${parent}.api`));
-  let web: Parser<"sync", ParsedSonamuArgs, unknown>;
   if (parent === "dev") {
-    web = branch(
+    const devOptions = (commandName: "dev.all" | "dev.api") =>
+      map(
+        object({
+          deploy: withDefault(
+            flag("--deploy", {
+              description: message`Expose staging and production databases in Sonamu UI migrations.`,
+              errors: flagErrors,
+            }),
+            false,
+          ),
+        }),
+        (options) => result(commandName, {}, options),
+      );
+    const all = branch("all", devOptions("dev.all"));
+    const api = branch("api", devOptions("dev.api"));
+    const web = branch(
       "web",
       map(passThrough({ format: "greedy" }), (tokens) => {
         const passthrough = tokens[0] === "--" ? tokens.slice(1) : tokens;
         return result("dev.web", {}, {}, passthrough);
       }),
     );
-  } else {
-    web = branch("web", leaf("build.web"));
+    return branch(
+      "dev",
+      withDefault(
+        alternatives([all, api, web, devOptions("dev.all")]),
+        result("dev.all", {}, { deploy: false }),
+      ),
+    );
   }
-  return branch(parent, withDefault(alternatives([all, api, web]), result(`${parent}.all`)));
+  const all = branch("all", leaf("build.all"));
+  const api = branch("api", leaf("build.api"));
+  const web = branch("web", leaf("build.web"));
+  return branch("build", withDefault(alternatives([all, api, web]), result("build.all")));
 }
 
 function testParser(): Parser<"sync", ParsedSonamuArgs, unknown> {

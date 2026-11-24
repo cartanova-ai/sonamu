@@ -340,9 +340,12 @@ function sendMigrationStream(
 }
 
 export async function registerMigrationsApi(server: FastifyInstance) {
-  // dev 서버 UI는 브라우저에서 호출되므로 개발용 DB(development·test·fixture와 그 readonly)만 대상으로 받습니다.
-  // production 제외는 허용 목록과 별개로 한 번 더 막아 두는 방어선입니다.
-  const migrator = new Migrator({ excludedTargets: ["production"], targetFilter: isUIDBPreset });
+  // dev 서버 UI는 기본적으로 개발용 DB(development·test·fixture와 그 readonly)만 대상으로 받습니다.
+  // `sonamu dev --deploy`(SONAMU_DEPLOY=yes)로 띄운 경우에만 staging·production 대상을 엽니다.
+  const deployMode = process.env.SONAMU_DEPLOY === "yes";
+  const migrator = deployMode
+    ? new Migrator()
+    : new Migrator({ excludedTargets: ["production"], targetFilter: isUIDBPreset });
 
   server.get("/api/migrations/connections", async () => ({
     connections: migrator.getConnections(),

@@ -103,18 +103,48 @@ export async function createStartEnvironment(
   return { ...baseEnv, NODE_ENV: resolveSonamuEnvironment(apiRootPath, "production", baseEnv) };
 }
 
-function hmrHandler(apiOnly: boolean): CliHandler {
-  return async () => {
-    const { findApiRootPath } = await import("sonamu");
-    const apiRootPath = findApiRootPath();
-    const environment: NodeJS.ProcessEnv = {
-      ...process.env,
-      NODE_ENV: "development",
-      HOT: "yes",
-      API_ROOT_PATH: apiRootPath,
-    };
-    if (apiOnly) environment.SONAMU_DISABLE_INTEGRATED_WEB = "yes";
-    return runChildProcess({
+/**
+ * `sonamu dev`가 HMR 서버를 띄울 때 쓸 환경 변수를 만듭니다.
+ * `--deploy`가 없으면 부모 셸의 SONAMU_DEPLOY를 지워 운영 DB가 의도치 않게 열리지 않게 합니다.
+ */
+export function createDevEnvironment(
+  apiRootPath: string,
+  baseEnv: NodeJS.ProcessEnv,
+  options: { apiOnly?: boolean; deploy?: boolean } = {},
+): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {
+    ...baseEnv,
+    NODE_ENV: "development",
+    HOT: "yes",
+    API_ROOT_PATH: apiRootPath,
+  };
+  if (options.apiOnly) {
+    environment.SONAMU_DISABLE_INTEGRATED_WEB = "yes";
+  }
+  if (options.deploy) {
+    environment.SONAMU_DEPLOY = "yes";
+  } else {
+    delete environment.SONAMU_DEPLOY;
+  }
+  return environment;
+}
+
+export function createDevHandler(
+  apiOnly: boolean,
+  deps: {
+    findApiRootPath?: () => string;
+    runChildProcess?: typeof runChildProcess;
+  } = {},
+): CliHandler {
+  return async (input) => {
+    const apiRootPath = deps.findApiRootPath
+      ? deps.findApiRootPath()
+      : (await import("sonamu")).findApiRootPath();
+    const environment = createDevEnvironment(apiRootPath, process.env, {
+      apiOnly,
+      deploy: z.boolean().catch(false).parse(input.deploy),
+    });
+    return (deps.runChildProcess ?? runChildProcess)({
       executable: process.execPath,
       args: [
         requireFromHere.resolve("@sonamu-kit/hmr-runner/bin/run.js"),
@@ -133,8 +163,8 @@ function hmrHandler(apiOnly: boolean): CliHandler {
 }
 
 const processHandlers: CliHandlers = {
-  "dev.all": hmrHandler(false),
-  "dev.api": hmrHandler(true),
+  "dev.all": createDevHandler(false),
+  "dev.api": createDevHandler(true),
   "dev.web": async (input) => {
     const { findAppRootPath } = await import("sonamu");
     return runChildProcess({
