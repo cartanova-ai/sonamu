@@ -4,13 +4,20 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as React from "react";
 import XIcon from "~icons/lucide/x";
 
+import { usePortalContainer } from "../../contexts/portal-container";
 import { cn } from "../../lib/utils";
 
 const Dialog = DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
-const DialogPortal = DialogPrimitive.Portal;
+function DialogPortal({
+  container,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Portal>) {
+  const fallback = usePortalContainer();
+  return <DialogPrimitive.Portal container={container ?? fallback} {...props} />;
+}
 
 const DialogClose = DialogPrimitive.Close;
 

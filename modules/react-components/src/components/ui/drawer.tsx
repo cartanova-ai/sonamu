@@ -3,14 +3,24 @@
 import * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 
+import { usePortalContainer } from "../../contexts/portal-container";
 import { cn } from "../../lib/utils";
 
+// vaul은 Portal에 준 container, Root에 준 container 차례로 읽으므로, 맥락의 요소는 Root에 기본값으로만 줍니다.
 const Drawer = ({
   shouldScaleBackground = true,
+  container,
   ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
-  <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} {...props} />
-);
+}: React.ComponentProps<typeof DrawerPrimitive.Root>) => {
+  const fallback = usePortalContainer();
+  return (
+    <DrawerPrimitive.Root
+      shouldScaleBackground={shouldScaleBackground}
+      container={container ?? fallback}
+      {...props}
+    />
+  );
+};
 Drawer.displayName = "Drawer";
 
 const DrawerTrigger = DrawerPrimitive.Trigger;

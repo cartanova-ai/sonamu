@@ -6,6 +6,7 @@ import CheckIcon from "~icons/lucide/check";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 import CircleIcon from "~icons/lucide/circle";
 
+import { usePortalContainer } from "../../contexts/portal-container";
 import { cn } from "../../lib/utils";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -14,7 +15,13 @@ const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 
-const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
+function DropdownMenuPortal({
+  container,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>) {
+  const fallback = usePortalContainer();
+  return <DropdownMenuPrimitive.Portal container={container ?? fallback} {...props} />;
+}
 
 const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 
@@ -60,7 +67,7 @@ const DropdownMenuContent = React.forwardRef<
   React.ComponentRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
 >(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal>
+  <DropdownMenuPortal>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
@@ -70,7 +77,7 @@ const DropdownMenuContent = React.forwardRef<
       )}
       {...props}
     />
-  </DropdownMenuPrimitive.Portal>
+  </DropdownMenuPortal>
 ));
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 

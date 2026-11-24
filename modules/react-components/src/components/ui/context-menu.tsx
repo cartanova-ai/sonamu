@@ -4,6 +4,7 @@ import CheckIcon from "~icons/lucide/check";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 import CircleIcon from "~icons/lucide/circle";
 
+import { usePortalContainer } from "../../contexts/portal-container";
 import { cn } from "../../lib/utils";
 
 const ContextMenu = ContextMenuPrimitive.Root;
@@ -12,7 +13,13 @@ const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
 
 const ContextMenuGroup = ContextMenuPrimitive.Group;
 
-const ContextMenuPortal = ContextMenuPrimitive.Portal;
+function ContextMenuPortal({
+  container,
+  ...props
+}: React.ComponentProps<typeof ContextMenuPrimitive.Portal>) {
+  const fallback = usePortalContainer();
+  return <ContextMenuPrimitive.Portal container={container ?? fallback} {...props} />;
+}
 
 const ContextMenuSub = ContextMenuPrimitive.Sub;
 
@@ -58,7 +65,7 @@ const ContextMenuContent = React.forwardRef<
   React.ComponentRef<typeof ContextMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
 >(({ className, ...props }, ref) => (
-  <ContextMenuPrimitive.Portal>
+  <ContextMenuPortal>
     <ContextMenuPrimitive.Content
       ref={ref}
       className={cn(
@@ -67,7 +74,7 @@ const ContextMenuContent = React.forwardRef<
       )}
       {...props}
     />
-  </ContextMenuPrimitive.Portal>
+  </ContextMenuPortal>
 ));
 ContextMenuContent.displayName = ContextMenuPrimitive.Content.displayName;
 

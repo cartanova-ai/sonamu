@@ -4,6 +4,7 @@ import CheckIcon from "~icons/lucide/check";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 import CircleIcon from "~icons/lucide/circle";
 
+import { usePortalContainer } from "../../contexts/portal-container";
 import { cn } from "../../lib/utils";
 
 function MenubarMenu({ ...props }: React.ComponentProps<typeof MenubarPrimitive.Menu>) {
@@ -14,8 +15,12 @@ function MenubarGroup({ ...props }: React.ComponentProps<typeof MenubarPrimitive
   return <MenubarPrimitive.Group {...props} />;
 }
 
-function MenubarPortal({ ...props }: React.ComponentProps<typeof MenubarPrimitive.Portal>) {
-  return <MenubarPrimitive.Portal {...props} />;
+function MenubarPortal({
+  container,
+  ...props
+}: React.ComponentProps<typeof MenubarPrimitive.Portal>) {
+  const fallback = usePortalContainer();
+  return <MenubarPrimitive.Portal container={container ?? fallback} {...props} />;
 }
 
 function MenubarRadioGroup({ ...props }: React.ComponentProps<typeof MenubarPrimitive.RadioGroup>) {
@@ -96,7 +101,7 @@ const MenubarContent = React.forwardRef<
   React.ComponentRef<typeof MenubarPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof MenubarPrimitive.Content>
 >(({ className, align = "start", alignOffset = -4, sideOffset = 8, ...props }, ref) => (
-  <MenubarPrimitive.Portal>
+  <MenubarPortal>
     <MenubarPrimitive.Content
       ref={ref}
       align={align}
@@ -108,7 +113,7 @@ const MenubarContent = React.forwardRef<
       )}
       {...props}
     />
-  </MenubarPrimitive.Portal>
+  </MenubarPortal>
 ));
 MenubarContent.displayName = MenubarPrimitive.Content.displayName;
 

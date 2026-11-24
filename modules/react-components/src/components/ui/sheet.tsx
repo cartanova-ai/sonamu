@@ -4,6 +4,7 @@ import { type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import XIcon from "~icons/lucide/x";
 
+import { usePortalContainer } from "../../contexts/portal-container";
 import { cn } from "../../lib/utils";
 
 const Sheet = SheetPrimitive.Root;
@@ -12,7 +13,10 @@ const SheetTrigger = SheetPrimitive.Trigger;
 
 const SheetClose = SheetPrimitive.Close;
 
-const SheetPortal = SheetPrimitive.Portal;
+function SheetPortal({ container, ...props }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
+  const fallback = usePortalContainer();
+  return <SheetPrimitive.Portal container={container ?? fallback} {...props} />;
+}
 
 const SheetOverlay = React.forwardRef<
   React.ComponentRef<typeof SheetPrimitive.Overlay>,
